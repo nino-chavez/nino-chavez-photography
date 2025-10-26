@@ -1,5 +1,5 @@
 <!--
-  SportFilter Component - Multi-sport filter pills
+  SportFilter Component - Multi-sport filter pills with magnetic attraction
 
   Features:
   - Pill-based UI for sport selection
@@ -10,13 +10,14 @@
   - P0-1: Collapsed on mobile by default
   - P0-2: Progressive disclosure (top 5 + show more)
   - P1-3: Lucide icons only (no emojis)
+  - P2-4: Magnetic filter orbs (100px radius, spring physics)
 
   Usage:
   <SportFilter {sports} selectedSport={sport} onSelect={handleSportSelect} />
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
+	import { Motion, useSpring } from 'svelte-motion';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Sparkles, Volleyball, User, Trophy } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
@@ -42,6 +43,14 @@
 	// P0-1: Collapsed on mobile by default
 	let isExpanded = $state(false);
 
+	// P2-4: Magnetic attraction state
+	let mouseX = $state(0);
+	let mouseY = $state(0);
+	let pillRefs: Map<string, HTMLElement> = new Map();
+
+	const MAGNETIC_RADIUS = 100; // px
+	const ATTRACTION_STRENGTH = 0.3; // 0-1 scale
+
 	function handleSportClick(sportName: string | null) {
 		onSelect?.(sportName);
 	}
@@ -61,7 +70,49 @@
 	const totalPhotos = $derived(sports.reduce((sum, s) => sum + s.count, 0));
 	const displayedSports = $derived(showAllSports ? sports : sports.slice(0, 5));
 	const hasMoreSports = $derived(sports.length > 5);
+
+	// P2-4: Calculate magnetic attraction for a pill
+	function getMagneticTransform(pillId: string): { x: number; y: number } {
+		const pill = pillRefs.get(pillId);
+		if (!pill) return { x: 0, y: 0 };
+
+		const rect = pill.getBoundingClientRect();
+		const pillCenterX = rect.left + rect.width / 2;
+		const pillCenterY = rect.top + rect.height / 2;
+
+		const dx = mouseX - pillCenterX;
+		const dy = mouseY - pillCenterY;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+
+		// Only attract within radius
+		if (distance > MAGNETIC_RADIUS) {
+			return { x: 0, y: 0 };
+		}
+
+		// Calculate attraction strength (inverse square falloff)
+		const strength = (1 - distance / MAGNETIC_RADIUS) * ATTRACTION_STRENGTH;
+
+		return {
+			x: dx * strength,
+			y: dy * strength
+		};
+	}
+
+	function handleMouseMove(event: MouseEvent) {
+		mouseX = event.clientX;
+		mouseY = event.clientY;
+	}
+
+	function setPillRef(id: string, element: HTMLElement | null) {
+		if (element) {
+			pillRefs.set(id, element);
+		} else {
+			pillRefs.delete(id);
+		}
+	}
 </script>
+
+<svelte:window onmousemove={handleMouseMove} />
 
 <!-- P0-1: Mobile summary button (compact, collapsed by default) -->
 <div class="lg:hidden">
@@ -81,7 +132,7 @@
 
 	{#if isExpanded}
 		<div transition:slide class="mt-2 p-4 bg-charcoal-900/50 border border-charcoal-800/50 rounded-xl space-y-4">
-			<!-- Filter Pills -->
+			<!-- Filter Pills (Mobile - no magnetic effect) -->
 			<div class="flex flex-wrap gap-3">
 				<!-- All Sports Pill -->
 				<Motion
@@ -152,7 +203,7 @@
 	{/if}
 </div>
 
-<!-- Desktop: Always expanded -->
+<!-- Desktop: Always expanded with P2-4 Magnetic Orbs -->
 <div class="hidden lg:block p-4 bg-charcoal-900/50 border border-charcoal-800/50 rounded-xl space-y-4">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
@@ -171,18 +222,27 @@
 		{/if}
 	</div>
 
-	<!-- Filter Pills -->
+	<!-- Filter Pills with Magnetic Attraction -->
 	<div class="flex flex-wrap gap-3">
 		<!-- All Sports Pill -->
+		{@const allTransform = getMagneticTransform('sport-all')}
 		<Motion
 			let:motion
-			whileHover={{ scale: 1.03 }}
-			whileTap={{ scale: 0.97 }}
+			animate={{
+				x: allTransform.x,
+				y: allTransform.y
+			}}
+			transition={{
+				type: 'spring',
+				stiffness: 300,
+				damping: 30
+			}}
 		>
 			<button
 				use:motion
+				use:setPillRef={'sport-all'}
 				onclick={() => handleSportClick(null)}
-				class="min-h-[48px] px-6 py-3 rounded-full text-sm font-medium transition-all {!selectedSport
+				class="min-h-[48px] px-6 py-3 rounded-full text-sm font-medium transition-colors {!selectedSport
 					? 'bg-gold-500 text-charcoal-950 shadow-lg shadow-gold-500/20'
 					: 'bg-charcoal-800/50 text-charcoal-100 border border-charcoal-700 hover:border-gold-500/30 hover:bg-charcoal-800'}"
 				aria-label="Show all sports"
@@ -195,18 +255,27 @@
 			</button>
 		</Motion>
 
-		<!-- Individual Sport Pills (Progressive Disclosure) -->
+		<!-- Individual Sport Pills (Progressive Disclosure with Magnetic) -->
 		{#each displayedSports as sport (sport.name)}
 			{@const IconComponent = sportIcons[sport.name.toLowerCase()] || Trophy}
+			{@const transform = getMagneticTransform(`sport-${sport.name}`)}
 			<Motion
 				let:motion
-				whileHover={{ scale: 1.03 }}
-				whileTap={{ scale: 0.97 }}
+				animate={{
+					x: transform.x,
+					y: transform.y
+				}}
+				transition={{
+					type: 'spring',
+					stiffness: 300,
+					damping: 30
+				}}
 			>
 				<button
 					use:motion
+					use:setPillRef={`sport-${sport.name}`}
 					onclick={() => handleSportClick(sport.name)}
-					class="min-h-[48px] px-6 py-3 rounded-full text-sm font-medium transition-all {selectedSport === sport.name
+					class="min-h-[48px] px-6 py-3 rounded-full text-sm font-medium transition-colors {selectedSport === sport.name
 						? 'bg-gold-500 text-charcoal-950 shadow-lg shadow-gold-500/20'
 						: 'bg-charcoal-800/50 text-charcoal-100 border border-charcoal-700 hover:border-gold-500/30 hover:bg-charcoal-800'}"
 					aria-label="Filter by {sport.name}"
