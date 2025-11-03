@@ -78,13 +78,13 @@
 {#if data.heroPhoto}
 	<PremiumHero
 		backgroundImage={heroBackgroundImage}
-		title="VOLLEYBALL PHOTOGRAPHY"
+		title="SPORTS PHOTOGRAPHY"
 		subtitle="INTENSITY • DETERMINATION • TRIUMPH"
 	/>
 {:else}
 	<!-- Fallback hero without background image -->
 	<PremiumHero
-		title="VOLLEYBALL PHOTOGRAPHY"
+		title="SPORTS PHOTOGRAPHY"
 		subtitle="INTENSITY • DETERMINATION • TRIUMPH"
 	/>
 {/if}
