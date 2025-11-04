@@ -16,12 +16,26 @@
 	let downloading = $state(false);
 	let downloadSuccess = $state(false);
 
+	/**
+	 * Generate original resolution URL from SmugMug image URL
+	 * SmugMug URLs have size codes: -Ti, -Th, -S, -M, -L, -XL, -X2, -X3, -O (original)
+	 * We replace the size code with -O to get the original file
+	 */
+	function getOriginalUrl(imageUrl?: string): string | undefined {
+		if (!imageUrl) return undefined;
+
+		// Replace any size code with -O (Original)
+		// Pattern: /-[A-Z0-9]+\.jpg/ => /-O.jpg/
+		const originalUrl = imageUrl.replace(/-[A-Z0-9]+\.(jpg|jpeg|png)/i, '-O.$1');
+		return originalUrl;
+	}
+
 	// Download size options
 	const downloadOptions = $derived([
 		{
 			label: 'Original Quality',
 			description: 'Full resolution, best for print',
-			url: (photo.original_url || photo.image_url)?.replace('photos.smugmug.com', 'ninochavez.smugmug.com'),
+			url: getOriginalUrl(photo.image_url)?.replace('photos.smugmug.com', 'ninochavez.smugmug.com'),
 			filename: `${photo.image_key}_original.jpg`,
 			size: 'Large (~2-5 MB)'
 		},
@@ -39,7 +53,7 @@
 			filename: `${photo.image_key}_thumb.jpg`,
 			size: 'Small (~100 KB)'
 		}
-	].filter(option => option.url)); // Filter out options without URLs
+	].filter((option): option is typeof option & { url: string } => !!option.url)); // Type-safe filter
 
 	async function handleDownload(url: string, filename: string, event?: MouseEvent) {
 		event?.stopPropagation();
