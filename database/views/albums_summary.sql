@@ -45,12 +45,15 @@ GRANT SELECT ON albums_summary TO anon;
 GRANT SELECT ON albums_summary TO authenticated;
 
 -- Refresh function (call this after bulk uploads)
+-- Note: Uses non-concurrent refresh since view doesn't have a unique index
+-- For concurrent refresh, add: CREATE UNIQUE INDEX ON albums_summary(album_key);
 CREATE OR REPLACE FUNCTION refresh_albums_summary()
 RETURNS void
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 BEGIN
-  REFRESH MATERIALIZED VIEW CONCURRENTLY albums_summary;
+  REFRESH MATERIALIZED VIEW albums_summary;
 END;
 $$;
 

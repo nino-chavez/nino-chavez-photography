@@ -11,6 +11,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  -- Use non-concurrent refresh (requires exclusive lock but is more reliable)
+  -- CONCURRENTLY would require a unique index on the view
   REFRESH MATERIALIZED VIEW albums_summary;
 END;
 $$;
