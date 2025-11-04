@@ -12,7 +12,7 @@
   Usage:
   <PremiumHero
     backgroundImage="/path/to/image.jpg"
-    title="VOLLEYBALL PHOTOGRAPHY"
+    title="SPORTS PHOTOGRAPHY"
     subtitle="ACTION & MOMENTS"
   />
 -->
@@ -32,7 +32,7 @@
 
   let {
     backgroundImage = '',
-    title = 'VOLLEYBALL PHOTOGRAPHY',
+    title = 'SPORTS PHOTOGRAPHY',
     subtitle = 'ACTION & MOMENTS',
     class: className
   }: Props = $props();
