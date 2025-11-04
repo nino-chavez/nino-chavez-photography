@@ -1,6 +1,62 @@
 import { supabaseServer } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
+/**
+ * Auto-refresh materialized view if stale
+ * Checks if photo_metadata has newer data than albums_summary view
+ * and refreshes the view automatically if needed
+ */
+async function autoRefreshViewIfStale(): Promise<void> {
+	try {
+		// Get the latest upload date from the materialized view
+		const { data: viewData } = await supabaseServer
+			.from('albums_summary')
+			.select('last_upload_date')
+			.order('last_upload_date', { ascending: false })
+			.limit(1)
+			.single();
+
+		// Get the latest upload date from the base table
+		const { data: tableData } = await supabaseServer
+			.from('photo_metadata')
+			.select('upload_date')
+			.not('album_key', 'is', null)
+			.not('sharpness', 'is', null)
+			.order('upload_date', { ascending: false })
+			.limit(1)
+			.single();
+
+		if (!viewData || !tableData) {
+			console.log('[Albums] Unable to check view staleness, skipping auto-refresh');
+			return;
+		}
+
+		const viewLastUpdate = new Date(viewData.last_upload_date);
+		const tableLastUpdate = new Date(tableData.upload_date);
+
+		// If base table has newer data, refresh the view
+		if (tableLastUpdate > viewLastUpdate) {
+			console.log('[Albums] View is stale, auto-refreshing...');
+			console.log(`  View last update: ${viewLastUpdate.toISOString()}`);
+			console.log(`  Table last update: ${tableLastUpdate.toISOString()}`);
+
+			const { error } = await supabaseServer.rpc('refresh_albums_summary');
+
+			if (error) {
+				console.error('[Albums] Auto-refresh failed:', error.message);
+				// Don't throw - continue with stale data rather than failing
+			} else {
+				console.log('[Albums] ✓ View refreshed successfully');
+			}
+		} else {
+			console.log('[Albums] View is up-to-date, no refresh needed');
+		}
+	} catch (error) {
+		console.error('[Albums] Error in auto-refresh check:', error);
+		// Don't throw - continue with existing data
+	}
+}
+
 interface AlbumMetadata {
 	name: string;
 	count: number;
@@ -21,6 +77,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	const sortBy = (url.searchParams.get('sort') || 'count') as SortOption;
 	const limit = 24;
 	const offset = (page - 1) * limit;
+
+	// AUTO-REFRESH: Check if view needs refresh and refresh if stale
+	await autoRefreshViewIfStale();
 
 	// OPTIMIZED: Query materialized view for instant results with pagination
 	let query = supabaseServer
