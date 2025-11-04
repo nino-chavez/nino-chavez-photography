@@ -13,7 +13,11 @@
 		"test": "playwright test",
 		"test:ui": "playwright test --ui",
 		"test:debug": "playwright test --debug",
-		"test:report": "playwright show-report"
+		"test:report": "playwright show-report",
+		"process:album": "tsx scripts/process-new-album.ts",
+		"enrich": "tsx scripts/enrich-local-photos.ts",
+		"upload:smugmug": "tsx scripts/upload-to-smugmug.ts",
+		"sync:album": "tsx scripts/sync-smugmug-album.ts"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.10.2",
@@ -30,6 +34,7 @@
 		"svelte-check": "^4.3.2",
 		"tailwindcss": "^4.1.14",
 		"tailwindcss-animate": "^1.0.7",
+		"tsx": "^4.20.6",
 		"typescript": "^5.9.2",
 		"vite": "^7.1.7"
 	},
@@ -40,6 +45,7 @@
 		"@tanstack/svelte-query": "^6.0.3",
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
+		"dotenv": "^17.2.3",
 		"lucide-svelte": "^0.546.0",
 		"oauth-1.0a": "^2.2.6",
 		"svelte-motion": "^0.12.2",

@@ -45,27 +45,67 @@
 		goto(`/photo/${photo.image_key}`);
 	}
 
-	// Generate Schema.org structured data for SEO
+	// Generate enhanced Schema.org structured data for AEO
+	const baseUrl = 'https://photography.ninochavez.co';
+	const imageUrl = data.photo.image_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || '';
+	const thumbnailUrl = data.photo.thumbnail_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || imageUrl;
+	const originalUrl = data.photo.original_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || imageUrl;
+
+	// Get image dimensions from SmugMug metadata if available
+	const imageWidth = data.photo.smugmug?.width;
+	const imageHeight = data.photo.smugmug?.height;
+
 	const schemaData = {
 		'@context': 'https://schema.org',
 		'@type': 'Photograph',
+		'@id': data.seo.canonical,
 		name: data.photo.title,
 		description: data.photo.caption || data.seo.description,
+		url: data.seo.canonical,
+		dateCreated: data.photo.created_at,
+		datePublished: data.photo.created_at,
+		keywords: data.photo.keywords.join(', ') || `${data.photo.metadata.sport_type}, ${data.photo.metadata.photo_category}`,
+		// Enhanced ImageObject with detailed properties
+		image: {
+			'@type': 'ImageObject',
+			contentUrl: originalUrl,
+			thumbnailUrl: thumbnailUrl,
+			url: imageUrl,
+			encodingFormat: 'image/jpeg',
+			width: imageWidth || undefined,
+			height: imageHeight || undefined,
+			...(imageWidth && imageHeight ? { aspectRatio: `${imageWidth}/${imageHeight}` } : {})
+		},
+		// Enhanced Person (photographer) with complete profile
 		creator: {
 			'@type': 'Person',
 			name: 'Nino Chavez',
-			jobTitle: 'Sports Photographer',
-			url: 'https://photography.ninochavez.co/about'
+			jobTitle: 'Professional Sports Photographer',
+			url: `${baseUrl}/about`,
+			sameAs: [
+				'https://www.instagram.com/ninochavez',
+				'https://twitter.com/ninochavez'
+			],
+			knowsAbout: [
+				'Sports Photography',
+				'Action Photography',
+				'Event Photography',
+				data.photo.metadata.sport_type
+			].filter(Boolean)
 		},
-		datePublished: data.photo.created_at,
-		keywords: data.photo.keywords.join(', '),
-		contentUrl: data.seo.canonical,
-		thumbnailUrl: data.photo.thumbnail_url,
-		image: data.photo.image_url,
+		// SportsEvent if event data is available
+		...(data.photo.metadata.event_id ? {
+			about: {
+				'@type': 'SportsEvent',
+				name: data.photo.title,
+				sport: data.photo.metadata.sport_type,
+				eventStatus: 'https://schema.org/EventScheduled'
+			}
+		} : {}),
+		// Additional metadata
 		sport: data.photo.metadata.sport_type,
 		category: data.photo.metadata.photo_category,
-		emotion: data.photo.metadata.emotion,
-		// Include rating for SEO (using internal Bucket 2 quality metrics)
+		// Enhanced aggregateRating with more details
 		aggregateRating: {
 			'@type': 'AggregateRating',
 			ratingValue: Math.round(
@@ -73,10 +113,20 @@
 					data.photo.metadata.exposure_accuracy +
 					data.photo.metadata.composition_score +
 					data.photo.metadata.emotional_impact) /
-					4
-			),
+					4 * 10
+			) / 10, // Round to 1 decimal
 			bestRating: 10,
-			worstRating: 0
+			worstRating: 0,
+			ratingCount: 1, // Single photo rating
+			reviewCount: 0
+		},
+		// Offer schema for licensing (if applicable)
+		offers: {
+			'@type': 'Offer',
+			availability: 'https://schema.org/InStock',
+			priceCurrency: 'USD',
+			url: `${baseUrl}/photo/${data.photo.image_key}`,
+			description: 'Professional sports photography licensing available. Contact for pricing.'
 		}
 	};
 </script>

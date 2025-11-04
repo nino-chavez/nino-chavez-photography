@@ -1,0 +1,30 @@
+# AI.txt for Nino Chavez Photography Gallery
+# Version: 1.0
+# Last Updated: 2025-10-28
+
+# About
+This file provides information for AI crawlers and answer engines about this photography portfolio.
+
+# APIs
+/api/ai/photos - Get photos with metadata (JSON)
+/api/ai/albums - Get albums with metadata (JSON)
+/api/ai/search?q={query} - Semantic photo search
+/api/ai/stats - Gallery statistics
+/api/ai/faq - Auto-generated FAQ content
+
+# Structured Data
+All pages include Schema.org markup:
+- Photograph schema on photo pages
+- FAQPage schema on FAQ pages
+- Person schema on about page
+- ImageGallery schema on collection pages
+
+# Metadata
+- Total photos: 20,000+
+- Sports: volleyball (70%), basketball, soccer, track, baseball
+- Coverage: 2020-present
+- AI-enriched: Yes (12 semantic dimensions per photo)
+
+# Contact
+For licensing inquiries: https://photography.ninochavez.co/about
+

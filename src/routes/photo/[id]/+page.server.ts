@@ -61,6 +61,16 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			ai_cost: photoData.ai_cost || 0,
 			ai_confidence: photoData.ai_confidence || 0,
 			enriched_at: photoData.enriched_at || new Date().toISOString()
+		},
+		// SmugMug metadata for enhanced Schema.org markup
+		smugmug: {
+			photo_date: photoData.photo_date || undefined,
+			upload_date: photoData.upload_date || undefined,
+			width: photoData.width || undefined,
+			height: photoData.height || undefined,
+			aspect_ratio: photoData.aspect_ratio ? parseFloat(photoData.aspect_ratio.toString()) : undefined,
+			album_key: photoData.album_key || undefined,
+			album_name: photoData.album_name || undefined
 		}
 	};
 
