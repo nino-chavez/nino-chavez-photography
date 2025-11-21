@@ -26,7 +26,22 @@
 	let chatContainer = $state<HTMLDivElement>();
 	let inputElement = $state<HTMLTextAreaElement>();
 	let input = $state('');
-	let messages = $state<Message[]>([]);
+	let messages = $state<Message[]>([
+		{
+			id: 'welcome',
+			role: 'assistant',
+			content: `Hi! I'm Focus Bot 📸
+
+I can help you explore Nino's volleyball photography collection. Try asking me to:
+
+• "Show me powerful spikes"
+• "Find celebration moments"
+• "Photos with peak intensity"
+• "Serves with determination"
+
+What are you looking for?`
+		}
+	]);
 	let isLoading = $state(false);
 
 	// Handle form submission
