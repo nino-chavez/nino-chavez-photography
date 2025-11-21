@@ -400,7 +400,8 @@
     });
 
     if (closestMonth) {
-      const newMonth = { year: closestMonth.year, month: closestMonth.month };
+      const closest = closestMonth as { year: number; month: number; distance: number };
+      const newMonth = { year: closest.year, month: closest.month };
       if (!currentVisibleMonth ||
           currentVisibleMonth.year !== newMonth.year ||
           currentVisibleMonth.month !== newMonth.month) {
