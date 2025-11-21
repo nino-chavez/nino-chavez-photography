@@ -12,7 +12,7 @@ function getSupabaseClient() {
 	return createClient(supabaseUrl, supabaseKey);
 }
 
-const SYSTEM_PROMPT = `You are Focus Bot, the AI assistant for Nino Chavez's photography gallery.
+const SYSTEM_PROMPT = `You are Shot Bot, the AI assistant for Nino Chavez's photography gallery.
 
 **Your Role:**
 - Help users discover and explore volleyball action photography
@@ -62,83 +62,99 @@ Conversational, helpful, and genuinely excited about great photography. Keep res
 `;
 
 export const POST: RequestHandler = async ({ request }) => {
-	const { messages } = await request.json();
+	try {
+		console.log('Received chat request');
+		const { messages } = await request.json();
 
-	const googleApiKey = env.GOOGLE_API_KEY || env.GEMINI_API_KEY;
+		const googleApiKey = env.GOOGLE_API_KEY || env.GEMINI_API_KEY;
+		console.log('API Key present:', !!googleApiKey);
 
-	if (!googleApiKey) {
-		return new Response('Missing GOOGLE_API_KEY or GEMINI_API_KEY environment variable', {
-			status: 500
+		if (!googleApiKey) {
+			console.error('Missing GOOGLE_API_KEY or GEMINI_API_KEY');
+			return new Response('Missing GOOGLE_API_KEY or GEMINI_API_KEY environment variable', {
+				status: 500
+			});
+		}
+
+		// Create Google AI provider with API key
+		const google = createGoogleGenerativeAI({
+			apiKey: googleApiKey
 		});
-	}
 
-	// Create Google AI provider with API key
-	const google = createGoogleGenerativeAI({
-		apiKey: googleApiKey
-	});
-
-	const result = streamText({
-		model: google('gemini-1.5-flash'),
-		system: SYSTEM_PROMPT,
-		messages,
-		tools: {
-			searchPhotos: tool({
-				description:
-					'Search for photos based on criteria like sport, action, emotion, intensity, or composition.',
-				parameters: z.object({
-					sport_type: z.string().optional().describe('The type of sport, e.g., volleyball, basketball.'),
-					play_type: z.string().optional().describe('The specific action, e.g., spike, block, serve.'),
-					photo_category: z.string().optional().describe('The category of photo, e.g., action, portrait, celebration.'),
-					action_intensity: z.string().optional().describe('The intensity of the action, e.g., low, medium, high, peak.'),
-					emotion: z.string().optional().describe('The emotion conveyed, e.g., triumph, determination, focus.')
-				}),
-				// @ts-ignore - Tool typing is complex, but runtime execution works correctly
-				execute: async ({
-					sport_type,
-					play_type,
-					photo_category,
-					action_intensity,
-					emotion
-				}: {
-					sport_type?: string;
-					play_type?: string;
-					photo_category?: string;
-					action_intensity?: string;
-					emotion?: string;
-				}) => {
-					console.log('Tool call: searchPhotos', {
+		const result = streamText({
+			model: google('gemini-2.5-flash'),
+			system: SYSTEM_PROMPT,
+			messages,
+			tools: {
+				searchPhotos: tool({
+					description:
+						'Search for photos based on criteria like sport, action, emotion, intensity, or composition.',
+					parameters: z.object({
+						sport_type: z.string().optional().describe('The type of sport, e.g., volleyball, basketball.'),
+						play_type: z.string().optional().describe('The specific action, e.g., spike, block, serve.'),
+						photo_category: z.string().optional().describe('The category of photo, e.g., action, portrait, celebration.'),
+						action_intensity: z.string().optional().describe('The intensity of the action, e.g., low, medium, high, peak.'),
+						emotion: z.string().optional().describe('The emotion conveyed, e.g., triumph, determination, focus.')
+					}),
+					// @ts-ignore - Tool typing is complex, but runtime execution works correctly
+					execute: async ({
 						sport_type,
 						play_type,
 						photo_category,
 						action_intensity,
 						emotion
-					});
-					const supabase = getSupabaseClient();
-					let query = supabase
-						.from('photo_metadata')
-						.select('image_key, thumbnail_url, sport_type, play_type, photo_category')
-						.order('emotional_impact', { ascending: false })
-						.limit(12);
+					}: {
+						sport_type?: string;
+						play_type?: string;
+						photo_category?: string;
+						action_intensity?: string;
+						emotion?: string;
+					}) => {
+						console.log('Tool call: searchPhotos', {
+							sport_type,
+							play_type,
+							photo_category,
+							action_intensity,
+							emotion
+						});
+						try {
+							const supabase = getSupabaseClient();
+							let query = supabase
+								.from('photo_metadata')
+								.select('image_key, thumbnail_url, sport_type, play_type, photo_category')
+								.order('emotional_impact', { ascending: false })
+								.limit(12);
 
-					if (sport_type) query = query.eq('sport_type', sport_type);
-					if (play_type) query = query.eq('play_type', play_type);
-					if (photo_category) query = query.eq('photo_category', photo_category);
-					if (action_intensity) query = query.eq('action_intensity', action_intensity);
-					if (emotion) query = query.eq('emotion', emotion);
+							if (sport_type) query = query.eq('sport_type', sport_type);
+							if (play_type) query = query.eq('play_type', play_type);
+							if (photo_category) query = query.eq('photo_category', photo_category);
+							if (action_intensity) query = query.eq('action_intensity', action_intensity);
+							if (emotion) query = query.eq('emotion', emotion);
 
-					const { data, error } = await query;
+							const { data, error } = await query;
 
-					if (error) {
-						console.error('Supabase query error:', error);
-						return { photos: [], error: 'Failed to fetch photos.' };
+							if (error) {
+								console.error('Supabase query error:', error);
+								return { photos: [], error: 'Failed to fetch photos.' };
+							}
+
+							console.log(`Found ${data?.length || 0} photos.`);
+							return { photos: data || [] };
+						} catch (err) {
+							console.error('Error executing searchPhotos tool:', err);
+							return { photos: [], error: 'Internal error in search tool' };
+						}
 					}
+				})
+			}
+		});
 
-					console.log(`Found ${data.length} photos.`);
-					return { photos: data };
-				}
-			})
-		}
-	});
-
-	return result.toTextStreamResponse();
+		return result.toTextStreamResponse();
+	} catch (error) {
+		console.error('Error in chat API:', error);
+		return new Response(JSON.stringify({ error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) }), {
+			status: 500,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
 };
