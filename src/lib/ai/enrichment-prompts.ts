@@ -92,6 +92,16 @@ Required Fields:
    - "cool": Blue, teal, dawn tones
    - "neutral": Balanced, no strong color cast
 
+9. **jersey_number** (number | null): Player's jersey number (if visible)
+   - Look for visible jersey numbers on uniforms
+   - Return the number as an integer
+   - Return NULL if:
+     - Number not visible
+     - Multiple players with different numbers
+     - Photo is too blurry to read number
+     - Photo category is not "action" or "portrait"
+   - IMPORTANT: Only include if you're confident in the number
+
 Return ONLY JSON in this exact format (SINGLE composition value with underscores):
 {
   "play_type": "block",
@@ -101,7 +111,8 @@ Return ONLY JSON in this exact format (SINGLE composition value with underscores
   "composition": "rule_of_thirds",
   "time_of_day": "evening",
   "lighting": "artificial",
-  "color_temperature": "neutral"
+  "color_temperature": "neutral",
+  "jersey_number": 12
 }
 
 NO explanations. NO markdown. ONLY JSON.`;
@@ -202,7 +213,8 @@ Return ONLY JSON combining both buckets:
     "composition": "rule_of_thirds",
     "time_of_day": "evening",
     "lighting": "artificial",
-    "color_temperature": "neutral"
+    "color_temperature": "neutral",
+    "jersey_number": 12
   },
   "bucket2": {
     "emotion": "triumph",
@@ -230,6 +242,7 @@ export interface Bucket1Response {
   time_of_day: string;
   lighting: string;
   color_temperature: string;
+  jersey_number: number | null;
 }
 
 export interface Bucket2Response {
