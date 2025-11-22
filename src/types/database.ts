@@ -46,6 +46,7 @@ export interface PhotoMetadataRow {
 	// Game/Event context
 	time_in_game: string | null;
 	athlete_id: string | null;
+	jersey_number: number | null;
 	event_id: string | null;
 
 	// AI metadata
@@ -62,6 +63,9 @@ export interface PhotoMetadataRow {
 	album_key: string | null;
 	album_name: string | null;
 	collection_slug: string | null;
+
+	// Vector embedding for similarity search (Initiative 3.2)
+	embedding: number[] | null;
 
 	// Timestamps
 	upload_date: string;

@@ -10,7 +10,7 @@
  * because this code runs SERVER-SIDE ONLY
  */
 
-import { fetchPhotos, getPhotoCount, getFilterCounts, type FilterCounts } from '$lib/supabase/server';
+import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, type FilterCounts } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent }) => {
@@ -28,9 +28,8 @@ export const load: PageServerLoad = async ({ url, parent }) => {
   let compositionFilter = url.searchParams.get('composition') || undefined;
   let emotionFilter = url.searchParams.get('emotion') || undefined; // Bucket 2, but used for "Similar Photos"
   let searchQuery = url.searchParams.get('q') || undefined;
-
-  // DEBUG: Log the sport filter
-  console.log('[DEBUG] Sport filter from URL:', sportFilter);
+  let similarToImageKey = url.searchParams.get('similar_to') || undefined;
+  let jerseyFilter = url.searchParams.get('jersey') ? parseInt(url.searchParams.get('jersey')!) : undefined;
 
   // Sort mode (default to quality)
   const sortBy = (url.searchParams.get('sort') || 'quality') as 'quality' | 'newest' | 'oldest' | 'action' | 'intensity';
@@ -48,11 +47,12 @@ export const load: PageServerLoad = async ({ url, parent }) => {
     timeOfDay: timeOfDayFilter ? [timeOfDayFilter as any] : undefined,
     compositions: compositionFilter ? [compositionFilter as any] : undefined, // Fixed: was 'composition', now 'compositions'
     emotion: emotionFilter as any, // Bucket 2, but used for "Similar Photos" feature
+    jerseyNumber: jerseyFilter,
   };
 
   // Check if any filters are active
   const hasActiveFilters = !!(sportFilter || categoryFilter || playTypeFilter || intensityFilter ||
-    lightingFilters.length > 0 || colorTempFilter || timeOfDayFilter || compositionFilter || emotionFilter);
+    lightingFilters.length > 0 || colorTempFilter || timeOfDayFilter || compositionFilter || emotionFilter || jerseyFilter);
 
   // Intelligent Filter System (Phase 1):
   // - If no filters active: use cached baseFilterCounts (fast, from layout cache)
@@ -142,34 +142,35 @@ export const load: PageServerLoad = async ({ url, parent }) => {
     }
   }
 
-  // DEBUG: Log filter options before fetch
-  console.log('[DEBUG] Filter options being sent to fetchPhotos:', {
-    ...filterOptions,
-    limit: pageSize,
-    offset,
-    sortBy,
-  });
-
   // Fetch photos with pagination (after auto-clear)
   const photosStart = Date.now();
-  const photos = await fetchPhotos({
-    ...filterOptions,
-    limit: pageSize,
-    offset,
-    sortBy,
-  });
+  let photos;
+
+  if (similarToImageKey) {
+    // Use vector similarity search if requested
+    console.log(`[Explore] Performing vector similarity search for: ${similarToImageKey}`);
+    photos = await findSimilarPhotos(similarToImageKey, pageSize);
+    // Note: Pagination is not currently supported for similarity search in this implementation
+  } else {
+    photos = await fetchPhotos({
+      ...filterOptions,
+      limit: pageSize,
+      offset,
+      sortBy,
+    });
+  }
   const photosTime = Date.now() - photosStart;
   console.log(`[PERF] fetchPhotos took ${photosTime}ms`);
 
-  // DEBUG: Log first 3 photos returned
-  console.log('[DEBUG] First 3 photos returned:', photos.slice(0, 3).map(p => ({
-    id: p.image_key,
-    sport: p.metadata?.sport_type
-  })));
-
   // Get total count for "Showing X of Y" (after auto-clear)
   const countStart = Date.now();
-  const totalCount = await getPhotoCount(filterOptions);
+  let totalCount;
+  
+  if (similarToImageKey) {
+    totalCount = photos.length;
+  } else {
+    totalCount = await getPhotoCount(filterOptions);
+  }
   const countTime = Date.now() - countStart;
   console.log(`[PERF] getPhotoCount took ${countTime}ms`);
   console.log(`[PERF] TOTAL server load time: ${Date.now() - filterCountsStart}ms`);
@@ -191,8 +192,10 @@ export const load: PageServerLoad = async ({ url, parent }) => {
     selectedTimeOfDay: timeOfDayFilter || null,
     selectedComposition: compositionFilter || null,
     selectedEmotion: emotionFilter || null, // Bucket 2, but used for "Similar Photos" feature
+    selectedJerseyNumber: jerseyFilter || null,
     filterCounts, // NEW: Dynamic result counts for smart filtering
     clearedFilters, // Phase 4: List of auto-cleared filters for notification
     searchQuery, // Global search query from URL
+    similarToImageKey, // Vector search query
   };
 };

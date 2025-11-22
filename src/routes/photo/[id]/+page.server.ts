@@ -87,6 +87,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// Fetch related photos (NEW - Week 2)
 	const relatedPhotos = await fetchRelatedPhotos(photo, photoData.album_key);
 
+	// Fetch similar photos using vector embeddings (Initiative 3.2)
+	const similarPhotos = await fetchSimilarPhotos(photoData);
+
 	// Fetch approved tags (NEW - Week 3-4: Player Tagging)
 	const { data: tags } = await supabaseServer
 		.from('user_tags')
@@ -125,6 +128,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	return {
 		photo,
 		relatedPhotos, // NEW
+		similarPhotos, // Initiative 3.2 - Vector similarity
 		approvedTags: tags || [], // NEW
 		seo: {
 			title: `${photo.title} | Nino Chavez Photography`,
@@ -202,6 +206,88 @@ async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promis
 
 	// Transform to Photo type with two-bucket model
 	return (data || []).map((row: PhotoMetadataRow) => ({
+		id: row.image_key,
+		image_key: row.image_key,
+		image_url: row.ImageUrl,
+		thumbnail_url: row.ThumbnailUrl || undefined,
+		original_url: row.OriginalUrl || undefined,
+		title: row.album_name || 'Untitled Photo',
+		caption: row.composition || '',
+		keywords: [],
+		created_at: row.photo_date || row.enriched_at || row.upload_date,
+		metadata: {
+			// BUCKET 1
+			play_type: (row.play_type || null) as Photo['metadata']['play_type'],
+			action_intensity: (row.action_intensity || 'medium') as Photo['metadata']['action_intensity'],
+			sport_type: row.sport_type || 'volleyball',
+			photo_category: row.photo_category || 'action',
+			composition: (row.composition || '') as Photo['metadata']['composition'],
+			time_of_day: (row.time_of_day || '') as Photo['metadata']['time_of_day'],
+			lighting: (row.lighting || undefined) as Photo['metadata']['lighting'],
+			color_temperature: (row.color_temperature || undefined) as Photo['metadata']['color_temperature'],
+
+			// BUCKET 2
+			emotion: (row.emotion || 'focus') as Photo['metadata']['emotion'],
+			sharpness: row.sharpness || 0,
+			composition_score: row.composition_score || 0,
+			exposure_accuracy: row.exposure_accuracy || 0,
+			emotional_impact: row.emotional_impact || 0,
+			time_in_game: (row.time_in_game || undefined) as Photo['metadata']['time_in_game'],
+			athlete_id: row.athlete_id || undefined,
+			event_id: row.event_id || undefined,
+
+			// AI metadata
+			ai_provider: (row.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
+			ai_cost: row.ai_cost || 0,
+			ai_confidence: row.ai_confidence || 0,
+			enriched_at: row.enriched_at || new Date().toISOString()
+		}
+	}));
+}
+
+/**
+ * Fetch similar photos using vector embeddings
+ * (Initiative 3.2: Similarity-Powered Exploration)
+ */
+async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo[]> {
+	// Check if current photo has an embedding
+	if (!currentPhoto.embedding) {
+		console.log('[Photo Detail] No embedding available for similarity search');
+		return [];
+	}
+
+	// Call match_photos() database function
+	const { data, error } = await supabaseServer.rpc('match_photos', {
+		query_embedding: currentPhoto.embedding,
+		match_threshold: 0.7, // 70% similarity minimum
+		match_count: 12 // Return up to 12 similar photos
+	});
+
+	if (error) {
+		console.error('[Photo Detail] Error fetching similar photos:', error);
+		return [];
+	}
+
+	if (!data || data.length === 0) {
+		return [];
+	}
+
+	// Fetch full photo data for the similar photos
+	const imageKeys = data.map((result: any) => result.image_key);
+
+	const { data: photos, error: photosError } = await supabaseServer
+		.from('photo_metadata')
+		.select('*')
+		.in('image_key', imageKeys)
+		.not('sharpness', 'is', null); // Only enriched photos
+
+	if (photosError || !photos) {
+		console.error('[Photo Detail] Error fetching similar photo details:', photosError);
+		return [];
+	}
+
+	// Transform to Photo type with two-bucket model
+	return photos.map((row: PhotoMetadataRow) => ({
 		id: row.image_key,
 		image_key: row.image_key,
 		image_url: row.ImageUrl,

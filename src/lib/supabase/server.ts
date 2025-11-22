@@ -78,6 +78,7 @@ export function transformPhotoRow(row: any): Photo {
       emotional_impact: row.emotional_impact ?? 0,
       time_in_game: (row.time_in_game || undefined) as Photo['metadata']['time_in_game'],
       athlete_id: row.athlete_id || undefined,
+      jersey_number: row.jersey_number || undefined,
       event_id: row.event_id || undefined,
       ai_provider: (row.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
       ai_cost: row.ai_cost ?? 0,
@@ -168,6 +169,10 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
     query = query.eq('album_key', filters.albumKey);
   }
 
+  if (filters?.jerseyNumber !== undefined) {
+    query = query.eq('jersey_number', filters.jerseyNumber);
+  }
+
   // Apply sorting AFTER filters (work on smaller dataset)
   switch (sortBy) {
     case 'quality':
@@ -207,6 +212,11 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
 
     // Provide helpful error messages
     if (error.code === '57014') {
+      // Fallback: If quality sort times out (likely due to missing index), try newest
+      if (sortBy === 'quality') {
+        console.warn('[Supabase Server] Quality sort timed out, falling back to newest sort');
+        return fetchPhotos({ ...options, sortBy: 'newest' });
+      }
       throw new Error('Database query timeout - try adding filters to narrow your search');
     }
 
@@ -272,6 +282,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
         emotional_impact: row.emotional_impact ?? 0,
         time_in_game: (row.time_in_game || undefined) as Photo['metadata']['time_in_game'],
         athlete_id: row.athlete_id || undefined,
+        jersey_number: row.jersey_number || undefined,
         event_id: row.event_id || undefined,
 
         // AI metadata
@@ -331,6 +342,10 @@ export async function getPhotoCount(filters?: PhotoFilterState): Promise<number>
   // Emotion filter (Bucket 2, but used for "Similar Photos" feature)
   if (filters?.emotion) {
     query = query.eq('emotion', filters.emotion);
+  }
+
+  if (filters?.jerseyNumber !== undefined) {
+    query = query.eq('jersey_number', filters.jerseyNumber);
   }
 
   const { count, error } = await query;
@@ -1212,4 +1227,58 @@ export async function getAdjacentMonth(
     console.error('[getAdjacentMonth] Error:', error);
     return null;
   }
+}
+
+/**
+ * Find similar photos using vector embeddings (SERVER-SIDE)
+ * Uses the find_similar_photos RPC function which leverages pgvector
+ */
+export async function findSimilarPhotos(imageKey: string, limit: number = 24): Promise<Photo[]> {
+  console.log(`[findSimilarPhotos] Finding photos similar to: ${imageKey}`);
+  const start = Date.now();
+
+  // 1. Call RPC to get similar photo keys and scores
+  const { data: similarMatches, error } = await supabaseServer.rpc('find_similar_photos', {
+    query_image_key: imageKey,
+    match_count: limit,
+    match_threshold: 0.3 // Lower threshold to ensure results with small dataset
+  });
+
+  if (error) {
+    console.error('[Supabase Server] Error finding similar photos:', error);
+    // Fallback: return empty array (could fallback to emotion filter if needed)
+    return [];
+  }
+
+  if (!similarMatches || similarMatches.length === 0) {
+    console.log('[findSimilarPhotos] No similar photos found with current threshold');
+    return [];
+  }
+
+  // 2. Fetch full metadata for these photos
+  // We need to fetch them to get all the fields required for the Photo type
+  const keys = similarMatches.map((p: any) => p.image_key);
+  
+  const { data: photosData, error: photosError } = await supabaseServer
+    .from('photo_metadata')
+    .select('*')
+    .in('image_key', keys)
+    .not('sharpness', 'is', null);
+
+  if (photosError) {
+    console.error('[Supabase Server] Error fetching similar photo details:', photosError);
+    return [];
+  }
+
+  // 3. Map to Photo objects and sort by similarity (using the order from RPC)
+  // The RPC returns them sorted by similarity, but the .in() query doesn't guarantee order
+  const photoMap = new Map(photosData?.map(p => [p.image_key, p]));
+  
+  const sortedPhotos = similarMatches
+    .map((match: any) => photoMap.get(match.image_key))
+    .filter((p: any) => !!p) // Filter out any missing photos
+    .map(transformPhotoRow);
+
+  console.log(`[findSimilarPhotos] Found ${sortedPhotos.length} similar photos in ${Date.now() - start}ms`);
+  return sortedPhotos;
 }

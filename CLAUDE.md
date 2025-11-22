@@ -426,6 +426,7 @@ Located in `.agent-os/guides/`:
 | **[supabase-integration.md](.agent-os/guides/supabase-integration.md)** | Supabase client patterns, query patterns, error handling | Any database operation |
 | **[smugmug-api.md](.agent-os/guides/smugmug-api.md)** | SmugMug OAuth 1.0a, EXIF extraction, rate limiting | SmugMug API integration |
 | **[typescript-patterns.md](.agent-os/guides/typescript-patterns.md)** | Project-specific TypeScript patterns, Svelte 5 runes | All TypeScript code |
+| **[embeddings-similarity-search.md](.agent-os/guides/embeddings-similarity-search.md)** | Vector embeddings, semantic search, pgvector patterns | Similarity search, photo recommendations |
 
 ### Usage Guidelines
 
@@ -485,6 +486,7 @@ If you find yourself implementing the same pattern multiple times, or if a new i
 - `.agent-os/guides/supabase-integration.md` - Supabase patterns
 - `.agent-os/guides/smugmug-api.md` - SmugMug API patterns
 - `.agent-os/guides/typescript-patterns.md` - TypeScript patterns
+- `.agent-os/guides/embeddings-similarity-search.md` - Vector embeddings and semantic search
 
 ### Coding Standards
 - `docs/CODING_STANDARDS.md` - TypeScript and Svelte conventions

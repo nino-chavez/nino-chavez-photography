@@ -126,7 +126,7 @@
 							<div class="aspect-[4/3] relative overflow-hidden">
 								{#if featuredAlbum.album.coverImageUrl}
 									<img
-										src="{getOptimizedImageUrl(featuredAlbum.album.coverImageUrl, 400)}"
+										src="{getOptimizedImageUrl(featuredAlbum.album.coverImageUrl, 800)}"
 										alt="{featuredAlbum.album.albumName}"
 										class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
 									/>

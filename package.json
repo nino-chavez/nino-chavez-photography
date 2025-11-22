@@ -15,6 +15,7 @@
 		"test:debug": "playwright test --debug",
 		"test:report": "playwright show-report",
 		"process:album": "tsx scripts/process-new-album.ts",
+		"pipeline": "tsx scripts/run-pipeline.ts",
 		"enrich": "tsx scripts/enrich-local-photos.ts",
 		"upload:smugmug": "tsx scripts/upload-to-smugmug.ts",
 		"sync:album": "tsx scripts/sync-smugmug-album.ts"
@@ -41,7 +42,7 @@
 	"dependencies": {
 		"@ai-sdk/google": "^2.0.39",
 		"@ai-sdk/svelte": "^3.0.97",
-		"@google/generative-ai": "^0.23.0",
+		"@google/generative-ai": "^0.24.1",
 		"@supabase/ssr": "^0.7.0",
 		"@supabase/supabase-js": "^2.75.1",
 		"@tanstack/svelte-query": "^6.0.3",

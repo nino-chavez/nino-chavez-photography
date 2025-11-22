@@ -208,6 +208,17 @@
 			</div>
 		</div>
 
+		<!-- Similar Photos - Vector Similarity (Initiative 3.2) -->
+		{#if data.similarPhotos && data.similarPhotos.length > 0}
+			<div class="mt-8 px-6">
+				<RelatedPhotosCarousel
+					photos={data.similarPhotos}
+					title="Visually Similar Photos"
+					onPhotoClick={handleRelatedPhotoClick}
+				/>
+			</div>
+		{/if}
+
 		<!-- Related Photos Carousel (NEW - Week 2) -->
 		{#if data.relatedPhotos && data.relatedPhotos.length > 0}
 			<div class="mt-8 px-6">

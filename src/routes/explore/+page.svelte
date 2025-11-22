@@ -93,6 +93,13 @@
 	// Loading state - derived from SvelteKit's navigating store
 	let isLoading = $derived($navigating !== null);
 
+	// Close lightbox on navigation (e.g. clicking "Similar Photos", back button, etc.)
+	$effect(() => {
+		if ($navigating) {
+			lightboxOpen = false;
+		}
+	});
+
 	// Search
 	let searchQuery = $state(data.searchQuery || '');
 
@@ -140,6 +147,7 @@
 		if (data.selectedColorTemp) count++;
 		if (data.selectedTimeOfDay) count++;
 		if (data.selectedComposition) count++;
+		if (data.selectedJerseyNumber) count++;
 		return count;
 	});
 
@@ -192,19 +200,12 @@
 
 	// Lightbox handlers
 	function handlePhotoClick(photo: Photo) {
-		console.log('[handlePhotoClick] Clicked photo:', {
-			id: photo.id,
-			image_key: photo.image_key
-		});
-
 		// Use image_key for matching (more reliable than id)
 		const index = displayPhotos.findIndex((p) => p.image_key === photo.image_key);
-		console.log('[handlePhotoClick] Found index:', index, 'of', displayPhotos.length);
 
 		if (index !== -1) {
 			selectedPhotoIndex = index;
 			lightboxOpen = true;
-			console.log('[handlePhotoClick] Opening lightbox at index', selectedPhotoIndex);
 		} else {
 			console.error('[handlePhotoClick] Photo not found in displayPhotos!', {
 				clickedImageKey: photo.image_key,
@@ -246,8 +247,6 @@
 
 		// If we detected filters, apply them to URL
 		if (Object.keys(parsedFilters).length > 0) {
-			console.log('[handleSearch] NLP filters detected:', parsedFilters, 'for query:', query);
-			
 			const url = new URL($page.url);
 
 			// Apply detected filters
@@ -272,7 +271,6 @@
 			
 			goto(url.toString());
 		} else {
-			console.log('[handleSearch] No NLP filters detected, setting search query:', query);
 			// No NLP filters detected, just set the search query
 			const url = new URL($page.url);
 			url.searchParams.set('q', query);
@@ -354,6 +352,17 @@
 		goto(url.toString());
 	}
 
+	function handleJerseySelect(jersey: number | null) {
+		const url = new URL($page.url);
+		if (jersey !== null) {
+			url.searchParams.set('jersey', jersey.toString());
+		} else {
+			url.searchParams.delete('jersey');
+		}
+		url.searchParams.delete('page');
+		goto(url.toString());
+	}
+
 	function clearAllFilters(event?: MouseEvent) {
 		event?.stopPropagation();
 		const url = new URL($page.url);
@@ -367,6 +376,7 @@
 		url.searchParams.delete('time_of_day');
 		url.searchParams.delete('composition');
 		url.searchParams.delete('emotion'); // Clear emotion filter
+		url.searchParams.delete('jersey'); // Clear jersey filter
 		url.searchParams.delete('q'); // Clear search query too
 		url.searchParams.delete('page');
 		goto(url.toString());
@@ -656,6 +666,13 @@
 						onRemove={() => handleCompositionSelect(null)}
 					/>
 				{/if}
+
+				{#if data.selectedJerseyNumber}
+					<FilterChip
+						label="Jersey: #{data.selectedJerseyNumber}"
+						onRemove={() => handleJerseySelect(null)}
+					/>
+				{/if}
 			</div>
 		{/if}
 
@@ -801,7 +818,6 @@
 <!-- Lightbox -->
 {#snippet debugLightbox()}
 	{@const currentPhoto = displayPhotos[selectedPhotoIndex] || null}
-	{@const _ = console.log('[explore] Lightbox props: open=', lightboxOpen, 'photo=', currentPhoto?.id, 'selectedPhotoIndex=', selectedPhotoIndex, 'displayPhotos.length=', displayPhotos.length)}
 {/snippet}
 {@render debugLightbox()}
 <Lightbox
