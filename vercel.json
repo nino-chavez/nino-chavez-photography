@@ -2,18 +2,5 @@
   "framework": "sveltekit",
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "https://ninochavez.co/photography",
-      "permanent": true,
-      "has": [
-        {
-          "type": "host",
-          "value": "photography.ninochavez.co"
-        }
-      ]
-    }
-  ]
+  "installCommand": "npm install"
 }
