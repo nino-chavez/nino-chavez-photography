@@ -12,8 +12,8 @@
 import { getSportDistribution, getCategoryDistribution, getFilterCounts, type FilterCounts } from '$lib/supabase/server';
 import type { LayoutServerLoad } from './$types';
 
-// Trailing slash behavior: always use trailing slashes
-export const trailingSlash = 'always';
+// Trailing slash behavior: never use trailing slashes (prevents redirect loops with proxy)
+export const trailingSlash = 'never';
 
 // Cache duration: 5 minutes
 const CACHE_DURATION_MS = 5 * 60 * 1000;

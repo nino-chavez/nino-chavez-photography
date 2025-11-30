@@ -38,7 +38,6 @@ const config = {
       // Use absolute paths (not relative) so proxy rewrites work correctly
       relative: false,
     },
-    trailingSlash: 'never',
     alias: {
       $lib: "src/lib",
       $types: "src/types",
