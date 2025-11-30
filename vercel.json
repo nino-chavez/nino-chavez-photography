@@ -14,28 +14,6 @@
           "value": "photography.ninochavez.co"
         }
       ]
-    },
-    {
-      "source": "/photography",
-      "destination": "https://ninochavez.co/photography",
-      "permanent": true,
-      "has": [
-        {
-          "type": "host",
-          "value": "photography.ninochavez.co"
-        }
-      ]
-    },
-    {
-      "source": "/photography/:path*",
-      "destination": "https://ninochavez.co/photography/:path*",
-      "permanent": true,
-      "has": [
-        {
-          "type": "host",
-          "value": "photography.ninochavez.co"
-        }
-      ]
     }
   ]
 }
