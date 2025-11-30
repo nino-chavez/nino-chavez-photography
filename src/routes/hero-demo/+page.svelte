@@ -6,6 +6,7 @@
 -->
 
 <script lang="ts">
+	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -56,7 +57,7 @@
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
 		<div class="flex items-center justify-between gap-4">
 			<div class="flex items-center gap-4">
-				<a href="/style-guide" class="flex items-center gap-2 text-charcoal-400 hover:text-gold-500 transition-colors">
+				<a href="{base}/style-guide" class="flex items-center gap-2 text-charcoal-400 hover:text-gold-500 transition-colors">
 					<ArrowLeft class="w-4 h-4" />
 					<span class="text-sm">Back to Style Guide</span>
 				</a>

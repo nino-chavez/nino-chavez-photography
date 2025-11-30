@@ -14,6 +14,7 @@
 
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { Camera, Grid, Sparkles, Folder, Heart, Calendar } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
@@ -30,19 +31,19 @@
 	}
 
 	const navItems: NavItem[] = [
-		{ label: 'Explore', path: '/explore', icon: Camera },
-		{ label: 'Albums', path: '/albums', icon: Folder },
-		{ label: 'Timeline', path: '/timeline', icon: Calendar },
-		{ label: 'Collections', path: '/collections', icon: Grid },
-		{ label: 'Favorites', path: '/favorites', icon: Heart, badge: () => favorites.count },
+		{ label: 'Explore', path: `${base}/explore`, icon: Camera },
+		{ label: 'Albums', path: `${base}/albums`, icon: Folder },
+		{ label: 'Timeline', path: `${base}/timeline`, icon: Calendar },
+		{ label: 'Collections', path: `${base}/collections`, icon: Grid },
+		{ label: 'Favorites', path: `${base}/favorites`, icon: Heart, badge: () => favorites.count },
 	];
 
 	// Derived from page store
 	let currentPath = $derived($page.url.pathname);
 
 	function isActive(path: string): boolean {
-		if (path === '/') {
-			return currentPath === '/';
+		if (path === base || path === `${base}/`) {
+			return currentPath === base || currentPath === `${base}/`;
 		}
 		return currentPath.startsWith(path);
 	}
@@ -62,7 +63,7 @@
 			<div class="flex items-center justify-between h-16">
 				<!-- Logo/Brand -->
 				<a
-					href="/"
+					href="{base}/"
 					class="flex items-center gap-3 cursor-pointer group"
 					aria-label="Go to homepage"
 				>

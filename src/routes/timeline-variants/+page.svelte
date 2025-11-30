@@ -9,6 +9,7 @@
 -->
 
 <script lang="ts">
+  import { base } from '$app/paths';
   import { Calendar, ChevronDown, ChevronRight, Menu, Navigation } from 'lucide-svelte';
   import Typography from '$lib/components/ui/Typography.svelte';
   import type { Photo } from '$types/photo';
@@ -566,7 +567,7 @@
     <!-- Back to Timeline -->
     <div class="flex justify-center pt-8">
       <a
-        href="/timeline"
+        href="{base}/timeline"
         class="inline-flex items-center gap-2 px-6 py-3 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-200 rounded-lg transition-colors"
       >
         ← Back to Timeline

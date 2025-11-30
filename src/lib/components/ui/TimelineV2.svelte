@@ -22,6 +22,7 @@
 
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { base } from '$app/paths';
   import Typography from '$lib/components/ui/Typography.svelte';
   import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
   import Lightbox from '$lib/components/gallery/Lightbox.svelte';
@@ -736,7 +737,7 @@
 
             <!-- View All Link -->
             <a
-              href="/photos/{entry.year}/{entry.month}"
+              href="{base}/photos/{entry.year}/{entry.month}"
               class="inline-flex items-center gap-2 text-gold-400 hover:text-gold-300 transition-colors text-sm"
             >
               <Typography variant="body" class="font-medium">

@@ -12,6 +12,7 @@
 -->
 
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { Camera, Mail, Instagram } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
@@ -68,19 +69,19 @@
 					<!-- Essential Links -->
 					<nav aria-label="Footer navigation" class="flex gap-4">
 						<a
-							href="/explore"
+							href="{base}/explore"
 							class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 						>
 							Gallery
 						</a>
 						<a
-							href="/collections"
+							href="{base}/collections"
 							class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 						>
 							Collections
 						</a>
 						<a
-							href="/about"
+							href="{base}/about"
 							class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 						>
 							About

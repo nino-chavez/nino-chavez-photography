@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { ArrowLeft, Award, Sparkles } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
@@ -64,7 +65,7 @@
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 			<!-- Back Navigation -->
 			<a
-				href="/collections"
+				href="{base}/collections"
 				class="inline-flex items-center gap-2 text-sm text-charcoal-400 hover:text-gold-500 transition-colors mb-4"
 			>
 				<ArrowLeft class="w-4 h-4" />

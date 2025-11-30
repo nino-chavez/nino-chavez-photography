@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import PhotoDetailModal from '$lib/components/gallery/PhotoDetailModal.svelte';
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
@@ -192,7 +193,7 @@
 					Close
 				</button>
 				<a
-					href="/photo/{data.photo.image_key}/tag"
+					href="{base}/photo/{data.photo.image_key}/tag"
 					class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
 				>
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

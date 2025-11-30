@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { enhance } from '$app/forms';
 	import type { ActionData } from './$types';
 
@@ -67,7 +68,7 @@
 		</form>
 
 		<div class="text-center">
-			<a href="/" class="text-sm text-blue-600 hover:text-blue-500"> ← Back to gallery </a>
+			<a href="{base}/" class="text-sm text-blue-600 hover:text-blue-500"> ← Back to gallery </a>
 		</div>
 	</div>
 </div>

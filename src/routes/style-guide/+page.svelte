@@ -6,6 +6,7 @@
 -->
 
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -217,7 +218,7 @@ Status: ${ratio <= 0.40 ? '✅ PASS' : '❌ FAIL'}
 				<h1 class="text-xl lg:text-2xl font-bold text-white">Style Guide</h1>
 				<span class="text-charcoal-400 text-xs">Design System v2.0.0</span>
 			</div>
-			<a href="/" class="text-xs text-gold-500 hover:text-gold-400 transition-colors">
+			<a href="{base}/" class="text-xs text-gold-500 hover:text-gold-400 transition-colors">
 				← Back to Gallery
 			</a>
 		</div>

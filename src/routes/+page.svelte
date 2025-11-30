@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import { Motion } from 'svelte-motion';
 	import { MOTION } from '$lib/motion-tokens';
@@ -46,12 +47,12 @@
 		switch (type) {
 			case 'editors-choice':
 				// Link to explore page with filters for high emotional impact + quality
-				return '/explore?sport=volleyball&sort=emotional_impact';
+				return `${base}/explore?sport=volleyball&sort=emotional_impact`;
 			case 'action-showcase':
 				// Link to explore page with action category and high intensity
-				return '/explore?category=action&sport=volleyball&sort=quality';
+				return `${base}/explore?category=action&sport=volleyball&sort=quality`;
 			default:
-				return '/explore';
+				return `${base}/explore`;
 		}
 	}
 
@@ -187,7 +188,7 @@
 				<!-- Fallback: Show navigation cards if no featured albums -->
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
 					<a
-						href="/explore"
+						href="{base}/explore"
 						data-sveltekit-preload="viewport"
 						class="group bg-charcoal-900 border border-charcoal-800 rounded-lg p-6
 						       hover:border-gold-500/50 transition-all duration-200"
@@ -205,7 +206,7 @@
 					</a>
 
 					<a
-						href="/collections"
+						href="{base}/collections"
 						data-sveltekit-preload="hover"
 						class="group bg-charcoal-900 border border-charcoal-800 rounded-lg p-6
 						       hover:border-gold-500/50 transition-all duration-200"
@@ -223,7 +224,7 @@
 					</a>
 
 					<a
-						href="/albums"
+						href="{base}/albums"
 						data-sveltekit-preload="hover"
 						class="group bg-charcoal-900 border border-charcoal-800 rounded-lg p-6
 						       hover:border-gold-500/50 transition-all duration-200"

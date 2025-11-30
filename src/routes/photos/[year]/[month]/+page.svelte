@@ -13,6 +13,7 @@
 -->
 
 <script lang="ts">
+  import { base } from '$app/paths';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { Calendar, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-svelte';
@@ -80,7 +81,7 @@
     <!-- Breadcrumb -->
     <div class="flex items-center gap-2 text-sm text-charcoal-400 mb-6">
       <a
-        href="/timeline"
+        href="{base}/timeline"
         class="flex items-center gap-1 hover:text-gold-400 transition-colors"
       >
         <ArrowLeft class="w-4 h-4" />
@@ -176,7 +177,7 @@
     <!-- Bottom Navigation -->
     <div class="flex items-center justify-center mt-12 pt-8 border-t border-charcoal-800">
       <a
-        href="/timeline"
+        href="{base}/timeline"
         class="inline-flex items-center gap-2 px-6 py-3 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-200 rounded-lg transition-colors"
       >
         <ArrowLeft class="w-4 h-4" />

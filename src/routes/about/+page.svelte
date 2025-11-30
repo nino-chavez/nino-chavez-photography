@@ -12,6 +12,7 @@
 -->
 
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { Camera, Heart, Zap, Mail, Instagram } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
@@ -229,7 +230,7 @@
 
 				<div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
 					<a
-						href="/explore"
+						href="{base}/explore"
 						class="inline-flex items-center justify-center px-8 py-4 bg-gold-500 hover:bg-gold-600 text-charcoal-950 font-medium rounded-lg transition-colors"
 					>
 						Explore Gallery

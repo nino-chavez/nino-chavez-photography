@@ -10,6 +10,7 @@
 -->
 
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { accessibility } from '$lib/stores/accessibility.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -40,7 +41,7 @@
 					Customize visual effects to match your needs
 				</p>
 			</div>
-			<a href="/" class="text-xs text-gold-500 hover:text-gold-400 transition-colors">
+			<a href="{base}/" class="text-xs text-gold-500 hover:text-gold-400 transition-colors">
 				← Back to Gallery
 			</a>
 		</div>
@@ -247,7 +248,7 @@
 		<p class="text-xs text-charcoal-400 leading-relaxed">
 			These settings are designed to provide flexible options for users with different
 			accessibility needs. If you encounter any issues or have suggestions for additional
-			accessibility features, please reach out via the <a href="/contact" class="text-gold-500 hover:text-gold-400 transition-colors">contact page</a>.
+			accessibility features, please reach out via the <a href="{base}/contact" class="text-gold-500 hover:text-gold-400 transition-colors">contact page</a>.
 		</p>
 	</Card>
 </div>

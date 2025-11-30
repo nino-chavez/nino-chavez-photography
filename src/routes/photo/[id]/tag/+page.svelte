@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import TagInput from '$lib/components/photo/TagInput.svelte';
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte';
 	import type { PageData } from './$types';
@@ -14,7 +15,7 @@
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<div class="mb-8">
-			<a href="/photo/{data.photo.image_key}" class="text-sm text-blue-600 hover:text-blue-700 mb-4 inline-block">
+			<a href="{base}/photo/{data.photo.image_key}" class="text-sm text-blue-600 hover:text-blue-700 mb-4 inline-block">
 				← Back to Photo
 			</a>
 			<h1 class="text-3xl font-bold text-gray-900">Tag Players in This Photo</h1>

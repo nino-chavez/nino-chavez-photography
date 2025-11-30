@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { Sparkles } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
@@ -71,7 +72,7 @@
 					<div use:motion>
 						<CollectionCard
 							{collection}
-							href="/collections/{collection.slug}"
+							href="{base}/collections/{collection.slug}"
 						/>
 					</div>
 				</Motion>
