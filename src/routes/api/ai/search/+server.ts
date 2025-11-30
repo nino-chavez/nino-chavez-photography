@@ -10,7 +10,7 @@ import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
 
-const BASE_URL = 'https://photography.ninochavez.co';
+const BASE_URL = 'https://ninochavez.co/photography';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {

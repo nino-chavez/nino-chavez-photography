@@ -21,7 +21,7 @@ interface SitemapUrl {
 }
 
 export const GET: RequestHandler = async () => {
-	const baseUrl = 'https://photography.ninochavez.co';
+	const baseUrl = 'https://ninochavez.co/photography';
 
 	try {
 		// Fetch all photos with relevant metadata

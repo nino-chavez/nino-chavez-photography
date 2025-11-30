@@ -9,7 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateFAQs } from '$lib/aeo/faq-generator';
 
-const BASE_URL = 'https://photography.ninochavez.co';
+const BASE_URL = 'https://ninochavez.co/photography';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
