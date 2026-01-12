@@ -4,6 +4,89 @@
 **Type:** Photography Portfolio (Volleyball Action Sports)
 **Scale:** ~20K photos | Production deployment on Vercel
 
+## Repository Map
+
+### Entry Points
+| File | Purpose | Mode |
+|------|---------|------|
+| `src/routes/+layout.svelte` | App shell | Direct |
+| `src/routes/explore/+page.server.ts` | Main gallery | Selective |
+| `src/routes/photo/[id]/` | Photo detail | Direct |
+| `src/lib/supabase/` | Database access | Selective |
+
+### Key Conventions
+- Server load functions in `+page.server.ts` (use `$lib/supabase/server`)
+- Svelte 5 runes: `$state`, `$derived`, `$effect`, `$props`
+- Class-based stores in `src/lib/stores/`
+- MOTION tokens for animations (`src/lib/motion-tokens.ts`)
+
+### Critical Files (Thorough Mode Required)
+- `database/performance-indexes.sql` - Database indexes
+- `src/lib/supabase/server.ts` - Server-side data access
+- `svelte.config.js` - Build configuration
+- `src/routes/+layout.server.ts` - Root data loading with caching
+
+### Off-Limits (Explicit Approval Required)
+- `.env*` files - Environment configuration
+- `database/` directory - SQL migrations
+- `svelte.config.js` - Build/deployment config
+
+---
+
+## Diff Budget Policy
+
+### Per-Mode Limits
+| Mode | Max Lines | Max Files | Use For |
+|------|-----------|-----------|---------|
+| **Direct** ⭐ | 50 | 1-2 | UI components, styling, animations (90% of work) |
+| **Selective** | 120 | 2-5 | Features with backend + frontend (8%) |
+| **Thorough** | 300 | 5-10 | Security, auth, performance optimization (2%) |
+
+### Enforcement
+```bash
+# Before committing, verify:
+git diff --stat | tail -1
+```
+
+### Auto-Rejection Triggers
+- Exceeding mode line limits without approval
+- Using `$lib/supabase/client` in server files
+- Self-fetch anti-pattern (fetch to own API routes)
+- Non-rune reactive patterns (use Svelte 5 runes)
+
+---
+
+## Test Contract Requirements
+
+### Gate 0: Test Contract (Before Implementation)
+
+**Feature work requires failing tests first:**
+
+```typescript
+/**
+ * TEST CONTRACT: [Feature Name]
+ * Success = All tests pass
+ */
+describe('[Feature]', () => {
+  it('should [expected behavior]', () => { /* MUST FAIL */ });
+  it('should handle [edge case]', () => { /* MUST FAIL */ });
+});
+```
+
+### When Required
+- New gallery features (filtering, sorting)
+- Photo processing utilities
+- Supabase query functions
+- Search/autocomplete features
+
+### When Optional (Direct Mode Focus)
+- UI component styling
+- Animation adjustments
+- Layout changes
+- Content updates
+
+---
+
 ## Project Context
 
 Professional volleyball photography gallery featuring action sports photography. Built with modern web standards, optimized for performance and user experience.
