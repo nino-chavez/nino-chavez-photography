@@ -219,6 +219,8 @@
 	}
 
 	// Filter handlers
+	// Note: All filter handlers clear 'similar_to' because vector similarity search
+	// bypasses all other filters - applying a filter should start a fresh search context
 	function handleSportSelect(sport: string | null) {
 		const url = new URL($page.url);
 		if (sport) {
@@ -227,6 +229,7 @@
 			url.searchParams.delete('sport');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to'); // Clear similarity search when filtering
 		goto(url.toString());
 	}
 
@@ -238,6 +241,7 @@
 			url.searchParams.delete('category');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to'); // Clear similarity search when filtering
 		goto(url.toString());
 	}
 
@@ -268,13 +272,15 @@
 			url.searchParams.set('q', query);
 
 			url.searchParams.delete('page');
-			
+			url.searchParams.delete('similar_to');
+
 			goto(url.toString());
 		} else {
 			// No NLP filters detected, just set the search query
 			const url = new URL($page.url);
 			url.searchParams.set('q', query);
 			url.searchParams.delete('page');
+			url.searchParams.delete('similar_to');
 			goto(url.toString());
 		}
 	}
@@ -295,6 +301,7 @@
 			url.searchParams.delete('play_type');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
@@ -306,6 +313,7 @@
 			url.searchParams.delete('intensity');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
@@ -316,6 +324,7 @@
 			lighting.forEach((l) => url.searchParams.append('lighting', l));
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
@@ -327,6 +336,7 @@
 			url.searchParams.delete('color_temp');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
@@ -338,6 +348,7 @@
 			url.searchParams.delete('time_of_day');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
@@ -349,6 +360,7 @@
 			url.searchParams.delete('composition');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
@@ -360,6 +372,7 @@
 			url.searchParams.delete('jersey');
 		}
 		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
@@ -378,6 +391,7 @@
 		url.searchParams.delete('emotion'); // Clear emotion filter
 		url.searchParams.delete('jersey'); // Clear jersey filter
 		url.searchParams.delete('q'); // Clear search query too
+		url.searchParams.delete('similar_to'); // Clear similarity search
 		url.searchParams.delete('page');
 		goto(url.toString());
 	}	// Apply filter preset
@@ -394,6 +408,7 @@
 		url.searchParams.delete('time_of_day');
 		url.searchParams.delete('composition');
 		url.searchParams.delete('emotion');
+		url.searchParams.delete('similar_to'); // Clear similarity search
 		// Keep search query
 
 		// Apply preset filters
@@ -429,6 +444,7 @@
 		url.searchParams.delete('time_of_day');
 		url.searchParams.delete('composition');
 		url.searchParams.delete('emotion');
+		url.searchParams.delete('similar_to'); // Clear similarity search
 		// Keep search query
 
 		// Apply history filters
