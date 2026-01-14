@@ -87,8 +87,9 @@
 <svelte:window onkeydown={handleKeyDown} />
 
 <!-- Minimal Header - Content First Design (Browse Mode: Traditionalist) -->
-<Motion let:motion initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-	<div use:motion class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
+<!-- PERFORMANCE: Removed Motion wrapper - using CSS animations instead for better render performance -->
+<div class="animate-fade-in">
+	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
 			<!-- Single Row: Title + Count + Search (Explore Page Pattern) -->
 			<div class="flex items-center justify-between gap-4">
@@ -144,7 +145,7 @@
 	</div>
 
 	<!-- Album Grid Content -->
-	<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
 		<!-- Search results indicator -->
 		{#if searchQuery && displayAlbums.length > 0}
@@ -251,4 +252,29 @@
 			</Motion>
 		{/if}
 	</div>
-</Motion>
+</div>
+
+<style>
+	/* PERFORMANCE: CSS animation instead of JS Motion for better render performance */
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.animate-fade-in {
+		animation: fade-in 0.3s ease-out forwards;
+	}
+
+	/* Reduce motion for accessibility */
+	@media (prefers-reduced-motion: reduce) {
+		.animate-fade-in {
+			animation: none;
+		}
+	}
+</style>

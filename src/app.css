@@ -54,10 +54,74 @@
   --color-emotion-excitement: #FF69B4;
   --color-emotion-serenity: #20B2AA;
 
-  /* Semantic Colors */
-  --color-background: #18181b;
-  --color-foreground: #f8f8f9;
-  --color-border: #454654;
+  /* ========================================================================
+   * SEMANTIC TOKENS
+   * ========================================================================
+   * Use these tokens for UI elements. They provide consistent theming
+   * and future dark/light mode support without component-level overrides.
+   *
+   * Pattern: --{category}-{element} or --{category}-{state}-{element}
+   * ======================================================================== */
+
+  /* --- Page & Surface Backgrounds --- */
+  --color-background: #18181b;           /* Page background (charcoal-950) */
+  --color-foreground: #f8f8f9;           /* Primary text color */
+  --color-border: #454654;               /* Default border (charcoal-800) */
+
+  /* --- Card & Surface Tokens --- */
+  --card-bg: var(--color-charcoal-900);           /* Card background */
+  --card-bg-hover: var(--color-charcoal-800);     /* Card hover state */
+  --card-border: var(--color-charcoal-800);       /* Card border */
+  --bg-elevated: var(--color-charcoal-900);       /* Modals, dropdowns */
+  --bg-secondary: var(--color-charcoal-800);      /* Secondary surfaces */
+
+  /* --- Text Tokens --- */
+  --text-primary: var(--color-charcoal-50);       /* Headings, important */
+  --text-secondary: var(--color-charcoal-300);    /* Body text */
+  --text-muted: var(--color-charcoal-400);        /* Labels, hints */
+  --text-accent: var(--color-gold-500);           /* Accent text */
+  --text-accent-hover: var(--color-gold-400);     /* Accent hover */
+
+  /* --- Interactive States --- */
+  --hover-bg: var(--color-charcoal-800);          /* Hover background */
+  --active-bg: var(--color-charcoal-700);         /* Active/pressed background */
+  --focus-ring: var(--color-gold-500);            /* Focus outline color */
+  --focus-ring-offset: var(--color-charcoal-950); /* Focus ring offset bg */
+
+  /* --- Button Tokens --- */
+  --btn-primary-bg: var(--color-gold-500);
+  --btn-primary-text: var(--color-charcoal-950);
+  --btn-primary-hover: var(--color-gold-400);
+  --btn-secondary-bg: var(--color-charcoal-800);
+  --btn-secondary-text: var(--color-charcoal-200);
+  --btn-secondary-hover: var(--color-charcoal-700);
+
+  /* --- Filter/Chip Tokens --- */
+  --filter-bg: var(--color-charcoal-800);
+  --filter-text: var(--color-charcoal-300);
+  --filter-border: var(--color-charcoal-700);
+  --filter-active-bg: var(--color-gold-500);
+  --filter-active-text: var(--color-charcoal-950);
+  --filter-active-border: var(--color-gold-400);
+
+  /* --- Status Tokens --- */
+  --status-success-bg: #22c55e20;                 /* Success background (green) */
+  --status-success-text: #4ade80;                 /* Success text */
+  --status-success-border: #22c55e40;             /* Success border */
+  --status-error-bg: #ef444420;                   /* Error background (red) */
+  --status-error-text: #f87171;                   /* Error text */
+  --status-error-border: #ef444440;               /* Error border */
+  --status-warning-bg: #f59e0b20;                 /* Warning background (amber) */
+  --status-warning-text: #fbbf24;                 /* Warning text */
+  --status-warning-border: #f59e0b40;             /* Warning border */
+
+  /* --- Skeleton/Loading Tokens --- */
+  --skeleton-base: var(--color-charcoal-900);     /* Skeleton base color */
+  --skeleton-highlight: var(--color-charcoal-800); /* Skeleton shimmer highlight */
+
+  /* --- Overlay Tokens --- */
+  --overlay-bg: rgba(0, 0, 0, 0.8);               /* Modal overlay */
+  --overlay-light: rgba(0, 0, 0, 0.5);            /* Light overlay */
 }
 
 @layer base {

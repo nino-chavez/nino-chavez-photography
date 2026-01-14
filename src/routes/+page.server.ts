@@ -21,57 +21,8 @@
  */
 
 import type { PageServerLoad } from './$types';
-import { supabaseServer } from '$lib/supabase/server';
-import type { Photo } from '$types/photo';
+import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
-
-/**
- * Map database row to Photo type
- */
-function mapRowToPhoto(row: PhotoMetadataRow): Photo {
-  const imageUrl = (row.ImageUrl || row.OriginalUrl || '').replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-  const thumbnailUrl = row.ThumbnailUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-  const originalUrl = row.OriginalUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-
-  return {
-    id: row.photo_id,
-    image_key: row.image_key,
-    image_url: imageUrl,
-    thumbnail_url: thumbnailUrl,
-    original_url: originalUrl,
-    title: row.image_key,
-    caption: '',
-    keywords: [],
-    created_at: row.photo_date || row.enriched_at || row.upload_date,
-    metadata: {
-      // BUCKET 1: Concrete & Filterable
-      play_type: (row.play_type || null) as Photo['metadata']['play_type'],
-      action_intensity: (row.action_intensity || 'medium') as Photo['metadata']['action_intensity'],
-      sport_type: row.sport_type,
-      photo_category: row.photo_category,
-      composition: (row.composition || '') as Photo['metadata']['composition'],
-      time_of_day: (row.time_of_day || '') as Photo['metadata']['time_of_day'],
-      lighting: (row.lighting || undefined) as Photo['metadata']['lighting'],
-      color_temperature: (row.color_temperature || undefined) as Photo['metadata']['color_temperature'],
-
-      // BUCKET 2: Abstract & Internal
-      emotion: (row.emotion || 'focus') as Photo['metadata']['emotion'],
-      sharpness: row.sharpness ?? 0,
-      composition_score: row.composition_score ?? 0,
-      exposure_accuracy: row.exposure_accuracy ?? 0,
-      emotional_impact: row.emotional_impact ?? 0,
-      time_in_game: (row.time_in_game || undefined) as Photo['metadata']['time_in_game'],
-      athlete_id: row.athlete_id || undefined,
-      event_id: row.event_id || undefined,
-
-      // AI metadata
-      ai_provider: (row.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
-      ai_cost: row.ai_cost ?? 0,
-      ai_confidence: row.ai_confidence ?? 0,
-      enriched_at: row.enriched_at || new Date().toISOString(),
-    },
-  };
-}
 
 export const load: PageServerLoad = async () => {
   try {
@@ -141,7 +92,7 @@ export const load: PageServerLoad = async () => {
       if (fallbackData && fallbackData.length > 0) {
         const randomIndex = Math.floor(Math.random() * fallbackData.length);
         const row = fallbackData[randomIndex];
-        return { heroPhoto: mapRowToPhoto(row), featuredAlbums: [] };
+        return { heroPhoto: transformPhotoRow(row), featuredAlbums: [] };
       }
 
       // Fallback 2: Any photo (multi-sport)
@@ -159,7 +110,7 @@ export const load: PageServerLoad = async () => {
 
       const randomIndex = Math.floor(Math.random() * anyPhotoData.length);
       const row = anyPhotoData[randomIndex];
-      return { heroPhoto: mapRowToPhoto(row), featuredAlbums: [] };
+      return { heroPhoto: transformPhotoRow(row), featuredAlbums: [] };
     }
 
     // Group photos by album to ensure diversity
@@ -208,7 +159,7 @@ export const load: PageServerLoad = async () => {
     // Fetch three featured albums for homepage
     const featuredAlbums = await fetchFeaturedAlbums();
 
-    return { heroPhoto: mapRowToPhoto(row), featuredAlbums };
+    return { heroPhoto: transformPhotoRow(row), featuredAlbums };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
     return { heroPhoto: null, featuredAlbums: [] };
@@ -223,18 +174,25 @@ export const load: PageServerLoad = async () => {
  */
 async function fetchFeaturedAlbums() {
   try {
-    // 1. Get the most recent real album
-    const { data: albumsData, error: albumsError } = await supabaseServer
-      .from('albums_summary')
-      .select('*')
-      .not('album_key', 'is', null)
-      .not('latest_photo_date', 'is', null)
-      .order('latest_photo_date', { ascending: false })
-      .limit(1);
+    // PERFORMANCE: Run all three queries in parallel to reduce TTFB
+    const [albumsResult, editorsChoice, actionShowcase] = await Promise.all([
+      // 1. Get the most recent real album
+      supabaseServer
+        .from('albums_summary')
+        .select('*')
+        .not('album_key', 'is', null)
+        .not('latest_photo_date', 'is', null)
+        .order('latest_photo_date', { ascending: false })
+        .limit(1),
+      // 2. Create "Editor's Choice" virtual album - emotionally compelling photos
+      createEditorsChoiceAlbum(),
+      // 3. Create "Action Showcase" virtual album - high-intensity action shots
+      createActionShowcaseAlbum()
+    ]);
 
     let mostRecentAlbum = null;
-    if (!albumsError && albumsData && albumsData.length > 0) {
-      const album = albumsData[0];
+    if (!albumsResult.error && albumsResult.data && albumsResult.data.length > 0) {
+      const album = albumsResult.data[0];
       mostRecentAlbum = {
         type: 'recent',
         title: 'Latest Event',
@@ -251,12 +209,6 @@ async function fetchFeaturedAlbums() {
         }
       };
     }
-
-    // 2. Create "Editor's Choice" virtual album - emotionally compelling photos
-    const editorsChoice = await createEditorsChoiceAlbum();
-
-    // 3. Create "Action Showcase" virtual album - high-intensity action shots
-    const actionShowcase = await createActionShowcaseAlbum();
 
     // Build featured albums array
     const featuredAlbums = [];

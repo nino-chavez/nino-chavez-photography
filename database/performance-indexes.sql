@@ -30,6 +30,16 @@ WHERE tablename = 'photo_metadata'
 ORDER BY indexname;
 
 -- ============================================
+-- PRIMARY INDEXES FOR SINGLE LOOKUPS
+-- ============================================
+
+-- Index for single photo lookup by image_key (photo detail page)
+-- Critical for reducing TTFB on /photo/[id] route
+CREATE INDEX IF NOT EXISTS idx_photo_metadata_image_key
+ON photo_metadata(image_key)
+WHERE image_key IS NOT NULL;
+
+-- ============================================
 -- PRIMARY INDEXES FOR FILTERING
 -- ============================================
 

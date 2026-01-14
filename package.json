@@ -46,6 +46,7 @@
 		"@supabase/ssr": "^0.7.0",
 		"@supabase/supabase-js": "^2.75.1",
 		"@tanstack/svelte-query": "^6.0.3",
+		"@vercel/analytics": "^1.6.1",
 		"ai": "^5.0.97",
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",

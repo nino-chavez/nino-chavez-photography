@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
+	import { inject } from '@vercel/analytics';
 	import { page, navigating } from '$app/stores';
 	import '../app.css';
 	import Header from '$lib/components/layout/Header.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import ChatWidget from '$lib/components/ai/ChatWidget.svelte';
+
+	// Initialize Vercel Web Analytics
+	inject();
 
 	let { children } = $props();
 

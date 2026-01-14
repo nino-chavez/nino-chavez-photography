@@ -84,18 +84,19 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const baseUrl = 'https://photography.ninochavez.co';
 	const canonicalUrl = `${baseUrl}/photo/${params.id}`;
 
-	// Fetch related photos (NEW - Week 2)
-	const relatedPhotos = await fetchRelatedPhotos(photo, photoData.album_key);
+	// PERFORMANCE: Parallelize secondary queries (related, similar, tags)
+	// This reduces TTFB by running queries concurrently instead of sequentially
+	const [relatedPhotos, similarPhotos, tagsResult] = await Promise.all([
+		fetchRelatedPhotos(photo, photoData.album_key),
+		fetchSimilarPhotos(photoData),
+		supabaseServer
+			.from('user_tags')
+			.select('*')
+			.eq('photo_id', photoData.photo_id)
+			.eq('approved', true)
+	]);
 
-	// Fetch similar photos using vector embeddings (Initiative 3.2)
-	const similarPhotos = await fetchSimilarPhotos(photoData);
-
-	// Fetch approved tags (NEW - Week 3-4: Player Tagging)
-	const { data: tags } = await supabaseServer
-		.from('user_tags')
-		.select('*')
-		.eq('photo_id', photoData.photo_id)
-		.eq('approved', true);
+	const tags = tagsResult.data;
 
 	// Track photo view (NEW - Analytics)
 	// Determine view source from referrer
@@ -127,9 +128,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	return {
 		photo,
-		relatedPhotos, // NEW
-		similarPhotos, // Initiative 3.2 - Vector similarity
-		approvedTags: tags || [], // NEW
+		relatedPhotos,
+		similarPhotos,
+		approvedTags: tags || [],
 		seo: {
 			title: `${photo.title} | Nino Chavez Photography`,
 			description: seoDescription,

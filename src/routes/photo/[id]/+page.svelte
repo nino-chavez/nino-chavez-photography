@@ -162,74 +162,89 @@
 </svelte:head>
 
 {#if showModal && data.photo}
-	<!-- Temporary direct render to test -->
-	<div class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-		<div class="bg-charcoal-900 rounded-lg max-w-4xl w-full p-6">
-			<h1 class="text-2xl font-bold text-white mb-4">{data.photo.title}</h1>
-			<img 
-				src={optimizedImageUrl} 
-				srcset={imageSrcSet}
-				sizes="(max-width: 768px) 100vw, 896px"
-				alt={data.photo.title} 
-				class="w-full h-auto rounded-lg mb-4"
-				loading="eager"
-				decoding="async"
-			/>
-			<p class="text-charcoal-300 mb-4">{data.photo.caption}</p>
-			<p class="text-charcoal-400 text-sm mb-4">Sport: {data.photo.metadata.sport_type}</p>
-
-			<!-- Player Tags (NEW - Week 3-4) -->
-			{#if data.approvedTags && data.approvedTags.length > 0}
-				<div class="mb-4">
-					<h3 class="text-sm font-semibold text-charcoal-400 mb-2">Tagged Players:</h3>
-					<TagDisplay tags={data.approvedTags} />
+	<!-- CLS Fix: Use scrollable container with fixed structure to prevent layout shifts -->
+	<div class="fixed inset-0 bg-black/90 z-50 overflow-y-auto">
+		<div class="min-h-screen flex flex-col items-center py-8 px-4">
+			<!-- Main Photo Card -->
+			<div class="bg-charcoal-900 rounded-lg max-w-4xl w-full p-6">
+				<h1 class="text-2xl font-bold text-white mb-4">{data.photo.title}</h1>
+				<!-- CLS Fix: Reserve space with aspect-ratio to prevent layout shifts -->
+				<div
+					class="relative w-full rounded-lg overflow-hidden mb-4 bg-charcoal-800"
+					style="aspect-ratio: {data.photo.smugmug?.width && data.photo.smugmug?.height
+						? `${data.photo.smugmug.width} / ${data.photo.smugmug.height}`
+						: '4 / 3'};"
+				>
+					<img
+						src={optimizedImageUrl}
+						srcset={imageSrcSet}
+						sizes="(max-width: 768px) 100vw, 896px"
+						alt={data.photo.title}
+						class="absolute inset-0 w-full h-full object-cover"
+						loading="eager"
+						decoding="async"
+						fetchpriority="high"
+					/>
 				</div>
-			{/if}
-			<div class="flex gap-4">
-				<button
-					onclick={handleClose}
-					class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
-				>
-					Close
-				</button>
-				<a
-					href="{base}/photo/{data.photo.image_key}/tag"
-					class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+				<p class="text-charcoal-300 mb-4">{data.photo.caption}</p>
+				<p class="text-charcoal-400 text-sm mb-4">Sport: {data.photo.metadata.sport_type}</p>
+
+				<!-- Player Tags (NEW - Week 3-4) -->
+				{#if data.approvedTags && data.approvedTags.length > 0}
+					<div class="mb-4">
+						<h3 class="text-sm font-semibold text-charcoal-400 mb-2">Tagged Players:</h3>
+						<TagDisplay tags={data.approvedTags} />
+					</div>
+				{/if}
+				<div class="flex gap-4">
+					<button
+						onclick={handleClose}
+						class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
+					>
+						Close
+					</button>
+					<a
+						href="{base}/photo/{data.photo.image_key}/tag"
+						class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+							/>
+						</svg>
+						Tag Players
+					</a>
+				</div>
+			</div>
+
+			<!-- Related Photos Section - Always reserve space to prevent CLS -->
+			<div class="max-w-6xl w-full mt-8">
+				<!-- Similar Photos - Vector Similarity (Initiative 3.2) -->
+				{#if data.similarPhotos && data.similarPhotos.length > 0}
+					<div class="mb-8">
+						<RelatedPhotosCarousel
+							photos={data.similarPhotos}
+							title="Visually Similar Photos"
+							onPhotoClick={handleRelatedPhotoClick}
 						/>
-					</svg>
-					Tag Players
-				</a>
+					</div>
+				{/if}
+
+				<!-- Related Photos Carousel (NEW - Week 2) -->
+				{#if data.relatedPhotos && data.relatedPhotos.length > 0}
+					<div class="mb-8">
+						<RelatedPhotosCarousel
+							photos={data.relatedPhotos}
+							title="More from this Album & Sport"
+							onPhotoClick={handleRelatedPhotoClick}
+						/>
+					</div>
+				{/if}
 			</div>
 		</div>
-
-		<!-- Similar Photos - Vector Similarity (Initiative 3.2) -->
-		{#if data.similarPhotos && data.similarPhotos.length > 0}
-			<div class="mt-8 px-6">
-				<RelatedPhotosCarousel
-					photos={data.similarPhotos}
-					title="Visually Similar Photos"
-					onPhotoClick={handleRelatedPhotoClick}
-				/>
-			</div>
-		{/if}
-
-		<!-- Related Photos Carousel (NEW - Week 2) -->
-		{#if data.relatedPhotos && data.relatedPhotos.length > 0}
-			<div class="mt-8 px-6">
-				<RelatedPhotosCarousel
-					photos={data.relatedPhotos}
-					title="More from this Album & Sport"
-					onPhotoClick={handleRelatedPhotoClick}
-				/>
-			</div>
-		{/if}
 	</div>
 {:else}
 	<!-- Fallback if modal is closed but route still loaded -->
