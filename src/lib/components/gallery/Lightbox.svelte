@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import {
 		X,
 		ChevronLeft,
@@ -136,7 +137,7 @@
 	// "Find Similar" functionality
 	const emotionColor = $derived(photo ? getEmotionColor(photo.metadata.emotion) : null);
 	const findSimilarUrl = $derived(
-		photo?.image_key ? `/explore?similar_to=${photo.image_key}` : null
+		photo?.image_key ? `${base}/explore?similar_to=${photo.image_key}` : null
 	);
 
 	// Generate user-friendly display text
