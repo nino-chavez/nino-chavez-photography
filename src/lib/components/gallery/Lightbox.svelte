@@ -36,12 +36,6 @@
 		onNavigate
 	}: Props = $props();
 
-	// Debug: Log when props change
-	$effect(() => {
-		console.log('[Lightbox $effect] Props changed: open=', open, 'photo=', photo?.id);
-		console.log('[Lightbox $effect] Condition check: open && photo =', open && photo);
-	});
-
 	let zoomLevel = $state(1);
 	let isDragging = $state(false);
 	let dragStart = $state({ x: 0, y: 0 });
@@ -333,10 +327,6 @@
 />
 
 {#if open && photo}
-	{#snippet renderLog()}
-		{@const __ = console.log('[Lightbox] Inside {#if open && photo} - RENDERING LIGHTBOX!')}
-	{/snippet}
-	{@render renderLog()}
 	<!-- Backdrop -->
 	<div
 		class="fixed inset-0 bg-black/95 flex items-center justify-center"

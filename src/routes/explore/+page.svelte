@@ -853,10 +853,6 @@
 </div><!-- End max-w-7xl container -->
 
 <!-- Lightbox -->
-{#snippet debugLightbox()}
-	{@const currentPhoto = displayPhotos[selectedPhotoIndex] || null}
-{/snippet}
-{@render debugLightbox()}
 <Lightbox
 	bind:open={lightboxOpen}
 	photo={displayPhotos[selectedPhotoIndex] || null}
