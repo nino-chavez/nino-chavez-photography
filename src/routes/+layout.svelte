@@ -113,7 +113,7 @@
 	<div class="min-h-screen bg-charcoal-950 text-white flex flex-col">
 		<Header />
 
-		<main class="flex-1">
+		<main class="flex-1 pb-20 sm:pb-0">
 			{@render children?.()}
 		</main>
 

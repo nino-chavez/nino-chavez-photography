@@ -127,4 +127,40 @@
 			</div>
 		</div>
 	</header>
+
+	<!-- Mobile Bottom Navigation - Icons + Labels for discoverability -->
+	<nav
+		class="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-charcoal-950/95 backdrop-blur-lg border-t border-charcoal-800"
+		style="padding-bottom: env(safe-area-inset-bottom, 0);"
+		aria-label="Mobile navigation"
+	>
+		<div class="flex justify-around py-2">
+			{#each navItems as item}
+				{@const active = isActive(item.path)}
+				{@const Icon = item.icon}
+				{@const badgeCount = item.badge?.() || 0}
+				<a
+					href={item.path}
+					class={cn(
+						'flex flex-col items-center gap-1 px-3 py-2 min-w-[64px] min-h-[44px] rounded-lg transition-colors',
+						active ? 'text-gold-500' : 'text-charcoal-400 hover:text-white'
+					)}
+					aria-current={active ? 'page' : undefined}
+				>
+					<div class="relative">
+						<Icon class="w-5 h-5" aria-hidden="true" />
+						{#if badgeCount > 0}
+							<span
+								class="absolute -top-1 -right-2 min-w-4 h-4 px-1 text-[10px] font-bold rounded-full bg-red-500 text-white flex items-center justify-center"
+								aria-label="{badgeCount} favorites"
+							>
+								{badgeCount > 99 ? '99+' : badgeCount}
+							</span>
+						{/if}
+					</div>
+					<span class="text-[10px] font-medium">{item.label}</span>
+				</a>
+			{/each}
+		</div>
+	</nav>
 </Motion>

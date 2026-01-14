@@ -54,8 +54,8 @@
 	// P0-2: Progressive disclosure - Show top 5 by default
 	let showAllSports = $state(false);
 
-	// P0-1: Collapsed by default on ALL breakpoints (mobile + desktop)
-	let isExpanded = $state(false);
+	// Expanded by default for better discoverability (UX audit recommendation)
+	let isExpanded = $state(true);
 	let dropdownRef: HTMLDivElement | undefined = $state();
 
 	function handleSportClick(sportName: string | null) {

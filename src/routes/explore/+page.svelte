@@ -529,7 +529,28 @@
 			filterHistory.addToHistory(currentFilters);
 		});
 	});
+
+	// Keyboard navigation for gallery pages (arrow keys)
+	function handleKeydown(event: KeyboardEvent) {
+		// Only handle if not in an input field
+		const target = event.target as HTMLElement;
+		if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+			return;
+		}
+
+		const totalPages = Math.ceil(data.totalCount / data.pageSize);
+
+		if (event.key === 'ArrowLeft' && data.currentPage > 1) {
+			event.preventDefault();
+			handlePageChange(data.currentPage - 1);
+		} else if (event.key === 'ArrowRight' && data.currentPage < totalPages) {
+			event.preventDefault();
+			handlePageChange(data.currentPage + 1);
+		}
+	}
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <!-- Minimal Sticky Header -->
 <div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">

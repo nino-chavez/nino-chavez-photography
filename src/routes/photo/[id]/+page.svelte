@@ -5,6 +5,7 @@
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { getOptimizedSmugMugUrl, getSmugMugSrcSet, isSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
+	import { formatSport, formatCategory, formatComposition } from '$lib/utils/format-metadata';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 
@@ -32,11 +33,12 @@
 	});
 
 	function handleClose() {
-		// Navigate back to referring page, or home if no referrer
-		if (document.referrer && document.referrer.includes(window.location.hostname)) {
+		// Navigate back if we have history, otherwise fallback to explore
+		// Note: document.referrer is unreliable, use history.length instead
+		if (window.history.length > 1) {
 			history.back();
 		} else {
-			goto('/explore');
+			goto(`${base}/explore`);
 		}
 	}
 
@@ -187,7 +189,40 @@
 					/>
 				</div>
 				<p class="text-charcoal-300 mb-4">{data.photo.caption}</p>
-				<p class="text-charcoal-400 text-sm mb-4">Sport: {data.photo.metadata.sport_type}</p>
+
+				<!-- Photo Metadata (formatted) -->
+				<div class="flex flex-wrap gap-3 text-sm text-charcoal-400 mb-4">
+					{#if data.photo.metadata.sport_type}
+						<span>Sport: {formatSport(data.photo.metadata.sport_type)}</span>
+					{/if}
+					{#if data.photo.metadata.photo_category}
+						<span>Category: {formatCategory(data.photo.metadata.photo_category)}</span>
+					{/if}
+					{#if data.photo.metadata.composition}
+						<span>Composition: {formatComposition(data.photo.metadata.composition)}</span>
+					{/if}
+				</div>
+
+				<!-- EXIF Data (technical specs from SmugMug) -->
+				{#if data.photo.smugmug}
+					<div class="flex flex-wrap gap-4 text-sm text-charcoal-500 mb-4 font-mono">
+						{#if data.photo.smugmug.width && data.photo.smugmug.height}
+							<span>{data.photo.smugmug.width} × {data.photo.smugmug.height}</span>
+						{/if}
+						{#if data.photo.smugmug.aperture}
+							<span>ƒ/{data.photo.smugmug.aperture}</span>
+						{/if}
+						{#if data.photo.smugmug.shutter_speed}
+							<span>{data.photo.smugmug.shutter_speed}s</span>
+						{/if}
+						{#if data.photo.smugmug.iso}
+							<span>ISO {data.photo.smugmug.iso}</span>
+						{/if}
+						{#if data.photo.smugmug.focal_length}
+							<span>{data.photo.smugmug.focal_length}mm</span>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Player Tags (NEW - Week 3-4) -->
 				{#if data.approvedTags && data.approvedTags.length > 0}
@@ -253,7 +288,7 @@
 			<h1 class="text-2xl font-bold text-white mb-4">{data.photo.title}</h1>
 			<p class="text-charcoal-300 mb-6">{data.photo.caption}</p>
 			<button
-				onclick={() => goto('/explore')}
+				onclick={() => goto(`${base}/explore`)}
 				class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
 			>
 				Back to Gallery
