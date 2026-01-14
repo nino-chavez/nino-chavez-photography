@@ -55,7 +55,7 @@ You can search photos by:
 Professional volleyball photographer with deep expertise in:
 - High-intensity sports action
 - Emotional storytelling through imagery
-- Enterprise Architecture & AI systems
+- Product Architecture & Commerce Platforms
 - Premium quality, portfolio-worthy shots
 
 **Site Navigation:**

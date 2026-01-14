@@ -346,7 +346,7 @@ This project is private and proprietary. All rights reserved.
 
 **Nino Chavez**
 - Website: [photography.ninochavez.co](https://photography.ninochavez.co)
-- GitHub: [@ninochavez](https://github.com/ninochavez)
+- GitHub: [@nino-chavez](https://github.com/nino-chavez)
 
 ---
 
