@@ -6,6 +6,7 @@
 -->
 
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { Folder, Camera } from 'lucide-svelte';
 	import { Motion } from 'svelte-motion';
 	import { MOTION } from '$lib/motion-tokens';
@@ -35,7 +36,7 @@
 	let imageError = $state(false);
 
 	// Generate album URL for navigation
-	let albumUrl = $derived(`/albums/${album.albumKey}`);
+	let albumUrl = $derived(`${base}/albums/${album.albumKey}`);
 
 	function handleClick(event: MouseEvent) {
 		// If onclick callback provided, prevent default navigation and use callback instead

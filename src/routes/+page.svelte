@@ -115,7 +115,7 @@
 					{#each data.featuredAlbums as featuredAlbum}
 						{@const albumLink = featuredAlbum.album.isVirtual
 							? getVirtualAlbumLink(featuredAlbum.type)
-							: `/albums/${featuredAlbum.album.albumKey}`
+							: `${base}/albums/${featuredAlbum.album.albumKey}`
 						}
 						<a
 							href={albumLink}

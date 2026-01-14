@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { MOTION } from '$lib/motion-tokens';
 
@@ -38,7 +39,7 @@
 			>
 				<a
 					use:motion
-					href={`/photo/{photo.image_key}`}
+					href={`${base}/photo/${photo.image_key}`}
 					target="_blank"
 					rel="noopener noreferrer"
 					class="group relative aspect-square bg-black/20 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all hover:scale-105"

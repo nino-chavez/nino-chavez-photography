@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
@@ -39,7 +40,7 @@
 	});
 
 	function handleAlbumClick(album: Album) {
-		goto(`/albums/${album.albumKey}`);
+		goto(`${base}/albums/${album.albumKey}`);
 	}
 
 	// Pagination helpers

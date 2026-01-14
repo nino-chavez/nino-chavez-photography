@@ -45,7 +45,7 @@
 	// NEW: Handle related photo click
 	function handleRelatedPhotoClick(photo: Photo) {
 		// Navigate to the new photo's detail page
-		goto(`/photo/${photo.image_key}`);
+		goto(`${base}/photo/${photo.image_key}`);
 	}
 
 	// Generate enhanced Schema.org structured data for AEO
