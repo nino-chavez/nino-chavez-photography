@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// Base path for the application
+const BASE_PATH = '/photography';
+
 /**
  * Journey 6: Social Sharing and Download
  *
@@ -13,14 +16,14 @@ import { test, expect } from '@playwright/test';
 test.describe('Social Sharing', () => {
 	test.beforeEach(async ({ page }) => {
 		// Navigate to explore and open photo modal
-		await page.goto('/explore');
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.goto(`${BASE_PATH}/explore`);
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 
 		// Click first photo to open modal
 		const firstPhoto = page
-			.locator('[data-testid="photo-card"], article, [role="img"]')
+			.locator('a[href*="/photo/"], [data-testid="photo-card"]')
 			.first();
 		await firstPhoto.click();
 
@@ -164,14 +167,14 @@ test.describe('Social Sharing', () => {
 test.describe('Download Functionality', () => {
 	test.beforeEach(async ({ page }) => {
 		// Navigate to explore and open photo modal
-		await page.goto('/explore');
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.goto(`${BASE_PATH}/explore`);
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 
 		// Click first photo to open modal
 		const firstPhoto = page
-			.locator('[data-testid="photo-card"], article, [role="img"]')
+			.locator('a[href*="/photo/"], [data-testid="photo-card"]')
 			.first();
 		await firstPhoto.click();
 

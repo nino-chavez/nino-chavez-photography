@@ -1,15 +1,18 @@
 import { test, expect } from '@playwright/test';
 
+// Base path for the application
+const BASE_PATH = '/photography';
+
 /**
  * Performance Tests
- * 
+ *
  * Measures Core Web Vitals and performance metrics
  * Run with: npm run test -- performance
  */
 
 test.describe('Performance Tests', () => {
   test('homepage performance metrics', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto(BASE_PATH, { waitUntil: 'networkidle' });
     
     // Measure performance metrics
     const metrics = await page.evaluate(() => {
@@ -33,10 +36,10 @@ test.describe('Performance Tests', () => {
   });
 
   test('explore page performance metrics', async ({ page }) => {
-    await page.goto('/explore', { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_PATH}/explore`, { waitUntil: 'networkidle' });
     
     // Wait for photos to load
-    await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+    await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
       timeout: 10000,
     });
     
@@ -73,7 +76,7 @@ test.describe('Performance Tests', () => {
     // Note: Requires @playwright/test lighthouse plugin or separate lighthouse CI
     // This is a placeholder structure
     
-    await page.goto('/');
+    await page.goto(BASE_PATH);
     await page.waitForLoadState('networkidle');
     
     // Basic performance check
@@ -97,7 +100,7 @@ test.describe('Performance Tests', () => {
   });
 
   test('image loading performance', async ({ page }) => {
-    await page.goto('/explore');
+    await page.goto(`${BASE_PATH}/explore`);
     
     // Track image load events using Performance API
     const imageLoadTimes: number[] = [];
@@ -144,7 +147,7 @@ test.describe('Performance Tests', () => {
   });
 
   test('memory usage check', async ({ page }) => {
-    await page.goto('/explore');
+    await page.goto(`${BASE_PATH}/explore`);
     await page.waitForLoadState('networkidle');
     
     // Check memory usage (if available)

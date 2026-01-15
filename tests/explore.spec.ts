@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// Base path for the application
+const BASE_PATH = '/photography';
+
 /**
  * Journey 2: Photo Filtering and Search
  * Journey 3: Photo Detail Modal Interaction
@@ -13,21 +16,21 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Explore Page', () => {
 	test('should load photos on explore page', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Wait for photos to load
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 
 		// Verify photos are visible
-		const photos = page.locator('[data-testid="photo-card"], article, [role="img"]');
+		const photos = page.locator('a[href*="/photo/"], [data-testid="photo-card"]');
 		const count = await photos.count();
 		expect(count).toBeGreaterThan(0);
 	});
 
 	test('should display filter panel', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Verify search input exists
 		const searchInput = page.getByPlaceholder(/search/i);
@@ -39,15 +42,15 @@ test.describe('Explore Page', () => {
 	});
 
 	test('should filter photos by search', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Wait for initial load
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 
 		// Get initial photo count
-		const photos = page.locator('[data-testid="photo-card"], article, img[alt*="photo"]');
+		const photos = page.locator('a[href*="/photo/"], [data-testid="photo-card"]');
 		const initialCount = await photos.count();
 
 		// Enter search term
@@ -63,16 +66,16 @@ test.describe('Explore Page', () => {
 	});
 
 	test('should open photo detail modal on click', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Wait for photos
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 
 		// Click first photo
 		const firstPhoto = page
-			.locator('[data-testid="photo-card"], article, [role="img"]')
+			.locator('a[href*="/photo/"], [data-testid="photo-card"]')
 			.first();
 		await firstPhoto.click();
 
@@ -82,14 +85,14 @@ test.describe('Explore Page', () => {
 	});
 
 	test('should close modal with ESC key', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Open modal
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 		const firstPhoto = page
-			.locator('[data-testid="photo-card"], article, [role="img"]')
+			.locator('a[href*="/photo/"], [data-testid="photo-card"]')
 			.first();
 		await firstPhoto.click();
 
@@ -105,14 +108,14 @@ test.describe('Explore Page', () => {
 	});
 
 	test('should close modal by clicking backdrop', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Open modal
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 		const firstPhoto = page
-			.locator('[data-testid="photo-card"], article, [role="img"]')
+			.locator('a[href*="/photo/"], [data-testid="photo-card"]')
 			.first();
 		await firstPhoto.click();
 
@@ -128,7 +131,7 @@ test.describe('Explore Page', () => {
 	});
 
 	test('should expand advanced filters', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Find and click advanced filters toggle
 		const toggleButton = page
@@ -148,10 +151,10 @@ test.describe('Explore Page', () => {
 	});
 
 	test('should navigate with keyboard in photo grid', async ({ page }) => {
-		await page.goto('/explore');
+		await page.goto(`${BASE_PATH}/explore`);
 
 		// Wait for photos
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 

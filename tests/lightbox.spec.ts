@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// Base path for the application
+const BASE_PATH = '/photography';
+
 /**
  * Journey 4: Lightbox Navigation and Zoom
  *
@@ -15,8 +18,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Lightbox', () => {
 	test.beforeEach(async ({ page }) => {
 		// Navigate to explore page and open a photo
-		await page.goto('/explore');
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+		await page.goto(`${BASE_PATH}/explore`);
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 	});
@@ -24,7 +27,7 @@ test.describe('Lightbox', () => {
 	test('should open lightbox from photo detail modal', async ({ page }) => {
 		// Click first photo to open modal
 		const firstPhoto = page
-			.locator('[data-testid="photo-card"], article, [role="img"]')
+			.locator('a[href*="/photo/"], [data-testid="photo-card"]')
 			.first();
 		await firstPhoto.click();
 
@@ -48,7 +51,7 @@ test.describe('Lightbox', () => {
 
 	test('should display photo counter in lightbox', async ({ page }) => {
 		// Open modal and lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]');
 		await expect(modal.first()).toBeVisible();
@@ -71,7 +74,7 @@ test.describe('Lightbox', () => {
 
 	test('should navigate to next photo with right arrow', async ({ page }) => {
 		// Open lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]').first();
 		await expect(modal).toBeVisible();
@@ -99,7 +102,7 @@ test.describe('Lightbox', () => {
 
 	test('should navigate to previous photo with left arrow', async ({ page }) => {
 		// Open lightbox on second photo
-		const photos = page.locator('[data-testid="photo-card"], article, [role="img"]');
+		const photos = page.locator('a[href*="/photo/"], [data-testid="photo-card"]');
 		if ((await photos.count()) > 1) {
 			await photos.nth(1).click();
 
@@ -130,7 +133,7 @@ test.describe('Lightbox', () => {
 
 	test('should zoom in with + key', async ({ page }) => {
 		// Open lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]').first();
 		await expect(modal).toBeVisible();
@@ -161,7 +164,7 @@ test.describe('Lightbox', () => {
 
 	test('should zoom out with - key', async ({ page }) => {
 		// Open lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]').first();
 		await expect(modal).toBeVisible();
@@ -195,7 +198,7 @@ test.describe('Lightbox', () => {
 
 	test('should close lightbox with ESC key', async ({ page }) => {
 		// Open lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]').first();
 		await expect(modal).toBeVisible();
@@ -224,7 +227,7 @@ test.describe('Lightbox', () => {
 
 	test('should close lightbox with close button', async ({ page }) => {
 		// Open lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]').first();
 		await expect(modal).toBeVisible();
@@ -254,7 +257,7 @@ test.describe('Lightbox', () => {
 
 	test('should navigate with next/prev buttons', async ({ page }) => {
 		// Open lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]').first();
 		await expect(modal).toBeVisible();
@@ -291,7 +294,7 @@ test.describe('Lightbox', () => {
 
 	test('should display zoom controls', async ({ page }) => {
 		// Open lightbox
-		await page.locator('[data-testid="photo-card"], article, [role="img"]').first().click();
+		await page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first().click();
 
 		const modal = page.locator('[role="dialog"]').first();
 		await expect(modal).toBeVisible();

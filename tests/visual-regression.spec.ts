@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+// Base path for the application
+const BASE_PATH = '/photography';
+
 /**
  * Visual Regression Tests
- * 
+ *
  * Captures screenshots of key pages and compares them to baseline images
  * Run with: npm run test -- visual-regression
  */
@@ -14,7 +17,7 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test('homepage visual regression', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(BASE_PATH);
     await page.waitForLoadState('networkidle');
     
     // Wait for hero image to load
@@ -28,11 +31,11 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test('explore page visual regression', async ({ page }) => {
-    await page.goto('/explore');
+    await page.goto(`${BASE_PATH}/explore`);
     await page.waitForLoadState('networkidle');
     
     // Wait for photos to load
-    await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+    await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
       timeout: 10000,
     });
     
@@ -44,7 +47,7 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test('timeline page visual regression', async ({ page }) => {
-    await page.goto('/timeline');
+    await page.goto(`${BASE_PATH}/timeline`);
     await page.waitForLoadState('networkidle');
     
     // Wait for timeline to render
@@ -71,10 +74,10 @@ test.describe('Visual Regression Tests', () => {
 
   test('mobile explore page visual regression', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/explore');
+    await page.goto(`${BASE_PATH}/explore`);
     await page.waitForLoadState('networkidle');
     
-    await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+    await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
       timeout: 10000,
     });
     
@@ -85,7 +88,7 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test('filter sidebar visual regression', async ({ page }) => {
-    await page.goto('/explore');
+    await page.goto(`${BASE_PATH}/explore`);
     await page.waitForLoadState('networkidle');
     
     // Wait for sidebar to render
@@ -101,16 +104,16 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test('lightbox visual regression', async ({ page }) => {
-    await page.goto('/explore');
+    await page.goto(`${BASE_PATH}/explore`);
     await page.waitForLoadState('networkidle');
     
     // Click first photo to open lightbox
-    await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"]', {
+    await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
       timeout: 10000,
     });
     
     const firstPhoto = page
-      .locator('[data-testid="photo-card"], article, [role="img"]')
+      .locator('a[href*="/photo/"], [data-testid="photo-card"]')
       .first();
     await firstPhoto.click();
     

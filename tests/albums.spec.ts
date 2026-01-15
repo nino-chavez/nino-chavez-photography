@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// Base path for the application
+const BASE_PATH = '/photography';
+
 /**
  * Journey 7: Albums Navigation and Browsing
  *
@@ -13,10 +16,10 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Albums List Page', () => {
 	test('should load albums list page successfully', async ({ page }) => {
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Verify page loads
-		await expect(page).toHaveURL('/albums');
+		await expect(page).toHaveURL(`${BASE_PATH}/albums`);
 
 		// Verify heading
 		const heading = page.getByRole('heading', { name: /albums/i });
@@ -24,7 +27,7 @@ test.describe('Albums List Page', () => {
 	});
 
 	test('should display album cards', async ({ page }) => {
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Wait for albums to load
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
@@ -38,7 +41,7 @@ test.describe('Albums List Page', () => {
 	});
 
 	test('should display album stats', async ({ page }) => {
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Look for stats (total albums, total photos)
 		const stats = page.locator('text=/\\d+.*albums|\\d+.*photos/i');
@@ -49,7 +52,7 @@ test.describe('Albums List Page', () => {
 	});
 
 	test('should display album cover images', async ({ page }) => {
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Wait for albums
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
@@ -65,7 +68,7 @@ test.describe('Albums List Page', () => {
 	});
 
 	test('should display album photo counts', async ({ page }) => {
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Wait for albums
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
@@ -81,7 +84,7 @@ test.describe('Albums List Page', () => {
 	});
 
 	test('should navigate to album detail when clicking album card', async ({ page }) => {
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Wait for albums
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
@@ -97,7 +100,7 @@ test.describe('Albums List Page', () => {
 	});
 
 	test('should have keyboard navigation support', async ({ page }) => {
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Wait for albums
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
@@ -121,7 +124,7 @@ test.describe('Albums List Page', () => {
 test.describe('Album Detail Page', () => {
 	test('should load album detail page', async ({ page }) => {
 		// Navigate via albums list
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 
 		// Wait for albums and click first one
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
@@ -141,7 +144,7 @@ test.describe('Album Detail Page', () => {
 
 	test('should display breadcrumb navigation', async ({ page }) => {
 		// Navigate to album detail
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
 			timeout: 10000,
 		});
@@ -161,7 +164,7 @@ test.describe('Album Detail Page', () => {
 
 	test('should navigate back to albums list via breadcrumb', async ({ page }) => {
 		// Navigate to album detail
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
 			timeout: 10000,
 		});
@@ -178,13 +181,13 @@ test.describe('Album Detail Page', () => {
 			await albumsBreadcrumb.first().click();
 
 			// Verify back at albums list
-			await expect(page).toHaveURL('/albums');
+			await expect(page).toHaveURL(`${BASE_PATH}/albums`);
 		}
 	});
 
 	test('should navigate home via breadcrumb', async ({ page }) => {
 		// Navigate to album detail
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
 			timeout: 10000,
 		});
@@ -201,13 +204,13 @@ test.describe('Album Detail Page', () => {
 			await homeBreadcrumb.first().click();
 
 			// Verify at homepage
-			await expect(page).toHaveURL('/');
+			await expect(page).toHaveURL(BASE_PATH);
 		}
 	});
 
 	test('should display photos in album', async ({ page }) => {
 		// Navigate to album detail
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
 			timeout: 10000,
 		});
@@ -216,19 +219,19 @@ test.describe('Album Detail Page', () => {
 		await firstAlbum.click();
 
 		// Wait for photos to load
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"], article', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 
 		// Verify photos are visible
-		const photos = page.locator('[data-testid="photo-card"], article, img[alt*="photo"]');
+		const photos = page.locator('a[href*="/photo/"], [data-testid="photo-card"]');
 		const count = await photos.count();
 		expect(count).toBeGreaterThan(0);
 	});
 
 	test('should have search functionality in album', async ({ page }) => {
 		// Navigate to album detail
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
 			timeout: 10000,
 		});
@@ -254,7 +257,7 @@ test.describe('Album Detail Page', () => {
 
 	test('should open photo detail modal from album', async ({ page }) => {
 		// Navigate to album detail
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
 			timeout: 10000,
 		});
@@ -263,12 +266,12 @@ test.describe('Album Detail Page', () => {
 		await firstAlbum.click();
 
 		// Wait for photos
-		await page.waitForSelector('[data-testid="photo-card"], img[alt*="photo"], article', {
+		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
 
 		// Click first photo
-		const firstPhoto = page.locator('[data-testid="photo-card"], article, [role="img"]').first();
+		const firstPhoto = page.locator('a[href*="/photo/"], [data-testid="photo-card"]').first();
 		await firstPhoto.click();
 
 		// Verify modal opens
@@ -278,7 +281,7 @@ test.describe('Album Detail Page', () => {
 
 	test('should display back to albums button', async ({ page }) => {
 		// Navigate to album detail
-		await page.goto('/albums');
+		await page.goto(`${BASE_PATH}/albums`);
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
 			timeout: 10000,
 		});
@@ -300,14 +303,14 @@ test.describe('Album Detail Page', () => {
 test.describe('Albums Integration', () => {
 	test('should navigate from homepage to albums to album detail', async ({ page }) => {
 		// Start at homepage
-		await page.goto('/');
+		await page.goto(BASE_PATH);
 
 		// Click Albums card
 		const albumsCard = page.locator('text=Albums').first();
 		await albumsCard.click();
 
 		// Verify at albums list
-		await expect(page).toHaveURL('/albums');
+		await expect(page).toHaveURL(`${BASE_PATH}/albums`);
 
 		// Click first album
 		await page.waitForSelector('[data-testid="album-card"], article, a[href*="/albums/"]', {
@@ -322,7 +325,7 @@ test.describe('Albums Integration', () => {
 	});
 
 	test('should navigate using header Albums link', async ({ page }) => {
-		await page.goto('/');
+		await page.goto(BASE_PATH);
 
 		// Click Albums in header
 		const albumsLink = page.getByRole('button', { name: /albums/i });
@@ -331,7 +334,7 @@ test.describe('Albums Integration', () => {
 			await albumsLink.click();
 
 			// Verify at albums page
-			await expect(page).toHaveURL('/albums');
+			await expect(page).toHaveURL(`${BASE_PATH}/albums`);
 		}
 	});
 });

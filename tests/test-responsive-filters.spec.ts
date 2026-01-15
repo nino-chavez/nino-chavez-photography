@@ -5,7 +5,9 @@ import { test, expect } from '@playwright/test';
  * Tests the /explore page filter behavior across different viewport sizes
  */
 
-const BASE_URL = 'http://localhost:5175/explore';
+// Base path for the application
+const BASE_PATH = '/photography';
+const BASE_URL = `${BASE_PATH}/explore`;
 
 test.describe('Explore Page - Responsive Filter Behavior', () => {
   test('Mobile (375px) - Filter drawer should be collapsed by default', async ({ page }) => {
