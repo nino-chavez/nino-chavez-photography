@@ -293,7 +293,7 @@
 														</div>
 														<div class="flex-1 bg-charcoal-800 rounded-full h-3 overflow-hidden">
 															<div
-																class="bg-gradient-to-r from-gold-500 to-gold-400 h-full transition-all duration-500"
+																class="bg-gradient-to-r from-gold-500 to-gold-400 h-full transition-all duration-300"
 																style="width: {qualityScore * 10}%"
 															></div>
 														</div>
