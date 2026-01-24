@@ -156,7 +156,10 @@
 			<img
 				src={month.coverImageUrl}
 				alt="{month.monthName} {month.year} cover"
+				width="400"
+				height="300"
 				loading="lazy"
+				decoding="async"
 				class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
 					? 'opacity-100'
 					: 'opacity-0'}"

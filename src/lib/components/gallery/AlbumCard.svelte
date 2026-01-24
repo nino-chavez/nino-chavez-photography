@@ -149,7 +149,10 @@
 			<img
 				src={album.coverImageUrl}
 				alt={`${album.albumName} cover`}
+				width="400"
+				height="300"
 				loading="lazy"
+				decoding="async"
 				class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
 					? 'opacity-100'
 					: 'opacity-0'}"

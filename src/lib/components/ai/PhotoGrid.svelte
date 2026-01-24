@@ -49,8 +49,11 @@
 						<img
 							src={photo.thumbnail_url}
 							alt={getPhotoLabel(photo)}
+							width="200"
+							height="200"
 							class="w-full h-full object-cover"
 							loading="lazy"
+							decoding="async"
 						/>
 						<!-- Overlay with metadata -->
 						<div

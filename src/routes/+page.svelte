@@ -129,7 +129,11 @@
 									<img
 										src="{getOptimizedImageUrl(featuredAlbum.album.coverImageUrl, 800)}"
 										alt="{featuredAlbum.album.albumName}"
-										class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+										width="800"
+										height="600"
+										class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+										loading="lazy"
+										decoding="async"
 									/>
 								{:else}
 									<div class="w-full h-full bg-charcoal-800 flex items-center justify-center">
