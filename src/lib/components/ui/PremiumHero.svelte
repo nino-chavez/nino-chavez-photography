@@ -43,17 +43,18 @@
 
     // SmugMug image optimization using size suffixes
     // Available sizes: -Th (thumbnail), -S (400px), -M (600px), -L (800px),
-    //                  -XL (1024px), -X2 (1600px), -X3 (2048px), -O (original)
+    //                  -XL (1024px), -X2 (1600px), -X3 (2048px), -D (download/full), -O (original)
+    // PERFORMANCE: Using smaller sizes to reduce bandwidth while maintaining quality
     if (imageUrl.includes('smugmug.com')) {
       // Remove existing size suffix if present
       const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
 
       // Thumbnail: Use -Th suffix (~5KB, loads instantly)
-      // Mobile: Use X2Large (1600px) - optimal for phones/tablets in portrait
-      // Desktop: Use X3Large (2048px) - optimal for desktop/large screens
-      let suffix = '-X3';
+      // Mobile: Use -L (800px) - optimal for phones in portrait (saves ~500KB vs X2)
+      // Desktop: Use -X2 (1600px) - optimal for desktop (saves ~1MB vs X3)
+      let suffix = '-X2';
       if (size === 'thumbnail') suffix = '-Th';
-      else if (size === 'mobile') suffix = '-X2';
+      else if (size === 'mobile') suffix = '-L';
 
       return baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
     }

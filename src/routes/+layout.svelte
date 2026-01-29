@@ -26,6 +26,13 @@
 	// Navigation loading state
 	let isNavigating = $derived($navigating !== null);
 
+	// PERFORMANCE: Only load ChatWidget on pages where AI search is useful
+	// Reduces ~50-100KB JS on single photo pages, album pages, etc.
+	const chatEnabledRoutes = ['/', '/explore', '/collections', '/albums', '/timeline'];
+	let showChat = $derived(chatEnabledRoutes.some(route =>
+		$page.url.pathname === route || $page.url.pathname.startsWith(route + '/')
+	));
+
 	// SEO metadata
 	const siteTitle = 'Nino Chavez Photography';
 	const siteDescription =
@@ -123,8 +130,10 @@
 	<!-- Global Toast Notifications -->
 	<ToastContainer />
 
-	<!-- Global AI Chat Widget -->
-	<ChatWidget />
+	<!-- Global AI Chat Widget - Only on pages where AI search is useful -->
+	{#if showChat}
+		<ChatWidget />
+	{/if}
 </QueryClientProvider>
 
 <style>

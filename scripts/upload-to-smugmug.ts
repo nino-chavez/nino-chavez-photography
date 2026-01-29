@@ -31,8 +31,18 @@ const SMUGMUG_API_SECRET = process.env.VITE_SMUGMUG_API_SECRET || process.env.SM
 const SMUGMUG_USER_TOKEN = process.env.VITE_SMUGMUG_ACCESS_TOKEN || process.env.SMUGMUG_USER_TOKEN || process.env.SMUGMUG_ACCESS_TOKEN;
 const SMUGMUG_USER_SECRET = process.env.VITE_SMUGMUG_ACCESS_TOKEN_SECRET || process.env.SMUGMUG_USER_SECRET || process.env.SMUGMUG_ACCESS_TOKEN_SECRET;
 
+// Parse --name="Album Name" argument
+function parseNameArg(): string | undefined {
+	const nameArg = process.argv.find(arg => arg.startsWith('--name='));
+	if (nameArg) {
+		return nameArg.replace('--name=', '').replace(/^["']|["']$/g, '');
+	}
+	return undefined;
+}
+
 const CONFIG = {
-	dryRun: process.argv.includes('--dry-run')
+	dryRun: process.argv.includes('--dry-run'),
+	albumName: parseNameArg()
 };
 
 if (!SMUGMUG_API_KEY || !SMUGMUG_API_SECRET || !SMUGMUG_USER_TOKEN || !SMUGMUG_USER_SECRET) {
@@ -167,10 +177,10 @@ async function analyzeCollection(photoDir: string): Promise<CollectionAnalysis> 
 				if (dateMatch) {
 					year = parseInt(dateMatch[1]);
 					const month = parseInt(dateMatch[2]);
-					if (month >= 9 || month <= 11) season = 'fall';
-					else if (month >= 12 || month <= 2) season = 'winter';
-					else if (month >= 3 && month <= 5) season = 'spring';
-					else season = 'summer';
+					if (month >= 9 && month <= 11) season = 'fall';        // Sep, Oct, Nov
+					else if (month === 12 || month <= 2) season = 'winter'; // Dec, Jan, Feb
+					else if (month >= 3 && month <= 5) season = 'spring';   // Mar, Apr, May
+					else season = 'summer';                                  // Jun, Jul, Aug
 				}
 			}
 		} catch (error) {
@@ -249,7 +259,7 @@ async function createAlbum(
 		Name: name,
 		Description: description,
 		Keywords: keywords,
-		Privacy: 'Public',
+		Privacy: 'Unlisted', // Hidden from SmugMug website, accessible via API
 		SortMethod: 'DateAdded',
 		SortDirection: 'Descending',
 		AutoRename: true
@@ -324,59 +334,60 @@ async function getFolderUri(): Promise<string> {
 	const userResult = await smugMugRequest('GET', '/api/v2!authuser');
 	const user = userResult.Response.User;
 
-	// Navigate to /Volleyball/Indoor/OTHER/
+	// Navigate to /Ai-assisted/ (unlisted folder for API-powered galleries)
 	const albumsResult = await smugMugRequest('GET', user.Uris.Node.Uri);
 	const rootNode = albumsResult.Response.Node;
 
-	// Find or create Volleyball folder
-	let volleyballFolderUri = rootNode.Uris.ChildNodes?.Uri;
-	if (!volleyballFolderUri) {
+	// Find or create Ai-assisted folder (unlisted - hidden from SmugMug website navigation)
+	let childNodesUri = rootNode.Uris.ChildNodes?.Uri;
+	if (!childNodesUri) {
 		throw new Error('Could not find child nodes URI');
 	}
 
-	const childNodesResult = await smugMugRequest('GET', volleyballFolderUri);
+	const childNodesResult = await smugMugRequest('GET', childNodesUri);
 	const childNodes = childNodesResult.Response.Node || [];
 
-	let volleyballNode = childNodes.find((n: any) => n.Name === 'Volleyball');
-	if (!volleyballNode) {
-		// Create Volleyball folder
-		const createResult = await smugMugRequest('POST', volleyballFolderUri, {
-			Type: 'Folder',
-			Name: 'Volleyball',
-			Privacy: 'Public'
-		});
-		volleyballNode = createResult.Response.Node;
+	// Search case-insensitively for Ai-assisted folder
+	let aiAssistedNode = childNodes.find((n: any) =>
+		n.Name?.toLowerCase() === 'ai-assisted' ||
+		n.UrlName?.toLowerCase() === 'ai-assisted'
+	);
+
+	if (!aiAssistedNode) {
+		// Create Ai-assisted folder as unlisted (accessible via API but hidden from website nav)
+		console.log('   📁 Creating unlisted Ai-assisted folder...');
+		try {
+			const createResult = await smugMugRequest('POST', childNodesUri, {
+				Type: 'Folder',
+				Name: 'Ai-assisted',
+				Privacy: 'Unlisted',
+				Description: 'AI-processed galleries for custom website. Hidden from SmugMug navigation.'
+			});
+			aiAssistedNode = createResult.Response.Node;
+			console.log('   ✅ Ai-assisted folder created (unlisted)');
+		} catch (error: any) {
+			// Handle 409 conflict - folder already exists, re-fetch and find it
+			if (error.message?.includes('409')) {
+				console.log('   📁 Folder already exists, locating...');
+				const retryResult = await smugMugRequest('GET', childNodesUri);
+				const retryNodes = retryResult.Response.Node || [];
+				aiAssistedNode = retryNodes.find((n: any) =>
+					n.Name?.toLowerCase() === 'ai-assisted' ||
+					n.UrlName?.toLowerCase() === 'ai-assisted'
+				);
+				if (!aiAssistedNode) {
+					throw new Error('Could not find or create Ai-assisted folder');
+				}
+				console.log('   ✅ Found existing Ai-assisted folder');
+			} else {
+				throw error;
+			}
+		}
+	} else {
+		console.log('   ✅ Found existing Ai-assisted folder');
 	}
 
-	// Find or create Indoor folder
-	const indoorNodesResult = await smugMugRequest('GET', volleyballNode.Uris.ChildNodes.Uri);
-	const indoorNodes = indoorNodesResult.Response.Node || [];
-
-	let indoorNode = indoorNodes.find((n: any) => n.Name === 'Indoor');
-	if (!indoorNode) {
-		const createResult = await smugMugRequest('POST', volleyballNode.Uris.ChildNodes.Uri, {
-			Type: 'Folder',
-			Name: 'Indoor',
-			Privacy: 'Public'
-		});
-		indoorNode = createResult.Response.Node;
-	}
-
-	// Find or create OTHER folder
-	const otherNodesResult = await smugMugRequest('GET', indoorNode.Uris.ChildNodes.Uri);
-	const otherNodes = otherNodesResult.Response.Node || [];
-
-	let otherNode = otherNodes.find((n: any) => n.Name === 'OTHER');
-	if (!otherNode) {
-		const createResult = await smugMugRequest('POST', indoorNode.Uris.ChildNodes.Uri, {
-			Type: 'Folder',
-			Name: 'OTHER',
-			Privacy: 'Public'
-		});
-		otherNode = createResult.Response.Node;
-	}
-
-	return otherNode.Uri;
+	return aiAssistedNode.Uri;
 }
 
 // =============================================================================
@@ -387,11 +398,16 @@ async function main() {
 	const photoDir = process.argv[2];
 
 	if (!photoDir) {
-		console.error('Usage: npx tsx scripts/upload-to-smugmug.ts <photo-directory>');
+		console.error('Usage: npx tsx scripts/upload-to-smugmug.ts <photo-directory> [options]');
+		console.error('');
+		console.error('Options:');
+		console.error('  --dry-run              Preview without uploading');
+		console.error('  --name="Album Name"    Override auto-generated album name');
 		console.error('');
 		console.error('Examples:');
 		console.error('  npx tsx scripts/upload-to-smugmug.ts /path/to/photos');
 		console.error('  npx tsx scripts/upload-to-smugmug.ts /path/to/photos --dry-run');
+		console.error('  npx tsx scripts/upload-to-smugmug.ts /path/to/photos --name="Lewis vs Pepperdine - Winter 2026"');
 		process.exit(1);
 	}
 
@@ -406,6 +422,12 @@ async function main() {
 	const analysis = await analyzeCollection(photoDir);
 	const albumMeta = generateAlbumMetadata(analysis);
 
+	// Override album name if provided via --name flag
+	if (CONFIG.albumName) {
+		albumMeta.name = CONFIG.albumName;
+		console.log(`📛 Using custom album name: ${CONFIG.albumName}\n`);
+	}
+
 	console.log('📊 Collection Analysis:');
 	console.log(`   Photos: ${analysis.totalCount}`);
 	console.log(
@@ -414,8 +436,8 @@ async function main() {
 	console.log(`   Avg Quality: ${analysis.avgQuality.toFixed(1)}/10`);
 	console.log(`   Top Play Types: ${analysis.topPlayTypes.map((pt) => `${pt.type} (${pt.count})`).join(', ')}`);
 
-	console.log('\n📝 Generated Album Metadata:');
-	console.log(`   Name: ${albumMeta.name}`);
+	console.log('\n📝 Album Metadata:');
+	console.log(`   Name: ${albumMeta.name}${CONFIG.albumName ? ' (custom)' : ''}`);
 	console.log(`   Description: ${albumMeta.description}`);
 	console.log(`   Keywords: ${albumMeta.keywords.join(', ')}`);
 
@@ -426,7 +448,7 @@ async function main() {
 	console.log(`   ✅ Authenticated as: ${user.Name} (@${user.NickName})`);
 
 	// Step 3: Get or create folder structure
-	console.log('\n📁 Building folder structure: /Volleyball/Indoor/OTHER/');
+	console.log('\n📁 Building folder structure: /Ai-assisted/ (unlisted)');
 	const folderUri = await getFolderUri();
 	console.log(`   ✅ Folder ready: ${folderUri}`);
 

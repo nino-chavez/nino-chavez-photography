@@ -140,7 +140,8 @@ npm run enrich /path/to/photos -- --overwrite    # Re-enrich existing photos
 - Analyzes enriched EXIF metadata across all photos
 - Generates album name from folder name + season + year
 - Creates smart description with play type distribution
-- Builds folder structure: `/Volleyball/Indoor/OTHER/`
+- Builds folder structure: `/Ai-assisted/` (unlisted - hidden from SmugMug website navigation)
+- Albums created as unlisted (accessible via API for custom website)
 - Uploads photos with EXIF preserved
 - Returns album key for Supabase sync
 
@@ -313,7 +314,7 @@ npm run enrich /path/to/photos -- --overwrite
 
 **Problem:** Folder structure not found
 ```bash
-# Script creates: /Volleyball/Indoor/OTHER/
+# Script creates: /Ai-assisted/ (unlisted folder)
 # Check SmugMug account permissions
 ```
 

@@ -85,7 +85,8 @@
 		aria-label="Photo gallery"
 	>
 		{#each displayPhotos as photo, i (photo.id)}
-			<PhotoCard {photo} index={i} {onclick} />
+			<!-- PERFORMANCE: Prioritize first 8 images (above-fold) to improve LCP -->
+			<PhotoCard {photo} index={i} {onclick} priority={i < 8} />
 		{/each}
 	</div>
 {/if}

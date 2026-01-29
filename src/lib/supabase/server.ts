@@ -477,39 +477,81 @@ export interface FilterCounts {
  * This function is the foundation - estimate 8-12h
  */
 export async function getFilterCounts(currentFilters?: PhotoFilterState): Promise<FilterCounts> {
+  // SECURITY: Whitelist of allowed filter values to prevent SQL injection
+  const ALLOWED_VALUES = {
+    sport_type: ['volleyball', 'basketball', 'soccer', 'football', 'baseball', 'tennis', 'hockey', 'other'],
+    photo_category: ['action', 'portrait', 'celebration', 'team', 'warmup', 'candid', 'other'],
+    play_type: ['spike', 'block', 'serve', 'dig', 'set', 'pass', 'jump', 'dive', 'other'],
+    action_intensity: ['low', 'medium', 'high', 'peak', 'extreme'],
+    lighting: ['natural', 'artificial', 'mixed', 'dramatic', 'soft'],
+    color_temperature: ['warm', 'cool', 'neutral'],
+    time_of_day: ['morning', 'midday', 'afternoon', 'evening', 'night'],
+    composition: ['rule_of_thirds', 'centered', 'dynamic', 'symmetrical', 'leading_lines', 'framing']
+  };
+
+  // Sanitize a single value against whitelist (returns null if invalid)
+  const sanitize = (value: string, field: keyof typeof ALLOWED_VALUES): string | null => {
+    const allowed = ALLOWED_VALUES[field];
+    // Only allow alphanumeric and underscore, max 50 chars
+    const cleaned = value.replace(/[^a-z0-9_]/gi, '').substring(0, 50).toLowerCase();
+    return allowed.includes(cleaned) ? cleaned : null;
+  };
+
+  // Sanitize array of values against whitelist
+  const sanitizeArray = (values: (string | null)[], field: keyof typeof ALLOWED_VALUES): string[] => {
+    return values
+      .filter((v): v is string => v !== null && typeof v === 'string')
+      .map(v => sanitize(v, field))
+      .filter((v): v is string => v !== null);
+  };
+
   // Helper to build WHERE clause from current filters (excluding the dimension being counted)
   const buildFilterConditions = (excludeField: string): string => {
     const conditions: string[] = ['sharpness IS NOT NULL']; // Base condition
 
     if (currentFilters?.sportType && excludeField !== 'sport_type') {
-      conditions.push(`sport_type = '${currentFilters.sportType}'`);
+      const safe = sanitize(currentFilters.sportType, 'sport_type');
+      if (safe) conditions.push(`sport_type = '${safe}'`);
     }
     if (currentFilters?.photoCategory && excludeField !== 'photo_category') {
-      conditions.push(`photo_category = '${currentFilters.photoCategory}'`);
+      const safe = sanitize(currentFilters.photoCategory, 'photo_category');
+      if (safe) conditions.push(`photo_category = '${safe}'`);
     }
     if (currentFilters?.playTypes && currentFilters.playTypes.length > 0 && excludeField !== 'play_type') {
-      const playTypesList = currentFilters.playTypes.map(pt => `'${pt}'`).join(', ');
-      conditions.push(`play_type IN (${playTypesList})`);
+      const safeList = sanitizeArray(currentFilters.playTypes, 'play_type');
+      if (safeList.length > 0) {
+        conditions.push(`play_type IN (${safeList.map(pt => `'${pt}'`).join(', ')})`);
+      }
     }
     if (currentFilters?.actionIntensity && currentFilters.actionIntensity.length > 0 && excludeField !== 'action_intensity') {
-      const intensityList = currentFilters.actionIntensity.map(ai => `'${ai}'`).join(', ');
-      conditions.push(`action_intensity IN (${intensityList})`);
+      const safeList = sanitizeArray(currentFilters.actionIntensity, 'action_intensity');
+      if (safeList.length > 0) {
+        conditions.push(`action_intensity IN (${safeList.map(ai => `'${ai}'`).join(', ')})`);
+      }
     }
     if (currentFilters?.lighting && currentFilters.lighting.length > 0 && excludeField !== 'lighting') {
-      const lightingList = currentFilters.lighting.map(l => `'${l}'`).join(', ');
-      conditions.push(`lighting IN (${lightingList})`);
+      const safeList = sanitizeArray(currentFilters.lighting, 'lighting');
+      if (safeList.length > 0) {
+        conditions.push(`lighting IN (${safeList.map(l => `'${l}'`).join(', ')})`);
+      }
     }
     if (currentFilters?.colorTemperature && currentFilters.colorTemperature.length > 0 && excludeField !== 'color_temperature') {
-      const tempList = currentFilters.colorTemperature.map(ct => `'${ct}'`).join(', ');
-      conditions.push(`color_temperature IN (${tempList})`);
+      const safeList = sanitizeArray(currentFilters.colorTemperature, 'color_temperature');
+      if (safeList.length > 0) {
+        conditions.push(`color_temperature IN (${safeList.map(ct => `'${ct}'`).join(', ')})`);
+      }
     }
     if (currentFilters?.timeOfDay && currentFilters.timeOfDay.length > 0 && excludeField !== 'time_of_day') {
-      const timeList = currentFilters.timeOfDay.map(tod => `'${tod}'`).join(', ');
-      conditions.push(`time_of_day IN (${timeList})`);
+      const safeList = sanitizeArray(currentFilters.timeOfDay, 'time_of_day');
+      if (safeList.length > 0) {
+        conditions.push(`time_of_day IN (${safeList.map(tod => `'${tod}'`).join(', ')})`);
+      }
     }
     if (currentFilters?.compositions && currentFilters.compositions.length > 0 && excludeField !== 'composition') {
-      const compList = currentFilters.compositions.map(c => `'${c}'`).join(', ');
-      conditions.push(`composition IN (${compList})`);
+      const safeList = sanitizeArray(currentFilters.compositions, 'composition');
+      if (safeList.length > 0) {
+        conditions.push(`composition IN (${safeList.map(c => `'${c}'`).join(', ')})`);
+      }
     }
 
     return conditions.join(' AND ');

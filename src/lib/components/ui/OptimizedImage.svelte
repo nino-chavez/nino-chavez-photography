@@ -9,6 +9,8 @@
 		thumbnailSrc?: string;
 		class?: string;
 		aspectRatio?: string; // e.g., "4/3", "16/9"
+		width?: number; // Explicit width for CLS prevention
+		height?: number; // Explicit height for CLS prevention
 		sizes?: string; // Responsive sizes attribute
 		priority?: boolean; // Disable lazy loading for above-fold images
 		onLoad?: () => void;
@@ -21,11 +23,25 @@
 		thumbnailSrc,
 		class: className = '',
 		aspectRatio = '4/3',
+		width,
+		height,
 		sizes,
 		priority = false,
 		onLoad,
 		onError
 	}: Props = $props();
+
+	// PERFORMANCE: Calculate dimensions from aspectRatio if not provided
+	// This prevents CLS (Cumulative Layout Shift)
+	let computedWidth = $derived(width || 400);
+	let computedHeight = $derived(() => {
+		if (height) return height;
+		if (aspectRatio) {
+			const [w, h] = aspectRatio.split('/').map(Number);
+			return Math.round(computedWidth * (h / w));
+		}
+		return 300; // fallback
+	});
 
 	let imageLoaded = $state(false);
 	let imageError = $state(false);
@@ -136,14 +152,18 @@
 			animate={{ opacity: imageLoaded ? 1 : 0 }}
 			transition={MOTION.spring.gentle}
 		>
+			<!-- PERFORMANCE: width/height attributes prevent CLS -->
 			<img
 				bind:this={imageElement}
 				use:motion
 				{src}
 				{alt}
 				{sizes}
+				width={computedWidth}
+				height={computedHeight()}
 				loading={priority ? 'eager' : 'lazy'}
 				decoding="async"
+				fetchpriority={priority ? 'high' : 'auto'}
 				class="absolute inset-0 w-full h-full object-cover"
 				onload={handleLoad}
 				onerror={handleError}

@@ -94,9 +94,14 @@ function parseLocalExif(photoPath: string, albumKey: string): ParsedMetadata | n
 		});
 		const [exifData] = JSON.parse(exifJson);
 
-		// Parse keywords
-		const keywords = exifData.Keywords || exifData.Subject || [];
-		const keywordStr = Array.isArray(keywords) ? keywords.join(' ') : String(keywords);
+		// Parse keywords - prefer Subject (full data) over Keywords (may be truncated by IPTC)
+		// Combine both to ensure we get all metadata
+		const keywordsField = exifData.Keywords || '';
+		const subjectField = exifData.Subject || '';
+		const keywordStr = [
+			Array.isArray(keywordsField) ? keywordsField.join(' ') : String(keywordsField),
+			Array.isArray(subjectField) ? subjectField.join(' ') : String(subjectField)
+		].join(' ');
 
 		// Check if enriched
 		if (!keywordStr.includes('play_') && !keywordStr.includes('sport_')) {
