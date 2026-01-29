@@ -64,14 +64,19 @@
 	<title>Nino Chavez — Volleyball Photography</title>
 	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
 
-	<!-- Preload hero image for faster loading -->
+	<!-- Preload hero image for faster LCP -->
 	{#if data.heroPhoto?.image_url}
-		{@const heroUrl = data.heroPhoto.image_url}
-		{@const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024}
-		{@const optimizedUrl = heroUrl.includes('smugmug.com')
-			? heroUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, (isMobile ? '-X2' : '-X3') + '$1')
-			: heroUrl}
-		<link rel="preload" as="image" href={optimizedUrl} fetchpriority="high" />
+		{#if data.useLocalHero && data.heroPhoto.localPaths}
+			<!-- Local WebP images - best performance, no third-party cookies -->
+			<link rel="preload" as="image" href={data.heroPhoto.localPaths.desktop} type="image/webp" fetchpriority="high" />
+		{:else}
+			<!-- SmugMug fallback -->
+			{@const heroUrl = data.heroPhoto.image_url}
+			{@const optimizedUrl = heroUrl.includes('smugmug.com')
+				? heroUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-X2$1')
+				: heroUrl}
+			<link rel="preload" as="image" href={optimizedUrl} fetchpriority="high" />
+		{/if}
 	{/if}
 </svelte:head>
 
@@ -175,7 +180,7 @@
 								<h3 class="text-lg font-semibold text-white group-hover:text-gold-500 transition-colors mb-2">
 									{featuredAlbum.album.albumName}
 								</h3>
-								<p class="text-sm text-charcoal-400 leading-relaxed">
+								<p class="text-sm text-charcoal-300 leading-relaxed">
 									{#if featuredAlbum.type === 'recent'}
 										Latest event coverage with fresh action photography.
 									{:else if featuredAlbum.type === 'editors-choice'}
@@ -203,7 +208,7 @@
 								Browse Gallery
 							</h3>
 						</div>
-						<p class="text-sm text-charcoal-400 leading-relaxed">
+						<p class="text-sm text-charcoal-300 leading-relaxed">
 							Explore our complete collection of volleyball action photography
 							with advanced filtering and search.
 						</p>
@@ -221,7 +226,7 @@
 								Collections
 							</h3>
 						</div>
-						<p class="text-sm text-charcoal-400 leading-relaxed">
+						<p class="text-sm text-charcoal-300 leading-relaxed">
 							Curated collections showcasing championship tournaments,
 							elite athletes, and memorable moments.
 						</p>
@@ -239,7 +244,7 @@
 								Event Albums
 							</h3>
 						</div>
-						<p class="text-sm text-charcoal-400 leading-relaxed">
+						<p class="text-sm text-charcoal-300 leading-relaxed">
 							Complete event coverage from tournaments, matches, and
 							special volleyball events.
 						</p>

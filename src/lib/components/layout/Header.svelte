@@ -105,6 +105,7 @@
 							>
 								<Icon class="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
 								<span class="hidden sm:inline">{item.label}</span>
+								<span class="sr-only sm:hidden">{item.label}</span>
 
 								<!-- Badge Count (NEW - Week 3 Bonus) -->
 								{#if badgeCount > 0}

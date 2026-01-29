@@ -37,9 +37,20 @@
     class: className
   }: Props = $props();
 
-  // Generate optimized background image URL with SmugMug size parameters
+  // Generate optimized background image URL
+  // Supports: local static files (hero-images/), SmugMug, and Supabase storage
   function getOptimizedBackgroundUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
+
+    // LOCAL STATIC IMAGES (best performance - already optimized WebP)
+    // These are pre-built and stored in static/hero-images/
+    if (imageUrl.startsWith('/hero-images/')) {
+      // Local images follow pattern: hero-001-desktop.webp, hero-001-mobile.webp, hero-001-thumb.webp
+      const basePath = imageUrl.replace(/-(?:desktop|mobile|thumb)\.webp$/, '');
+      if (size === 'thumbnail') return `${basePath}-thumb.webp`;
+      if (size === 'mobile') return `${basePath}-mobile.webp`;
+      return `${basePath}-desktop.webp`;
+    }
 
     // SmugMug image optimization using size suffixes
     // Available sizes: -Th (thumbnail), -S (400px), -M (600px), -L (800px),

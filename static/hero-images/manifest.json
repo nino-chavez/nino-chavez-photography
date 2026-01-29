@@ -1,0 +1,286 @@
+{
+  "version": 1769724528702,
+  "generatedAt": "2026-01-29T22:08:48.702Z",
+  "images": [
+    {
+      "id": 20,
+      "photoId": "fz7TLL7",
+      "imageKey": "fz7TLL7",
+      "albumKey": "Mtrmdh",
+      "albumName": "MPSF Rumble 2025 – - Jan 1",
+      "qualityScore": 9,
+      "priority": 20,
+      "paths": {
+        "desktop": "/hero-images/hero-001-desktop.webp",
+        "mobile": "/hero-images/hero-001-mobile.webp",
+        "thumbnail": "/hero-images/hero-001-thumb.webp"
+      }
+    },
+    {
+      "id": 19,
+      "photoId": "jz2M6bx",
+      "imageKey": "jz2M6bx",
+      "albumKey": "vKQKbN",
+      "albumName": "Chicago AVP - San Diego Smash -...... - Jan 1",
+      "qualityScore": 9,
+      "priority": 19,
+      "paths": {
+        "desktop": "/hero-images/hero-002-desktop.webp",
+        "mobile": "/hero-images/hero-002-mobile.webp",
+        "thumbnail": "/hero-images/hero-002-thumb.webp"
+      }
+    },
+    {
+      "id": 18,
+      "photoId": "bX3Nj23",
+      "imageKey": "bX3Nj23",
+      "albumKey": "g3zWxF",
+      "albumName": "AVP Chicago Open - Jan 1",
+      "qualityScore": 9,
+      "priority": 18,
+      "paths": {
+        "desktop": "/hero-images/hero-003-desktop.webp",
+        "mobile": "/hero-images/hero-003-mobile.webp",
+        "thumbnail": "/hero-images/hero-003-thumb.webp"
+      }
+    },
+    {
+      "id": 17,
+      "photoId": "8r8S6Pq",
+      "imageKey": "8r8S6Pq",
+      "albumKey": "m3nhJ7",
+      "albumName": "AVP Chicago - Miami Mayhem - Sep 1",
+      "qualityScore": 9,
+      "priority": 17,
+      "paths": {
+        "desktop": "/hero-images/hero-004-desktop.webp",
+        "mobile": "/hero-images/hero-004-mobile.webp",
+        "thumbnail": "/hero-images/hero-004-thumb.webp"
+      }
+    },
+    {
+      "id": 16,
+      "photoId": "tfwZBPd",
+      "imageKey": "tfwZBPd",
+      "albumKey": "Mtrmdh",
+      "albumName": "MPSF Rumble 2025 – - Jan 1",
+      "qualityScore": 9,
+      "priority": 16,
+      "paths": {
+        "desktop": "/hero-images/hero-005-desktop.webp",
+        "mobile": "/hero-images/hero-005-mobile.webp",
+        "thumbnail": "/hero-images/hero-005-thumb.webp"
+      }
+    },
+    {
+      "id": 15,
+      "photoId": "5xv9W5P",
+      "imageKey": "5xv9W5P",
+      "albumKey": "vgC8z9",
+      "albumName": "UW-Milwaukee Panther Invite",
+      "qualityScore": 9,
+      "priority": 15,
+      "paths": {
+        "desktop": "/hero-images/hero-006-desktop.webp",
+        "mobile": "/hero-images/hero-006-mobile.webp",
+        "thumbnail": "/hero-images/hero-006-thumb.webp"
+      }
+    },
+    {
+      "id": 14,
+      "photoId": "HWZpnT5",
+      "imageKey": "HWZpnT5",
+      "albumKey": "vKQKbN",
+      "albumName": "Chicago AVP - San Diego Smash -...... - Jan 1",
+      "qualityScore": 9,
+      "priority": 14,
+      "paths": {
+        "desktop": "/hero-images/hero-007-desktop.webp",
+        "mobile": "/hero-images/hero-007-mobile.webp",
+        "thumbnail": "/hero-images/hero-007-thumb.webp"
+      }
+    },
+    {
+      "id": 13,
+      "photoId": "R7KDfsg",
+      "imageKey": "R7KDfsg",
+      "albumKey": "KZf9RF",
+      "albumName": "Players Player Appreciation Turf 4s",
+      "qualityScore": 9,
+      "priority": 13,
+      "paths": {
+        "desktop": "/hero-images/hero-008-desktop.webp",
+        "mobile": "/hero-images/hero-008-mobile.webp",
+        "thumbnail": "/hero-images/hero-008-thumb.webp"
+      }
+    },
+    {
+      "id": 12,
+      "photoId": "JMT4NJN",
+      "imageKey": "JMT4NJN",
+      "albumKey": "2Xv5JS",
+      "albumName": "WVB - North Central vs Carthage",
+      "qualityScore": 9,
+      "priority": 12,
+      "paths": {
+        "desktop": "/hero-images/hero-009-desktop.webp",
+        "mobile": "/hero-images/hero-009-mobile.webp",
+        "thumbnail": "/hero-images/hero-009-thumb.webp"
+      }
+    },
+    {
+      "id": 11,
+      "photoId": "6RMFZ3h",
+      "imageKey": "6RMFZ3h",
+      "albumKey": "7bJwPj",
+      "albumName": "Downers Grove North vs Plainfield ... - Jan 1",
+      "qualityScore": 9,
+      "priority": 11,
+      "paths": {
+        "desktop": "/hero-images/hero-010-desktop.webp",
+        "mobile": "/hero-images/hero-010-mobile.webp",
+        "thumbnail": "/hero-images/hero-010-thumb.webp"
+      }
+    },
+    {
+      "id": 10,
+      "photoId": "n63s49R",
+      "imageKey": "n63s49R",
+      "albumKey": "WmJvT5",
+      "albumName": "UWM Panther Invite - Part 2",
+      "qualityScore": 9.33,
+      "priority": 10,
+      "paths": {
+        "desktop": "/hero-images/hero-011-desktop.webp",
+        "mobile": "/hero-images/hero-011-mobile.webp",
+        "thumbnail": "/hero-images/hero-011-thumb.webp"
+      }
+    },
+    {
+      "id": 9,
+      "photoId": "nfbhKDp",
+      "imageKey": "nfbhKDp",
+      "albumKey": "Sf5WTv",
+      "albumName": "2024 Men's VB - Lewis vs Lindenwood - Jan 1",
+      "qualityScore": 9.33,
+      "priority": 9,
+      "paths": {
+        "desktop": "/hero-images/hero-012-desktop.webp",
+        "mobile": "/hero-images/hero-012-mobile.webp",
+        "thumbnail": "/hero-images/hero-012-thumb.webp"
+      }
+    },
+    {
+      "id": 8,
+      "photoId": "wpj4b4w",
+      "imageKey": "wpj4b4w",
+      "albumKey": "9VLQFQ",
+      "albumName": "WMVB - North Central College vs Aurora Uni...",
+      "qualityScore": 9.33,
+      "priority": 8,
+      "paths": {
+        "desktop": "/hero-images/hero-013-desktop.webp",
+        "mobile": "/hero-images/hero-013-mobile.webp",
+        "thumbnail": "/hero-images/hero-013-thumb.webp"
+      }
+    },
+    {
+      "id": 7,
+      "photoId": "pv7nWWH",
+      "imageKey": "pv7nWWH",
+      "albumKey": "Sf5WTv",
+      "albumName": "2024 Men's VB - Lewis vs Lindenwood - Jan 1",
+      "qualityScore": 9.33,
+      "priority": 7,
+      "paths": {
+        "desktop": "/hero-images/hero-014-desktop.webp",
+        "mobile": "/hero-images/hero-014-mobile.webp",
+        "thumbnail": "/hero-images/hero-014-thumb.webp"
+      }
+    },
+    {
+      "id": 6,
+      "photoId": "5szFKJ5",
+      "imageKey": "5szFKJ5",
+      "albumKey": "Mtrmdh",
+      "albumName": "MPSF Rumble 2025 – - Jan 1",
+      "qualityScore": 9.33,
+      "priority": 6,
+      "paths": {
+        "desktop": "/hero-images/hero-015-desktop.webp",
+        "mobile": "/hero-images/hero-015-mobile.webp",
+        "thumbnail": "/hero-images/hero-015-thumb.webp"
+      }
+    },
+    {
+      "id": 5,
+      "photoId": "LMwW8dh",
+      "imageKey": "LMwW8dh",
+      "albumKey": "9VLQFQ",
+      "albumName": "WMVB - North Central College vs Aurora Uni...",
+      "qualityScore": 9.33,
+      "priority": 5,
+      "paths": {
+        "desktop": "/hero-images/hero-016-desktop.webp",
+        "mobile": "/hero-images/hero-016-mobile.webp",
+        "thumbnail": "/hero-images/hero-016-thumb.webp"
+      }
+    },
+    {
+      "id": 4,
+      "photoId": "dNrnsDD",
+      "imageKey": "dNrnsDD",
+      "albumKey": "m3nhJ7",
+      "albumName": "AVP Chicago - Miami Mayhem - Sep 1",
+      "qualityScore": 9.33,
+      "priority": 4,
+      "paths": {
+        "desktop": "/hero-images/hero-017-desktop.webp",
+        "mobile": "/hero-images/hero-017-mobile.webp",
+        "thumbnail": "/hero-images/hero-017-thumb.webp"
+      }
+    },
+    {
+      "id": 3,
+      "photoId": "tK4Kk3S",
+      "imageKey": "tK4Kk3S",
+      "albumKey": "WmJvT5",
+      "albumName": "UWM Panther Invite - Part 2",
+      "qualityScore": 9.33,
+      "priority": 3,
+      "paths": {
+        "desktop": "/hero-images/hero-018-desktop.webp",
+        "mobile": "/hero-images/hero-018-mobile.webp",
+        "thumbnail": "/hero-images/hero-018-thumb.webp"
+      }
+    },
+    {
+      "id": 2,
+      "photoId": "Kp3737M",
+      "imageKey": "Kp3737M",
+      "albumKey": "7QdJJj",
+      "albumName": "USC Men's vs Emmanuel",
+      "qualityScore": 9.33,
+      "priority": 2,
+      "paths": {
+        "desktop": "/hero-images/hero-019-desktop.webp",
+        "mobile": "/hero-images/hero-019-mobile.webp",
+        "thumbnail": "/hero-images/hero-019-thumb.webp"
+      }
+    },
+    {
+      "id": 1,
+      "photoId": "bSFWHkN",
+      "imageKey": "bSFWHkN",
+      "albumKey": "WmJvT5",
+      "albumName": "UWM Panther Invite - Part 2",
+      "qualityScore": 9.33,
+      "priority": 1,
+      "paths": {
+        "desktop": "/hero-images/hero-020-desktop.webp",
+        "mobile": "/hero-images/hero-020-mobile.webp",
+        "thumbnail": "/hero-images/hero-020-thumb.webp"
+      }
+    }
+  ]
+}

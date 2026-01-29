@@ -18,10 +18,12 @@
 		"pipeline": "tsx scripts/run-pipeline.ts",
 		"enrich": "tsx scripts/enrich-local-photos.ts",
 		"upload:smugmug": "tsx scripts/upload-to-smugmug.ts",
-		"sync:album": "tsx scripts/sync-smugmug-album.ts"
+		"sync:album": "tsx scripts/sync-smugmug-album.ts",
+		"build:hero-images": "tsx scripts/build-hero-images.ts"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.10.2",
+		"@types/sharp": "^0.32.0",
 		"@playwright/test": "^1.56.1",
 		"@sveltejs/adapter-auto": "^6.1.0",
 		"@sveltejs/adapter-vercel": "^6.0.0",
@@ -41,6 +43,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/google": "^2.0.39",
+		"sharp": "^0.33.5",
 		"@ai-sdk/svelte": "^3.0.97",
 		"@google/generative-ai": "^0.24.1",
 		"@supabase/ssr": "^0.7.0",
