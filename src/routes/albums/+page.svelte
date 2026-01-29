@@ -85,6 +85,27 @@
 	}
 </script>
 
+<!-- Preload album cover images for faster LCP -->
+<svelte:head>
+	<title>Albums | Nino Chavez Photography</title>
+	<meta name="description" content="Browse {data.totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches." />
+
+	<!-- Preload first 4 album cover images for LCP optimization -->
+	{#each data.albums.slice(0, 4) as album, i}
+		{@const preloadUrl = album.coverImageUrl?.includes('smugmug.com')
+			? album.coverImageUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-M$1')
+			: album.coverImageUrl}
+		{#if preloadUrl}
+			<link
+				rel="preload"
+				as="image"
+				href={preloadUrl}
+				fetchpriority={i === 0 ? "high" : "low"}
+			/>
+		{/if}
+	{/each}
+</svelte:head>
+
 <svelte:window onkeydown={handleKeyDown} />
 
 <!-- Minimal Header - Content First Design (Browse Mode: Traditionalist) -->

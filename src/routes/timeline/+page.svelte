@@ -91,6 +91,23 @@
 <svelte:head>
   <title>Photo Timeline | Nino Chavez</title>
   <meta name="description" content="Explore Nino Chavez's photography journey through the years - from youth sports to professional championships." />
+
+  <!-- Preload featured photos from first periods for LCP optimization -->
+  {#each data.periods.slice(0, 2) as period}
+    {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
+      {@const preloadUrl = photo.image_url?.includes('smugmug.com')
+        ? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-M$1')
+        : photo.image_url}
+      {#if preloadUrl}
+        <link
+          rel="preload"
+          as="image"
+          href={preloadUrl}
+          fetchpriority={i === 0 ? "high" : "low"}
+        />
+      {/if}
+    {/each}
+  {/each}
 </svelte:head>
 
 <div class="min-h-screen bg-charcoal-950">

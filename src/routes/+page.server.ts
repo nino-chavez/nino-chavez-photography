@@ -25,36 +25,23 @@
 import type { PageServerLoad } from './$types';
 import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
-import { readFileSync, existsSync } from 'fs';
-import { resolve } from 'path';
 import type { HeroImageManifest, HeroImage } from '$lib/hero-images';
 
-// Cache the hero manifest in memory
-let cachedHeroManifest: HeroImageManifest | null = null;
-let manifestLoadAttempted = false;
+// Import manifest at build time (works on Vercel serverless)
+// This gets bundled into the serverless function
+// @ts-ignore - JSON import from static folder
+import heroManifestData from '../../static/hero-images/manifest.json';
+
+const heroManifest: HeroImageManifest | null = heroManifestData as HeroImageManifest;
 
 /**
- * Load the hero images manifest from static files (server-side)
+ * Get the hero images manifest (loaded at build time)
  */
 function loadHeroManifestServer(): HeroImageManifest | null {
-  if (manifestLoadAttempted) return cachedHeroManifest;
-  manifestLoadAttempted = true;
-
-  try {
-    const manifestPath = resolve(process.cwd(), 'static/hero-images/manifest.json');
-    if (!existsSync(manifestPath)) {
-      console.log('[Homepage] No hero images manifest found, using SmugMug fallback');
-      return null;
-    }
-
-    const manifestContent = readFileSync(manifestPath, 'utf-8');
-    cachedHeroManifest = JSON.parse(manifestContent);
-    console.log(`[Homepage] Loaded ${cachedHeroManifest?.images.length || 0} local hero images`);
-    return cachedHeroManifest;
-  } catch (err) {
-    console.warn('[Homepage] Failed to load hero manifest:', err);
+  if (!heroManifest || !heroManifest.images || heroManifest.images.length === 0) {
     return null;
   }
+  return heroManifest;
 }
 
 /**

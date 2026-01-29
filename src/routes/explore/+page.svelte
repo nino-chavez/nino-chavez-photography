@@ -566,6 +566,27 @@
 	}
 </script>
 
+<!-- Preload first images for faster LCP -->
+<svelte:head>
+	<title>Explore Gallery | Nino Chavez Photography</title>
+	<meta name="description" content="Browse {data.totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more." />
+
+	<!-- Preload first 3 above-fold images for LCP optimization -->
+	{#each data.photos.slice(0, 3) as photo, i}
+		{@const preloadUrl = photo.image_url?.includes('smugmug.com')
+			? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-M$1')
+			: photo.image_url}
+		{#if preloadUrl}
+			<link
+				rel="preload"
+				as="image"
+				href={preloadUrl}
+				fetchpriority={i === 0 ? "high" : "low"}
+			/>
+		{/if}
+	{/each}
+</svelte:head>
+
 <svelte:window onkeydown={handleKeydown} />
 
 <!-- Minimal Sticky Header -->
