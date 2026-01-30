@@ -13,6 +13,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import TimelineV2 from '$lib/components/ui/TimelineV2.svelte';
+  import { getProxiedImageUrl } from '$lib/photo-utils';
   import type { Photo } from '$types/photo';
 
   interface TimelineEntry {
@@ -93,12 +94,13 @@
   <meta name="description" content="Explore Nino Chavez's photography journey through the years - from youth sports to professional championships." />
 
   <!-- Preload featured photos from first periods for LCP optimization -->
-  <!-- Using -L (800px) for quality on retina displays, srcset handles final selection -->
+  <!-- Using -L (800px) for quality on retina displays, routed through proxy -->
   {#each data.periods.slice(0, 2) as period}
     {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
-      {@const preloadUrl = photo.image_url?.includes('smugmug.com')
+      {@const sizedUrl = photo.image_url?.includes('smugmug.com')
         ? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
         : photo.image_url}
+      {@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
       {#if preloadUrl}
         <link
           rel="preload"

@@ -5,6 +5,7 @@
 	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
+	import { getProxiedImageUrl } from '$lib/photo-utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import AlbumCard from '$lib/components/gallery/AlbumCard.svelte';
@@ -91,12 +92,13 @@
 	<meta name="description" content="Browse {data.totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches." />
 
 	<!-- Preload first 4 album cover images for LCP optimization -->
-	<!-- Uses local optimized WebP when available, falls back to SmugMug -L -->
+	<!-- Uses local optimized WebP when available, falls back to SmugMug -L via proxy -->
 	{#each data.albums.slice(0, 4) as album, i}
-		{@const preloadUrl = album.optimizedPaths?.desktop
+		{@const sizedUrl = album.optimizedPaths?.desktop
 			|| (album.coverImageUrl?.includes('smugmug.com')
 				? album.coverImageUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
 				: album.coverImageUrl)}
+		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		{#if preloadUrl}
 			<link
 				rel="preload"

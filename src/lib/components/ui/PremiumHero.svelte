@@ -23,6 +23,7 @@
   import Typography from './Typography.svelte';
   import { cn } from '$lib/utils';
   import { base } from '$app/paths';
+  import { getProxiedImageUrl } from '$lib/photo-utils';
 
   interface Props {
     backgroundImage?: string;
@@ -52,6 +53,7 @@
 
     // SmugMug optimization - USE SMALLER SIZES for split layout
     // Split layout = 50% width = half the pixels needed
+    // Route through proxy to eliminate third-party cookies
     if (imageUrl.includes('smugmug.com')) {
       const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
       // Desktop: XL (1024px) instead of X2 (1600px) - saves ~500KB
@@ -59,7 +61,8 @@
       let suffix = '-XL';
       if (size === 'thumbnail') suffix = '-Th';
       else if (size === 'mobile') suffix = '-M';
-      return baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
+      const sizedUrl = baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
+      return getProxiedImageUrl(sizedUrl);
     }
 
     // Supabase storage

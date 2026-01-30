@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
-	import { getSmugMugUrl } from '$lib/photo-utils';
+	import { getSmugMugUrl, getProxiedImageUrl } from '$lib/photo-utils';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Trophy, Calendar } from 'lucide-svelte';
 
@@ -70,11 +70,12 @@
 			<!-- Local WebP images - best performance, no third-party cookies -->
 			<link rel="preload" as="image" href={data.heroPhoto.localPaths.desktop} type="image/webp" fetchpriority="high" />
 		{:else}
-			<!-- SmugMug fallback - use XL (1024px) for split layout (saves ~500KB vs X2) -->
+			<!-- SmugMug fallback - use XL (1024px) for split layout, routed through proxy -->
 			{@const heroUrl = data.heroPhoto.image_url}
-			{@const optimizedUrl = heroUrl.includes('smugmug.com')
+			{@const sizedUrl = heroUrl.includes('smugmug.com')
 				? heroUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-XL$1')
 				: heroUrl}
+			{@const optimizedUrl = sizedUrl.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 			<link rel="preload" as="image" href={optimizedUrl} fetchpriority="high" />
 		{/if}
 	{/if}

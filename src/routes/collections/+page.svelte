@@ -3,6 +3,7 @@
 	import { Motion } from 'svelte-motion';
 	import { Sparkles } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
+	import { getProxiedImageUrl } from '$lib/photo-utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoDetailModal from '$lib/components/gallery/PhotoDetailModal.svelte';
@@ -36,12 +37,13 @@
 	<meta name="description" content="Explore curated photography collections showcasing the best moments, emotions, and stories from volleyball tournaments and events." />
 
 	<!-- Preload first 3 collection cover images for LCP optimization -->
-	<!-- Uses local optimized WebP when available, falls back to SmugMug -L -->
+	<!-- Uses local optimized WebP when available, falls back to SmugMug -L via proxy -->
 	{#each data.collections.slice(0, 3) as collection, i}
-		{@const preloadUrl = collection.optimizedPaths?.desktop
+		{@const sizedUrl = collection.optimizedPaths?.desktop
 			|| (collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
 				? collection.coverPhoto.ImageUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
 				: collection.coverPhoto?.ImageUrl)}
+		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		{#if preloadUrl}
 			<link
 				rel="preload"
