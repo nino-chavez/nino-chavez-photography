@@ -487,13 +487,14 @@ export function getProxiedImageUrl(smugmugUrl: string): string {
     return smugmugUrl;
   }
 
-  // Only proxy photos.smugmug.com URLs
-  if (!smugmugUrl.includes('photos.smugmug.com')) {
+  // Proxy any SmugMug image URL (photos.smugmug.com, ninochavez.smugmug.com, etc.)
+  if (!smugmugUrl.includes('smugmug.com')) {
     return smugmugUrl;
   }
 
   // Extract the path after the protocol
   // https://photos.smugmug.com/path/to/image.jpg → photos.smugmug.com/path/to/image.jpg
+  // https://ninochavez.smugmug.com/photos/... → ninochavez.smugmug.com/photos/...
   const urlPath = smugmugUrl.replace('https://', '');
 
   return `https://${IMAGE_PROXY_CONFIG.proxyDomain}/proxy/${urlPath}`;

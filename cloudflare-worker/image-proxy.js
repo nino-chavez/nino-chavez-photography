@@ -48,8 +48,8 @@ async function handleProxyRequest(request, ctx, pathname) {
   const targetPath = pathname.replace('/proxy/', '');
   const targetUrl = `https://${targetPath}`;
 
-  // Validate it's a SmugMug URL
-  if (!targetPath.startsWith('photos.smugmug.com/')) {
+  // Validate it's a SmugMug URL (photos.smugmug.com or ninochavez.smugmug.com)
+  if (!targetPath.includes('smugmug.com/')) {
     return new Response('Invalid proxy target', { status: 400 });
   }
 

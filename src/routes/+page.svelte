@@ -13,17 +13,19 @@
 	let { data }: Props = $props();
 
 	// Get optimized image URL using SmugMug size parameters + proxy
+	// Uses larger sizes for retina display sharpness
 	function getOptimizedImageUrl(imageUrl: string | null, width: number): string {
 		if (!imageUrl) return '';
 
 		// SmugMug: use getSmugMugUrl which handles proxy routing
+		// Request 2x size for retina sharpness (e.g., 400px card = 800px image)
 		if (imageUrl.includes('smugmug.com')) {
-			// Map width to SmugMug size
-			let size: 'S' | 'M' | 'L' | 'XL' = 'M';
-			if (width >= 1024) size = 'XL';
-			else if (width >= 800) size = 'L';
-			else if (width >= 600) size = 'M';
-			else size = 'S';
+			// Map display width to SmugMug size (2x for retina)
+			let size: 'S' | 'M' | 'L' | 'XL' | 'X2' = 'L';
+			if (width >= 800) size = 'X2';      // 1600px for large cards
+			else if (width >= 600) size = 'XL'; // 1024px for medium cards
+			else if (width >= 400) size = 'L';  // 800px for small cards
+			else size = 'M';                    // 600px fallback
 
 			return getSmugMugUrl(imageUrl, size);
 		}
