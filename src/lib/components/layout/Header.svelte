@@ -15,9 +15,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { Motion } from 'svelte-motion';
 	import { Camera, Grid, Sparkles, Folder, Heart, Calendar } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import GlobalSearch from '$lib/components/ui/GlobalSearch.svelte';
 	import { cn } from '$lib/utils';
@@ -49,14 +47,9 @@
 	}
 </script>
 
-<Motion
-	let:motion
-	initial={{ opacity: 0, y: -20 }}
-	animate={{ opacity: 1, y: 0 }}
-	transition={MOTION.spring.gentle}
->
+<!-- PERFORMANCE: CSS animation instead of svelte-motion (loads on every page) -->
+<div class="header-animate">
 	<header
-		use:motion
 		class="sticky top-0 z-50 w-full border-b border-charcoal-800 bg-charcoal-950/95 backdrop-blur-lg"
 	>
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -90,34 +83,31 @@
 						{@const active = isActive(item.path)}
 						{@const Icon = item.icon}
 						{@const badgeCount = item.badge?.() || 0}
-						<Motion let:motion whileHover={{ scale: 1.05 }} transition={MOTION.spring.snappy}>
-							<a
-								use:motion
-								href={item.path}
-								data-sveltekit-preload="tap"
-								class={cn(
-									'relative flex items-center gap-2 px-3 py-3 sm:px-4 sm:py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px]',
-									active
-										? 'bg-gold-500/10 text-gold-500'
-										: 'text-charcoal-300 hover:text-white hover:bg-charcoal-800'
-								)}
-								aria-current={active ? 'page' : undefined}
-							>
-								<Icon class="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
-								<span class="hidden sm:inline">{item.label}</span>
-								<span class="sr-only sm:hidden">{item.label}</span>
+						<a
+							href={item.path}
+							data-sveltekit-preload="tap"
+							class={cn(
+								'nav-item-hover relative flex items-center gap-2 px-3 py-3 sm:px-4 sm:py-2 rounded-lg text-sm font-medium transition-all min-h-[44px]',
+								active
+									? 'bg-gold-500/10 text-gold-500'
+									: 'text-charcoal-300 hover:text-white hover:bg-charcoal-800'
+							)}
+							aria-current={active ? 'page' : undefined}
+						>
+							<Icon class="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
+							<span class="hidden sm:inline">{item.label}</span>
+							<span class="sr-only sm:hidden">{item.label}</span>
 
-								<!-- Badge Count (NEW - Week 3 Bonus) -->
-								{#if badgeCount > 0}
-									<span
-										class="absolute -top-1 -right-1 flex items-center justify-center min-w-5 h-5 px-1 text-xs font-bold rounded-full bg-red-500 text-white"
-										aria-label="{badgeCount} favorites"
-									>
-										{badgeCount > 99 ? '99+' : badgeCount}
-									</span>
-								{/if}
-							</a>
-						</Motion>
+							<!-- Badge Count (NEW - Week 3 Bonus) -->
+							{#if badgeCount > 0}
+								<span
+									class="absolute -top-1 -right-1 flex items-center justify-center min-w-5 h-5 px-1 text-xs font-bold rounded-full bg-red-500 text-white"
+									aria-label="{badgeCount} favorites"
+								>
+									{badgeCount > 99 ? '99+' : badgeCount}
+								</span>
+							{/if}
+						</a>
 					{/each}
 				</nav>
 
@@ -164,4 +154,41 @@
 			{/each}
 		</div>
 	</nav>
-</Motion>
+</div>
+
+<style>
+	/* PERFORMANCE: CSS animation instead of svelte-motion */
+	@keyframes header-slide-in {
+		from {
+			opacity: 0;
+			transform: translateY(-20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.header-animate {
+		animation: header-slide-in 0.3s ease-out forwards;
+	}
+
+	/* Nav item hover effect (replaces Motion whileHover) */
+	.nav-item-hover {
+		transition: transform 0.15s ease-out, background-color 0.2s, color 0.2s;
+	}
+
+	.nav-item-hover:hover {
+		transform: scale(1.05);
+	}
+
+	/* Reduce motion for accessibility */
+	@media (prefers-reduced-motion: reduce) {
+		.header-animate {
+			animation: none;
+		}
+		.nav-item-hover:hover {
+			transform: none;
+		}
+	}
+</style>
