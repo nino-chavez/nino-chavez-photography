@@ -37,10 +37,8 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Trophy, Award, Zap, Activity, Palette, Clock, Frame, Filter } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import FilterPill from '$lib/components/ui/FilterPill.svelte';
 

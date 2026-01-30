@@ -12,8 +12,10 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent }) => {
   // Parse query params for pagination
+  // PERFORMANCE: Reduced default from 100 to 12 periods for faster initial load
+  // Users can load more via infinite scroll
   const page = parseInt(url.searchParams.get('page') || '1');
-  const limit = parseInt(url.searchParams.get('limit') || '100');
+  const limit = parseInt(url.searchParams.get('limit') || '12');
 
   // Parse filter params
   const sportFilter = url.searchParams.get('sport') || undefined;

@@ -13,7 +13,6 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Motion } from 'svelte-motion';
 	import type { Photo } from '$types/photo';
 	import { getPhotoQualityScore } from '$lib/photo-utils';
 	import {

@@ -16,10 +16,8 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Sparkles, Volleyball, User, Trophy } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import FilterPill from '$lib/components/ui/FilterPill.svelte';
 

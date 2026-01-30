@@ -29,8 +29,6 @@
   import { Calendar, ChevronDown, ChevronUp, Filter, X } from 'lucide-svelte';
   import SportFilter from '$lib/components/filters/SportFilter.svelte';
   import CategoryFilter from '$lib/components/filters/CategoryFilter.svelte';
-  import { Motion } from 'svelte-motion';
-  import { MOTION } from '$lib/motion-tokens';
   import type { Photo } from '$types/photo';
 
   interface TimelineEntry {

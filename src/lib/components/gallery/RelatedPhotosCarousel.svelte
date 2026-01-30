@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import type { Photo } from '$types/photo';
