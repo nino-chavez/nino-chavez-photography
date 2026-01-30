@@ -22,9 +22,6 @@
 -->
 
 <script lang="ts">
-  import { Motion } from 'svelte-motion';
-  import { MOTION } from '$lib/motion-tokens';
-
   type FilterPillState = 'active' | 'available' | 'disabled';
 
   interface Props {
@@ -110,27 +107,22 @@
   }
 </script>
 
-<Motion
-  let:motion
-  initial={{ opacity: 0, scale: 0.95 }}
-  animate={{ opacity: 1, scale: 1 }}
-  transition={MOTION.spring.gentle}
->
-  <button
-    use:motion
-    onclick={handleClick}
-    class="
-      group inline-flex items-center gap-1.5 rounded-full font-medium
-      transition-all duration-200
-      {sizes.padding}
-      {sizes.text}
-      {styles.bg}
-      {styles.hover}
-      {styles.text}
-      {styles.cursor}
-      {state === 'active' ? 'shadow-md' : ''}
-      {state === 'disabled' ? 'opacity-40' : ''}
-    "
+<!-- PERFORMANCE: CSS animation instead of svelte-motion -->
+<button
+  onclick={handleClick}
+  class="
+    filter-pill-animate
+    group inline-flex items-center gap-1.5 rounded-full font-medium
+    transition-all duration-200
+    {sizes.padding}
+    {sizes.text}
+    {styles.bg}
+    {styles.hover}
+    {styles.text}
+    {styles.cursor}
+    {state === 'active' ? 'shadow-md' : ''}
+    {state === 'disabled' ? 'opacity-40' : ''}
+  "
     aria-pressed={state === 'active'}
     aria-disabled={state === 'disabled'}
     disabled={state === 'disabled'}
@@ -162,10 +154,32 @@
           ({count.toLocaleString()})
         </span>
       {/if}
-  </button>
-</Motion>
+</button>
 
 <style>
+  /* PERFORMANCE: CSS animation instead of svelte-motion */
+  @keyframes filter-pill-appear {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .filter-pill-animate {
+    animation: filter-pill-appear 0.2s ease-out forwards;
+  }
+
+  /* Reduce motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    .filter-pill-animate {
+      animation: none;
+    }
+  }
+
   /* Disabled state styling (ensure no pointer events) */
   button:disabled {
     pointer-events: none;
