@@ -231,16 +231,21 @@ async function fetchAlbumImages(): Promise<any[]> {
 
 /**
  * Fetch explore page images from database
+ * IMPORTANT: Must use same sorting as fetchPhotos() in server.ts for 'quality' sort
+ * to ensure optimized images match what's displayed
  */
 async function fetchExploreImages(): Promise<any[]> {
   const { data: photos, error } = await supabase
     .from('photo_metadata')
-    .select('photo_id, image_key, ImageUrl, album_key, album_name, sharpness, composition_score, emotional_impact')
+    .select('photo_id, image_key, ImageUrl, album_key, album_name, sharpness, composition_score, emotional_impact, upload_date')
     .eq('sport_type', 'volleyball')
     .gte('sharpness', 7.5)
     .gte('composition_score', 7.5)
     .not('ImageUrl', 'is', null)
-    .order('sharpness', { ascending: false })
+    .not('sharpness', 'is', null)
+    // Must match fetchPhotos quality sort: emotional_impact DESC, upload_date DESC
+    .order('emotional_impact', { ascending: false })
+    .order('upload_date', { ascending: false })
     .limit(LIMITS.explore);
 
   if (error) {
