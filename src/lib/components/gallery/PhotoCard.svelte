@@ -65,13 +65,14 @@
 	onclick={handleClick}
 >
 	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
+	<!-- quality="low" = S/M sizes (400-600px) - appropriate for grid cards at max 25vw -->
 	<OptimizedImage
 		src={imageSrc}
 		alt={photo.title || `Photo ${index + 1}`}
 		thumbnailSrc={thumbnailSrc}
 		aspectRatio="4/3"
 		sizes={galleryCardSizes}
-		quality="medium"
+		quality="low"
 		{priority}
 		class="absolute inset-0"
 	/>
