@@ -549,9 +549,13 @@ export function getSmugMugUrl(
   if (!url.includes('smugmug.com')) return url;
 
   const sizeInfo = SMUGMUG_SIZES[size];
-  // Replace any existing size suffix (including -O for original) with new size
+
+  // Strip ALL SmugMug size suffixes before adding new one
+  // Suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
+  // Some URLs have multiple suffixes (e.g., filename-Th-X2.jpg)
+  // Pattern matches: -Th, -XL, -X[2-5], or single letter -[SMLO]
   const sizedUrl = url
-    .replace(/-[A-Z]\d?\./, '.')  // Remove size suffix before extension
+    .replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '')  // Remove all size suffixes (globally)
     .replace(/(\.[^.]+)$/, `${sizeInfo.suffix}$1`);  // Add new suffix
 
   // Optionally route through proxy
