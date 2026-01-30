@@ -8,7 +8,6 @@ try {
 	// @ts-ignore - JSON import from static folder
 	const manifestModule = await import('../../../static/optimized/albums/manifest.json');
 	albumsManifest = manifestModule.default || manifestModule;
-	console.log('[Albums] Manifest loaded:', albumsManifest?.images?.length || 0, 'images');
 } catch {
 	// Manifest doesn't exist yet - will use SmugMug URLs
 }
@@ -49,7 +48,6 @@ async function autoRefreshViewIfStale(): Promise<void> {
 			.single();
 
 		if (!viewData || !tableData) {
-			console.log('[Albums] Unable to check view staleness, skipping auto-refresh');
 			return;
 		}
 
@@ -58,23 +56,12 @@ async function autoRefreshViewIfStale(): Promise<void> {
 
 		// If base table has newer data, refresh the view
 		if (tableLastUpdate > viewLastUpdate) {
-			console.log('[Albums] View is stale, auto-refreshing...');
-			console.log(`  View last update: ${viewLastUpdate.toISOString()}`);
-			console.log(`  Table last update: ${tableLastUpdate.toISOString()}`);
-
 			const { error } = await supabaseServer.rpc('refresh_albums_summary');
-
 			if (error) {
 				console.error('[Albums] Auto-refresh failed:', error.message);
-				// Don't throw - continue with stale data rather than failing
-			} else {
-				console.log('[Albums] ✓ View refreshed successfully');
 			}
-		} else {
-			console.log('[Albums] View is up-to-date, no refresh needed');
 		}
-	} catch (error) {
-		console.error('[Albums] Error in auto-refresh check:', error);
+	} catch {
 		// Don't throw - continue with existing data
 	}
 }

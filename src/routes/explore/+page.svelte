@@ -154,32 +154,6 @@
 	// Mobile filter drawer state
 	let mobileFiltersOpen = $state(false);
 
-	// Diagnostic: Check for duplicate or missing IDs
-	$effect(() => {
-		if (displayPhotos.length > 0) {
-			const ids = displayPhotos.map(p => p.id);
-			const imageKeys = displayPhotos.map(p => p.image_key);
-			const uniqueIds = new Set(ids);
-			const uniqueImageKeys = new Set(imageKeys);
-
-			if (uniqueIds.size !== displayPhotos.length) {
-				console.warn('[DIAGNOSTIC] Duplicate or missing photo IDs detected!', {
-					totalPhotos: displayPhotos.length,
-					uniqueIds: uniqueIds.size,
-					missingIds: ids.filter(id => !id).length,
-					duplicateIds: ids.filter((id, index) => ids.indexOf(id) !== index)
-				});
-			}
-
-			if (uniqueImageKeys.size !== displayPhotos.length) {
-				console.warn('[DIAGNOSTIC] Duplicate image_keys detected!', {
-					totalPhotos: displayPhotos.length,
-					uniqueImageKeys: uniqueImageKeys.size
-				});
-			}
-		}
-	});
-
 	// Zero results detection (Phase 4: Auto-Clear notification)
 	$effect(() => {
 		// Only show zero results warning if filters are active AND no photos
@@ -202,15 +176,9 @@
 	function handlePhotoClick(photo: Photo) {
 		// Use image_key for matching (more reliable than id)
 		const index = displayPhotos.findIndex((p) => p.image_key === photo.image_key);
-
 		if (index !== -1) {
 			selectedPhotoIndex = index;
 			lightboxOpen = true;
-		} else {
-			console.error('[handlePhotoClick] Photo not found in displayPhotos!', {
-				clickedImageKey: photo.image_key,
-				displayPhotoKeys: displayPhotos.map(p => p.image_key).slice(0, 5)
-			});
 		}
 	}
 
@@ -571,12 +539,12 @@
 	<title>Explore Gallery | Nino Chavez Photography</title>
 	<meta name="description" content="Browse {data.totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more." />
 
-	<!-- Preload first 3 above-fold images for LCP optimization -->
-	<!-- Uses local optimized WebP when available, falls back to SmugMug -L -->
-	{#each data.photos.slice(0, 3) as photo, i}
+	<!-- Preload first 4 above-fold images for LCP optimization -->
+	<!-- Uses local optimized WebP when available, falls back to SmugMug -M (600px - optimal for grid) -->
+	{#each data.photos.slice(0, 4) as photo, i}
 		{@const preloadUrl = photo.optimizedPaths?.desktop
 			|| (photo.image_url?.includes('smugmug.com')
-				? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
+				? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-M$1')
 				: photo.image_url)}
 		{#if preloadUrl}
 			<link

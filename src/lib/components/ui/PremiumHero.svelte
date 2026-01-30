@@ -1,13 +1,15 @@
 <!--
-  PremiumHero - Full-screen hero section with dark overlay and centered typography
+  PremiumHero - Split-layout hero section optimized for LCP performance
 
-  Features:
-  - Full viewport height with background image
-  - Dark semi-transparent overlay for moody feel
-  - Perfectly centered content with premium typography
-  - Responsive design with mobile optimizations
-  - Optimized image loading with SmugMug size parameters
-  - Uses design system colors and motion tokens
+  PERFORMANCE OPTIMIZATION:
+  - Split layout reduces LCP image area by ~50% (from 100vw to ~50vw)
+  - Uses CSS animations instead of svelte-motion (saves ~30KB JS)
+  - Smaller image sizes (XL=1024px instead of X2=1600px)
+  - Progressive loading with blur-up placeholder
+
+  Layout:
+  - Desktop: Split 50/50 (text left, image right)
+  - Mobile: Stacked (text top, image below)
 
   Usage:
   <PremiumHero
@@ -18,10 +20,9 @@
 -->
 
 <script lang="ts">
-  import { Motion } from 'svelte-motion';
-  import { MOTION } from '$lib/motion-tokens';
   import Typography from './Typography.svelte';
   import { cn } from '$lib/utils';
+  import { base } from '$app/paths';
 
   interface Props {
     backgroundImage?: string;
@@ -37,210 +38,224 @@
     class: className
   }: Props = $props();
 
-  // Generate optimized background image URL
-  // Supports: local static files (hero-images/), SmugMug, and Supabase storage
-  function getOptimizedBackgroundUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
+  // Generate optimized image URL - SMALLER sizes for split layout
+  function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
 
     // LOCAL STATIC IMAGES (best performance - already optimized WebP)
-    // These are pre-built and stored in static/hero-images/
-    // Handles both /hero-images/ (dev) and /photography/hero-images/ (production)
     if (imageUrl.includes('/hero-images/')) {
-      // Local images follow pattern: hero-001-desktop.webp, hero-001-mobile.webp, hero-001-thumb.webp
       const basePath = imageUrl.replace(/-(?:desktop|mobile|thumb)\.webp$/, '');
       if (size === 'thumbnail') return `${basePath}-thumb.webp`;
       if (size === 'mobile') return `${basePath}-mobile.webp`;
       return `${basePath}-desktop.webp`;
     }
 
-    // SmugMug image optimization using size suffixes
-    // Available sizes: -Th (thumbnail), -S (400px), -M (600px), -L (800px),
-    //                  -XL (1024px), -X2 (1600px), -X3 (2048px), -D (download/full), -O (original)
-    // PERFORMANCE: Using smaller sizes to reduce bandwidth while maintaining quality
+    // SmugMug optimization - USE SMALLER SIZES for split layout
+    // Split layout = 50% width = half the pixels needed
     if (imageUrl.includes('smugmug.com')) {
-      // Remove existing size suffix if present
       const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
-
-      // Thumbnail: Use -Th suffix (~5KB, loads instantly)
-      // Mobile: Use -L (800px) - optimal for phones in portrait (saves ~500KB vs X2)
-      // Desktop: Use -X2 (1600px) - optimal for desktop (saves ~1MB vs X3)
-      let suffix = '-X2';
+      // Desktop: XL (1024px) instead of X2 (1600px) - saves ~500KB
+      // Mobile: M (600px) instead of L (800px) - saves ~200KB
+      let suffix = '-XL';
       if (size === 'thumbnail') suffix = '-Th';
-      else if (size === 'mobile') suffix = '-L';
-
+      else if (size === 'mobile') suffix = '-M';
       return baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
     }
 
-    // Supabase storage optimization
+    // Supabase storage
     if (imageUrl.includes('supabase')) {
       const url = new URL(imageUrl);
       if (size === 'thumbnail') {
         url.searchParams.set('width', '100');
         url.searchParams.set('quality', '60');
       } else {
-        url.searchParams.set('width', size === 'mobile' ? '1200' : '1920');
-        url.searchParams.set('quality', size === 'mobile' ? '85' : '90');
+        // Smaller sizes for split layout
+        url.searchParams.set('width', size === 'mobile' ? '800' : '1200');
+        url.searchParams.set('quality', '85');
       }
       url.searchParams.set('format', 'webp');
       return url.toString();
     }
 
-    // Fallback: return original URL
     return imageUrl;
   }
 
-  // Generate responsive URLs
-  let thumbnailBackground = $derived(getOptimizedBackgroundUrl(backgroundImage, 'thumbnail'));
-  let mobileBackground = $derived(getOptimizedBackgroundUrl(backgroundImage, 'mobile'));
-  let desktopBackground = $derived(getOptimizedBackgroundUrl(backgroundImage, 'desktop'));
+  // Responsive URLs
+  let thumbnailUrl = $derived(getOptimizedUrl(backgroundImage, 'thumbnail'));
+  let mobileUrl = $derived(getOptimizedUrl(backgroundImage, 'mobile'));
+  let desktopUrl = $derived(getOptimizedUrl(backgroundImage, 'desktop'));
 
-  // Track image loading state
-  let mobileImageLoaded = $state(false);
-  let desktopImageLoaded = $state(false);
+  // Image loading state
+  let imageLoaded = $state(false);
 </script>
 
+<!-- Split Hero Section -->
 <section
   class={cn(
-    "relative h-screen w-full flex items-center justify-center overflow-hidden bg-charcoal-950",
+    "relative min-h-[70vh] lg:min-h-[80vh] w-full bg-charcoal-950 overflow-hidden",
     className
   )}
   role="banner"
   aria-label="Hero section"
 >
-  <!-- Progressive loading with blur-up technique -->
-
-  <!-- Layer 1: Solid background (instant) -->
-  <div class="absolute inset-0 bg-charcoal-950" aria-hidden="true"></div>
-
-  <!-- Layer 2: Blurred thumbnail placeholder (loads first, ~5KB) -->
-  {#if thumbnailBackground}
-    <div
-      class="absolute inset-0 bg-cover bg-center bg-no-repeat blur-xl scale-110"
-      style="background-image: url('{thumbnailBackground}');"
-      aria-hidden="true"
-    ></div>
-  {/if}
-
-  <!-- Layer 3: Mobile high-res image (up to 1024px) -->
-  {#if mobileBackground}
-    <div
-      class="absolute inset-0 bg-cover bg-center bg-no-repeat md:hidden transition-opacity duration-700"
-      class:opacity-0={!mobileImageLoaded}
-      class:opacity-100={mobileImageLoaded}
-      style="background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('{mobileBackground}');"
-      aria-hidden="true"
-    >
-      <img
-        src={mobileBackground}
-        alt=""
-        width="1200"
-        height="800"
-        class="hidden"
-        fetchpriority="high"
-        onload={() => { mobileImageLoaded = true; }}
-        onerror={() => { mobileImageLoaded = true; }}
-      />
-    </div>
-  {/if}
-
-  <!-- Layer 4: Desktop high-res image (1024px and up) -->
-  {#if desktopBackground}
-    <div
-      class="absolute inset-0 bg-cover bg-center bg-no-repeat hidden md:block transition-opacity duration-700"
-      class:opacity-0={!desktopImageLoaded}
-      class:opacity-100={desktopImageLoaded}
-      style="background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('{desktopBackground}');"
-      aria-hidden="true"
-    >
-      <img
-        src={desktopBackground}
-        alt=""
-        width="1920"
-        height="1080"
-        class="hidden"
-        fetchpriority="high"
-        onload={() => { desktopImageLoaded = true; }}
-        onerror={() => { desktopImageLoaded = true; }}
-      />
-    </div>
-  {/if}
-
-  <!-- Layer 5: Dark overlay for depth and text readability -->
-  <div
-    class="absolute inset-0 bg-gradient-to-b from-charcoal-950/20 via-transparent to-charcoal-950/30 pointer-events-none"
-    aria-hidden="true"
-  ></div>
-
-  <!-- Main content container -->
-  <Motion
-    let:motion
-    initial={{ opacity: 0, y: 30 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={MOTION.spring.gentle}
-  >
-    <div
-      use:motion
-      class="relative z-10 text-center px-4 sm:px-8 max-w-4xl mx-auto"
-    >
-      <!-- Main heading with premium typography -->
-      <Typography
-        variant="h1"
-        class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase tracking-wide leading-tight mb-4"
-        style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.1em; font-weight: 700;"
-      >
-        {title}
-      </Typography>
-
-      <!-- Subtitle with lighter styling -->
-      <Typography
-        variant="h2"
-        class="text-base sm:text-lg md:text-xl lg:text-2xl font-light text-charcoal-200 uppercase tracking-widest mb-12"
-        style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.15em; font-weight: 300;"
-      >
-        {subtitle}
-      </Typography>
-
-      <!-- Scroll indicator -->
-      <Motion
-        let:motion
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ ...MOTION.spring.gentle, delay: 1.2 }}
-      >
-        <div
-          use:motion
-          class="flex flex-col items-center gap-2 text-charcoal-400"
-          aria-label="Scroll down for more content"
+  <!-- Desktop: Split Layout (50/50) -->
+  <div class="hidden lg:grid lg:grid-cols-2 h-full min-h-[80vh]">
+    <!-- Left: Text Content -->
+    <div class="relative z-10 flex items-center justify-center px-8 xl:px-16 bg-gradient-to-r from-charcoal-950 via-charcoal-950 to-charcoal-900/50">
+      <div class="max-w-xl text-left hero-content-animate">
+        <!-- Main heading -->
+        <Typography
+          variant="h1"
+          class="text-4xl xl:text-5xl 2xl:text-6xl font-bold text-white uppercase tracking-wide leading-tight mb-4"
+          style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.08em; font-weight: 700;"
         >
-          <span class="text-xs font-light uppercase tracking-widest">Explore</span>
-          <div class="w-px h-8 bg-gradient-to-b from-charcoal-400 to-transparent"></div>
-          <svg
-            class="w-4 h-4 animate-bounce"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
+          {title}
+        </Typography>
+
+        <!-- Subtitle -->
+        <Typography
+          variant="h2"
+          class="text-lg xl:text-xl font-light text-charcoal-300 uppercase tracking-widest mb-8"
+          style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.12em; font-weight: 300;"
+        >
+          {subtitle}
+        </Typography>
+
+        <!-- CTA Button -->
+        <a
+          href="{base}/explore"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg"
+        >
+          Browse Gallery
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
-        </div>
-      </Motion>
+        </a>
+      </div>
     </div>
-  </Motion>
+
+    <!-- Right: Hero Image (LCP Element - now 50% smaller!) -->
+    <div class="relative overflow-hidden">
+      <!-- Blur placeholder -->
+      {#if thumbnailUrl}
+        <div
+          class="absolute inset-0 bg-cover bg-center blur-xl scale-110"
+          style="background-image: url('{thumbnailUrl}');"
+          aria-hidden="true"
+        ></div>
+      {/if}
+
+      <!-- Main image -->
+      {#if desktopUrl}
+        <img
+          src={desktopUrl}
+          alt="Volleyball action photography"
+          width="1024"
+          height="768"
+          class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+          class:opacity-0={!imageLoaded}
+          class:opacity-100={imageLoaded}
+          fetchpriority="high"
+          decoding="async"
+          onload={() => { imageLoaded = true; }}
+          onerror={() => { imageLoaded = true; }}
+        />
+      {/if}
+
+      <!-- Gradient overlay for edge blending -->
+      <div class="absolute inset-0 bg-gradient-to-r from-charcoal-950 via-transparent to-transparent pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-charcoal-950/30 via-transparent to-charcoal-950/20 pointer-events-none" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- Mobile: Stacked Layout -->
+  <div class="lg:hidden flex flex-col min-h-[70vh]">
+    <!-- Top: Image (constrained height for faster LCP) -->
+    <div class="relative h-[45vh] overflow-hidden">
+      <!-- Blur placeholder -->
+      {#if thumbnailUrl}
+        <div
+          class="absolute inset-0 bg-cover bg-center blur-xl scale-110"
+          style="background-image: url('{thumbnailUrl}');"
+          aria-hidden="true"
+        ></div>
+      {/if}
+
+      <!-- Mobile image -->
+      {#if mobileUrl}
+        <img
+          src={mobileUrl}
+          alt="Volleyball action photography"
+          width="600"
+          height="400"
+          class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+          class:opacity-0={!imageLoaded}
+          class:opacity-100={imageLoaded}
+          fetchpriority="high"
+          decoding="async"
+          onload={() => { imageLoaded = true; }}
+          onerror={() => { imageLoaded = true; }}
+        />
+      {/if}
+
+      <!-- Gradient overlay -->
+      <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-charcoal-950 pointer-events-none" aria-hidden="true"></div>
+    </div>
+
+    <!-- Bottom: Text Content -->
+    <div class="relative z-10 flex-1 flex items-center justify-center px-6 py-8 bg-charcoal-950">
+      <div class="text-center hero-content-animate">
+        <Typography
+          variant="h1"
+          class="text-3xl sm:text-4xl font-bold text-white uppercase tracking-wide leading-tight mb-3"
+          style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.08em; font-weight: 700;"
+        >
+          {title}
+        </Typography>
+
+        <Typography
+          variant="h2"
+          class="text-sm sm:text-base font-light text-charcoal-300 uppercase tracking-widest mb-6"
+          style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.12em; font-weight: 300;"
+        >
+          {subtitle}
+        </Typography>
+
+        <a
+          href="{base}/explore"
+          class="inline-flex items-center gap-2 px-5 py-2.5 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-colors text-sm"
+        >
+          Browse Gallery
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
 </section>
 
 <style>
-  /* Montserrat font is loaded asynchronously in app.html (non-render-blocking) */
+  /* PERFORMANCE: CSS animation instead of svelte-motion */
+  @keyframes hero-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-  /* Parallax effect on desktop only */
-  @media (min-width: 1024px) {
-    section > div:first-of-type {
-      background-attachment: fixed;
+  .hero-content-animate {
+    animation: hero-fade-in 0.6s ease-out forwards;
+  }
+
+  /* Reduce motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-content-animate {
+      animation: none;
     }
   }
 </style>

@@ -442,6 +442,64 @@ export function calculateGlowIntensity(metadata: PhotoMetadata): number {
 }
 
 // ============================================================================
+// Image Proxy Configuration
+// ============================================================================
+
+/**
+ * Image Proxy Configuration
+ *
+ * When enabled, SmugMug images are served through our Cloudflare Worker:
+ * - Eliminates third-party cookies (first-party domain)
+ * - Edge caching with 1-year TTL
+ * - Future: WebP/AVIF conversion (with Cloudflare Pro)
+ *
+ * The proxy URL format is:
+ *   gallery.ninochavez.co/proxy/photos.smugmug.com/path/to/image.jpg
+ *
+ * @example
+ * // Direct SmugMug: https://photos.smugmug.com/photos/i-AbCdEf/.../i-AbCdEf-L.jpg
+ * // With Proxy:     https://gallery.ninochavez.co/proxy/photos.smugmug.com/photos/i-AbCdEf/.../i-AbCdEf-L.jpg
+ */
+export const IMAGE_PROXY_CONFIG = {
+  // Proxy domain (Cloudflare Worker)
+  proxyDomain: 'gallery.ninochavez.co',
+
+  // Enable/disable the proxy
+  enabled: true,
+} as const;
+
+/**
+ * Convert SmugMug URL to proxied URL
+ *
+ * Transforms SmugMug CDN URLs to route through our Cloudflare Worker.
+ * The Worker intercepts image requests, adds edge caching, and serves
+ * from a first-party domain.
+ *
+ * @param smugmugUrl - Original SmugMug image URL
+ * @returns Proxied URL or original if proxy disabled
+ *
+ * @example
+ * getProxiedImageUrl('https://photos.smugmug.com/photos/i-abc/0/hash/L/i-abc-L.jpg')
+ * // => 'https://gallery.ninochavez.co/proxy/photos.smugmug.com/photos/i-abc/0/hash/L/i-abc-L.jpg'
+ */
+export function getProxiedImageUrl(smugmugUrl: string): string {
+  if (!IMAGE_PROXY_CONFIG.enabled || !IMAGE_PROXY_CONFIG.proxyDomain) {
+    return smugmugUrl;
+  }
+
+  // Only proxy photos.smugmug.com URLs
+  if (!smugmugUrl.includes('photos.smugmug.com')) {
+    return smugmugUrl;
+  }
+
+  // Extract the path after the protocol
+  // https://photos.smugmug.com/path/to/image.jpg → photos.smugmug.com/path/to/image.jpg
+  const urlPath = smugmugUrl.replace('https://', '');
+
+  return `https://${IMAGE_PROXY_CONFIG.proxyDomain}/proxy/${urlPath}`;
+}
+
+// ============================================================================
 // SmugMug Image URL Utilities
 // ============================================================================
 
@@ -467,23 +525,36 @@ export type SmugMugSize = keyof typeof SMUGMUG_SIZES;
 /**
  * Get SmugMug image URL at a specific size
  *
+ * Optionally routes through image proxy for:
+ * - First-party domain (eliminates third-party cookies)
+ * - WebP/AVIF conversion (when proxy supports it)
+ *
  * @param url - Original SmugMug image URL
  * @param size - Desired size suffix (Th, S, M, L, XL, X2, X3)
- * @returns Resized URL or original if not SmugMug
+ * @param useProxy - Whether to use image proxy (default: uses config)
+ * @returns Resized URL, optionally proxied
  *
  * @example
  * getSmugMugUrl('https://photos.smugmug.com/.../i-AbCdEf-O.jpg', 'L')
  * // => 'https://photos.smugmug.com/.../i-AbCdEf-L.jpg'
+ * // or with proxy: 'https://gallery.ninochavez.co/i-AbCdEf-L.jpg'
  */
-export function getSmugMugUrl(url: string | undefined | null, size: SmugMugSize): string {
+export function getSmugMugUrl(
+  url: string | undefined | null,
+  size: SmugMugSize,
+  useProxy: boolean = IMAGE_PROXY_CONFIG.enabled
+): string {
   if (!url) return '';
   if (!url.includes('smugmug.com')) return url;
 
   const sizeInfo = SMUGMUG_SIZES[size];
   // Replace any existing size suffix (including -O for original) with new size
-  return url
+  const sizedUrl = url
     .replace(/-[A-Z]\d?\./, '.')  // Remove size suffix before extension
     .replace(/(\.[^.]+)$/, `${sizeInfo.suffix}$1`);  // Add new suffix
+
+  // Optionally route through proxy
+  return useProxy ? getProxiedImageUrl(sizedUrl) : sizedUrl;
 }
 
 /**

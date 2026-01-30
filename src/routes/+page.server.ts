@@ -34,9 +34,7 @@ try {
 	// @ts-ignore - JSON import from static folder
 	const manifestModule = await import('../../static/hero-images/manifest.json');
 	heroManifest = manifestModule.default || manifestModule;
-	console.log('[Homepage] Hero manifest loaded:', heroManifest?.images?.length || 0, 'images');
-} catch (err) {
-	console.warn('[Homepage] Failed to load hero manifest:', err);
+} catch {
 	// Manifest doesn't exist yet - will use SmugMug URLs
 }
 
@@ -85,7 +83,6 @@ export const load: PageServerLoad = async () => {
     const heroManifest = loadHeroManifestServer();
     if (heroManifest && heroManifest.images.length > 0) {
       const selectedHero = selectRandomHeroFromManifest(heroManifest);
-      console.log('[Homepage] Using local hero image:', selectedHero.imageKey);
 
       // Create a hero photo object compatible with the template
       const heroPhoto = {
@@ -109,7 +106,6 @@ export const load: PageServerLoad = async () => {
     }
 
     // STRATEGY 2: Fallback to SmugMug images via Supabase query
-    console.log('[Homepage] No local hero images, falling back to SmugMug');
 
     // Calculate date 2 years ago
     const twoYearsAgo = new Date();
@@ -135,29 +131,10 @@ export const load: PageServerLoad = async () => {
       return { heroPhoto: null, featuredAlbums: [] };
     }
 
-    // Debug: Log query results to verify filtering
-    console.log(`[Homepage] Hero query returned ${data?.length || 0} photos`);
-
-    // Debug: Check if any non-volleyball photos snuck through
-    const sportTypes = new Set(data?.map(p => p.sport_type) || []);
-    console.log('[Homepage] Sports in hero pool:', Array.from(sportTypes).join(', '));
-
-    if (sportTypes.size > 1 || (sportTypes.size === 1 && !sportTypes.has('volleyball'))) {
-      console.warn('⚠️ [Homepage] NON-VOLLEYBALL photos found in hero pool!', {
-        sports: Array.from(sportTypes),
-        samplePhotos: data?.slice(0, 5).map(p => ({
-          image_key: p.image_key,
-          sport: p.sport_type,
-          album: p.album_name
-        }))
-      });
-    }
-
     if (!data || data.length === 0) {
-      console.warn('[Homepage] No high-quality volleyball photos found, using fallback strategies');
 
       // Fallback 1: Volleyball without strict quality filters
-      const { data: fallbackData, error: fallbackError } = await supabaseServer
+      const { data: fallbackData } = await supabaseServer
         .from('photo_metadata')
         .select('*')
         .eq('sport_type', 'volleyball')
@@ -171,7 +148,6 @@ export const load: PageServerLoad = async () => {
       }
 
       // Fallback 2: Any photo (multi-sport)
-      console.warn('[Homepage] No volleyball photos available, using any photo');
       const { data: anyPhotoData, error: anyPhotoError } = await supabaseServer
         .from('photo_metadata')
         .select('*')
@@ -217,19 +193,6 @@ export const load: PageServerLoad = async () => {
     // Pick random photo from the balanced set
     const randomIndex = Math.floor(Math.random() * balancedPhotos.length);
     const row = balancedPhotos[randomIndex];
-
-    // Debug: Log the selected hero photo
-    console.log('[Homepage] Selected hero photo:', {
-      image_key: row.image_key,
-      sport_type: row.sport_type,
-      album: row.album_name,
-      aspect_ratio: row.aspect_ratio,
-      quality_scores: {
-        sharpness: row.sharpness,
-        composition: row.composition_score,
-        impact: row.emotional_impact
-      }
-    });
 
     // Fetch three featured albums for homepage
     const featuredAlbums = await fetchFeaturedAlbums();
@@ -317,7 +280,6 @@ async function createEditorsChoiceAlbum() {
       .limit(50); // Get top candidates
 
     if (error || !data || data.length === 0) {
-      console.warn('[Homepage] No photos found for Editor\'s Choice album');
       return null;
     }
 
@@ -383,7 +345,6 @@ async function createActionShowcaseAlbum() {
       .limit(50);
 
     if (error || !data || data.length === 0) {
-      console.warn('[Homepage] No photos found for Action Showcase album');
       return null;
     }
 

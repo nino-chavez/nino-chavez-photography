@@ -2,8 +2,7 @@
 	import type { PageData } from './$types';
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
+	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Trophy, Calendar } from 'lucide-svelte';
 
 	interface Props {
@@ -64,16 +63,16 @@
 	<title>Nino Chavez — Volleyball Photography</title>
 	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
 
-	<!-- Preload hero image for faster LCP -->
+	<!-- Preload hero image for faster LCP (XL=1024px for split layout) -->
 	{#if data.heroPhoto?.image_url}
 		{#if data.useLocalHero && data.heroPhoto.localPaths}
 			<!-- Local WebP images - best performance, no third-party cookies -->
 			<link rel="preload" as="image" href={data.heroPhoto.localPaths.desktop} type="image/webp" fetchpriority="high" />
 		{:else}
-			<!-- SmugMug fallback -->
+			<!-- SmugMug fallback - use XL (1024px) for split layout (saves ~500KB vs X2) -->
 			{@const heroUrl = data.heroPhoto.image_url}
 			{@const optimizedUrl = heroUrl.includes('smugmug.com')
-				? heroUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-X2$1')
+				? heroUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-XL$1')
 				: heroUrl}
 			<link rel="preload" as="image" href={optimizedUrl} fetchpriority="high" />
 		{/if}
@@ -96,15 +95,10 @@
 {/if}
 
 <!-- Content Sections Below Hero -->
+<!-- PERFORMANCE: Using CSS animation instead of svelte-motion for better render performance -->
 <div class="relative z-10 bg-charcoal-950">
 	<!-- Featured Content Section -->
-	<Motion
-		let:motion
-		initial={{ opacity: 0, y: 30 }}
-		animate={{ opacity: 1, y: 0 }}
-		transition={{ ...MOTION.spring.gentle, delay: 0.6 }}
-	>
-		<section use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-fade-in-delayed">
 			<div class="text-center mb-12">
 				<h2 class="text-2xl lg:text-3xl font-bold text-white mb-4">
 					Featured Albums
@@ -252,5 +246,31 @@
 				</div>
 			{/if}
 		</section>
-	</Motion>
 </div>
+
+<style>
+	/* PERFORMANCE: CSS animation instead of JS Motion for better render performance */
+	@keyframes fade-in-delayed {
+		from {
+			opacity: 0;
+			transform: translateY(30px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.animate-fade-in-delayed {
+		animation: fade-in-delayed 0.5s ease-out 0.6s forwards;
+		opacity: 0; /* Start hidden, animation fills forward */
+	}
+
+	/* Reduce motion for accessibility */
+	@media (prefers-reduced-motion: reduce) {
+		.animate-fade-in-delayed {
+			animation: none;
+			opacity: 1;
+		}
+	}
+</style>

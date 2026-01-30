@@ -1,0 +1,24 @@
+# Cloudflare Worker: SmugMug Image Proxy
+# Deploy: npm run worker:deploy
+#
+# SETUP REQUIREMENTS:
+# 1. DNS: gallery.ninochavez.co CNAME → domains.smugmug.com (Proxy ON)
+# 2. This worker uses Routes (not Custom Domains) to intercept requests
+#
+# How it works:
+# - Non-image requests pass through to SmugMug (site remains functional)
+# - Image requests get cached at Cloudflare edge with optimized headers
+
+name = "nino-gallery-image-proxy"
+main = "image-proxy.js"
+compatibility_date = "2024-01-01"
+account_id = "b6ffcf200d56bab5749e243f024658d2"
+workers_dev = true
+
+# Route intercepts requests but passes through to origin (SmugMug)
+routes = [
+  { pattern = "gallery.ninochavez.co/*", zone_name = "ninochavez.co" }
+]
+
+[vars]
+ENVIRONMENT = "production"

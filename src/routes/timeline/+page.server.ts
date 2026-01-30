@@ -17,7 +17,6 @@ try {
 	// @ts-ignore - JSON import from static folder
 	const manifestModule = await import('../../../static/optimized/timeline/manifest.json');
 	timelineManifest = manifestModule.default || manifestModule;
-	console.log('[Timeline] Manifest loaded:', timelineManifest?.images?.length || 0, 'images');
 } catch {
 	// Manifest doesn't exist yet - will use SmugMug URLs
 }

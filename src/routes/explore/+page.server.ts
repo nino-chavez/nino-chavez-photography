@@ -20,7 +20,6 @@ try {
 	// @ts-ignore - JSON import from static folder
 	const manifestModule = await import('../../../static/optimized/explore/manifest.json');
 	exploreManifest = manifestModule.default || manifestModule;
-	console.log('[Explore] Manifest loaded:', exploreManifest?.images?.length || 0, 'images');
 } catch {
 	// Manifest doesn't exist yet - will use SmugMug URLs
 }
@@ -79,12 +78,9 @@ export const load: PageServerLoad = async ({ url, parent }) => {
   // Intelligent Filter System (Phase 1):
   // - If no filters active: use cached baseFilterCounts (fast, from layout cache)
   // - If filters active: fetch dynamic counts respecting current filters (shows compatible options)
-  const filterCountsStart = Date.now();
   const filterCounts = hasActiveFilters
     ? await getFilterCounts(filterOptions)
     : baseFilterCounts;
-  const filterCountsTime = Date.now() - filterCountsStart;
-  console.log(`[PERF] getFilterCounts took ${filterCountsTime}ms (hasActiveFilters: ${hasActiveFilters})`);
 
   // Phase 4: Auto-clear incompatible filters (server-side prevention)
   // Check each filter and clear if it has zero results with current combination
@@ -165,14 +161,11 @@ export const load: PageServerLoad = async ({ url, parent }) => {
   }
 
   // Fetch photos with pagination (after auto-clear)
-  const photosStart = Date.now();
   let photos;
 
   if (similarToImageKey) {
     // Use vector similarity search if requested
-    console.log(`[Explore] Performing vector similarity search for: ${similarToImageKey}`);
     photos = await findSimilarPhotos(similarToImageKey, pageSize);
-    // Note: Pagination is not currently supported for similarity search in this implementation
   } else {
     photos = await fetchPhotos({
       ...filterOptions,
@@ -181,21 +174,11 @@ export const load: PageServerLoad = async ({ url, parent }) => {
       sortBy,
     });
   }
-  const photosTime = Date.now() - photosStart;
-  console.log(`[PERF] fetchPhotos took ${photosTime}ms`);
 
   // Get total count for "Showing X of Y" (after auto-clear)
-  const countStart = Date.now();
-  let totalCount;
-
-  if (similarToImageKey) {
-    totalCount = photos.length;
-  } else {
-    totalCount = await getPhotoCount(filterOptions);
-  }
-  const countTime = Date.now() - countStart;
-  console.log(`[PERF] getPhotoCount took ${countTime}ms`);
-  console.log(`[PERF] TOTAL server load time: ${Date.now() - filterCountsStart}ms`);
+  const totalCount = similarToImageKey
+    ? photos.length
+    : await getPhotoCount(filterOptions);
 
   // Enhance photos with local optimized image paths when available (first page only)
   const enhancedPhotos = photos.map((photo: any) => {
