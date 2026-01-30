@@ -13,7 +13,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import TimelineV2 from '$lib/components/ui/TimelineV2.svelte';
-  import { getProxiedImageUrl } from '$lib/photo-utils';
+  import { getSmugMugUrl } from '$lib/photo-utils';
   import type { Photo } from '$types/photo';
 
   interface TimelineEntry {
@@ -94,13 +94,10 @@
   <meta name="description" content="Explore Nino Chavez's photography journey through the years - from youth sports to professional championships." />
 
   <!-- Preload featured photos from first periods for LCP optimization -->
-  <!-- Use -M size to match what OptimizedImage renders with quality="low" -->
+  <!-- Use M size to match what OptimizedImage renders with quality="low" -->
   {#each data.periods.slice(0, 2) as period}
     {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
-      {@const sizedUrl = photo.image_url?.includes('smugmug.com')
-        ? photo.image_url.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-M$1')
-        : photo.image_url}
-      {@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
+      {@const preloadUrl = photo.image_url ? getSmugMugUrl(photo.image_url, 'M') : null}
       {#if preloadUrl}
         <link
           rel="preload"

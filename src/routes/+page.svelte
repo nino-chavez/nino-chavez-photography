@@ -66,11 +66,7 @@
 
 	<!-- Preload hero image for faster LCP (X3=2400px for retina) -->
 	{#if data.heroPhoto?.image_url}
-		{@const heroUrl = data.heroPhoto.image_url}
-		{@const sizedUrl = heroUrl.includes('smugmug.com')
-			? heroUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-X3$1')
-			: heroUrl}
-		{@const optimizedUrl = sizedUrl.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
+		{@const optimizedUrl = getSmugMugUrl(data.heroPhoto.image_url, 'X3')}
 		<link rel="preload" as="image" href={optimizedUrl} fetchpriority="high" />
 	{/if}
 </svelte:head>

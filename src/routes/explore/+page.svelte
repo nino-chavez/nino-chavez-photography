@@ -31,7 +31,7 @@
 	} from '$lib/utils/filter-compatibility';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
-	import { getProxiedImageUrl } from '$lib/photo-utils';
+	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -542,10 +542,9 @@
 
 	<!-- Preload first 4 above-fold images for LCP optimization -->
 	{#each data.photos.slice(0, 4) as photo, i}
-		{@const sizedUrl = photo.image_url?.includes('smugmug.com')
-			? photo.image_url.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-M$1')
+		{@const preloadUrl = photo.image_url?.includes('smugmug.com')
+			? replaceSmugMugSize(photo.image_url, 'S')
 			: photo.image_url}
-		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		{#if preloadUrl}
 			<link
 				rel="preload"

@@ -555,13 +555,24 @@ export function getSmugMugUrl(
 
   const sizeInfo = SMUGMUG_SIZES[size];
 
-  // Strip ALL SmugMug size suffixes before adding new one
-  // Suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
-  // Some URLs have multiple suffixes (e.g., filename-Th-X2.jpg)
-  // Pattern matches: -Th, -XL, -X[2-5], or single letter -[SMLO]
-  const sizedUrl = url
-    .replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '')  // Remove all size suffixes (globally)
-    .replace(/(\.[^.]+)$/, `${sizeInfo.suffix}$1`);  // Add new suffix
+  // Extract current size from filename to replace in path
+  // SmugMug URLs have size in BOTH path segment (/L/) AND filename (-L.jpg)
+  // Pattern: .../HASH/SIZE/filename-SIZE.jpg
+  const currentSizeMatch = url.match(/-([A-Z0-9]+)\.(jpg|jpeg|png|gif)$/i);
+  const currentSize = currentSizeMatch?.[1];
+
+  let sizedUrl = url;
+  if (currentSize) {
+    // Replace both: path segment and filename suffix
+    sizedUrl = url
+      .replace(`/${currentSize}/`, `/${size}/`)          // Path segment: /L/ → /M/
+      .replace(`-${currentSize}.`, `${sizeInfo.suffix}.`); // Filename: -L.jpg → -M.jpg
+  } else {
+    // Fallback: just add suffix to filename (handles edge cases)
+    sizedUrl = url
+      .replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '')
+      .replace(/(\.[^.]+)$/, `${sizeInfo.suffix}$1`);
+  }
 
   // Optionally route through proxy
   return useProxy ? getProxiedImageUrl(sizedUrl) : sizedUrl;

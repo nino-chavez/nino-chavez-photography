@@ -5,7 +5,7 @@
 	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
-	import { getProxiedImageUrl } from '$lib/photo-utils';
+	import { getSmugMugUrl } from '$lib/photo-utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import AlbumCard from '$lib/components/gallery/AlbumCard.svelte';
@@ -93,10 +93,7 @@
 
 	<!-- Preload first 4 album cover images for LCP optimization -->
 	{#each data.albums.slice(0, 4) as album, i}
-		{@const sizedUrl = album.coverImageUrl?.includes('smugmug.com')
-			? album.coverImageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-L$1')
-			: album.coverImageUrl}
-		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
+		{@const preloadUrl = album.coverImageUrl ? getSmugMugUrl(album.coverImageUrl, 'M') : null}
 		{#if preloadUrl}
 			<link
 				rel="preload"
