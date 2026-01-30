@@ -34,8 +34,10 @@
 		onError
 	}: Props = $props();
 
-	// Check if src is already a local optimized image
-	let isLocalOptimized = $derived(src?.startsWith('/optimized/') || src?.startsWith('/hero-images/'));
+	// Check if src is already a local optimized image (with /photography base path)
+	let isLocalOptimized = $derived(
+		src?.includes('/optimized/') || src?.includes('/hero-images/')
+	);
 
 	// Quality presets determine srcset sizes
 	const qualityPresets: Record<string, SmugMugSize[]> = {
