@@ -22,12 +22,6 @@
 		categories?: string[];
 		primarySport?: string;
 		primaryCategory?: string;
-		// Optional local optimized paths (from manifest)
-		optimizedPaths?: {
-			desktop: string;
-			mobile: string;
-			thumbnail: string;
-		};
 	}
 
 	interface Props {
@@ -45,24 +39,11 @@
 	// Generate album URL for navigation
 	let albumUrl = $derived(`${base}/albums/${album.albumKey}`);
 
-	// Use local optimized images if available, otherwise fall back to SmugMug
-	let hasLocalOptimized = $derived(!!album.optimizedPaths);
+	// Generate responsive srcset for album cover via SmugMug proxy
+	let coverSrcset = $derived(generateSmugMugSrcset(album.coverImageUrl, ['M', 'L', 'XL', 'X2']));
 
-	// For local optimized images, build srcset from local paths
-	let localSrcset = $derived(
-		album.optimizedPaths
-			? `${album.optimizedPaths.thumbnail} 80w, ${album.optimizedPaths.mobile} 600w, ${album.optimizedPaths.desktop} 800w`
-			: null
-	);
-
-	// Generate responsive srcset for album cover (SmugMug fallback)
-	let smugMugSrcset = $derived(generateSmugMugSrcset(album.coverImageUrl, ['M', 'L', 'XL', 'X2']));
-	let coverSrcset = $derived(localSrcset || smugMugSrcset);
-
-	// Use local desktop or SmugMug L as main src
-	let optimizedCoverUrl = $derived(
-		album.optimizedPaths?.desktop || getSmugMugUrl(album.coverImageUrl, 'L')
-	);
+	// Use SmugMug L as main src (routed through Cloudflare proxy)
+	let optimizedCoverUrl = $derived(getSmugMugUrl(album.coverImageUrl, 'L'));
 	const albumCardSizes = SIZES_PRESETS.albumCard;
 
 	function handleClick(event: MouseEvent) {

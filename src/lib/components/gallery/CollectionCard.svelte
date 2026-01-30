@@ -29,11 +29,6 @@
 		description: string;
 		photoCount: number;
 		coverPhoto: CoverPhotoRow | null;
-		optimizedPaths?: {
-			desktop: string;
-			mobile: string;
-			thumbnail: string;
-		};
 	}
 
 	interface Props {
@@ -45,14 +40,15 @@
 
 	const isPortfolio = collection.slug === 'portfolio-excellence';
 
-	// Get optimized SmugMug image URL as fallback, routed through proxy
+	// Get optimized SmugMug image URL, routed through Cloudflare proxy
 	function getSmugMugImageUrl(imageUrl: string | null): string {
 		if (!imageUrl) return '';
 
 		// SmugMug optimization - use Large size (800px) for collection cards
-		// Route through proxy to eliminate third-party cookies
+		// Route through proxy for WebP/AVIF conversion
 		if (imageUrl.includes('smugmug.com')) {
-			const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
+			// Strip ALL SmugMug size suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
+			const baseUrl = imageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '');
 			const sizedUrl = baseUrl.replace(/(\.[^.]+)$/, '-L$1');
 			return getProxiedImageUrl(sizedUrl);
 		}
@@ -60,17 +56,8 @@
 		return imageUrl;
 	}
 
-	// Prefer local optimized images, fall back to SmugMug
-	let coverImageUrl = $derived(
-		collection.optimizedPaths?.desktop || getSmugMugImageUrl(collection.coverPhoto?.ImageUrl || null)
-	);
-
-	// Generate srcset for responsive loading
-	let srcset = $derived(
-		collection.optimizedPaths
-			? `${collection.optimizedPaths.thumbnail} 100w, ${collection.optimizedPaths.mobile} 800w, ${collection.optimizedPaths.desktop} 1200w`
-			: null
-	);
+	// Get cover image URL from SmugMug via proxy
+	let coverImageUrl = $derived(getSmugMugImageUrl(collection.coverPhoto?.ImageUrl || null));
 </script>
 
 <a
@@ -84,7 +71,6 @@
 		<div class="absolute inset-0">
 			<img
 				src={coverImageUrl}
-				srcset={srcset}
 				sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
 				alt="{collection.title} cover"
 				width="300"

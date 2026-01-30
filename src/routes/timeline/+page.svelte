@@ -94,11 +94,10 @@
   <meta name="description" content="Explore Nino Chavez's photography journey through the years - from youth sports to professional championships." />
 
   <!-- Preload featured photos from first periods for LCP optimization -->
-  <!-- Using -L (800px) for quality on retina displays, routed through proxy -->
   {#each data.periods.slice(0, 2) as period}
     {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
       {@const sizedUrl = photo.image_url?.includes('smugmug.com')
-        ? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
+        ? photo.image_url.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-L$1')
         : photo.image_url}
       {@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
       {#if preloadUrl}

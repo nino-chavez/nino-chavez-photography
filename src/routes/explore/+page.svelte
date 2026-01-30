@@ -541,12 +541,10 @@
 	<meta name="description" content="Browse {data.totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more." />
 
 	<!-- Preload first 4 above-fold images for LCP optimization -->
-	<!-- Uses local optimized WebP when available, falls back to SmugMug -M via proxy -->
 	{#each data.photos.slice(0, 4) as photo, i}
-		{@const sizedUrl = photo.optimizedPaths?.desktop
-			|| (photo.image_url?.includes('smugmug.com')
-				? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-M$1')
-				: photo.image_url)}
+		{@const sizedUrl = photo.image_url?.includes('smugmug.com')
+			? photo.image_url.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-M$1')
+			: photo.image_url}
 		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		{#if preloadUrl}
 			<link

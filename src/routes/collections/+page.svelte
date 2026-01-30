@@ -37,12 +37,10 @@
 	<meta name="description" content="Explore curated photography collections showcasing the best moments, emotions, and stories from volleyball tournaments and events." />
 
 	<!-- Preload first 3 collection cover images for LCP optimization -->
-	<!-- Uses local optimized WebP when available, falls back to SmugMug -L via proxy -->
 	{#each data.collections.slice(0, 3) as collection, i}
-		{@const sizedUrl = collection.optimizedPaths?.desktop
-			|| (collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
-				? collection.coverPhoto.ImageUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
-				: collection.coverPhoto?.ImageUrl)}
+		{@const sizedUrl = collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
+			? collection.coverPhoto.ImageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-L$1')
+			: collection.coverPhoto?.ImageUrl}
 		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		{#if preloadUrl}
 			<link

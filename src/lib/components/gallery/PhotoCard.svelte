@@ -23,17 +23,8 @@
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import type { Photo } from '$types/photo';
 
-	// Extended Photo type with optional local optimized paths
-	interface PhotoWithOptimized extends Photo {
-		optimizedPaths?: {
-			desktop: string;
-			mobile: string;
-			thumbnail: string;
-		};
-	}
-
 	interface Props {
-		photo: PhotoWithOptimized;
+		photo: Photo;
 		index?: number;
 		onclick?: (photo: Photo) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images
@@ -41,13 +32,10 @@
 
 	let { photo, index = 0, onclick, priority = false }: Props = $props();
 
-	// Use local optimized images if available, otherwise fall back to SmugMug
-	let hasLocalOptimized = $derived(!!photo.optimizedPaths);
-
 	// Use image_url for display, thumbnail as blur placeholder
-	// Prefer local optimized paths when available
-	let imageSrc = $derived(photo.optimizedPaths?.desktop || photo.image_url);
-	let thumbnailSrc = $derived(photo.optimizedPaths?.thumbnail || photo.thumbnail_url);
+	// All images now served via Cloudflare proxy with WebP/AVIF conversion
+	let imageSrc = $derived(photo.image_url);
+	let thumbnailSrc = $derived(photo.thumbnail_url);
 
 	// Responsive sizes for gallery grid layout
 	const galleryCardSizes = SIZES_PRESETS.galleryCard;
