@@ -84,9 +84,6 @@
   let thumbnailUrl = $derived(getOptimizedUrl(backgroundImage, 'thumbnail'));
   let mobileUrl = $derived(getOptimizedUrl(backgroundImage, 'mobile'));
   let desktopUrl = $derived(getOptimizedUrl(backgroundImage, 'desktop'));
-
-  // Image loading state
-  let imageLoaded = $state(false);
 </script>
 
 <!-- Split Hero Section -->
@@ -145,20 +142,16 @@
         ></div>
       {/if}
 
-      <!-- Main image -->
+      <!-- Main image - NO opacity:0 to avoid delaying LCP -->
       {#if desktopUrl}
         <img
           src={desktopUrl}
           alt="Volleyball action photography"
           width="1024"
           height="768"
-          class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
-          class:opacity-0={!imageLoaded}
-          class:opacity-100={imageLoaded}
+          class="absolute inset-0 w-full h-full object-cover"
           fetchpriority="high"
-          decoding="async"
-          onload={() => { imageLoaded = true; }}
-          onerror={() => { imageLoaded = true; }}
+          decoding="sync"
         />
       {/if}
 
@@ -181,20 +174,16 @@
         ></div>
       {/if}
 
-      <!-- Mobile image -->
+      <!-- Mobile image - NO opacity:0 to avoid delaying LCP -->
       {#if mobileUrl}
         <img
           src={mobileUrl}
           alt="Volleyball action photography"
           width="600"
           height="400"
-          class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
-          class:opacity-0={!imageLoaded}
-          class:opacity-100={imageLoaded}
+          class="absolute inset-0 w-full h-full object-cover"
           fetchpriority="high"
-          decoding="async"
-          onload={() => { imageLoaded = true; }}
-          onerror={() => { imageLoaded = true; }}
+          decoding="sync"
         />
       {/if}
 
