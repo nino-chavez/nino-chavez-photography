@@ -2,15 +2,11 @@
  * Homepage Server Load Function
  * Fetches a random portfolio-worthy photo for the hero section with album diversity
  *
- * Hero Photo Selection Strategy (with Local Image Optimization):
- * 1. FIRST: Check for locally-cached hero images in static/hero-images/
- *    - These are pre-downloaded and converted to WebP during build
- *    - Eliminates SmugMug third-party cookies
- *    - Improves LCP by ~300ms
- * 2. FALLBACK: Fetch from Supabase if no local images exist
- *    - Fetch 500 high-quality volleyball photos with strict criteria
- *    - Group by album for diversity (max 10 per album)
- *    - Random selection from balanced pool
+ * Hero Photo Selection Strategy:
+ * - Fetch 500 high-quality volleyball photos with strict criteria from Supabase
+ * - Group by album for diversity (max 10 per album)
+ * - Random selection from balanced pool
+ * - Images served via Cloudflare Worker proxy with WebP/AVIF conversion
  *
  * Quality Criteria:
  * - Technical quality (sharpness ≥ 8.0)
@@ -25,88 +21,9 @@
 import type { PageServerLoad } from './$types';
 import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
-import type { HeroImageManifest, HeroImage } from '$lib/hero-images';
-
-// Import manifest at build time using top-level await
-// This pattern works reliably on Vercel serverless
-let heroManifest: HeroImageManifest | null = null;
-try {
-	// @ts-ignore - JSON import from static folder
-	const manifestModule = await import('../../static/hero-images/manifest.json');
-	heroManifest = manifestModule.default || manifestModule;
-} catch {
-	// Manifest doesn't exist yet - will use SmugMug URLs
-}
-
-/**
- * Get the hero images manifest (loaded at build time)
- */
-function loadHeroManifestServer(): HeroImageManifest | null {
-  if (!heroManifest || !heroManifest.images || heroManifest.images.length === 0) {
-    return null;
-  }
-  return heroManifest;
-}
-
-/**
- * Select a random hero image from the manifest with album diversity
- */
-function selectRandomHeroFromManifest(manifest: HeroImageManifest): HeroImage {
-  const images = manifest.images;
-
-  // Group by album to ensure diversity
-  const albumGroups = new Map<string, HeroImage[]>();
-  for (const img of images) {
-    const key = img.albumKey || 'unknown';
-    if (!albumGroups.has(key)) {
-      albumGroups.set(key, []);
-    }
-    albumGroups.get(key)!.push(img);
-  }
-
-  // Flatten with max 3 per album for diversity
-  const MAX_PER_ALBUM = 3;
-  const diversePool: HeroImage[] = [];
-  for (const albumImages of albumGroups.values()) {
-    const sorted = albumImages.sort((a, b) => b.priority - a.priority);
-    diversePool.push(...sorted.slice(0, MAX_PER_ALBUM));
-  }
-
-  // Random selection
-  const randomIndex = Math.floor(Math.random() * diversePool.length);
-  return diversePool[randomIndex];
-}
 
 export const load: PageServerLoad = async () => {
   try {
-    // STRATEGY 1: Use locally-cached hero images (best for LCP + no third-party cookies)
-    const heroManifest = loadHeroManifestServer();
-    if (heroManifest && heroManifest.images.length > 0) {
-      const selectedHero = selectRandomHeroFromManifest(heroManifest);
-
-      // Create a hero photo object compatible with the template
-      const heroPhoto = {
-        id: selectedHero.photoId,
-        image_key: selectedHero.imageKey,
-        image_url: selectedHero.paths.desktop,
-        thumbnail_url: selectedHero.paths.thumbnail,
-        title: '',
-        caption: '',
-        keywords: [],
-        created_at: '',
-        metadata: {} as any,
-        // Local image paths for optimized loading
-        localPaths: selectedHero.paths,
-      };
-
-      // Fetch featured albums (these still come from Supabase)
-      const featuredAlbums = await fetchFeaturedAlbums();
-
-      return { heroPhoto, featuredAlbums, useLocalHero: true };
-    }
-
-    // STRATEGY 2: Fallback to SmugMug images via Supabase query
-
     // Calculate date 2 years ago
     const twoYearsAgo = new Date();
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
@@ -197,10 +114,10 @@ export const load: PageServerLoad = async () => {
     // Fetch three featured albums for homepage
     const featuredAlbums = await fetchFeaturedAlbums();
 
-    return { heroPhoto: transformPhotoRow(row), featuredAlbums, useLocalHero: false };
+    return { heroPhoto: transformPhotoRow(row), featuredAlbums };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
-    return { heroPhoto: null, featuredAlbums: [], useLocalHero: false };
+    return { heroPhoto: null, featuredAlbums: [] };
   }
 };
 

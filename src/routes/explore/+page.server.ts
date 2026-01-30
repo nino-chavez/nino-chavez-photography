@@ -13,27 +13,6 @@
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, type FilterCounts } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
-// Import optimized explore images manifest at build time
-// This is optional - pages work without it, just with SmugMug images
-let exploreManifest: { images: Array<{ imageKey: string; paths: { desktop: string; mobile: string; thumbnail: string } }> } | null = null;
-try {
-	// @ts-ignore - JSON import from static folder
-	const manifestModule = await import('../../../static/optimized/explore/manifest.json');
-	exploreManifest = manifestModule.default || manifestModule;
-} catch {
-	// Manifest doesn't exist yet - will use SmugMug URLs
-}
-
-// Build a lookup map for O(1) access
-const optimizedExploreImages = new Map<string, { desktop: string; mobile: string; thumbnail: string }>();
-if (exploreManifest?.images) {
-	for (const img of exploreManifest.images) {
-		if (img.imageKey) {
-			optimizedExploreImages.set(img.imageKey, img.paths);
-		}
-	}
-}
-
 export const load: PageServerLoad = async ({ url, parent }) => {
   // Get cached data from parent layout
   const { sports, categories, baseFilterCounts } = await parent();
@@ -180,23 +159,8 @@ export const load: PageServerLoad = async ({ url, parent }) => {
     ? photos.length
     : await getPhotoCount(filterOptions);
 
-  // Enhance photos with local optimized image paths when available (first page only)
-  const enhancedPhotos = photos.map((photo: any) => {
-    const optimizedPaths = optimizedExploreImages.get(photo.image_key);
-    if (optimizedPaths) {
-      return {
-        ...photo,
-        optimizedPaths,
-        // Override URLs with local optimized versions for faster LCP
-        image_url: optimizedPaths.desktop,
-        thumbnail_url: optimizedPaths.thumbnail,
-      };
-    }
-    return photo;
-  });
-
   return {
-    photos: enhancedPhotos,
+    photos,
     totalCount,
     currentPage: page,
     pageSize,

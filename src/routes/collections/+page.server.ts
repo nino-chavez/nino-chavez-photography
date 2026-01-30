@@ -15,28 +15,6 @@ import { supabaseServer } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 import type { CoverPhotoRow } from '$types/database';
 
-// Import optimized collection covers manifest at build time
-// This is optional - pages work without it, just with SmugMug images
-let collectionsManifest: { images: Array<{ imageKey: string; paths: { desktop: string; mobile: string; thumbnail: string } }> } | null = null;
-try {
-	// @ts-ignore - JSON import from static folder
-	const manifestModule = await import('../../../static/optimized/collections/manifest.json');
-	collectionsManifest = manifestModule.default || manifestModule;
-	console.log('[Collections] Manifest loaded:', collectionsManifest?.images?.length || 0, 'images');
-} catch {
-	// Manifest doesn't exist yet - will use SmugMug URLs
-}
-
-// Build a lookup map for O(1) access
-const optimizedCollectionCovers = new Map<string, { desktop: string; mobile: string; thumbnail: string }>();
-if (collectionsManifest?.images) {
-	for (const img of collectionsManifest.images) {
-		if (img.imageKey) {
-			optimizedCollectionCovers.set(img.imageKey, img.paths);
-		}
-	}
-}
-
 // Collection definitions (HYBRID: Story + Quality)
 // Matching generate-collections.ts with quality thresholds
 const COLLECTIONS = [
@@ -218,16 +196,8 @@ export const load: PageServerLoad = async () => {
 	// Execute all queries in parallel (massive speedup)
 	const collectionsWithPhotos = await Promise.all(collectionQueries);
 
-	// Filter out empty collections and add optimized paths
-	const activeCollections = collectionsWithPhotos
-		.filter((c) => c.photoCount > 0)
-		.map((collection) => {
-			const optimizedPaths = optimizedCollectionCovers.get(collection.slug);
-			return {
-				...collection,
-				optimizedPaths: optimizedPaths || undefined,
-			};
-		});
+	// Filter out empty collections
+	const activeCollections = collectionsWithPhotos.filter((c) => c.photoCount > 0);
 
 	return {
 		collections: activeCollections,
