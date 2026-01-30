@@ -49,22 +49,50 @@ export const SMUGMUG_SIZES: Record<SmugMugSize, SmugMugSizeConfig> = {
 };
 
 /**
- * Extract the current size code from a SmugMug URL
+ * Extract size codes from a SmugMug URL (both path and filename)
+ *
+ * SmugMug URLs can have DIFFERENT sizes in path vs filename:
+ * .../D/photo-L.jpg means path=D, filename=L
+ * SmugMug uses the PATH to determine actual image size!
  *
  * @example
- * extractSize('https://photos.smugmug.com/.../i-ABC123/0/.../D/i-ABC123-D.jpg')
- * // Returns: 'D'
+ * extractSize('https://photos.smugmug.com/.../D/photo-L.jpg')
+ * // Returns: { path: 'D', filename: 'L' }
+ */
+export function extractSmugMugSizes(url: string): { path: SmugMugSize | null; filename: SmugMugSize | null } {
+  if (!url) return { path: null, filename: null };
+
+  // Extract from path: /SIZE/ where SIZE is one of our known sizes
+  // Pattern: /HASH/SIZE/filename where SIZE is Th, S, M, L, D, X2, X3, X4, X5, O, B
+  const pathMatch = url.match(/\/([A-Z][a-z0-9]?|[A-Z]\d)\/[^/]+\.(jpg|jpeg|png|gif)$/i);
+  let pathSize: SmugMugSize | null = null;
+  if (pathMatch) {
+    const code = pathMatch[1];
+    if (Object.keys(SMUGMUG_SIZES).includes(code)) {
+      pathSize = code as SmugMugSize;
+    }
+  }
+
+  // Extract from filename: -SIZE.jpg
+  const filenameMatch = url.match(/-([A-Z][a-z0-9]?|[A-Z]\d)\.(jpg|jpeg|png|gif)$/i);
+  let filenameSize: SmugMugSize | null = null;
+  if (filenameMatch) {
+    const code = filenameMatch[1];
+    if (Object.keys(SMUGMUG_SIZES).includes(code)) {
+      filenameSize = code as SmugMugSize;
+    }
+  }
+
+  return { path: pathSize, filename: filenameSize };
+}
+
+/**
+ * Extract the current size code from a SmugMug URL
+ * Prefers path size over filename size (SmugMug uses path for actual size)
  */
 export function extractSmugMugSize(url: string): SmugMugSize | null {
-  if (!url) return null;
-
-  // Match pattern: filename-SIZE.jpg (extract from filename, not path)
-  // This handles URLs with security hashes: /0/HASH/SIZE/filename-SIZE.jpg
-  const match = url.match(/-([A-Z0-9]+)\.(jpg|jpeg|png|gif)$/i);
-  if (!match) return null;
-
-  const sizeCode = match[1];
-  return Object.keys(SMUGMUG_SIZES).includes(sizeCode) ? (sizeCode as SmugMugSize) : null;
+  const sizes = extractSmugMugSizes(url);
+  return sizes.path || sizes.filename;
 }
 
 /**
@@ -78,18 +106,27 @@ export function extractSmugMugSize(url: string): SmugMugSize | null {
 export function replaceSmugMugSize(url: string, newSize: SmugMugSize): string {
   if (!url) return url;
 
-  const currentSize = extractSmugMugSize(url);
-  if (!currentSize) {
+  const sizes = extractSmugMugSizes(url);
+
+  if (!sizes.path && !sizes.filename) {
     console.warn('[SmugMug Optimizer] Could not extract size from URL:', url);
     // Still route through proxy even if size extraction fails
     return url.includes('smugmug.com') ? getProxiedImageUrl(url) : url;
   }
 
-  // Replace both occurrences: in path and in filename
-  // Pattern handles security hash: /0/HASH/OLD/filename-OLD.jpg → /0/HASH/NEW/filename-NEW.jpg
-  const optimizedUrl = url
-    .replace(`/${currentSize}/`, `/${newSize}/`)  // Replace in path (after hash)
-    .replace(`-${currentSize}.`, `-${newSize}.`); // Replace in filename
+  // Replace BOTH path and filename sizes (they may be different!)
+  // SmugMug uses the PATH to determine actual image size
+  let optimizedUrl = url;
+
+  // Replace path size (this is what SmugMug actually uses)
+  if (sizes.path) {
+    optimizedUrl = optimizedUrl.replace(`/${sizes.path}/`, `/${newSize}/`);
+  }
+
+  // Replace filename size (for consistency, but path is what matters)
+  if (sizes.filename) {
+    optimizedUrl = optimizedUrl.replace(`-${sizes.filename}.`, `-${newSize}.`);
+  }
 
   // Route through our Cloudflare proxy for first-party domain
   return getProxiedImageUrl(optimizedUrl);
