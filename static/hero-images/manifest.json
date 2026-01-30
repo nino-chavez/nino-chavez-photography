@@ -1,6 +1,6 @@
 {
-  "version": 1769733174719,
-  "generatedAt": "2026-01-30T00:32:54.719Z",
+  "version": 1769734892847,
+  "generatedAt": "2026-01-30T01:01:32.847Z",
   "images": [
     {
       "id": 1,
@@ -11,9 +11,9 @@
       "qualityScore": 9,
       "priority": 20,
       "paths": {
-        "desktop": "/hero-images/hero-001-desktop.webp",
-        "mobile": "/hero-images/hero-001-mobile.webp",
-        "thumbnail": "/hero-images/hero-001-thumb.webp"
+        "desktop": "/photography/hero-images/hero-001-desktop.webp",
+        "mobile": "/photography/hero-images/hero-001-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-001-thumb.webp"
       }
     },
     {
@@ -25,9 +25,9 @@
       "qualityScore": 9,
       "priority": 19,
       "paths": {
-        "desktop": "/hero-images/hero-002-desktop.webp",
-        "mobile": "/hero-images/hero-002-mobile.webp",
-        "thumbnail": "/hero-images/hero-002-thumb.webp"
+        "desktop": "/photography/hero-images/hero-002-desktop.webp",
+        "mobile": "/photography/hero-images/hero-002-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-002-thumb.webp"
       }
     },
     {
@@ -39,9 +39,9 @@
       "qualityScore": 9,
       "priority": 18,
       "paths": {
-        "desktop": "/hero-images/hero-003-desktop.webp",
-        "mobile": "/hero-images/hero-003-mobile.webp",
-        "thumbnail": "/hero-images/hero-003-thumb.webp"
+        "desktop": "/photography/hero-images/hero-003-desktop.webp",
+        "mobile": "/photography/hero-images/hero-003-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-003-thumb.webp"
       }
     },
     {
@@ -53,9 +53,9 @@
       "qualityScore": 9,
       "priority": 17,
       "paths": {
-        "desktop": "/hero-images/hero-004-desktop.webp",
-        "mobile": "/hero-images/hero-004-mobile.webp",
-        "thumbnail": "/hero-images/hero-004-thumb.webp"
+        "desktop": "/photography/hero-images/hero-004-desktop.webp",
+        "mobile": "/photography/hero-images/hero-004-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-004-thumb.webp"
       }
     },
     {
@@ -67,9 +67,9 @@
       "qualityScore": 9,
       "priority": 16,
       "paths": {
-        "desktop": "/hero-images/hero-005-desktop.webp",
-        "mobile": "/hero-images/hero-005-mobile.webp",
-        "thumbnail": "/hero-images/hero-005-thumb.webp"
+        "desktop": "/photography/hero-images/hero-005-desktop.webp",
+        "mobile": "/photography/hero-images/hero-005-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-005-thumb.webp"
       }
     },
     {
@@ -81,9 +81,9 @@
       "qualityScore": 9,
       "priority": 15,
       "paths": {
-        "desktop": "/hero-images/hero-006-desktop.webp",
-        "mobile": "/hero-images/hero-006-mobile.webp",
-        "thumbnail": "/hero-images/hero-006-thumb.webp"
+        "desktop": "/photography/hero-images/hero-006-desktop.webp",
+        "mobile": "/photography/hero-images/hero-006-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-006-thumb.webp"
       }
     },
     {
@@ -95,9 +95,9 @@
       "qualityScore": 9,
       "priority": 14,
       "paths": {
-        "desktop": "/hero-images/hero-007-desktop.webp",
-        "mobile": "/hero-images/hero-007-mobile.webp",
-        "thumbnail": "/hero-images/hero-007-thumb.webp"
+        "desktop": "/photography/hero-images/hero-007-desktop.webp",
+        "mobile": "/photography/hero-images/hero-007-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-007-thumb.webp"
       }
     },
     {
@@ -109,9 +109,9 @@
       "qualityScore": 9,
       "priority": 13,
       "paths": {
-        "desktop": "/hero-images/hero-008-desktop.webp",
-        "mobile": "/hero-images/hero-008-mobile.webp",
-        "thumbnail": "/hero-images/hero-008-thumb.webp"
+        "desktop": "/photography/hero-images/hero-008-desktop.webp",
+        "mobile": "/photography/hero-images/hero-008-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-008-thumb.webp"
       }
     },
     {
@@ -123,9 +123,9 @@
       "qualityScore": 9,
       "priority": 12,
       "paths": {
-        "desktop": "/hero-images/hero-009-desktop.webp",
-        "mobile": "/hero-images/hero-009-mobile.webp",
-        "thumbnail": "/hero-images/hero-009-thumb.webp"
+        "desktop": "/photography/hero-images/hero-009-desktop.webp",
+        "mobile": "/photography/hero-images/hero-009-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-009-thumb.webp"
       }
     },
     {
@@ -137,9 +137,9 @@
       "qualityScore": 9,
       "priority": 11,
       "paths": {
-        "desktop": "/hero-images/hero-010-desktop.webp",
-        "mobile": "/hero-images/hero-010-mobile.webp",
-        "thumbnail": "/hero-images/hero-010-thumb.webp"
+        "desktop": "/photography/hero-images/hero-010-desktop.webp",
+        "mobile": "/photography/hero-images/hero-010-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-010-thumb.webp"
       }
     },
     {
@@ -151,9 +151,9 @@
       "qualityScore": 9.33,
       "priority": 10,
       "paths": {
-        "desktop": "/hero-images/hero-011-desktop.webp",
-        "mobile": "/hero-images/hero-011-mobile.webp",
-        "thumbnail": "/hero-images/hero-011-thumb.webp"
+        "desktop": "/photography/hero-images/hero-011-desktop.webp",
+        "mobile": "/photography/hero-images/hero-011-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-011-thumb.webp"
       }
     },
     {
@@ -165,9 +165,9 @@
       "qualityScore": 9.33,
       "priority": 9,
       "paths": {
-        "desktop": "/hero-images/hero-012-desktop.webp",
-        "mobile": "/hero-images/hero-012-mobile.webp",
-        "thumbnail": "/hero-images/hero-012-thumb.webp"
+        "desktop": "/photography/hero-images/hero-012-desktop.webp",
+        "mobile": "/photography/hero-images/hero-012-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-012-thumb.webp"
       }
     },
     {
@@ -179,9 +179,9 @@
       "qualityScore": 9.33,
       "priority": 8,
       "paths": {
-        "desktop": "/hero-images/hero-013-desktop.webp",
-        "mobile": "/hero-images/hero-013-mobile.webp",
-        "thumbnail": "/hero-images/hero-013-thumb.webp"
+        "desktop": "/photography/hero-images/hero-013-desktop.webp",
+        "mobile": "/photography/hero-images/hero-013-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-013-thumb.webp"
       }
     },
     {
@@ -193,9 +193,9 @@
       "qualityScore": 9.33,
       "priority": 7,
       "paths": {
-        "desktop": "/hero-images/hero-014-desktop.webp",
-        "mobile": "/hero-images/hero-014-mobile.webp",
-        "thumbnail": "/hero-images/hero-014-thumb.webp"
+        "desktop": "/photography/hero-images/hero-014-desktop.webp",
+        "mobile": "/photography/hero-images/hero-014-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-014-thumb.webp"
       }
     },
     {
@@ -207,9 +207,9 @@
       "qualityScore": 9.33,
       "priority": 6,
       "paths": {
-        "desktop": "/hero-images/hero-015-desktop.webp",
-        "mobile": "/hero-images/hero-015-mobile.webp",
-        "thumbnail": "/hero-images/hero-015-thumb.webp"
+        "desktop": "/photography/hero-images/hero-015-desktop.webp",
+        "mobile": "/photography/hero-images/hero-015-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-015-thumb.webp"
       }
     },
     {
@@ -221,9 +221,9 @@
       "qualityScore": 9.33,
       "priority": 5,
       "paths": {
-        "desktop": "/hero-images/hero-016-desktop.webp",
-        "mobile": "/hero-images/hero-016-mobile.webp",
-        "thumbnail": "/hero-images/hero-016-thumb.webp"
+        "desktop": "/photography/hero-images/hero-016-desktop.webp",
+        "mobile": "/photography/hero-images/hero-016-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-016-thumb.webp"
       }
     },
     {
@@ -235,9 +235,9 @@
       "qualityScore": 9.33,
       "priority": 4,
       "paths": {
-        "desktop": "/hero-images/hero-017-desktop.webp",
-        "mobile": "/hero-images/hero-017-mobile.webp",
-        "thumbnail": "/hero-images/hero-017-thumb.webp"
+        "desktop": "/photography/hero-images/hero-017-desktop.webp",
+        "mobile": "/photography/hero-images/hero-017-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-017-thumb.webp"
       }
     },
     {
@@ -249,9 +249,9 @@
       "qualityScore": 9.33,
       "priority": 3,
       "paths": {
-        "desktop": "/hero-images/hero-018-desktop.webp",
-        "mobile": "/hero-images/hero-018-mobile.webp",
-        "thumbnail": "/hero-images/hero-018-thumb.webp"
+        "desktop": "/photography/hero-images/hero-018-desktop.webp",
+        "mobile": "/photography/hero-images/hero-018-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-018-thumb.webp"
       }
     },
     {
@@ -263,9 +263,9 @@
       "qualityScore": 9.33,
       "priority": 2,
       "paths": {
-        "desktop": "/hero-images/hero-019-desktop.webp",
-        "mobile": "/hero-images/hero-019-mobile.webp",
-        "thumbnail": "/hero-images/hero-019-thumb.webp"
+        "desktop": "/photography/hero-images/hero-019-desktop.webp",
+        "mobile": "/photography/hero-images/hero-019-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-019-thumb.webp"
       }
     },
     {
@@ -277,9 +277,9 @@
       "qualityScore": 9.33,
       "priority": 1,
       "paths": {
-        "desktop": "/hero-images/hero-020-desktop.webp",
-        "mobile": "/hero-images/hero-020-mobile.webp",
-        "thumbnail": "/hero-images/hero-020-thumb.webp"
+        "desktop": "/photography/hero-images/hero-020-desktop.webp",
+        "mobile": "/photography/hero-images/hero-020-mobile.webp",
+        "thumbnail": "/photography/hero-images/hero-020-thumb.webp"
       }
     }
   ]

@@ -438,11 +438,12 @@ async function processCategory(category: Category): Promise<ImageManifest> {
 
       const imageBuffer = await downloadImage(sourceUrl);
 
-      // Define output paths
+      // Define output paths (include /photography base path for production)
+      const basePath = '/photography';
       const paths = {
-        desktop: `/optimized/${category}/${baseFilename}-desktop.webp`,
-        mobile: `/optimized/${category}/${baseFilename}-mobile.webp`,
-        thumbnail: `/optimized/${category}/${baseFilename}-thumb.webp`,
+        desktop: `${basePath}/optimized/${category}/${baseFilename}-desktop.webp`,
+        mobile: `${basePath}/optimized/${category}/${baseFilename}-mobile.webp`,
+        thumbnail: `${basePath}/optimized/${category}/${baseFilename}-thumb.webp`,
       };
 
       // Process all sizes

@@ -1,6 +1,6 @@
 {
-  "version": 1769734617538,
-  "generatedAt": "2026-01-30T00:56:57.538Z",
+  "version": 1769734919450,
+  "generatedAt": "2026-01-30T01:01:59.450Z",
   "category": "explore",
   "images": [
     {
@@ -12,9 +12,9 @@
       "priority": 24,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/WVB-North-Central-vs-Carthage-092026/i-QRCVdfK/0/KMdn6XWJ24vM8sVCS34tfZgb8bDpKdnK8FZbrvJgz/D/ncc-cardinals-wvb-48-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-001-desktop.webp",
-        "mobile": "/optimized/explore/explore-001-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-001-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-001-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-001-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-001-thumb.webp"
       }
     },
     {
@@ -26,9 +26,9 @@
       "priority": 23,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/WVB-North-Central-vs-Carthage-092026/i-Wzpb9tg/0/LdsbrN7VJ4hW2T92wDhjNkFxp5p8Qn35LNrW3F38k/D/ncc-cardinals-wvb-19-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-002-desktop.webp",
-        "mobile": "/optimized/explore/explore-002-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-002-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-002-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-002-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-002-thumb.webp"
       }
     },
     {
@@ -40,9 +40,9 @@
       "priority": 22,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/WMVB-NCC-AU-20250909/i-HZN8QqJ/0/NGmqLTxS36VZ6H85DKvTgFP4PnKJWHgHXJcDbzHgV/D/wmvb-ncc-vs-au-095-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-003-desktop.webp",
-        "mobile": "/optimized/explore/explore-003-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-003-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-003-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-003-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-003-thumb.webp"
       }
     },
     {
@@ -54,9 +54,9 @@
       "priority": 21,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/WMVB-NCC-AU-20250909/i-wpj4b4w/0/KPp8ndw6z73xVzb4ZBkZFwTC7zjf7pN9bLkZWqTBD/D/wmvb-ncc-vs-au-010-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-004-desktop.webp",
-        "mobile": "/optimized/explore/explore-004-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-004-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-004-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-004-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-004-thumb.webp"
       }
     },
     {
@@ -68,9 +68,9 @@
       "priority": 20,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/UWM-Panther-Invitational-2-20250905/i-tK4Kk3S/0/LvKPK8zcsvKDQdXBx77j3LZ3qKpHKhqmhr6rPFNSh/D/uwm-invitational-085-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-005-desktop.webp",
-        "mobile": "/optimized/explore/explore-005-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-005-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-005-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-005-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-005-thumb.webp"
       }
     },
     {
@@ -82,9 +82,9 @@
       "priority": 19,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/UWM-Panther-Invitational-2-20250905/i-n63s49R/0/KqVvg22bdJh5fFJJg6GbNxLZ3G27f4fVRgtKn5zbR/D/uwm-invitational-035-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-006-desktop.webp",
-        "mobile": "/optimized/explore/explore-006-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-006-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-006-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-006-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-006-thumb.webp"
       }
     },
     {
@@ -96,9 +96,9 @@
       "priority": 18,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/UWM-Panther-Invitational-2-20250905/i-bSFWHkN/0/NGKwZ6SvjdTS6GWrXQRMGx9R2rVGPfghrjsCZKVSw/D/uwm-invitational-034-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-007-desktop.webp",
-        "mobile": "/optimized/explore/explore-007-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-007-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-007-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-007-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-007-thumb.webp"
       }
     },
     {
@@ -110,9 +110,9 @@
       "priority": 17,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/UW-Milwaukee-Panther-Invitational-20250905/i-9KdcVHg/0/MchQTzB6Vnftp9dfZ4GvTkhhpK3SdRZ9tjXhq2nZ3/D/uwm-panthers-033-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-008-desktop.webp",
-        "mobile": "/optimized/explore/explore-008-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-008-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-008-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-008-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-008-thumb.webp"
       }
     },
     {
@@ -124,9 +124,9 @@
       "priority": 16,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Grass/LPO/Bell-Pepper-Open-20250719/i-zMDm9Gd/0/KZnT4fn3fXPpgZSRmJxkSkFRZG9BgTnRcxhmnqTQt/D/lpo-green-pepper-2025-067-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-009-desktop.webp",
-        "mobile": "/optimized/explore/explore-009-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-009-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-009-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-009-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-009-thumb.webp"
       }
     },
     {
@@ -138,9 +138,9 @@
       "priority": 15,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Grass/LPO/Bell-Pepper-Open-20250719/i-TF8WpVN/0/MzCcptgXTb43RWCqwPwqrBKVLrSvpqBvqMRkXZbt6/D/lpo-green-pepper-2025-039-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-010-desktop.webp",
-        "mobile": "/optimized/explore/explore-010-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-010-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-010-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-010-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-010-thumb.webp"
       }
     },
     {
@@ -152,9 +152,9 @@
       "priority": 14,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/SouthElginSectional2025/i-8JcmjT7/0/LDQkrKTJqDHmMwSXsWbzgmjX94v9GVphdJ5DgbTw3/D/south-elgin-sectional-75-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-011-desktop.webp",
-        "mobile": "/optimized/explore/explore-011-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-011-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-011-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-011-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-011-thumb.webp"
       }
     },
     {
@@ -166,9 +166,9 @@
       "priority": 13,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/SouthElginSectional2025/i-6kR4K7r/0/NNjcmch257hwQ3xfsq4hbQVHjhk6Q3kzZWRRS4WHq/D/south-elgin-sectional-60-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-012-desktop.webp",
-        "mobile": "/optimized/explore/explore-012-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-012-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-012-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-012-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-012-thumb.webp"
       }
     },
     {
@@ -180,9 +180,9 @@
       "priority": 12,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/SouthElginSectional2025/i-TrxGLDW/0/LPc8r4JFrNnZhKxgDD8KcCgw2pzdkmkVXN7jqHz6v/D/south-elgin-sectional-61-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-013-desktop.webp",
-        "mobile": "/optimized/explore/explore-013-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-013-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-013-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-013-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-013-thumb.webp"
       }
     },
     {
@@ -194,9 +194,9 @@
       "priority": 11,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Grass/KrushSuburbanSlam2025/i-f3fqZrD/0/MTcKtFvcsfpD3sRpTXXNPrngfXskm5TBxnq2q96Lb/D/krush-suburban-slam-039-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-014-desktop.webp",
-        "mobile": "/optimized/explore/explore-014-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-014-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-014-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-014-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-014-thumb.webp"
       }
     },
     {
@@ -208,9 +208,9 @@
       "priority": 10,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/DGN-vs-PSHS-Regional-Championship-20250529/i-SGD7BML/0/LRr5VcPxsfC7xDT48gpHkRwfPkcqbshJ9hP4V92H5/D/dgn-pshs-regional-098-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-015-desktop.webp",
-        "mobile": "/optimized/explore/explore-015-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-015-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-015-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-015-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-015-thumb.webp"
       }
     },
     {
@@ -222,9 +222,9 @@
       "priority": 9,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/DGN-vs-PSHS-Regional-Championship-20250529/i-FLFbvhr/0/NMmhxDs4FQ9PfshZJkMn5DjzFpKHZwkqQCw6WWhMj/D/dgn-pshs-regional-091-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-016-desktop.webp",
-        "mobile": "/optimized/explore/explore-016-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-016-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-016-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-016-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-016-thumb.webp"
       }
     },
     {
@@ -236,9 +236,9 @@
       "priority": 8,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/DGN-vs-PSHS-Regional-Championship-20250529/i-9ssrmJS/0/KWm9ZKmrQXHXkBzPBcFxshrrwZrRk5hw2b667V9Mp/D/dgn-pshs-regional-040-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-017-desktop.webp",
-        "mobile": "/optimized/explore/explore-017-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-017-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-017-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-017-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-017-thumb.webp"
       }
     },
     {
@@ -250,9 +250,9 @@
       "priority": 7,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/DGN-vs-PSHS-Regional-Championship-20250529/i-77JppRQ/0/NWNvC4DXCnWDpfsZfJFPqszjBDrMt3NMRxLh4PBTJ/D/dgn-pshs-regional-017-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-018-desktop.webp",
-        "mobile": "/optimized/explore/explore-018-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-018-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-018-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-018-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-018-thumb.webp"
       }
     },
     {
@@ -264,9 +264,9 @@
       "priority": 6,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/High-School-Club/DGN-vs-PSHS-Regional-Championship-20250529/i-sSgRWRM/0/Nd8bM8NSpZ7xVp7bQ5MfQG9jdLTTGt78pGsKvZH94/D/dgn-pshs-regional-015-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-019-desktop.webp",
-        "mobile": "/optimized/explore/explore-019-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-019-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-019-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-019-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-019-thumb.webp"
       }
     },
     {
@@ -278,9 +278,9 @@
       "priority": 5,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/Lewis-OhioState-20250322/i-TdnFDgL/0/MPNRDz2nqH9jcJvxqD9gGdtM3WzVKnkdpdP3wdBHP/D/lewis-mvb-vs-ohio-042-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-020-desktop.webp",
-        "mobile": "/optimized/explore/explore-020-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-020-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-020-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-020-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-020-thumb.webp"
       }
     },
     {
@@ -292,9 +292,9 @@
       "priority": 4,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/630-Breeze-Best-of-the-Midwest-20250322/i-mpCDqFH/0/LM76mm5q3888H6qsGQdqVP3H48sHb4PWJ2QqS8M7x/D/630-breeze-bmw-37-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-021-desktop.webp",
-        "mobile": "/optimized/explore/explore-021-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-021-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-021-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-021-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-021-thumb.webp"
       }
     },
     {
@@ -306,9 +306,9 @@
       "priority": 3,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/630-Breeze-Best-of-the-Midwest-20250322/i-82xzHc8/0/L6ZMqM2vnMwfKfKwHXGhgjZCSP8czTw3FN536szFt/D/630-breeze-bmw-06-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-022-desktop.webp",
-        "mobile": "/optimized/explore/explore-022-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-022-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-022-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-022-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-022-thumb.webp"
       }
     },
     {
@@ -320,9 +320,9 @@
       "priority": 2,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Beach-Sand/Stanford-20250315/i-S5DsVdr/0/NLQvSw63LBwttR8msqszmF2wJ7psPztLBcGMkmB7m/D/stanford-utah-smc-wbvb-56-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-023-desktop.webp",
-        "mobile": "/optimized/explore/explore-023-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-023-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-023-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-023-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-023-thumb.webp"
       }
     },
     {
@@ -334,9 +334,9 @@
       "priority": 1,
       "originalUrl": "https://photos.smugmug.com/Sports/Volleyball/Indoor/Pepperdine-MVB-Stanford-20250315/i-DX5DMcJ/0/LQWPLFz8Tk5R77Z8Bgpg9FBSSFjpSkvtLk6vxxCKM/D/pepperdine-vs-stanford-mvb-74-D.jpg",
       "paths": {
-        "desktop": "/optimized/explore/explore-024-desktop.webp",
-        "mobile": "/optimized/explore/explore-024-mobile.webp",
-        "thumbnail": "/optimized/explore/explore-024-thumb.webp"
+        "desktop": "/photography/optimized/explore/explore-024-desktop.webp",
+        "mobile": "/photography/optimized/explore/explore-024-mobile.webp",
+        "thumbnail": "/photography/optimized/explore/explore-024-thumb.webp"
       }
     }
   ]

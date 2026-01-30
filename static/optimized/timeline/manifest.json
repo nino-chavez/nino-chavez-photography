@@ -1,6 +1,6 @@
 {
-  "version": 1769733246725,
-  "generatedAt": "2026-01-30T00:34:06.725Z",
+  "version": 1769734953305,
+  "generatedAt": "2026-01-30T01:02:33.305Z",
   "category": "timeline",
   "images": [
     {
@@ -12,9 +12,9 @@
       "priority": 8,
       "originalUrl": "https://photos.smugmug.com/photos/i-N8zTN8M/0/Mbhxm5jLXxSbCJhTKtDzDdJkfhj365v8FFqL5BWHr/D/i-N8zTN8M-D.jpg",
       "paths": {
-        "desktop": "/optimized/timeline/timeline-001-desktop.webp",
-        "mobile": "/optimized/timeline/timeline-001-mobile.webp",
-        "thumbnail": "/optimized/timeline/timeline-001-thumb.webp"
+        "desktop": "/photography/optimized/timeline/timeline-001-desktop.webp",
+        "mobile": "/photography/optimized/timeline/timeline-001-mobile.webp",
+        "thumbnail": "/photography/optimized/timeline/timeline-001-thumb.webp"
       }
     }
   ]
