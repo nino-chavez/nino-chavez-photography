@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { Motion } from 'svelte-motion';
 	import { Heart, Trash2, Download, Upload, AlertCircle } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
@@ -212,7 +213,7 @@
 								Start building your collection by clicking the heart icon on any photo while exploring
 								the gallery.
 							</Typography>
-							<Button variant="primary" onclick={() => (window.location.href = '/explore')}>
+							<Button variant="primary" onclick={() => (window.location.href = `${base}/explore`)}>
 								Explore Photos
 							</Button>
 						</Card>

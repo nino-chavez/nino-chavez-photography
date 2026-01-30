@@ -9,6 +9,7 @@
 
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { base } from '$app/paths';
 	import { AlertCircle, Home, RefreshCw } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -20,7 +21,7 @@
 	}
 
 	function goHome() {
-		window.location.href = '/';
+		window.location.href = `${base}/`;
 	}
 </script>
 
