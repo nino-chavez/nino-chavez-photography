@@ -34,10 +34,8 @@
 		onError
 	}: Props = $props();
 
-	// Check if src is already a local optimized image (with /photography base path)
-	let isLocalOptimized = $derived(
-		src?.includes('/optimized/') || src?.includes('/hero-images/')
-	);
+	// All images now served via Cloudflare proxy (no local optimized images)
+	let isLocalOptimized = $derived(false);
 
 	// Proxy thumbnail URLs to eliminate third-party cookies
 	let proxiedThumbnailSrc = $derived(

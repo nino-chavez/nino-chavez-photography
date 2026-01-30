@@ -19,9 +19,6 @@
 		"enrich": "tsx scripts/enrich-local-photos.ts",
 		"upload:smugmug": "tsx scripts/upload-to-smugmug.ts",
 		"sync:album": "tsx scripts/sync-smugmug-album.ts",
-		"build:hero-images": "tsx scripts/build-hero-images.ts",
-		"build:optimized-images": "tsx scripts/build-optimized-images.ts",
-		"build:images": "tsx scripts/build-optimized-images.ts",
 		"worker:dev": "cd cloudflare-worker && wrangler dev",
 		"worker:deploy": "cd cloudflare-worker && wrangler deploy",
 		"worker:tail": "cd cloudflare-worker && wrangler tail"

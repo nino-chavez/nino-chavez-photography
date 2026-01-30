@@ -40,14 +40,15 @@
   }: Props = $props();
 
   // Generate optimized image URL - SMALLER sizes for split layout
-  // Routes through Cloudflare proxy for first-party domain (no third-party cookies)
+  // Routes through Cloudflare proxy for first-party domain + WebP/AVIF conversion
   function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
 
     // SmugMug optimization - USE SMALLER SIZES for split layout
     // Split layout = 50% width = half the pixels needed
     if (imageUrl.includes('smugmug.com')) {
-      const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
+      // Strip ALL SmugMug size suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
+      const baseUrl = imageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '');
       // Desktop: XL (1024px) instead of X2 (1600px) - saves ~500KB
       // Mobile: M (600px) instead of L (800px) - saves ~200KB
       let suffix = '-XL';
