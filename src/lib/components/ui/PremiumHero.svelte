@@ -44,7 +44,8 @@
 
     // LOCAL STATIC IMAGES (best performance - already optimized WebP)
     // These are pre-built and stored in static/hero-images/
-    if (imageUrl.startsWith('/hero-images/')) {
+    // Handles both /hero-images/ (dev) and /photography/hero-images/ (production)
+    if (imageUrl.includes('/hero-images/')) {
       // Local images follow pattern: hero-001-desktop.webp, hero-001-mobile.webp, hero-001-thumb.webp
       const basePath = imageUrl.replace(/-(?:desktop|mobile|thumb)\.webp$/, '');
       if (size === 'thumbnail') return `${basePath}-thumb.webp`;
