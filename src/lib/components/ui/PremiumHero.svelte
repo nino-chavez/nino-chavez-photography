@@ -4,7 +4,8 @@
   PERFORMANCE OPTIMIZATION:
   - Split layout reduces LCP image area by ~50% (from 100vw to ~50vw)
   - Uses CSS animations instead of svelte-motion (saves ~30KB JS)
-  - Smaller image sizes (XL=1024px instead of X2=1600px)
+  - Desktop: X2 (1600px) for crisp retina display
+  - Mobile: L (800px) for good quality
   - Progressive loading with blur-up placeholder
 
   Layout:
@@ -39,21 +40,20 @@
     class: className
   }: Props = $props();
 
-  // Generate optimized image URL - SMALLER sizes for split layout
+  // Generate optimized image URL for hero
   // Routes through Cloudflare proxy for first-party domain + WebP/AVIF conversion
   function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
 
-    // SmugMug optimization - USE SMALLER SIZES for split layout
-    // Split layout = 50% width = half the pixels needed
+    // SmugMug optimization
     if (imageUrl.includes('smugmug.com')) {
       // Strip ALL SmugMug size suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
       const baseUrl = imageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '');
-      // Desktop: XL (1024px) instead of X2 (1600px) - saves ~500KB
-      // Mobile: M (600px) instead of L (800px) - saves ~200KB
-      let suffix = '-XL';
+      // Desktop: X2 (1600px) for crisp retina display
+      // Mobile: L (800px) for good quality on mobile
+      let suffix = '-X2';
       if (size === 'thumbnail') suffix = '-Th';
-      else if (size === 'mobile') suffix = '-M';
+      else if (size === 'mobile') suffix = '-L';
       const sizedUrl = baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
       return getProxiedImageUrl(sizedUrl);
     }
@@ -142,8 +142,8 @@
         <img
           src={desktopUrl}
           alt="Volleyball action photography"
-          width="1024"
-          height="768"
+          width="1600"
+          height="1067"
           class="absolute inset-0 w-full h-full object-cover"
           fetchpriority="high"
           decoding="sync"
@@ -174,8 +174,8 @@
         <img
           src={mobileUrl}
           alt="Volleyball action photography"
-          width="600"
-          height="400"
+          width="800"
+          height="533"
           class="absolute inset-0 w-full h-full object-cover"
           fetchpriority="high"
           decoding="sync"
