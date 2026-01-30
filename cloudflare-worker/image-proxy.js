@@ -86,23 +86,27 @@ async function handleProxyRequest(request, ctx, url) {
     });
   }
 
-  // For images, use Cloudflare Image Transformations via /cdn-cgi/image/
+  // Fetch the image with Cloudflare Image Transformations
   let originResponse;
   try {
-    if (isImage && (supportsAvif || supportsWebp)) {
-      // Use the /cdn-cgi/image/ URL transformation endpoint
-      // This uses the zone's Image Transformations feature (5,000 free/month)
-      const format = supportsAvif ? 'avif' : 'webp';
-      const transformUrl = `https://gallery.ninochavez.co/cdn-cgi/image/format=${format},quality=85,fit=scale-down/${targetUrl}`;
-
-      originResponse = await fetch(transformUrl, {
+    if (isImage) {
+      // Use cf.image option for automatic WebP/AVIF conversion
+      // Requires authorized sources in Cloudflare dashboard (photos.smugmug.com, gallery.ninochavez.co)
+      originResponse = await fetch(targetUrl, {
         headers: {
           'User-Agent': 'NinoChavezGallery/1.0',
           'Accept': acceptHeader || '*/*'
+        },
+        cf: {
+          image: {
+            format: 'auto',  // Automatically serve WebP/AVIF based on Accept header
+            quality: 85,
+            fit: 'scale-down'
+          }
         }
       });
     } else {
-      // Non-image or no modern format support - fetch directly
+      // Non-image - fetch directly
       originResponse = await fetch(targetUrl, {
         headers: {
           'User-Agent': 'NinoChavezGallery/1.0',
@@ -115,27 +119,11 @@ async function handleProxyRequest(request, ctx, url) {
   }
 
   if (!originResponse.ok) {
-    // If transformation fails, fall back to direct fetch
-    if (isImage && originResponse.status >= 400) {
-      try {
-        originResponse = await fetch(targetUrl, {
-          headers: {
-            'User-Agent': 'NinoChavezGallery/1.0',
-            'Accept': acceptHeader || '*/*'
-          }
-        });
-      } catch (e) {
-        return new Response('Failed to fetch image: ' + e.message, { status: 502 });
-      }
-    }
-
-    if (!originResponse.ok) {
-      return new Response('Image not found', { status: originResponse.status });
-    }
+    return new Response('Image not found', { status: originResponse.status });
   }
 
-  // Get content type from the response
-  const contentType = originResponse.headers.get('Content-Type') || '';
+  // Get content type from the response (Cloudflare sets correct type for transformed images)
+  const contentType = originResponse.headers.get('Content-Type') || 'image/jpeg';
   const isImageResponse = contentType.startsWith('image/') || isImage;
 
   if (!isImageResponse) {
@@ -148,15 +136,14 @@ async function handleProxyRequest(request, ctx, url) {
   response = new Response(imageBuffer, {
     status: 200,
     headers: {
-      'Content-Type': contentType || 'image/jpeg',
+      'Content-Type': contentType,
       'Cache-Control': `public, max-age=${CACHE_TTL}, immutable`,
       'CDN-Cache-Control': `public, max-age=${CACHE_TTL}`,
       'Access-Control-Allow-Origin': '*',
       'Vary': 'Accept',
       'X-Cache': 'MISS',
       'X-Format-Key': formatKey,
-      'X-Original-URL': targetUrl,
-      'X-Transformed': isImage && (supportsAvif || supportsWebp) ? 'true' : 'false'
+      'X-Original-URL': targetUrl
     }
   });
 
