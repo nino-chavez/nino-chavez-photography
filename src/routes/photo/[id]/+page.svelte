@@ -205,7 +205,7 @@
 
 				<!-- EXIF Data (technical specs from SmugMug) -->
 				{#if data.photo.smugmug}
-					<div class="flex flex-wrap gap-4 text-sm text-charcoal-500 mb-4 font-mono">
+					<div class="flex flex-wrap gap-4 text-sm text-charcoal-400 mb-4 font-mono">
 						{#if data.photo.smugmug.width && data.photo.smugmug.height}
 							<span>{data.photo.smugmug.width} × {data.photo.smugmug.height}</span>
 						{/if}

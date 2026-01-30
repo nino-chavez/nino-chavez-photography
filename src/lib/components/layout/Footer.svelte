@@ -113,10 +113,10 @@
 			<div
 				class="mt-6 pt-4 border-t border-charcoal-800/50 flex flex-col sm:flex-row justify-between items-center gap-2"
 			>
-				<Typography variant="caption" class="text-charcoal-500 text-xs">
+				<Typography variant="caption" class="text-charcoal-400 text-xs">
 					© {currentYear} Nino Chavez. All rights reserved.
 				</Typography>
-				<Typography variant="caption" class="text-charcoal-500 text-xs">
+				<Typography variant="caption" class="text-charcoal-400 text-xs">
 					MOTION. EMOTION. Frame by Frame.
 				</Typography>
 			</div>

@@ -169,7 +169,7 @@
 
 		<!-- Start Ellipsis -->
 		{#if showStartEllipsis}
-			<span class="px-2 sm:px-3 py-2 text-sm text-charcoal-500 select-none" aria-hidden="true">
+			<span class="px-2 sm:px-3 py-2 text-sm text-charcoal-400 select-none" aria-hidden="true">
 				…
 			</span>
 		{/if}
@@ -193,7 +193,7 @@
 
 		<!-- End Ellipsis -->
 		{#if showEndEllipsis}
-			<span class="px-2 sm:px-3 py-2 text-sm text-charcoal-500 select-none" aria-hidden="true">
+			<span class="px-2 sm:px-3 py-2 text-sm text-charcoal-400 select-none" aria-hidden="true">
 				…
 			</span>
 		{/if}
@@ -231,7 +231,7 @@
 		<Typography variant="caption" class="text-charcoal-400 text-xs">
 			Showing {showingStart.toLocaleString()}-{showingEnd.toLocaleString()} of {totalCount.toLocaleString()} photos
 			{#if hasNext}
-				<span class="text-charcoal-500">• {remainingPhotos.toLocaleString()} more</span>
+				<span class="text-charcoal-400">• {remainingPhotos.toLocaleString()} more</span>
 			{/if}
 		</Typography>
 	</div>

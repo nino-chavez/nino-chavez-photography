@@ -150,7 +150,7 @@
 								<Typography variant="caption" class="text-xs text-charcoal-300 truncate">
 									{entry.description}
 								</Typography>
-								<Typography variant="caption" class="text-xs text-charcoal-500">
+								<Typography variant="caption" class="text-xs text-charcoal-400">
 									{filterHistory.getRelativeTime(entry.timestamp)}
 								</Typography>
 							</div>

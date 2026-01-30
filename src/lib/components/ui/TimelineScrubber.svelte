@@ -189,7 +189,7 @@
 	</div>
 
 	<!-- Helper text -->
-	<div class="mt-2 text-center text-[10px] text-charcoal-500 pointer-events-none">
+	<div class="mt-2 text-center text-[10px] text-charcoal-400 pointer-events-none">
 		{#if isDragging}
 			<span class="text-gold-400 font-medium">Scrolling...</span>
 		{:else}

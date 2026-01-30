@@ -342,7 +342,7 @@
 							class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 						/>
 						<span class="flex-1 text-sm {!selectedSport ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">All Sports</span>
-						<span class="text-xs text-charcoal-500">{sportsWithCounts.reduce((sum, s) => sum + s.displayCount, 0).toLocaleString()}</span>
+						<span class="text-xs text-charcoal-400">{sportsWithCounts.reduce((sum, s) => sum + s.displayCount, 0).toLocaleString()}</span>
 					</label>
 
 					<!-- Individual Sports -->
@@ -362,7 +362,7 @@
 							<span class="flex-1 text-sm capitalize {selectedSport === sport.name ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">
 								{sport.name}
 							</span>
-							<span class="text-xs text-charcoal-500">{sport.displayCount.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{sport.displayCount.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>
@@ -399,7 +399,7 @@
 							class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 						/>
 						<span class="flex-1 text-sm {!selectedCategory ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">All Categories</span>
-						<span class="text-xs text-charcoal-500">{categoriesWithCounts.reduce((sum, c) => sum + c.displayCount, 0).toLocaleString()}</span>
+						<span class="text-xs text-charcoal-400">{categoriesWithCounts.reduce((sum, c) => sum + c.displayCount, 0).toLocaleString()}</span>
 					</label>
 
 					<!-- Individual Categories -->
@@ -419,7 +419,7 @@
 							<span class="flex-1 text-sm capitalize {selectedCategory === category.name ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">
 								{category.name}
 							</span>
-							<span class="text-xs text-charcoal-500">{category.displayCount.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{category.displayCount.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>
@@ -472,7 +472,7 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 							/>
 							<span class="flex-1 text-sm {selectedPlayType === key ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">{label}</span>
-							<span class="text-xs text-charcoal-500">{count.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{count.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>
@@ -525,7 +525,7 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 							/>
 							<span class="flex-1 text-sm {selectedIntensity === key ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">{label}</span>
-							<span class="text-xs text-charcoal-500">{count.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{count.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>
@@ -565,7 +565,7 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900 rounded"
 							/>
 							<span class="flex-1 text-sm {isChecked ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">{label}</span>
-							<span class="text-xs text-charcoal-500">{count.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{count.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>
@@ -618,7 +618,7 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 							/>
 							<span class="flex-1 text-sm {selectedColorTemp === key ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">{label}</span>
-							<span class="text-xs text-charcoal-500">{count.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{count.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>
@@ -671,7 +671,7 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 							/>
 							<span class="flex-1 text-sm {selectedTimeOfDay === key ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">{label}</span>
-							<span class="text-xs text-charcoal-500">{count.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{count.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>
@@ -724,7 +724,7 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 							/>
 							<span class="flex-1 text-sm {selectedComposition === key ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">{label}</span>
-							<span class="text-xs text-charcoal-500">{count.toLocaleString()}</span>
+							<span class="text-xs text-charcoal-400">{count.toLocaleString()}</span>
 						</label>
 					{/each}
 				</div>

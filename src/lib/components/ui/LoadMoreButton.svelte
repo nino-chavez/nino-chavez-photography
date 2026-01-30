@@ -79,7 +79,7 @@
 			</span>
 		</Button>
 
-		<Typography variant="caption" class="text-charcoal-500 text-xs">
+		<Typography variant="caption" class="text-charcoal-400 text-xs">
 			{remaining.toLocaleString()} photos remaining
 		</Typography>
 	{:else}

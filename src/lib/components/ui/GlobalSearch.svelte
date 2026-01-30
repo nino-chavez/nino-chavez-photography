@@ -97,7 +97,7 @@
 				<span class="hidden sm:inline text-sm text-charcoal-400 group-hover:text-gold-500 transition-colors">
 					Search
 				</span>
-				<kbd class="hidden md:inline-flex items-center px-1.5 py-0.5 text-xs bg-charcoal-800 text-charcoal-500 rounded">
+				<kbd class="hidden md:inline-flex items-center px-1.5 py-0.5 text-xs bg-charcoal-700 text-charcoal-300 rounded border border-charcoal-600">
 					⌘K
 				</kbd>
 			</button>

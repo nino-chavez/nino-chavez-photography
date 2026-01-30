@@ -693,7 +693,7 @@
             {#if entry.featuredPhotos && entry.featuredPhotos.length > 0}
               {@const diversity = getContentDiversity(entry.featuredPhotos)}
               {#if diversity.sportCount > 1 || diversity.categoryCount > 1}
-                <div class="flex items-center gap-3 mb-4 text-xs text-charcoal-500">
+                <div class="flex items-center gap-3 mb-4 text-xs text-charcoal-400">
                   {#if diversity.sportCount > 1}
                     <span class="flex items-center gap-1">
                       <span class="w-2 h-2 bg-gold-500 rounded-full"></span>
@@ -729,7 +729,7 @@
                 <Typography variant="body" class="text-charcoal-400 mb-1">
                   Featured photos coming soon
                 </Typography>
-                <Typography variant="caption" class="text-charcoal-500">
+                <Typography variant="caption" class="text-charcoal-400">
                   {entry.photoCount} photos available • Processing in progress
                 </Typography>
               </div>

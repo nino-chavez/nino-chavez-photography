@@ -126,7 +126,7 @@
 	<!-- Start Ellipsis -->
 	{#if showStartEllipsis}
 		<span
-			class="px-2 sm:px-3 py-2 text-sm text-charcoal-500 select-none"
+			class="px-2 sm:px-3 py-2 text-sm text-charcoal-400 select-none"
 			aria-hidden="true"
 		>
 			…
@@ -153,7 +153,7 @@
 	<!-- End Ellipsis -->
 	{#if showEndEllipsis}
 		<span
-			class="px-2 sm:px-3 py-2 text-sm text-charcoal-500 select-none"
+			class="px-2 sm:px-3 py-2 text-sm text-charcoal-400 select-none"
 			aria-hidden="true"
 		>
 			…

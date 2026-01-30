@@ -185,7 +185,7 @@
 
 					<!-- Footer tip -->
 					<div class="mt-4 pt-4 border-t border-charcoal-800">
-						<p class="text-xs text-charcoal-500 leading-relaxed">
+						<p class="text-xs text-charcoal-400 leading-relaxed">
 							<strong class="text-charcoal-400">Tip:</strong> Click any photo to view full details and larger image
 						</p>
 					</div>

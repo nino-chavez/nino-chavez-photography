@@ -157,7 +157,7 @@
 							transition: transform 0.3s ease-out;
 						"
 					>
-						<Typography variant="body" class="text-charcoal-500 text-xs line-clamp-2">
+						<Typography variant="body" class="text-charcoal-400 text-xs line-clamp-2">
 							{collection.description}
 						</Typography>
 					</div>

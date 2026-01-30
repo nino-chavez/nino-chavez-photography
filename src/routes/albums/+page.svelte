@@ -192,7 +192,7 @@
 						{#if album.dateRange}
 							{@const dateRange = formatDateRange(album.dateRange)}
 							{#if dateRange}
-								<Typography variant="caption" class="text-charcoal-500 text-xs mt-1 block">
+								<Typography variant="caption" class="text-charcoal-400 text-xs mt-1 block">
 									{dateRange}
 								</Typography>
 							{/if}
@@ -253,7 +253,7 @@
 					<Typography variant="caption" class="text-charcoal-400 text-xs">
 						Page {data.currentPage} of {data.totalPages} • {data.totalAlbums.toLocaleString()} total albums
 					</Typography>
-					<Typography variant="caption" class="text-charcoal-500 text-xs mt-1 block">
+					<Typography variant="caption" class="text-charcoal-400 text-xs mt-1 block">
 						Use ← → arrow keys to navigate
 					</Typography>
 				</div>

@@ -96,7 +96,7 @@
 					{data.collection.narrative}
 				</Typography>
 
-				<Typography variant="body" class="text-charcoal-500 text-sm max-w-3xl">
+				<Typography variant="body" class="text-charcoal-400 text-sm max-w-3xl">
 					{data.collection.description}
 				</Typography>
 			</div>
