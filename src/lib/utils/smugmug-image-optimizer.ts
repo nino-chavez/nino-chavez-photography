@@ -1,5 +1,6 @@
 /**
  * SmugMug Image Size Optimizer
+ * @version 2.0.0 - 2026-01-30 - Fixed path/filename mismatch handling
  *
  * Converts SmugMug image URLs to appropriate sizes for different contexts.
  * Routes all SmugMug URLs through our Cloudflare proxy for:

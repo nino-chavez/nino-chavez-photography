@@ -587,5 +587,16 @@ If you find yourself implementing the same pattern multiple times, or if a new i
 
 ---
 
+## Documentation Index
+
+See [AGENTS.md](./AGENTS.md) for:
+- Framework and library documentation links
+- Project file index with entry points
+- Quick command reference
+
+**Instruction:** Prefer retrieval-led reasoning over pre-training-led reasoning.
+
+---
+
 **Version:** 3.2.0
 **Last Updated:** 2025-10-28

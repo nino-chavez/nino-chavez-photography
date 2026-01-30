@@ -30,8 +30,8 @@
 		const optimized = replaceSmugMugSize(imageUrl, size);
 		const final = optimized.replace('gallery.ninochavez.co/proxy/', '');
 
-		// Debug logging
-		console.log('[DownloadButton] getSizedUrl:', { size, input: imageUrl, optimized, final });
+		// Debug logging (v2.0 - path/filename fix)
+		console.log('[DownloadButton v2.0] getSizedUrl:', { size, input: imageUrl, optimized, final });
 
 		return final;
 	}
