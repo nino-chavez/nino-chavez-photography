@@ -2,6 +2,7 @@
 	import type { PageData } from './$types';
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
+	import { getSmugMugUrl } from '$lib/photo-utils';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Trophy, Calendar } from 'lucide-svelte';
 
@@ -11,22 +12,20 @@
 
 	let { data }: Props = $props();
 
-	// Get optimized image URL using SmugMug size parameters
+	// Get optimized image URL using SmugMug size parameters + proxy
 	function getOptimizedImageUrl(imageUrl: string | null, width: number): string {
 		if (!imageUrl) return '';
 
-		// SmugMug image optimization using size suffixes
+		// SmugMug: use getSmugMugUrl which handles proxy routing
 		if (imageUrl.includes('smugmug.com')) {
-			// Remove existing size suffix if present
-			const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
+			// Map width to SmugMug size
+			let size: 'S' | 'M' | 'L' | 'XL' = 'M';
+			if (width >= 1024) size = 'XL';
+			else if (width >= 800) size = 'L';
+			else if (width >= 600) size = 'M';
+			else size = 'S';
 
-			// Use appropriate size based on width
-			let suffix = '-M'; // Default: Medium (600px)
-			if (width >= 800) suffix = '-L';   // Large (800px)
-			if (width >= 1024) suffix = '-XL'; // XLarge (1024px)
-			if (width >= 400 && width < 600) suffix = '-S'; // Small (400px)
-
-			return baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
+			return getSmugMugUrl(imageUrl, size);
 		}
 
 		// Supabase storage optimization
