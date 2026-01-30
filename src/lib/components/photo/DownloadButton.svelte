@@ -27,8 +27,13 @@
 
 		// Use centralized optimizer (handles both path and filename)
 		// Then swap domain for direct SmugMug access (proxy blocks large files)
-		return replaceSmugMugSize(imageUrl, size)
-			.replace('gallery.ninochavez.co/proxy/', '');
+		const optimized = replaceSmugMugSize(imageUrl, size);
+		const final = optimized.replace('gallery.ninochavez.co/proxy/', '');
+
+		// Debug logging
+		console.log('[DownloadButton] getSizedUrl:', { size, input: imageUrl, optimized, final });
+
+		return final;
 	}
 
 	// Download size options using centralized optimizer

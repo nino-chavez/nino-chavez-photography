@@ -24,7 +24,10 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       return new Response('Invalid URL - must be from SmugMug', { status: 400 });
     }
 
-    console.log('[Download Proxy] Fetching:', imageUrl);
+    // Debug: Log full URL and extracted size
+    const sizeMatch = imageUrl.match(/\/([A-Z][a-z0-9]?|[A-Z]\d)\/[^/]+\.(jpg|jpeg|png|gif)$/i);
+    console.log('[Download Proxy] Request URL:', imageUrl);
+    console.log('[Download Proxy] Detected size in path:', sizeMatch?.[1] || 'unknown');
 
     // Fetch the image from SmugMug with proper headers
     const response = await fetch(imageUrl, {
