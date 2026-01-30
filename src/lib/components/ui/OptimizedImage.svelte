@@ -2,7 +2,7 @@
 	import { Motion } from 'svelte-motion';
 	import { Camera } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
-	import { generateSmugMugSrcset, getSmugMugUrl, type SmugMugSize } from '$lib/photo-utils';
+	import { generateSmugMugSrcset, getSmugMugUrl, getProxiedImageUrl, type SmugMugSize } from '$lib/photo-utils';
 
 	interface Props {
 		src: string;
@@ -37,6 +37,13 @@
 	// Check if src is already a local optimized image (with /photography base path)
 	let isLocalOptimized = $derived(
 		src?.includes('/optimized/') || src?.includes('/hero-images/')
+	);
+
+	// Proxy thumbnail URLs to eliminate third-party cookies
+	let proxiedThumbnailSrc = $derived(
+		thumbnailSrc && thumbnailSrc.includes('smugmug.com')
+			? getProxiedImageUrl(thumbnailSrc)
+			: thumbnailSrc
 	);
 
 	// Quality presets determine srcset sizes
@@ -137,10 +144,10 @@
 	<!-- Blur Placeholder (thumbnail or gradient) -->
 	{#if !imageLoaded && !imageError}
 		<div class="absolute inset-0">
-			{#if thumbnailSrc}
-				<!-- Blurred thumbnail -->
+			{#if proxiedThumbnailSrc}
+				<!-- Blurred thumbnail (proxied to eliminate third-party cookies) -->
 				<img
-					src={thumbnailSrc}
+					src={proxiedThumbnailSrc}
 					alt=""
 					class="absolute inset-0 w-full h-full object-cover blur-lg scale-110"
 					aria-hidden="true"

@@ -2,6 +2,9 @@
  * SmugMug Image Size Optimizer
  *
  * Converts SmugMug image URLs to appropriate sizes for different contexts.
+ * Routes all SmugMug URLs through our Cloudflare proxy for:
+ * - First-party domain (eliminates third-party cookies)
+ * - Edge caching with 1-year TTL
  *
  * SmugMug Size Reference:
  * - Th: 100x100   (thumbnail, blur placeholder)
@@ -17,6 +20,8 @@
  * - Using S-size (400px) = 75% bandwidth savings
  * - Load time: 800ms → 200ms per image
  */
+
+import { getProxiedImageUrl } from '$lib/photo-utils';
 
 export type SmugMugSize = 'Th' | 'S' | 'M' | 'L' | 'D' | 'B' | 'X2' | 'X3' | 'X4' | 'X5';
 
@@ -63,10 +68,11 @@ export function extractSmugMugSize(url: string): SmugMugSize | null {
 
 /**
  * Replace the size code in a SmugMug URL
+ * Routes through our Cloudflare proxy for first-party domain
  *
  * @example
  * replaceSize('https://photos.smugmug.com/.../D/...-D.jpg', 'S')
- * // Returns: 'https://photos.smugmug.com/.../S/...-S.jpg'
+ * // Returns: 'https://gallery.ninochavez.co/proxy/photos.smugmug.com/.../S/...-S.jpg'
  */
 export function replaceSmugMugSize(url: string, newSize: SmugMugSize): string {
   if (!url) return url;
@@ -74,7 +80,8 @@ export function replaceSmugMugSize(url: string, newSize: SmugMugSize): string {
   const currentSize = extractSmugMugSize(url);
   if (!currentSize) {
     console.warn('[SmugMug Optimizer] Could not extract size from URL:', url);
-    return url;
+    // Still route through proxy even if size extraction fails
+    return url.includes('smugmug.com') ? getProxiedImageUrl(url) : url;
   }
 
   // Replace both occurrences: in path and in filename
@@ -83,7 +90,8 @@ export function replaceSmugMugSize(url: string, newSize: SmugMugSize): string {
     .replace(`/${currentSize}/`, `/${newSize}/`)  // Replace in path (after hash)
     .replace(`-${currentSize}.`, `-${newSize}.`); // Replace in filename
 
-  return optimizedUrl;
+  // Route through our Cloudflare proxy for first-party domain
+  return getProxiedImageUrl(optimizedUrl);
 }
 
 /**
