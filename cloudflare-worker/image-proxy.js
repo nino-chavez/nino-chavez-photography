@@ -86,34 +86,17 @@ async function handleProxyRequest(request, ctx, url) {
     });
   }
 
-  // Fetch the image with Cloudflare Image Transformations
+  // Fetch the image from SmugMug
+  // NOTE: cf.image transformations require Image Resizing feature to be properly configured.
+  // For now, proxy without transformation - still provides first-party domain benefit.
   let originResponse;
   try {
-    if (isImage) {
-      // Use cf.image option for automatic WebP/AVIF conversion
-      // Requires authorized sources in Cloudflare dashboard (photos.smugmug.com, gallery.ninochavez.co)
-      originResponse = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'NinoChavezGallery/1.0',
-          'Accept': acceptHeader || '*/*'
-        },
-        cf: {
-          image: {
-            format: 'auto',  // Automatically serve WebP/AVIF based on Accept header
-            quality: 85,
-            fit: 'scale-down'
-          }
-        }
-      });
-    } else {
-      // Non-image - fetch directly
-      originResponse = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'NinoChavezGallery/1.0',
-          'Accept': acceptHeader || '*/*'
-        }
-      });
-    }
+    originResponse = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'NinoChavezGallery/1.0',
+        'Accept': acceptHeader || '*/*'
+      }
+    });
   } catch (e) {
     return new Response('Failed to fetch image: ' + e.message, { status: 502 });
   }
