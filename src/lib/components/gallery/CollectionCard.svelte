@@ -19,6 +19,7 @@
 <script lang="ts">
 	import { Award } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
+	import { getProxiedImageUrl } from '$lib/photo-utils';
 	import type { CoverPhotoRow } from '$types/database';
 
 	interface CollectionWithPhotos {
@@ -44,14 +45,16 @@
 
 	const isPortfolio = collection.slug === 'portfolio-excellence';
 
-	// Get optimized SmugMug image URL as fallback
+	// Get optimized SmugMug image URL as fallback, routed through proxy
 	function getSmugMugImageUrl(imageUrl: string | null): string {
 		if (!imageUrl) return '';
 
 		// SmugMug optimization - use Large size (800px) for collection cards
+		// Route through proxy to eliminate third-party cookies
 		if (imageUrl.includes('smugmug.com')) {
 			const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
-			return baseUrl.replace(/(\.[^.]+)$/, '-L$1');
+			const sizedUrl = baseUrl.replace(/(\.[^.]+)$/, '-L$1');
+			return getProxiedImageUrl(sizedUrl);
 		}
 
 		return imageUrl;

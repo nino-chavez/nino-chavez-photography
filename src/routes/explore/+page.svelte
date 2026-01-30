@@ -31,6 +31,7 @@
 	} from '$lib/utils/filter-compatibility';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
+	import { getProxiedImageUrl } from '$lib/photo-utils';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -540,12 +541,13 @@
 	<meta name="description" content="Browse {data.totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more." />
 
 	<!-- Preload first 4 above-fold images for LCP optimization -->
-	<!-- Uses local optimized WebP when available, falls back to SmugMug -M (600px - optimal for grid) -->
+	<!-- Uses local optimized WebP when available, falls back to SmugMug -M via proxy -->
 	{#each data.photos.slice(0, 4) as photo, i}
-		{@const preloadUrl = photo.optimizedPaths?.desktop
+		{@const sizedUrl = photo.optimizedPaths?.desktop
 			|| (photo.image_url?.includes('smugmug.com')
 				? photo.image_url.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-M$1')
 				: photo.image_url)}
+		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		{#if preloadUrl}
 			<link
 				rel="preload"
