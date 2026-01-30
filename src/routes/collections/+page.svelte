@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { Motion } from 'svelte-motion';
 	import { Sparkles } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
-	import { getProxiedImageUrl } from '$lib/photo-utils';
+	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoDetailModal from '$lib/components/gallery/PhotoDetailModal.svelte';
@@ -38,10 +36,9 @@
 
 	<!-- Preload first 3 collection cover images for LCP optimization -->
 	{#each data.collections.slice(0, 3) as collection, i}
-		{@const sizedUrl = collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
-			? collection.coverPhoto.ImageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-L$1')
+		{@const preloadUrl = collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
+			? replaceSmugMugSize(collection.coverPhoto.ImageUrl, 'M')
 			: collection.coverPhoto?.ImageUrl}
-		{@const preloadUrl = sizedUrl?.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		{#if preloadUrl}
 			<link
 				rel="preload"
@@ -53,9 +50,10 @@
 	{/each}
 </svelte:head>
 
-<!-- Minimal Header - Content First Design -->
-<Motion let:motion initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-	<div use:motion class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
+<!-- PERFORMANCE: CSS animation instead of svelte-motion -->
+<div class="collections-animate">
+	<!-- Minimal Header - Content First Design -->
+	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
 			<!-- Compact Header with Inline Stats -->
 			<div class="flex items-center gap-3 flex-wrap">
@@ -75,48 +73,76 @@
 	</div>
 
 	<!-- Collections Content -->
-	<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
 		<!-- Collections Grid - 3x3 on desktop -->
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each data.collections as collection, index}
-				<Motion
-					let:motion
-					initial={{ opacity: 0, y: 30 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ ...MOTION.spring.gentle, delay: index * 0.05 }}
-				>
-					<div use:motion>
-						<CollectionCard
-							{collection}
-							href="{base}/collections/{collection.slug}"
-						/>
-					</div>
-				</Motion>
+				<div class="collection-card-animate" style="--delay: {index * 0.05}s">
+					<CollectionCard
+						{collection}
+						href="{base}/collections/{collection.slug}"
+					/>
+				</div>
 			{/each}
 		</div>
 
 		<!-- Empty State -->
 		{#if data.collections.length === 0}
-			<Motion
-				let:motion
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={MOTION.spring.gentle}
-			>
-				<div use:motion>
-					<Card padding="lg" class="text-center">
-						<Sparkles class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
-						<Typography variant="h3" class="mb-2">No Collections Yet</Typography>
-						<Typography variant="body" class="text-charcoal-400 text-sm">
-							Collections appear once photos are enriched
-						</Typography>
-					</Card>
-				</div>
-			</Motion>
+			<Card padding="lg" class="text-center collections-animate">
+				<Sparkles class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
+				<Typography variant="h3" class="mb-2">No Collections Yet</Typography>
+				<Typography variant="body" class="text-charcoal-400 text-sm">
+					Collections appear once photos are enriched
+				</Typography>
+			</Card>
 		{/if}
 	</div>
-</Motion>
+</div>
+
+<style>
+	/* PERFORMANCE: CSS animation instead of svelte-motion */
+	@keyframes collections-slide-in {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes card-slide-in {
+		from {
+			opacity: 0;
+			transform: translateY(30px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.collections-animate {
+		animation: collections-slide-in 0.3s ease-out forwards;
+	}
+
+	.collection-card-animate {
+		animation: card-slide-in 0.3s ease-out forwards;
+		animation-delay: var(--delay, 0s);
+		opacity: 0;
+	}
+
+	/* Reduce motion for accessibility */
+	@media (prefers-reduced-motion: reduce) {
+		.collections-animate,
+		.collection-card-animate {
+			animation: none;
+			opacity: 1;
+		}
+	}
+</style>
 
 <!-- Photo Detail Modal -->
 <PhotoDetailModal bind:open={modalOpen} photo={selectedPhoto} />

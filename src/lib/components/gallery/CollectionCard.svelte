@@ -19,7 +19,7 @@
 <script lang="ts">
 	import { Award } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
-	import { getProxiedImageUrl } from '$lib/photo-utils';
+	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 	import type { CoverPhotoRow } from '$types/database';
 
 	interface CollectionWithPhotos {
@@ -40,17 +40,14 @@
 
 	const isPortfolio = collection.slug === 'portfolio-excellence';
 
-	// Get optimized SmugMug image URL, routed through Cloudflare proxy
+	// Get optimized SmugMug image URL using centralized optimizer
+	// Uses M-size (600px) - optimal for 3-column grid collection cards
 	function getSmugMugImageUrl(imageUrl: string | null): string {
 		if (!imageUrl) return '';
 
-		// SmugMug optimization - use Large size (800px) for collection cards
-		// Route through proxy for WebP/AVIF conversion
 		if (imageUrl.includes('smugmug.com')) {
-			// Strip ALL SmugMug size suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
-			const baseUrl = imageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '');
-			const sizedUrl = baseUrl.replace(/(\.[^.]+)$/, '-L$1');
-			return getProxiedImageUrl(sizedUrl);
+			// Use centralized optimizer that handles both path and filename
+			return replaceSmugMugSize(imageUrl, 'M');
 		}
 
 		return imageUrl;
