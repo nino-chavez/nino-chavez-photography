@@ -487,6 +487,11 @@ export function getProxiedImageUrl(smugmugUrl: string): string {
     return smugmugUrl;
   }
 
+  // Skip if already proxied
+  if (smugmugUrl.includes(IMAGE_PROXY_CONFIG.proxyDomain)) {
+    return smugmugUrl;
+  }
+
   // Proxy any SmugMug image URL (photos.smugmug.com, ninochavez.smugmug.com, etc.)
   if (!smugmugUrl.includes('smugmug.com')) {
     return smugmugUrl;
