@@ -4,8 +4,8 @@
   PERFORMANCE OPTIMIZATION:
   - Split layout reduces LCP image area by ~50% (from 100vw to ~50vw)
   - Uses CSS animations instead of svelte-motion (saves ~30KB JS)
-  - Desktop: X2 (1600px) for crisp retina display
-  - Mobile: L (800px) for good quality
+  - Desktop: X3 (2400px) for crisp retina display on large monitors
+  - Mobile: XL (1024px) for retina mobile/tablet
   - Progressive loading with blur-up placeholder
 
   Layout:
@@ -49,11 +49,11 @@
     if (imageUrl.includes('smugmug.com')) {
       // Strip ALL SmugMug size suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
       const baseUrl = imageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '');
-      // Desktop: X2 (1600px) for crisp retina display
-      // Mobile: L (800px) for good quality on mobile
-      let suffix = '-X2';
+      // Desktop: X3 (2400px) for crisp retina display on large monitors
+      // Mobile: XL (1024px) for retina mobile/tablet
+      let suffix = '-X3';
       if (size === 'thumbnail') suffix = '-Th';
-      else if (size === 'mobile') suffix = '-L';
+      else if (size === 'mobile') suffix = '-XL';
       const sizedUrl = baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
       return getProxiedImageUrl(sizedUrl);
     }
@@ -142,8 +142,8 @@
         <img
           src={desktopUrl}
           alt="Volleyball action photography"
-          width="1600"
-          height="1067"
+          width="2400"
+          height="1600"
           class="absolute inset-0 w-full h-full object-cover"
           fetchpriority="high"
           decoding="sync"
@@ -174,8 +174,8 @@
         <img
           src={mobileUrl}
           alt="Volleyball action photography"
-          width="800"
-          height="533"
+          width="1024"
+          height="683"
           class="absolute inset-0 w-full h-full object-cover"
           fetchpriority="high"
           decoding="sync"

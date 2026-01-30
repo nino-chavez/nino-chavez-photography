@@ -64,11 +64,11 @@
 	<title>Nino Chavez — Volleyball Photography</title>
 	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
 
-	<!-- Preload hero image for faster LCP (X2=1600px for retina) -->
+	<!-- Preload hero image for faster LCP (X3=2400px for retina) -->
 	{#if data.heroPhoto?.image_url}
 		{@const heroUrl = data.heroPhoto.image_url}
 		{@const sizedUrl = heroUrl.includes('smugmug.com')
-			? heroUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-X2$1')
+			? heroUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '').replace(/(\.[^.]+)$/, '-X3$1')
 			: heroUrl}
 		{@const optimizedUrl = sizedUrl.includes('smugmug.com') ? getProxiedImageUrl(sizedUrl) : sizedUrl}
 		<link rel="preload" as="image" href={optimizedUrl} fetchpriority="high" />
