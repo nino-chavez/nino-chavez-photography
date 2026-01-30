@@ -20,7 +20,9 @@ import type { CoverPhotoRow } from '$types/database';
 let collectionsManifest: { images: Array<{ imageKey: string; paths: { desktop: string; mobile: string; thumbnail: string } }> } | null = null;
 try {
 	// @ts-ignore - JSON import from static folder
-	collectionsManifest = await import('../../../static/optimized/collections/manifest.json');
+	const manifestModule = await import('../../../static/optimized/collections/manifest.json');
+	collectionsManifest = manifestModule.default || manifestModule;
+	console.log('[Collections] Manifest loaded:', collectionsManifest?.images?.length || 0, 'images');
 } catch {
 	// Manifest doesn't exist yet - will use SmugMug URLs
 }

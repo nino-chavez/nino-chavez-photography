@@ -27,12 +27,18 @@ import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
 import type { HeroImageManifest, HeroImage } from '$lib/hero-images';
 
-// Import manifest at build time (works on Vercel serverless)
-// This gets bundled into the serverless function
-// @ts-ignore - JSON import from static folder
-import heroManifestData from '../../static/hero-images/manifest.json';
-
-const heroManifest: HeroImageManifest | null = heroManifestData as HeroImageManifest;
+// Import manifest at build time using top-level await
+// This pattern works reliably on Vercel serverless
+let heroManifest: HeroImageManifest | null = null;
+try {
+	// @ts-ignore - JSON import from static folder
+	const manifestModule = await import('../../static/hero-images/manifest.json');
+	heroManifest = manifestModule.default || manifestModule;
+	console.log('[Homepage] Hero manifest loaded:', heroManifest?.images?.length || 0, 'images');
+} catch (err) {
+	console.warn('[Homepage] Failed to load hero manifest:', err);
+	// Manifest doesn't exist yet - will use SmugMug URLs
+}
 
 /**
  * Get the hero images manifest (loaded at build time)

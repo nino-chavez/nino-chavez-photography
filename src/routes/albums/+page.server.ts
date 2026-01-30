@@ -6,7 +6,9 @@ import type { PageServerLoad } from './$types';
 let albumsManifest: { images: Array<{ albumKey: string; paths: { desktop: string; mobile: string; thumbnail: string } }> } | null = null;
 try {
 	// @ts-ignore - JSON import from static folder
-	albumsManifest = await import('../../../static/optimized/albums/manifest.json');
+	const manifestModule = await import('../../../static/optimized/albums/manifest.json');
+	albumsManifest = manifestModule.default || manifestModule;
+	console.log('[Albums] Manifest loaded:', albumsManifest?.images?.length || 0, 'images');
 } catch {
 	// Manifest doesn't exist yet - will use SmugMug URLs
 }

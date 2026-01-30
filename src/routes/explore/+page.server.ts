@@ -18,7 +18,9 @@ import type { PageServerLoad } from './$types';
 let exploreManifest: { images: Array<{ imageKey: string; paths: { desktop: string; mobile: string; thumbnail: string } }> } | null = null;
 try {
 	// @ts-ignore - JSON import from static folder
-	exploreManifest = await import('../../../static/optimized/explore/manifest.json');
+	const manifestModule = await import('../../../static/optimized/explore/manifest.json');
+	exploreManifest = manifestModule.default || manifestModule;
+	console.log('[Explore] Manifest loaded:', exploreManifest?.images?.length || 0, 'images');
 } catch {
 	// Manifest doesn't exist yet - will use SmugMug URLs
 }
