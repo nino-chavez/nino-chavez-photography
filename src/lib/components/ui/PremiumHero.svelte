@@ -24,7 +24,7 @@
   import Typography from './Typography.svelte';
   import { cn } from '$lib/utils';
   import { base } from '$app/paths';
-  import { getProxiedImageUrl } from '$lib/photo-utils';
+  import { replaceSmugMugSize, type SmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 
   interface Props {
     backgroundImage?: string;
@@ -41,21 +41,22 @@
   }: Props = $props();
 
   // Generate optimized image URL for hero
-  // Routes through Cloudflare proxy for first-party domain + WebP/AVIF conversion
+  // Uses the centralized SmugMug optimizer which handles both path and filename
   function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
 
-    // SmugMug optimization
+    // SmugMug optimization - use centralized optimizer
     if (imageUrl.includes('smugmug.com')) {
-      // Strip ALL SmugMug size suffixes: -Th, -S, -M, -L, -XL, -X2, -X3, -X4, -X5, -O
-      const baseUrl = imageUrl.replace(/-(?:Th|XL|X[2-5]|[SMLO])(?=[-.])/g, '');
-      // Desktop: X3 (2400px) for crisp retina display on large monitors
-      // Mobile: XL (1024px) for retina mobile/tablet
-      let suffix = '-X3';
-      if (size === 'thumbnail') suffix = '-Th';
-      else if (size === 'mobile') suffix = '-XL';
-      const sizedUrl = baseUrl.replace(/(\.[^.]+)$/, `${suffix}$1`);
-      return getProxiedImageUrl(sizedUrl);
+      // Map hero sizes to SmugMug sizes
+      // Desktop: X3 (3000px) for crisp retina display on large monitors
+      // Mobile: L (1024px) for retina mobile/tablet
+      // Thumbnail: Th (100px) for blur placeholder
+      const sizeMap: Record<typeof size, SmugMugSize> = {
+        desktop: 'X3',
+        mobile: 'L',
+        thumbnail: 'Th'
+      };
+      return replaceSmugMugSize(imageUrl, sizeMap[size]);
     }
 
     // Supabase storage
