@@ -229,8 +229,7 @@
 </section>
 
 <style>
-  /* Custom font loading for premium feel */
-  @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,700&display=swap');
+  /* Montserrat font is loaded asynchronously in app.html (non-render-blocking) */
 
   /* Parallax effect on desktop only */
   @media (min-width: 1024px) {
