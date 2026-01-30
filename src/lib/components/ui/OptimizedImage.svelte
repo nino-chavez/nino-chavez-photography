@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { Camera } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import { generateSmugMugSrcset, getSmugMugUrl, getProxiedImageUrl, type SmugMugSize } from '$lib/photo-utils';
 
 	interface Props {
@@ -176,32 +174,25 @@
 	{/if}
 
 	<!-- Main Image - Only load when intersecting or priority -->
+	<!-- PERFORMANCE: Pure CSS transition instead of svelte-motion (saves ~30KB JS) -->
 	{#if !imageError && isIntersecting}
-		<Motion
-			let:motion
-			initial={{ opacity: 0 }}
-			animate={{ opacity: imageLoaded ? 1 : 0 }}
-			transition={MOTION.spring.gentle}
-		>
-			<!-- PERFORMANCE: srcset + sizes enables responsive image selection -->
-			<!-- PERFORMANCE: width/height attributes prevent CLS -->
-			<img
-				bind:this={imageElement}
-				use:motion
-				src={optimizedSrc()}
-				srcset={srcset || undefined}
-				{alt}
-				{sizes}
-				width={computedWidth}
-				height={computedHeight()}
-				loading={priority ? 'eager' : 'lazy'}
-				decoding="async"
-				fetchpriority={priority ? 'high' : 'auto'}
-				class="absolute inset-0 w-full h-full object-cover"
-				onload={handleLoad}
-				onerror={handleError}
-			/>
-		</Motion>
+		<img
+			bind:this={imageElement}
+			src={optimizedSrc()}
+			srcset={srcset || undefined}
+			{alt}
+			{sizes}
+			width={computedWidth}
+			height={computedHeight()}
+			loading={priority ? 'eager' : 'lazy'}
+			decoding="async"
+			fetchpriority={priority ? 'high' : 'auto'}
+			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-out"
+			class:opacity-0={!imageLoaded}
+			class:opacity-100={imageLoaded}
+			onload={handleLoad}
+			onerror={handleError}
+		/>
 	{/if}
 </div>
 
