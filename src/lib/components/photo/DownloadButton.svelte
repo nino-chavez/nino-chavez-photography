@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { Download, Check } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { base } from '$app/paths';
+	import { replaceSmugMugSize, SMUGMUG_SIZES } from '$lib/utils/smugmug-image-optimizer';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -18,41 +18,41 @@
 	let downloadSuccess = $state(false);
 
 	/**
-	 * Generate original resolution URL from SmugMug image URL
-	 * SmugMug URLs have size codes: -Ti, -Th, -S, -M, -L, -XL, -X2, -X3, -O (original)
-	 * We replace the size code with -O to get the original file
+	 * Get SmugMug URL with specific size using centralized optimizer.
+	 * Handles both path segment (/D/ → /O/) and filename (-D.jpg → -O.jpg).
 	 */
-	function getOriginalUrl(imageUrl?: string): string | undefined {
+	function getSizedUrl(imageUrl: string | undefined, size: 'O' | 'L' | 'S'): string | undefined {
 		if (!imageUrl) return undefined;
+		if (!imageUrl.includes('smugmug.com')) return imageUrl;
 
-		// Replace any size code with -O (Original)
-		// Pattern: /-[A-Z0-9]+\.jpg/ => /-O.jpg/
-		const originalUrl = imageUrl.replace(/-[A-Z0-9]+\.(jpg|jpeg|png)/i, '-O.$1');
-		return originalUrl;
+		// Use centralized optimizer (handles both path and filename)
+		// Then swap domain for direct SmugMug access (proxy blocks large files)
+		return replaceSmugMugSize(imageUrl, size)
+			.replace('gallery.ninochavez.co/proxy/', '');
 	}
 
-	// Download size options
+	// Download size options using centralized optimizer
 	const downloadOptions = $derived([
 		{
 			label: 'Original Quality',
 			description: 'Full resolution, best for print',
-			url: getOriginalUrl(photo.image_url)?.replace('photos.smugmug.com', 'ninochavez.smugmug.com'),
+			url: getSizedUrl(photo.image_url, 'O'),
 			filename: `${photo.image_key}_original.jpg`,
-			size: 'Large (~2-5 MB)'
+			size: SMUGMUG_SIZES.O.typicalSize
 		},
 		{
 			label: 'Web Quality',
-			description: 'Optimized for web and social media',
-			url: photo.image_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com'),
+			description: 'Optimized for web and social media (1024px)',
+			url: getSizedUrl(photo.image_url, 'L'),
 			filename: `${photo.image_key}_web.jpg`,
-			size: 'Medium (~500 KB)'
+			size: SMUGMUG_SIZES.L.typicalSize
 		},
 		{
 			label: 'Thumbnail',
-			description: 'Small preview size',
-			url: (photo.thumbnail_url || photo.image_url)?.replace('photos.smugmug.com', 'ninochavez.smugmug.com'),
+			description: 'Small preview size (400px)',
+			url: getSizedUrl(photo.image_url, 'S'),
 			filename: `${photo.image_key}_thumb.jpg`,
-			size: 'Small (~100 KB)'
+			size: SMUGMUG_SIZES.S.typicalSize
 		}
 	].filter((option): option is typeof option & { url: string } => !!option.url)); // Type-safe filter
 
@@ -143,17 +143,11 @@
 		</button>
 	{/if}
 
-	<!-- Download Options Menu -->
+	<!-- Download Options Menu (CSS animation instead of svelte-motion) -->
 	{#if showMenu}
-		<Motion
-			initial={{ opacity: 0, y: -10, scale: 0.95 }}
-			animate={{ opacity: 1, y: 0, scale: 1 }}
-			exit={{ opacity: 0, y: -10, scale: 0.95 }}
-			transition={{ duration: 0.15 }}
+		<div
+			class="download-menu-animate absolute {variant === 'compact' ? 'right-0' : 'left-0'} top-full mt-2 w-72 bg-charcoal-900 border border-charcoal-800 rounded-lg shadow-xl z-50 overflow-hidden"
 		>
-			<div
-				class="absolute {variant === 'compact' ? 'right-0' : 'left-0'} top-full mt-2 w-72 bg-charcoal-900 border border-charcoal-800 rounded-lg shadow-xl z-50 overflow-hidden"
-			>
 				<!-- Header -->
 				<div class="px-4 py-3 border-b border-charcoal-800">
 					<Typography variant="h3" class="text-sm">Choose Download Size</Typography>
@@ -193,8 +187,7 @@
 						Photos are for personal use and recruiting purposes only.
 					</Typography>
 				</div>
-			</div>
-		</Motion>
+		</div>
 	{/if}
 </div>
 
@@ -207,5 +200,27 @@
 
 	.animate-spin {
 		animation: spin 1s linear infinite;
+	}
+
+	/* PERFORMANCE: CSS animation instead of svelte-motion */
+	@keyframes download-menu-appear {
+		from {
+			opacity: 0;
+			transform: translateY(-10px) scale(0.95);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
+	}
+
+	.download-menu-animate {
+		animation: download-menu-appear 0.15s ease-out forwards;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.download-menu-animate {
+			animation: none;
+		}
 	}
 </style>

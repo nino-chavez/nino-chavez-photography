@@ -23,7 +23,7 @@
 
 import { getProxiedImageUrl } from '$lib/photo-utils';
 
-export type SmugMugSize = 'Th' | 'S' | 'M' | 'L' | 'D' | 'B' | 'X2' | 'X3' | 'X4' | 'X5';
+export type SmugMugSize = 'Th' | 'S' | 'M' | 'L' | 'D' | 'B' | 'X2' | 'X3' | 'X4' | 'X5' | 'O';
 
 export interface SmugMugSizeConfig {
   /** Approximate pixel width */
@@ -44,7 +44,8 @@ export const SMUGMUG_SIZES: Record<SmugMugSize, SmugMugSizeConfig> = {
   X2: { width: 2048, useCase: 'Extra large 2K', typicalSize: '400-800 KB' },
   X3: { width: 3000, useCase: 'Extra large 3K', typicalSize: '800-1500 KB' },
   X4: { width: 4000, useCase: 'Extra large 4K', typicalSize: '1-2 MB' },
-  X5: { width: 5000, useCase: 'Original 5K+', typicalSize: '2-5 MB' }
+  X5: { width: 5000, useCase: 'Original 5K+', typicalSize: '2-5 MB' },
+  O: { width: 0, useCase: 'Original (full resolution)', typicalSize: '3-10 MB' }
 };
 
 /**

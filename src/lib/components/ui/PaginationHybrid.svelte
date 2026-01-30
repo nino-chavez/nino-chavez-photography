@@ -1,19 +1,13 @@
 <!--
-  PaginationHybrid - Hybrid pagination with Load More + numbered pages
-
-  Combines the best of both worlds:
-  - Load More button for progressive discovery (primary action)
-  - Numbered pagination for direct page access (secondary navigation)
-
-  Perfect for photo galleries where users both browse and search.
+  PaginationHybrid - Clean pagination for large galleries
 
   Features:
-  - Progressive loading with "Load More" button
   - Traditional page numbers for direct access
-  - Responsive design (Load More prominent on mobile)
+  - Previous/Next navigation
+  - First/Last page jumps with ellipsis
+  - Responsive design
   - Accessibility with proper ARIA labels
-  - Loading states and feedback
-  - Shows remaining photo count
+  - Shows current position in results
 
   Usage:
   <PaginationHybrid
@@ -25,9 +19,8 @@
 -->
 
 <script lang="ts">
-	import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowDown } from 'lucide-svelte';
+	import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-svelte';
 	import Typography from './Typography.svelte';
-	import Button from './Button.svelte';
 	import { cn } from '$lib/utils';
 
 	interface Props {
@@ -38,7 +31,6 @@
 		class?: string;
 		maxVisiblePages?: number;
 		showFirstLast?: boolean;
-		loadMoreLabel?: string;
 	}
 
 	let {
@@ -48,8 +40,7 @@
 		onPageChange,
 		class: className,
 		maxVisiblePages = 7,
-		showFirstLast = true,
-		loadMoreLabel = 'Load More'
+		showFirstLast = true
 	}: Props = $props();
 
 	let totalPages = $derived(Math.ceil(totalCount / pageSize));
@@ -58,9 +49,8 @@
 	let canGoFirst = $derived(showFirstLast && currentPage > 3);
 	let canGoLast = $derived(showFirstLast && currentPage < totalPages - 2);
 
-	// Calculate remaining photos for Load More button
+	// Calculate remaining photos
 	let remainingPhotos = $derived((totalPages - currentPage) * pageSize);
-	let nextBatchSize = $derived(Math.min(remainingPhotos, pageSize));
 
 	// Showing range
 	let showingStart = $derived((currentPage - 1) * pageSize + 1);
@@ -100,13 +90,6 @@
 		}
 	}
 
-	function handleLoadMore(event: MouseEvent) {
-		event.preventDefault();
-		if (hasNext) {
-			onPageChange(currentPage + 1);
-		}
-	}
-
 	// Don't render if only one page or no content
 	if (totalPages <= 1 || totalCount === 0) {
 		// Don't render anything
@@ -115,26 +98,7 @@
 
 {#if totalPages > 1 && totalCount > 0}
 <div class={cn('space-y-4', className)}>
-	<!-- Load More Button (Primary Action) -->
-	{#if hasNext}
-		<div class="flex justify-center">
-			<Button
-				onclick={handleLoadMore}
-				variant="primary"
-				size="lg"
-				class="min-w-[200px] w-full sm:w-auto max-w-xs group"
-				aria-label="Load next {nextBatchSize} photos (page {currentPage + 1})"
-			>
-				<span class="flex items-center gap-2">
-					<ArrowDown class="w-4 h-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
-					<span>{loadMoreLabel}</span>
-					<span class="text-sm opacity-75">({nextBatchSize})</span>
-				</span>
-			</Button>
-		</div>
-	{/if}
-
-	<!-- Numbered Pagination (Secondary Navigation) -->
+	<!-- Numbered Pagination -->
 	<nav
 		class="flex items-center justify-center gap-2 sm:gap-2"
 		aria-label="Photo gallery pagination"
