@@ -72,7 +72,7 @@ const LIMITS = {
   hero: 20,
   albums: 24,       // Full first page (24 visible on albums page)
   explore: 24,      // Full first page (24 visible on explore page)
-  timeline: 8,      // First 2 periods x 4 images
+  timeline: 24,     // First page of newest photos (deterministic)
   collections: 9,   // All 9 collections (static page)
 } as const;
 
@@ -268,33 +268,23 @@ async function fetchExploreImages(): Promise<any[]> {
  * Fetch timeline featured images from database
  */
 async function fetchTimelineImages(): Promise<any[]> {
-  // Get photos grouped by year/month for timeline
+  // Timeline is deterministic - newest photos by upload_date
+  // This matches what the timeline page displays (sorted by upload_date DESC)
   const { data: photos, error } = await supabase
     .from('photo_metadata')
-    .select('photo_id, image_key, ImageUrl, album_key, album_name, photo_date, sharpness, composition_score, emotional_impact')
+    .select('photo_id, image_key, ImageUrl, album_key, album_name, upload_date, sharpness, composition_score, emotional_impact')
     .eq('sport_type', 'volleyball')
-    .gte('sharpness', 8.0)
     .not('ImageUrl', 'is', null)
-    .not('photo_date', 'is', null)
-    .order('photo_date', { ascending: false })
-    .limit(100); // Get more to diversify by period
+    .not('sharpness', 'is', null)
+    .order('upload_date', { ascending: false })
+    .limit(LIMITS.timeline);
 
   if (error) {
     console.error('Error fetching timeline photos:', error);
     return [];
   }
 
-  // Diversify by year/month
-  const byPeriod = new Map<string, any>();
-  for (const photo of photos || []) {
-    const date = new Date(photo.photo_date);
-    const key = `${date.getFullYear()}-${date.getMonth()}`;
-    if (!byPeriod.has(key) && byPeriod.size < LIMITS.timeline) {
-      byPeriod.set(key, photo);
-    }
-  }
-
-  return Array.from(byPeriod.values()).map((img, idx) => ({
+  return (photos || []).map((img, idx) => ({
     id: `timeline-${img.photo_id}`,
     imageKey: img.image_key,
     albumKey: img.album_key,
