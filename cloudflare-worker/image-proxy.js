@@ -1,38 +1,48 @@
 /**
- * Cloudflare Worker: SmugMug Image Proxy with WebP/AVIF Conversion
+ * Cloudflare Worker: SmugMug Image Proxy
  *
  * Route: gallery.ninochavez.co/*
  *
  * Features:
  * 1. PROXY MODE: /proxy/photos.smugmug.com/... → proxies SmugMug images
- * 2. IMAGE OPTIMIZATION: Converts JPEG to WebP/AVIF using /cdn-cgi/image/
- * 3. EDGE CACHING: 1-year TTL for immutable images
- * 4. PASS-THROUGH MODE: everything else → passes to SmugMug site
+ * 2. EDGE CACHING: 1-year TTL for immutable images
+ * 3. PASS-THROUGH MODE: everything else → passes to SmugMug site
  *
  * URL format:
  *   gallery.ninochavez.co/proxy/photos.smugmug.com/photos/i-xxx-L.jpg
  *
  * Benefits:
  * - First-party domain (no third-party cookies)
- * - Automatic WebP/AVIF conversion (saves ~30-50% bandwidth)
  * - Edge caching with 1-year TTL
- * - Free tier: 5,000 unique transformations/month
+ * - Cache separation by Accept header (WebP/AVIF/JPEG)
  */
+
+const VERSION = '1.1.0';
 
 // Cache TTL (1 year for immutable images)
 const CACHE_TTL = 31536000;
 
-// Image extensions to transform
-const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp)$/i;
+// Upstream fetch timeout (10 seconds)
+const FETCH_TIMEOUT_MS = 10000;
+
+// Image extensions to proxy
+const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|avif)$/i;
+
+// Allowed SmugMug hostnames
+const ALLOWED_HOSTS = ['photos.smugmug.com', 'ninochavez.smugmug.com'];
 
 export default {
   async fetch(request, _env, ctx) {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    // Health check endpoint
+    // Health check endpoint with version info
     if (pathname === '/_worker/health') {
-      return new Response('OK', { status: 200 });
+      return Response.json({
+        status: 'ok',
+        version: VERSION,
+        timestamp: Date.now()
+      });
     }
 
     // PROXY MODE: /proxy/photos.smugmug.com/path/to/image.jpg
@@ -51,10 +61,11 @@ async function handleProxyRequest(request, ctx, url) {
   // Extract the target URL from the path
   // /proxy/photos.smugmug.com/photos/i-xxx-L.jpg → https://photos.smugmug.com/photos/i-xxx-L.jpg
   const targetPath = pathname.replace('/proxy/', '');
+  const targetHost = targetPath.split('/')[0].toLowerCase();
   const targetUrl = `https://${targetPath}`;
 
-  // Validate it's a SmugMug URL (photos.smugmug.com or ninochavez.smugmug.com)
-  if (!targetPath.includes('smugmug.com/')) {
+  // Validate hostname is an allowed SmugMug domain (prevents SSRF)
+  if (!ALLOWED_HOSTS.includes(targetHost)) {
     return new Response('Invalid proxy target', { status: 400 });
   }
 
@@ -68,9 +79,10 @@ async function handleProxyRequest(request, ctx, url) {
   const formatKey = supportsAvif ? 'avif' : supportsWebp ? 'webp' : 'jpeg';
 
   // Create a cache key that includes the format for proper cache separation
+  // Use minimal request to avoid caching auth headers or cookies
   const cacheKeyUrl = new URL(request.url);
   cacheKeyUrl.searchParams.set('_fmt', formatKey);
-  const cacheKey = new Request(cacheKeyUrl.toString(), request);
+  const cacheKey = new Request(cacheKeyUrl.toString(), { method: 'GET' });
   const cache = caches.default;
 
   // Check cache first
@@ -86,19 +98,25 @@ async function handleProxyRequest(request, ctx, url) {
     });
   }
 
-  // Fetch the image from SmugMug
-  // NOTE: cf.image transformations require Image Resizing feature to be properly configured.
-  // For now, proxy without transformation - still provides first-party domain benefit.
+  // Fetch the image from SmugMug with timeout
   let originResponse;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   try {
     originResponse = await fetch(targetUrl, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'NinoChavezGallery/1.0',
         'Accept': acceptHeader || '*/*'
       }
     });
   } catch (e) {
-    return new Response('Failed to fetch image: ' + e.message, { status: 502 });
+    console.error('Upstream fetch failed:', e);
+    const status = e.name === 'AbortError' ? 504 : 502;
+    return new Response('Failed to fetch image', { status });
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!originResponse.ok) {
