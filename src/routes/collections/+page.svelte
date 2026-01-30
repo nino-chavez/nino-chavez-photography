@@ -34,6 +34,23 @@
 <svelte:head>
 	<title>Curated Collections — Nino Chavez Photography</title>
 	<meta name="description" content="Explore curated photography collections showcasing the best moments, emotions, and stories from volleyball tournaments and events." />
+
+	<!-- Preload first 3 collection cover images for LCP optimization -->
+	<!-- Uses local optimized WebP when available, falls back to SmugMug -L -->
+	{#each data.collections.slice(0, 3) as collection, i}
+		{@const preloadUrl = collection.optimizedPaths?.desktop
+			|| (collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
+				? collection.coverPhoto.ImageUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
+				: collection.coverPhoto?.ImageUrl)}
+		{#if preloadUrl}
+			<link
+				rel="preload"
+				as="image"
+				href={preloadUrl}
+				fetchpriority={i === 0 ? "high" : "low"}
+			/>
+		{/if}
+	{/each}
 </svelte:head>
 
 <!-- Minimal Header - Content First Design -->

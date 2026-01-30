@@ -2,6 +2,7 @@
 	import { Motion } from 'svelte-motion';
 	import { Camera } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
+	import { generateSmugMugSrcset, getSmugMugUrl, type SmugMugSize } from '$lib/photo-utils';
 
 	interface Props {
 		src: string;
@@ -11,8 +12,9 @@
 		aspectRatio?: string; // e.g., "4/3", "16/9"
 		width?: number; // Explicit width for CLS prevention
 		height?: number; // Explicit height for CLS prevention
-		sizes?: string; // Responsive sizes attribute
+		sizes?: string; // Responsive sizes attribute (e.g., "(max-width: 640px) 100vw, 25vw")
 		priority?: boolean; // Disable lazy loading for above-fold images
+		quality?: 'low' | 'medium' | 'high'; // Image quality preset
 		onLoad?: () => void;
 		onError?: () => void;
 	}
@@ -27,9 +29,31 @@
 		height,
 		sizes,
 		priority = false,
+		quality = 'medium',
 		onLoad,
 		onError
 	}: Props = $props();
+
+	// Check if src is already a local optimized image
+	let isLocalOptimized = $derived(src?.startsWith('/optimized/') || src?.startsWith('/hero-images/'));
+
+	// Quality presets determine srcset sizes
+	const qualityPresets: Record<string, SmugMugSize[]> = {
+		low: ['S', 'M'],           // Thumbnails, small cards
+		medium: ['M', 'L', 'XL'],  // Gallery cards, album covers
+		high: ['L', 'XL', 'X2', 'X3'], // Hero images, lightbox
+	};
+
+	// Generate responsive srcset for SmugMug images (skip for local images)
+	let srcset = $derived(isLocalOptimized ? null : generateSmugMugSrcset(src, qualityPresets[quality]));
+
+	// Use largest size from preset as main src (skip transformation for local images)
+	let optimizedSrc = $derived(() => {
+		if (isLocalOptimized) return src;
+		const preset = qualityPresets[quality];
+		const largestSize = preset[preset.length - 1];
+		return getSmugMugUrl(src, largestSize) || src;
+	});
 
 	// PERFORMANCE: Calculate dimensions from aspectRatio if not provided
 	// This prevents CLS (Cumulative Layout Shift)
@@ -152,11 +176,13 @@
 			animate={{ opacity: imageLoaded ? 1 : 0 }}
 			transition={MOTION.spring.gentle}
 		>
+			<!-- PERFORMANCE: srcset + sizes enables responsive image selection -->
 			<!-- PERFORMANCE: width/height attributes prevent CLS -->
 			<img
 				bind:this={imageElement}
 				use:motion
-				{src}
+				src={optimizedSrc()}
+				srcset={srcset || undefined}
 				{alt}
 				{sizes}
 				width={computedWidth}

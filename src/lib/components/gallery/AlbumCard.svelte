@@ -11,6 +11,7 @@
 	import { Motion } from 'svelte-motion';
 	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
+	import { generateSmugMugSrcset, getSmugMugUrl, SIZES_PRESETS } from '$lib/photo-utils';
 
 	interface Album {
 		albumKey: string;
@@ -21,6 +22,12 @@
 		categories?: string[];
 		primarySport?: string;
 		primaryCategory?: string;
+		// Optional local optimized paths (from manifest)
+		optimizedPaths?: {
+			desktop: string;
+			mobile: string;
+			thumbnail: string;
+		};
 	}
 
 	interface Props {
@@ -37,6 +44,26 @@
 
 	// Generate album URL for navigation
 	let albumUrl = $derived(`${base}/albums/${album.albumKey}`);
+
+	// Use local optimized images if available, otherwise fall back to SmugMug
+	let hasLocalOptimized = $derived(!!album.optimizedPaths);
+
+	// For local optimized images, build srcset from local paths
+	let localSrcset = $derived(
+		album.optimizedPaths
+			? `${album.optimizedPaths.thumbnail} 80w, ${album.optimizedPaths.mobile} 600w, ${album.optimizedPaths.desktop} 800w`
+			: null
+	);
+
+	// Generate responsive srcset for album cover (SmugMug fallback)
+	let smugMugSrcset = $derived(generateSmugMugSrcset(album.coverImageUrl, ['M', 'L', 'XL', 'X2']));
+	let coverSrcset = $derived(localSrcset || smugMugSrcset);
+
+	// Use local desktop or SmugMug L as main src
+	let optimizedCoverUrl = $derived(
+		album.optimizedPaths?.desktop || getSmugMugUrl(album.coverImageUrl, 'L')
+	);
+	const albumCardSizes = SIZES_PRESETS.albumCard;
 
 	function handleClick(event: MouseEvent) {
 		// If onclick callback provided, prevent default navigation and use callback instead
@@ -144,10 +171,12 @@
 			</div>
 		{/if}
 
-		<!-- Cover Image -->
+		<!-- Cover Image with Responsive srcset -->
 		{#if album.coverImageUrl && !imageError}
 			<img
-				src={album.coverImageUrl}
+				src={optimizedCoverUrl || album.coverImageUrl}
+				srcset={coverSrcset || undefined}
+				sizes={albumCardSizes}
 				alt={`${album.albumName} cover`}
 				width="400"
 				height="300"

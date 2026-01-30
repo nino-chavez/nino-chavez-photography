@@ -28,6 +28,11 @@
 		description: string;
 		photoCount: number;
 		coverPhoto: CoverPhotoRow | null;
+		optimizedPaths?: {
+			desktop: string;
+			mobile: string;
+			thumbnail: string;
+		};
 	}
 
 	interface Props {
@@ -39,8 +44,8 @@
 
 	const isPortfolio = collection.slug === 'portfolio-excellence';
 
-	// Get optimized SmugMug image URL
-	function getOptimizedImageUrl(imageUrl: string | null): string {
+	// Get optimized SmugMug image URL as fallback
+	function getSmugMugImageUrl(imageUrl: string | null): string {
 		if (!imageUrl) return '';
 
 		// SmugMug optimization - use Large size (800px) for collection cards
@@ -52,7 +57,17 @@
 		return imageUrl;
 	}
 
-	let coverImageUrl = $derived(getOptimizedImageUrl(collection.coverPhoto?.ImageUrl || null));
+	// Prefer local optimized images, fall back to SmugMug
+	let coverImageUrl = $derived(
+		collection.optimizedPaths?.desktop || getSmugMugImageUrl(collection.coverPhoto?.ImageUrl || null)
+	);
+
+	// Generate srcset for responsive loading
+	let srcset = $derived(
+		collection.optimizedPaths
+			? `${collection.optimizedPaths.thumbnail} 100w, ${collection.optimizedPaths.mobile} 800w, ${collection.optimizedPaths.desktop} 1200w`
+			: null
+	);
 </script>
 
 <a
@@ -66,6 +81,8 @@
 		<div class="absolute inset-0">
 			<img
 				src={coverImageUrl}
+				srcset={srcset}
+				sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
 				alt="{collection.title} cover"
 				width="300"
 				height="400"

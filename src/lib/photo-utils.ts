@@ -440,3 +440,127 @@ export function generateMetadataSummary(photo: Photo): string[] {
 export function calculateGlowIntensity(metadata: PhotoMetadata): number {
   return calculateQualityScore(metadata);
 }
+
+// ============================================================================
+// SmugMug Image URL Utilities
+// ============================================================================
+
+/**
+ * SmugMug image size suffixes and their approximate widths
+ *
+ * SmugMug appends these suffixes before the file extension:
+ * - Original URL: https://photos.smugmug.com/path/i-AbCdEf/0/abc123/O/i-AbCdEf-O.jpg
+ * - Sized URL:    https://photos.smugmug.com/path/i-AbCdEf/0/abc123/L/i-AbCdEf-L.jpg
+ */
+export const SMUGMUG_SIZES = {
+  Th: { suffix: '-Th', width: 150, label: 'Thumbnail' },
+  S: { suffix: '-S', width: 320, label: 'Small' },
+  M: { suffix: '-M', width: 600, label: 'Medium' },
+  L: { suffix: '-L', width: 800, label: 'Large' },
+  XL: { suffix: '-XL', width: 1024, label: 'X-Large' },
+  X2: { suffix: '-X2', width: 1600, label: '2X' },
+  X3: { suffix: '-X3', width: 2400, label: '3X' },
+} as const;
+
+export type SmugMugSize = keyof typeof SMUGMUG_SIZES;
+
+/**
+ * Get SmugMug image URL at a specific size
+ *
+ * @param url - Original SmugMug image URL
+ * @param size - Desired size suffix (Th, S, M, L, XL, X2, X3)
+ * @returns Resized URL or original if not SmugMug
+ *
+ * @example
+ * getSmugMugUrl('https://photos.smugmug.com/.../i-AbCdEf-O.jpg', 'L')
+ * // => 'https://photos.smugmug.com/.../i-AbCdEf-L.jpg'
+ */
+export function getSmugMugUrl(url: string | undefined | null, size: SmugMugSize): string {
+  if (!url) return '';
+  if (!url.includes('smugmug.com')) return url;
+
+  const sizeInfo = SMUGMUG_SIZES[size];
+  // Replace any existing size suffix (including -O for original) with new size
+  return url
+    .replace(/-[A-Z]\d?\./, '.')  // Remove size suffix before extension
+    .replace(/(\.[^.]+)$/, `${sizeInfo.suffix}$1`);  // Add new suffix
+}
+
+/**
+ * Generate srcset for responsive SmugMug images
+ *
+ * Creates a srcset string with multiple sizes for browser to choose from.
+ * Browsers pick the smallest image that fits their viewport/DPR.
+ *
+ * @param url - Original SmugMug image URL
+ * @param sizes - Array of sizes to include (default: M, L, XL, X2)
+ * @returns srcset string for img element
+ *
+ * @example
+ * generateSmugMugSrcset('https://photos.smugmug.com/.../i-AbCdEf-O.jpg')
+ * // => 'https://.../-M.jpg 600w, https://.../-L.jpg 800w, https://.../-XL.jpg 1024w, https://.../-X2.jpg 1600w'
+ */
+export function generateSmugMugSrcset(
+  url: string | undefined | null,
+  sizes: SmugMugSize[] = ['M', 'L', 'XL', 'X2']
+): string {
+  if (!url || !url.includes('smugmug.com')) return '';
+
+  return sizes
+    .map(size => {
+      const sizeInfo = SMUGMUG_SIZES[size];
+      const sizedUrl = getSmugMugUrl(url, size);
+      return `${sizedUrl} ${sizeInfo.width}w`;
+    })
+    .join(', ');
+}
+
+/**
+ * Get optimal SmugMug size for a given display width
+ *
+ * Considers 2x DPR for retina displays.
+ *
+ * @param displayWidth - Target display width in CSS pixels
+ * @param highDpi - Whether to optimize for 2x displays (default: true)
+ * @returns Optimal SmugMug size suffix
+ *
+ * @example
+ * getOptimalSmugMugSize(400) // => 'L' (800px for 2x)
+ * getOptimalSmugMugSize(400, false) // => 'M' (600px for 1x)
+ */
+export function getOptimalSmugMugSize(displayWidth: number, highDpi: boolean = true): SmugMugSize {
+  const targetWidth = highDpi ? displayWidth * 2 : displayWidth;
+
+  // Find smallest size that's >= target width
+  const sizes: SmugMugSize[] = ['Th', 'S', 'M', 'L', 'XL', 'X2', 'X3'];
+  for (const size of sizes) {
+    if (SMUGMUG_SIZES[size].width >= targetWidth) {
+      return size;
+    }
+  }
+
+  return 'X3'; // Largest available
+}
+
+/**
+ * Recommended sizes attribute for common use cases
+ *
+ * These tell the browser how wide the image will be at different viewports,
+ * allowing it to pick the right srcset image.
+ */
+export const SIZES_PRESETS = {
+  // Full-width hero (100vw on all screens)
+  hero: '100vw',
+
+  // Gallery grid: 1 col mobile, 2 col tablet, 3-4 col desktop
+  galleryCard: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw',
+
+  // Album card: similar to gallery but slightly larger
+  albumCard: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
+
+  // Lightbox: nearly full width
+  lightbox: '(max-width: 1024px) 100vw, 90vw',
+
+  // Thumbnail: small fixed size
+  thumbnail: '150px',
+} as const;

@@ -17,14 +17,23 @@
 -->
 
 <script lang="ts">
-	import { generatePhotoAltText } from '$lib/photo-utils';
+	import { generatePhotoAltText, SIZES_PRESETS } from '$lib/photo-utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import OptimizedImage from '$lib/components/ui/OptimizedImage.svelte';
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import type { Photo } from '$types/photo';
 
+	// Extended Photo type with optional local optimized paths
+	interface PhotoWithOptimized extends Photo {
+		optimizedPaths?: {
+			desktop: string;
+			mobile: string;
+			thumbnail: string;
+		};
+	}
+
 	interface Props {
-		photo: Photo;
+		photo: PhotoWithOptimized;
 		index?: number;
 		onclick?: (photo: Photo) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images
@@ -32,9 +41,16 @@
 
 	let { photo, index = 0, onclick, priority = false }: Props = $props();
 
+	// Use local optimized images if available, otherwise fall back to SmugMug
+	let hasLocalOptimized = $derived(!!photo.optimizedPaths);
+
 	// Use image_url for display, thumbnail as blur placeholder
-	let imageSrc = $derived(photo.image_url);
-	let thumbnailSrc = $derived(photo.thumbnail_url);
+	// Prefer local optimized paths when available
+	let imageSrc = $derived(photo.optimizedPaths?.desktop || photo.image_url);
+	let thumbnailSrc = $derived(photo.optimizedPaths?.thumbnail || photo.thumbnail_url);
+
+	// Responsive sizes for gallery grid layout
+	const galleryCardSizes = SIZES_PRESETS.galleryCard;
 
 	// Generate individual photo URL for SEO
 	let photoUrl = $derived(`/photo/${photo.image_key}`);
@@ -60,12 +76,14 @@
 	data-sveltekit-preload-data="false"
 	onclick={handleClick}
 >
-	<!-- Optimized Image with Lazy Loading & Blur Placeholder -->
+	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
 	<OptimizedImage
 		src={imageSrc}
 		alt={photo.title || `Photo ${index + 1}`}
 		thumbnailSrc={thumbnailSrc}
 		aspectRatio="4/3"
+		sizes={galleryCardSizes}
+		quality="medium"
 		{priority}
 		class="absolute inset-0"
 	/>

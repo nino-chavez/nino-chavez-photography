@@ -13,6 +13,26 @@
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, type FilterCounts } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
+// Import optimized explore images manifest at build time
+// This is optional - pages work without it, just with SmugMug images
+let exploreManifest: { images: Array<{ imageKey: string; paths: { desktop: string; mobile: string; thumbnail: string } }> } | null = null;
+try {
+	// @ts-ignore - JSON import from static folder
+	exploreManifest = await import('../../../static/optimized/explore/manifest.json');
+} catch {
+	// Manifest doesn't exist yet - will use SmugMug URLs
+}
+
+// Build a lookup map for O(1) access
+const optimizedExploreImages = new Map<string, { desktop: string; mobile: string; thumbnail: string }>();
+if (exploreManifest?.images) {
+	for (const img of exploreManifest.images) {
+		if (img.imageKey) {
+			optimizedExploreImages.set(img.imageKey, img.paths);
+		}
+	}
+}
+
 export const load: PageServerLoad = async ({ url, parent }) => {
   // Get cached data from parent layout
   const { sports, categories, baseFilterCounts } = await parent();
@@ -165,7 +185,7 @@ export const load: PageServerLoad = async ({ url, parent }) => {
   // Get total count for "Showing X of Y" (after auto-clear)
   const countStart = Date.now();
   let totalCount;
-  
+
   if (similarToImageKey) {
     totalCount = photos.length;
   } else {
@@ -175,8 +195,23 @@ export const load: PageServerLoad = async ({ url, parent }) => {
   console.log(`[PERF] getPhotoCount took ${countTime}ms`);
   console.log(`[PERF] TOTAL server load time: ${Date.now() - filterCountsStart}ms`);
 
+  // Enhance photos with local optimized image paths when available (first page only)
+  const enhancedPhotos = photos.map((photo: any) => {
+    const optimizedPaths = optimizedExploreImages.get(photo.image_key);
+    if (optimizedPaths) {
+      return {
+        ...photo,
+        optimizedPaths,
+        // Override URLs with local optimized versions for faster LCP
+        image_url: optimizedPaths.desktop,
+        thumbnail_url: optimizedPaths.thumbnail,
+      };
+    }
+    return photo;
+  });
+
   return {
-    photos,
+    photos: enhancedPhotos,
     totalCount,
     currentPage: page,
     pageSize,

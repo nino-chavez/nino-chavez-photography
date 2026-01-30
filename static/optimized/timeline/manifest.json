@@ -1,0 +1,21 @@
+{
+  "version": 1769733246725,
+  "generatedAt": "2026-01-30T00:34:06.725Z",
+  "category": "timeline",
+  "images": [
+    {
+      "id": "timeline-5043a334-edb3-4ce6-bf4a-4a790b54630b",
+      "imageKey": "DSC07806",
+      "albumKey": "pHqw25",
+      "albumName": "Lewis vs Pepperdine - Winter 2026",
+      "qualityScore": 8.333333333333334,
+      "priority": 8,
+      "originalUrl": "https://photos.smugmug.com/photos/i-N8zTN8M/0/Mbhxm5jLXxSbCJhTKtDzDdJkfhj365v8FFqL5BWHr/D/i-N8zTN8M-D.jpg",
+      "paths": {
+        "desktop": "/optimized/timeline/timeline-001-desktop.webp",
+        "mobile": "/optimized/timeline/timeline-001-mobile.webp",
+        "thumbnail": "/optimized/timeline/timeline-001-thumb.webp"
+      }
+    }
+  ]
+}

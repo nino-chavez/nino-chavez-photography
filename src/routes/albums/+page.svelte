@@ -91,10 +91,12 @@
 	<meta name="description" content="Browse {data.totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches." />
 
 	<!-- Preload first 4 album cover images for LCP optimization -->
+	<!-- Uses local optimized WebP when available, falls back to SmugMug -L -->
 	{#each data.albums.slice(0, 4) as album, i}
-		{@const preloadUrl = album.coverImageUrl?.includes('smugmug.com')
-			? album.coverImageUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-M$1')
-			: album.coverImageUrl}
+		{@const preloadUrl = album.optimizedPaths?.desktop
+			|| (album.coverImageUrl?.includes('smugmug.com')
+				? album.coverImageUrl.replace(/-[A-Z]\d?\./, '.').replace(/(\.[^.]+)$/, '-L$1')
+				: album.coverImageUrl)}
 		{#if preloadUrl}
 			<link
 				rel="preload"

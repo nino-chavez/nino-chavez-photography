@@ -1,6 +1,26 @@
 import { supabaseServer } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
+// Import optimized album covers manifest at build time
+// This is optional - pages work without it, just with SmugMug images
+let albumsManifest: { images: Array<{ albumKey: string; paths: { desktop: string; mobile: string; thumbnail: string } }> } | null = null;
+try {
+	// @ts-ignore - JSON import from static folder
+	albumsManifest = await import('../../../static/optimized/albums/manifest.json');
+} catch {
+	// Manifest doesn't exist yet - will use SmugMug URLs
+}
+
+// Build a lookup map for O(1) access
+const optimizedAlbumCovers = new Map<string, { desktop: string; mobile: string; thumbnail: string }>();
+if (albumsManifest?.images) {
+	for (const img of albumsManifest.images) {
+		if (img.albumKey) {
+			optimizedAlbumCovers.set(img.albumKey, img.paths);
+		}
+	}
+}
+
 /**
  * Auto-refresh materialized view if stale
  * Checks if photo_metadata has newer data than albums_summary view
@@ -114,22 +134,28 @@ export const load: PageServerLoad = async ({ url }) => {
 	}
 
 	// Map materialized view results to expected format
-	const albums = (albumsData || []).map((album) => ({
-		albumKey: album.album_key,
-		albumName: album.album_name || 'Unknown Album',
-		photoCount: parseInt(album.photo_count) || 0,
-		coverImageUrl: album.cover_image_url,
-		sports: album.sports || [],
-		categories: album.categories || [],
-		portfolioCount: parseInt(album.portfolio_count) || 0,
-		avgQualityScore: parseFloat(album.avg_quality_score) || 0,
-		primarySport: album.primary_sport || 'unknown',
-		primaryCategory: album.primary_category || 'unknown',
-		dateRange: {
-			earliest: album.earliest_photo_date,
-			latest: album.latest_photo_date
-		}
-	}));
+	// Include optimized local image paths when available
+	const albums = (albumsData || []).map((album) => {
+		const optimizedPaths = optimizedAlbumCovers.get(album.album_key);
+		return {
+			albumKey: album.album_key,
+			albumName: album.album_name || 'Unknown Album',
+			photoCount: parseInt(album.photo_count) || 0,
+			coverImageUrl: optimizedPaths?.desktop || album.cover_image_url,
+			sports: album.sports || [],
+			categories: album.categories || [],
+			portfolioCount: parseInt(album.portfolio_count) || 0,
+			avgQualityScore: parseFloat(album.avg_quality_score) || 0,
+			primarySport: album.primary_sport || 'unknown',
+			primaryCategory: album.primary_category || 'unknown',
+			dateRange: {
+				earliest: album.earliest_photo_date,
+				latest: album.latest_photo_date
+			},
+			// Include optimized paths for component to use srcset
+			optimizedPaths: optimizedPaths || undefined
+		};
+	});
 
 	const totalAlbums = count || 0;
 	const totalPages = Math.ceil(totalAlbums / limit);
@@ -195,20 +221,25 @@ async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number,
 	}
 
 	// Convert to array, calculate averages, and apply sorting
+	// Include optimizedPaths from manifest if available
 	let albums = Array.from(albumMap.entries())
-		.map(([key, data]) => ({
-			albumKey: key,
-			albumName: data.name,
-			photoCount: data.count,
-			coverImageUrl: data.coverImageUrl,
-			sports: Array.from(data.sports).filter(s => s !== 'unknown'),
-			categories: Array.from(data.categories).filter(c => c !== 'unknown'),
-			portfolioCount: data.portfolioCount,
-			avgQualityScore: data.totalQualityScore / data.count,
-			primarySport: Array.from(data.sports)[0] || 'unknown',
-			primaryCategory: Array.from(data.categories)[0] || 'unknown',
-			dateRange: { earliest: null, latest: null } // Legacy doesn't have date ranges
-		}));
+		.map(([key, data]) => {
+			const optimizedPaths = optimizedAlbumCovers.get(key);
+			return {
+				albumKey: key,
+				albumName: data.name,
+				photoCount: data.count,
+				coverImageUrl: optimizedPaths?.desktop || data.coverImageUrl,
+				sports: Array.from(data.sports).filter(s => s !== 'unknown'),
+				categories: Array.from(data.categories).filter(c => c !== 'unknown'),
+				portfolioCount: data.portfolioCount,
+				avgQualityScore: data.totalQualityScore / data.count,
+				primarySport: Array.from(data.sports)[0] || 'unknown',
+				primaryCategory: Array.from(data.categories)[0] || 'unknown',
+				dateRange: { earliest: null, latest: null }, // Legacy doesn't have date ranges
+				optimizedPaths: optimizedPaths || undefined
+			};
+		});
 
 	// Apply sorting
 	switch (sortBy) {
