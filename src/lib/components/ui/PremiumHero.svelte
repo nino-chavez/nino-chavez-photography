@@ -133,7 +133,10 @@
       <img
         src={mobileBackground}
         alt=""
+        width="1200"
+        height="800"
         class="hidden"
+        fetchpriority="high"
         onload={() => { mobileImageLoaded = true; }}
         onerror={() => { mobileImageLoaded = true; }}
       />
@@ -152,7 +155,10 @@
       <img
         src={desktopBackground}
         alt=""
+        width="1920"
+        height="1080"
         class="hidden"
+        fetchpriority="high"
         onload={() => { desktopImageLoaded = true; }}
         onerror={() => { desktopImageLoaded = true; }}
       />
