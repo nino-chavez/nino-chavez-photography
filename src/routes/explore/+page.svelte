@@ -797,7 +797,7 @@
 	{:else if displayPhotos.length > 0}
 		<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-4 lg:gap-6">
 			{#each displayPhotos as photo, index (photo.image_key)}
-				<PhotoCard {photo} {index} onclick={handlePhotoClick} priority={index < 8} />
+				<PhotoCard {photo} {index} onclick={handlePhotoClick} priority={index < 4} />
 			{/each}
 		</div>
 	{:else}
