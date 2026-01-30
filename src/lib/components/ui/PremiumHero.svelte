@@ -40,20 +40,12 @@
   }: Props = $props();
 
   // Generate optimized image URL - SMALLER sizes for split layout
+  // Routes through Cloudflare proxy for first-party domain (no third-party cookies)
   function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
 
-    // LOCAL STATIC IMAGES (best performance - already optimized WebP)
-    if (imageUrl.includes('/hero-images/')) {
-      const basePath = imageUrl.replace(/-(?:desktop|mobile|thumb)\.webp$/, '');
-      if (size === 'thumbnail') return `${basePath}-thumb.webp`;
-      if (size === 'mobile') return `${basePath}-mobile.webp`;
-      return `${basePath}-desktop.webp`;
-    }
-
     // SmugMug optimization - USE SMALLER SIZES for split layout
     // Split layout = 50% width = half the pixels needed
-    // Route through proxy to eliminate third-party cookies
     if (imageUrl.includes('smugmug.com')) {
       const baseUrl = imageUrl.replace(/-[A-Z]\d?\./, '.');
       // Desktop: XL (1024px) instead of X2 (1600px) - saves ~500KB
@@ -72,7 +64,6 @@
         url.searchParams.set('width', '100');
         url.searchParams.set('quality', '60');
       } else {
-        // Smaller sizes for split layout
         url.searchParams.set('width', size === 'mobile' ? '800' : '1200');
         url.searchParams.set('quality', '85');
       }

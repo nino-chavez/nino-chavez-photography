@@ -1,11 +1,11 @@
 /**
- * Cloudflare Worker: SmugMug Image Proxy with WebP/AVIF Conversion
+ * Cloudflare Worker: SmugMug Image Proxy
  *
  * Route: gallery.ninochavez.co/*
  *
  * Features:
  * 1. PROXY MODE: /proxy/photos.smugmug.com/... → proxies SmugMug images
- * 2. IMAGE OPTIMIZATION: Converts JPEG to WebP/AVIF using Cloudflare Image Transformations
+ * 2. FIRST-PARTY DOMAIN: Eliminates third-party cookies
  * 3. EDGE CACHING: 1-year TTL for immutable images
  * 4. PASS-THROUGH MODE: everything else → passes to SmugMug site
  *
@@ -14,16 +14,18 @@
  *
  * Benefits:
  * - First-party domain (no third-party cookies)
- * - Automatic WebP/AVIF conversion (saves ~30-50% bandwidth)
- * - Edge caching with 1-year TTL
- * - Free tier: 5,000 unique transformations/month
+ * - Edge caching with 1-year TTL (images served from nearest Cloudflare POP)
+ * - CORS headers for cross-origin requests
+ *
+ * Note: WebP/AVIF conversion requires Cloudflare Pro plan ($20/month).
+ * Current setup proxies images in their original format.
  */
 
 // Cache TTL (1 year for immutable images)
 const CACHE_TTL = 31536000;
 
-// Image extensions to optimize
-const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp)$/i;
+// Image extensions to cache
+const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|avif)$/i;
 
 export default {
   async fetch(request, _env, ctx) {
@@ -56,22 +58,9 @@ async function handleProxyRequest(request, ctx, pathname) {
     return new Response('Invalid proxy target', { status: 400 });
   }
 
-  // Determine if this is an image request
-  const isImage = IMAGE_EXTENSIONS.test(pathname);
-
-  // For cache separation by Accept header (WebP vs AVIF vs JPEG)
-  const acceptHeader = request.headers.get('Accept') || '';
-  const supportsAvif = acceptHeader.includes('image/avif');
-  const supportsWebp = acceptHeader.includes('image/webp');
-  const formatKey = supportsAvif ? 'avif' : supportsWebp ? 'webp' : 'jpeg';
-
-  // Create a cache key that includes the format for proper cache separation
-  const cacheKeyUrl = new URL(request.url);
-  cacheKeyUrl.searchParams.set('_fmt', formatKey);
-  const cacheKey = new Request(cacheKeyUrl.toString(), request);
-  const cache = caches.default;
-
   // Check cache first
+  const cacheKey = new Request(request.url, request);
+  const cache = caches.default;
   let response = await cache.match(cacheKey);
 
   if (response) {
@@ -83,28 +72,15 @@ async function handleProxyRequest(request, ctx, pathname) {
     });
   }
 
-  // Fetch from SmugMug with image transformation
+  // Fetch from SmugMug
   let originResponse;
   try {
-    const fetchOptions = {
+    originResponse = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'NinoChavezGallery/1.0',
-        'Accept': acceptHeader || '*/*'
+        'Accept': request.headers.get('Accept') || '*/*'
       }
-    };
-
-    // Use Cloudflare Image Transformations for images
-    // format: 'auto' automatically serves WebP/AVIF based on browser support
-    if (isImage) {
-      fetchOptions.cf = {
-        image: {
-          format: 'auto',  // Auto-detect best format (WebP/AVIF) based on Accept header
-          quality: 85
-        }
-      };
-    }
-
-    originResponse = await fetch(targetUrl, fetchOptions);
+    });
   } catch (e) {
     return new Response('Failed to fetch image: ' + e.message, { status: 502 });
   }
@@ -113,11 +89,11 @@ async function handleProxyRequest(request, ctx, pathname) {
     return new Response('Image not found', { status: originResponse.status });
   }
 
-  // Get content type - will be transformed by Cloudflare (e.g., image/webp)
+  // Only cache images
   const contentType = originResponse.headers.get('Content-Type') || '';
-  const isImageResponse = contentType.startsWith('image/') || isImage;
+  const isImage = contentType.startsWith('image/') || IMAGE_EXTENSIONS.test(pathname);
 
-  if (!isImageResponse) {
+  if (!isImage) {
     return originResponse;
   }
 
@@ -131,7 +107,6 @@ async function handleProxyRequest(request, ctx, pathname) {
       'Cache-Control': `public, max-age=${CACHE_TTL}, immutable`,
       'CDN-Cache-Control': `public, max-age=${CACHE_TTL}`,
       'Access-Control-Allow-Origin': '*',
-      'Vary': 'Accept',
       'X-Cache': 'MISS',
       'X-Original-URL': targetUrl
     }
