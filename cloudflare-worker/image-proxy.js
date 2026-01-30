@@ -5,7 +5,7 @@
  *
  * Features:
  * 1. PROXY MODE: /proxy/photos.smugmug.com/... → proxies SmugMug images
- * 2. IMAGE OPTIMIZATION: Converts JPEG to WebP/AVIF using Cloudflare Image Transformations
+ * 2. IMAGE OPTIMIZATION: Converts JPEG to WebP/AVIF using /cdn-cgi/image/
  * 3. EDGE CACHING: 1-year TTL for immutable images
  * 4. PASS-THROUGH MODE: everything else → passes to SmugMug site
  *
@@ -37,7 +37,7 @@ export default {
 
     // PROXY MODE: /proxy/photos.smugmug.com/path/to/image.jpg
     if (pathname.startsWith('/proxy/')) {
-      return handleProxyRequest(request, ctx, pathname);
+      return handleProxyRequest(request, ctx, url);
     }
 
     // PASS-THROUGH MODE: everything else goes to SmugMug site
@@ -45,7 +45,9 @@ export default {
   }
 };
 
-async function handleProxyRequest(request, ctx, pathname) {
+async function handleProxyRequest(request, ctx, url) {
+  const pathname = url.pathname;
+
   // Extract the target URL from the path
   // /proxy/photos.smugmug.com/photos/i-xxx-L.jpg → https://photos.smugmug.com/photos/i-xxx-L.jpg
   const targetPath = pathname.replace('/proxy/', '');
@@ -84,39 +86,55 @@ async function handleProxyRequest(request, ctx, pathname) {
     });
   }
 
-  // Fetch from SmugMug with image transformation
+  // For images, use Cloudflare Image Transformations via /cdn-cgi/image/
   let originResponse;
   try {
-    // Build fetch options
-    const fetchOptions = {
-      headers: {
-        'User-Agent': 'NinoChavezGallery/1.0',
-        'Accept': acceptHeader || '*/*'
-      }
-    };
+    if (isImage && (supportsAvif || supportsWebp)) {
+      // Use the /cdn-cgi/image/ URL transformation endpoint
+      // This uses the zone's Image Transformations feature (5,000 free/month)
+      const format = supportsAvif ? 'avif' : 'webp';
+      const transformUrl = `https://gallery.ninochavez.co/cdn-cgi/image/format=${format},quality=85,fit=scale-down/${targetUrl}`;
 
-    // Use Cloudflare Image Transformations for images
-    // This uses the zone's Image Transformations feature (5,000 free/month)
-    if (isImage) {
-      fetchOptions.cf = {
-        image: {
-          format: 'auto',      // Auto-detect best format (WebP/AVIF) based on Accept header
-          quality: 85,         // Good balance of quality and size
-          fit: 'scale-down'    // Never upscale, only downscale if needed
+      originResponse = await fetch(transformUrl, {
+        headers: {
+          'User-Agent': 'NinoChavezGallery/1.0',
+          'Accept': acceptHeader || '*/*'
         }
-      };
+      });
+    } else {
+      // Non-image or no modern format support - fetch directly
+      originResponse = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'NinoChavezGallery/1.0',
+          'Accept': acceptHeader || '*/*'
+        }
+      });
     }
-
-    originResponse = await fetch(targetUrl, fetchOptions);
   } catch (e) {
     return new Response('Failed to fetch image: ' + e.message, { status: 502 });
   }
 
   if (!originResponse.ok) {
-    return new Response('Image not found', { status: originResponse.status });
+    // If transformation fails, fall back to direct fetch
+    if (isImage && originResponse.status >= 400) {
+      try {
+        originResponse = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'NinoChavezGallery/1.0',
+            'Accept': acceptHeader || '*/*'
+          }
+        });
+      } catch (e) {
+        return new Response('Failed to fetch image: ' + e.message, { status: 502 });
+      }
+    }
+
+    if (!originResponse.ok) {
+      return new Response('Image not found', { status: originResponse.status });
+    }
   }
 
-  // Get content type - should be transformed by Cloudflare (e.g., image/webp)
+  // Get content type from the response
   const contentType = originResponse.headers.get('Content-Type') || '';
   const isImageResponse = contentType.startsWith('image/') || isImage;
 
@@ -138,7 +156,7 @@ async function handleProxyRequest(request, ctx, pathname) {
       'X-Cache': 'MISS',
       'X-Format-Key': formatKey,
       'X-Original-URL': targetUrl,
-      'X-Transformed': isImage ? 'true' : 'false'
+      'X-Transformed': isImage && (supportsAvif || supportsWebp) ? 'true' : 'false'
     }
   });
 
