@@ -3,6 +3,7 @@
 	import { Download, Check } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
+	import { base } from '$app/paths';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -61,8 +62,8 @@
 		downloadSuccess = false;
 
 		try {
-			// Use our proxy endpoint to avoid CORS issues
-			const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+			// Use our proxy endpoint to avoid CORS issues (include base path)
+			const proxyUrl = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
 
 			// Create download link that points to our proxy
 			const link = document.createElement('a');
