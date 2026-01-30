@@ -1279,48 +1279,95 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   console.log(`[findSimilarPhotos] Finding photos similar to: ${imageKey}`);
   const start = Date.now();
 
-  // 1. Call RPC to get similar photo keys and scores
+  // 1. Try vector similarity search first
   const { data: similarMatches, error } = await supabaseServer.rpc('find_similar_photos', {
     query_image_key: imageKey,
     match_count: limit,
-    match_threshold: 0.3 // Lower threshold to ensure results with small dataset
+    match_threshold: 0.3
   });
 
-  if (error) {
-    console.error('[Supabase Server] Error finding similar photos:', error);
-    // Fallback: return empty array (could fallback to emotion filter if needed)
-    return [];
+  // If vector search succeeded and has results, use them
+  if (!error && similarMatches && similarMatches.length > 0) {
+    const keys = similarMatches.map((p: any) => p.image_key);
+
+    const { data: photosData, error: photosError } = await supabaseServer
+      .from('photo_metadata')
+      .select('*')
+      .in('image_key', keys)
+      .not('sharpness', 'is', null);
+
+    if (!photosError && photosData && photosData.length > 0) {
+      const photoMap = new Map(photosData.map(p => [p.image_key, p]));
+      const sortedPhotos = similarMatches
+        .map((match: any) => photoMap.get(match.image_key))
+        .filter((p: any) => !!p)
+        .map(transformPhotoRow);
+
+      console.log(`[findSimilarPhotos] Vector search found ${sortedPhotos.length} similar photos in ${Date.now() - start}ms`);
+      return sortedPhotos;
+    }
   }
 
-  if (!similarMatches || similarMatches.length === 0) {
-    console.log('[findSimilarPhotos] No similar photos found with current threshold');
-    return [];
+  // 2. Fallback: Find photos with similar attributes
+  // This ensures we NEVER return zero results
+  console.log('[findSimilarPhotos] Vector search returned no results, falling back to attribute-based similarity');
+
+  // First, get the source photo's attributes
+  const { data: sourcePhoto, error: sourceError } = await supabaseServer
+    .from('photo_metadata')
+    .select('sport_type, emotion, play_type, photo_category, album_key')
+    .eq('image_key', imageKey)
+    .single();
+
+  if (sourceError || !sourcePhoto) {
+    console.error('[findSimilarPhotos] Could not find source photo for fallback:', sourceError);
+    // Last resort: return recent high-quality photos
+    return fetchPhotos({ limit, sortBy: 'quality' });
   }
 
-  // 2. Fetch full metadata for these photos
-  // We need to fetch them to get all the fields required for the Photo type
-  const keys = similarMatches.map((p: any) => p.image_key);
-  
-  const { data: photosData, error: photosError } = await supabaseServer
+  // Build fallback query - prioritize by matching attributes
+  // Try: same sport + emotion first, then same sport, then same category
+  let query = supabaseServer
     .from('photo_metadata')
     .select('*')
-    .in('image_key', keys)
+    .neq('image_key', imageKey) // Exclude the source photo
     .not('sharpness', 'is', null);
 
-  if (photosError) {
-    console.error('[Supabase Server] Error fetching similar photo details:', photosError);
-    return [];
+  // Add filters based on available attributes (most specific to least)
+  if (sourcePhoto.sport_type) {
+    query = query.eq('sport_type', sourcePhoto.sport_type);
+  }
+  if (sourcePhoto.emotion) {
+    query = query.eq('emotion', sourcePhoto.emotion);
   }
 
-  // 3. Map to Photo objects and sort by similarity (using the order from RPC)
-  // The RPC returns them sorted by similarity, but the .in() query doesn't guarantee order
-  const photoMap = new Map(photosData?.map(p => [p.image_key, p]));
-  
-  const sortedPhotos = similarMatches
-    .map((match: any) => photoMap.get(match.image_key))
-    .filter((p: any) => !!p) // Filter out any missing photos
-    .map(transformPhotoRow);
+  const { data: fallbackPhotos, error: fallbackError } = await query
+    .order('quality_score', { ascending: false, nullsFirst: false })
+    .limit(limit);
 
-  console.log(`[findSimilarPhotos] Found ${sortedPhotos.length} similar photos in ${Date.now() - start}ms`);
-  return sortedPhotos;
+  if (!fallbackError && fallbackPhotos && fallbackPhotos.length > 0) {
+    console.log(`[findSimilarPhotos] Attribute fallback found ${fallbackPhotos.length} similar photos in ${Date.now() - start}ms`);
+    return fallbackPhotos.map(transformPhotoRow);
+  }
+
+  // 3. Ultimate fallback: If still no results, return high-quality photos from same sport
+  console.log('[findSimilarPhotos] Emotion match failed, trying sport-only fallback');
+
+  const { data: sportFallback } = await supabaseServer
+    .from('photo_metadata')
+    .select('*')
+    .neq('image_key', imageKey)
+    .not('sharpness', 'is', null)
+    .eq('sport_type', sourcePhoto.sport_type || 'Volleyball')
+    .order('quality_score', { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (sportFallback && sportFallback.length > 0) {
+    console.log(`[findSimilarPhotos] Sport fallback found ${sportFallback.length} photos in ${Date.now() - start}ms`);
+    return sportFallback.map(transformPhotoRow);
+  }
+
+  // 4. Absolute last resort: Just return quality photos
+  console.log('[findSimilarPhotos] All fallbacks exhausted, returning quality photos');
+  return fetchPhotos({ limit, sortBy: 'quality' });
 }
