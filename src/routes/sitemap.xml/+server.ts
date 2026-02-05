@@ -11,6 +11,7 @@
  */
 
 import { supabaseServer } from '$lib/supabase/server';
+import { createAlbumSlug } from '$lib/utils';
 import type { RequestHandler } from './$types';
 
 interface SitemapUrl {
@@ -86,9 +87,9 @@ export const GET: RequestHandler = async () => {
 				changefreq: 'weekly' as const
 			})),
 
-			// Album detail pages
+			// Album detail pages (using SEO-friendly slugs)
 			...uniqueAlbums.map((album) => ({
-				loc: `${baseUrl}/albums/${album.album_key}`,
+				loc: `${baseUrl}/albums/${createAlbumSlug(album.album_name || album.album_key, album.album_key)}`,
 				priority: 0.6,
 				changefreq: 'monthly' as const
 			})),

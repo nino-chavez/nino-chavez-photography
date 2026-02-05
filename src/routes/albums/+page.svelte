@@ -6,6 +6,7 @@
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
 	import { getSmugMugUrl } from '$lib/photo-utils';
+	import { createAlbumSlug } from '$lib/utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import AlbumCard from '$lib/components/gallery/AlbumCard.svelte';
@@ -41,7 +42,8 @@
 	});
 
 	function handleAlbumClick(album: Album) {
-		goto(`${base}/albums/${album.albumKey}`);
+		const slug = createAlbumSlug(album.albumName, album.albumKey);
+		goto(`${base}/albums/${slug}`);
 	}
 
 	// Pagination helpers

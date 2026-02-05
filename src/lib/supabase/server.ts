@@ -348,6 +348,10 @@ export async function getPhotoCount(filters?: PhotoFilterState): Promise<number>
     query = query.eq('jersey_number', filters.jerseyNumber);
   }
 
+  if (filters?.albumKey) {
+    query = query.eq('album_key', filters.albumKey);
+  }
+
   const { count, error } = await query;
 
   if (error) {

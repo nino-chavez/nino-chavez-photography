@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import { getSmugMugUrl, getProxiedImageUrl } from '$lib/photo-utils';
+	import { createAlbumSlug } from '$lib/utils';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Trophy, Calendar } from 'lucide-svelte';
 
@@ -106,7 +107,7 @@
 					{#each data.featuredAlbums as featuredAlbum}
 						{@const albumLink = featuredAlbum.album.isVirtual
 							? getVirtualAlbumLink(featuredAlbum.type)
-							: `${base}/albums/${featuredAlbum.album.albumKey}`
+							: `${base}/albums/${createAlbumSlug(featuredAlbum.album.albumName, featuredAlbum.album.albumKey)}`
 						}
 						<a
 							href={albumLink}

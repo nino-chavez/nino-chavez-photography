@@ -7,6 +7,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 
@@ -17,10 +18,10 @@
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
 
-	// Simple search (client-side)
+	// Simple search (client-side filtering of current page)
 	let searchQuery = $state('');
 
-	// Filter photos by search
+	// Filter photos by search (client-side for current page only)
 	let displayPhotos = $derived.by(() => {
 		if (!searchQuery.trim()) return data.photos;
 
@@ -44,6 +45,10 @@
 
 	function handleLightboxNavigate(newIndex: number) {
 		selectedPhotoIndex = newIndex;
+	}
+
+	function handlePageChange(page: number) {
+		goto(`/albums/${data.slug}?page=${page}`);
 	}
 
 	function goBackToAlbums() {
@@ -98,7 +103,7 @@
 				<div class="flex items-center gap-2 min-w-0 flex-1">
 					<Typography variant="h1" class="text-xl lg:text-2xl truncate">{data.albumName}</Typography>
 					<Typography variant="caption" class="text-charcoal-400 text-xs whitespace-nowrap">
-						{data.photoCount.toLocaleString()}
+						{data.totalCount.toLocaleString()}
 					</Typography>
 				</div>
 
@@ -153,6 +158,16 @@
 				{#each displayPhotos as photo, index}
 					<PhotoCard {photo} {index} onclick={handlePhotoClick} />
 				{/each}
+			</div>
+
+			<!-- Pagination -->
+			<div class="mt-8">
+				<Pagination
+					currentPage={data.currentPage}
+					totalCount={data.totalCount}
+					pageSize={data.pageSize}
+					onPageChange={handlePageChange}
+				/>
 			</div>
 		{:else}
 			<!-- Empty State -->

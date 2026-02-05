@@ -12,6 +12,7 @@
 	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { generateSmugMugSrcset, getSmugMugUrl, SIZES_PRESETS } from '$lib/photo-utils';
+	import { createAlbumSlug } from '$lib/utils';
 
 	interface Album {
 		albumKey: string;
@@ -36,8 +37,8 @@
 	let imageLoaded = $state(false);
 	let imageError = $state(false);
 
-	// Generate album URL for navigation
-	let albumUrl = $derived(`${base}/albums/${album.albumKey}`);
+	// Generate album URL for navigation (using friendly slug)
+	let albumUrl = $derived(`${base}/albums/${createAlbumSlug(album.albumName, album.albumKey)}`);
 
 	// Generate responsive srcset for album cover via SmugMug proxy
 	let coverSrcset = $derived(generateSmugMugSrcset(album.coverImageUrl, ['M', 'L', 'XL', 'X2']));
