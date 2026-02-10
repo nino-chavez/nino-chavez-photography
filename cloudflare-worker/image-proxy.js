@@ -5,25 +5,26 @@
  *
  * Features:
  * 1. PROXY MODE: /proxy/photos.smugmug.com/... → proxies SmugMug images
- * 2. EDGE CACHING: 1-year TTL for immutable images
- * 3. PASS-THROUGH MODE: everything else → passes to SmugMug site
+ * 2. IMAGE TRANSFORMATION: WebP/AVIF conversion via Cloudflare Images
+ * 3. EDGE CACHING: Automatic caching of transformed variants
+ * 4. PASS-THROUGH MODE: everything else → passes to SmugMug site
  *
  * URL format:
  *   gallery.ninochavez.co/proxy/photos.smugmug.com/photos/i-xxx-L.jpg
  *
  * Benefits:
  * - First-party domain (no third-party cookies)
+ * - Automatic WebP/AVIF conversion (60-80% smaller files)
  * - Edge caching with 1-year TTL
- * - Cache separation by Accept header (WebP/AVIF/JPEG)
+ * - 5,000 free transformations/month
+ *
+ * @see https://developers.cloudflare.com/images/transform-images/transform-via-workers/
  */
 
-const VERSION = '1.1.0';
+const VERSION = '2.0.0';
 
 // Cache TTL (1 year for immutable images)
 const CACHE_TTL = 31536000;
-
-// Upstream fetch timeout (10 seconds)
-const FETCH_TIMEOUT_MS = 10000;
 
 // Image extensions to proxy
 const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|avif)$/i;
@@ -32,7 +33,7 @@ const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|avif)$/i;
 const ALLOWED_HOSTS = ['photos.smugmug.com', 'ninochavez.smugmug.com'];
 
 export default {
-  async fetch(request, _env, ctx) {
+  async fetch(request, _env, _ctx) {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
@@ -47,7 +48,7 @@ export default {
 
     // PROXY MODE: /proxy/photos.smugmug.com/path/to/image.jpg
     if (pathname.startsWith('/proxy/')) {
-      return handleProxyRequest(request, ctx, url);
+      return handleProxyRequest(request, url);
     }
 
     // PASS-THROUGH MODE: everything else goes to SmugMug site
@@ -55,8 +56,13 @@ export default {
   }
 };
 
-async function handleProxyRequest(request, ctx, url) {
+async function handleProxyRequest(request, url) {
   const pathname = url.pathname;
+
+  // Prevent infinite loops - Cloudflare adds this header when resizing
+  if (/image-resizing/.test(request.headers.get('Via') || '')) {
+    return fetch(request);
+  }
 
   // Extract the target URL from the path
   // /proxy/photos.smugmug.com/photos/i-xxx-L.jpg → https://photos.smugmug.com/photos/i-xxx-L.jpg
@@ -72,84 +78,77 @@ async function handleProxyRequest(request, ctx, url) {
   // Determine if this is an image request
   const isImage = IMAGE_EXTENSIONS.test(pathname);
 
-  // For cache separation by Accept header (WebP vs AVIF vs JPEG)
+  // Detect browser format support from Accept header
   const acceptHeader = request.headers.get('Accept') || '';
   const supportsAvif = acceptHeader.includes('image/avif');
   const supportsWebp = acceptHeader.includes('image/webp');
-  const formatKey = supportsAvif ? 'avif' : supportsWebp ? 'webp' : 'jpeg';
 
-  // Create a cache key that includes the format for proper cache separation
-  // Use minimal request to avoid caching auth headers or cookies
-  const cacheKeyUrl = new URL(request.url);
-  cacheKeyUrl.searchParams.set('_fmt', formatKey);
-  const cacheKey = new Request(cacheKeyUrl.toString(), { method: 'GET' });
-  const cache = caches.default;
+  // Determine optimal format (AVIF > WebP > original)
+  let outputFormat = 'jpeg';
+  if (supportsAvif) {
+    outputFormat = 'avif';
+  } else if (supportsWebp) {
+    outputFormat = 'webp';
+  }
 
-  // Check cache first
-  let response = await cache.match(cacheKey);
-
-  if (response) {
-    const headers = new Headers(response.headers);
-    headers.set('X-Cache', 'HIT');
-    headers.set('X-Format-Key', formatKey);
-    return new Response(response.body, {
-      status: response.status,
-      headers
+  // For non-image requests, just proxy through
+  if (!isImage) {
+    return fetch(targetUrl, {
+      headers: { 'User-Agent': 'NinoChavezGallery/2.0' }
     });
   }
 
-  // Fetch the image from SmugMug with timeout
-  let originResponse;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
+  // Fetch with Cloudflare Image Transformation
+  // Cloudflare automatically caches transformed variants
+  // @see https://developers.cloudflare.com/images/transform-images/transform-via-workers/
+  let response;
   try {
-    originResponse = await fetch(targetUrl, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'NinoChavezGallery/1.0',
-        'Accept': acceptHeader || '*/*'
+    response = await fetch(targetUrl, {
+      cf: {
+        image: {
+          format: outputFormat,
+          quality: 85,
+          metadata: 'copyright', // Preserve copyright info only
+          fit: 'scale-down'      // Never upscale
+        },
+        // Cloudflare caches transformed images automatically
+        cacheTtl: CACHE_TTL,
+        cacheEverything: true
       }
     });
   } catch (e) {
-    console.error('Upstream fetch failed:', e);
-    const status = e.name === 'AbortError' ? 504 : 502;
-    return new Response('Failed to fetch image', { status });
-  } finally {
-    clearTimeout(timeoutId);
+    console.error('Image transformation failed:', e);
+    // Fallback: fetch original without transformation
+    response = await fetch(targetUrl, {
+      headers: { 'User-Agent': 'NinoChavezGallery/2.0' }
+    });
   }
 
-  if (!originResponse.ok) {
-    return new Response('Image not found', { status: originResponse.status });
-  }
-
-  // Get content type from the response (Cloudflare sets correct type for transformed images)
-  const contentType = originResponse.headers.get('Content-Type') || 'image/jpeg';
-  const isImageResponse = contentType.startsWith('image/') || isImage;
-
-  if (!isImageResponse) {
-    return originResponse;
-  }
-
-  const imageBuffer = await originResponse.arrayBuffer();
-
-  // Create response with optimized caching headers
-  response = new Response(imageBuffer, {
-    status: 200,
-    headers: {
-      'Content-Type': contentType,
-      'Cache-Control': `public, max-age=${CACHE_TTL}, immutable`,
-      'CDN-Cache-Control': `public, max-age=${CACHE_TTL}`,
-      'Access-Control-Allow-Origin': '*',
-      'Vary': 'Accept',
-      'X-Cache': 'MISS',
-      'X-Format-Key': formatKey,
-      'X-Original-URL': targetUrl
+  // Handle transformation errors (e.g., 9422 = quota exceeded)
+  if (!response.ok) {
+    // If transformation failed, try fetching original
+    if (response.status >= 400 && response.status < 500) {
+      console.error(`Transform error ${response.status}, fetching original`);
+      response = await fetch(targetUrl, {
+        headers: { 'User-Agent': 'NinoChavezGallery/2.0' }
+      });
     }
+    if (!response.ok) {
+      return new Response('Image not found', { status: response.status });
+    }
+  }
+
+  // Clone response and add custom headers
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', `public, max-age=${CACHE_TTL}, immutable`);
+  headers.set('CDN-Cache-Control', `public, max-age=${CACHE_TTL}`);
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Vary', 'Accept');
+  headers.set('X-Image-Format', outputFormat);
+  headers.set('X-Proxy-Version', VERSION);
+
+  return new Response(response.body, {
+    status: response.status,
+    headers
   });
-
-  // Store in edge cache
-  ctx.waitUntil(cache.put(cacheKey, response.clone()));
-
-  return response;
 }

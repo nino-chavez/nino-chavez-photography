@@ -4,6 +4,7 @@
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import { getSmugMugUrl, getProxiedImageUrl } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
+	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Trophy, Calendar } from 'lucide-svelte';
 
@@ -65,10 +66,15 @@
 	<title>Nino Chavez — Volleyball Photography</title>
 	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
 
-	<!-- Preload hero image for faster LCP (X3=2400px for retina) -->
+	<!-- Preload hero image for faster LCP - must match PremiumHero sizes exactly -->
+	<!-- Mobile: L (1024px) | Desktop: X3 (3000px) -->
 	{#if data.heroPhoto?.image_url}
-		{@const optimizedUrl = getSmugMugUrl(data.heroPhoto.image_url, 'X3')}
-		<link rel="preload" as="image" href={optimizedUrl} fetchpriority="high" />
+		{@const mobileUrl = replaceSmugMugSize(data.heroPhoto.image_url, 'L')}
+		{@const desktopUrl = replaceSmugMugSize(data.heroPhoto.image_url, 'X3')}
+		<!-- Mobile preload (PageSpeed tests this) -->
+		<link rel="preload" as="image" href={mobileUrl} fetchpriority="high" media="(max-width: 1023px)" />
+		<!-- Desktop preload -->
+		<link rel="preload" as="image" href={desktopUrl} fetchpriority="high" media="(min-width: 1024px)" />
 	{/if}
 </svelte:head>
 
