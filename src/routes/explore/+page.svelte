@@ -32,6 +32,7 @@
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
+	import { generateSmugMugSrcset, SIZES_PRESETS } from '$lib/photo-utils';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -540,20 +541,18 @@
 	<title>Explore Gallery | Nino Chavez Photography</title>
 	<meta name="description" content="Browse {data.totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more." />
 
-	<!-- Preload first 4 above-fold images for LCP optimization -->
-	{#each data.photos.slice(0, 4) as photo, i}
-		{@const preloadUrl = photo.image_url?.includes('smugmug.com')
-			? replaceSmugMugSize(photo.image_url, 'S')
-			: photo.image_url}
-		{#if preloadUrl}
-			<link
-				rel="preload"
-				as="image"
-				href={preloadUrl}
-				fetchpriority={i === 0 ? "high" : "low"}
-			/>
-		{/if}
-	{/each}
+	<!-- Preload first image with responsive srcset for LCP optimization -->
+	<!-- Must use imagesrcset/imagesizes to match the actual <img> element -->
+	{#if data.photos[0]?.image_url?.includes('smugmug.com')}
+		{@const srcset = generateSmugMugSrcset(data.photos[0].image_url, ['S', 'M'])}
+		<link
+			rel="preload"
+			as="image"
+			imagesrcset={srcset}
+			imagesizes={SIZES_PRESETS.galleryCard}
+			fetchpriority="high"
+		/>
+	{/if}
 </svelte:head>
 
 <svelte:window onkeydown={handleKeydown} />
