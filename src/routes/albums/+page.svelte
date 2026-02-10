@@ -5,7 +5,7 @@
 	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
-	import { getSmugMugUrl } from '$lib/photo-utils';
+	import { getSmugMugUrl, generateSmugMugSrcset, SIZES_PRESETS } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -93,18 +93,18 @@
 	<title>Albums | Nino Chavez Photography</title>
 	<meta name="description" content="Browse {data.totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches." />
 
-	<!-- Preload first 4 album cover images for LCP optimization -->
-	{#each data.albums.slice(0, 4) as album, i}
-		{@const preloadUrl = album.coverImageUrl ? getSmugMugUrl(album.coverImageUrl, 'M') : null}
-		{#if preloadUrl}
-			<link
-				rel="preload"
-				as="image"
-				href={preloadUrl}
-				fetchpriority={i === 0 ? "high" : "low"}
-			/>
-		{/if}
-	{/each}
+	<!-- Preload first album cover with responsive srcset for LCP optimization -->
+	<!-- Must use imagesrcset/imagesizes to match the actual <img> element -->
+	{#if data.albums[0]?.coverImageUrl}
+		{@const srcset = generateSmugMugSrcset(data.albums[0].coverImageUrl, ['M', 'L', 'XL', 'X2'])}
+		<link
+			rel="preload"
+			as="image"
+			imagesrcset={srcset}
+			imagesizes={SIZES_PRESETS.albumCard}
+			fetchpriority="high"
+		/>
+	{/if}
 </svelte:head>
 
 <svelte:window onkeydown={handleKeyDown} />
@@ -184,7 +184,7 @@
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each displayAlbums as album, index}
 					<div>
-						<AlbumCard {album} {index} onclick={handleAlbumClick} />
+						<AlbumCard {album} {index} onclick={handleAlbumClick} priority={index < 4} />
 						<!-- Date Range Display -->
 						{#if album.dateRange}
 							{@const dateRange = formatDateRange(album.dateRange)}

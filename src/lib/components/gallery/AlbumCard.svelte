@@ -29,9 +29,10 @@
 		album: Album;
 		index?: number;
 		onclick?: (album: Album) => void; // Deprecated: Use href navigation instead
+		priority?: boolean; // For above-fold images - disables lazy loading
 	}
 
-	let { album, index = 0, onclick }: Props = $props();
+	let { album, index = 0, onclick, priority = false }: Props = $props();
 
 	// Image loading state
 	let imageLoaded = $state(false);
@@ -162,8 +163,9 @@
 				alt={`${album.albumName} cover`}
 				width="400"
 				height="300"
-				loading="lazy"
-				decoding="async"
+				loading={priority ? 'eager' : 'lazy'}
+				decoding={priority ? 'sync' : 'async'}
+				fetchpriority={priority ? 'high' : 'auto'}
 				class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
 					? 'opacity-100'
 					: 'opacity-0'}"
