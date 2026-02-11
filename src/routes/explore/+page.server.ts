@@ -13,11 +13,6 @@
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, type FilterCounts } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
-// ISR: Cache explore page at Vercel edge for 60 seconds (each URL+params combo cached separately)
-export const config = {
-  isr: { expiration: 60 }
-};
-
 export const load: PageServerLoad = async ({ url, parent }) => {
   // Get cached data from parent layout
   const { sports, categories, baseFilterCounts } = await parent();

@@ -3,11 +3,6 @@ import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
-// ISR: Cache album detail at Vercel edge for 5 minutes
-export const config = {
-  isr: { expiration: 300 }
-};
-
 export const load: PageServerLoad = async ({ params, url }) => {
 	const { slug } = params;
 

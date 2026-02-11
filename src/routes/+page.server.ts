@@ -22,11 +22,6 @@ import type { PageServerLoad } from './$types';
 import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
 
-// ISR: Cache homepage at Vercel edge for 5 minutes
-export const config = {
-  isr: { expiration: 300 }
-};
-
 // In-memory cache for hero photo candidates (avoids 500-row query per request)
 const HERO_CACHE_DURATION_MS = 5 * 60 * 1000;
 interface HeroCache {

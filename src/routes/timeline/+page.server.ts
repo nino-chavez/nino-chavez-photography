@@ -10,11 +10,6 @@
 import { fetchPhotosByPeriod, fetchAllPeriods } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
-// ISR: Cache timeline at Vercel edge for 5 minutes
-export const config = {
-  isr: { expiration: 300 }
-};
-
 export const load: PageServerLoad = async ({ url, parent }) => {
   // Parse query params for pagination
   // PERFORMANCE: Reduced default from 100 to 12 periods for faster initial load

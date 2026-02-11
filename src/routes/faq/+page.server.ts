@@ -7,11 +7,6 @@
 import type { PageServerLoad } from './$types';
 import { generateFAQs } from '$lib/aeo/faq-generator';
 
-// ISR: Cache FAQ page at Vercel edge for 1 hour (static content)
-export const config = {
-  isr: { expiration: 3600 }
-};
-
 export const load: PageServerLoad = async () => {
 	// Generate FAQs
 	const faqs = await generateFAQs();
