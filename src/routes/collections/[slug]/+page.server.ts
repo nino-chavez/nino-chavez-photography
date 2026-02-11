@@ -10,6 +10,11 @@ import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 
+// ISR: Cache collection detail at Vercel edge for 5 minutes
+export const config = {
+  isr: { expiration: 300 }
+};
+
 // Collection definitions (matching collections/+page.server.ts)
 const COLLECTIONS = [
 	{

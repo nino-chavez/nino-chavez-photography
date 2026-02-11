@@ -15,6 +15,11 @@ import { supabaseServer } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 import type { CoverPhotoRow } from '$types/database';
 
+// ISR: Cache collections listing at Vercel edge for 5 minutes
+export const config = {
+  isr: { expiration: 300 }
+};
+
 // Collection definitions (HYBRID: Story + Quality)
 // Matching generate-collections.ts with quality thresholds
 const COLLECTIONS = [

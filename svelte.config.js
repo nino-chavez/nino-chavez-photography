@@ -30,7 +30,7 @@ const config = {
   kit: {
     adapter: adapter({
       // Vercel adapter configuration
-      runtime: "nodejs20.x",
+      runtime: "nodejs22.x",
     }),
     paths: {
       // Serve from /photography subpath

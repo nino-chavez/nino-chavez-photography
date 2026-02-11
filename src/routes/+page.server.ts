@@ -22,104 +22,110 @@ import type { PageServerLoad } from './$types';
 import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
 
+// ISR: Cache homepage at Vercel edge for 5 minutes
+export const config = {
+  isr: { expiration: 300 }
+};
+
+// In-memory cache for hero photo candidates (avoids 500-row query per request)
+const HERO_CACHE_DURATION_MS = 5 * 60 * 1000;
+interface HeroCache {
+  balancedPhotos: PhotoMetadataRow[];
+  featuredAlbums: Awaited<ReturnType<typeof fetchFeaturedAlbums>>;
+  timestamp: number;
+}
+let heroCache: HeroCache | null = null;
+
 export const load: PageServerLoad = async () => {
   try {
-    // Calculate date 2 years ago
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-    const twoYearsAgoISO = twoYearsAgo.toISOString();
+    const now = Date.now();
 
-    const { data, error } = await supabaseServer
-      .from('photo_metadata')
-      .select('*')
-      .eq('sport_type', 'volleyball')         // Volleyball photos only
-      .gte('aspect_ratio', 1.0)               // 🎯 Landscape/Square only (width >= height)
-      .gte('sharpness', 8.0)                  // ⭐ Excellent sharpness (raised from 7.5)
-      .gte('composition_score', 8.0)          // ⭐ Excellent composition (raised from 7.5)
-      .gte('emotional_impact', 8.0)           // ⭐ Strong emotional impact (raised from 7.0)
-      .gte('photo_date', twoYearsAgoISO)      // 📅 Last 2 years (fresh content)
-      .in('photo_category', ['action', 'celebration', 'portrait'])  // Hero-worthy categories
-      .not('sharpness', 'is', null)
-      .order('photo_date', { ascending: false })  // Most recent first
-      .limit(500); // Fetch many candidates to ensure album diversity
-
-    if (error) {
-      console.error('[Homepage] Error fetching hero photo:', error);
-      return { heroPhoto: null, featuredAlbums: [] };
+    // Refresh cache if expired
+    if (!heroCache || now - heroCache.timestamp > HERO_CACHE_DURATION_MS) {
+      const [balancedPhotos, featuredAlbums] = await Promise.all([
+        fetchHeroCandidates(),
+        fetchFeaturedAlbums()
+      ]);
+      heroCache = { balancedPhotos, featuredAlbums, timestamp: now };
     }
 
-    if (!data || data.length === 0) {
-
-      // Fallback 1: Volleyball without strict quality filters
-      const { data: fallbackData } = await supabaseServer
-        .from('photo_metadata')
-        .select('*')
-        .eq('sport_type', 'volleyball')
-        .not('sharpness', 'is', null)
-        .limit(50);
-
-      if (fallbackData && fallbackData.length > 0) {
-        const randomIndex = Math.floor(Math.random() * fallbackData.length);
-        const row = fallbackData[randomIndex];
-        return { heroPhoto: transformPhotoRow(row), featuredAlbums: [] };
-      }
-
-      // Fallback 2: Any photo (multi-sport)
-      const { data: anyPhotoData, error: anyPhotoError } = await supabaseServer
-        .from('photo_metadata')
-        .select('*')
-        .not('sharpness', 'is', null)
-        .limit(50);
-
-      if (anyPhotoError || !anyPhotoData || anyPhotoData.length === 0) {
-        console.error('[Homepage] No photos available at all');
-        return { heroPhoto: null, featuredAlbums: [] };
-      }
-
-      const randomIndex = Math.floor(Math.random() * anyPhotoData.length);
-      const row = anyPhotoData[randomIndex];
-      return { heroPhoto: transformPhotoRow(row), featuredAlbums: [] };
+    if (heroCache.balancedPhotos.length === 0) {
+      return { heroPhoto: null, featuredAlbums: heroCache.featuredAlbums };
     }
 
-    // Group photos by album to ensure diversity
-    const albumGroups = new Map<string, PhotoMetadataRow[]>();
-    for (const photo of data) {
-      const albumKey = photo.album_name || photo.album_key || 'unknown';
-      if (!albumGroups.has(albumKey)) {
-        albumGroups.set(albumKey, []);
-      }
-      albumGroups.get(albumKey)!.push(photo);
-    }
+    // Pick random photo from cached pool
+    const randomIndex = Math.floor(Math.random() * heroCache.balancedPhotos.length);
+    const row = heroCache.balancedPhotos[randomIndex];
 
-    // Limit to max 10 photos per album to force diversity
-    const MAX_PER_ALBUM = 10;
-    const balancedPhotos: PhotoMetadataRow[] = [];
-
-    for (const [, photos] of albumGroups.entries()) {
-      // Sort by quality (sum of scores) and take top photos from each album
-      const sorted = photos.sort((a, b) => {
-        const scoreA = (a.sharpness || 0) + (a.composition_score || 0) + (a.emotional_impact || 0);
-        const scoreB = (b.sharpness || 0) + (b.composition_score || 0) + (b.emotional_impact || 0);
-        return scoreB - scoreA;
-      });
-
-      // Take up to MAX_PER_ALBUM photos from this album
-      balancedPhotos.push(...sorted.slice(0, MAX_PER_ALBUM));
-    }
-
-    // Pick random photo from the balanced set
-    const randomIndex = Math.floor(Math.random() * balancedPhotos.length);
-    const row = balancedPhotos[randomIndex];
-
-    // Fetch three featured albums for homepage
-    const featuredAlbums = await fetchFeaturedAlbums();
-
-    return { heroPhoto: transformPhotoRow(row), featuredAlbums };
+    return { heroPhoto: transformPhotoRow(row), featuredAlbums: heroCache.featuredAlbums };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
     return { heroPhoto: null, featuredAlbums: [] };
   }
 };
+
+/**
+ * Fetch and prepare hero photo candidates with album diversity balancing.
+ * Returns the balanced pool; caller picks randomly from it.
+ */
+async function fetchHeroCandidates(): Promise<PhotoMetadataRow[]> {
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+  const { data, error } = await supabaseServer
+    .from('photo_metadata')
+    .select('*')
+    .eq('sport_type', 'volleyball')
+    .gte('aspect_ratio', 1.0)
+    .gte('sharpness', 8.0)
+    .gte('composition_score', 8.0)
+    .gte('emotional_impact', 8.0)
+    .gte('photo_date', twoYearsAgo.toISOString())
+    .in('photo_category', ['action', 'celebration', 'portrait'])
+    .not('sharpness', 'is', null)
+    .order('photo_date', { ascending: false })
+    .limit(500);
+
+  if (error) {
+    console.error('[Homepage] Error fetching hero candidates:', error);
+    return [];
+  }
+
+  if (!data || data.length === 0) {
+    // Fallback: Volleyball without strict quality filters
+    const { data: fallbackData } = await supabaseServer
+      .from('photo_metadata')
+      .select('*')
+      .eq('sport_type', 'volleyball')
+      .not('sharpness', 'is', null)
+      .limit(50);
+
+    return fallbackData || [];
+  }
+
+  // Group by album and balance (max 10 per album)
+  const albumGroups = new Map<string, PhotoMetadataRow[]>();
+  for (const photo of data) {
+    const albumKey = photo.album_name || photo.album_key || 'unknown';
+    if (!albumGroups.has(albumKey)) {
+      albumGroups.set(albumKey, []);
+    }
+    albumGroups.get(albumKey)!.push(photo);
+  }
+
+  const MAX_PER_ALBUM = 10;
+  const balancedPhotos: PhotoMetadataRow[] = [];
+  for (const [, photos] of albumGroups.entries()) {
+    const sorted = photos.sort((a, b) => {
+      const scoreA = (a.sharpness || 0) + (a.composition_score || 0) + (a.emotional_impact || 0);
+      const scoreB = (b.sharpness || 0) + (b.composition_score || 0) + (b.emotional_impact || 0);
+      return scoreB - scoreA;
+    });
+    balancedPhotos.push(...sorted.slice(0, MAX_PER_ALBUM));
+  }
+
+  return balancedPhotos;
+}
 
 /**
  * Fetch three featured albums for homepage display

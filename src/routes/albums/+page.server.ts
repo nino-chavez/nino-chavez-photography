@@ -1,6 +1,11 @@
 import { supabaseServer } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
+// ISR: Cache albums listing at Vercel edge for 5 minutes
+export const config = {
+  isr: { expiration: 300 }
+};
+
 /**
  * Auto-refresh materialized view if stale
  * Checks if photo_metadata has newer data than albums_summary view
