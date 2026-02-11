@@ -21,8 +21,6 @@
 
 <script lang="ts">
 	import { X } from 'lucide-svelte';
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
 	import { onMount } from 'svelte';
 	import type { ComponentType, Snippet } from 'svelte';
 
@@ -64,58 +62,49 @@
 </script>
 
 {#if visible}
-	<Motion
-		let:motion
-		initial={{ opacity: 0, y: 20, x: 20 }}
-		animate={{ opacity: 1, y: 0, x: 0 }}
-		exit={{ opacity: 0, y: 20, x: 20 }}
-		transition={MOTION.spring.gentle}
+	<div
+		role="status"
+		aria-live="polite"
+		class="fixed bottom-6 right-6 z-50 max-w-md animate-toast-in"
 	>
 		<div
-			use:motion
-			role="status"
-			aria-live="polite"
-			class="fixed bottom-6 right-6 z-50 max-w-md"
-		>
-			<div
-				class="flex items-start gap-3 px-4 py-3 rounded-lg border backdrop-blur-md shadow-lg
+			class="flex items-start gap-3 px-4 py-3 rounded-lg border backdrop-blur-md shadow-lg
                        {variantStyles[variant]}"
-			>
-				<!-- Icon (optional) -->
-				{#if icon}
-					{@const IconComponent = icon}
-					<div class="shrink-0 mt-0.5">
-						<IconComponent class="w-5 h-5" />
-					</div>
-				{/if}
-
-				<!-- Content -->
-				<div class="flex-1 text-sm leading-relaxed">
-					{@render children?.()}
-				</div>
-
-				<!-- Close button -->
-				<button
-					onclick={close}
-					class="shrink-0 p-0.5 rounded hover:bg-white/10 transition-colors
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
-					aria-label="Dismiss notification"
-				>
-					<X class="w-4 h-4" />
-				</button>
-			</div>
-
-			<!-- Progress bar (if auto-dismiss) -->
-			{#if duration > 0}
-				<div class="h-1 bg-white/10 rounded-b-lg overflow-hidden mt-1">
-					<div
-						class="h-full bg-white/40 rounded-b-lg"
-						style="animation: shrink {duration}ms linear forwards;"
-					></div>
+		>
+			<!-- Icon (optional) -->
+			{#if icon}
+				{@const IconComponent = icon}
+				<div class="shrink-0 mt-0.5">
+					<IconComponent class="w-5 h-5" />
 				</div>
 			{/if}
+
+			<!-- Content -->
+			<div class="flex-1 text-sm leading-relaxed">
+				{@render children?.()}
+			</div>
+
+			<!-- Close button -->
+			<button
+				onclick={close}
+				class="shrink-0 p-0.5 rounded hover:bg-white/10 transition-colors
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Dismiss notification"
+			>
+				<X class="w-4 h-4" />
+			</button>
 		</div>
-	</Motion>
+
+		<!-- Progress bar (if auto-dismiss) -->
+		{#if duration > 0}
+			<div class="h-1 bg-white/10 rounded-b-lg overflow-hidden mt-1">
+				<div
+					class="h-full bg-white/40 rounded-b-lg"
+					style="animation: shrink {duration}ms linear forwards;"
+				></div>
+			</div>
+		{/if}
+	</div>
 {/if}
 
 <style>
@@ -126,5 +115,20 @@
 		to {
 			width: 0%;
 		}
+	}
+
+	@keyframes toast-in {
+		from {
+			opacity: 0;
+			transform: translateY(20px) translateX(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) translateX(0);
+		}
+	}
+
+	.animate-toast-in {
+		animation: toast-in 0.3s ease-out;
 	}
 </style>
