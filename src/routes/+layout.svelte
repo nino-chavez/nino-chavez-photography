@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { inject } from '@vercel/analytics';
+	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { page, navigating } from '$app/stores';
 	import '../app.css';
 	import Header from '$lib/components/layout/Header.svelte';
@@ -10,6 +11,9 @@
 
 	// Initialize Vercel Web Analytics
 	inject();
+
+	// Initialize Vercel Speed Insights
+	injectSpeedInsights();
 
 	let { children } = $props();
 
