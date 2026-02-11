@@ -9,6 +9,8 @@
  *   npx tsx scripts/enrich-local-photos.ts /path/to/photos
  *   npx tsx scripts/enrich-local-photos.ts /path/to/photos --dry-run
  *   npx tsx scripts/enrich-local-photos.ts /path/to/photos --overwrite
+ *   npx tsx scripts/enrich-local-photos.ts /path/to/photos --album-name="DGN vs Plainfield Volleyball"
+ *   npx tsx scripts/enrich-local-photos.ts /path/to/photos --album-name="Tournament" --album-sport="volleyball"
  */
 
 import { config } from 'dotenv';
@@ -22,7 +24,42 @@ import { readdir } from 'fs/promises';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
-import { COMBINED_PROMPT, type CombinedResponse } from '../src/lib/ai/enrichment-prompts';
+import {
+	buildCombinedPrompt,
+	type CombinedResponse,
+	type EnrichmentContext
+} from '../src/lib/ai/enrichment-prompts';
+
+// =============================================================================
+// CLI Argument Parsing
+// =============================================================================
+
+function parseArgs(): {
+	photoDir: string;
+	albumName?: string;
+	albumSport?: string;
+	dryRun: boolean;
+	overwrite: boolean;
+} {
+	const args = process.argv.slice(2);
+	let photoDir = '';
+	let albumName: string | undefined;
+	let albumSport: string | undefined;
+	const dryRun = args.includes('--dry-run');
+	const overwrite = args.includes('--overwrite');
+
+	for (const arg of args) {
+		if (arg.startsWith('--album-name=')) {
+			albumName = arg.replace('--album-name=', '').replace(/^["']|["']$/g, '');
+		} else if (arg.startsWith('--album-sport=')) {
+			albumSport = arg.replace('--album-sport=', '').replace(/^["']|["']$/g, '');
+		} else if (!arg.startsWith('--')) {
+			photoDir = arg;
+		}
+	}
+
+	return { photoDir, albumName, albumSport, dryRun, overwrite };
+}
 
 // =============================================================================
 // Configuration
@@ -31,9 +68,13 @@ import { COMBINED_PROMPT, type CombinedResponse } from '../src/lib/ai/enrichment
 const GEMINI_API_KEY = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = 'gemini-2.0-flash-lite'; // Cheap and effective
 
+const parsedArgs = parseArgs();
+
 const CONFIG = {
-	dryRun: process.argv.includes('--dry-run'),
-	overwrite: process.argv.includes('--overwrite'),
+	dryRun: parsedArgs.dryRun,
+	overwrite: parsedArgs.overwrite,
+	albumName: parsedArgs.albumName,
+	albumSport: parsedArgs.albumSport,
 	concurrency: 10,
 	costPerImage: 0.00014 // Gemini 2.0 Flash Lite
 };
@@ -54,7 +95,7 @@ interface EnrichmentResult {
 	cost: number;
 }
 
-async function enrichPhoto(photoPath: string): Promise<EnrichmentResult> {
+async function enrichPhoto(photoPath: string, context?: EnrichmentContext): Promise<EnrichmentResult> {
 	try {
 		const genAI = new GoogleGenerativeAI(GEMINI_API_KEY!);
 		const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
@@ -62,9 +103,12 @@ async function enrichPhoto(photoPath: string): Promise<EnrichmentResult> {
 		// Read photo as base64 using native Node (no shell spawn)
 		const base64Data = readFileSync(photoPath).toString('base64');
 
-		// Call Gemini with combined prompt
+		// Build prompt with context (album name improves sport detection accuracy)
+		const prompt = buildCombinedPrompt(context);
+
+		// Call Gemini with context-aware prompt
 		const result = await model.generateContent([
-			COMBINED_PROMPT,
+			prompt,
 			{
 				inlineData: {
 					data: base64Data,
@@ -183,21 +227,41 @@ function generateTitle(bucket1: any, bucket2: any): string {
 // =============================================================================
 
 async function main() {
-	const photoDir = process.argv[2];
+	const photoDir = parsedArgs.photoDir;
 
 	if (!photoDir) {
-		console.error('Usage: npx tsx scripts/enrich-local-photos.ts <photo-directory>');
+		console.error('Usage: npx tsx scripts/enrich-local-photos.ts <photo-directory> [options]');
+		console.error('');
+		console.error('Options:');
+		console.error('  --dry-run           Preview without making changes');
+		console.error('  --overwrite         Re-enrich already processed photos');
+		console.error('  --album-name=NAME   Album name for context (improves sport detection)');
+		console.error('  --album-sport=SPORT Known sport type (volleyball, basketball, etc.)');
 		console.error('');
 		console.error('Examples:');
 		console.error('  npx tsx scripts/enrich-local-photos.ts /path/to/photos');
 		console.error('  npx tsx scripts/enrich-local-photos.ts /path/to/photos --dry-run');
+		console.error('  npx tsx scripts/enrich-local-photos.ts /path/to/photos --album-name="DGN Volleyball"');
 		process.exit(1);
 	}
+
+	// Build enrichment context from CLI args
+	const enrichmentContext: EnrichmentContext = {
+		albumName: CONFIG.albumName,
+		albumSport: CONFIG.albumSport,
+		usePortfolioContext: true
+	};
 
 	console.log('\n🎨 Enriching Local Photos with AI Vision\n');
 	console.log(`📂 Directory: ${photoDir}`);
 	console.log(`🤖 Model: ${GEMINI_MODEL}`);
 	console.log(`⚡ Concurrency: ${CONFIG.concurrency}`);
+	if (CONFIG.albumName) {
+		console.log(`📁 Album Context: ${CONFIG.albumName}`);
+	}
+	if (CONFIG.albumSport) {
+		console.log(`🏐 Known Sport: ${CONFIG.albumSport}`);
+	}
 	if (CONFIG.dryRun) {
 		console.log('🧪 DRY RUN MODE - No changes will be made\n');
 	}
@@ -241,8 +305,8 @@ async function main() {
 				}
 			}
 
-			// Enrich with AI
-			const result = await enrichPhoto(photoPath);
+			// Enrich with AI (pass album context for better sport detection)
+			const result = await enrichPhoto(photoPath, enrichmentContext);
 
 			if (!result.success) {
 				console.error(`     ❌ Error: ${result.error}`);
