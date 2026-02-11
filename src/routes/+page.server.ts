@@ -31,9 +31,8 @@ interface HeroCache {
 }
 let heroCache: HeroCache | null = null;
 
-export const load: PageServerLoad = async ({ setHeaders }) => {
-  setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
-
+export const load: PageServerLoad = async () => {
+  // No edge cache — hero photo is randomly selected per request from in-memory pool
   try {
     const now = Date.now();
 
