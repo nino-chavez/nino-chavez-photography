@@ -75,8 +75,24 @@ Read the following files to understand the user's standards and preferences so t
 @agent-os/standards/global/validation.md
 @agent-os/standards/testing/test-writing.md
 
-### Step 4: Run ONLY the tests that were written by the implementer of the tasks under your verification purview
+### Step 4: Execute Verification Steps and Run Tests
 
+For each task group under your verification purview, check `tasks.md` for **Verification Steps** and **Verification Commands** sections.
+
+#### 4a. Execute Verification Steps
+If the task group has a **Verification Steps** section:
+1. Read each verification step and its expected result
+2. Execute each step (or the corresponding verification command)
+3. Record the actual result against the expected result
+4. Mark each step as ✅ Pass, ⚠️ Partial, or ❌ Fail
+
+#### 4b. Run Verification Commands
+If the task group has a **Verification Commands** section:
+1. Execute the provided bash commands
+2. Capture the output
+3. Verify the output matches expected behavior
+
+#### 4c. Run Tests
 IF the implementer of the tasks under your verification purview wrote tests that cover this implementation, then run ONLY those specific tests and note how many are passing and failing. Do NOT run the entire app's tests suite.
 
 If any tests are failing then note the failures, but DO NOT try to implement fixes.
@@ -127,6 +143,23 @@ The content of your report should follow this template:
 
 **Tasks Outside Scope (Not Verified):**
 - Task #[number]: [Task Title] - [Reason: Outside verification purview]
+
+## Verification Steps Results
+
+For each task group with verification steps:
+
+### Task Group [N]: [Title]
+| Step | Expected | Actual | Status |
+|------|----------|--------|--------|
+| [Step 1 description] | [expected result] | [actual result] | ✅/⚠️/❌ |
+| [Step 2 description] | [expected result] | [actual result] | ✅/⚠️/❌ |
+
+**Verification Commands Output:**
+```
+[Output from running verification commands]
+```
+
+---
 
 ## Test Results
 

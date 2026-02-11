@@ -385,6 +385,32 @@ npm test
 npm run check:watch
 ```
 
+## Debugging & Performance Testing
+
+**Skill:** `.claude/skills/gallery-debugger/SKILL.md`
+
+Use agent-browser CLI for browser automation debugging:
+
+```bash
+# Quick health check
+agent-browser open https://ninochavez.co/photography/explore --wait-until=networkidle
+agent-browser errors                    # Check for JS errors
+agent-browser screenshot .temp/screenshots/check.png --full
+agent-browser close
+
+# Performance audit
+agent-browser open http://localhost:5173/explore --wait-until=networkidle
+agent-browser eval "performance.timing.loadEventEnd - performance.timing.navigationStart"
+agent-browser close
+
+# Check broken images
+agent-browser open http://localhost:5173/explore --wait-until=networkidle
+agent-browser eval "Array.from(document.images).filter(i => !i.complete).length"
+agent-browser close
+```
+
+See the full skill for workflows: photo grid debugging, lightbox testing, filter verification, accessibility auditing, visual regression.
+
 ## Environment Variables
 
 **Browser-safe (VITE_ prefix):**

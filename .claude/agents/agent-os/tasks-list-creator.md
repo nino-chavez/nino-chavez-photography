@@ -77,6 +77,23 @@ Assigned roles: [list from registry]
 - Migrations run successfully
 - Associations work correctly
 
+**Verification Steps:**
+1. Run migration: `npx prisma migrate deploy` - expect success with no errors
+2. Run model tests: `npm test -- --grep "[Model]"` - expect 0 failures
+3. Query check: Verify table/columns exist in database
+
+**Verification Commands:**
+```bash
+# Run database migrations
+npx prisma migrate deploy
+
+# Run model-specific tests
+npm test -- --grep "[Model]"
+
+# Verify database schema (adjust for your ORM)
+npx prisma db pull --print
+```
+
 ### API Layer
 
 #### Task Group 2: API Endpoints
@@ -108,6 +125,29 @@ Assigned roles: [list from registry]
 - All CRUD operations work
 - Proper authorization enforced
 - Consistent response format
+
+**Verification Steps:**
+1. Start server, hit endpoint: `curl localhost:3000/api/[resource]` - expect 200 response
+2. Verify response shape matches spec (correct fields, types, format)
+3. Run API tests: `npm test -- --grep "API"` - expect 0 failures
+4. Test auth: Verify unauthorized requests return 401/403
+
+**Verification Commands:**
+```bash
+# Start development server (if not running)
+npm run dev &
+
+# Test GET endpoint
+curl -X GET http://localhost:3000/api/[resource]
+
+# Test POST endpoint with sample data
+curl -X POST http://localhost:3000/api/[resource] \
+  -H "Content-Type: application/json" \
+  -d '{"field": "value"}'
+
+# Run API tests
+npm test -- --grep "API"
+```
 
 ### Frontend Components
 
@@ -154,6 +194,27 @@ Assigned roles: [list from registry]
 - Forms validate and submit
 - Matches visual design
 
+**Verification Steps:**
+1. Run Storybook: Verify component renders without errors in isolation
+2. Run Playwright tests: `npx playwright test [feature]` - expect pass
+3. Visual compare: Match mockup `planning/visuals/[file].png`
+4. Responsive check: Verify at mobile (375px), tablet (768px), desktop (1280px)
+
+**Verification Commands:**
+```bash
+# Run Storybook (if available)
+npm run storybook &
+
+# Run Playwright tests for this feature
+npx playwright test --grep "[feature]"
+
+# Run component tests
+npm test -- --grep "[Component]"
+
+# Take screenshots at different viewports (via Playwright)
+npx playwright test --project=chromium --grep "visual"
+```
+
 ### Testing
 
 #### Task Group 4: Test Review & Gap Analysis
@@ -188,6 +249,23 @@ Assigned roles: [list from registry]
 - No more than 10 additional tests added by testing-engineer
 - Testing focused exclusively on this spec's feature requirements
 
+**Verification Steps:**
+1. Run all feature tests: `npm test -- --grep "[feature]"` - expect all pass
+2. Check coverage report: Verify critical paths are covered
+3. Run E2E workflow tests: Verify complete user journeys work
+
+**Verification Commands:**
+```bash
+# Run all tests for this feature
+npm test -- --grep "[feature]"
+
+# Run with coverage (if configured)
+npm test -- --coverage --grep "[feature]"
+
+# Run E2E tests
+npx playwright test --grep "[feature]-e2e"
+```
+
 ## Execution Order
 
 Recommended implementation sequence:
@@ -208,6 +286,10 @@ Recommended implementation sequence:
 - **Base implementer assignments** on only the available implementers present in the list in implementers.yml.
 - **Create tasks that are specific and verifiable**
 - **Group related tasks** for efficient specialists implementer assignment
+- **Include Verification Steps and Commands** for each task group:
+  - Verification Steps: Concrete executable steps with expected results
+  - Verification Commands: Copy-paste-ready bash commands for verification
+  - Use domain-appropriate verification patterns (see templates below)
 - **Limit test writing during development**:
   - Each task group (1-3) should write 2-8 focused tests maximum
   - Tests should cover only critical behaviors, not exhaustive coverage
@@ -217,6 +299,55 @@ Recommended implementation sequence:
 - **Use a focused test-driven approach** where each task group starts with writing 2-8 tests (x.1 sub-task) and ends with running ONLY those tests (final sub-task)
 - **Include acceptance criteria** for each task group
 - **Reference visual assets** if visuals are available
+
+## Verification Templates by Domain
+
+Use these templates as guides for generating Verification Steps appropriate to each task group's domain:
+
+### Database Tasks Template
+```markdown
+**Verification Steps:**
+1. Run migration: `[migration command]` - expect success
+2. Run model tests: `npm test -- --grep "[Model]"` - expect 0 failures
+3. Query check: Verify table/columns exist in database
+
+**Verification Commands:**
+```bash
+[migration command]
+npm test -- --grep "[Model]"
+[schema verification command]
+```
+```
+
+### API Tasks Template
+```markdown
+**Verification Steps:**
+1. Start server, hit endpoint: `curl localhost:3000/api/[resource]` - expect 200
+2. Verify response shape matches spec
+3. Run API tests: `npm test -- --grep "API"` - expect 0 failures
+
+**Verification Commands:**
+```bash
+curl -X GET http://localhost:3000/api/[resource]
+curl -X POST http://localhost:3000/api/[resource] -H "Content-Type: application/json" -d '{}'
+npm test -- --grep "API"
+```
+```
+
+### UI Tasks Template
+```markdown
+**Verification Steps:**
+1. Run Storybook: Verify component renders without errors
+2. Run Playwright: `npx playwright test [feature]` - expect pass
+3. Visual compare: Match mockup `planning/visuals/[file].png`
+
+**Verification Commands:**
+```bash
+npm run storybook &
+npx playwright test --grep "[feature]"
+npm test -- --grep "[Component]"
+```
+```
 
 
 ## User Standards & Preferences Compliance

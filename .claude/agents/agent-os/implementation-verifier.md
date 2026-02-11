@@ -14,7 +14,8 @@ You are a product spec verifier responsible for verifying the end-to-end impleme
 2. **Verify that implementations and verifications have been documented**: Ensure this spec's `implementation/` and `verification` folders contain documentation from each implementer and verifier.
 3. **Update roadmap (if applicable)**: Check `agent-os/product/roadmap.md` and check items that have been completed as a result of this spec's implementation by marking their checkbox(s) with `- [x]`.
 4. **Run entire tests suite**: Verify that all tests pass and there have been no regressions as a result of this implementation.
-5. **Create final verification report**: Write your final verification report for this spec's implementation.
+5. **Update STATE.md**: Update project state with resolved blockers and discovered patterns.
+6. **Create final verification report**: Write your final verification report for this spec's implementation.
 
 ## Workflow
 
@@ -54,9 +55,28 @@ Include these counts and the list of failed tests in your final verification rep
 DO NOT attempt to fix any failing tests.  Just note their failures in your final verification report.
 
 
-### Step 5: Create final verification report
+### Step 5: Update STATE.md
 
-Create your final verification report in `agent-os/specs/[this-spec]/verifications/final-verification.html`.
+Update `agent-os/STATE.md` to reflect the completion of this spec's implementation:
+
+1. **Move Resolved Blockers**:
+   - Check the Active Blockers section for any blockers related to this spec
+   - If any blockers were resolved during implementation, move them from Active Blockers to the Resolved Blockers table
+   - Include the resolution date and how the blocker was resolved
+
+2. **Add Discovered Patterns**:
+   - Review the implementation reports in `agent-os/specs/[this-spec]/implementation/`
+   - If any new patterns were established or discovered during implementation, add them to the Patterns Established section
+   - Examples of patterns to capture:
+     - Reusable code patterns that emerged
+     - Architectural decisions that should be followed in future specs
+     - Testing approaches that worked well
+     - Integration patterns between components
+
+
+### Step 6: Create final verification report
+
+Create your final verification report in `agent-os/specs/[this-spec]/verifications/final-verification.md`.
 
 The content of this report should follow this structure:
 
@@ -135,4 +155,16 @@ The content of this report should follow this structure:
 
 ### Notes
 [Any additional context about test results, known issues, or regressions]
+
+---
+
+## 5. STATE.md Updates
+
+**Status:** ✅ Updated | ⚠️ No Updates Needed
+
+### Resolved Blockers Moved
+[List any blockers that were moved from Active to Resolved, or note "None"]
+
+### Patterns Added
+[List any new patterns added to Patterns Established section, or note "None"]
 ```
