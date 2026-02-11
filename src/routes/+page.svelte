@@ -67,10 +67,10 @@
 	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
 
 	<!-- Preload hero image for faster LCP - must match PremiumHero sizes exactly -->
-	<!-- Mobile: L (1024px) | Desktop: X3 (3000px) -->
+	<!-- Mobile: L (1024px) | Desktop: X2 (2048px) -->
 	{#if data.heroPhoto?.image_url}
 		{@const mobileUrl = replaceSmugMugSize(data.heroPhoto.image_url, 'L')}
-		{@const desktopUrl = replaceSmugMugSize(data.heroPhoto.image_url, 'X3')}
+		{@const desktopUrl = replaceSmugMugSize(data.heroPhoto.image_url, 'X2')}
 		<!-- Mobile preload (PageSpeed tests this) -->
 		<link rel="preload" as="image" href={mobileUrl} fetchpriority="high" media="(max-width: 1023px)" />
 		<!-- Desktop preload -->

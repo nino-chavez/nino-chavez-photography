@@ -4,8 +4,8 @@
   PERFORMANCE OPTIMIZATION:
   - Split layout reduces LCP image area by ~50% (from 100vw to ~50vw)
   - Uses CSS animations instead of svelte-motion (saves ~30KB JS)
-  - Desktop: X3 (2400px) for crisp retina display on large monitors
-  - Mobile: XL (1024px) for retina mobile/tablet
+  - Desktop: X2 (2048px) for retina on split-layout (50vw = ~960px CSS, 2x = 1920px)
+  - Mobile: L (1024px) for retina mobile/tablet
   - Progressive loading with blur-up placeholder
 
   Layout:
@@ -48,11 +48,11 @@
     // SmugMug optimization - use centralized optimizer
     if (imageUrl.includes('smugmug.com')) {
       // Map hero sizes to SmugMug sizes
-      // Desktop: X3 (3000px) for crisp retina display on large monitors
+      // Desktop: X2 (2048px) for retina on split-layout (50vw hero = ~960px CSS, 2x = 1920px)
       // Mobile: L (1024px) for retina mobile/tablet
       // Thumbnail: Th (100px) for blur placeholder
       const sizeMap: Record<typeof size, SmugMugSize> = {
-        desktop: 'X3',
+        desktop: 'X2',
         mobile: 'L',
         thumbnail: 'Th'
       };
@@ -143,8 +143,8 @@
         <img
           src={desktopUrl}
           alt="Volleyball action photography"
-          width="2400"
-          height="1600"
+          width="2048"
+          height="1365"
           class="absolute inset-0 w-full h-full object-cover"
           fetchpriority="high"
           decoding="sync"
