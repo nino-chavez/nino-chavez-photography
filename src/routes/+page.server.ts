@@ -31,7 +31,9 @@ interface HeroCache {
 }
 let heroCache: HeroCache | null = null;
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ setHeaders }) => {
+  setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+
   try {
     const now = Date.now();
 

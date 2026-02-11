@@ -10,7 +10,9 @@
 import { fetchPhotosByPeriod, fetchAllPeriods } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, parent }) => {
+export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
+  setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+
   // Parse query params for pagination
   // PERFORMANCE: Reduced default from 100 to 12 periods for faster initial load
   // Users can load more via infinite scroll

@@ -6,7 +6,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import type { Cookies } from '@sveltejs/kit';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 // Use VITE_ prefixed env vars for public values
 const PUBLIC_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -32,7 +32,7 @@ export function createSupabaseServerClient(cookies: Cookies) {
  * Create admin client with service role key (bypasses RLS)
  */
 export function createSupabaseAdminClient(cookies: Cookies) {
-	return createServerClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+	return createServerClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY!, {
 		cookies: {
 			getAll: () => cookies.getAll(),
 			setAll: (cookiesToSet) => {

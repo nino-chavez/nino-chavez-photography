@@ -13,7 +13,9 @@
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, type FilterCounts } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, parent }) => {
+export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
+  setHeaders({ 'cache-control': 's-maxage=60, stale-while-revalidate=120' });
+
   // Get cached data from parent layout
   const { sports, categories, baseFilterCounts } = await parent();
 

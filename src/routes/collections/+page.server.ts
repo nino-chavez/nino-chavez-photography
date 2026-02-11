@@ -92,7 +92,9 @@ interface CollectionWithPhotos {
 	coverPhoto: CoverPhotoRow | null;
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ setHeaders }) => {
+	setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+
 	// PERFORMANCE OPTIMIZATION: Execute all collection queries in parallel
 	// Previous: 9 sequential queries × 300ms = 2.7s
 	// Optimized: All queries in parallel = ~400ms (limited by slowest query)

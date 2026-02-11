@@ -7,7 +7,9 @@
 import type { PageServerLoad } from './$types';
 import { generateFAQs } from '$lib/aeo/faq-generator';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ setHeaders }) => {
+	setHeaders({ 'cache-control': 's-maxage=3600, stale-while-revalidate=7200' });
+
 	// Generate FAQs
 	const faqs = await generateFAQs();
 

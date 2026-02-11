@@ -3,7 +3,9 @@ import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
+	setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+
 	const { slug } = params;
 
 	// Extract the album key from the slug (handles both new and legacy URLs)

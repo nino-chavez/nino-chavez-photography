@@ -58,7 +58,9 @@ interface AlbumMetadata {
 
 type SortOption = 'name' | 'date' | 'count';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, setHeaders }) => {
+	setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+
 	// Browse Mode: Simple album listing without filters (IA Mode 1 - Traditionalist)
 	// Get pagination and sorting params
 	const page = parseInt(url.searchParams.get('page') || '1');
