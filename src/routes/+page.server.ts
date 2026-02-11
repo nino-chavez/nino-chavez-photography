@@ -31,8 +31,12 @@ interface HeroCache {
 }
 let heroCache: HeroCache | null = null;
 
-export const load: PageServerLoad = async () => {
-  // No edge cache — hero photo is randomly selected per request from in-memory pool
+const HERO_CANDIDATES_COUNT = 8;
+
+export const load: PageServerLoad = async ({ setHeaders }) => {
+  // Edge cache safe: client rotates through candidates, so same response = different experience
+  setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+
   try {
     const now = Date.now();
 
@@ -45,20 +49,27 @@ export const load: PageServerLoad = async () => {
       heroCache = { balancedPhotos, featuredAlbums, timestamp: now };
     }
 
-    if (heroCache.balancedPhotos.length === 0) {
-      return { heroPhoto: null, featuredAlbums: heroCache.featuredAlbums };
-    }
+    // Pick random subset for client-side rotation
+    const candidates = pickRandom(heroCache.balancedPhotos, HERO_CANDIDATES_COUNT);
+    const heroCandidates = candidates.map(transformPhotoRow);
 
-    // Pick random photo from cached pool
-    const randomIndex = Math.floor(Math.random() * heroCache.balancedPhotos.length);
-    const row = heroCache.balancedPhotos[randomIndex];
-
-    return { heroPhoto: transformPhotoRow(row), featuredAlbums: heroCache.featuredAlbums };
+    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
-    return { heroPhoto: null, featuredAlbums: [] };
+    return { heroCandidates: [], featuredAlbums: [] };
   }
 };
+
+/** Fisher-Yates shuffle, return first `count` items */
+function pickRandom<T>(arr: T[], count: number): T[] {
+  if (arr.length <= count) return [...arr];
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}
 
 /**
  * Fetch and prepare hero photo candidates with album diversity balancing.

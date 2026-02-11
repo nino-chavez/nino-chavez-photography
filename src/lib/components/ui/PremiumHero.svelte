@@ -1,23 +1,21 @@
 <!--
-  PremiumHero - Split-layout hero section optimized for LCP performance
+  PremiumHero - Split-layout hero with crossfade rotation and cinematic grain
 
-  PERFORMANCE OPTIMIZATION:
-  - Split layout reduces LCP image area by ~50% (from 100vw to ~50vw)
-  - Uses CSS animations instead of svelte-motion (saves ~30KB JS)
-  - Desktop: X2 (2048px) for retina on split-layout (50vw = ~960px CSS, 2x = 1920px)
-  - Mobile: L (1024px) for retina mobile/tablet
-  - Progressive loading with blur-up placeholder
+  ARCHITECTURE:
+  - Server sends 8 hero candidates, edge-cached for 5 min
+  - Client rotates through images with crossfade every 8s
+  - Two-layer system: preload next image on inactive layer, then swap opacity
+  - Grain texture overlay for cinematic feel (from nino-chavez-website)
+
+  PERFORMANCE:
+  - Split layout reduces LCP image area by ~50%
+  - First image SSR-rendered and preloaded (LCP optimized)
+  - CSS transitions only (no JS animation library)
+  - Preloads next image before crossfade (no flash)
 
   Layout:
   - Desktop: Split 50/50 (text left, image right)
-  - Mobile: Stacked (text top, image below)
-
-  Usage:
-  <PremiumHero
-    backgroundImage="/path/to/image.jpg"
-    title="SPORTS PHOTOGRAPHY"
-    subtitle="ACTION & MOMENTS"
-  />
+  - Mobile: Stacked (image top, text below)
 -->
 
 <script lang="ts">
@@ -27,30 +25,69 @@
   import { replaceSmugMugSize, type SmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 
   interface Props {
-    backgroundImage?: string;
+    images?: string[];
     title?: string;
     subtitle?: string;
     class?: string;
   }
 
   let {
-    backgroundImage = '',
+    images = [],
     title = 'SPORTS PHOTOGRAPHY',
     subtitle = 'ACTION & MOMENTS',
     class: className
   }: Props = $props();
 
-  // Generate optimized image URL for hero
-  // Uses the centralized SmugMug optimizer which handles both path and filename
+  // --- Image rotation state ---
+  // Two layers for crossfade: layer 0 starts visible, layer 1 is preload target
+  let activeLayer = $state<0 | 1>(0);
+  let currentIndex = $state(0);
+  let layerSources = $state<[string, string]>([
+    images[0] || '',
+    images.length > 1 ? images[1] : ''
+  ]);
+
+  // Rotation: every 8s, preload next image then crossfade
+  $effect(() => {
+    if (images.length <= 1) return;
+
+    const interval = setInterval(async () => {
+      const nextIdx = (currentIndex + 1) % images.length;
+      const nextUrl = images[nextIdx];
+      if (!nextUrl) return;
+
+      // Preload desktop-sized image before crossfade
+      const desktopUrl = getOptimizedUrl(nextUrl, 'desktop');
+      await preloadImage(desktopUrl);
+
+      // Set inactive layer source and crossfade
+      const inactive: 0 | 1 = activeLayer === 0 ? 1 : 0;
+      layerSources[inactive] = nextUrl;
+
+      // Let DOM update src, then toggle visibility
+      requestAnimationFrame(() => {
+        activeLayer = inactive;
+        currentIndex = nextIdx;
+      });
+    }, 8000);
+
+    return () => clearInterval(interval);
+  });
+
+  function preloadImage(url: string): Promise<void> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = url;
+    });
+  }
+
+  // --- Image URL optimization ---
   function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
 
-    // SmugMug optimization - use centralized optimizer
     if (imageUrl.includes('smugmug.com')) {
-      // Map hero sizes to SmugMug sizes
-      // Desktop: X2 (2048px) for retina on split-layout (50vw hero = ~960px CSS, 2x = 1920px)
-      // Mobile: L (1024px) for retina mobile/tablet
-      // Thumbnail: Th (100px) for blur placeholder
       const sizeMap: Record<typeof size, SmugMugSize> = {
         desktop: 'X2',
         mobile: 'L',
@@ -59,7 +96,6 @@
       return replaceSmugMugSize(imageUrl, sizeMap[size]);
     }
 
-    // Supabase storage
     if (imageUrl.includes('supabase')) {
       const url = new URL(imageUrl);
       if (size === 'thumbnail') {
@@ -76,10 +112,20 @@
     return imageUrl;
   }
 
-  // Responsive URLs
-  let thumbnailUrl = $derived(getOptimizedUrl(backgroundImage, 'thumbnail'));
-  let mobileUrl = $derived(getOptimizedUrl(backgroundImage, 'mobile'));
-  let desktopUrl = $derived(getOptimizedUrl(backgroundImage, 'desktop'));
+  // Derived URLs for active layer (used by blur placeholder)
+  let activeSource = $derived(layerSources[activeLayer]);
+  let thumbnailUrl = $derived(getOptimizedUrl(activeSource, 'thumbnail'));
+
+  // Per-layer optimized URLs
+  let layer0Desktop = $derived(getOptimizedUrl(layerSources[0], 'desktop'));
+  let layer0Mobile = $derived(getOptimizedUrl(layerSources[0], 'mobile'));
+  let layer1Desktop = $derived(getOptimizedUrl(layerSources[1], 'desktop'));
+  let layer1Mobile = $derived(getOptimizedUrl(layerSources[1], 'mobile'));
+
+  let hasImages = $derived(images.length > 0);
+
+  // Grain texture SVG (from nino-chavez-website)
+  const grainSvg = "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')";
 </script>
 
 <!-- Split Hero Section -->
@@ -96,7 +142,6 @@
     <!-- Left: Text Content -->
     <div class="relative z-10 flex items-center justify-center px-8 xl:px-16 bg-gradient-to-r from-charcoal-950 via-charcoal-950 to-charcoal-900/50">
       <div class="max-w-xl text-left hero-content-animate">
-        <!-- Main heading -->
         <Typography
           variant="h1"
           class="text-4xl xl:text-5xl 2xl:text-6xl font-bold text-white uppercase tracking-wide leading-tight mb-4"
@@ -105,7 +150,6 @@
           {title}
         </Typography>
 
-        <!-- Subtitle -->
         <Typography
           variant="h2"
           class="text-lg xl:text-xl font-light text-charcoal-300 uppercase tracking-widest mb-8"
@@ -114,7 +158,6 @@
           {subtitle}
         </Typography>
 
-        <!-- CTA Button -->
         <a
           href="{base}/explore"
           class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg"
@@ -127,31 +170,55 @@
       </div>
     </div>
 
-    <!-- Right: Hero Image (LCP Element - now 50% smaller!) -->
+    <!-- Right: Hero Image with crossfade layers -->
     <div class="relative overflow-hidden">
-      <!-- Blur placeholder -->
+      <!-- Blur placeholder (follows active image) -->
       {#if thumbnailUrl}
         <div
-          class="absolute inset-0 bg-cover bg-center blur-xl scale-110"
+          class="absolute inset-0 bg-cover bg-center blur-xl scale-110 transition-opacity duration-1000"
           style="background-image: url('{thumbnailUrl}');"
           aria-hidden="true"
         ></div>
       {/if}
 
-      <!-- Main image - NO opacity:0 to avoid delaying LCP -->
-      {#if desktopUrl}
+      <!-- Layer 0 -->
+      {#if layer0Desktop}
         <img
-          src={desktopUrl}
+          src={layer0Desktop}
           alt="Volleyball action photography"
           width="2048"
           height="1365"
-          class="absolute inset-0 w-full h-full object-cover"
-          fetchpriority="high"
-          decoding="sync"
+          class="absolute inset-0 w-full h-full object-cover hero-crossfade"
+          style="opacity: {activeLayer === 0 ? 1 : 0}"
+          fetchpriority={activeLayer === 0 ? 'high' : 'low'}
+          decoding={activeLayer === 0 ? 'sync' : 'async'}
         />
       {/if}
 
-      <!-- Gradient overlay for edge blending -->
+      <!-- Layer 1 -->
+      {#if layer1Desktop}
+        <img
+          src={layer1Desktop}
+          alt="Volleyball action photography"
+          width="2048"
+          height="1365"
+          class="absolute inset-0 w-full h-full object-cover hero-crossfade"
+          style="opacity: {activeLayer === 1 ? 1 : 0}"
+          fetchpriority={activeLayer === 1 ? 'high' : 'low'}
+          decoding="async"
+        />
+      {/if}
+
+      <!-- Grain texture overlay -->
+      {#if hasImages}
+        <div
+          class="absolute inset-0 opacity-[0.08] mix-blend-overlay pointer-events-none"
+          style="background-image: {grainSvg}"
+          aria-hidden="true"
+        ></div>
+      {/if}
+
+      <!-- Gradient overlays for edge blending -->
       <div class="absolute inset-0 bg-gradient-to-r from-charcoal-950 via-transparent to-transparent pointer-events-none" aria-hidden="true"></div>
       <div class="absolute inset-0 bg-gradient-to-t from-charcoal-950/30 via-transparent to-charcoal-950/20 pointer-events-none" aria-hidden="true"></div>
     </div>
@@ -164,23 +231,47 @@
       <!-- Blur placeholder -->
       {#if thumbnailUrl}
         <div
-          class="absolute inset-0 bg-cover bg-center blur-xl scale-110"
+          class="absolute inset-0 bg-cover bg-center blur-xl scale-110 transition-opacity duration-1000"
           style="background-image: url('{thumbnailUrl}');"
           aria-hidden="true"
         ></div>
       {/if}
 
-      <!-- Mobile image - NO opacity:0 to avoid delaying LCP -->
-      {#if mobileUrl}
+      <!-- Layer 0 - Mobile -->
+      {#if layer0Mobile}
         <img
-          src={mobileUrl}
+          src={layer0Mobile}
           alt="Volleyball action photography"
           width="1024"
           height="683"
-          class="absolute inset-0 w-full h-full object-cover"
-          fetchpriority="high"
-          decoding="sync"
+          class="absolute inset-0 w-full h-full object-cover hero-crossfade"
+          style="opacity: {activeLayer === 0 ? 1 : 0}"
+          fetchpriority={activeLayer === 0 ? 'high' : 'low'}
+          decoding={activeLayer === 0 ? 'sync' : 'async'}
         />
+      {/if}
+
+      <!-- Layer 1 - Mobile -->
+      {#if layer1Mobile}
+        <img
+          src={layer1Mobile}
+          alt="Volleyball action photography"
+          width="1024"
+          height="683"
+          class="absolute inset-0 w-full h-full object-cover hero-crossfade"
+          style="opacity: {activeLayer === 1 ? 1 : 0}"
+          fetchpriority={activeLayer === 1 ? 'high' : 'low'}
+          decoding="async"
+        />
+      {/if}
+
+      <!-- Grain texture overlay -->
+      {#if hasImages}
+        <div
+          class="absolute inset-0 opacity-[0.08] mix-blend-overlay pointer-events-none"
+          style="background-image: {grainSvg}"
+          aria-hidden="true"
+        ></div>
       {/if}
 
       <!-- Gradient overlay -->
@@ -221,6 +312,11 @@
 </section>
 
 <style>
+  /* Crossfade transition for hero image layers */
+  .hero-crossfade {
+    transition: opacity 1.2s ease-in-out;
+  }
+
   /* PERFORMANCE: CSS animation instead of svelte-motion */
   @keyframes hero-fade-in {
     from {
@@ -241,6 +337,9 @@
   @media (prefers-reduced-motion: reduce) {
     .hero-content-animate {
       animation: none;
+    }
+    .hero-crossfade {
+      transition: none;
     }
   }
 </style>

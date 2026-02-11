@@ -58,19 +58,23 @@
 		}
 	}
 
-	// Hero background image - pass original URL, PremiumHero handles responsive optimization
-	let heroBackgroundImage = $derived(data.heroPhoto?.image_url || '');
+	// Hero images — array of URLs for client-side rotation
+	let heroImages = $derived(
+		(data.heroCandidates || [])
+			.filter((p: any) => p.image_url)
+			.map((p: any) => p.image_url as string)
+	);
 </script>
 
 <svelte:head>
 	<title>Nino Chavez — Volleyball Photography</title>
 	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
 
-	<!-- Preload hero image for faster LCP - must match PremiumHero sizes exactly -->
+	<!-- Preload first hero image for LCP — client rotates through rest -->
 	<!-- Mobile: L (1024px) | Desktop: X2 (2048px) -->
-	{#if data.heroPhoto?.image_url}
-		{@const mobileUrl = replaceSmugMugSize(data.heroPhoto.image_url, 'L')}
-		{@const desktopUrl = replaceSmugMugSize(data.heroPhoto.image_url, 'X2')}
+	{#if heroImages.length > 0}
+		{@const mobileUrl = replaceSmugMugSize(heroImages[0], 'L')}
+		{@const desktopUrl = replaceSmugMugSize(heroImages[0], 'X2')}
 		<!-- Mobile preload (PageSpeed tests this) -->
 		<link rel="preload" as="image" href={mobileUrl} fetchpriority="high" media="(max-width: 1023px)" />
 		<!-- Desktop preload -->
@@ -78,20 +82,12 @@
 	{/if}
 </svelte:head>
 
-<!-- Premium Hero Section -->
-{#if data.heroPhoto}
-	<PremiumHero
-		backgroundImage={heroBackgroundImage}
-		title="SPORTS PHOTOGRAPHY"
-		subtitle="INTENSITY • DETERMINATION • TRIUMPH"
-	/>
-{:else}
-	<!-- Fallback hero without background image -->
-	<PremiumHero
-		title="SPORTS PHOTOGRAPHY"
-		subtitle="INTENSITY • DETERMINATION • TRIUMPH"
-	/>
-{/if}
+<!-- Premium Hero Section with rotating images -->
+<PremiumHero
+	images={heroImages}
+	title="SPORTS PHOTOGRAPHY"
+	subtitle="INTENSITY • DETERMINATION • TRIUMPH"
+/>
 
 <!-- Content Sections Below Hero -->
 <!-- PERFORMANCE: Using CSS animation instead of svelte-motion for better render performance -->
