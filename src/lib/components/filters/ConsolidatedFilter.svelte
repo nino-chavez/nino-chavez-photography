@@ -322,6 +322,8 @@
 		</button>
 
 		{#if primaryExpanded}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div
 				transition:slide
 				class="absolute top-full left-0 mt-2 p-4 bg-charcoal-900 border border-charcoal-800 rounded-lg shadow-xl z-50 min-w-[280px]"
@@ -431,6 +433,8 @@
 		</button>
 
 		{#if advancedExpanded}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div
 				transition:slide
 				class="absolute top-full left-0 mt-2 p-4 bg-charcoal-900 border border-charcoal-800 rounded-lg shadow-xl z-50 min-w-[320px] max-w-[400px]"

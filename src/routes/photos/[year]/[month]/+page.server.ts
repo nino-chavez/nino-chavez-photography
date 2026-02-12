@@ -12,6 +12,8 @@ import { error } from '@sveltejs/kit';
 import { fetchPhotosByYearMonth, getAdjacentMonth } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
+const PHOTOS_PER_PAGE = 48;
+
 export const load: PageServerLoad = async ({ params, url }) => {
   // Parse and validate year/month params
   const year = parseInt(params.year);
@@ -22,18 +24,26 @@ export const load: PageServerLoad = async ({ params, url }) => {
     throw error(404, 'Invalid year or month');
   }
 
-  // Parse sort param
+  // Parse sort and page params
   const sortBy = (url.searchParams.get('sort') as 'newest' | 'oldest' | 'quality') || 'newest';
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+  const offset = (page - 1) * PHOTOS_PER_PAGE;
 
-  console.log(`[Month Detail Server] Loading photos for ${year}-${month}`, { sortBy });
+  console.log(`[Month Detail Server] Loading photos for ${year}-${month}`, { sortBy, page });
 
   try {
-    // Fetch photos for this month
-    const photos = await fetchPhotosByYearMonth(year, month, { sortBy });
+    // Fetch paginated photos for this month
+    const { photos, totalCount } = await fetchPhotosByYearMonth(year, month, {
+      sortBy,
+      limit: PHOTOS_PER_PAGE,
+      offset
+    });
 
-    if (photos.length === 0) {
+    if (totalCount === 0) {
       throw error(404, `No photos found for ${year}-${month}`);
     }
+
+    const totalPages = Math.ceil(totalCount / PHOTOS_PER_PAGE);
 
     // Get adjacent months for navigation
     const [prevMonth, nextMonth] = await Promise.all([
@@ -44,7 +54,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
     // Format month name
     const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
-    console.log(`[Month Detail Server] Loaded ${photos.length} photos`, {
+    console.log(`[Month Detail Server] Loaded ${photos.length}/${totalCount} photos (page ${page}/${totalPages})`, {
       prevMonth: prevMonth ? `${prevMonth.year}-${prevMonth.month}` : null,
       nextMonth: nextMonth ? `${nextMonth.year}-${nextMonth.month}` : null
     });
@@ -57,7 +67,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
       prevMonth,
       nextMonth,
       sortBy,
-      photoCount: photos.length
+      photoCount: totalCount,
+      currentPage: page,
+      totalPages,
+      pageSize: PHOTOS_PER_PAGE
     };
   } catch (err) {
     console.error('[Month Detail Server] Failed to load photos:', err);

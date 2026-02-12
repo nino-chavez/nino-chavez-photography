@@ -65,7 +65,7 @@
 			size="lg"
 			disabled={loading}
 			class="min-w-[200px] w-full sm:w-auto max-w-xs group"
-			aria-label="{loading ? 'Loading' : `Load ${nextBatchSize} more photos`}"
+			aria-label={loading ? 'Loading' : `Load ${nextBatchSize} more photos`}
 		>
 			<span class="flex items-center gap-2">
 				{#if loading}

@@ -134,6 +134,7 @@
 	aria-label="Timeline scrubber"
 >
 	<!-- Track -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		bind:this={trackElement}
 		class="relative h-full bg-charcoal-800/50 backdrop-blur-sm rounded-full border border-charcoal-700/50 cursor-pointer hover:bg-charcoal-800/70 transition-colors"

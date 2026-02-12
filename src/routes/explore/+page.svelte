@@ -102,8 +102,11 @@
 		}
 	});
 
-	// Search
-	let searchQuery = $state(data.searchQuery || '');
+	// Search - sync with server data on navigation
+	let searchQuery = $state('');
+	$effect(() => {
+		searchQuery = data.searchQuery || '';
+	});
 
 	// Parse current search query for detected filters
 	let detectedFilters = $derived.by(() => {

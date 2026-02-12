@@ -19,6 +19,7 @@
   import { Calendar, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-svelte';
   import PhotoGrid from '$lib/components/gallery/PhotoGrid.svelte';
   import Lightbox from '$lib/components/gallery/Lightbox.svelte';
+  import Pagination from '$lib/components/ui/Pagination.svelte';
   import Typography from '$lib/components/ui/Typography.svelte';
   import type { Photo } from '$types/photo';
 
@@ -32,6 +33,9 @@
       nextMonth: { year: number; month: number; monthName: string; photoCount: number } | null;
       sortBy: 'newest' | 'oldest' | 'quality';
       photoCount: number;
+      currentPage: number;
+      totalPages: number;
+      pageSize: number;
     };
   }
 
@@ -60,10 +64,22 @@
     goto(`${base}/photos/${year}/${month}`);
   }
 
-  // Handle sort change
+  // Handle sort change (resets to page 1)
   function handleSortChange(newSort: 'newest' | 'oldest' | 'quality') {
     const url = new URL($page.url);
     url.searchParams.set('sort', newSort);
+    url.searchParams.delete('page');
+    goto(url.toString());
+  }
+
+  // Handle pagination
+  function handlePageChange(newPage: number) {
+    const url = new URL($page.url);
+    if (newPage === 1) {
+      url.searchParams.delete('page');
+    } else {
+      url.searchParams.set('page', String(newPage));
+    }
     goto(url.toString());
   }
 </script>
@@ -94,29 +110,26 @@
     </div>
 
     <!-- Month Header -->
-    <div class="flex items-center justify-between mb-8 pb-6 border-b border-charcoal-800">
-      <div class="flex items-center gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6 md:mb-8 pb-4 md:pb-6 border-b border-charcoal-800">
+      <div class="flex items-center gap-3 md:gap-4">
         <!-- Calendar Icon -->
-        <div class="h-16 w-16 rounded-full bg-gold-500 flex items-center justify-center shadow-lg">
-          <Calendar class="w-8 h-8 text-charcoal-950" />
+        <div class="h-10 w-10 md:h-16 md:w-16 rounded-full bg-gold-500 flex items-center justify-center shadow-lg">
+          <Calendar class="w-5 h-5 md:w-8 md:h-8 text-charcoal-950" />
         </div>
 
         <!-- Title -->
         <div>
-          <Typography variant="h1" class="text-white mb-1">
+          <Typography variant="h1" class="text-white mb-0.5 md:mb-1 text-xl md:text-3xl">
             {data.monthName} {data.year}
           </Typography>
-          <Typography variant="body" class="text-charcoal-400">
-            {data.photoCount} {data.photoCount === 1 ? 'photo' : 'photos'}
+          <Typography variant="body" class="text-charcoal-400 text-sm">
+            {data.photoCount.toLocaleString()} {data.photoCount === 1 ? 'photo' : 'photos'}
           </Typography>
         </div>
       </div>
 
       <!-- Sort Dropdown -->
       <div class="flex items-center gap-2">
-        <Typography variant="label" class="text-charcoal-400 text-sm">
-          Sort:
-        </Typography>
         <select
           value={data.sortBy}
           onchange={(e) => handleSortChange(e.currentTarget.value as any)}
@@ -130,7 +143,7 @@
     </div>
 
     <!-- Month Navigation -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center justify-between mb-6 md:mb-8">
       {#if data.prevMonth}
         <button
           onclick={() => navigateToMonth(data.prevMonth!.year, data.prevMonth!.month)}
@@ -164,6 +177,16 @@
 
     <!-- Photo Grid -->
     <PhotoGrid photos={data.photos} loading={false} onclick={handlePhotoClick} />
+
+    <!-- Pagination -->
+    <div class="mt-8">
+      <Pagination
+        currentPage={data.currentPage}
+        totalCount={data.photoCount}
+        pageSize={data.pageSize}
+        onPageChange={handlePageChange}
+      />
+    </div>
 
     <!-- Lightbox - consistent with other pages -->
     <Lightbox

@@ -984,7 +984,7 @@ animate-glow-fast   /* 1.5s duration - attention-grabbing CTAs */</code></pre>
 			</p>
 			<div class="border border-charcoal-800 rounded-lg overflow-hidden">
 				<PremiumHero
-					backgroundImage="https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=1200"
+					images={["https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=1200"]}
 					title="VOLLEYBALL PHOTOGRAPHY"
 					subtitle="ACTION & MOMENTS"
 				/>

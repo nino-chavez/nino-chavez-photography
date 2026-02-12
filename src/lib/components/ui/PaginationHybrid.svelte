@@ -90,10 +90,6 @@
 		}
 	}
 
-	// Don't render if only one page or no content
-	if (totalPages <= 1 || totalCount === 0) {
-		// Don't render anything
-	}
 </script>
 
 {#if totalPages > 1 && totalCount > 0}
@@ -102,7 +98,6 @@
 	<nav
 		class="flex items-center justify-center gap-2 sm:gap-2"
 		aria-label="Photo gallery pagination"
-		role="navigation"
 	>
 		<!-- Previous Button -->
 		{#if hasPrev}

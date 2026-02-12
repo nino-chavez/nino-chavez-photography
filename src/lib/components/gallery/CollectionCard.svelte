@@ -38,7 +38,7 @@
 
 	let { collection, href }: Props = $props();
 
-	const isPortfolio = collection.slug === 'portfolio-excellence';
+	let isPortfolio = $derived(collection.slug === 'portfolio-excellence');
 
 	// Get optimized SmugMug image URL using centralized optimizer
 	// Uses M-size (600px) - optimal for 3-column grid collection cards

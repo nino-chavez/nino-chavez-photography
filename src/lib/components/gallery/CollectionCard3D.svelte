@@ -42,7 +42,7 @@
 	// Hover state for 3D effects
 	let isHovered = $state(false);
 
-	const isPortfolio = collection.slug === 'portfolio-excellence';
+	let isPortfolio = $derived(collection.slug === 'portfolio-excellence');
 </script>
 
 <!-- 3D Card Container with Perspective -->

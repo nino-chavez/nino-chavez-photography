@@ -193,7 +193,7 @@ test.describe('Filter Permutation Tests', () => {
 		});
 
 		// Four-filter combinations
-		const complexCombos = [
+		const complexCombos: Record<string, string>[] = [
 			{
 				sport: 'volleyball',
 				category: 'action',

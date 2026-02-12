@@ -45,11 +45,11 @@
 		label: 'text-sm font-medium text-charcoal-300',
 	};
 
-	// Get the element to render
-	const elementType = element || elementMap[variant];
+	// Get the element to render (reactive to prop changes)
+	let elementType = $derived(element || elementMap[variant]);
 
-	// Combine variant classes with custom className
-	const combinedClasses = cn(classMap[variant], className);
+	// Combine variant classes with custom className (reactive to prop changes)
+	let combinedClasses = $derived(cn(classMap[variant], className));
 </script>
 
 <svelte:element this={elementType} class={combinedClasses} {...restProps}>

@@ -18,7 +18,8 @@
 
 	let { data }: Props = $props();
 
-	let { faqs, schema } = data;
+	let faqs = $derived(data.faqs);
+	let schema = $derived(data.schema);
 
 	// Search state
 	let searchQuery = $state('');

@@ -29,7 +29,7 @@
 		lg: 'w-12 h-12',
 	};
 
-	const iconSize = sizeClasses[size];
+	let iconSize = $derived(sizeClasses[size]);
 </script>
 
 <div

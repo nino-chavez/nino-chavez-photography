@@ -64,13 +64,13 @@
 	const baseClasses =
 		'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal-950';
 
-	// Combine all classes
-	const combinedClasses = cn(
+	// Combine all classes (reactive to prop changes)
+	let combinedClasses = $derived(cn(
 		baseClasses,
 		variantClasses[variant],
 		sizeClasses[size],
 		className,
-	);
+	));
 </script>
 
 <button

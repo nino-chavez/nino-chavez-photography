@@ -75,9 +75,8 @@
 	let imageLoaded = $state(false);
 	let imageError = $state(false);
 	let imageElement: HTMLImageElement | undefined = $state();
-	// SSR FIX: Initialize to `priority` so <img> renders in server HTML for above-fold images.
-	// Without this, $effect (client-only) must run first, hiding images from the browser until hydration.
-	let isIntersecting = $state(priority);
+	// Intersection state for lazy loading. Priority images use template condition instead.
+	let isIntersecting = $state(false);
 	let container: HTMLDivElement | undefined = $state();
 
 	// PERFORMANCE: Intersection Observer for true lazy loading
@@ -177,7 +176,7 @@
 
 	<!-- Main Image - Only load when intersecting or priority -->
 	<!-- PERFORMANCE: Pure CSS transition instead of svelte-motion (saves ~30KB JS) -->
-	{#if !imageError && isIntersecting}
+	{#if !imageError && (isIntersecting || priority)}
 		<img
 			bind:this={imageElement}
 			src={optimizedSrc()}

@@ -74,7 +74,7 @@
 <!-- Main Hero Section -->
 <div class="pt-16">
 	<PremiumHero
-		backgroundImage={heroConfigs[currentConfigIndex].backgroundImage}
+		images={[heroConfigs[currentConfigIndex].backgroundImage]}
 		title={heroConfigs[currentConfigIndex].title}
 		subtitle={heroConfigs[currentConfigIndex].subtitle}
 	/>

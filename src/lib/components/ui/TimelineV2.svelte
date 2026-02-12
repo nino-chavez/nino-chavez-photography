@@ -64,19 +64,15 @@
 
   // Lazy loading state
   let isLoadingMore = $state(false);
-  let hasMorePeriods = $state(hasMore);
-  let currentPageNum = $state(currentPage);
+  let hasMorePeriods = $derived(hasMore);
+  let currentPageNum = $state(1);
 
   // Navigation state
   let selectedYear: number | null = $state(null);
   let selectedMonth: number | null = $state(null);
   let showPeriodSelector = $state(false);
 
-  // Sync props to local state
-  $effect(() => {
-    hasMorePeriods = hasMore;
-  });
-
+  // Sync currentPage prop to local state
   $effect(() => {
     currentPageNum = currentPage;
   });
@@ -570,62 +566,64 @@
           </button>
         {/each}
 
-        <!-- Month dots (only periods with photos, positioned on timeline) -->
-        {#each timelinePositions as period}
-          {@const isActiveMonth = currentVisibleMonth?.year === period.year && currentVisibleMonth?.month === period.month}
-          {@const monthNumStr = String(period.month).padStart(2, '0')}
-          {@const yearShortStr = String(period.year).slice(-2)}
+        <!-- Month dots (desktop only — too many dots for mobile tap targets) -->
+        <div class="hidden md:block">
+          {#each timelinePositions as period}
+            {@const isActiveMonth = currentVisibleMonth?.year === period.year && currentVisibleMonth?.month === period.month}
+            {@const monthNumStr = String(period.month).padStart(2, '0')}
+            {@const yearShortStr = String(period.year).slice(-2)}
 
-          <button
-            onclick={() => scrollToNavPeriod(period.year, period.month)}
-            onmouseenter={() => hoveredPeriod = { year: period.year, month: period.month, monthName: period.monthName }}
-            onmouseleave={() => hoveredPeriod = null}
-            class="absolute top-7 transform -translate-x-1/2 group cursor-pointer z-20"
-            style="left: {period.position}%"
-            aria-label="Jump to {period.monthName} {period.year}"
-          >
-            <!-- Month dot with dimmed/active states -->
-            <div class="relative">
-              <!-- Dimmed by default, highlighted when active or hovered -->
-              <div
-                class="w-2.5 h-2.5 rounded-full transition-all duration-200"
-                class:bg-charcoal-600={!isActiveMonth}
-                class:opacity-40={!isActiveMonth}
-                class:bg-gold-500={isActiveMonth}
-                class:opacity-100={isActiveMonth}
-                class:shadow-lg={isActiveMonth}
-                class:ring-1={isActiveMonth}
-                class:ring-gold-600={isActiveMonth}
-                class:group-hover:bg-gold-400={true}
-                class:group-hover:opacity-100={true}
-                class:group-hover:scale-150={true}
-                class:scale-125={isActiveMonth}
-              ></div>
+            <button
+              onclick={() => scrollToNavPeriod(period.year, period.month)}
+              onmouseenter={() => hoveredPeriod = { year: period.year, month: period.month, monthName: period.monthName }}
+              onmouseleave={() => hoveredPeriod = null}
+              class="absolute top-7 transform -translate-x-1/2 group cursor-pointer z-20"
+              style="left: {period.position}%"
+              aria-label="Jump to {period.monthName} {period.year}"
+            >
+              <!-- Month dot with dimmed/active states -->
+              <div class="relative">
+                <!-- Dimmed by default, highlighted when active or hovered -->
+                <div
+                  class="w-2.5 h-2.5 rounded-full transition-all duration-200"
+                  class:bg-charcoal-600={!isActiveMonth}
+                  class:opacity-40={!isActiveMonth}
+                  class:bg-gold-500={isActiveMonth}
+                  class:opacity-100={isActiveMonth}
+                  class:shadow-lg={isActiveMonth}
+                  class:ring-1={isActiveMonth}
+                  class:ring-gold-600={isActiveMonth}
+                  class:group-hover:bg-gold-400={true}
+                  class:group-hover:opacity-100={true}
+                  class:group-hover:scale-150={true}
+                  class:scale-125={isActiveMonth}
+                ></div>
 
-              <!-- Hover tooltip with MM/YY format -->
-              {#if hoveredPeriod && hoveredPeriod.year === period.year && hoveredPeriod.month === period.month}
-                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-3 py-1.5 bg-charcoal-900 border border-gold-500/30 rounded shadow-xl whitespace-nowrap z-50 backdrop-blur-sm">
-                  <Typography variant="caption" class="text-white text-xs font-medium">
-                    {monthNumStr}/{yearShortStr}
-                  </Typography>
-                  <Typography variant="caption" class="text-charcoal-400 text-[10px]">
-                    {period.monthName} {period.year}
-                  </Typography>
-                  <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
-                    <div class="border-4 border-transparent border-t-charcoal-900"></div>
+                <!-- Hover tooltip with MM/YY format -->
+                {#if hoveredPeriod && hoveredPeriod.year === period.year && hoveredPeriod.month === period.month}
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-3 py-1.5 bg-charcoal-900 border border-gold-500/30 rounded shadow-xl whitespace-nowrap z-50 backdrop-blur-sm">
+                    <Typography variant="caption" class="text-white text-xs font-medium">
+                      {monthNumStr}/{yearShortStr}
+                    </Typography>
+                    <Typography variant="caption" class="text-charcoal-400 text-[10px]">
+                      {period.monthName} {period.year}
+                    </Typography>
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
+                      <div class="border-4 border-transparent border-t-charcoal-900"></div>
+                    </div>
                   </div>
-                </div>
-              {/if}
-            </div>
-          </button>
-        {/each}
+                {/if}
+              </div>
+            </button>
+          {/each}
 
-        <!-- Progress indicator (current scroll position) -->
-        <div
-          class="absolute top-7 transform -translate-x-1/2 z-10 pointer-events-none"
-          style="left: {scrollProgress}%"
-        >
-          <div class="w-3 h-3 rounded-full bg-white border-2 border-gold-500 shadow-lg"></div>
+          <!-- Progress indicator (current scroll position, desktop only) -->
+          <div
+            class="absolute top-7 transform -translate-x-1/2 z-10 pointer-events-none"
+            style="left: {scrollProgress}%"
+          >
+            <div class="w-3 h-3 rounded-full bg-white border-2 border-gold-500 shadow-lg"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -686,7 +684,7 @@
           </div>
 
           <!-- Month Content -->
-          <div class="ml-12">
+          <div class="ml-0 md:ml-12">
             <!-- Diversity Indicators -->
             {#if entry.featuredPhotos && entry.featuredPhotos.length > 0}
               {@const diversity = getContentDiversity(entry.featuredPhotos)}
@@ -767,8 +765,8 @@
       {/if}
     {/each}
 
-    <!-- Progress Line -->
-    <div class="absolute left-4 md:left-6 top-0 w-0.5 bg-gradient-to-b from-transparent via-gold-500/50 to-transparent">
+    <!-- Progress Line (desktop only) -->
+    <div class="hidden md:block absolute left-4 md:left-6 top-0 w-0.5 bg-gradient-to-b from-transparent via-gold-500/50 to-transparent">
       <div class="w-full bg-gradient-to-b from-gold-400 to-gold-600 rounded-full h-full"></div>
     </div>
   </div>

@@ -53,13 +53,13 @@
 	// Base classes
 	const baseClasses = 'rounded-lg';
 
-	// Combine all classes
-	const combinedClasses = cn(
+	// Combine all classes (reactive to prop changes)
+	let combinedClasses = $derived(cn(
 		baseClasses,
 		variantClasses[variant],
 		paddingClasses[padding],
 		className,
-	);
+	));
 </script>
 
 <div class={combinedClasses} {...restProps}>

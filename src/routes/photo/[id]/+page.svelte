@@ -50,15 +50,15 @@
 
 	// Generate enhanced Schema.org structured data for AEO
 	const baseUrl = 'https://photography.ninochavez.co';
+
+	let schemaData = $derived.by(() => {
 	const imageUrl = data.photo.image_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || '';
 	const thumbnailUrl = data.photo.thumbnail_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || imageUrl;
 	const originalUrl = data.photo.original_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || imageUrl;
-
-	// Get image dimensions from SmugMug metadata if available
 	const imageWidth = data.photo.smugmug?.width;
 	const imageHeight = data.photo.smugmug?.height;
 
-	const schemaData = {
+	return {
 		'@context': 'https://schema.org',
 		'@type': 'Photograph',
 		'@id': data.seo.canonical,
@@ -132,6 +132,7 @@
 			description: 'Professional sports photography licensing available. Contact for pricing.'
 		}
 	};
+	});
 </script>
 
 <svelte:head>

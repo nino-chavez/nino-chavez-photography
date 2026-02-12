@@ -42,10 +42,17 @@
   // Two layers for crossfade: layer 0 starts visible, layer 1 is preload target
   let activeLayer = $state<0 | 1>(0);
   let currentIndex = $state(0);
-  let layerSources = $state<[string, string]>([
-    images[0] || '',
-    images.length > 1 ? images[1] : ''
-  ]);
+  let layerSources = $state<[string, string]>(['', '']);
+
+  // Sync layer sources when images prop changes
+  $effect(() => {
+    layerSources = [
+      images[0] || '',
+      images.length > 1 ? images[1] : ''
+    ];
+    currentIndex = 0;
+    activeLayer = 0;
+  });
 
   // Rotation: every 8s, preload next image then crossfade
   $effect(() => {

@@ -136,9 +136,11 @@
 			class="fixed top-0 right-0 h-full w-full max-w-sm bg-charcoal-950 border-l border-charcoal-800 shadow-2xl overflow-y-auto"
 			transition:slide={{ duration: 300, axis: 'x' }}
 			role="dialog"
+			tabindex="-1"
 			aria-modal="true"
 			aria-label="Filter options"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => { if (e.key === 'Escape') close(); }}
 		>
 			<!-- Header with close button -->
 			<div class="sticky top-0 z-10 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800 px-4 py-3 flex items-center justify-between">

@@ -130,8 +130,7 @@
 							aria-pressed={selectedLighting?.includes(lighting.value)}
 							aria-label="Filter by {lighting.label}"
 						>
-							<svelte:component
-								this={lighting.icon}
+							<lighting.icon
 								class="w-4 h-4 {selectedLighting?.includes(lighting.value)
 									? 'text-charcoal-950'
 									: 'text-charcoal-400 group-hover:text-charcoal-200'}"

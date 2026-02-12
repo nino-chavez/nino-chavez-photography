@@ -563,8 +563,7 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
 
   // Aggregation query generator
   const getAggregatedCounts = async (
-    fieldName: string,
-    displayName: string
+    fieldName: string
   ): Promise<Array<{ name: string; count: number }>> => {
     const conditions = buildFilterConditions(fieldName);
 
@@ -691,14 +690,14 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
     timeOfDayCounts,
     compositionCounts,
   ] = await Promise.all([
-    getAggregatedCounts('sport_type', 'Sport'),
-    getAggregatedCounts('photo_category', 'Category'),
-    getAggregatedCounts('play_type', 'Play Type'),
-    getAggregatedCounts('action_intensity', 'Intensity'),
-    getAggregatedCounts('lighting', 'Lighting'),
-    getAggregatedCounts('color_temperature', 'Color Temperature'),
-    getAggregatedCounts('time_of_day', 'Time of Day'),
-    getAggregatedCounts('composition', 'Composition'),
+    getAggregatedCounts('sport_type'),
+    getAggregatedCounts('photo_category'),
+    getAggregatedCounts('play_type'),
+    getAggregatedCounts('action_intensity'),
+    getAggregatedCounts('lighting'),
+    getAggregatedCounts('color_temperature'),
+    getAggregatedCounts('time_of_day'),
+    getAggregatedCounts('composition'),
   ]);
 
   return {
@@ -1168,15 +1167,18 @@ export async function fetchAllPeriods(options?: {
 }
 
 /**
- * Fetch all photos for a specific year and month
+ * Fetch photos for a specific year and month with optional pagination
  * Used by the month detail page (/photos/[year]/[month])
+ *
+ * When limit is provided, returns { photos, totalCount } with pagination.
+ * When limit is omitted, returns all photos (backward compatible).
  */
 export async function fetchPhotosByYearMonth(
   year: number,
   month: number,
-  options: { sortBy?: 'newest' | 'oldest' | 'quality' } = {}
-): Promise<Photo[]> {
-  const { sortBy = 'newest' } = options;
+  options: { sortBy?: 'newest' | 'oldest' | 'quality'; limit?: number; offset?: number } = {}
+): Promise<{ photos: Photo[]; totalCount: number }> {
+  const { sortBy = 'newest', limit, offset = 0 } = options;
 
   try {
     // Calculate date range for the month
@@ -1186,12 +1188,14 @@ export async function fetchPhotosByYearMonth(
     console.log(`[fetchPhotosByYearMonth] Fetching photos for ${year}-${month}`, {
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      sortBy
+      sortBy,
+      limit,
+      offset
     });
 
     let query = supabaseServer
       .from('photo_metadata')
-      .select('*')
+      .select('*', limit ? { count: 'exact' } : {})
       .not('sharpness', 'is', null)
       .gte('upload_date', startDate.toISOString())
       .lte('upload_date', endDate.toISOString());
@@ -1205,16 +1209,24 @@ export async function fetchPhotosByYearMonth(
       query = query.order('emotional_impact', { ascending: false }).order('upload_date', { ascending: false });
     }
 
-    const { data, error } = await query;
+    // Apply pagination when limit is provided
+    if (limit) {
+      query = query.range(offset, offset + limit - 1);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) {
       console.error('[fetchPhotosByYearMonth] Query failed:', error);
       throw error;
     }
 
-    console.log(`[fetchPhotosByYearMonth] Fetched ${data?.length || 0} photos`);
+    const photos = (data || []).map(transformPhotoRow);
+    const totalCount = count ?? photos.length;
 
-    return (data || []).map(transformPhotoRow);
+    console.log(`[fetchPhotosByYearMonth] Fetched ${photos.length} photos (total: ${totalCount})`);
+
+    return { photos, totalCount };
   } catch (error) {
     console.error('[fetchPhotosByYearMonth] Error:', error);
     throw error;
