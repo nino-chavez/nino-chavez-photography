@@ -26,6 +26,7 @@
 
   interface Props {
     images?: string[];
+    staticHeroIndex?: number;
     title?: string;
     subtitle?: string;
     class?: string;
@@ -33,10 +34,18 @@
 
   let {
     images = [],
+    staticHeroIndex = 0,
     title = 'SPORTS PHOTOGRAPHY',
     subtitle = 'ACTION & MOMENTS',
     class: className
   }: Props = $props();
+
+  // --- Static hero for instant LCP ---
+  const STATIC_HEROES = [
+    { desktop: `${base}/images/hero/hero-1-desktop.webp`, mobile: `${base}/images/hero/hero-1-mobile.webp` }
+  ];
+  let staticHero = $derived(STATIC_HEROES[staticHeroIndex] ?? STATIC_HEROES[0]);
+  let dynamicReady = $state(false);
 
   // --- Image rotation state ---
   // Two layers for crossfade: layer 0 starts visible, layer 1 is preload target
@@ -54,24 +63,28 @@
     activeLayer = 0;
   });
 
-  // Rotation: every 8s, preload next image then crossfade
+  // Preload first dynamic image, then reveal dynamic layer + start rotation
   $effect(() => {
-    if (images.length <= 1) return;
+    if (images.length === 0) return;
+    const firstUrl = getOptimizedUrl(images[0], 'desktop');
+    preloadImage(firstUrl).then(() => { dynamicReady = true; });
+  });
+
+  // Rotation: every 8s, preload next image then crossfade (only after dynamic ready)
+  $effect(() => {
+    if (!dynamicReady || images.length <= 1) return;
 
     const interval = setInterval(async () => {
       const nextIdx = (currentIndex + 1) % images.length;
       const nextUrl = images[nextIdx];
       if (!nextUrl) return;
 
-      // Preload desktop-sized image before crossfade
       const desktopUrl = getOptimizedUrl(nextUrl, 'desktop');
       await preloadImage(desktopUrl);
 
-      // Set inactive layer source and crossfade
       const inactive: 0 | 1 = activeLayer === 0 ? 1 : 0;
       layerSources[inactive] = nextUrl;
 
-      // Let DOM update src, then toggle visibility
       requestAnimationFrame(() => {
         activeLayer = inactive;
         currentIndex = nextIdx;
@@ -179,6 +192,18 @@
 
     <!-- Right: Hero Image with crossfade layers -->
     <div class="relative overflow-hidden">
+      <!-- Static hero for instant LCP (Vercel CDN) -->
+      <img
+        src={staticHero.desktop}
+        alt="Volleyball action photography"
+        width="2048"
+        height="1365"
+        class="absolute inset-0 w-full h-full object-cover hero-crossfade"
+        style="opacity: {dynamicReady ? 0 : 1}"
+        fetchpriority="high"
+        decoding="sync"
+      />
+
       <!-- Blur placeholder (follows active image) -->
       {#if thumbnailUrl}
         <div
@@ -235,6 +260,18 @@
   <div class="lg:hidden flex flex-col min-h-[70vh]">
     <!-- Top: Image (constrained height for faster LCP) -->
     <div class="relative h-[45vh] overflow-hidden">
+      <!-- Static hero for instant LCP (Vercel CDN) -->
+      <img
+        src={staticHero.mobile}
+        alt="Volleyball action photography"
+        width="1024"
+        height="683"
+        class="absolute inset-0 w-full h-full object-cover hero-crossfade"
+        style="opacity: {dynamicReady ? 0 : 1}"
+        fetchpriority="high"
+        decoding="sync"
+      />
+
       <!-- Blur placeholder -->
       {#if thumbnailUrl}
         <div

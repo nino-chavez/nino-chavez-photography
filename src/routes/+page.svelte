@@ -4,7 +4,6 @@
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import { getSmugMugUrl, getProxiedImageUrl } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
-	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Trophy, Calendar } from 'lucide-svelte';
 
@@ -70,21 +69,15 @@
 	<title>Nino Chavez — Volleyball Photography</title>
 	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
 
-	<!-- Preload first hero image for LCP — client rotates through rest -->
-	<!-- Mobile: L (1024px) | Desktop: X2 (2048px) -->
-	{#if heroImages.length > 0}
-		{@const mobileUrl = replaceSmugMugSize(heroImages[0], 'L')}
-		{@const desktopUrl = replaceSmugMugSize(heroImages[0], 'X2')}
-		<!-- Mobile preload (PageSpeed tests this) -->
-		<link rel="preload" as="image" href={mobileUrl} fetchpriority="high" media="(max-width: 1023px)" />
-		<!-- Desktop preload -->
-		<link rel="preload" as="image" href={desktopUrl} fetchpriority="high" media="(min-width: 1024px)" />
-	{/if}
+	<!-- Preload static hero WebP for instant LCP (Vercel CDN, no proxy chain) -->
+	<link rel="preload" as="image" href="{base}/images/hero/hero-1-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />
+	<link rel="preload" as="image" href="{base}/images/hero/hero-1-desktop.webp" fetchpriority="high" media="(min-width: 1024px)" />
 </svelte:head>
 
 <!-- Premium Hero Section with rotating images -->
 <PremiumHero
 	images={heroImages}
+	staticHeroIndex={data.staticHeroIndex ?? 0}
 	title="SPORTS PHOTOGRAPHY"
 	subtitle="INTENSITY • DETERMINATION • TRIUMPH"
 />

@@ -49,11 +49,17 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       heroCache = { balancedPhotos, featuredAlbums, timestamp: now };
     }
 
-    // Pick random subset for client-side rotation
-    const candidates = pickRandom(heroCache.balancedPhotos, HERO_CANDIDATES_COUNT);
-    const heroCandidates = candidates.map(transformPhotoRow);
+    // Deterministic first hero (stable for Cloudflare cache hits), rest random
+    const pool = heroCache.balancedPhotos;
+    const pinIdx = Math.floor(Date.now() / 3_600_000) % pool.length;
+    const pinned = pool[pinIdx];
+    const rest = pickRandom(
+      pool.filter((_, i) => i !== pinIdx),
+      HERO_CANDIDATES_COUNT - 1
+    );
+    const heroCandidates = [pinned, ...rest].map(transformPhotoRow);
 
-    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums };
+    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, staticHeroIndex: 0 };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
     return { heroCandidates: [], featuredAlbums: [] };
