@@ -4,8 +4,9 @@
   Features:
   - Personal story and journey
   - Photography philosophy
+  - Featured photo from gallery
   - Contact information
-  - Tier 3 marketing page layout
+  - Person schema markup for SEO
 
   Usage:
   /about
@@ -17,17 +18,40 @@
 	import { Camera, Heart, Zap, Mail, Instagram } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import OptimizedImage from '$lib/components/ui/OptimizedImage.svelte';
 
-	// Page metadata
+	interface Props {
+		data: {
+			featuredPhoto: import('$types/photo').Photo | null;
+		};
+	}
+
+	let { data }: Props = $props();
+
 	const pageTitle = 'About - Nino Chavez Photography';
-	const pageDescription = 'Meet Nino Chavez, sports photographer capturing the emotion and intensity of athletic moments. From volleyball courts to tournament arenas, every shot tells a story.';
+	const pageDescription =
+		'Nino Chavez is a sports photographer who started courtside at his kid\'s volleyball games and never left. Thousands of matches later, every frame still matters.';
+
+	let schemaData = $derived.by(() => ({
+		'@context': 'https://schema.org',
+		'@type': 'ProfilePage',
+		mainEntity: {
+			'@type': 'Person',
+			name: 'Nino Chavez',
+			jobTitle: 'Sports Photographer',
+			description: pageDescription,
+			url: 'https://photography.ninochavez.co/about',
+			sameAs: ['https://www.instagram.com/nino.chavez.photo'],
+			knowsAbout: ['Sports Photography', 'Volleyball Photography', 'Action Sports']
+		}
+	}));
 </script>
 
 <svelte:head>
 	<title>{pageTitle}</title>
 	<meta name="description" content={pageDescription} />
+	{@html `<script type="application/ld+json">${JSON.stringify(schemaData)}</script>`}
 </svelte:head>
 
 <!-- Hero Section -->
@@ -51,7 +75,7 @@
 						Meet Nino Chavez
 					</Typography>
 					<Typography variant="body" class="text-xl text-charcoal-300 max-w-2xl mx-auto">
-						Sports photographer capturing the emotion and intensity of athletic moments
+						Started courtside at my kid's volleyball games. Never left.
 					</Typography>
 				</div>
 			</div>
@@ -85,13 +109,13 @@
 						</Typography>
 
 						<Typography variant="body">
-							When I'm not holding a camera, I work in tech. When I am holding a camera… well, that's when I'm probably the most myself.
+							Thousands of matches and 20,000+ frames later, the work speaks for itself. When I'm not holding a camera, I work in tech. When I am holding a camera... well, that's when I'm probably the most myself.
 						</Typography>
 					</div>
 				</div>
 			</Motion>
 
-			<!-- Visual Element -->
+			<!-- Featured Photo -->
 			<Motion
 				let:motion
 				initial={{ opacity: 0, x: 30 }}
@@ -99,16 +123,27 @@
 				transition={{ ...MOTION.spring.gentle, delay: 0.4 }}
 			>
 				<div use:motion class="relative">
-					<div class="aspect-square rounded-2xl bg-gradient-to-br from-gold-500/20 to-charcoal-800/50 border border-gold-500/30 p-8 flex items-center justify-center">
-						<div class="text-center space-y-4">
-							<div class="p-4 rounded-xl bg-gold-500/10 inline-block">
-								<Heart class="w-16 h-16 text-gold-500" />
-							</div>
-							<Typography variant="h3" class="text-xl font-semibold text-white">
-								MOTION. EMOTION. Frame by Frame.
-							</Typography>
+					{#if data.featuredPhoto}
+						<div class="aspect-[3/4] rounded-2xl overflow-hidden border border-charcoal-700/50 shadow-2xl">
+							<OptimizedImage
+								src={data.featuredPhoto.image_url}
+								alt="Featured sports photography by Nino Chavez"
+								aspectRatio="3/4"
+								quality="high"
+								priority={true}
+								class="w-full h-full object-cover"
+							/>
 						</div>
-					</div>
+					{:else}
+						<div class="aspect-[3/4] rounded-2xl bg-gradient-to-br from-gold-500/20 to-charcoal-800/50 border border-gold-500/30 flex items-center justify-center">
+							<div class="text-center space-y-4">
+								<Camera class="w-16 h-16 text-gold-500 mx-auto" />
+								<Typography variant="h3" class="text-xl font-semibold text-white">
+									MOTION. EMOTION. Frame by Frame.
+								</Typography>
+							</div>
+						</div>
+					{/if}
 				</div>
 			</Motion>
 		</div>
@@ -221,10 +256,10 @@
 			<div use:motion class="space-y-8">
 				<div class="space-y-4">
 					<Typography variant="h2" class="text-3xl lg:text-4xl font-bold text-white">
-						Ready to Capture Your Story?
+						See the Work
 					</Typography>
 					<Typography variant="body" class="text-xl text-charcoal-300">
-						If you're looking for clean shots, real emotion, and photos that hit— you're in the right place.
+						Clean shots, real emotion, and photos that hit. Browse the full gallery.
 					</Typography>
 				</div>
 

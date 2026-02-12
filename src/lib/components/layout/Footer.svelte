@@ -20,6 +20,7 @@
 		label: string;
 		href: string;
 		icon: typeof Instagram;
+		external?: boolean;
 	}
 
 	const socialLinks: SocialLink[] = [
@@ -27,6 +28,7 @@
 			label: 'Instagram',
 			href: 'https://www.instagram.com/nino.chavez.photo',
 			icon: Instagram,
+			external: true,
 		},
 		{
 			label: 'Email',
@@ -59,7 +61,7 @@
 			<!-- Social Links & Links -->
 			<div class="flex items-center justify-between md:justify-end gap-6">
 				<!-- Essential Links -->
-				<nav aria-label="Footer navigation" class="flex gap-4">
+				<nav aria-label="Footer navigation" class="flex flex-wrap gap-x-4 gap-y-2">
 					<a
 						href="{base}/explore"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
@@ -67,10 +69,22 @@
 						Gallery
 					</a>
 					<a
+						href="{base}/timeline"
+						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
+					>
+						Timeline
+					</a>
+					<a
 						href="{base}/collections"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 					>
 						Collections
+					</a>
+					<a
+						href="{base}/favorites"
+						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
+					>
+						Favorites
 					</a>
 					<a
 						href="{base}/about"
@@ -86,8 +100,8 @@
 						{@const Icon = link.icon}
 						<a
 							href={link.href}
-							target="_blank"
-							rel="noopener noreferrer"
+							target={link.external ? '_blank' : undefined}
+							rel={link.external ? 'noopener noreferrer' : undefined}
 							class="p-1.5 rounded-md bg-charcoal-900 hover:bg-gold-500/10 border border-charcoal-800 hover:border-gold-500/30 transition-all hover:scale-110 hover:-translate-y-px"
 							aria-label={link.label}
 						>

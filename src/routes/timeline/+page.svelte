@@ -1,16 +1,18 @@
 <!--
-  Timeline V2 Page - A/B testing version with vertical scroll timeline
+  Timeline Page - Vertical scroll timeline with infinite loading
 
   Features:
   - Year/month-based photo timeline
-  - Lazy loading for performance
+  - Infinite scroll loading via API
+  - Year navigation loads data on demand
   - Scroll-based progress animation
   - Mobile-responsive design
 
-  Route: /timeline-v2
+  Route: /timeline
 -->
 
 <script lang="ts">
+  import { base } from '$app/paths';
   import { onMount } from 'svelte';
   import TimelineV2 from '$lib/components/ui/TimelineV2.svelte';
   import { getSmugMugUrl } from '$lib/photo-utils';
@@ -44,6 +46,8 @@
   // State
   let timelineData = $state<TimelineEntry[]>([]);
   let isLoading = $state(true);
+  let currentPage = $state(1);
+  let hasMore = $state(true);
 
   // Transform server data for timeline
   function transformPeriods(periods: any[]): TimelineEntry[] {
@@ -57,21 +61,46 @@
     }));
   }
 
-  // Load data from server
+  // Load initial data from server
   function loadTimelineData() {
     try {
       isLoading = true;
       timelineData = transformPeriods(data.periods);
+      currentPage = data.currentPage;
+      hasMore = data.hasMore;
     } catch (error) {
-      console.error('[Timeline V2] Failed to load data:', error);
+      console.error('[Timeline] Failed to load data:', error);
     } finally {
       isLoading = false;
     }
   }
 
+  // Load more periods via API
+  async function handleLoadMore() {
+    if (!hasMore) return;
+    const nextPage = currentPage + 1;
+    const params = new URLSearchParams({ page: String(nextPage), limit: '12' });
+    if (data.selectedSport) params.set('sport', data.selectedSport);
+    if (data.selectedCategory) params.set('category', data.selectedCategory);
+
+    const res = await fetch(`${base}/api/timeline?${params}`);
+    if (!res.ok) return;
+
+    const result = await res.json();
+    const newPeriods = transformPeriods(result.periods);
+
+    // Deduplicate by year-month key
+    const existing = new Set(timelineData.map(p => `${p.year}-${p.month}`));
+    const unique = newPeriods.filter(p => !existing.has(`${p.year}-${p.month}`));
+
+    timelineData = [...timelineData, ...unique];
+    currentPage = nextPage;
+    hasMore = result.hasMore;
+  }
+
   // Generate descriptions for periods
   function getPeriodDescription(year: number, month?: number): string {
-    const descriptions = {
+    const descriptions: Record<number, string> = {
       2024: "High school and college championships, pushing technical boundaries in challenging lighting conditions.",
       2023: "Building momentum with local tournaments and expanding into multi-sport coverage.",
       2022: "Finding my voice in sports photography, focusing on emotional storytelling.",
@@ -79,7 +108,7 @@
       2020: "Adapting to new challenges during unprecedented times, focusing on indoor sports.",
     };
 
-    return descriptions[year as keyof typeof descriptions] ||
+    return descriptions[year] ||
            `Capturing the intensity and emotion of ${month ? 'monthly' : 'yearly'} sports action.`;
   }
 
@@ -94,7 +123,6 @@
   <meta name="description" content="Explore Nino Chavez's photography journey through the years - from youth sports to professional championships." />
 
   <!-- Preload featured photos from first periods for LCP optimization -->
-  <!-- Use M size to match what OptimizedImage renders with quality="low" -->
   {#each data.periods.slice(0, 2) as period}
     {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
       {@const preloadUrl = photo.image_url ? getSmugMugUrl(photo.image_url, 'M') : null}
@@ -113,13 +141,14 @@
 <div class="min-h-screen bg-charcoal-950">
   <TimelineV2
     timelineData={timelineData}
-    hasMore={data.hasMore}
-    currentPage={data.currentPage}
+    hasMore={hasMore}
+    currentPage={currentPage}
     selectedSport={data.selectedSport}
     selectedCategory={data.selectedCategory}
     sports={data.sports}
     categories={data.categories}
     allAvailablePeriods={data.allPeriods}
+    onLoadMore={handleLoadMore}
   />
 
   <!-- Loading State -->

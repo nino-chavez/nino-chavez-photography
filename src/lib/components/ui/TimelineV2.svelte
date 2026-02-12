@@ -21,7 +21,7 @@
 -->
 
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { untrack, tick } from 'svelte';
   import { base } from '$app/paths';
   import Typography from '$lib/components/ui/Typography.svelte';
   import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
@@ -49,6 +49,7 @@
     sports?: Array<{ name: string; count: number; percentage: number }>;
     categories?: Array<{ name: string; count: number; percentage: number }>;
     allAvailablePeriods?: TimelineEntry[];
+    onLoadMore?: () => Promise<void>;
   }
 
   let {
@@ -59,7 +60,8 @@
     selectedCategory = null,
     sports = [],
     categories = [],
-    allAvailablePeriods = []
+    allAvailablePeriods = [],
+    onLoadMore
   }: Props = $props();
 
   // Lazy loading state
@@ -405,21 +407,58 @@
     }
   }
 
-  // Scroll to year function
-  function scrollToYear(year: number) {
-    const element = document.getElementById(`year-${year}`);
-    if (element) {
-      const offset = getScrollOffset();
-      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = elementPosition - offset;
+  // Find the scroll target for a year — use first month element (year headers are sticky)
+  function findYearScrollTarget(year: number): HTMLElement | null {
+    // First month of the year is the reliable scroll anchor
+    const firstMonth = document.querySelector(`[id^="month-${year}-"]`) as HTMLElement | null;
+    if (firstMonth) return firstMonth;
+    // Fallback to year heading (works when not sticky)
+    return document.getElementById(`year-${year}`);
+  }
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+  function scrollToElement(el: HTMLElement, behavior: ScrollBehavior = 'smooth') {
+    const navOffset = getScrollOffset();
+    // Extra offset for the sticky year header (~80px) so it appears above the month
+    const yearHeaderHeight = 80;
+    const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: elementPosition - navOffset - yearHeaderHeight, behavior });
+  }
+
+  // Scroll to year function — loads more data if year isn't in DOM yet
+  async function scrollToYear(year: number) {
+    const target = findYearScrollTarget(year);
+    if (target) {
+      scrollToElement(target);
       selectedYear = year;
       selectedMonth = null;
+      return;
     }
+
+    // Year not in DOM — load more data until it appears
+    if (!onLoadMore || !hasMorePeriods) return;
+    selectedYear = year;
+    selectedMonth = null;
+
+    // Keep loading batches until the year section appears or no more data
+    isLoadingMore = true;
+    const maxAttempts = 10;
+    for (let i = 0; i < maxAttempts; i++) {
+      await onLoadMore();
+
+      // Wait for Svelte to flush DOM updates
+      await tick();
+      await new Promise(r => requestAnimationFrame(r));
+
+      const el = findYearScrollTarget(year);
+      if (el) {
+        scrollToElement(el, 'instant');
+        isLoadingMore = false;
+        return;
+      }
+
+      if (!hasMorePeriods) break;
+    }
+    isLoadingMore = false;
   }
 
   // Track scroll position for progress indicator
@@ -460,11 +499,15 @@
   let sentinelElement: HTMLElement | null = $state(null);
   let sentinelObserver: IntersectionObserver | null = $state(null);
 
-  // Load more periods
+  // Load more periods — delegates to parent via callback
   async function loadMorePeriods() {
-    // Note: Infinite scroll should be handled by parent component
-    // For now, disable to prevent errors
-    return;
+    if (!onLoadMore || isLoadingMore) return;
+    isLoadingMore = true;
+    try {
+      await onLoadMore();
+    } finally {
+      isLoadingMore = false;
+    }
   }
 
   // Initialize intersection observer for infinite scroll
