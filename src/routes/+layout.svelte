@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
-	import { inject } from '@vercel/analytics';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { page, navigating } from '$app/stores';
 	import '../app.css';
@@ -8,9 +7,6 @@
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import ChatWidget from '$lib/components/ai/ChatWidget.svelte';
-
-	// Initialize Vercel Web Analytics
-	inject();
 
 	// Initialize Vercel Speed Insights
 	injectSpeedInsights();
