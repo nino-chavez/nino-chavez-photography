@@ -359,32 +359,17 @@
   let currentVisibleMonth = $state<{ year: number; month: number } | null>(null);
 
   // Update visible year and month based on scroll position
+  // NOTE: Year headers are position:sticky so getBoundingClientRect returns stuck position.
+  // We derive the visible year from month elements which have normal document flow.
   function updateVisibleYear() {
-    const scrollY = window.scrollY + 200; // Offset for sticky header
-    const yearElements = document.querySelectorAll('[id^="year-"]');
     const monthElements = document.querySelectorAll('[id^="month-"]');
 
-    let newVisibleYear: number | null = null;
-    yearElements.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      const elTop = rect.top + window.scrollY;
-      const elBottom = elTop + rect.height;
-
-      if (scrollY >= elTop && scrollY < elBottom) {
-        const yearId = el.id.replace('year-', '');
-        newVisibleYear = parseInt(yearId);
-      }
-    });
-
-    if (newVisibleYear !== currentVisibleYear) {
-      currentVisibleYear = newVisibleYear;
-    }
-
-    // Track visible month (find the month section closest to viewport top)
+    // Find the month section closest to the top of the viewport
     let closestMonth: { year: number; month: number; distance: number } | null = null;
     monthElements.forEach((el) => {
       const rect = el.getBoundingClientRect();
-      const distance = Math.abs(rect.top);
+      // Consider elements that are near or above viewport top (accounting for sticky nav ~200px)
+      const distance = Math.abs(rect.top - 200);
 
       if (rect.top < window.innerHeight && rect.bottom > 0) {
         const monthId = el.id.replace('month-', '');
@@ -398,6 +383,7 @@
 
     if (closestMonth) {
       const closest = closestMonth as { year: number; month: number; distance: number };
+      currentVisibleYear = closest.year;
       const newMonth = { year: closest.year, month: closest.month };
       if (!currentVisibleMonth ||
           currentVisibleMonth.year !== newMonth.year ||
@@ -461,13 +447,25 @@
     isLoadingMore = false;
   }
 
-  // Track scroll position for progress indicator
-  let scrollProgress = $state(0);
+  // Progress indicator position — maps current visible month to timeline date position
+  let progressPosition = $derived.by(() => {
+    if (!currentVisibleMonth || availablePeriods.length === 0) return 0;
+
+    const firstPeriod = availablePeriods[availablePeriods.length - 1]; // Oldest
+    const lastPeriod = availablePeriods[0]; // Newest
+    const minDate = new Date(firstPeriod.year, firstPeriod.month - 1, 1);
+    const maxDate = new Date(lastPeriod.year, lastPeriod.month - 1, 1);
+    const totalRange = maxDate.getTime() - minDate.getTime();
+
+    if (totalRange === 0) return 50;
+
+    const currentDate = new Date(currentVisibleMonth.year, currentVisibleMonth.month - 1, 1);
+    const position = ((currentDate.getTime() - minDate.getTime()) / totalRange) * 100;
+    return 100 - position; // Reverse so newest is on the left
+  });
 
   function handleScroll() {
-    const scrollTop = window.scrollY;
-    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-    scrollProgress = (scrollTop / docHeight) * 100;
+    // Scroll handler is now just a trigger for updateVisibleYear
   }
 
   // Effects for event listeners
@@ -660,13 +658,15 @@
             </button>
           {/each}
 
-          <!-- Progress indicator (current scroll position, desktop only) -->
-          <div
-            class="absolute top-7 transform -translate-x-1/2 z-10 pointer-events-none"
-            style="left: {scrollProgress}%"
-          >
-            <div class="w-3 h-3 rounded-full bg-white border-2 border-gold-500 shadow-lg"></div>
-          </div>
+          <!-- Progress indicator (current visible month position, desktop only) -->
+          {#if currentVisibleMonth}
+            <div
+              class="absolute top-7 transform -translate-x-1/2 z-10 pointer-events-none transition-all duration-300"
+              style="left: {progressPosition}%"
+            >
+              <div class="w-3 h-3 rounded-full bg-white border-2 border-gold-500 shadow-lg"></div>
+            </div>
+          {/if}
         </div>
       </div>
     </div>
