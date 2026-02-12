@@ -2,6 +2,7 @@
  * Login Page Server Actions
  */
 
+import { base } from '$app/paths';
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
@@ -15,7 +16,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	if (user) {
 		// Already logged in, redirect to admin
-		throw redirect(302, '/admin/tags');
+		throw redirect(302, `${base}/admin/tags`);
 	}
 
 	return {};
@@ -48,6 +49,6 @@ export const actions = {
 		console.log('[Login] Login successful, redirecting to /admin/tags');
 
 		// Redirect to admin dashboard
-		throw redirect(303, '/admin/tags');
+		throw redirect(303, `${base}/admin/tags`);
 	}
 } satisfies Actions;

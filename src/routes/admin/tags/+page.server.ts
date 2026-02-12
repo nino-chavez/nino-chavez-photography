@@ -5,6 +5,7 @@
  * Authentication: Supabase Auth (single-user admin model)
  */
 
+import { base } from '$app/paths';
 import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
@@ -18,7 +19,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	if (!user) {
 		// Redirect to login page if not authenticated
-		throw redirect(302, '/login');
+		throw redirect(302, `${base}/login`);
 	}
 
 	// User is authenticated - that's enough (signup disabled, only admin exists)

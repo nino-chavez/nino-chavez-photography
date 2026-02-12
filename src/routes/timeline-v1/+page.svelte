@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { Motion } from 'svelte-motion';
@@ -83,13 +84,13 @@
 	// Handle month selection from horizontal timeline (navigates to month detail page)
 	function handleMonthSelect(year: number, month: number): void {
 		// Navigate to month detail page: /timeline/{year}/{month}
-		goto(`/timeline/${year}/${month + 1}`); // +1 because we display 1-12, not 0-11
+		goto(`${base}/timeline/${year}/${month + 1}`); // +1 because we display 1-12, not 0-11
 	}
 
 	// Handle month card click (navigates to month detail page)
 	function handleMonthClick(month: Month): void {
 		// Navigate to month detail page: /timeline/{year}/{month}
-		goto(`/timeline/${month.year}/${month.month + 1}`); // +1 because we display 1-12, not 0-11
+		goto(`${base}/timeline/${month.year}/${month.month + 1}`); // +1 because we display 1-12, not 0-11
 	}
 
 	// Clear all filters

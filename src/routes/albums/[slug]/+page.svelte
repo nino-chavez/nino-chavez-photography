@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronRight } from 'lucide-svelte';
@@ -48,11 +49,11 @@
 	}
 
 	function handlePageChange(page: number) {
-		goto(`/albums/${data.slug}?page=${page}`);
+		goto(`${base}/albums/${data.slug}?page=${page}`);
 	}
 
 	function goBackToAlbums() {
-		goto('/albums');
+		goto(`${base}/albums`);
 	}
 </script>
 
@@ -67,7 +68,7 @@
 					<li>
 						<button
 							type="button"
-							onclick={() => goto('/')}
+							onclick={() => goto(`${base}/`)}
 							class="hover:text-gold-500 transition-colors"
 							aria-label="Navigate to home"
 						>

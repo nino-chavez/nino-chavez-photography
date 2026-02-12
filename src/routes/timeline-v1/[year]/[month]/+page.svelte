@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { Motion } from 'svelte-motion';
@@ -126,7 +127,7 @@
 
 	// Back to timeline
 	function backToTimeline(): void {
-		goto(`/timeline?year=${data.year}`);
+		goto(`${base}/timeline?year=${data.year}`);
 	}
 </script>
 

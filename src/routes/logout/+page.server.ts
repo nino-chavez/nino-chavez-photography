@@ -2,6 +2,7 @@
  * Logout Route
  */
 
+import { base } from '$app/paths';
 import { redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
@@ -14,6 +15,6 @@ export const actions = {
 		await supabase.auth.signOut();
 
 		// Redirect to home page
-		throw redirect(303, '/');
+		throw redirect(303, `${base}/`);
 	}
 } satisfies Actions;

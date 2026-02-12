@@ -1,3 +1,4 @@
+import { base } from '$app/paths';
 import { fetchPhotos, getPhotoCount, supabaseServer } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import type { PageServerLoad } from './$types';
@@ -45,7 +46,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	const correctSlug = createAlbumSlug(albumName, albumKey);
 	if (slug !== correctSlug && slug === albumKey) {
 		const pageParam = page > 1 ? `?page=${page}` : '';
-		throw redirect(301, `/albums/${correctSlug}${pageParam}`);
+		throw redirect(301, `${base}/albums/${correctSlug}${pageParam}`);
 	}
 
 	return {

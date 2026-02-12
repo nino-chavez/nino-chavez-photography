@@ -57,7 +57,7 @@
 
   // Handle month navigation
   function navigateToMonth(year: number, month: number) {
-    goto(`/photos/${year}/${month}`);
+    goto(`${base}/photos/${year}/${month}`);
   }
 
   // Handle sort change

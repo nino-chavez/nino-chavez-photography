@@ -17,6 +17,7 @@
 -->
 
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { generatePhotoAltText, SIZES_PRESETS } from '$lib/photo-utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import OptimizedImage from '$lib/components/ui/OptimizedImage.svelte';
@@ -41,7 +42,7 @@
 	const galleryCardSizes = SIZES_PRESETS.galleryCard;
 
 	// Generate individual photo URL for SEO
-	let photoUrl = $derived(`/photo/${photo.image_key}`);
+	let photoUrl = $derived(`${base}/photo/${photo.image_key}`);
 
 	// Generate comprehensive alt text for screen readers
 	let accessibleAltText = $derived(generatePhotoAltText(photo));
