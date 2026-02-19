@@ -13,7 +13,6 @@
 
 import { supabaseServer } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
-import type { CoverPhotoRow } from '$types/database';
 
 // Collection definitions (HYBRID: Story + Quality)
 // Matching generate-collections.ts with quality thresholds
@@ -83,15 +82,6 @@ const COLLECTIONS = [
 	},
 ];
 
-interface CollectionWithPhotos {
-	slug: string;
-	title: string;
-	narrative: string;
-	description: string;
-	photoCount: number;
-	coverPhoto: CoverPhotoRow | null;
-}
-
 export const load: PageServerLoad = async ({ setHeaders }) => {
 	setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
 
@@ -103,7 +93,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 		// Build query based on collection type (HYBRID: Story + Quality thresholds)
 		let query = supabaseServer
 			.from('photo_metadata')
-			.select('photo_id, image_key, ImageUrl, ThumbnailUrl', { count: 'exact' });
+			.select('photo_id, image_key, ImageUrl, ThumbnailUrl, cf_image_id', { count: 'exact' });
 
 		if (collection.slug === 'portfolio-excellence') {
 			// Triple-excellent: 9/10+ on all quality metrics

@@ -16,6 +16,7 @@
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import { generatePhotoTitle, generatePhotoCaption, generateMetadataSummary } from '$lib/photo-utils';
 	import { getOptimizedSmugMugUrl, getSmugMugSrcSet, isSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
+	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -63,55 +64,47 @@
 	});
 	
 	// Get optimized image URL based on viewport and zoom level
-	// Progressive loading: Start smaller, upgrade on zoom
+	// CF Images path: use named variants; SmugMug path: progressive sizing
 	const optimizedImageUrl = $derived.by(() => {
 		if (!photo) return null;
-		
+
+		// CF Images path: select variant by viewport
+		if (hasCFImage(photo.cf_image_id)) {
+			if (viewportWidth <= 800) return cfImageUrl(photo.cf_image_id, 'medium');   // 800px
+			return cfImageUrl(photo.cf_image_id, 'large');  // 1600px
+		}
+
 		const baseUrl = photo.original_url || photo.image_url;
 		if (!baseUrl) return null;
-		
-		// For SmugMug URLs, use size optimization
+
+		// SmugMug fallback path
 		if (isSmugMugUrl(baseUrl)) {
-			// Calculate effective display width needed
-			// Account for viewport width, zoom level, and device pixel ratio
 			const displayWidth = viewportWidth * Math.max(1, zoomLevel);
 			const effectiveWidth = displayWidth * devicePixelRatio;
-			
-			// Conservative sizing strategy:
-			// - Mobile portrait (< 480px): L (1024px) ~100-200KB
-			// - Mobile landscape/Tablet (< 1024px): D (1600px) ~200-400KB  
-			// - Desktop (> 1024px): D (1600px) ~200-400KB
-			// - Desktop Retina (2x): Still D (1600px) is usually enough
-			// - Only use X2/X3 for extreme zoom (> 2x) or very large Retina displays
+
 			if (effectiveWidth <= 1024) {
-				// Small screens or low zoom
-				return getOptimizedSmugMugUrl(baseUrl, 'fullscreen'); // L (1024px) ~100-200KB
-			} else if (effectiveWidth <= 2048 && zoomLevel <= 2) {
-				// Standard desktop or moderate zoom
-				return getOptimizedSmugMugUrl(baseUrl, 'download'); // D (1600px) ~200-400KB
+				return getOptimizedSmugMugUrl(baseUrl, 'fullscreen');
 			} else {
-				// High zoom (> 2x) or very large Retina displays - use X2 (2048px) ~400-800KB
-				// Avoid X3/X4/X5 unless absolutely necessary (those are 20MB+)
-				return getOptimizedSmugMugUrl(baseUrl, 'download'); // Stay conservative with D size
+				return getOptimizedSmugMugUrl(baseUrl, 'download');
 			}
 		}
-		
-		// Fallback to original URL for non-SmugMug images
+
 		return baseUrl;
 	});
-	
-	// Get srcset for responsive loading (allows browser to choose optimal size)
+
+	// Get srcset for responsive loading
 	const imageSrcSet = $derived.by(() => {
 		if (!photo) return undefined;
-		
+		if (hasCFImage(photo.cf_image_id)) return cfSrcSet(photo.cf_image_id);
+
 		const baseUrl = photo.original_url || photo.image_url;
 		if (!baseUrl || !isSmugMugUrl(baseUrl)) return undefined;
-		
+
 		return getSmugMugSrcSet(baseUrl);
 	});
-	
+
 	// Sizes attribute for responsive images
-	const imageSizes = $derived('100vw'); // Full viewport width
+	const imageSizes = $derived('100vw');
 
 	// Touch gesture state
 	let isTouch = $state(false);

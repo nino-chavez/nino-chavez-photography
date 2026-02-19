@@ -131,6 +131,7 @@ export interface PhotoMetadata {
 export interface Photo {
   id: string;
   image_key: string;
+  cf_image_id?: string; // Cloudflare Images ID (when migrated, uses imagedelivery.net)
   image_url: string;
   thumbnail_url?: string; // SmugMug thumbnail URL (S or M size) for performance
   original_url?: string; // Full-resolution URL

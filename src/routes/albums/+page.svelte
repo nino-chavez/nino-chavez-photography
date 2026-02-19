@@ -6,6 +6,7 @@
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
 	import { getSmugMugUrl, generateSmugMugSrcset, SIZES_PRESETS } from '$lib/photo-utils';
+	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createAlbumSlug } from '$lib/utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -94,9 +95,11 @@
 	<meta name="description" content="Browse {data.totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches." />
 
 	<!-- Preload first album cover with responsive srcset for LCP optimization -->
-	<!-- Must use imagesrcset/imagesizes to match the actual <img> element -->
 	{#if data.albums[0]?.coverImageUrl}
-		{@const srcset = generateSmugMugSrcset(data.albums[0].coverImageUrl, ['M', 'L', 'XL', 'X2'])}
+		{@const firstAlbum = data.albums[0]}
+		{@const srcset = hasCFImage(firstAlbum.coverCfImageId)
+			? cfSrcSet(firstAlbum.coverCfImageId)
+			: generateSmugMugSrcset(firstAlbum.coverImageUrl, ['M', 'L', 'XL', 'X2'])}
 		<link
 			rel="preload"
 			as="image"

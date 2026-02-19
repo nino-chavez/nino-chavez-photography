@@ -23,6 +23,7 @@
   import { cn } from '$lib/utils';
   import { base } from '$app/paths';
   import { replaceSmugMugSize, type SmugMugSize } from '$lib/utils/smugmug-image-optimizer';
+  import { cfImageUrl, type CFVariant } from '$lib/utils/cloudflare-images';
 
   interface Props {
     images?: string[];
@@ -106,6 +107,17 @@
   // --- Image URL optimization ---
   function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
+
+    // CF Images URLs: swap the variant segment
+    if (imageUrl.includes('imagedelivery.net')) {
+      const cfVariantMap: Record<typeof size, CFVariant> = {
+        desktop: 'large',
+        mobile: 'medium',
+        thumbnail: 'thumbnail'
+      };
+      // Replace the last path segment (variant name)
+      return imageUrl.replace(/\/[^/]+$/, `/${cfVariantMap[size]}`);
+    }
 
     if (imageUrl.includes('smugmug.com')) {
       const sizeMap: Record<typeof size, SmugMugSize> = {

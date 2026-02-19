@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { Camera } from 'lucide-svelte';
 	import { generateSmugMugSrcset, getSmugMugUrl, getProxiedImageUrl, type SmugMugSize } from '$lib/photo-utils';
+	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 
 	interface Props {
 		src: string;
 		alt: string;
+		cfImageId?: string; // Cloudflare Images ID - when present, uses CF delivery
 		thumbnailSrc?: string;
 		class?: string;
 		aspectRatio?: string; // e.g., "4/3", "16/9"
@@ -20,6 +22,7 @@
 	let {
 		src,
 		alt,
+		cfImageId,
 		thumbnailSrc,
 		class: className = '',
 		aspectRatio = '4/3',
@@ -32,29 +35,37 @@
 		onError
 	}: Props = $props();
 
-	// All images now served via Cloudflare proxy (no local optimized images)
-	let isLocalOptimized = $derived(false);
+	// CF Images path: simple URL builder, no SmugMug size manipulation needed
+	let useCF = $derived(hasCFImage(cfImageId));
 
-	// Proxy thumbnail URLs to eliminate third-party cookies
+	// Proxy thumbnail URLs to eliminate third-party cookies (SmugMug only)
 	let proxiedThumbnailSrc = $derived(
-		thumbnailSrc && thumbnailSrc.includes('smugmug.com')
-			? getProxiedImageUrl(thumbnailSrc)
-			: thumbnailSrc
+		useCF
+			? thumbnailSrc // CF thumbnails are already on imagedelivery.net
+			: (thumbnailSrc && thumbnailSrc.includes('smugmug.com')
+				? getProxiedImageUrl(thumbnailSrc)
+				: thumbnailSrc)
 	);
 
-	// Quality presets determine srcset sizes
+	// Quality presets determine srcset sizes (SmugMug path only)
 	const qualityPresets: Record<string, SmugMugSize[]> = {
 		low: ['S', 'M'],           // Thumbnails, small cards
 		medium: ['M', 'L', 'XL'],  // Gallery cards, album covers
 		high: ['L', 'XL', 'X2', 'X3'], // Hero images, lightbox
 	};
 
-	// Generate responsive srcset for SmugMug images (skip for local images)
-	let srcset = $derived(isLocalOptimized ? null : generateSmugMugSrcset(src, qualityPresets[quality]));
+	// Generate responsive srcset: CF path or SmugMug path
+	let srcset = $derived(
+		useCF ? cfSrcSet(cfImageId!) : generateSmugMugSrcset(src, qualityPresets[quality])
+	);
 
-	// Use largest size from preset as main src (skip transformation for local images)
+	// Optimized main src
 	let optimizedSrc = $derived(() => {
-		if (isLocalOptimized) return src;
+		if (useCF) {
+			// Map quality preset to CF variant
+			const variantMap = { low: 'grid', medium: 'medium', high: 'large' } as const;
+			return cfImageUrl(cfImageId!, variantMap[quality]);
+		}
 		const preset = qualityPresets[quality];
 		const largestSize = preset[preset.length - 1];
 		return getSmugMugUrl(src, largestSize) || src;

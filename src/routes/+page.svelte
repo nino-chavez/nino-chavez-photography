@@ -4,6 +4,7 @@
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import { getSmugMugUrl, getProxiedImageUrl } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
+	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Trophy, Calendar } from 'lucide-svelte';
 
@@ -13,20 +14,24 @@
 
 	let { data }: Props = $props();
 
-	// Get optimized image URL using SmugMug size parameters + proxy
-	// Uses larger sizes for retina display sharpness
-	function getOptimizedImageUrl(imageUrl: string | null, width: number): string {
+	// Get optimized image URL - CF Images with SmugMug fallback
+	function getOptimizedImageUrl(imageUrl: string | null, width: number, cfId?: string | null): string {
 		if (!imageUrl) return '';
 
-		// SmugMug: use getSmugMugUrl which handles proxy routing
-		// Request 2x size for retina sharpness (e.g., 400px card = 800px image)
+		// CF Images path: use named variants
+		if (hasCFImage(cfId)) {
+			if (width >= 800) return cfImageUrl(cfId, 'large');   // 1600px
+			if (width >= 400) return cfImageUrl(cfId, 'medium');  // 800px
+			return cfImageUrl(cfId, 'grid');                       // 400px
+		}
+
+		// SmugMug fallback
 		if (imageUrl.includes('smugmug.com')) {
-			// Map display width to SmugMug size (2x for retina)
 			let size: 'S' | 'M' | 'L' | 'XL' | 'X2' = 'L';
-			if (width >= 800) size = 'X2';      // 1600px for large cards
-			else if (width >= 600) size = 'XL'; // 1024px for medium cards
-			else if (width >= 400) size = 'L';  // 800px for small cards
-			else size = 'M';                    // 600px fallback
+			if (width >= 800) size = 'X2';
+			else if (width >= 600) size = 'XL';
+			else if (width >= 400) size = 'L';
+			else size = 'M';
 
 			return getSmugMugUrl(imageUrl, size);
 		}

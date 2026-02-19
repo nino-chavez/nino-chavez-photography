@@ -5,6 +5,7 @@
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { getOptimizedSmugMugUrl, getSmugMugSrcSet, isSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
+	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { formatSport, formatCategory, formatComposition } from '$lib/utils/format-metadata';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
@@ -12,21 +13,28 @@
 	let { data }: { data: PageData } = $props();
 
 	let showModal = $state(true);
-	
-	// Optimize image URL for the inline modal
+
+	// Optimize image URL - CF Images with SmugMug fallback
 	const optimizedImageUrl = $derived.by(() => {
+		if (hasCFImage(data.photo.cf_image_id)) {
+			return cfImageUrl(data.photo.cf_image_id, 'large');
+		}
+
 		const baseUrl = data.photo.original_url || data.photo.image_url;
 		if (!baseUrl) return data.photo.image_url;
-		
+
 		if (isSmugMugUrl(baseUrl)) {
-			// For inline modal, use download size (1600px) ~200-400KB
 			return getOptimizedSmugMugUrl(baseUrl, 'download') || baseUrl;
 		}
-		
+
 		return baseUrl;
 	});
-	
+
 	const imageSrcSet = $derived.by(() => {
+		if (hasCFImage(data.photo.cf_image_id)) {
+			return cfSrcSet(data.photo.cf_image_id);
+		}
+
 		const baseUrl = data.photo.original_url || data.photo.image_url;
 		if (!baseUrl || !isSmugMugUrl(baseUrl)) return undefined;
 		return getSmugMugSrcSet(baseUrl);

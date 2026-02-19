@@ -6,11 +6,12 @@
  */
 
 import { error } from '@sveltejs/kit';
-import { supabaseServer } from '$lib/supabase/server';
+import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import { trackPhotoView } from '$lib/analytics/tracker';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
+import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	// Fetch photo from Supabase using image_key
@@ -25,12 +26,15 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	}
 
 	// Transform flat Supabase data to nested Photo type (two-bucket model)
+	// Use CF Images URLs when available, SmugMug fallback otherwise
+	const cfId = photoData.cf_image_id;
 	const photo: Photo = {
 		id: photoData.image_key,
 		image_key: photoData.image_key,
-		image_url: photoData.ImageUrl,
-		thumbnail_url: photoData.ThumbnailUrl,
-		original_url: photoData.OriginalUrl,
+		cf_image_id: cfId || undefined,
+		image_url: hasCFImage(cfId) ? cfImageUrl(cfId, 'large') : photoData.ImageUrl,
+		thumbnail_url: hasCFImage(cfId) ? cfImageUrl(cfId, 'thumbnail') : photoData.ThumbnailUrl,
+		original_url: hasCFImage(cfId) ? cfImageUrl(cfId, 'public') : photoData.OriginalUrl,
 		title: photoData.album_name || 'Untitled Photo',
 		caption: photoData.composition || '',
 		keywords: [],
@@ -205,45 +209,8 @@ async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promis
 		return [];
 	}
 
-	// Transform to Photo type with two-bucket model
-	return (data || []).map((row: PhotoMetadataRow) => ({
-		id: row.image_key,
-		image_key: row.image_key,
-		image_url: row.ImageUrl,
-		thumbnail_url: row.ThumbnailUrl || undefined,
-		original_url: row.OriginalUrl || undefined,
-		title: row.album_name || 'Untitled Photo',
-		caption: row.composition || '',
-		keywords: [],
-		created_at: row.photo_date || row.enriched_at || row.upload_date,
-		metadata: {
-			// BUCKET 1
-			play_type: (row.play_type || null) as Photo['metadata']['play_type'],
-			action_intensity: (row.action_intensity || 'medium') as Photo['metadata']['action_intensity'],
-			sport_type: row.sport_type || 'volleyball',
-			photo_category: row.photo_category || 'action',
-			composition: (row.composition || '') as Photo['metadata']['composition'],
-			time_of_day: (row.time_of_day || '') as Photo['metadata']['time_of_day'],
-			lighting: (row.lighting || undefined) as Photo['metadata']['lighting'],
-			color_temperature: (row.color_temperature || undefined) as Photo['metadata']['color_temperature'],
-
-			// BUCKET 2
-			emotion: (row.emotion || 'focus') as Photo['metadata']['emotion'],
-			sharpness: row.sharpness || 0,
-			composition_score: row.composition_score || 0,
-			exposure_accuracy: row.exposure_accuracy || 0,
-			emotional_impact: row.emotional_impact || 0,
-			time_in_game: (row.time_in_game || undefined) as Photo['metadata']['time_in_game'],
-			athlete_id: row.athlete_id || undefined,
-			event_id: row.event_id || undefined,
-
-			// AI metadata
-			ai_provider: (row.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
-			ai_cost: row.ai_cost || 0,
-			ai_confidence: row.ai_confidence || 0,
-			enriched_at: row.enriched_at || new Date().toISOString()
-		}
-	}));
+	// Transform to Photo type using shared transform (includes CF Images support)
+	return (data || []).map((row: PhotoMetadataRow) => transformPhotoRow(row));
 }
 
 /**
@@ -287,43 +254,6 @@ async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo
 		return [];
 	}
 
-	// Transform to Photo type with two-bucket model
-	return photos.map((row: PhotoMetadataRow) => ({
-		id: row.image_key,
-		image_key: row.image_key,
-		image_url: row.ImageUrl,
-		thumbnail_url: row.ThumbnailUrl || undefined,
-		original_url: row.OriginalUrl || undefined,
-		title: row.album_name || 'Untitled Photo',
-		caption: row.composition || '',
-		keywords: [],
-		created_at: row.photo_date || row.enriched_at || row.upload_date,
-		metadata: {
-			// BUCKET 1
-			play_type: (row.play_type || null) as Photo['metadata']['play_type'],
-			action_intensity: (row.action_intensity || 'medium') as Photo['metadata']['action_intensity'],
-			sport_type: row.sport_type || 'volleyball',
-			photo_category: row.photo_category || 'action',
-			composition: (row.composition || '') as Photo['metadata']['composition'],
-			time_of_day: (row.time_of_day || '') as Photo['metadata']['time_of_day'],
-			lighting: (row.lighting || undefined) as Photo['metadata']['lighting'],
-			color_temperature: (row.color_temperature || undefined) as Photo['metadata']['color_temperature'],
-
-			// BUCKET 2
-			emotion: (row.emotion || 'focus') as Photo['metadata']['emotion'],
-			sharpness: row.sharpness || 0,
-			composition_score: row.composition_score || 0,
-			exposure_accuracy: row.exposure_accuracy || 0,
-			emotional_impact: row.emotional_impact || 0,
-			time_in_game: (row.time_in_game || undefined) as Photo['metadata']['time_in_game'],
-			athlete_id: row.athlete_id || undefined,
-			event_id: row.event_id || undefined,
-
-			// AI metadata
-			ai_provider: (row.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
-			ai_cost: row.ai_cost || 0,
-			ai_confidence: row.ai_confidence || 0,
-			enriched_at: row.enriched_at || new Date().toISOString()
-		}
-	}));
+	// Transform to Photo type using shared transform (includes CF Images support)
+	return photos.map((row: PhotoMetadataRow) => transformPhotoRow(row));
 }

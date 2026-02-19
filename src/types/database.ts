@@ -19,6 +19,9 @@ export interface PhotoMetadataRow {
 	ThumbnailUrl: string | null;
 	OriginalUrl: string | null;
 
+	// Cloudflare Images
+	cf_image_id: string | null;
+
 	// Photo metadata
 	title: string | null;
 	description: string | null;
@@ -86,6 +89,7 @@ export interface AlbumRow {
 	image_key: string;
 	ImageUrl: string;
 	ThumbnailUrl: string | null;
+	cf_image_id: string | null;
 	sport_type: string;
 	photo_category: string;
 	upload_date: string;
@@ -101,6 +105,7 @@ export interface CollectionRow {
 	image_key: string;
 	ImageUrl: string;
 	ThumbnailUrl: string | null;
+	cf_image_id: string | null;
 	sport_type: string;
 	photo_category: string;
 	upload_date: string;
@@ -135,6 +140,7 @@ export interface CoverPhotoRow {
 	image_key: string;
 	ImageUrl: string;
 	ThumbnailUrl: string | null;
+	cf_image_id: string | null;
 }
 
 /**
@@ -146,6 +152,7 @@ export interface RelatedPhotoRow {
 	image_key: string;
 	ImageUrl: string;
 	ThumbnailUrl: string | null;
+	cf_image_id: string | null;
 	sport_type: string;
 	photo_category: string;
 	emotion: string | null;

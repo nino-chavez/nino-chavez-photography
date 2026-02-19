@@ -4,6 +4,7 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { base } from '$app/paths';
 	import { replaceSmugMugSize, SMUGMUG_SIZES } from '$lib/utils/smugmug-image-optimizer';
+	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -19,25 +20,40 @@
 
 	/**
 	 * Get SmugMug URL with specific size using centralized optimizer.
-	 * Handles both path segment (/D/ → /O/) and filename (-D.jpg → -O.jpg).
 	 */
 	function getSizedUrl(imageUrl: string | undefined, size: 'O' | 'L' | 'S'): string | undefined {
 		if (!imageUrl) return undefined;
 		if (!imageUrl.includes('smugmug.com')) return imageUrl;
 
-		// Use centralized optimizer (handles both path and filename)
-		// Then swap domain for direct SmugMug access (proxy blocks large files)
 		const optimized = replaceSmugMugSize(imageUrl, size);
 		const final = optimized.replace('gallery.ninochavez.co/proxy/', '');
-
-		// Debug logging (v2.0 - path/filename fix)
-		console.log('[DownloadButton v2.0] getSizedUrl:', { size, input: imageUrl, optimized, final });
-
 		return final;
 	}
 
-	// Download size options using centralized optimizer
-	const downloadOptions = $derived([
+	// Download size options: CF Images path or SmugMug fallback
+	const downloadOptions = $derived(hasCFImage(photo.cf_image_id) ? [
+		{
+			label: 'Original Quality',
+			description: 'Full resolution, best for print',
+			url: cfImageUrl(photo.cf_image_id, 'public'),
+			filename: `${photo.image_key}_original.jpg`,
+			size: '1-5 MB'
+		},
+		{
+			label: 'Web Quality',
+			description: 'Optimized for web and social media (1600px)',
+			url: cfImageUrl(photo.cf_image_id, 'large'),
+			filename: `${photo.image_key}_web.jpg`,
+			size: '200-400 KB'
+		},
+		{
+			label: 'Thumbnail',
+			description: 'Small preview size (400px)',
+			url: cfImageUrl(photo.cf_image_id, 'grid'),
+			filename: `${photo.image_key}_thumb.jpg`,
+			size: '20-40 KB'
+		}
+	] : [
 		{
 			label: 'Original Quality',
 			description: 'Full resolution, best for print',
@@ -59,7 +75,7 @@
 			filename: `${photo.image_key}_thumb.jpg`,
 			size: SMUGMUG_SIZES.S.typicalSize
 		}
-	].filter((option): option is typeof option & { url: string } => !!option.url)); // Type-safe filter
+	].filter((option): option is typeof option & { url: string } => !!option.url));
 
 	async function handleDownload(url: string, filename: string, event?: MouseEvent) {
 		event?.stopPropagation();

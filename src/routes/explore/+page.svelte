@@ -33,6 +33,7 @@
 	import type { Photo } from '$types/photo';
 	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 	import { generateSmugMugSrcset, SIZES_PRESETS } from '$lib/photo-utils';
+	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -545,16 +546,20 @@
 	<meta name="description" content="Browse {data.totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more." />
 
 	<!-- Preload first image with responsive srcset for LCP optimization -->
-	<!-- Must use imagesrcset/imagesizes to match the actual <img> element -->
-	{#if data.photos[0]?.image_url?.includes('smugmug.com')}
-		{@const srcset = generateSmugMugSrcset(data.photos[0].image_url, ['S', 'M'])}
-		<link
-			rel="preload"
-			as="image"
-			imagesrcset={srcset}
-			imagesizes={SIZES_PRESETS.galleryCard}
-			fetchpriority="high"
-		/>
+	{#if data.photos[0]}
+		{@const firstPhoto = data.photos[0]}
+		{@const srcset = hasCFImage(firstPhoto.cf_image_id)
+			? cfSrcSet(firstPhoto.cf_image_id)
+			: (firstPhoto.image_url?.includes('smugmug.com') ? generateSmugMugSrcset(firstPhoto.image_url, ['S', 'M']) : '')}
+		{#if srcset}
+			<link
+				rel="preload"
+				as="image"
+				imagesrcset={srcset}
+				imagesizes={SIZES_PRESETS.galleryCard}
+				fetchpriority="high"
+			/>
+		{/if}
 	{/if}
 </svelte:head>
 

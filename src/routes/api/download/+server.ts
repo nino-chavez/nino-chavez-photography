@@ -1,13 +1,16 @@
 /**
  * Download Proxy API Route
  *
- * Proxies image downloads from SmugMug to avoid CORS issues.
- * This endpoint fetches images from SmugMug server-side and serves them to the client.
+ * Proxies image downloads from SmugMug or Cloudflare Images to avoid CORS issues.
+ * This endpoint fetches images server-side and serves them to the client.
  *
- * Usage: GET /api/download/[imageKey]?url=[smugmugUrl]&filename=[filename]
+ * Usage: GET /api/download?url=[imageUrl]&filename=[filename]
  */
 
 import type { RequestHandler } from './$types';
+
+/** Allowed image source domains */
+const ALLOWED_DOMAINS = ['smugmug.com', 'imagedelivery.net'];
 
 export const GET: RequestHandler = async ({ url, fetch }) => {
   try {
@@ -19,9 +22,10 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       return new Response('Missing url parameter', { status: 400 });
     }
 
-    // Validate URL is from SmugMug
-    if (!imageUrl.includes('smugmug.com')) {
-      return new Response('Invalid URL - must be from SmugMug', { status: 400 });
+    // Validate URL is from an allowed domain
+    const isAllowed = ALLOWED_DOMAINS.some(domain => imageUrl.includes(domain));
+    if (!isAllowed) {
+      return new Response('Invalid URL - must be from SmugMug or Cloudflare Images', { status: 400 });
     }
 
     // Debug: Log full URL and extracted size

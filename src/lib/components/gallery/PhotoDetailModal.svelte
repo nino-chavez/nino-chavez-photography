@@ -24,6 +24,7 @@
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { getOptimizedSmugMugUrl, getSmugMugSrcSet, isSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
+	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -66,38 +67,42 @@
 		};
 	});
 	
-	// Get optimized image URL (same strategy as Lightbox)
+	// Get optimized image URL - CF Images with SmugMug fallback
 	const optimizedImageUrl = $derived.by(() => {
 		if (!photo) return null;
-		
+
+		// CF Images path
+		if (hasCFImage(photo.cf_image_id)) {
+			return cfImageUrl(photo.cf_image_id, 'large');
+		}
+
 		const baseUrl = photo.original_url || photo.image_url;
 		if (!baseUrl) return null;
-		
+
 		if (isSmugMugUrl(baseUrl)) {
 			const effectiveWidth = viewportWidth * devicePixelRatio;
-			
-			// For detail modal, use slightly larger sizes since it's side-by-side with metadata
 			if (effectiveWidth <= 1024) {
-				return getOptimizedSmugMugUrl(baseUrl, 'fullscreen'); // L (1024px) ~100-200KB
+				return getOptimizedSmugMugUrl(baseUrl, 'fullscreen');
 			} else {
-				return getOptimizedSmugMugUrl(baseUrl, 'download'); // D (1600px) ~200-400KB
+				return getOptimizedSmugMugUrl(baseUrl, 'download');
 			}
 		}
-		
+
 		return baseUrl;
 	});
-	
+
 	// Get srcset for responsive loading
 	const imageSrcSet = $derived.by(() => {
 		if (!photo) return undefined;
-		
+		if (hasCFImage(photo.cf_image_id)) return cfSrcSet(photo.cf_image_id);
+
 		const baseUrl = photo.original_url || photo.image_url;
 		if (!baseUrl || !isSmugMugUrl(baseUrl)) return undefined;
-		
+
 		return getSmugMugSrcSet(baseUrl);
 	});
-	
-	const imageSizes = $derived('(max-width: 1024px) 100vw, 50vw'); // Half width on desktop (side-by-side layout)
+
+	const imageSizes = $derived('(max-width: 1024px) 100vw, 50vw');
 
 	function handleClose(event?: MouseEvent) {
 		event?.stopPropagation();

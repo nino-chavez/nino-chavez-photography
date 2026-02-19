@@ -13,12 +13,14 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { generateSmugMugSrcset, getSmugMugUrl, SIZES_PRESETS } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
+	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 
 	interface Album {
 		albumKey: string;
 		albumName: string;
 		photoCount: number;
 		coverImageUrl: string | null;
+		coverCfImageId?: string | null; // Cloudflare Images ID for cover
 		sports?: string[];
 		categories?: string[];
 		primarySport?: string;
@@ -41,11 +43,14 @@
 	// Generate album URL for navigation (using friendly slug)
 	let albumUrl = $derived(`${base}/albums/${createAlbumSlug(album.albumName, album.albumKey)}`);
 
-	// Generate responsive srcset for album cover via SmugMug proxy
-	let coverSrcset = $derived(generateSmugMugSrcset(album.coverImageUrl, ['M', 'L', 'XL', 'X2']));
-
-	// Use SmugMug L as main src (routed through Cloudflare proxy)
-	let optimizedCoverUrl = $derived(getSmugMugUrl(album.coverImageUrl, 'L'));
+	// CF Images with SmugMug fallback for album cover
+	let useCF = $derived(hasCFImage(album.coverCfImageId));
+	let coverSrcset = $derived(
+		useCF ? cfSrcSet(album.coverCfImageId!) : generateSmugMugSrcset(album.coverImageUrl, ['M', 'L', 'XL', 'X2'])
+	);
+	let optimizedCoverUrl = $derived(
+		useCF ? cfImageUrl(album.coverCfImageId!, 'medium') : getSmugMugUrl(album.coverImageUrl, 'L')
+	);
 	const albumCardSizes = SIZES_PRESETS.albumCard;
 
 	function handleClick(event: MouseEvent) {

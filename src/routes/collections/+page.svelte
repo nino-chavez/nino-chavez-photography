@@ -2,6 +2,7 @@
 	import { base } from '$app/paths';
 	import { Sparkles } from 'lucide-svelte';
 	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
+	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoDetailModal from '$lib/components/gallery/PhotoDetailModal.svelte';
@@ -36,9 +37,11 @@
 
 	<!-- Preload first 3 collection cover images for LCP optimization -->
 	{#each data.collections.slice(0, 3) as collection, i}
-		{@const preloadUrl = collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
-			? replaceSmugMugSize(collection.coverPhoto.ImageUrl, 'M')
-			: collection.coverPhoto?.ImageUrl}
+		{@const preloadUrl = hasCFImage(collection.coverPhoto?.cf_image_id)
+			? cfImageUrl(collection.coverPhoto!.cf_image_id!, 'medium')
+			: (collection.coverPhoto?.ImageUrl?.includes('smugmug.com')
+				? replaceSmugMugSize(collection.coverPhoto.ImageUrl, 'M')
+				: collection.coverPhoto?.ImageUrl)}
 		{#if preloadUrl}
 			<link
 				rel="preload"

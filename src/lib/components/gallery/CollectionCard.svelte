@@ -20,6 +20,7 @@
 	import { Award } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
+	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { CoverPhotoRow } from '$types/database';
 
 	interface CollectionWithPhotos {
@@ -40,21 +41,23 @@
 
 	let isPortfolio = $derived(collection.slug === 'portfolio-excellence');
 
-	// Get optimized SmugMug image URL using centralized optimizer
-	// Uses M-size (600px) - optimal for 3-column grid collection cards
+	// Get optimized image URL - CF Images with SmugMug fallback
 	function getSmugMugImageUrl(imageUrl: string | null): string {
 		if (!imageUrl) return '';
 
 		if (imageUrl.includes('smugmug.com')) {
-			// Use centralized optimizer that handles both path and filename
 			return replaceSmugMugSize(imageUrl, 'M');
 		}
 
 		return imageUrl;
 	}
 
-	// Get cover image URL from SmugMug via proxy
-	let coverImageUrl = $derived(getSmugMugImageUrl(collection.coverPhoto?.ImageUrl || null));
+	// CF Images with SmugMug fallback for cover
+	let coverImageUrl = $derived(
+		hasCFImage(collection.coverPhoto?.cf_image_id)
+			? cfImageUrl(collection.coverPhoto!.cf_image_id!, 'medium')
+			: getSmugMugImageUrl(collection.coverPhoto?.ImageUrl || null)
+	);
 </script>
 
 <a

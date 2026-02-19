@@ -18,6 +18,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getOptimizedSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
+import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 
 // Browser-safe environment variables (VITE_ prefix = exposed to browser)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -133,28 +134,36 @@ export async function fetchPhotosByPeriod(options: {
           return {
             ...period,
             featuredPhotos: (photos || []).map((row: any) => {
-              // PERFORMANCE FIX: Use size-optimized SmugMug URLs
-              const baseImageUrl = (row.ImageUrl || row.OriginalUrl || '').replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-              const baseThumbnailUrl = row.ThumbnailUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-              const baseOriginalUrl = row.OriginalUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
+              // CF Images with SmugMug fallback
+              let imageUrl: string;
+              let thumbnailUrl: string | undefined;
+              let originalUrl: string | undefined;
 
-              const imageUrl = getOptimizedSmugMugUrl(baseImageUrl, 'grid') || baseImageUrl;
-              const isSameBaseUrl = baseThumbnailUrl && baseImageUrl.includes(row.image_key) && baseThumbnailUrl.includes(row.image_key);
-              const thumbnailUrl = isSameBaseUrl ? undefined : (getOptimizedSmugMugUrl(baseThumbnailUrl, 'thumbnail') || baseThumbnailUrl);
-              const originalUrl = baseOriginalUrl;
+              if (hasCFImage(row.cf_image_id)) {
+                imageUrl = cfImageUrl(row.cf_image_id, 'grid');
+                thumbnailUrl = cfImageUrl(row.cf_image_id, 'thumbnail');
+                originalUrl = cfImageUrl(row.cf_image_id, 'public');
+              } else {
+                const baseImageUrl = (row.ImageUrl || row.OriginalUrl || '').replace('photos.smugmug.com', 'ninochavez.smugmug.com');
+                const baseThumbnailUrl = row.ThumbnailUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
+                imageUrl = getOptimizedSmugMugUrl(baseImageUrl, 'grid') || baseImageUrl;
+                const isSameBaseUrl = baseThumbnailUrl && baseImageUrl.includes(row.image_key) && baseThumbnailUrl.includes(row.image_key);
+                thumbnailUrl = isSameBaseUrl ? undefined : (getOptimizedSmugMugUrl(baseThumbnailUrl, 'thumbnail') || baseThumbnailUrl);
+                originalUrl = row.OriginalUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
+              }
 
               return {
               id: row.photo_id,
               image_key: row.image_key,
+              cf_image_id: row.cf_image_id || undefined,
               image_url: imageUrl,
               thumbnail_url: thumbnailUrl,
               original_url: originalUrl,
-              title: row.image_key, // Placeholder
+              title: row.image_key,
               caption: '',
               keywords: [],
               created_at: row.photo_date || row.enriched_at || row.upload_date,
               metadata: {
-                // BUCKET 1: Concrete & Filterable (user-facing)
                 play_type: (row.play_type || null),
                 action_intensity: (row.action_intensity || 'medium'),
                 sport_type: row.sport_type,
@@ -163,8 +172,6 @@ export async function fetchPhotosByPeriod(options: {
                 time_of_day: (row.time_of_day || ''),
                 lighting: (row.lighting || undefined),
                 color_temperature: (row.color_temperature || undefined),
-
-                // BUCKET 2: Abstract & Internal (AI-only)
                 emotion: (row.emotion || 'focus'),
                 sharpness: row.sharpness ?? 0,
                 composition_score: row.composition_score ?? 0,
@@ -173,8 +180,6 @@ export async function fetchPhotosByPeriod(options: {
                 time_in_game: (row.time_in_game || undefined),
                 athlete_id: row.athlete_id || undefined,
                 event_id: row.event_id || undefined,
-
-                // AI metadata
                 ai_provider: (row.ai_provider || 'gemini'),
                 ai_cost: row.ai_cost ?? 0,
                 ai_confidence: row.ai_confidence ?? 0,
@@ -249,18 +254,33 @@ export async function fetchPhotosByPeriod(options: {
             month: period.month,
             monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
             photoCount: period.count,
-            featuredPhotos: (photos || []).map((row: any) => ({
+            featuredPhotos: (photos || []).map((row: any) => {
+              let imageUrl: string;
+              let thumbnailUrl: string | undefined;
+              let originalUrl: string | undefined;
+
+              if (hasCFImage(row.cf_image_id)) {
+                imageUrl = cfImageUrl(row.cf_image_id, 'grid');
+                thumbnailUrl = cfImageUrl(row.cf_image_id, 'thumbnail');
+                originalUrl = cfImageUrl(row.cf_image_id, 'public');
+              } else {
+                imageUrl = row.ImageUrl || row.OriginalUrl || '';
+                thumbnailUrl = row.ThumbnailUrl || undefined;
+                originalUrl = row.OriginalUrl || undefined;
+              }
+
+              return {
               id: row.photo_id,
               image_key: row.image_key,
-              image_url: row.ImageUrl || row.OriginalUrl || '',
-              thumbnail_url: row.ThumbnailUrl || undefined,
-              original_url: row.OriginalUrl || undefined,
-              title: row.image_key, // Placeholder
+              cf_image_id: row.cf_image_id || undefined,
+              image_url: imageUrl,
+              thumbnail_url: thumbnailUrl,
+              original_url: originalUrl,
+              title: row.image_key,
               caption: '',
               keywords: [],
               created_at: row.photo_date || row.enriched_at || row.upload_date,
               metadata: {
-                // BUCKET 1: Concrete & Filterable (user-facing)
                 play_type: (row.play_type || null),
                 action_intensity: (row.action_intensity || 'medium'),
                 sport_type: row.sport_type,
@@ -269,8 +289,6 @@ export async function fetchPhotosByPeriod(options: {
                 time_of_day: (row.time_of_day || ''),
                 lighting: (row.lighting || undefined),
                 color_temperature: (row.color_temperature || undefined),
-
-                // BUCKET 2: Abstract & Internal (AI-only)
                 emotion: (row.emotion || 'focus'),
                 sharpness: row.sharpness ?? 0,
                 composition_score: row.composition_score ?? 0,
@@ -279,14 +297,13 @@ export async function fetchPhotosByPeriod(options: {
                 time_in_game: (row.time_in_game || undefined),
                 athlete_id: row.athlete_id || undefined,
                 event_id: row.event_id || undefined,
-
-                // AI metadata
                 ai_provider: (row.ai_provider || 'gemini'),
                 ai_cost: row.ai_cost ?? 0,
                 ai_confidence: row.ai_confidence ?? 0,
                 enriched_at: row.enriched_at || new Date().toISOString()
               }
-            }))
+            };
+            })
           };
         })
       );

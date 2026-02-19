@@ -16,6 +16,7 @@
   import { onMount } from 'svelte';
   import TimelineV2 from '$lib/components/ui/TimelineV2.svelte';
   import { getSmugMugUrl } from '$lib/photo-utils';
+  import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
   import type { Photo } from '$types/photo';
 
   interface TimelineEntry {
@@ -125,7 +126,9 @@
   <!-- Preload featured photos from first periods for LCP optimization -->
   {#each data.periods.slice(0, 2) as period}
     {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
-      {@const preloadUrl = photo.image_url ? getSmugMugUrl(photo.image_url, 'M') : null}
+      {@const preloadUrl = hasCFImage(photo.cf_image_id)
+        ? cfImageUrl(photo.cf_image_id, 'medium')
+        : (photo.image_url ? getSmugMugUrl(photo.image_url, 'M') : null)}
       {#if preloadUrl}
         <link
           rel="preload"
