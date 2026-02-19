@@ -40,7 +40,7 @@ if (!GEMINI_API_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-const MODEL = 'gemini-2.0-flash'; // Or 'gemini-3-flash' when available
+const MODEL = 'gemini-2.5-flash';
 const OUTPUT_DIR = '.temp/pilot-gemini3';
 // Check for max-batch first, fall back to regular batch
 const MAX_BATCH_FILE = `${OUTPUT_DIR}/max-batch-candidates.json`;

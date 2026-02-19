@@ -49,8 +49,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Model configurations
 const MODELS = {
-	current: 'gemini-2.0-flash-lite',
-	agentic: 'gemini-2.0-flash', // Use 2.0 flash as proxy until 3.0 available
+	current: 'gemini-2.5-flash-lite',
+	agentic: 'gemini-2.5-flash',
 	// agentic: 'gemini-3-flash', // Uncomment when available
 };
 

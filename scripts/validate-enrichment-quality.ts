@@ -390,7 +390,7 @@ function printRecommendations(issues: ValidationIssue[]) {
 		console.log('\n🔄 Low Confidence Re-enrichment:');
 		console.log(`   ${lowConfidence.length} photos have low AI confidence (<${CONFIG.confidenceThreshold}).`);
 		console.log('   Consider re-enriching with a more capable model:\n');
-		console.log('   npx tsx scripts/reenrich-low-confidence.ts --model=gemini-2.0-flash');
+		console.log('   npx tsx scripts/reenrich-low-confidence.ts --model=gemini-2.5-flash');
 	}
 
 	if (missingMetadata.length > 0) {

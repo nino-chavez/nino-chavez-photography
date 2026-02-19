@@ -44,14 +44,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 // =============================================================================
 
 const MODELS = {
-	accurate: 'gemini-2.0-flash',
-	cheap: 'gemini-2.0-flash-lite'
+	accurate: 'gemini-2.5-flash',
+	cheap: 'gemini-2.5-flash-lite'
 };
 
 // Cost per 1M tokens (input/output averaged, image processing included)
 const COST_PER_CALL = {
-	'gemini-2.0-flash': 0.001,
-	'gemini-2.0-flash-lite': 0.00014,
+	'gemini-2.5-flash': 0.001,
+	'gemini-2.5-flash-lite': 0.00014,
 	verification: 0.0003
 };
 
@@ -281,8 +281,8 @@ async function enrichPhoto(
 		]);
 
 		costTracker.actual_enrichment += useAccurate
-			? COST_PER_CALL['gemini-2.0-flash']
-			: COST_PER_CALL['gemini-2.0-flash-lite'];
+			? COST_PER_CALL['gemini-2.5-flash']
+			: COST_PER_CALL['gemini-2.5-flash-lite'];
 		costTracker.api_calls++;
 
 		const responseText = result.response.text();
@@ -388,9 +388,9 @@ async function runTest() {
 	// Cost estimation
 	const costTracker: CostTracker = {
 		estimated_verification: photosToProcess.length * COST_PER_CALL.verification,
-		estimated_enrichment_cheap: photosToProcess.length * COST_PER_CALL['gemini-2.0-flash-lite'],
-		estimated_enrichment_accurate: photosToProcess.length * COST_PER_CALL['gemini-2.0-flash'],
-		estimated_total: photosToProcess.length * (COST_PER_CALL.verification + COST_PER_CALL['gemini-2.0-flash-lite']),
+		estimated_enrichment_cheap: photosToProcess.length * COST_PER_CALL['gemini-2.5-flash-lite'],
+		estimated_enrichment_accurate: photosToProcess.length * COST_PER_CALL['gemini-2.5-flash'],
+		estimated_total: photosToProcess.length * (COST_PER_CALL.verification + COST_PER_CALL['gemini-2.5-flash-lite']),
 		actual_verification: 0,
 		actual_enrichment: 0,
 		actual_total: 0,

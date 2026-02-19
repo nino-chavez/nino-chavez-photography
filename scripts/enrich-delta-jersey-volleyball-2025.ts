@@ -79,9 +79,9 @@ async function extractJerseyNumber(imageUrl: string): Promise<number | null> {
 		const imageBuffer = await response.arrayBuffer();
 		const base64Image = Buffer.from(imageBuffer).toString('base64');
 
-		// Use Gemini 2.0 Flash Lite (working model from enrich-local-photos.ts)
+		// Use Gemini 2.5 Flash Lite (working model from enrich-local-photos.ts)
 		const genAI = new GoogleGenerativeAI(GEMINI_API_KEY!);
-		const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+		const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
 		// Call vision model
 		const result = await model.generateContent([

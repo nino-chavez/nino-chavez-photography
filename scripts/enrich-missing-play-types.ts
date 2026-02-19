@@ -49,7 +49,7 @@ const BATCH_DELAY_MS = 1000;
 const DRY_RUN = process.env.DRY_RUN === 'true';
 const SPORT_FILTER = process.env.SPORT_FILTER; // Optional: volleyball, basketball, etc.
 const TEST_LIMIT = process.env.TEST_LIMIT ? parseInt(process.env.TEST_LIMIT) : undefined;
-const GEMINI_MODEL = 'gemini-2.0-flash-lite';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 // =============================================================================
 // Initialize Clients

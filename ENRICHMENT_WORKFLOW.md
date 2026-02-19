@@ -113,7 +113,7 @@ npm run enrich /path/to/photos -- --overwrite    # Re-enrich existing photos
 
 **Configuration:**
 - **Concurrency:** 10 photos in parallel
-- **Model:** gemini-2.0-flash-lite
+- **Model:** gemini-2.5-flash-lite
 - **Cost:** $0.00014 per photo (~$4.20 per 30K photos)
 - **Rate Limit:** No delays (Gemini handles internally)
 
@@ -341,7 +341,7 @@ npm run enrich /path/to/photos -- --overwrite
 
 ## Cost Estimates
 
-### Gemini API (gemini-2.0-flash-lite)
+### Gemini API (gemini-2.5-flash-lite)
 
 - **Per photo:** $0.00014
 - **100 photos:** $0.01

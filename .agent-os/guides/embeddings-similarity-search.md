@@ -578,7 +578,7 @@ SELECT
 
 ```typescript
 // ❌ WRONG: Using vision model for text
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
 // ✅ CORRECT: Use embedding model
 const model = genAI.getGenerativeModel({ model: 'embedding-001' });

@@ -439,7 +439,7 @@ export interface SchemaV2DeltaResponse {
 /**
  * SPORT_VERIFICATION_PROMPT: High-accuracy sport detection for uncertain photos
  *
- * Use this with a more capable model (gemini-2.0-flash or claude-3-5-sonnet)
+ * Use this with a more capable model (gemini-2.5-flash or claude-3-5-sonnet)
  * when the initial enrichment has low confidence or unexpected sport_type.
  *
  * Cost: ~$0.001-0.002 per photo (higher than lite, but worth it for accuracy)
@@ -594,7 +594,7 @@ export const ENRICHMENT_EXAMPLES = {
  * - Annotate key elements for evidence-based reasoning
  * - Multi-step investigation for uncertain classifications
  *
- * Use with: gemini-3-flash (preferred) or gemini-2.0-flash
+ * Use with: gemini-3-flash (preferred) or gemini-2.5-flash
  * Cost: ~$0.001-0.003 per photo (higher due to iterative processing)
  * Time: 5-10 seconds per photo
  */
@@ -832,7 +832,7 @@ export function agenticToBuckets(agentic: AgenticVisionResponse): CombinedRespon
  * - Spatial analysis (ball position, formations)
  * - Team colors and identification
  *
- * Use with: gemini-3-flash (preferred) or gemini-2.0-flash
+ * Use with: gemini-3-flash (preferred) or gemini-2.5-flash
  * Cost: ~$0.002-0.005 per photo (more comprehensive analysis)
  * Time: 8-15 seconds per photo
  */

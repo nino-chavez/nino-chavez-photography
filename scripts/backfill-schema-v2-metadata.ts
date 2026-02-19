@@ -60,11 +60,10 @@ const TEST_LIMIT = process.env.TEST_LIMIT ? parseInt(process.env.TEST_LIMIT) : u
 
 // Cost optimization options
 const USE_SIMPLIFIED_PROMPT = process.env.USE_SIMPLIFIED_PROMPT !== 'false'; // Default: true (use minimal prompt)
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite'; // Model selection
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite'; // Model selection
 // Options:
-// - 'gemini-2.0-flash-lite' (default): $0.000128/photo, best cost efficiency
-// - 'gemini-2.5-flash-lite': $0.000170/photo, newer generation
-// - 'gemini-2.0-flash': $0.000170/photo, more capable if needed
+// - 'gemini-2.5-flash-lite' (default): best cost efficiency
+// - 'gemini-2.5-flash': more capable if needed
 
 // =============================================================================
 // Initialize Clients

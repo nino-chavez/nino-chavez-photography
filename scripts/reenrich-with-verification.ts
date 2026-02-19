@@ -6,9 +6,9 @@
  * to use the cheaper model or continue with the capable model for full enrichment.
  *
  * Strategy:
- * 1. First pass: Verify sport with gemini-2.0-flash (more accurate)
- * 2. If sport_confidence >= 0.8: Use gemini-2.0-flash-lite for remaining metadata
- * 3. If sport_confidence < 0.8: Use gemini-2.0-flash for full enrichment
+ * 1. First pass: Verify sport with gemini-2.5-flash (more accurate)
+ * 2. If sport_confidence >= 0.8: Use gemini-2.5-flash-lite for remaining metadata
+ * 3. If sport_confidence < 0.8: Use gemini-2.5-flash for full enrichment
  *
  * This balances accuracy for the critical sport_type field with cost efficiency.
  *
@@ -57,8 +57,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 // =============================================================================
 
 const MODELS = {
-	accurate: 'gemini-2.0-flash',      // More accurate, ~$0.001/photo
-	cheap: 'gemini-2.0-flash-lite'     // Cheaper, ~$0.00014/photo
+	accurate: 'gemini-2.5-flash',      // More accurate, ~$0.001/photo
+	cheap: 'gemini-2.5-flash-lite'     // Cheaper, ~$0.00014/photo
 };
 
 const COSTS = {
