@@ -8,6 +8,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PhotoMetadataRow } from '$types/database';
 
 const BASE_URL = 'https://ninochavez.co/photography';
@@ -170,8 +171,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				id: row.image_key,
 				url: `${BASE_URL}/photo/${row.image_key}`,
 				title: row.album_name || row.title || 'Untitled Photo',
-				image_url: row.ImageUrl,
-				thumbnail_url: row.ThumbnailUrl,
+				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
+				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
 				relevance_score: Math.round(relevanceScore * 100) / 100,
 				match_reasons: matchReasons.length > 0 ? matchReasons : ['general match']
 			};

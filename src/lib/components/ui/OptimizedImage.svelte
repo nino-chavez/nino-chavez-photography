@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { Camera } from 'lucide-svelte';
-	import { generateSmugMugSrcset, getSmugMugUrl, getProxiedImageUrl, type SmugMugSize } from '$lib/photo-utils';
-	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { cfImageUrl, cfSrcSet } from '$lib/utils/cloudflare-images';
 
 	interface Props {
 		src: string;
@@ -35,40 +34,19 @@
 		onError
 	}: Props = $props();
 
-	// CF Images path: simple URL builder, no SmugMug size manipulation needed
-	let useCF = $derived(hasCFImage(cfImageId));
+	// Thumbnail src for blur placeholder
+	let proxiedThumbnailSrc = $derived(thumbnailSrc);
 
-	// Proxy thumbnail URLs to eliminate third-party cookies (SmugMug only)
-	let proxiedThumbnailSrc = $derived(
-		useCF
-			? thumbnailSrc // CF thumbnails are already on imagedelivery.net
-			: (thumbnailSrc && thumbnailSrc.includes('smugmug.com')
-				? getProxiedImageUrl(thumbnailSrc)
-				: thumbnailSrc)
-	);
+	// Generate responsive srcset from CF Images
+	let srcset = $derived(cfImageId ? cfSrcSet(cfImageId) : '');
 
-	// Quality presets determine srcset sizes (SmugMug path only)
-	const qualityPresets: Record<string, SmugMugSize[]> = {
-		low: ['S', 'M'],           // Thumbnails, small cards
-		medium: ['M', 'L', 'XL'],  // Gallery cards, album covers
-		high: ['L', 'XL', 'X2', 'X3'], // Hero images, lightbox
-	};
-
-	// Generate responsive srcset: CF path or SmugMug path
-	let srcset = $derived(
-		useCF ? cfSrcSet(cfImageId!) : generateSmugMugSrcset(src, qualityPresets[quality])
-	);
-
-	// Optimized main src
+	// Optimized main src via CF Images variant
 	let optimizedSrc = $derived(() => {
-		if (useCF) {
-			// Map quality preset to CF variant
+		if (cfImageId) {
 			const variantMap = { low: 'grid', medium: 'medium', high: 'large' } as const;
-			return cfImageUrl(cfImageId!, variantMap[quality]);
+			return cfImageUrl(cfImageId, variantMap[quality]);
 		}
-		const preset = qualityPresets[quality];
-		const largestSize = preset[preset.length - 1];
-		return getSmugMugUrl(src, largestSize) || src;
+		return src;
 	});
 
 	// PERFORMANCE: Calculate dimensions from aspectRatio if not provided

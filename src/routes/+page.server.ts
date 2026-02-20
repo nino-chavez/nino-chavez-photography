@@ -20,6 +20,7 @@
 
 import type { PageServerLoad } from './$types';
 import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PhotoMetadataRow } from '$types/database';
 
 // In-memory cache for hero photo candidates (avoids 500-row query per request)
@@ -248,7 +249,7 @@ async function createEditorsChoiceAlbum() {
         albumKey: 'editors-choice', // Virtual album key
         albumName: 'Editor\'s Choice',
         photoCount: selectedPhotos.length,
-        coverImageUrl: coverPhoto.ThumbnailUrl || coverPhoto.ImageUrl,
+        coverImageUrl: coverPhoto.cf_image_id ? cfImageUrl(coverPhoto.cf_image_id, 'medium') : null,
         primarySport: 'volleyball',
         primaryCategory: 'mixed',
         avgQualityScore: Math.round(avgQuality * 10) / 10,
@@ -313,7 +314,7 @@ async function createActionShowcaseAlbum() {
         albumKey: 'action-showcase', // Virtual album key
         albumName: 'Action Showcase',
         photoCount: selectedPhotos.length,
-        coverImageUrl: coverPhoto.ThumbnailUrl || coverPhoto.ImageUrl,
+        coverImageUrl: coverPhoto.cf_image_id ? cfImageUrl(coverPhoto.cf_image_id, 'medium') : null,
         primarySport: 'volleyball',
         primaryCategory: 'action',
         avgQualityScore: Math.round(avgQuality * 10) / 10,

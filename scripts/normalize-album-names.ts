@@ -468,7 +468,7 @@ async function normalizeAlbumNames() {
 
 	console.log('═'.repeat(80));
 	console.log('\n✅ Normalization proposals generated!');
-	console.log('   Review proposals and run apply-album-renames.ts to update SmugMug.\n');
+	console.log('   Review proposals and run apply-album-renames.ts to update Supabase.\n');
 }
 
 normalizeAlbumNames().catch(console.error);

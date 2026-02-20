@@ -311,7 +311,7 @@ export const load: LayoutServerLoad = async () => {
 
 **Key Columns:**
 - `photo_id` (PK), `image_key`
-- `ImageUrl`, `ThumbnailUrl`, `OriginalUrl` (Supabase Storage)
+- `cf_image_id` (Cloudflare Images)
 - `sport_type`, `photo_category`, `emotion`, `action_intensity`
 - `quality_score`, `portfolio_worthy`, `sharpness`
 - `upload_date`, `photo_date`, `enriched_at`
@@ -533,14 +533,13 @@ Located in `.agent-os/guides/`:
 | Guide | Purpose | When to Use |
 |-------|---------|-------------|
 | **[supabase-integration.md](.agent-os/guides/supabase-integration.md)** | Supabase client patterns, query patterns, error handling | Any database operation |
-| **[smugmug-api.md](.agent-os/guides/smugmug-api.md)** | SmugMug OAuth 1.0a, EXIF extraction, rate limiting | SmugMug API integration |
 | **[typescript-patterns.md](.agent-os/guides/typescript-patterns.md)** | Project-specific TypeScript patterns, Svelte 5 runes | All TypeScript code |
 | **[embeddings-similarity-search.md](.agent-os/guides/embeddings-similarity-search.md)** | Vector embeddings, semantic search, pgvector patterns | Similarity search, photo recommendations |
 
 ### Usage Guidelines
 
 **Before implementing:**
-1. **Check if guide exists** for the task (Supabase query, SmugMug API call, etc.)
+1. **Check if guide exists** for the task (Supabase query, etc.)
 2. **Follow documented patterns** exactly - they are tested and proven
 3. **Do not invent new approaches** if pattern exists in guide
 4. **Refer to guide** for error handling, type safety, best practices
@@ -558,18 +557,6 @@ const photos = await fetchPhotos({
   sportType: 'volleyball',
   limit: 24
 });
-```
-
-**Example - SmugMug API:**
-```typescript
-// ❌ BAD: Trying OAuth 2.0
-const headers = {
-  'Authorization': `Bearer ${token}`
-};
-
-// ✅ GOOD: Following guide (OAuth 1.0a)
-const oauth = OAuth({ /* OAuth 1.0a config from guide */ });
-const headers = oauth.toHeader(oauth.authorize(requestData, token));
 ```
 
 ### When to Create New Guides
@@ -593,7 +580,6 @@ If you find yourself implementing the same pattern multiple times, or if a new i
 
 ### Agent Reference Guides
 - `.agent-os/guides/supabase-integration.md` - Supabase patterns
-- `.agent-os/guides/smugmug-api.md` - SmugMug API patterns
 - `.agent-os/guides/typescript-patterns.md` - TypeScript patterns
 - `.agent-os/guides/embeddings-similarity-search.md` - Vector embeddings and semantic search
 

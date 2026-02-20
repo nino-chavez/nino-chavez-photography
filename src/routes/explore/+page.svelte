@@ -31,8 +31,7 @@
 	} from '$lib/utils/filter-compatibility';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
-	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
-	import { generateSmugMugSrcset, SIZES_PRESETS } from '$lib/photo-utils';
+	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
@@ -550,7 +549,7 @@
 		{@const firstPhoto = data.photos[0]}
 		{@const srcset = hasCFImage(firstPhoto.cf_image_id)
 			? cfSrcSet(firstPhoto.cf_image_id)
-			: (firstPhoto.image_url?.includes('smugmug.com') ? generateSmugMugSrcset(firstPhoto.image_url, ['S', 'M']) : '')}
+			: ''}
 		{#if srcset}
 			<link
 				rel="preload"

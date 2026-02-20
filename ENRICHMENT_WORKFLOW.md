@@ -1,6 +1,6 @@
 # Photo Enrichment Workflow
 
-Complete workflow for processing new volleyball photo albums with AI enrichment, SmugMug upload, and Supabase sync.
+Complete workflow for processing new volleyball photo albums with AI enrichment, Cloudflare Images upload, and Supabase sync.
 
 **Status:** Active workflow (v2.0)
 **Last Updated:** 2025-10-28
@@ -10,7 +10,7 @@ Complete workflow for processing new volleyball photo albums with AI enrichment,
 This workflow automates the complete pipeline for new photo albums:
 
 1. **Enrich** - AI vision analysis with Google Gemini (two-bucket metadata model)
-2. **Upload** - SmugMug album creation with AI-generated metadata
+2. **Upload** - Cloudflare Images upload with AI-generated metadata
 3. **Sync** - Supabase database indexing for gallery website
 
 **One Command:** `npm run process:album /path/to/photos`
@@ -30,11 +30,9 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 # Google Gemini
 GOOGLE_API_KEY=your-gemini-api-key
 
-# SmugMug OAuth 1.0a
-VITE_SMUGMUG_API_KEY=your-api-key
-VITE_SMUGMUG_API_SECRET=your-api-secret
-VITE_SMUGMUG_ACCESS_TOKEN=your-access-token
-VITE_SMUGMUG_ACCESS_TOKEN_SECRET=your-access-token-secret
+# Cloudflare Images
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_API_TOKEN=your-api-token
 ```
 
 ### 2. Required Tools
@@ -78,10 +76,10 @@ Run steps separately for more control:
 # Step 1: Enrich photos with AI metadata
 npm run enrich /path/to/photos
 
-# Step 2: Upload to SmugMug
-npm run upload:smugmug /path/to/photos
+# Step 2: Upload to Cloudflare Images
+npm run upload:cf /path/to/photos
 
-# Step 3: Sync to Supabase (from SmugMug)
+# Step 3: Sync to Supabase
 npm run sync:album <album-key>
 
 # Alternative: Sync to Supabase (from local files)
@@ -132,76 +130,39 @@ npm run enrich /path/to/photos -- --overwrite    # Re-enrich existing photos
    💵 Total Cost: $0.00
 ```
 
-### 2. SmugMug Upload (`scripts/upload-to-smugmug.ts`)
+### 2. Cloudflare Images Upload
 
-**Purpose:** Create SmugMug album with AI-generated metadata and upload enriched photos.
+**Purpose:** Upload enriched photos to Cloudflare Images and sync metadata to Supabase.
 
 **What it does:**
 - Analyzes enriched EXIF metadata across all photos
 - Generates album name from folder name + season + year
-- Creates smart description with play type distribution
-- Builds folder structure: `/Ai-assisted/` (unlisted - hidden from SmugMug website navigation)
-- Albums created as unlisted (accessible via API for custom website)
-- Uploads photos with EXIF preserved
-- Returns album key for Supabase sync
+- Uploads photos to Cloudflare Images with metadata preserved
+- Returns image IDs for Supabase sync
 
 **Usage:**
 ```bash
-npm run upload:smugmug /path/to/photos
-npm run upload:smugmug /path/to/photos -- --dry-run
-```
-
-**Smart Album Metadata:**
-```
-Name: FUTURE - Fall 2024
-Description: High-intensity volleyball action from FUTURE - Fall 2024.
-             30 photos showcasing spikes (40%), sets (30%), blocks (20%).
-             Features focus and intensity moments with 12 portfolio-worthy shots (40%).
-             Average quality score: 8.7/10.
-Keywords: volleyball, indoor-volleyball, action-sports, tournament, spike, set, block, fall, 2024
+npm run upload:cf /path/to/photos
+npm run upload:cf /path/to/photos -- --dry-run
 ```
 
 **Output:**
 ```
-📁 Creating album: FUTURE - Fall 2024
-   ✅ Album created: https://your-smugmug.smugmug.com/...
-
-📤 Uploading photos...
+📤 Uploading photos to Cloudflare Images...
    📤 Uploading: future-1.jpg
       ✅ Uploaded successfully
 
 ✅ Upload Complete!
-   Album URL: https://your-smugmug.smugmug.com/...
+   Uploaded: 30 photos
    Album Key: xSqPJB
 
 ✨ Next step: Sync to Supabase
    npm run sync:album xSqPJB
 ```
 
-### 3. Supabase Sync (Two Options)
+### 3. Supabase Sync
 
-#### Option A: Sync from SmugMug (`scripts/sync-smugmug-album.ts`)
-
-**Purpose:** Fetch photos from SmugMug album and sync metadata to Supabase.
-
-**Best for:** Photos already uploaded to SmugMug, canonical SmugMug URLs.
-
-**What it does:**
-- Fetches album images from SmugMug API
-- Expands ImageMetadata for each photo
-- Parses structured keywords into database fields
-- Generates SmugMug URLs (ArchivedUri, ThumbUri)
-- Inserts into `photo_metadata` table
-
-**Usage:**
-```bash
-npm run sync:album <album-key>
-npm run sync:album xSqPJB -- --dry-run
-```
-
-**Rate Limiting:** 5 requests/second (200ms delay between photos)
-
-#### Option B: Sync from Local Files (`scripts/sync-local-to-supabase.ts`)
+#### Option A: Sync from Local Files (`scripts/sync-local-to-supabase.ts`)
 
 **Purpose:** Read EXIF from local enriched photos and sync directly to Supabase.
 
@@ -211,7 +172,7 @@ npm run sync:album xSqPJB -- --dry-run
 - Reads EXIF keywords from local photos using exiftool
 - Parses structured metadata
 - Inserts into `photo_metadata` table
-- No SmugMug URLs (image_url, thumbnail_url will be null)
+- Cloudflare Images URLs populated from upload step
 
 **Usage:**
 ```bash
@@ -237,8 +198,6 @@ npx tsx scripts/sync-local-to-supabase.ts /path/to/photos xSqPJB \
 - `--album-name="Album Name"` - Set album name (required for Albums page visibility)
 - `--upload-date="YYYY-MM-DD"` - Set upload date (defaults to today, required for Timeline)
 - `--dry-run` - Preview changes without syncing
-
-**Note:** SmugMug URLs must be backfilled later if using this method.
 
 **Output:**
 ```
@@ -306,16 +265,9 @@ npm run enrich /path/to/photos -- --overwrite
 
 ### Upload Issues
 
-**Problem:** `❌ Missing SmugMug credentials`
+**Problem:** `Missing Cloudflare credentials`
 ```bash
-# Check .env.local has all SMUGMUG_* variables
-# Check for VITE_ prefixes (required for OAuth flow)
-```
-
-**Problem:** Folder structure not found
-```bash
-# Script creates: /Ai-assisted/ (unlisted folder)
-# Check SmugMug account permissions
+# Check .env.local has CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN
 ```
 
 ### Sync Issues
@@ -355,8 +307,7 @@ npm run enrich /path/to/photos -- --overwrite
 
 - **Enrichment:** ~2-3 seconds per photo (10 concurrent)
 - **Upload:** ~1-2 seconds per photo (sequential)
-- **Sync (SmugMug):** ~200ms per photo (rate limited)
-- **Sync (Local):** ~100ms per photo (EXIF read)
+- **Sync:** ~100ms per photo (EXIF read)
 
 **Total time for 30 photos:** ~3-5 minutes
 
@@ -370,7 +321,7 @@ Old enrichment scripts located at `/Users/nino/Workspace/02-local-dev/archive/ga
 - Fragmented across multiple projects
 - Stale dependencies
 - No unified process
-- Manual SmugMug upload required
+- Manual upload required
 
 **New workflow improvements:**
 - Single consolidated project
@@ -383,15 +334,15 @@ Old enrichment scripts located at `/Users/nino/Workspace/02-local-dev/archive/ga
 To re-process an existing album with new workflow:
 
 ```bash
-# Step 1: Download photos from SmugMug (manual)
-# Step 2: Re-enrich with new AI model
+# Step 1: Re-enrich with new AI model
 npm run enrich /path/to/photos -- --overwrite
+
+# Step 2: Re-upload to Cloudflare Images
+npm run upload:cf /path/to/photos
 
 # Step 3: Sync directly to Supabase (preserves album_key)
 npx tsx scripts/sync-local-to-supabase.ts /path/to/photos <existing-album-key>
 ```
-
-**Note:** This updates metadata without re-uploading to SmugMug.
 
 ## Script Reference
 
@@ -401,8 +352,8 @@ npx tsx scripts/sync-local-to-supabase.ts /path/to/photos <existing-album-key>
 {
   "process:album": "tsx scripts/process-new-album.ts",
   "enrich": "tsx scripts/enrich-local-photos.ts",
-  "upload:smugmug": "tsx scripts/upload-to-smugmug.ts",
-  "sync:album": "tsx scripts/sync-smugmug-album.ts"
+  "upload:cf": "tsx scripts/upload-to-cf-images.ts",
+  "sync:album": "tsx scripts/sync-local-to-supabase.ts"
 }
 ```
 
@@ -412,8 +363,7 @@ npx tsx scripts/sync-local-to-supabase.ts /path/to/photos <existing-album-key>
 scripts/
 ├── process-new-album.ts        # Unified workflow wrapper
 ├── enrich-local-photos.ts      # AI enrichment with Gemini
-├── upload-to-smugmug.ts        # SmugMug album creation + upload
-├── sync-smugmug-album.ts       # SmugMug → Supabase sync
+├── upload-to-cf-images.ts      # Cloudflare Images upload
 └── sync-local-to-supabase.ts   # Local EXIF → Supabase sync
 ```
 

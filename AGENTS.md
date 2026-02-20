@@ -11,11 +11,6 @@
 - [Supabase JS](https://supabase.com/docs/reference/javascript): @supabase/supabase-js v2
 - [pgvector](https://github.com/pgvector/pgvector): Vector similarity search for photo recommendations
 
-### SmugMug
-- [SmugMug API v2](https://api.smugmug.com/api/v2/doc): OAuth 1.0a authentication
-- Rate limit: 60 requests/minute
-- `.agent-os/guides/smugmug-api.md`: Local integration patterns
-
 ### Styling
 - [Tailwind CSS 4](https://tailwindcss.com/docs): Utility classes
 - [svelte-motion](https://github.com/micha-lmxt/svelte-motion): Animation library
@@ -37,7 +32,6 @@
 
 ### Guides (Read Before Implementing)
 - `.agent-os/guides/supabase-integration.md`: Query patterns
-- `.agent-os/guides/smugmug-api.md`: OAuth 1.0a patterns
 - `.agent-os/guides/embeddings-similarity-search.md`: pgvector usage
 
 ## Quick Commands
@@ -61,5 +55,5 @@ npm test                         # Playwright E2E tests
 
 ## Database
 - Primary table: `photo_metadata` (~20K rows)
-- Key columns: photo_id, sport_type, quality_score, ImageUrl, ThumbnailUrl
+- Key columns: photo_id, sport_type, quality_score, cf_image_id
 - See `database/performance-indexes.sql` for index documentation

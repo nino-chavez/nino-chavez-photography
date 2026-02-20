@@ -1,14 +1,14 @@
 # Album Name Normalization Workflow
 
-This workflow normalizes album names across SmugMug and Supabase using consistent canonical naming conventions.
+This workflow normalizes album names in Supabase using consistent canonical naming conventions.
 
 ## Overview
 
-**Problem:** Album names are inconsistent across SmugMug, making them hard to scan and search.
+**Problem:** Album names are inconsistent, making them hard to scan and search.
 
 **Solution:** Generate canonical names using:
 - EXIF date data from photos (most reliable)
-- SmugMug album metadata
+- Album metadata
 - AI-enriched team/event data
 - Existing name parsing (fallback)
 
@@ -21,18 +21,16 @@ This workflow normalizes album names across SmugMug and Supabase using consisten
 
 ### Modules
 
-1. **[src/lib/smugmug/client.ts](../src/lib/smugmug/client.ts)**
-   - SmugMug API client with OAuth 1.0a authentication
-   - Methods: `getAlbum()`, `updateAlbum()`, `getAllAlbums()`, `getAlbumPhotos()`
-
-2. **[src/lib/utils/canonical-album-naming.ts](../src/lib/utils/canonical-album-naming.ts)**
+1. **[src/lib/utils/canonical-album-naming.ts](../src/lib/utils/canonical-album-naming.ts)**
    - Canonical name generation logic
    - EXIF date extraction
    - Drift score calculation (0-100: how different from existing name)
 
-3. **[src/lib/supabase/album-sync.ts](../src/lib/supabase/album-sync.ts)**
-   - Syncs album names from SmugMug to Supabase `photo_metadata` table
+2. **[src/lib/supabase/album-sync.ts](../src/lib/supabase/album-sync.ts)**
+   - Syncs album names to Supabase `photo_metadata` table
    - Updates all photos with matching `album_key`
+
+### Scripts
 
 ### Scripts
 
@@ -54,7 +52,7 @@ npx tsx scripts/analyze-album-drift.ts --json > album-drift-report.json
 ```
 
 **Report Columns:**
-- `AlbumKey` - SmugMug album identifier
+- `AlbumKey` - Album identifier
 - `DriftScore` - 0-100 (higher = more changes needed)
 - `Confidence` - high/medium/low (data quality)
 - `DateSource` - exif/album_field/inferred/fallback
@@ -135,13 +133,7 @@ npx tsx scripts/analyze-album-drift.ts > album-drift-after.csv
 ### Required
 
 ```bash
-# SmugMug OAuth credentials
-SMUGMUG_API_KEY=your_api_key
-SMUGMUG_API_SECRET=your_api_secret
-SMUGMUG_ACCESS_TOKEN=your_access_token
-SMUGMUG_ACCESS_TOKEN_SECRET=your_access_token_secret
-
-# Supabase (for sync)
+# Supabase
 VITE_SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
@@ -158,8 +150,8 @@ TEST_LIMIT=10
 # Minimum drift score to trigger update
 MIN_DRIFT_SCORE=10  # Default: 10
 
-# Skip SmugMug updates (only sync to Supabase)
-SKIP_SMUGMUG=true
+# Skip external updates (only sync to Supabase)
+SKIP_EXTERNAL=true
 ```
 
 ## Rate Limiting
@@ -201,9 +193,8 @@ The script includes automatic rate limiting:
 ## Troubleshooting
 
 ### "No albums found"
-- Check SmugMug API credentials in `.env.local`
-- Verify tokens haven't expired
-- Run `npx tsx scripts/test-smugmug-connection.ts`
+- Check Supabase credentials in `.env.local`
+- Verify service role key is correct
 
 ### "Supabase sync failed"
 - Check `SUPABASE_SERVICE_ROLE_KEY` (not anon key)
@@ -223,18 +214,15 @@ The script includes automatic rate limiting:
 
 - [Canonical Naming Strategy](../.agent-os/CANONICAL_NAMING_STRATEGY.md)
 - [Album Sync Module](../src/lib/supabase/album-sync.ts)
-- [SmugMug API Client](../src/lib/smugmug/client.ts)
+- [Album Sync Module](../src/lib/supabase/album-sync.ts)
 
 ## Rollback
 
 If you need to revert changes:
 
 ```bash
-# SmugMug: Manual revert via SmugMug web UI
-# (No automated rollback for SmugMug album names)
-
-# Supabase: Can re-sync from SmugMug
-SKIP_SMUGMUG=true npx tsx scripts/normalize-all-album-names.ts
+# Supabase: Re-run normalization with original names from rollback file
+npx tsx scripts/normalize-all-album-names.ts
 ```
 
 **Note:** Keep the drift report CSV as a backup of original names.
@@ -244,5 +232,5 @@ SKIP_SMUGMUG=true npx tsx scripts/normalize-all-album-names.ts
 ✅ **After normalization:**
 - Drift scores < 10 for most albums
 - Album names follow consistent format
-- Supabase `album_name` matches SmugMug
+- Supabase `album_name` follows canonical format
 - Mobile scanning experience improved (35-45 char optimal length)

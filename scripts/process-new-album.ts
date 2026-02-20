@@ -4,8 +4,7 @@
  *
  * One-command workflow for new album processing:
  * 1. Enrich photos with AI vision (Gemini)
- * 2. Upload to SmugMug with AI-generated album
- * 3. Sync to Supabase database
+ * 2. Upload to Cloudflare Images + sync to Supabase
  *
  * Usage:
  *   npx tsx scripts/process-new-album.ts /path/to/photos
@@ -35,7 +34,7 @@ if (!photoDir) {
 	console.error('Options:');
 	console.error('  --dry-run            Preview changes without making them');
 	console.error('  --skip-enrichment    Skip AI enrichment (photos already enriched)');
-	console.error('  --skip-upload        Skip SmugMug upload (already uploaded)');
+	console.error('  --skip-upload        Skip CF Images upload (already uploaded)');
 	console.error('  --skip-sync          Skip Supabase sync');
 	console.error('');
 	console.error('Examples:');
@@ -62,8 +61,7 @@ if (CONFIG.dryRun) {
 
 console.log('\n📋 Workflow Steps:');
 console.log(`   ${CONFIG.skipEnrichment ? '⏭️ ' : '✓ '} Step 1: AI Enrichment (Gemini)`);
-console.log(`   ${CONFIG.skipUpload ? '⏭️ ' : '✓ '} Step 2: Upload to SmugMug`);
-console.log(`   ${CONFIG.skipSync ? '⏭️ ' : '✓ '} Step 3: Sync to Supabase`);
+console.log(`   ${CONFIG.skipUpload || CONFIG.skipSync ? '⏭️ ' : '✓ '} Step 2: Upload to CF Images + Sync to Supabase`);
 
 // =============================================================================
 // Step 1: AI Enrichment
@@ -87,20 +85,20 @@ if (!CONFIG.skipEnrichment) {
 }
 
 // =============================================================================
-// Step 2: Upload to SmugMug
+// Step 2: Upload to CF Images + Sync to Supabase
 // =============================================================================
 
-if (!CONFIG.skipUpload) {
+if (!CONFIG.skipUpload && !CONFIG.skipSync) {
 	console.log('\n' + '='.repeat(70));
-	console.log('STEP 2: Upload to SmugMug');
+	console.log('STEP 2: Upload to Cloudflare Images + Sync to Supabase');
 	console.log('='.repeat(70));
 
 	try {
-		const uploadCmd = `npx tsx scripts/upload-to-smugmug.ts "${photoDir}"${CONFIG.dryRun ? ' --dry-run' : ''}`;
-		console.log(`\n💡 Running: ${uploadCmd}\n`);
+		const syncCmd = `npx tsx scripts/sync-local-to-supabase.ts "${photoDir}"${CONFIG.dryRun ? ' --dry-run' : ''}`;
+		console.log(`\n💡 Running: ${syncCmd}\n`);
 
 		// Capture output to extract album key
-		const output = execSync(uploadCmd, { encoding: 'utf-8', stdio: 'pipe' });
+		const output = execSync(syncCmd, { encoding: 'utf-8', stdio: 'pipe' });
 
 		// Display output
 		console.log(output);
@@ -110,55 +108,13 @@ if (!CONFIG.skipUpload) {
 		if (albumKeyMatch) {
 			albumKey = albumKeyMatch[1];
 			console.log(`\n✅ Captured Album Key: ${albumKey}`);
-		} else if (!CONFIG.dryRun) {
-			console.error('\n⚠️  Could not extract Album Key from output');
-			console.error('You may need to manually sync with:');
-			console.error('  npx tsx scripts/sync-smugmug-album.ts <album-key>');
-			process.exit(1);
 		}
 	} catch (error) {
-		console.error('\n❌ Upload failed');
+		console.error('\n❌ Upload + sync failed');
 		process.exit(1);
 	}
 } else {
-	console.log('\n⏭️  Skipping upload (--skip-upload)');
-
-	// If skipping upload, user must provide album key
-	const albumKeyArg = process.argv.find((arg) => arg.startsWith('--album-key='));
-	if (albumKeyArg) {
-		albumKey = albumKeyArg.split('=')[1];
-		console.log(`   Using provided Album Key: ${albumKey}`);
-	} else if (!CONFIG.skipSync) {
-		console.error('\n❌ --skip-upload requires --album-key=<key> for sync step');
-		console.error('Example: --skip-upload --album-key=xSqPJB');
-		process.exit(1);
-	}
-}
-
-// =============================================================================
-// Step 3: Sync to Supabase
-// =============================================================================
-
-if (!CONFIG.skipSync) {
-	if (!albumKey && !CONFIG.dryRun) {
-		console.error('\n❌ No album key available for sync');
-		process.exit(1);
-	}
-
-	console.log('\n' + '='.repeat(70));
-	console.log('STEP 3: Sync to Supabase');
-	console.log('='.repeat(70));
-
-	try {
-		const syncCmd = `npx tsx scripts/sync-smugmug-album.ts ${albumKey || 'DRYRUN'}${CONFIG.dryRun ? ' --dry-run' : ''}`;
-		console.log(`\n💡 Running: ${syncCmd}\n`);
-		execSync(syncCmd, { stdio: 'inherit' });
-	} catch (error) {
-		console.error('\n❌ Sync failed');
-		process.exit(1);
-	}
-} else {
-	console.log('\n⏭️  Skipping sync (--skip-sync)');
+	console.log('\n⏭️  Skipping upload/sync');
 }
 
 // =============================================================================
@@ -172,7 +128,7 @@ console.log('='.repeat(70));
 if (!CONFIG.dryRun) {
 	console.log('\n🎉 Your album is now live!\n');
 	console.log('📸 Photos enriched with AI metadata');
-	console.log('☁️  Uploaded to SmugMug');
+	console.log('☁️  Uploaded to Cloudflare Images');
 	console.log('💾 Synced to Supabase database');
 	console.log('\n🌐 Visit your gallery:');
 	console.log('   https://photography.ninochavez.co');

@@ -5,7 +5,7 @@
 	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { MOTION } from '$lib/motion-tokens';
-	import { getSmugMugUrl, generateSmugMugSrcset, SIZES_PRESETS } from '$lib/photo-utils';
+	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createAlbumSlug } from '$lib/utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -99,7 +99,7 @@
 		{@const firstAlbum = data.albums[0]}
 		{@const srcset = hasCFImage(firstAlbum.coverCfImageId)
 			? cfSrcSet(firstAlbum.coverCfImageId)
-			: generateSmugMugSrcset(firstAlbum.coverImageUrl, ['M', 'L', 'XL', 'X2'])}
+			: ''}
 		<link
 			rel="preload"
 			as="image"

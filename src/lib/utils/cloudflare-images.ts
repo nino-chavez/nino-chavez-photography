@@ -1,9 +1,7 @@
 /**
  * Cloudflare Images URL Builder
  *
- * Replaces SmugMug URL manipulation with simple, predictable Cloudflare Images URLs.
- * Photos with a cf_image_id use `imagedelivery.net` URLs with named variants.
- * Photos without cf_image_id fall back to existing SmugMug proxy logic.
+ * All photos use `imagedelivery.net` URLs with named variants.
  *
  * Variant Reference (configured in CF Dashboard):
  * - thumbnail: 150px  (blur placeholders)
@@ -53,7 +51,6 @@ export function cfSrcSet(id: string): string {
 
 /**
  * Type guard to check if a photo has a Cloudflare Image ID.
- * Use this to decide between CF URLs and SmugMug fallback.
  *
  * @param id - The cf_image_id field from the photo record
  * @returns true if the photo has a valid CF image ID

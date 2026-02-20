@@ -23,7 +23,6 @@
 	import SocialShareButtons from '$lib/components/social/SocialShareButtons.svelte';
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
-	import { getOptimizedSmugMugUrl, getSmugMugSrcSet, isSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
 
@@ -67,39 +66,20 @@
 		};
 	});
 	
-	// Get optimized image URL - CF Images with SmugMug fallback
+	// Get optimized image URL via CF Images
 	const optimizedImageUrl = $derived.by(() => {
 		if (!photo) return null;
-
-		// CF Images path
 		if (hasCFImage(photo.cf_image_id)) {
 			return cfImageUrl(photo.cf_image_id, 'large');
 		}
-
-		const baseUrl = photo.original_url || photo.image_url;
-		if (!baseUrl) return null;
-
-		if (isSmugMugUrl(baseUrl)) {
-			const effectiveWidth = viewportWidth * devicePixelRatio;
-			if (effectiveWidth <= 1024) {
-				return getOptimizedSmugMugUrl(baseUrl, 'fullscreen');
-			} else {
-				return getOptimizedSmugMugUrl(baseUrl, 'download');
-			}
-		}
-
-		return baseUrl;
+		return photo.original_url || photo.image_url;
 	});
 
 	// Get srcset for responsive loading
 	const imageSrcSet = $derived.by(() => {
 		if (!photo) return undefined;
 		if (hasCFImage(photo.cf_image_id)) return cfSrcSet(photo.cf_image_id);
-
-		const baseUrl = photo.original_url || photo.image_url;
-		if (!baseUrl || !isSmugMugUrl(baseUrl)) return undefined;
-
-		return getSmugMugSrcSet(baseUrl);
+		return undefined;
 	});
 
 	const imageSizes = $derived('(max-width: 1024px) 100vw, 50vw');

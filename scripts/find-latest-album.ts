@@ -49,10 +49,10 @@ async function main() {
   console.log(`   ImageUrl: ${photo.ImageUrl?.substring(0, 80)}...`);
   console.log(`   ThumbnailUrl: ${photo.ThumbnailUrl?.substring(0, 80)}...`);
 
-  // Parse SmugMug URL to check size
+  // Parse URL to check size variant
   if (photo.ThumbnailUrl) {
     const url = new URL(photo.ThumbnailUrl);
-    console.log(`   SmugMug size: ${url.pathname.split('/').find(p => p.startsWith('Th-')) || 'default'}`);
+    console.log(`   Size variant: ${url.pathname.split('/').find(p => p.startsWith('Th-')) || 'default'}`);
   }
 
   console.log(`\n🚀 To run test:`);

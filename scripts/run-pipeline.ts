@@ -2,10 +2,9 @@
 /**
  * Unified Photo Enrichment Pipeline
  *
- * Automates the 3-step process:
+ * Automates the photo processing pipeline:
  * 1. Enrich: Generate AI metadata from local photos
- * 2. Upload: Upload enriched photos to SmugMug with EXIF tags
- * 3. Sync: Sync SmugMug album to Supabase database
+ * 2. Upload + Sync: Upload to Cloudflare Images and sync to Supabase
  *
  * Usage:
  *   # Process photos from a local directory
@@ -82,7 +81,7 @@ function parseArgs(): PipelineConfig {
 	}
 
 	if (!config.albumKey) {
-		console.error('❌ Missing required argument: --album-key <smugmug-album-key>');
+		console.error('❌ Missing required argument: --album-key <album-key>');
 		console.error('\nUsage:');
 		console.error('  npx tsx scripts/run-pipeline.ts --dir ./photos --album-key ABC123');
 		process.exit(1);
@@ -148,7 +147,7 @@ async function runPipeline(config: PipelineConfig) {
 	console.log('\n🚀 Photo Enrichment Pipeline Starting...\n');
 	console.log('Configuration:');
 	console.log(`  📁 Photo Directory: ${config.photoDir}`);
-	console.log(`  📸 SmugMug Album: ${config.albumKey}`);
+	console.log(`  📸 Album Key: ${config.albumKey}`);
 	console.log(`  🔄 Batch Size: ${config.batchSize}`);
 	console.log(`  🏁 Starting From: ${config.startFrom}`);
 	console.log(`  🔍 Dry Run: ${config.dryRun ? 'Yes' : 'No'}`);
@@ -175,42 +174,23 @@ async function runPipeline(config: PipelineConfig) {
 		}
 	}
 
-	// Step 2: Upload - Upload to SmugMug
+	// Step 2: Upload + Sync - Upload to CF Images and sync to Supabase
 	if (['enrich', 'upload'].includes(config.startFrom)) {
-		const uploadCmd = `npx tsx scripts/upload-to-smugmug.ts ${config.photoDir} ${config.albumKey} ${
+		const syncCmd = `npx tsx scripts/sync-local-to-supabase.ts ${config.photoDir} ${config.albumKey} ${
 			config.dryRun ? '--dry-run' : ''
 		}`;
 
-		results.upload = await runStep(
-			'Upload',
-			uploadCmd,
-			`Upload enriched photos to SmugMug album ${config.albumKey}`
-		);
-
-		if (!results.upload.success) {
-			console.error('\n❌ Pipeline failed at Upload step');
-			printSummary(results, pipelineStartTime);
-			process.exit(1);
-		}
-	}
-
-	// Step 3: Sync - Sync to Supabase
-	if (!config.dryRun) {
-		const syncCmd = `npx tsx scripts/sync-smugmug-album.ts ${config.albumKey}`;
-
 		results.sync = await runStep(
-			'Sync',
+			'Upload+Sync',
 			syncCmd,
-			`Sync SmugMug album ${config.albumKey} to Supabase database`
+			`Upload photos to CF Images and sync album ${config.albumKey} to Supabase`
 		);
 
 		if (!results.sync.success) {
-			console.error('\n❌ Pipeline failed at Sync step');
+			console.error('\n❌ Pipeline failed at Upload+Sync step');
 			printSummary(results, pipelineStartTime);
 			process.exit(1);
 		}
-	} else {
-		console.log('\n⏭️  Skipping Sync step (dry run mode)');
 	}
 
 	// Success!

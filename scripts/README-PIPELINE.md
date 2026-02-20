@@ -11,8 +11,8 @@ The pipeline automates three manual steps into a single command:
 ```bash
 # Before: Manual 3-step process
 npx tsx scripts/enrich-local-photos.ts ./photos
-npx tsx scripts/upload-to-smugmug.ts ./photos ABC123
-npx tsx scripts/sync-smugmug-album.ts ABC123
+npx tsx scripts/upload-to-cf-images.ts ./photos
+npx tsx scripts/sync-local-to-supabase.ts ./photos ABC123
 
 # After: One-command automation
 npx tsx scripts/run-pipeline.ts --dir ./photos --album-key ABC123
@@ -26,15 +26,13 @@ npx tsx scripts/run-pipeline.ts --dir ./photos --album-key ABC123
 - Adds EXIF tags to JPG files
 - Cost: ~$0.0015 per photo (Gemini Flash)
 
-### 2. **Upload** (SmugMug)
-- Uploads photos to SmugMug album
+### 2. **Upload** (Cloudflare Images)
+- Uploads photos to Cloudflare Images
 - Preserves EXIF metadata
-- Uses OAuth 1.0a authentication
-- Rate limited: ~500 photos/hour
+- Uses Cloudflare API token authentication
 
 ### 3. **Sync** (Supabase Database)
-- Syncs SmugMug album to Supabase
-- Uses `_expand` optimization (fast!)
+- Syncs photo metadata to Supabase
 - Updates photo_metadata table
 - Enables search, filtering, collections
 
@@ -86,7 +84,7 @@ npx tsx scripts/run-pipeline.ts \
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--dir <path>` | Local photo directory | Required |
-| `--album-key <key>` | SmugMug album key | Required |
+| `--album-key <key>` | Album key identifier | Required |
 | `--dry-run` | Preview without uploading | `false` |
 | `--start-from <step>` | Resume from: `enrich`, `upload`, `sync` | `enrich` |
 | `--batch-size <n>` | Photos per batch | `20` |
@@ -114,7 +112,7 @@ npx tsx scripts/run-pipeline.ts \
 
 ### Re-sync Existing Album
 
-SmugMug album updated manually? Re-sync to database:
+Album updated manually? Re-sync to database:
 
 ```bash
 npx tsx scripts/run-pipeline.ts \
@@ -148,7 +146,7 @@ Pipeline provides progress tracking and summary:
 
 Configuration:
   📁 Photo Directory: ./photos/tournament-2024
-  📸 SmugMug Album: ABC123DEF456
+  📸 Album Key: ABC123DEF456
   🔄 Batch Size: 20
   🏁 Starting From: enrich
   🔍 Dry Run: No
@@ -167,9 +165,9 @@ Configuration:
 ================================================================================
 📋 Step: Upload
 ================================================================================
-📝 Upload enriched photos to SmugMug album ABC123DEF456
+📝 Upload enriched photos to Cloudflare Images (album ABC123DEF456)
 
-🔧 Running: npx tsx scripts/upload-to-smugmug.ts ...
+🔧 Running: npx tsx scripts/upload-to-cf-images.ts ...
 
 [Upload progress...]
 
@@ -178,9 +176,9 @@ Configuration:
 ================================================================================
 📋 Step: Sync
 ================================================================================
-📝 Sync SmugMug album ABC123DEF456 to Supabase database
+📝 Sync album ABC123DEF456 to Supabase database
 
-🔧 Running: npx tsx scripts/sync-smugmug-album.ts ...
+🔧 Running: npx tsx scripts/sync-local-to-supabase.ts ...
 
 [Sync progress...]
 
@@ -231,13 +229,13 @@ npx tsx scripts/run-pipeline.ts \
 | Step | Duration | Bottleneck |
 |------|----------|------------|
 | Enrich | ~4 mins | Gemini API rate limits |
-| Upload | ~15 mins | SmugMug API rate limits |
+| Upload | ~15 mins | Cloudflare API rate limits |
 | Sync | ~10 secs | Network/database |
 | **Total** | **~20 mins** | API rate limits |
 
 **Cost Estimate**:
 - Enrichment: $0.0015/photo → $0.75 for 500 photos
-- Upload: Free (SmugMug API)
+- Upload: Cloudflare Images pricing
 - Sync: Free (Supabase)
 
 ## Scheduling (Optional)
@@ -298,11 +296,11 @@ ls ./photos
 
 ### "Pipeline failed at Upload step"
 
-Check SmugMug credentials:
+Check Cloudflare credentials:
 
 ```bash
-echo $VITE_SMUGMUG_API_KEY
-echo $VITE_SMUGMUG_ACCESS_TOKEN
+echo $CLOUDFLARE_ACCOUNT_ID
+echo $CLOUDFLARE_API_TOKEN
 ```
 
 Resume after fixing:
@@ -339,12 +337,12 @@ Local Photos (.jpg)
    - Add EXIF tags
        ↓
   [2. Upload]
-   - SmugMug API
-   - OAuth 1.0a
+   - Cloudflare Images API
+   - API token auth
    - Preserve EXIF
        ↓
   [3. Sync]
-   - SmugMug → Supabase
+   - Metadata → Supabase
    - Update photo_metadata
    - Enable features
        ↓
@@ -359,8 +357,8 @@ Local Photos (.jpg)
 Individual step scripts (if needed):
 
 - `scripts/enrich-local-photos.ts` - Enrichment only
-- `scripts/upload-to-smugmug.ts` - Upload only
-- `scripts/sync-smugmug-album.ts` - Sync only
+- `scripts/upload-to-cf-images.ts` - Upload only
+- `scripts/sync-local-to-supabase.ts` - Sync only
 - `scripts/generate-embeddings-metadata.ts` - Post-sync embeddings
 
 ---

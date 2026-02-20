@@ -14,6 +14,7 @@
 	import CategoryFilter from '$lib/components/filters/CategoryFilter.svelte';
 	import BackToTop from '$lib/components/ui/BackToTop.svelte';
 	import type { PageData } from './$types';
+	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
 	import type { PhotoMetadataRow } from '$types/database';
 
@@ -37,9 +38,9 @@
 		return {
 			id: raw.image_key,
 			image_key: raw.image_key,
-			image_url: raw.ImageUrl,
-			thumbnail_url: raw.ThumbnailUrl || undefined,
-			original_url: raw.OriginalUrl || undefined,
+			image_url: raw.cf_image_id ? cfImageUrl(raw.cf_image_id, 'grid') : '',
+			thumbnail_url: raw.cf_image_id ? cfImageUrl(raw.cf_image_id, 'thumbnail') : '',
+			original_url: raw.cf_image_id ? cfImageUrl(raw.cf_image_id, 'public') : '',
 			title: raw.album_name || 'Untitled',
 			caption: raw.composition || '',
 			keywords: Array.isArray(raw.use_cases) ? raw.use_cases : [],

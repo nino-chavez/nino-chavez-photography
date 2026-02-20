@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		.select(
 			`
 			*,
-			photo:photo_metadata(photo_id, ThumbnailUrl, album_key)
+			photo:photo_metadata(photo_id, cf_image_id, album_key)
 		`
 		)
 		.eq('approved', false)

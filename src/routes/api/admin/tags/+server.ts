@@ -77,7 +77,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			.select(
 				`
         *,
-        photo:photo_metadata(photo_id, ThumbnailUrl, album_key)
+        photo:photo_metadata(photo_id, cf_image_id, album_key)
       `
 			)
 			.order('created_at', { ascending: false })

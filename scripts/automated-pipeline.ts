@@ -2,11 +2,10 @@
 /**
  * Automated Photo Pipeline
  *
- * Consolidates the 3-step manual process into a single automated workflow:
+ * Consolidates the photo processing workflow into a single automated pipeline:
  * 1. Enrich local photos with AI (Gemini vision analysis)
- * 2. Upload enriched photos to SmugMug (with EXIF metadata)
- * 3. Sync SmugMug album to Supabase (with optimized _expand)
- * 4. [Optional] Generate embeddings for similarity search
+ * 2. Upload to Cloudflare Images + sync to Supabase
+ * 3. [Optional] Generate embeddings for similarity search
  *
  * Part of Initiative 2.1: Pipeline Automation & Efficiency
  *
@@ -64,7 +63,7 @@ if (!CONFIG.photoDir && !CONFIG.skipEnrich && !CONFIG.skipUpload) {
 }
 
 if (!CONFIG.albumKey && !CONFIG.skipSync) {
-	console.error('❌ Missing SmugMug album key');
+	console.error('❌ Missing album key');
 	console.error('Usage: npx tsx scripts/automated-pipeline.ts /path/to/photos <album-key>');
 	process.exit(1);
 }
@@ -158,24 +157,17 @@ async function runPipeline() {
 			CONFIG.skipEnrich
 		);
 
-		// Step 2: Upload to SmugMug
+		// Step 2: Upload to Cloudflare Images + sync to Supabase
 		await runStep(
-			'Step 2: SmugMug Upload',
-			`npx tsx scripts/upload-to-smugmug.ts "${CONFIG.photoDir}" ${CONFIG.albumKey}${CONFIG.dryRun ? ' --dry-run' : ''}`,
-			CONFIG.skipUpload
+			'Step 2: CF Images Upload + Supabase Sync',
+			`npx tsx scripts/sync-local-to-supabase.ts "${CONFIG.photoDir}" ${CONFIG.albumKey}${CONFIG.dryRun ? ' --dry-run' : ''}`,
+			CONFIG.skipUpload || CONFIG.skipSync
 		);
 
-		// Step 3: Sync to Supabase
-		await runStep(
-			'Step 3: Supabase Sync',
-			`npx tsx scripts/sync-smugmug-album.ts ${CONFIG.albumKey}${CONFIG.dryRun ? ' --dry-run' : ''}`,
-			CONFIG.skipSync
-		);
-
-		// Step 4: Generate embeddings (optional)
+		// Step 3: Generate embeddings (optional)
 		if (CONFIG.withEmbeddings) {
 			await runStep(
-				'Step 4: Generate Embeddings',
+				'Step 3: Generate Embeddings',
 				`npx tsx scripts/generate-embeddings.ts${CONFIG.dryRun ? ' --dry-run' : ''}`,
 				false
 			);
@@ -199,7 +191,7 @@ async function runPipeline() {
 
 		console.log('✨ Your photos are now:');
 		console.log('   • AI-enriched with metadata');
-		console.log('   • Uploaded to SmugMug with EXIF');
+		console.log('   • Uploaded to Cloudflare Images');
 		console.log('   • Synced to Supabase for search');
 		if (CONFIG.withEmbeddings) {
 			console.log('   • Vector-embedded for similarity search');

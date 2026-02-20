@@ -11,7 +11,7 @@ import { trackPhotoView } from '$lib/analytics/tracker';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
-import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	// Fetch photo from Supabase using image_key
@@ -26,15 +26,14 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	}
 
 	// Transform flat Supabase data to nested Photo type (two-bucket model)
-	// Use CF Images URLs when available, SmugMug fallback otherwise
 	const cfId = photoData.cf_image_id;
 	const photo: Photo = {
 		id: photoData.image_key,
 		image_key: photoData.image_key,
 		cf_image_id: cfId || undefined,
-		image_url: hasCFImage(cfId) ? cfImageUrl(cfId, 'large') : photoData.ImageUrl,
-		thumbnail_url: hasCFImage(cfId) ? cfImageUrl(cfId, 'thumbnail') : photoData.ThumbnailUrl,
-		original_url: hasCFImage(cfId) ? cfImageUrl(cfId, 'public') : photoData.OriginalUrl,
+		image_url: cfImageUrl(cfId, 'large'),
+		thumbnail_url: cfImageUrl(cfId, 'thumbnail'),
+		original_url: cfImageUrl(cfId, 'public'),
 		title: photoData.album_name || 'Untitled Photo',
 		caption: photoData.composition || '',
 		keywords: [],
@@ -66,8 +65,8 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			ai_confidence: photoData.ai_confidence || 0,
 			enriched_at: photoData.enriched_at || new Date().toISOString()
 		},
-		// SmugMug metadata for enhanced Schema.org markup
-		smugmug: {
+		// EXIF metadata for enhanced Schema.org markup
+		exif: {
 			photo_date: photoData.photo_date || undefined,
 			upload_date: photoData.upload_date || undefined,
 			width: photoData.width || undefined,

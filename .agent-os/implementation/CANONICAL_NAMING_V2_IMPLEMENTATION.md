@@ -2,7 +2,7 @@
 
 **Date:** 2025-10-28
 **Status:** ✅ Complete
-**Version:** 2.0 - SmugMug API & EXIF-Driven
+**Version:** 2.0 - API & EXIF-Driven
 
 ---
 
@@ -16,7 +16,7 @@
 - Teams/events extracted via regex parsing
 
 **v2.0 (NEW):**
-- Uses SmugMug API + photo EXIF as primary source of truth
+- Uses album API data + photo EXIF as primary source of truth
 - Dates extracted from EXIF DateTimeOriginal (most reliable)
 - Teams/events from AI enrichment metadata
 - Existing names only used for drift scoring
@@ -27,14 +27,14 @@
 
 ### 1. New Interfaces
 
-#### `SmugMugAlbumData` (Primary Input)
+#### `AlbumData` (Primary Input)
 
 ```typescript
-interface SmugMugAlbumData {
+interface AlbumData {
   albumKey: string;
   name: string; // Existing name (for drift scoring only)
 
-  // Date fields from SmugMug API
+  // Date fields from album metadata
   dateStart?: string;
   dateEnd?: string;
 
@@ -89,7 +89,7 @@ interface CanonicalNameResult {
 
 ### 2. New Core Function
 
-#### `generateCanonicalNameFromSmugMug(album: SmugMugAlbumData)`
+#### `generateCanonicalNameFromAlbum(album: AlbumData)`
 
 **Algorithm:**
 
@@ -99,7 +99,7 @@ interface CanonicalNameResult {
 
 2. **Extract Dates:**
    - Priority 1: EXIF `DateTimeOriginal` from photos (HIGH confidence)
-   - Priority 2: SmugMug `dateStart`/`dateEnd` (MEDIUM confidence)
+   - Priority 2: Album `dateStart`/`dateEnd` (MEDIUM confidence)
    - Priority 3: Infer from `album.name` (LOW confidence)
 
 3. **Generate Canonical Name:**
@@ -182,12 +182,12 @@ Measures how different the proposed name is from the existing name:
 
 ### 5. CLI Enhancements
 
-#### New `--smugmug` Flag
+#### New `--album` Flag
 
 ```bash
-# Generate from SmugMug album JSON
+# Generate from album JSON
 npx tsx scripts/generate-canonical-name.ts \
-  --smugmug album-data.json \
+  --album album-data.json \
   --json
 ```
 
@@ -280,8 +280,8 @@ npx tsx scripts/generate-canonical-name.ts \
 ### Core Implementation
 
 1. **[src/lib/utils/canonical-album-naming.ts](../src/lib/utils/canonical-album-naming.ts)**
-   - Added `SmugMugAlbumData` interface
-   - Added `generateCanonicalNameFromSmugMug()` function
+   - Added `AlbumData` interface (renamed from SmugMugAlbumData)
+   - Added `generateCanonicalNameFromAlbum()` function (renamed from generateCanonicalNameFromSmugMug)
    - Added `extractDateRange()` with EXIF priority
    - Added `normalizeExifDate()` timezone-safe parser
    - Added `calculateDriftScore()` with Levenshtein distance
@@ -290,8 +290,8 @@ npx tsx scripts/generate-canonical-name.ts \
    - Marked `generateCanonicalName()` as `@deprecated`
 
 2. **[scripts/generate-canonical-name.ts](../scripts/generate-canonical-name.ts)**
-   - Added `--smugmug <path>` flag
-   - Added `processSmugMugAlbum()` function
+   - Added `--album <path>` flag
+   - Added `processAlbumData()` function
    - Updated help text with examples
    - Added JSON file loading
    - Enhanced output with drift analysis
@@ -299,7 +299,7 @@ npx tsx scripts/generate-canonical-name.ts \
 ### Documentation
 
 3. **[.agent-os/ENRICHMENT_PIPELINE_INTEGRATION.md](.agent-os/ENRICHMENT_PIPELINE_INTEGRATION.md)**
-   - Updated to v2.0 (SmugMug API & EXIF-Driven)
+   - Updated to v2.0 (API & EXIF-Driven)
    - Added TypeScript integration example
    - Added Python integration example with temp file handling
    - Updated data flow diagrams
@@ -327,9 +327,9 @@ const result = generateCanonicalName({
 **New Code:**
 
 ```typescript
-import { generateCanonicalNameFromSmugMug } from './src/lib/utils/canonical-album-naming';
+import { generateCanonicalNameFromAlbum, type AlbumData } from './src/lib/utils/canonical-album-naming';
 
-const result = generateCanonicalNameFromSmugMug({
+const result = generateCanonicalNameFromAlbum({
   albumKey: "abc123",
   name: "HS VB - Team A vs Team B - 2025",
   photos: [
@@ -351,13 +351,13 @@ console.log(result.metadata.dateSource); // "exif"
 ## Next Steps
 
 1. **Integrate into Enrichment Pipeline:**
-   - Update photo upload script to use `generateCanonicalNameFromSmugMug()`
-   - Fetch album data + photos from SmugMug API
+   - Update photo upload script to use `generateCanonicalNameFromAlbum()`
+   - Fetch album data + photos from Supabase
    - Pass AI enrichment data (teams, events, sport)
-   - Update album names in SmugMug if drift > 20
+   - Update album names in Supabase if drift > 20
 
 2. **Apply to Existing Albums:**
-   - Create script to fetch all albums from SmugMug
+   - Create script to fetch all albums from Supabase
    - Generate canonical names with drift analysis
    - Review proposals sorted by drift score
    - Batch update albums with high drift scores
@@ -376,7 +376,7 @@ console.log(result.metadata.dateSource); // "exif"
 2. **Accuracy:** No more timezone shift bugs
 3. **Confidence:** Algorithm reports data source and confidence level
 4. **Traceability:** Drift score shows exactly how names changed
-5. **Maintainability:** Single source of truth in SmugMug API
+5. **Maintainability:** Single source of truth in album metadata
 6. **Consistency:** Same algorithm for new + existing albums
 
 ---

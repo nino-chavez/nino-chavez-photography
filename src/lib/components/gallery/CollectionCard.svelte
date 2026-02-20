@@ -5,7 +5,7 @@
   - Smooth gradient reveal on hover
   - Content slides up with image zoom
   - Gold accent shine effect
-  - Optimized image loading with SmugMug sizes
+  - Optimized image loading with Cloudflare Images
   - Fully accessible with keyboard navigation
   - Adheres to design system (charcoal/gold theme)
 
@@ -19,7 +19,6 @@
 <script lang="ts">
 	import { Award } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
-	import { replaceSmugMugSize } from '$lib/utils/smugmug-image-optimizer';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { CoverPhotoRow } from '$types/database';
 
@@ -41,22 +40,11 @@
 
 	let isPortfolio = $derived(collection.slug === 'portfolio-excellence');
 
-	// Get optimized image URL - CF Images with SmugMug fallback
-	function getSmugMugImageUrl(imageUrl: string | null): string {
-		if (!imageUrl) return '';
-
-		if (imageUrl.includes('smugmug.com')) {
-			return replaceSmugMugSize(imageUrl, 'M');
-		}
-
-		return imageUrl;
-	}
-
-	// CF Images with SmugMug fallback for cover
+	// CF Images for cover
 	let coverImageUrl = $derived(
 		hasCFImage(collection.coverPhoto?.cf_image_id)
 			? cfImageUrl(collection.coverPhoto!.cf_image_id!, 'medium')
-			: getSmugMugImageUrl(collection.coverPhoto?.ImageUrl || null)
+			: ''
 	);
 </script>
 

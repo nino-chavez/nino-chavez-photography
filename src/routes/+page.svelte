@@ -2,7 +2,6 @@
 	import type { PageData } from './$types';
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
-	import { getSmugMugUrl, getProxiedImageUrl } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
@@ -14,35 +13,14 @@
 
 	let { data }: Props = $props();
 
-	// Get optimized image URL - CF Images with SmugMug fallback
+	// Get optimized image URL via CF Images
 	function getOptimizedImageUrl(imageUrl: string | null, width: number, cfId?: string | null): string {
 		if (!imageUrl) return '';
 
-		// CF Images path: use named variants
 		if (hasCFImage(cfId)) {
-			if (width >= 800) return cfImageUrl(cfId, 'large');   // 1600px
-			if (width >= 400) return cfImageUrl(cfId, 'medium');  // 800px
-			return cfImageUrl(cfId, 'grid');                       // 400px
-		}
-
-		// SmugMug fallback
-		if (imageUrl.includes('smugmug.com')) {
-			let size: 'S' | 'M' | 'L' | 'XL' | 'X2' = 'L';
-			if (width >= 800) size = 'X2';
-			else if (width >= 600) size = 'XL';
-			else if (width >= 400) size = 'L';
-			else size = 'M';
-
-			return getSmugMugUrl(imageUrl, size);
-		}
-
-		// Supabase storage optimization
-		if (imageUrl.includes('supabase')) {
-			const url = new URL(imageUrl);
-			url.searchParams.set('width', width.toString());
-			url.searchParams.set('quality', '85');
-			url.searchParams.set('format', 'webp');
-			return url.toString();
+			if (width >= 800) return cfImageUrl(cfId, 'large');
+			if (width >= 400) return cfImageUrl(cfId, 'medium');
+			return cfImageUrl(cfId, 'grid');
 		}
 
 		return imageUrl;

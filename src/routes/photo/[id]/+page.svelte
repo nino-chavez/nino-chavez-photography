@@ -4,7 +4,6 @@
 	import PhotoDetailModal from '$lib/components/gallery/PhotoDetailModal.svelte';
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
-	import { getOptimizedSmugMugUrl, getSmugMugSrcSet, isSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { formatSport, formatCategory, formatComposition } from '$lib/utils/format-metadata';
 	import type { PageData } from './$types';
@@ -14,30 +13,19 @@
 
 	let showModal = $state(true);
 
-	// Optimize image URL - CF Images with SmugMug fallback
+	// Optimize image URL via CF Images
 	const optimizedImageUrl = $derived.by(() => {
 		if (hasCFImage(data.photo.cf_image_id)) {
 			return cfImageUrl(data.photo.cf_image_id, 'large');
 		}
-
-		const baseUrl = data.photo.original_url || data.photo.image_url;
-		if (!baseUrl) return data.photo.image_url;
-
-		if (isSmugMugUrl(baseUrl)) {
-			return getOptimizedSmugMugUrl(baseUrl, 'download') || baseUrl;
-		}
-
-		return baseUrl;
+		return data.photo.original_url || data.photo.image_url;
 	});
 
 	const imageSrcSet = $derived.by(() => {
 		if (hasCFImage(data.photo.cf_image_id)) {
 			return cfSrcSet(data.photo.cf_image_id);
 		}
-
-		const baseUrl = data.photo.original_url || data.photo.image_url;
-		if (!baseUrl || !isSmugMugUrl(baseUrl)) return undefined;
-		return getSmugMugSrcSet(baseUrl);
+		return undefined;
 	});
 
 	function handleClose() {
@@ -60,11 +48,11 @@
 	const baseUrl = 'https://photography.ninochavez.co';
 
 	let schemaData = $derived.by(() => {
-	const imageUrl = data.photo.image_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || '';
-	const thumbnailUrl = data.photo.thumbnail_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || imageUrl;
-	const originalUrl = data.photo.original_url?.replace('photos.smugmug.com', 'ninochavez.smugmug.com') || imageUrl;
-	const imageWidth = data.photo.smugmug?.width;
-	const imageHeight = data.photo.smugmug?.height;
+	const imageUrl = data.photo.image_url || '';
+	const thumbnailUrl = data.photo.thumbnail_url || imageUrl;
+	const originalUrl = data.photo.original_url || imageUrl;
+	const imageWidth = data.photo.exif?.width;
+	const imageHeight = data.photo.exif?.height;
 
 	return {
 		'@context': 'https://schema.org',
@@ -182,8 +170,8 @@
 				<!-- CLS Fix: Reserve space with aspect-ratio to prevent layout shifts -->
 				<div
 					class="relative w-full rounded-lg overflow-hidden mb-4 bg-charcoal-800"
-					style="aspect-ratio: {data.photo.smugmug?.width && data.photo.smugmug?.height
-						? `${data.photo.smugmug.width} / ${data.photo.smugmug.height}`
+					style="aspect-ratio: {data.photo.exif?.width && data.photo.exif?.height
+						? `${data.photo.exif.width} / ${data.photo.exif.height}`
 						: '4 / 3'};"
 				>
 					<img
@@ -212,23 +200,23 @@
 					{/if}
 				</div>
 
-				<!-- EXIF Data (technical specs from SmugMug) -->
-				{#if data.photo.smugmug}
+				<!-- EXIF Data (technical specs) -->
+				{#if data.photo.exif}
 					<div class="flex flex-wrap gap-4 text-sm text-charcoal-400 mb-4 font-mono">
-						{#if data.photo.smugmug.width && data.photo.smugmug.height}
-							<span>{data.photo.smugmug.width} × {data.photo.smugmug.height}</span>
+						{#if data.photo.exif.width && data.photo.exif.height}
+							<span>{data.photo.exif.width} × {data.photo.exif.height}</span>
 						{/if}
-						{#if data.photo.smugmug.aperture}
-							<span>ƒ/{data.photo.smugmug.aperture}</span>
+						{#if data.photo.exif.aperture}
+							<span>ƒ/{data.photo.exif.aperture}</span>
 						{/if}
-						{#if data.photo.smugmug.shutter_speed}
-							<span>{data.photo.smugmug.shutter_speed}s</span>
+						{#if data.photo.exif.shutter_speed}
+							<span>{data.photo.exif.shutter_speed}s</span>
 						{/if}
-						{#if data.photo.smugmug.iso}
-							<span>ISO {data.photo.smugmug.iso}</span>
+						{#if data.photo.exif.iso}
+							<span>ISO {data.photo.exif.iso}</span>
 						{/if}
-						{#if data.photo.smugmug.focal_length}
-							<span>{data.photo.smugmug.focal_length}mm</span>
+						{#if data.photo.exif.focal_length}
+							<span>{data.photo.exif.focal_length}mm</span>
 						{/if}
 					</div>
 				{/if}

@@ -3,8 +3,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { base } from '$app/paths';
-	import { replaceSmugMugSize, SMUGMUG_SIZES } from '$lib/utils/smugmug-image-optimizer';
-	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -18,64 +17,30 @@
 	let downloading = $state(false);
 	let downloadSuccess = $state(false);
 
-	/**
-	 * Get SmugMug URL with specific size using centralized optimizer.
-	 */
-	function getSizedUrl(imageUrl: string | undefined, size: 'O' | 'L' | 'S'): string | undefined {
-		if (!imageUrl) return undefined;
-		if (!imageUrl.includes('smugmug.com')) return imageUrl;
-
-		const optimized = replaceSmugMugSize(imageUrl, size);
-		const final = optimized.replace('gallery.ninochavez.co/proxy/', '');
-		return final;
-	}
-
-	// Download size options: CF Images path or SmugMug fallback
-	const downloadOptions = $derived(hasCFImage(photo.cf_image_id) ? [
+	// Download size options via Cloudflare Images
+	const downloadOptions = $derived([
 		{
 			label: 'Original Quality',
 			description: 'Full resolution, best for print',
-			url: cfImageUrl(photo.cf_image_id, 'public'),
+			url: cfImageUrl(photo.cf_image_id!, 'public'),
 			filename: `${photo.image_key}_original.jpg`,
 			size: '1-5 MB'
 		},
 		{
 			label: 'Web Quality',
 			description: 'Optimized for web and social media (1600px)',
-			url: cfImageUrl(photo.cf_image_id, 'large'),
+			url: cfImageUrl(photo.cf_image_id!, 'large'),
 			filename: `${photo.image_key}_web.jpg`,
 			size: '200-400 KB'
 		},
 		{
 			label: 'Thumbnail',
 			description: 'Small preview size (400px)',
-			url: cfImageUrl(photo.cf_image_id, 'grid'),
+			url: cfImageUrl(photo.cf_image_id!, 'grid'),
 			filename: `${photo.image_key}_thumb.jpg`,
 			size: '20-40 KB'
 		}
-	] : [
-		{
-			label: 'Original Quality',
-			description: 'Full resolution, best for print',
-			url: getSizedUrl(photo.image_url, 'O'),
-			filename: `${photo.image_key}_original.jpg`,
-			size: SMUGMUG_SIZES.O.typicalSize
-		},
-		{
-			label: 'Web Quality',
-			description: 'Optimized for web and social media (1024px)',
-			url: getSizedUrl(photo.image_url, 'L'),
-			filename: `${photo.image_key}_web.jpg`,
-			size: SMUGMUG_SIZES.L.typicalSize
-		},
-		{
-			label: 'Thumbnail',
-			description: 'Small preview size (400px)',
-			url: getSizedUrl(photo.image_url, 'S'),
-			filename: `${photo.image_key}_thumb.jpg`,
-			size: SMUGMUG_SIZES.S.typicalSize
-		}
-	].filter((option): option is typeof option & { url: string } => !!option.url));
+	]);
 
 	async function handleDownload(url: string, filename: string, event?: MouseEvent) {
 		event?.stopPropagation();

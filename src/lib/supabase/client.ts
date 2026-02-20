@@ -17,8 +17,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { getOptimizedSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
-import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
 // Browser-safe environment variables (VITE_ prefix = exposed to browser)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -134,31 +133,13 @@ export async function fetchPhotosByPeriod(options: {
           return {
             ...period,
             featuredPhotos: (photos || []).map((row: any) => {
-              // CF Images with SmugMug fallback
-              let imageUrl: string;
-              let thumbnailUrl: string | undefined;
-              let originalUrl: string | undefined;
-
-              if (hasCFImage(row.cf_image_id)) {
-                imageUrl = cfImageUrl(row.cf_image_id, 'grid');
-                thumbnailUrl = cfImageUrl(row.cf_image_id, 'thumbnail');
-                originalUrl = cfImageUrl(row.cf_image_id, 'public');
-              } else {
-                const baseImageUrl = (row.ImageUrl || row.OriginalUrl || '').replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-                const baseThumbnailUrl = row.ThumbnailUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-                imageUrl = getOptimizedSmugMugUrl(baseImageUrl, 'grid') || baseImageUrl;
-                const isSameBaseUrl = baseThumbnailUrl && baseImageUrl.includes(row.image_key) && baseThumbnailUrl.includes(row.image_key);
-                thumbnailUrl = isSameBaseUrl ? undefined : (getOptimizedSmugMugUrl(baseThumbnailUrl, 'thumbnail') || baseThumbnailUrl);
-                originalUrl = row.OriginalUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-              }
-
               return {
               id: row.photo_id,
               image_key: row.image_key,
               cf_image_id: row.cf_image_id || undefined,
-              image_url: imageUrl,
-              thumbnail_url: thumbnailUrl,
-              original_url: originalUrl,
+              image_url: cfImageUrl(row.cf_image_id, 'grid'),
+              thumbnail_url: cfImageUrl(row.cf_image_id, 'thumbnail'),
+              original_url: cfImageUrl(row.cf_image_id, 'public'),
               title: row.image_key,
               caption: '',
               keywords: [],
@@ -255,27 +236,13 @@ export async function fetchPhotosByPeriod(options: {
             monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
             photoCount: period.count,
             featuredPhotos: (photos || []).map((row: any) => {
-              let imageUrl: string;
-              let thumbnailUrl: string | undefined;
-              let originalUrl: string | undefined;
-
-              if (hasCFImage(row.cf_image_id)) {
-                imageUrl = cfImageUrl(row.cf_image_id, 'grid');
-                thumbnailUrl = cfImageUrl(row.cf_image_id, 'thumbnail');
-                originalUrl = cfImageUrl(row.cf_image_id, 'public');
-              } else {
-                imageUrl = row.ImageUrl || row.OriginalUrl || '';
-                thumbnailUrl = row.ThumbnailUrl || undefined;
-                originalUrl = row.OriginalUrl || undefined;
-              }
-
               return {
               id: row.photo_id,
               image_key: row.image_key,
               cf_image_id: row.cf_image_id || undefined,
-              image_url: imageUrl,
-              thumbnail_url: thumbnailUrl,
-              original_url: originalUrl,
+              image_url: cfImageUrl(row.cf_image_id, 'grid'),
+              thumbnail_url: cfImageUrl(row.cf_image_id, 'thumbnail'),
+              original_url: cfImageUrl(row.cf_image_id, 'public'),
               title: row.image_key,
               caption: '',
               keywords: [],

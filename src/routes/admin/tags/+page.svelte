@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -91,9 +92,9 @@
 						<li class="px-4 py-4 sm:px-6">
 							<div class="flex items-center justify-between">
 								<div class="flex items-center space-x-4">
-									{#if tag.photo?.ThumbnailUrl}
+									{#if tag.photo?.cf_image_id}
 										<img
-											src={tag.photo.ThumbnailUrl}
+											src={cfImageUrl(tag.photo.cf_image_id, 'thumbnail')}
 											alt="Thumbnail for {tag.athlete_name} tag"
 											class="h-16 w-16 rounded object-cover"
 										/>

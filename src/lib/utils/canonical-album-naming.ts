@@ -17,14 +17,13 @@ export const MAX_LENGTH_IDEAL = 35; // Optimal for scanning (1 line)
 export const MAX_LENGTH_HARD = 45; // Absolute maximum (2 lines mobile)
 
 /**
- * SmugMug Album Data (from API)
- * Primary source of truth for canonical name generation
+ * Album Data for canonical name generation
  */
-export interface SmugMugAlbumData {
+export interface AlbumData {
 	albumKey: string;
 	name: string; // Existing name (used for drift scoring only)
 
-	// Date fields from SmugMug API
+	// Date fields
 	dateStart?: string; // Album start date (ISO format)
 	dateEnd?: string; // Album end date (ISO format)
 
@@ -88,13 +87,13 @@ export interface CanonicalNameResult {
 }
 
 /**
- * Generate canonical name from SmugMug album data (PRIMARY METHOD)
+ * Generate canonical name from album data (PRIMARY METHOD)
  *
- * Uses SmugMug API data and photo EXIF as primary sources of truth.
+ * Uses album data and photo EXIF as primary sources of truth.
  * Existing album name is only used for drift analysis, not as input.
  */
-export function generateCanonicalNameFromSmugMug(
-	album: SmugMugAlbumData
+export function generateCanonicalNameFromAlbum(
+	album: AlbumData
 ): CanonicalNameResult {
 	const parts: string[] = [];
 	let isMatchup = false;
@@ -130,14 +129,14 @@ export function generateCanonicalNameFromSmugMug(
 	}
 
 	// 2. Date (SECONDARY differentiator)
-	// Priority: EXIF DateTimeOriginal > SmugMug dateStart/dateEnd > infer from existing name
+	// Priority: EXIF DateTimeOriginal > album dateStart/dateEnd > infer from existing name
 	const dateResult = extractDateRange(album);
 	const earliest = dateResult.earliest;
 	const latest = dateResult.latest;
 	dateSource = dateResult.source;
 
 	if (dateResult.source === 'exif' || dateResult.source === 'album_field') {
-		// High confidence if from EXIF or SmugMug fields
+		// High confidence if from EXIF or album fields
 		if (confidence === 'low') confidence = 'medium';
 	}
 
@@ -181,10 +180,10 @@ export function generateCanonicalNameFromSmugMug(
 }
 
 /**
- * Extract date range from SmugMug album data
- * Priority: EXIF DateTimeOriginal > SmugMug dateStart/dateEnd > infer from name
+ * Extract date range from album data
+ * Priority: EXIF DateTimeOriginal > album dateStart/dateEnd > infer from name
  */
-function extractDateRange(album: SmugMugAlbumData): {
+function extractDateRange(album: AlbumData): {
 	earliest: string | undefined;
 	latest: string | undefined;
 	source: 'exif' | 'album_field' | 'inferred' | 'fallback';
@@ -207,7 +206,7 @@ function extractDateRange(album: SmugMugAlbumData): {
 		}
 	}
 
-	// Priority 2: Use SmugMug album date fields
+	// Priority 2: Use album date fields
 	if (album.dateStart || album.dateEnd) {
 		return {
 			earliest: album.dateStart,
@@ -397,7 +396,7 @@ function levenshteinDistance(a: string, b: string): number {
 /**
  * Generate canonical album name from metadata (LEGACY METHOD)
  *
- * @deprecated Use generateCanonicalNameFromSmugMug() instead for new code
+ * @deprecated Use generateCanonicalNameFromAlbum() instead for new code
  */
 export function generateCanonicalName(input: AlbumNameInput): CanonicalNameResult {
 	const parts: string[] = [];
@@ -647,11 +646,11 @@ export function validateCanonicalName(name: string): {
 }
 
 /**
- * Generate canonical name from SmugMug album data (LEGACY WRAPPER)
+ * Generate canonical name from album data (LEGACY WRAPPER)
  *
- * @deprecated Use generateCanonicalNameFromSmugMug() with full SmugMugAlbumData instead
+ * @deprecated Use generateCanonicalNameFromAlbum() with full AlbumData instead
  */
-export function fromSmugMugAlbum(albumData: {
+export function fromAlbumData(albumData: {
 	name: string;
 	keywords?: string[];
 	earliestDate?: string;

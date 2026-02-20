@@ -14,6 +14,7 @@
  */
 
 import { supabaseServer } from '$lib/supabase/server';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
 interface MonthCardData {
@@ -93,7 +94,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		// Build photo query with filters
 		let photoQuery = supabaseServer
 			.from('photo_metadata')
-			.select('ThumbnailUrl, sport_type, photo_category, composition_score, sharpness')
+			.select('cf_image_id, sport_type, photo_category, composition_score, sharpness')
 			.gte('upload_date', monthStart.toISOString())
 			.lte('upload_date', monthEnd.toISOString());
 
@@ -154,7 +155,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			month: monthRow.month - 1, // Convert to 0-indexed
 			monthName: MONTH_NAMES[monthRow.month - 1],
 			photoCount: sportFilter || categoryFilter ? stats?.length || 0 : monthRow.photo_count,
-			coverImageUrl: heroPhoto?.ThumbnailUrl || null,
+			coverImageUrl: heroPhoto?.cf_image_id ? cfImageUrl(heroPhoto.cf_image_id, 'medium') : null,
 			primarySport: primarySport || undefined,
 			primaryCategory: primaryCategory || undefined
 		});

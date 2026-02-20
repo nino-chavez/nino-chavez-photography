@@ -1,4 +1,5 @@
 import { supabaseServer } from '$lib/supabase/server';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -95,7 +96,13 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	// Apply pagination
 	query = query.range(offset, offset + limit - 1);
 
-	const { data: albumsData, error, count } = await query;
+	const [{ data: albumsData, error, count }, { data: unlistedAlbums }] = await Promise.all([
+		query,
+		supabaseServer
+			.from('album_settings')
+			.select('album_key')
+			.eq('visibility', 'unlisted')
+	]);
 
 	if (error) {
 		console.error('[Albums] Error fetching from albums_summary view:', error);
@@ -103,8 +110,10 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		return await loadAlbumsLegacy(page, sortBy, limit, offset);
 	}
 
-	// Map materialized view results to expected format
-	const albums = (albumsData || []).map((album) => ({
+	const unlistedKeys = new Set((unlistedAlbums || []).map((a: { album_key: string }) => a.album_key));
+
+	// Map materialized view results to expected format, filtering out unlisted albums
+	const albums = (albumsData || []).filter((album) => !unlistedKeys.has(album.album_key)).map((album) => ({
 		albumKey: album.album_key,
 		albumName: album.album_name || 'Unknown Album',
 		photoCount: parseInt(album.photo_count) || 0,
@@ -122,7 +131,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		}
 	}));
 
-	const totalAlbums = count || 0;
+	const totalAlbums = (count || 0) - unlistedKeys.size;
 	const totalPages = Math.ceil(totalAlbums / limit);
 
 	return {
@@ -157,7 +166,7 @@ async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number,
 	for (const row of albumData || []) {
 		const key = (row as any).album_key;
 		const name = (row as any).album_name || 'Unknown Album';
-		const coverUrl = (row as any).ThumbnailUrl || (row as any).ImageUrl || null;
+		const coverUrl = (row as any).cf_image_id ? cfImageUrl((row as any).cf_image_id, 'medium') : null;
 		const sport = (row as any).sport_type || 'unknown';
 		const category = (row as any).photo_category || 'unknown';
 		const sharpness = parseFloat((row as any).sharpness) || 0;

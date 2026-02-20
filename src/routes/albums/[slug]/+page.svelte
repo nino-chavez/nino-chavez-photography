@@ -9,6 +9,7 @@
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 
@@ -108,7 +109,7 @@
 					</Typography>
 				</div>
 
-				<!-- Desktop search -->
+				<!-- Desktop search + download -->
 				<div class="hidden md:flex items-center gap-2">
 					<button
 						type="button"
@@ -126,6 +127,11 @@
 							class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
 						/>
 					</div>
+					<BulkDownloadButton
+						albumKey={data.albumKey}
+						albumName={data.albumName}
+						photoCount={data.totalCount}
+					/>
 				</div>
 			</div>
 

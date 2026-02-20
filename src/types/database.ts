@@ -57,7 +57,7 @@ export interface PhotoMetadataRow {
 	ai_cost: number | null;
 	ai_confidence: number | null;
 
-	// Image dimensions (from SmugMug ArchivedSize)
+	// Image dimensions
 	width: number | null;
 	height: number | null;
 	aspect_ratio: string | null; // Stored as DECIMAL string, cast to number in queries
@@ -156,6 +156,18 @@ export interface RelatedPhotoRow {
 	sport_type: string;
 	photo_category: string;
 	emotion: string | null;
+}
+
+/**
+ * Album settings row from album_settings table
+ * Controls visibility and share tokens for unlisted albums
+ */
+export interface AlbumSettingsRow {
+	album_key: string;
+	visibility: 'public' | 'unlisted';
+	share_token: string;
+	created_at: string;
+	updated_at: string;
 }
 
 /**

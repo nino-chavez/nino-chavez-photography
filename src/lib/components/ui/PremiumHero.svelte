@@ -22,8 +22,7 @@
   import Typography from './Typography.svelte';
   import { cn } from '$lib/utils';
   import { base } from '$app/paths';
-  import { replaceSmugMugSize, type SmugMugSize } from '$lib/utils/smugmug-image-optimizer';
-  import { cfImageUrl, type CFVariant } from '$lib/utils/cloudflare-images';
+  import { type CFVariant } from '$lib/utils/cloudflare-images';
 
   interface Props {
     images?: string[];
@@ -115,30 +114,7 @@
         mobile: 'medium',
         thumbnail: 'thumbnail'
       };
-      // Replace the last path segment (variant name)
       return imageUrl.replace(/\/[^/]+$/, `/${cfVariantMap[size]}`);
-    }
-
-    if (imageUrl.includes('smugmug.com')) {
-      const sizeMap: Record<typeof size, SmugMugSize> = {
-        desktop: 'X2',
-        mobile: 'L',
-        thumbnail: 'Th'
-      };
-      return replaceSmugMugSize(imageUrl, sizeMap[size]);
-    }
-
-    if (imageUrl.includes('supabase')) {
-      const url = new URL(imageUrl);
-      if (size === 'thumbnail') {
-        url.searchParams.set('width', '100');
-        url.searchParams.set('quality', '60');
-      } else {
-        url.searchParams.set('width', size === 'mobile' ? '800' : '1200');
-        url.searchParams.set('quality', '85');
-      }
-      url.searchParams.set('format', 'webp');
-      return url.toString();
     }
 
     return imageUrl;

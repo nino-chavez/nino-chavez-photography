@@ -38,7 +38,7 @@
 │  │                    SvelteKit Server                                  │    │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │    │
 │  │  │  Server Load │  │   Supabase   │  │    Utils     │               │    │
-│  │  │  Functions   │  │   Server     │  │  (SmugMug)   │               │    │
+│  │  │  Functions   │  │   Server     │  │  (CF Images) │               │    │
 │  │  └──────┬───────┘  └──────┬───────┘  └──────────────┘               │    │
 │  └─────────┼────────────────┬┼──────────────────────────────────────────┘    │
 │            │                ││                                               │
@@ -49,11 +49,11 @@
 │                         EXTERNAL SERVICES                                    │
 │                                                                              │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
-│  │    Supabase      │  │     SmugMug      │  │   Cloudflare     │          │
-│  │   PostgreSQL     │  │      CDN         │  │   Analytics      │          │
+│  │    Supabase      │  │   Cloudflare     │  │   Cloudflare     │          │
+│  │   PostgreSQL     │  │    Images        │  │   Analytics      │          │
 │  │                  │  │                  │  │                  │          │
 │  │  photo_metadata  │  │  Original photos │  │  Web Analytics   │          │
-│  │  albums_summary  │  │  (via signed     │  │                  │          │
+│  │  albums_summary  │  │  (via delivery   │  │                  │          │
 │  │  user_tags       │  │   URLs)          │  │                  │          │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
 │                                                                              │
@@ -69,7 +69,7 @@
 | **Animation** | svelte-motion | Component animations |
 | **Icons** | lucide-svelte | Icon library |
 | **Database** | Supabase PostgreSQL | Photo metadata, user data |
-| **Photo CDN** | SmugMug | Original photo hosting |
+| **Photo CDN** | Cloudflare Images | Original photo hosting |
 | **Hosting** | Vercel | Edge deployment |
 | **Analytics** | Cloudflare Web Analytics | Privacy-first analytics |
 
@@ -107,7 +107,7 @@
 │ 4. SVELTE COMPONENT RENDER                                                   │
 │    a. Receive data via $props()                                             │
 │    b. Derive display state ($derived)                                       │
-│    c. Render PhotoGrid with optimized SmugMug URLs                          │
+│    c. Render PhotoGrid with optimized Cloudflare Images URLs                │
 │    d. Hydrate for client-side interactivity                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -116,8 +116,8 @@
 
 ```
 ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-│   SmugMug     │      │   Supabase    │      │   SvelteKit   │
-│   (Photos)    │      │  (Metadata)   │      │   (Display)   │
+│  Cloudflare   │      │   Supabase    │      │   SvelteKit   │
+│   Images      │      │  (Metadata)   │      │   (Display)   │
 └───────┬───────┘      └───────┬───────┘      └───────┬───────┘
         │                      │                      │
         │  Upload/Sync         │                      │
@@ -171,14 +171,14 @@ Photo {
   thumbnail_url: string  // Normalized URL
   original_url: string   // Normalized URL
   metadata: PhotoMetadata
-  smugmug?: SmugMugData
+  cloudflare?: CloudflareImageData
   keywords: string[]
 }
         │
-        │ getOptimizedSmugMugUrl()
+        │ getCloudflareImageUrl()
         ▼
 // Display URL (size-optimized)
-"https://photos.smugmug.com/photo-XL.jpg"
+"https://imagedelivery.net/<account_hash>/<image_id>/public"
 ```
 
 ---
@@ -340,8 +340,8 @@ src/routes/
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ LEVEL 2: SmugMug CDN                                                         │
-│ • Photo images (all sizes)                                                   │
+│ LEVEL 2: Cloudflare Images CDN                                                │
+│ • Photo images (all variants)                                                │
 │ • Cache-Control: max-age=31536000 (1 year)                                  │
 │ • Scope: Global CDN                                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -386,22 +386,18 @@ Key indexes for performance (see `database/performance-indexes.sql`):
 ### Image Optimization
 
 ```typescript
-// SmugMug size suffixes
-const SIZES = {
-  'Ti': 100,   // Tiny
-  'Th': 150,   // Thumbnail
-  'S': 400,    // Small
-  'M': 600,    // Medium
-  'L': 800,    // Large
-  'XL': 1024,  // Extra Large
-  'X2': 1600,  // 2X
-  'X3': 2048,  // 3X (download quality)
+// Cloudflare Images named variants
+const VARIANTS = {
+  'thumbnail': 150,   // Grid thumbnails
+  'small': 400,       // Small display
+  'medium': 800,      // Medium display
+  'large': 1600,      // Large display
+  'public': 2048,     // Full size / download
 }
 
 // Usage in components
-getOptimizedSmugMugUrl(url, 'thumbnail')  // Grid thumbnails
-getOptimizedSmugMugUrl(url, 'download')   // Lightbox/detail view
-getSmugMugSrcSet(url)                     // Responsive srcset
+getCloudflareImageUrl(imageId, 'thumbnail')  // Grid thumbnails
+getCloudflareImageUrl(imageId, 'public')     // Lightbox/detail view
 ```
 
 ---
@@ -431,7 +427,7 @@ getSmugMugSrcSet(url)                     // Responsive srcset
 | Data Type | Protection |
 |-----------|------------|
 | Photo metadata | Supabase RLS (read-only public) |
-| Photo URLs | SmugMug signed URLs |
+| Photo URLs | Cloudflare Images delivery URLs |
 | User favorites | localStorage (client-only) |
 | Search queries | Server-side sanitization |
 

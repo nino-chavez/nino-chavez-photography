@@ -158,8 +158,8 @@
 										photo={{
 											id: photo.image_key,
 											image_key: photo.image_key,
-											image_url: photo.ImageUrl || '',
-											thumbnail_url: photo.ThumbnailUrl || undefined,
+											image_url: photo.thumbnail_url || '',
+											thumbnail_url: photo.thumbnail_url || undefined,
 											title: '',
 											caption: '',
 											keywords: [],

@@ -36,31 +36,6 @@ AI agents can hallucinate new approaches or mix patterns from different projects
 
 ---
 
-### [smugmug-api.md](./smugmug-api.md)
-**When to use:** SmugMug API integration, EXIF extraction
-
-**Covers:**
-- OAuth 1.0a authentication (NOT OAuth 2.0)
-- Common endpoints (albums, photos, metadata)
-- EXIF data extraction patterns
-- Rate limiting strategies
-- Batch processing patterns
-- Common mistakes to avoid
-
-**Key patterns:**
-- Must use OAuth 1.0a (SmugMug doesn't support OAuth 2.0)
-- Explicit EXIF expansion in requests
-- Rate limiting (5 requests/second)
-- Date extraction from EXIF format
-
-**Practical companion:** [smugmug-integration-practical.md](./smugmug-integration-practical.md)
-- Quick start guide
-- Working code examples
-- Real-world use cases
-- Supabase integration examples
-
----
-
 ### [typescript-patterns.md](./typescript-patterns.md)
 **When to use:** All TypeScript code in this project
 
@@ -87,7 +62,6 @@ AI agents can hallucinate new approaches or mix patterns from different projects
 
 1. **Identify the task:**
    - Database query? → Check `supabase-integration.md`
-   - SmugMug API call? → Check `smugmug-api.md`
    - TypeScript pattern? → Check `typescript-patterns.md`
 
 2. **Find the pattern:**

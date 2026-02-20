@@ -1,7 +1,7 @@
 /**
  * Download Proxy API Route
  *
- * Proxies image downloads from SmugMug or Cloudflare Images to avoid CORS issues.
+ * Proxies image downloads from Cloudflare Images to avoid CORS issues.
  * This endpoint fetches images server-side and serves them to the client.
  *
  * Usage: GET /api/download?url=[imageUrl]&filename=[filename]
@@ -10,7 +10,7 @@
 import type { RequestHandler } from './$types';
 
 /** Allowed image source domains */
-const ALLOWED_DOMAINS = ['smugmug.com', 'imagedelivery.net'];
+const ALLOWED_DOMAINS = ['imagedelivery.net'];
 
 export const GET: RequestHandler = async ({ url, fetch }) => {
   try {
@@ -25,33 +25,21 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
     // Validate URL is from an allowed domain
     const isAllowed = ALLOWED_DOMAINS.some(domain => imageUrl.includes(domain));
     if (!isAllowed) {
-      return new Response('Invalid URL - must be from SmugMug or Cloudflare Images', { status: 400 });
+      return new Response('Invalid URL - must be from Cloudflare Images', { status: 400 });
     }
 
-    // Debug: Log full URL and extracted size
-    const sizeMatch = imageUrl.match(/\/([A-Z][a-z0-9]?|[A-Z]\d)\/[^/]+\.(jpg|jpeg|png|gif)$/i);
     console.log('[Download Proxy] Request URL:', imageUrl);
-    console.log('[Download Proxy] Detected size in path:', sizeMatch?.[1] || 'unknown');
 
-    // Fetch the image from SmugMug with proper headers
+    // Fetch the image
     const response = await fetch(imageUrl, {
       method: 'GET',
       headers: {
         'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
-        'sec-fetch-dest': 'image',
-        'sec-fetch-mode': 'no-cors',
-        'sec-fetch-site': 'cross-site',
       },
     });
 
     if (!response.ok) {
-      console.error('[Download Proxy] SmugMug responded with:', response.status, response.statusText);
+      console.error('[Download Proxy] Upstream responded with:', response.status, response.statusText);
       return new Response(`Failed to fetch image: ${response.status} ${response.statusText}`, { status: response.status });
     }
 

@@ -26,10 +26,10 @@
 
 import {
 	generateCanonicalName,
-	generateCanonicalNameFromSmugMug,
+	generateCanonicalNameFromAlbum,
 	validateCanonicalName,
 	type AlbumNameInput,
-	type SmugMugAlbumData,
+	type AlbumData,
 } from '../src/lib/utils/canonical-album-naming';
 
 interface CLIOptions {
@@ -42,8 +42,8 @@ interface CLIOptions {
 	batch?: boolean;
 	validate?: boolean;
 	json?: boolean; // Output as JSON
-	smugmug?: string; // Path to SmugMug album JSON file
-	albumKey?: string; // SmugMug album key
+	albumJson?: string; // Path to album JSON file
+	albumKey?: string; // Album key
 }
 
 function parseArgs(): CLIOptions {
@@ -63,8 +63,8 @@ function parseArgs(): CLIOptions {
 			options.sport = args[++i];
 		} else if ((arg === '--date' || arg === '--dates') && args[i + 1]) {
 			options.date = args[++i];
-		} else if (arg === '--smugmug' && args[i + 1]) {
-			options.smugmug = args[++i];
+		} else if ((arg === '--album-json' || arg === '--smugmug') && args[i + 1]) {
+			options.albumJson = args[++i];
 		} else if (arg === '--album-key' && args[i + 1]) {
 			options.albumKey = args[++i];
 		} else if (arg === '--batch') {
@@ -96,17 +96,17 @@ OPTIONS:
   --sport <string>        Sport type (volleyball, basketball, etc.)
   --date <date>           Single date (ISO format)
   --dates <start,end>     Date range (comma-separated ISO dates)
-  --smugmug <path>        Path to SmugMug album JSON file (NEW: uses EXIF/API data)
-  --album-key <key>       SmugMug album key (for display in output)
+  --album-json <path>     Path to album JSON file (uses EXIF data)
+  --album-key <key>       Album key (for display in output)
   --batch                 Read album names from stdin (one per line)
   --validate              Only validate, don't generate new name
   --json                  Output as JSON
   --help, -h              Show this help message
 
 EXAMPLES:
-  # NEW: Generate from SmugMug album JSON (uses EXIF dates + enrichment)
+  # Generate from album JSON (uses EXIF dates + enrichment)
   npx tsx scripts/generate-canonical-name.ts \\
-    --smugmug album-data.json \\
+    --album-json album-data.json \\
     --json
 
   # Generate from matchup (LEGACY)
@@ -129,7 +129,7 @@ EXAMPLES:
     --name "Old Name" \\
     --json
 
-SmugMug Album JSON Format:
+Album JSON Format:
   {
     "albumKey": "abc123",
     "name": "Existing Album Name",
@@ -149,19 +149,19 @@ SmugMug Album JSON Format:
 `);
 }
 
-async function processSmugMugAlbum(options: CLIOptions): Promise<void> {
-	if (!options.smugmug) {
-		console.error('❌ Error: --smugmug path is required');
+async function processAlbumJson(options: CLIOptions): Promise<void> {
+	if (!options.albumJson) {
+		console.error('❌ Error: --album-json path is required');
 		process.exit(1);
 	}
 
-	// Load SmugMug album JSON
+	// Load album JSON
 	const fs = await import('fs');
-	const albumDataRaw = fs.readFileSync(options.smugmug, 'utf-8');
-	const albumData: SmugMugAlbumData = JSON.parse(albumDataRaw);
+	const albumDataRaw = fs.readFileSync(options.albumJson, 'utf-8');
+	const albumData: AlbumData = JSON.parse(albumDataRaw);
 
-	// Generate canonical name using new algorithm
-	const result = generateCanonicalNameFromSmugMug(albumData);
+	// Generate canonical name using primary algorithm
+	const result = generateCanonicalNameFromAlbum(albumData);
 
 	if (options.json) {
 		console.log(
@@ -341,11 +341,11 @@ const options = parseArgs();
 
 if (options.batch) {
 	batchMode();
-} else if (options.smugmug) {
-	// NEW: SmugMug album JSON mode (uses EXIF + API data)
-	processSmugMugAlbum(options);
+} else if (options.albumJson) {
+	// Album JSON mode (uses EXIF data)
+	processAlbumJson(options);
 } else if (!options.name && !options.teams && !options.event) {
-	console.error('❌ Error: Must provide --smugmug, --name, --teams, or --event');
+	console.error('❌ Error: Must provide --album-json, --name, --teams, or --event');
 	console.error('Run with --help for usage information');
 	process.exit(1);
 } else {

@@ -13,9 +13,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { Photo, PhotoFilterState } from '$types/photo';
-import type { PhotoMetadataRow, SportDistributionRow, CategoryDistributionRow } from '$types/database';
-import { getOptimizedSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
-import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+import type { PhotoMetadataRow, SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } from '$types/database';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
 // Server-side environment variables (NOT exposed to browser)
 // In SvelteKit, we need to use import.meta.env even server-side
@@ -39,29 +38,13 @@ if (!import.meta.env.VITE_SUPABASE_ANON_KEY && import.meta.env.PROD) {
 }
 
 /**
- * Transform database row to Photo type with optimized SmugMug URLs
+ * Transform database row to Photo type with Cloudflare Images URLs
  * Exported for use in other server-side loaders
  */
 export function transformPhotoRow(row: any): Photo {
-  // Cloudflare Images: use CF URLs when cf_image_id is present, else SmugMug fallback
-  let imageUrl: string;
-  let thumbnailUrl: string | undefined;
-  let originalUrl: string | undefined;
-
-  if (hasCFImage(row.cf_image_id)) {
-    imageUrl = cfImageUrl(row.cf_image_id, 'grid');
-    thumbnailUrl = cfImageUrl(row.cf_image_id, 'thumbnail');
-    originalUrl = cfImageUrl(row.cf_image_id, 'public');
-  } else {
-    const baseImageUrl = (row.ImageUrl || row.OriginalUrl || '').replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-    const baseThumbnailUrl = row.ThumbnailUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-    const baseOriginalUrl = row.OriginalUrl?.replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-
-    imageUrl = getOptimizedSmugMugUrl(baseImageUrl, 'grid') || baseImageUrl;
-    const isSameBaseUrl = baseThumbnailUrl && baseImageUrl.includes(row.image_key) && baseThumbnailUrl.includes(row.image_key);
-    thumbnailUrl = isSameBaseUrl ? undefined : (getOptimizedSmugMugUrl(baseThumbnailUrl, 'thumbnail') || baseThumbnailUrl);
-    originalUrl = baseOriginalUrl;
-  }
+  const imageUrl = cfImageUrl(row.cf_image_id, 'grid');
+  const thumbnailUrl = cfImageUrl(row.cf_image_id, 'thumbnail');
+  const originalUrl = cfImageUrl(row.cf_image_id, 'public');
 
   return {
     id: row.photo_id,
@@ -192,7 +175,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
       query = query.order('emotional_impact', { ascending: false }).order('upload_date', { ascending: false });
       break;
     case 'newest':
-      // Use upload_date (SmugMug upload) or date_added (album add) as fallback
+      // Use upload_date or date_added (album add) as fallback
       query = query.order('upload_date', { ascending: false });
       break;
     case 'oldest':
@@ -238,15 +221,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
   console.log(`[fetchPhotos] Query completed in ${queryTime}ms, returned ${data?.length || 0} photos`);
 
   // Map photo_metadata to Photo type (two-bucket model)
-  // Filter out photos with missing/invalid image URLs
   const photos: Photo[] = (data || [])
-    .filter((row: PhotoMetadataRow) => {
-      const hasValidUrl = !!(row.ImageUrl || row.OriginalUrl);
-      if (!hasValidUrl) {
-        console.warn('[fetchPhotos] Skipping photo with no valid URL:', row.image_key);
-      }
-      return hasValidUrl;
-    })
     .map((row: PhotoMetadataRow) => transformPhotoRow(row));
 
   return photos;
@@ -1243,4 +1218,65 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   // 4. Absolute last resort: Just return quality photos
   console.log('[findSimilarPhotos] All fallbacks exhausted, returning quality photos');
   return fetchPhotos({ limit, sortBy: 'quality' });
+}
+
+// ============================================================
+// Album Settings (Unlisted Albums / Share Links)
+// ============================================================
+
+/**
+ * Get album settings by album key
+ */
+export async function getAlbumSettings(albumKey: string): Promise<AlbumSettingsRow | null> {
+  const { data, error } = await supabaseServer
+    .from('album_settings')
+    .select('*')
+    .eq('album_key', albumKey)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[getAlbumSettings] Error:', error);
+    return null;
+  }
+
+  return data as AlbumSettingsRow | null;
+}
+
+/**
+ * Look up an album by its share token (for /share/[token] route)
+ */
+export async function getAlbumByShareToken(shareToken: string): Promise<AlbumSettingsRow | null> {
+  const { data, error } = await supabaseServer
+    .from('album_settings')
+    .select('*')
+    .eq('share_token', shareToken)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[getAlbumByShareToken] Error:', error);
+    return null;
+  }
+
+  return data as AlbumSettingsRow | null;
+}
+
+/**
+ * Fetch minimal photo data for bulk download (cf_image_id + image_key only)
+ */
+export async function fetchAlbumPhotosForDownload(
+  albumKey: string
+): Promise<Array<{ cf_image_id: string; image_key: string }>> {
+  const { data, error } = await supabaseServer
+    .from('photo_metadata')
+    .select('cf_image_id, image_key')
+    .eq('album_key', albumKey)
+    .not('sharpness', 'is', null)
+    .not('cf_image_id', 'is', null);
+
+  if (error) {
+    console.error('[fetchAlbumPhotosForDownload] Error:', error);
+    return [];
+  }
+
+  return (data || []) as Array<{ cf_image_id: string; image_key: string }>;
 }

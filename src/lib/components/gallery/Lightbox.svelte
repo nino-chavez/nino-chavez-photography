@@ -15,7 +15,6 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import { generatePhotoTitle, generatePhotoCaption, generateMetadataSummary } from '$lib/photo-utils';
-	import { getOptimizedSmugMugUrl, getSmugMugSrcSet, isSmugMugUrl } from '$lib/utils/smugmug-image-optimizer';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
 
@@ -63,44 +62,21 @@
 		};
 	});
 	
-	// Get optimized image URL based on viewport and zoom level
-	// CF Images path: use named variants; SmugMug path: progressive sizing
+	// Get optimized image URL based on viewport
 	const optimizedImageUrl = $derived.by(() => {
 		if (!photo) return null;
-
-		// CF Images path: select variant by viewport
 		if (hasCFImage(photo.cf_image_id)) {
-			if (viewportWidth <= 800) return cfImageUrl(photo.cf_image_id, 'medium');   // 800px
-			return cfImageUrl(photo.cf_image_id, 'large');  // 1600px
+			if (viewportWidth <= 800) return cfImageUrl(photo.cf_image_id, 'medium');
+			return cfImageUrl(photo.cf_image_id, 'large');
 		}
-
-		const baseUrl = photo.original_url || photo.image_url;
-		if (!baseUrl) return null;
-
-		// SmugMug fallback path
-		if (isSmugMugUrl(baseUrl)) {
-			const displayWidth = viewportWidth * Math.max(1, zoomLevel);
-			const effectiveWidth = displayWidth * devicePixelRatio;
-
-			if (effectiveWidth <= 1024) {
-				return getOptimizedSmugMugUrl(baseUrl, 'fullscreen');
-			} else {
-				return getOptimizedSmugMugUrl(baseUrl, 'download');
-			}
-		}
-
-		return baseUrl;
+		return photo.original_url || photo.image_url;
 	});
 
 	// Get srcset for responsive loading
 	const imageSrcSet = $derived.by(() => {
 		if (!photo) return undefined;
 		if (hasCFImage(photo.cf_image_id)) return cfSrcSet(photo.cf_image_id);
-
-		const baseUrl = photo.original_url || photo.image_url;
-		if (!baseUrl || !isSmugMugUrl(baseUrl)) return undefined;
-
-		return getSmugMugSrcSet(baseUrl);
+		return undefined;
 	});
 
 	// Sizes attribute for responsive images

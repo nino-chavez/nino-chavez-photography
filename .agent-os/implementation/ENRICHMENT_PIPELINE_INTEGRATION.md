@@ -2,13 +2,13 @@
 
 **Purpose:** Integrate canonical naming logic into your data enrichment pipeline so **new albums are created with proper names from the start**.
 
-**Version:** 2.0 - SmugMug API & EXIF-Driven
+**Version:** 2.1 - Cloudflare Images & EXIF-Driven
 
 ---
 
 ## Overview
 
-Instead of creating albums with raw names and fixing them later, the enrichment pipeline should generate canonical names during album creation using SmugMug album data and photo EXIF metadata as the primary source of truth.
+Instead of creating albums with raw names and fixing them later, the enrichment pipeline should generate canonical names during album creation using album data and photo EXIF metadata as the primary source of truth.
 
 **Benefits:**
 - New albums have proper names immediately
@@ -19,7 +19,7 @@ Instead of creating albums with raw names and fixing them later, the enrichment 
 
 **Key Change from v1.0:**
 - ❌ OLD: Parse existing album names to extract metadata
-- ✅ NEW: Use SmugMug API + photo EXIF as primary source
+- ✅ NEW: Use album data + photo EXIF as primary source
 - Existing names only used for drift scoring, not as input
 
 ---
@@ -31,23 +31,22 @@ Instead of creating albums with raw names and fixing them later, the enrichment 
 If your enrichment pipeline is TypeScript/Node.js:
 
 ```typescript
-import { generateCanonicalNameFromSmugMug, type SmugMugAlbumData } from './src/lib/utils/canonical-album-naming';
-import type { SmugMugAlbum, SmugMugPhoto } from './types/smugmug';
+import { generateCanonicalNameFromAlbum, type AlbumData } from './src/lib/utils/canonical-album-naming';
 
-// Fetch album data from SmugMug API
-const smugmugAlbum = await smugmug.getAlbum(albumKey);
-const photos = await smugmug.getPhotos(albumKey);
+// Fetch album data from Supabase
+const album = await fetchAlbum(albumKey);
+const photos = await fetchAlbumPhotos(albumKey);
 
-// Build SmugMugAlbumData with EXIF and enrichment
-const albumData: SmugMugAlbumData = {
-  albumKey: smugmugAlbum.AlbumKey,
-  name: smugmugAlbum.Name, // Existing name (for drift scoring)
-  dateStart: smugmugAlbum.DateStart,
-  dateEnd: smugmugAlbum.DateEnd,
-  keywords: smugmugAlbum.Keywords,
+// Build AlbumData with EXIF and enrichment
+const albumData: AlbumData = {
+  albumKey: album.album_key,
+  name: album.album_name, // Existing name (for drift scoring)
+  dateStart: album.date_start,
+  dateEnd: album.date_end,
+  keywords: album.keywords,
   photos: photos.map(photo => ({
     exif: {
-      DateTimeOriginal: photo.EXIF?.DateTimeOriginal
+      DateTimeOriginal: photo.exif?.DateTimeOriginal
     }
   })),
   enrichment: {
@@ -58,7 +57,7 @@ const albumData: SmugMugAlbumData = {
 };
 
 // Generate canonical name
-const result = generateCanonicalNameFromSmugMug(albumData);
+const result = generateCanonicalNameFromAlbum(albumData);
 
 console.log(`Canonical name: ${result.name}`);
 // "Downers Grove North vs Plainfield South - May 30"
@@ -72,12 +71,9 @@ console.log(`Confidence: ${result.metadata.confidence}`);
 console.log(`Drift score: ${result.driftScore}/100`);
 // How different from existing name
 
-// Update album name in SmugMug
+// Update album name in Supabase
 if (result.driftScore > 20) {
-  await smugmug.updateAlbum(albumKey, {
-    Name: result.name,
-    Description: fullContextDescription
-  });
+  await updateAlbumName(albumKey, result.name);
 }
 ```
 
@@ -91,16 +87,16 @@ import subprocess
 import json
 import tempfile
 
-def generate_canonical_name_from_smugmug(smugmug_album, photos, enrichment):
-    """Generate canonical name using CLI utility with SmugMug data"""
+def generate_canonical_name_from_album(album, photos, enrichment):
+    """Generate canonical name using CLI utility with album data"""
 
     # Build album data JSON
     album_data = {
-        'albumKey': smugmug_album['AlbumKey'],
-        'name': smugmug_album['Name'],
-        'dateStart': smugmug_album.get('DateStart'),
-        'dateEnd': smugmug_album.get('DateEnd'),
-        'keywords': smugmug_album.get('Keywords', []),
+        'albumKey': album['album_key'],
+        'name': album['album_name'],
+        'dateStart': album.get('date_start'),
+        'dateEnd': album.get('date_end'),
+        'keywords': album.get('keywords', []),
         'photos': [
             {'exif': {'DateTimeOriginal': p.get('EXIF', {}).get('DateTimeOriginal')}}
             for p in photos
@@ -114,10 +110,10 @@ def generate_canonical_name_from_smugmug(smugmug_album, photos, enrichment):
         temp_path = f.name
 
     try:
-        # Call CLI with SmugMug JSON
+        # Call CLI with album JSON
         cmd = [
             'npx', 'tsx', 'scripts/generate-canonical-name.ts',
-            '--smugmug', temp_path,
+            '--album', temp_path,
             '--json'
         ]
 
@@ -136,16 +132,16 @@ def generate_canonical_name_from_smugmug(smugmug_album, photos, enrichment):
 
 # Usage in enrichment pipeline
 def process_album(album_key):
-    # 1. Fetch album from SmugMug
-    album = smugmug_client.get_album(album_key)
-    photos = smugmug_client.get_photos(album_key)
+    # 1. Fetch album data
+    album = fetch_album(album_key)
+    photos = fetch_album_photos(album_key)
 
     # 2. AI enrichment (extract teams, sport, etc.)
     enrichment = ai_model.enrich_album(album, photos)
 
     # 3. Generate canonical name
-    canonical = generate_canonical_name_from_smugmug(
-        smugmug_album=album,
+    canonical = generate_canonical_name_from_album(
+        album=album,
         photos=photos,
         enrichment={
             'teams': {'home': 'Team A', 'away': 'Team B'},
@@ -159,16 +155,13 @@ def process_album(album_key):
     print(f"Confidence: {canonical['confidence']}")    # "high"
     print(f"Drift score: {canonical['drift_score']}")  # 0-100
 
-    # 4. Update SmugMug album if drift is significant
+    # 4. Update album name in Supabase if drift is significant
     if canonical['drift_score'] > 20:
-        smugmug_client.update_album(album_key, {
-            'Name': canonical['name'],
-            'Description': generate_full_description(enrichment)
-        })
+        update_album_name(album_key, canonical['name'])
 ```
 
 **Key Points:**
-- Pass SmugMug album JSON to CLI via `--smugmug` flag
+- Pass album JSON to CLI via `--album` flag
 - EXIF data from photos used as primary date source
 - Enrichment data (teams/events) from AI model
 - Drift score indicates how different from existing name
@@ -203,24 +196,24 @@ curl -X POST http://localhost:5173/api/canonical-name \
 
 **Problem:** Date/teams extracted from name parsing (unreliable)
 
-### v2.0 Pipeline (NEW - SmugMug API & EXIF)
+### v2.0 Pipeline (NEW - CF Images & EXIF)
 
 ```
-1. Local photos → 2. AI Enrichment → 3. Upload to SmugMug → 4. Fetch Album + EXIF → 5. Generate Name → 6. Update Album
-                     (teams, sport)      (initial name)        (dates from EXIF)      (canonical)        (final name)
+1. Local photos → 2. AI Enrichment → 3. Upload to CF Images → 4. Read EXIF → 5. Generate Name → 6. Sync to Supabase
+                     (teams, sport)                              (dates from EXIF)  (canonical)      (final metadata)
 ```
 
 **Key Changes:**
 - Dates extracted from photo EXIF (most reliable source)
 - Teams/events from AI enrichment (not name parsing)
 - Existing name used only for drift scoring
-- Algorithm prioritizes: EXIF dates > SmugMug fields > inferred dates
+- Algorithm prioritizes: EXIF dates > album fields > inferred dates
 
 ### Algorithm Priority
 
 **Date Sources (highest to lowest):**
 1. **EXIF DateTimeOriginal** → Extracted from photo metadata (most reliable)
-2. **SmugMug dateStart/dateEnd** → Album date fields from API
+2. **Album dateStart/dateEnd** → Album date fields from metadata
 3. **Inferred from existing name** → Fallback only (low confidence)
 
 **Event/Team Sources:**
@@ -252,8 +245,8 @@ To generate a canonical name, the algorithm needs:
 - Normalized to ISO date: `"YYYY-MM-DD"`
 - **Confidence: HIGH** (if available)
 
-**Priority 2: SmugMug Album Fields**
-- `dateStart` and `dateEnd` from SmugMug API
+**Priority 2: Album Date Fields**
+- `dateStart` and `dateEnd` from album metadata
 - Already in ISO format
 - **Confidence: MEDIUM**
 
@@ -276,13 +269,13 @@ To generate a canonical name, the algorithm needs:
 
 ---
 
-## Example Integration (Python + SmugMug)
+## Example Integration (Python)
 
 ```python
 #!/usr/bin/env python3
 """
 Enrichment Pipeline with Canonical Naming
-Uploads local photos to SmugMug with AI-enriched metadata
+Uploads local photos to Cloudflare Images with AI-enriched metadata
 """
 
 import os
@@ -290,7 +283,6 @@ import subprocess
 import json
 from pathlib import Path
 from typing import Dict, Optional, Tuple
-import smugmug_api  # Your SmugMug API wrapper
 
 def extract_metadata_from_folder(folder_path: Path) -> Dict:
     """
@@ -386,27 +378,25 @@ def create_album_with_canonical_name(folder_path: Path):
     canonical_name = generate_canonical_name(metadata)
     print(f"   Canonical: {canonical_name}")
 
-    # Step 4: Create album in SmugMug
-    album = smugmug_api.create_album(
-        name=canonical_name,
-        description=f"Generated from {metadata['raw_name']}",
-        keywords=metadata.get('keywords', []),
-        privacy='Public'
-    )
-    print(f"   ✅ Created album: {album.web_uri}")
-
-    # Step 5: Upload photos with enriched metadata
+    # Step 4: Upload photos to Cloudflare Images
     photos = list(folder_path.glob('*.jpg'))
     for photo in photos:
-        smugmug_api.upload_photo(
-            album_id=album.album_id,
+        upload_to_cf_images(
             file_path=photo,
             metadata=metadata
         )
 
-    print(f"   📸 Uploaded {len(photos)} photos")
+    print(f"   Uploaded {len(photos)} photos to Cloudflare Images")
 
-    return album
+    # Step 5: Sync to Supabase with canonical album name
+    sync_to_supabase(
+        album_name=canonical_name,
+        photos=photos,
+        metadata=metadata
+    )
+    print(f"   Synced to Supabase")
+
+    return canonical_name
 
 # Main execution
 if __name__ == '__main__':
@@ -461,34 +451,6 @@ for dir in albums/*; do
   name=$(basename "$dir")
   npx tsx scripts/generate-canonical-name.ts --name "$name" --json
 done
-```
-
----
-
-## SmugMug Album Structure
-
-**Recommended Fields:**
-
-| Field | Value | Example |
-|-------|-------|---------|
-| **Name** | Canonical name (35-45 chars) | "Downers Grove vs Plainfield - May 30" |
-| **Description** | Full context (150-200 chars) | "High school volleyball regional championship..." |
-| **Keywords** | Sport, level, teams, event type | ["volleyball", "high-school", "regional"] |
-| **Privacy** | Public/Unlisted | "Public" |
-| **Sort Method** | DateTimeOriginal | Chronological order |
-
-**Album Description Template:**
-
-```
-{Level} {sport} {event_type} between {teams} or at {location}.
-{Additional context}. {Full date}. {Location with details}.
-```
-
-Example:
-```
-High school volleyball regional championship match between Downers Grove North
-and Plainfield South. Playoff game featuring championship-caliber play and
-intense rallies. May 30, 2025. South Elgin Sectional.
 ```
 
 ---
@@ -549,12 +511,12 @@ npx tsx scripts/generate-canonical-name.ts \
 1. **Add CLI to enrichment pipeline:**
    - Update your album creation function
    - Call `generate-canonical-name.ts` before creating album
-   - Use canonical name in SmugMug API call
+   - Use canonical name when syncing to Supabase
 
 2. **Test with sample albums:**
    - Run enrichment on 5-10 test albums
    - Verify names are canonical and under 45 chars
-   - Check SmugMug albums display correctly
+   - Check albums display correctly in gallery
 
 3. **Update existing albums (optional):**
    - Use `apply-album-renames.ts` to fix old albums

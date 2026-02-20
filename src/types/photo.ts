@@ -126,14 +126,14 @@ export interface PhotoMetadata {
 }
 
 /**
- * Photo with enriched metadata and SmugMug data
+ * Photo with enriched metadata and EXIF data
  */
 export interface Photo {
   id: string;
   image_key: string;
-  cf_image_id?: string; // Cloudflare Images ID (when migrated, uses imagedelivery.net)
+  cf_image_id?: string; // Cloudflare Images ID (uses imagedelivery.net)
   image_url: string;
-  thumbnail_url?: string; // SmugMug thumbnail URL (S or M size) for performance
+  thumbnail_url?: string; // Thumbnail URL for blur placeholders
   original_url?: string; // Full-resolution URL
   title: string;
   caption: string;
@@ -141,11 +141,11 @@ export interface Photo {
   created_at: string; // Actual photo date (photo_date from DB, prioritized for sorting)
   metadata: PhotoMetadata;
 
-  // SmugMug metadata for enhanced features
-  smugmug?: {
+  // EXIF and image metadata
+  exif?: {
     // Dates (for frontend flexibility)
     photo_date?: string;      // Actual capture date from EXIF
-    upload_date?: string;      // When uploaded to SmugMug
+    upload_date?: string;      // Upload date
     date_added?: string;       // When added to album
 
     // Image dimensions

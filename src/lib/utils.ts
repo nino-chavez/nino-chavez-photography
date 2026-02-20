@@ -37,12 +37,12 @@ export function createAlbumSlug(albumName: string, albumKey: string): string {
  * Also handles plain keys for backwards compatibility: "pHqw25" -> "pHqw25"
  */
 export function extractAlbumKey(slug: string): string {
-  // SmugMug keys are alphanumeric, typically 6 chars
+  // Album keys are alphanumeric, typically 6 chars
   // Extract the last segment after the final hyphen
   const parts = slug.split('-');
   const lastPart = parts[parts.length - 1];
 
-  // If it looks like a SmugMug key (alphanumeric, 5-8 chars), return it
+  // If it looks like an album key (alphanumeric, 5-8 chars), return it
   if (/^[a-zA-Z0-9]{5,8}$/.test(lastPart)) {
     return lastPart;
   }

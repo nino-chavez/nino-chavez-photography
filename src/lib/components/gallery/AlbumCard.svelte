@@ -11,9 +11,9 @@
 	import { Motion } from 'svelte-motion';
 	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
-	import { generateSmugMugSrcset, getSmugMugUrl, SIZES_PRESETS } from '$lib/photo-utils';
+	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
-	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { cfImageUrl, cfSrcSet } from '$lib/utils/cloudflare-images';
 
 	interface Album {
 		albumKey: string;
@@ -43,13 +43,10 @@
 	// Generate album URL for navigation (using friendly slug)
 	let albumUrl = $derived(`${base}/albums/${createAlbumSlug(album.albumName, album.albumKey)}`);
 
-	// CF Images with SmugMug fallback for album cover
-	let useCF = $derived(hasCFImage(album.coverCfImageId));
-	let coverSrcset = $derived(
-		useCF ? cfSrcSet(album.coverCfImageId!) : generateSmugMugSrcset(album.coverImageUrl, ['M', 'L', 'XL', 'X2'])
-	);
+	// CF Images for album cover
+	let coverSrcset = $derived(album.coverCfImageId ? cfSrcSet(album.coverCfImageId) : '');
 	let optimizedCoverUrl = $derived(
-		useCF ? cfImageUrl(album.coverCfImageId!, 'medium') : getSmugMugUrl(album.coverImageUrl, 'L')
+		album.coverCfImageId ? cfImageUrl(album.coverCfImageId, 'medium') : album.coverImageUrl
 	);
 	const albumCardSizes = SIZES_PRESETS.albumCard;
 

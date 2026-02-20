@@ -1,14 +1,13 @@
 /**
  * Album Sync Module
  *
- * Keeps album names synchronized between SmugMug (source of truth)
- * and Supabase (enriched photo metadata).
+ * Manages album names in Supabase photo_metadata using the canonical naming system.
  *
  * Usage:
  * ```typescript
  * import { syncAlbumNameToSupabase, verifyAlbumSync } from '$lib/supabase/album-sync';
  *
- * // After updating SmugMug album name
+ * // Update album name
  * await syncAlbumNameToSupabase(albumKey, newCanonicalName);
  *
  * // Verify sync status
@@ -44,7 +43,7 @@ export interface BatchSyncResult {
 /**
  * Update album name in Supabase for all photos in an album
  *
- * @param albumKey - SmugMug album key
+ * @param albumKey - Album key
  * @param newAlbumName - New canonical album name
  * @returns Number of photos updated and any errors
  */
@@ -89,8 +88,8 @@ export async function syncAlbumNameToSupabase(
 /**
  * Verify sync status: check if album_name matches expected name
  *
- * @param albumKey - SmugMug album key
- * @param expectedName - Expected album name (from SmugMug)
+ * @param albumKey - Album key
+ * @param expectedName - Expected canonical album name
  * @returns Sync status and any issues found
  */
 export async function verifyAlbumSync(

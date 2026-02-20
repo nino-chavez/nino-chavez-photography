@@ -9,6 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
 import { getPhotoCount } from '$lib/supabase/server';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PhotoMetadataRow } from '$types/database';
 
 const BASE_URL = 'https://ninochavez.co/photography';
@@ -92,8 +93,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			photos: photos.map((row) => ({
 				id: row.image_key,
 				url: `${BASE_URL}/photo/${row.image_key}`,
-				image_url: row.ImageUrl,
-				thumbnail_url: row.ThumbnailUrl,
+				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
+				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
 				title: row.album_name || row.title || 'Untitled Photo',
 				description: generateDescription(row),
 				metadata: {
@@ -128,8 +129,8 @@ export const GET: RequestHandler = async ({ url }) => {
  * Create Schema.org Photograph object for a photo
  */
 function createPhotographSchema(row: PhotoMetadataRow) {
-	const baseImageUrl = (row.ImageUrl || '').replace('photos.smugmug.com', 'ninochavez.smugmug.com');
-	const thumbnailUrl = (row.ThumbnailUrl || row.ImageUrl || '').replace('photos.smugmug.com', 'ninochavez.smugmug.com');
+	const imageUrl = row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '';
+	const thumbnailUrl = row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '';
 
 	return {
 		'@type': 'Photograph',
@@ -137,7 +138,7 @@ function createPhotographSchema(row: PhotoMetadataRow) {
 		url: `${BASE_URL}/photo/${row.image_key}`,
 		image: {
 			'@type': 'ImageObject',
-			contentUrl: baseImageUrl,
+			contentUrl: imageUrl,
 			thumbnailUrl: thumbnailUrl,
 			encodingFormat: 'image/jpeg',
 			width: row.width || undefined,

@@ -6,6 +6,7 @@
 
 import { getPopularPhotos, getTopSearchQueries } from '$lib/analytics/tracker';
 import { supabaseServer } from '$lib/supabase/server';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
@@ -14,12 +15,12 @@ export const load: PageServerLoad = async () => {
 
 	// Fetch full photo data for popular photos
 	const photoIds = popularPhotoIds.map((p) => p.photo_id);
-	let popularPhotos: Array<{ photo_id: string; view_count: number; image_key: string; ImageUrl: string; ThumbnailUrl: string | null; photo_category: string }> = [];
+	let popularPhotos: Array<{ photo_id: string; view_count: number; image_key: string; thumbnail_url: string; photo_category: string }> = [];
 
 	if (photoIds.length > 0) {
 		const { data } = await supabaseServer
 			.from('photo_metadata')
-			.select('photo_id, image_key, ImageUrl, ThumbnailUrl, sport_type, photo_category')
+			.select('photo_id, image_key, cf_image_id, sport_type, photo_category')
 			.in('photo_id', photoIds);
 
 		// Merge with view counts
@@ -27,7 +28,10 @@ export const load: PageServerLoad = async () => {
 			data?.map((photo) => {
 				const stats = popularPhotoIds.find((p) => p.photo_id === photo.photo_id);
 				return {
-					...photo,
+					photo_id: photo.photo_id,
+					image_key: photo.image_key,
+					thumbnail_url: cfImageUrl(photo.cf_image_id, 'thumbnail'),
+					photo_category: photo.photo_category,
 					view_count: stats?.view_count || 0,
 					days_active: stats?.days_active || 0,
 					last_viewed: stats?.last_viewed,

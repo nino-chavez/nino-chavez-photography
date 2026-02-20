@@ -103,16 +103,14 @@ npx tsx scripts/apply-album-renames.ts --apply --confidence=high
 1. Filters proposals by confidence level
 2. Shows preview and waits 5 seconds for cancel
 3. Saves rollback data to `.agent-os/album-rename-rollback-{timestamp}.json`
-4. Updates SmugMug albums via API (TODO: implement API integration)
-5. Updates database `album_name` field in `photo_metadata` table
-6. Provides success/failure summary
+4. Updates database `album_name` field in `photo_metadata` table
+5. Provides success/failure summary
 
 **Safety Features:**
 - Dry-run mode by default
 - Rollback file created before changes
-- Batch processing with rate limiting (avoid API throttling)
+- Batch processing with rate limiting
 - Error handling with detailed logs
-- Database + SmugMug updates tracked separately
 
 ### Step 5: Refresh Materialized View
 
@@ -137,23 +135,6 @@ cat .agent-os/album-rename-rollback-{timestamp}.json
 npx tsx scripts/rollback-album-renames.ts .agent-os/album-rename-rollback-{timestamp}.json
 ```
 
-## SmugMug API Integration
-
-**Current Status:** Placeholder implementation
-
-**Required:**
-1. SmugMug API credentials (API Key + Secret)
-2. OAuth authentication flow
-3. Album update endpoint integration
-
-**Implementation Location:**
-- `scripts/apply-album-renames.ts` → `updateSmugMugAlbumName()` function
-
-**SmugMug API Reference:**
-- Endpoint: `PATCH /api/v2/album/{AlbumKey}`
-- Body: `{ "Name": "new album name" }`
-- Documentation: https://api.smugmug.com/api/v2/doc/
-
 ## Statistics
 
 **Analysis Results (2025-10-28):**
@@ -177,8 +158,7 @@ npx tsx scripts/rollback-album-renames.ts .agent-os/album-rename-rollback-{times
 
 1. **Review Proposals** - Open CSV and review proposed changes
 2. **Test High-Confidence** - Apply only high-confidence renames first
-3. **Implement SmugMug API** - Add actual API integration
-4. **Monitor Results** - Check albums page after applying
+3. **Monitor Results** - Check albums page after applying
 5. **Iterate** - Refine normalization rules based on results
 
 ## Notes
@@ -193,7 +173,7 @@ npx tsx scripts/rollback-album-renames.ts .agent-os/album-rename-rollback-{times
 
 - `scripts/analyze-album-names.ts` - Pattern analysis and reporting
 - `scripts/normalize-album-names.ts` - Generate normalization proposals
-- `scripts/apply-album-renames.ts` - Apply renames to SmugMug + database
+- `scripts/apply-album-renames.ts` - Apply renames to database
 - `.agent-os/album-rename-proposals.json` - Generated proposals (JSON)
 - `.agent-os/album-rename-proposals.csv` - Generated proposals (CSV)
 - `.agent-os/album-rename-rollback-*.json` - Rollback data (created on apply)
