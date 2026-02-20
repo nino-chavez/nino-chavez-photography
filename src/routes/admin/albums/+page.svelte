@@ -12,7 +12,7 @@
 
 	let copiedAlbumKey = $state<string | null>(null);
 
-	const siteUrl = 'https://photography.ninochavez.co';
+	const siteUrl = 'https://ninochavez.co/photography';
 
 	function copyShareLink(albumKey: string, shareToken: string) {
 		const url = `${siteUrl}/share/${shareToken}`;
