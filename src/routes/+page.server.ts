@@ -1,32 +1,19 @@
 /**
  * Homepage Server Load Function
- * Fetches a random portfolio-worthy photo for the hero section with album diversity
- *
- * Hero Photo Selection Strategy:
- * - Fetch 500 high-quality volleyball photos with strict criteria from Supabase
- * - Group by album for diversity (max 10 per album)
- * - Random selection from balanced pool
- * - Images served via Cloudflare Worker proxy with WebP/AVIF conversion
- *
- * Quality Criteria:
- * - Technical quality (sharpness ≥ 8.0)
- * - Composition (composition_score ≥ 8.0)
- * - Emotional impact (emotional_impact ≥ 8.0)
- * - Hero-worthy categories (action, celebration, portrait)
- * - Volleyball photos ONLY (primary portfolio focus)
- * - Landscape orientation (aspect_ratio ≥ 1.0)
- * - Recent photos (last 2 years)
+ * Fetches hero photo candidates and featured albums for the homepage.
  */
 
 import type { PageServerLoad } from './$types';
 import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
-import type { PhotoMetadataRow } from '$types/database';
 
-// In-memory cache for hero photo candidates (avoids 500-row query per request)
+// Columns needed by transformPhotoRow + diversity balancing (excludes embedding, heavy columns)
+const PHOTO_COLUMNS = 'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, photo_category, play_type, composition, time_of_day, lighting, color_temperature, emotion, action_intensity, sharpness, composition_score, exposure_accuracy, emotional_impact, time_in_game, athlete_id, jersey_number, event_id, ai_provider, ai_cost, ai_confidence, aspect_ratio, photo_date, upload_date, enriched_at';
+
+// In-memory cache for hero photo candidates
 const HERO_CACHE_DURATION_MS = 5 * 60 * 1000;
 interface HeroCache {
-  balancedPhotos: PhotoMetadataRow[];
+  balancedPhotos: Record<string, unknown>[];
   featuredAlbums: Awaited<ReturnType<typeof fetchFeaturedAlbums>>;
   timestamp: number;
 }
@@ -35,13 +22,11 @@ let heroCache: HeroCache | null = null;
 const HERO_CANDIDATES_COUNT = 8;
 
 export const load: PageServerLoad = async ({ setHeaders }) => {
-  // Edge cache safe: client rotates through candidates, so same response = different experience
   setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
 
   try {
     const now = Date.now();
 
-    // Refresh cache if expired
     if (!heroCache || now - heroCache.timestamp > HERO_CACHE_DURATION_MS) {
       const [balancedPhotos, featuredAlbums] = await Promise.all([
         fetchHeroCandidates(),
@@ -50,7 +35,6 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       heroCache = { balancedPhotos, featuredAlbums, timestamp: now };
     }
 
-    // Deterministic first hero (stable for Cloudflare cache hits), rest random
     const pool = heroCache.balancedPhotos;
     if (pool.length === 0) {
       return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, staticHeroIndex: 0 };
@@ -70,7 +54,6 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
   }
 };
 
-/** Fisher-Yates shuffle, return first `count` items */
 function pickRandom<T>(arr: T[], count: number): T[] {
   if (arr.length <= count) return [...arr];
   const shuffled = [...arr];
@@ -82,16 +65,16 @@ function pickRandom<T>(arr: T[], count: number): T[] {
 }
 
 /**
- * Fetch and prepare hero photo candidates with album diversity balancing.
- * Returns the balanced pool; caller picks randomly from it.
+ * Fetch hero candidates: high-quality volleyball landscape photos.
+ * Uses explicit column list to avoid fetching the embedding vector column.
  */
-async function fetchHeroCandidates(): Promise<PhotoMetadataRow[]> {
+async function fetchHeroCandidates(): Promise<Record<string, unknown>[]> {
   const twoYearsAgo = new Date();
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
 
   const { data, error } = await supabaseServer
     .from('photo_metadata')
-    .select('*')
+    .select(PHOTO_COLUMNS)
     .eq('sport_type', 'volleyball')
     .gte('aspect_ratio', 1.0)
     .gte('sharpness', 8.0)
@@ -101,7 +84,7 @@ async function fetchHeroCandidates(): Promise<PhotoMetadataRow[]> {
     .in('photo_category', ['action', 'celebration', 'portrait'])
     .not('sharpness', 'is', null)
     .order('photo_date', { ascending: false })
-    .limit(500);
+    .limit(100);
 
   if (error) {
     console.error('[Homepage] Error fetching hero candidates:', error);
@@ -109,33 +92,33 @@ async function fetchHeroCandidates(): Promise<PhotoMetadataRow[]> {
   }
 
   if (!data || data.length === 0) {
-    // Fallback: Volleyball without strict quality filters
     const { data: fallbackData } = await supabaseServer
       .from('photo_metadata')
-      .select('*')
+      .select(PHOTO_COLUMNS)
       .eq('sport_type', 'volleyball')
       .not('sharpness', 'is', null)
+      .order('photo_date', { ascending: false })
       .limit(50);
 
     return fallbackData || [];
   }
 
-  // Group by album and balance (max 10 per album)
-  const albumGroups = new Map<string, PhotoMetadataRow[]>();
+  // Group by album and balance (max 5 per album)
+  const albumGroups = new Map<string, Record<string, unknown>[]>();
   for (const photo of data) {
-    const albumKey = photo.album_name || photo.album_key || 'unknown';
+    const albumKey = (photo.album_name || photo.album_key || 'unknown') as string;
     if (!albumGroups.has(albumKey)) {
       albumGroups.set(albumKey, []);
     }
     albumGroups.get(albumKey)!.push(photo);
   }
 
-  const MAX_PER_ALBUM = 10;
-  const balancedPhotos: PhotoMetadataRow[] = [];
+  const MAX_PER_ALBUM = 5;
+  const balancedPhotos: Record<string, unknown>[] = [];
   for (const [, photos] of albumGroups.entries()) {
     const sorted = photos.sort((a, b) => {
-      const scoreA = (a.sharpness || 0) + (a.composition_score || 0) + (a.emotional_impact || 0);
-      const scoreB = (b.sharpness || 0) + (b.composition_score || 0) + (b.emotional_impact || 0);
+      const scoreA = ((a.sharpness as number) || 0) + ((a.composition_score as number) || 0) + ((a.emotional_impact as number) || 0);
+      const scoreB = ((b.sharpness as number) || 0) + ((b.composition_score as number) || 0) + ((b.emotional_impact as number) || 0);
       return scoreB - scoreA;
     });
     balancedPhotos.push(...sorted.slice(0, MAX_PER_ALBUM));
@@ -146,15 +129,10 @@ async function fetchHeroCandidates(): Promise<PhotoMetadataRow[]> {
 
 /**
  * Fetch three featured albums for homepage display
- * - Most Recent: Latest real album by photo date
- * - Editor's Choice: Virtual album of emotionally compelling photos
- * - Action Showcase: Virtual album of high-intensity action shots
  */
 async function fetchFeaturedAlbums() {
   try {
-    // PERFORMANCE: Run all three queries in parallel to reduce TTFB
     const [albumsResult, editorsChoice, actionShowcase] = await Promise.all([
-      // 1. Get the most recent real album
       supabaseServer
         .from('albums_summary')
         .select('*')
@@ -162,9 +140,7 @@ async function fetchFeaturedAlbums() {
         .not('latest_photo_date', 'is', null)
         .order('latest_photo_date', { ascending: false })
         .limit(1),
-      // 2. Create "Editor's Choice" virtual album - emotionally compelling photos
       createEditorsChoiceAlbum(),
-      // 3. Create "Action Showcase" virtual album - high-intensity action shots
       createActionShowcaseAlbum()
     ]);
 
@@ -188,7 +164,6 @@ async function fetchFeaturedAlbums() {
       };
     }
 
-    // Build featured albums array
     const featuredAlbums = [];
     if (mostRecentAlbum) featuredAlbums.push(mostRecentAlbum);
     if (editorsChoice) featuredAlbums.push(editorsChoice);
@@ -201,34 +176,27 @@ async function fetchFeaturedAlbums() {
   }
 }
 
-/**
- * Create "Editor's Choice" virtual album
- * Features photos with high emotional impact and quality scores across different events
- */
 async function createEditorsChoiceAlbum() {
   try {
     const { data, error } = await supabaseServer
       .from('photo_metadata')
-      .select('*')
+      .select(PHOTO_COLUMNS)
       .eq('sport_type', 'volleyball')
-      .gte('emotional_impact', 8.0)  // High emotional impact
-      .gte('sharpness', 8.0)         // Technically excellent
-      .gte('composition_score', 8.0) // Well composed
+      .gte('emotional_impact', 8.0)
+      .gte('sharpness', 8.0)
+      .gte('composition_score', 8.0)
       .in('photo_category', ['action', 'celebration', 'portrait'])
       .not('sharpness', 'is', null)
       .order('emotional_impact', { ascending: false })
-      .limit(50); // Get top candidates
+      .limit(50);
 
-    if (error || !data || data.length === 0) {
-      return null;
-    }
+    if (error || !data || data.length === 0) return null;
 
-    // Select diverse photos from different events/albums
-    const selectedPhotos = [];
+    const selectedPhotos: Record<string, unknown>[] = [];
     const usedAlbums = new Set();
 
     for (const photo of data) {
-      const albumKey = photo.album_name || photo.album_key || 'unknown';
+      const albumKey = (photo.album_name || photo.album_key || 'unknown') as string;
       if (!usedAlbums.has(albumKey) && selectedPhotos.length < 12) {
         selectedPhotos.push(photo);
         usedAlbums.add(albumKey);
@@ -237,26 +205,23 @@ async function createEditorsChoiceAlbum() {
 
     if (selectedPhotos.length === 0) return null;
 
-    // Use the highest emotional impact photo as cover
     const coverPhoto = selectedPhotos[0];
-
-    // Calculate aggregate stats
     const avgQuality = selectedPhotos.reduce((sum, p) =>
-      sum + ((p.sharpness || 0) + (p.composition_score || 0) + (p.emotional_impact || 0)) / 3, 0
+      sum + (((p.sharpness as number) || 0) + ((p.composition_score as number) || 0) + ((p.emotional_impact as number) || 0)) / 3, 0
     ) / selectedPhotos.length;
 
     return {
       type: 'editors-choice',
       title: 'Editor\'s Choice',
       album: {
-        albumKey: 'editors-choice', // Virtual album key
+        albumKey: 'editors-choice',
         albumName: 'Editor\'s Choice',
         photoCount: selectedPhotos.length,
-        coverImageUrl: coverPhoto.cf_image_id ? cfImageUrl(coverPhoto.cf_image_id, 'medium') : null,
+        coverImageUrl: coverPhoto.cf_image_id ? cfImageUrl(coverPhoto.cf_image_id as string, 'medium') : null,
         primarySport: 'volleyball',
         primaryCategory: 'mixed',
         avgQualityScore: Math.round(avgQuality * 10) / 10,
-        latestPhotoDate: coverPhoto.photo_date || coverPhoto.upload_date,
+        latestPhotoDate: (coverPhoto.photo_date || coverPhoto.upload_date) as string,
         isVirtual: true
       }
     };
@@ -266,15 +231,11 @@ async function createEditorsChoiceAlbum() {
   }
 }
 
-/**
- * Create "Action Showcase" virtual album
- * Features high-intensity action shots from various tournaments
- */
 async function createActionShowcaseAlbum() {
   try {
     const { data, error } = await supabaseServer
       .from('photo_metadata')
-      .select('*')
+      .select(PHOTO_COLUMNS)
       .eq('sport_type', 'volleyball')
       .eq('photo_category', 'action')
       .in('action_intensity', ['high', 'extreme'])
@@ -284,16 +245,13 @@ async function createActionShowcaseAlbum() {
       .order('action_intensity', { ascending: false })
       .limit(50);
 
-    if (error || !data || data.length === 0) {
-      return null;
-    }
+    if (error || !data || data.length === 0) return null;
 
-    // Select diverse high-intensity shots
-    const selectedPhotos = [];
+    const selectedPhotos: Record<string, unknown>[] = [];
     const usedAlbums = new Set();
 
     for (const photo of data) {
-      const albumKey = photo.album_name || photo.album_key || 'unknown';
+      const albumKey = (photo.album_name || photo.album_key || 'unknown') as string;
       if (!usedAlbums.has(albumKey) && selectedPhotos.length < 15) {
         selectedPhotos.push(photo);
         usedAlbums.add(albumKey);
@@ -302,26 +260,23 @@ async function createActionShowcaseAlbum() {
 
     if (selectedPhotos.length === 0) return null;
 
-    // Use the most intense action shot as cover
     const coverPhoto = selectedPhotos[0];
-
-    // Calculate aggregate stats
     const avgQuality = selectedPhotos.reduce((sum, p) =>
-      sum + ((p.sharpness || 0) + (p.composition_score || 0) + (p.emotional_impact || 0)) / 3, 0
+      sum + (((p.sharpness as number) || 0) + ((p.composition_score as number) || 0) + ((p.emotional_impact as number) || 0)) / 3, 0
     ) / selectedPhotos.length;
 
     return {
       type: 'action-showcase',
       title: 'Action Showcase',
       album: {
-        albumKey: 'action-showcase', // Virtual album key
+        albumKey: 'action-showcase',
         albumName: 'Action Showcase',
         photoCount: selectedPhotos.length,
-        coverImageUrl: coverPhoto.cf_image_id ? cfImageUrl(coverPhoto.cf_image_id, 'medium') : null,
+        coverImageUrl: coverPhoto.cf_image_id ? cfImageUrl(coverPhoto.cf_image_id as string, 'medium') : null,
         primarySport: 'volleyball',
         primaryCategory: 'action',
         avgQualityScore: Math.round(avgQuality * 10) / 10,
-        latestPhotoDate: coverPhoto.photo_date || coverPhoto.upload_date,
+        latestPhotoDate: (coverPhoto.photo_date || coverPhoto.upload_date) as string,
         isVirtual: true
       }
     };
