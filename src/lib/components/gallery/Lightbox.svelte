@@ -40,6 +40,10 @@
 	let isDragging = $state(false);
 	let dragStart = $state({ x: 0, y: 0 });
 	let imagePosition = $state({ x: 0, y: 0 });
+
+	// Image transition state
+	let imageLoading = $state(false);
+	let navDirection = $state<'left' | 'right' | null>(null);
 	
 	// Track viewport size for responsive image loading
 	let viewportWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1920);
@@ -120,6 +124,8 @@
 		if (canGoNext) {
 			zoomLevel = 1;
 			imagePosition = { x: 0, y: 0 };
+			navDirection = 'right';
+			imageLoading = true;
 			onNavigate?.(currentIndex + 1);
 		}
 	}
@@ -129,6 +135,8 @@
 		if (canGoPrev) {
 			zoomLevel = 1;
 			imagePosition = { x: 0, y: 0 };
+			navDirection = 'left';
+			imageLoading = true;
 			onNavigate?.(currentIndex - 1);
 		}
 	}
@@ -287,6 +295,34 @@
 			};
 		}
 	});
+
+	// Reset loading state when photo changes
+	$effect(() => {
+		if (!photo) return;
+		// Reading image_key to track photo changes
+		const _key = photo.image_key;
+		imageLoading = true;
+	});
+
+	function handleImageLoad() {
+		imageLoading = false;
+	}
+
+	// Preload adjacent images
+	$effect(() => {
+		if (!open || photos.length === 0) return;
+		const toPreload: number[] = [];
+		if (currentIndex + 1 < photos.length) toPreload.push(currentIndex + 1);
+		if (currentIndex - 1 >= 0) toPreload.push(currentIndex - 1);
+
+		for (const idx of toPreload) {
+			const p = photos[idx];
+			if (hasCFImage(p.cf_image_id)) {
+				const img = new Image();
+				img.src = cfImageUrl(p.cf_image_id, viewportWidth <= 800 ? 'medium' : 'large');
+			}
+		}
+	});
 </script>
 
 <svelte:window
@@ -298,7 +334,7 @@
 {#if open && photo}
 	<!-- Backdrop -->
 	<div
-		class="fixed inset-0 bg-black/95 flex items-center justify-center"
+		class="fixed inset-0 bg-black/95 flex items-center justify-center animate-lightbox-open"
 		style="z-index: 9999;"
 		onclick={handleBackdropClick}
 		onkeydown={(e) => e.key === 'Enter' && handleBackdropClick(e as any)}
@@ -389,17 +425,22 @@
 					role="presentation"
 					style="cursor: {zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'}"
 				>
+					{#if imageLoading}
+						<div class="absolute inset-0 flex items-center justify-center z-[1] pointer-events-none">
+							<div class="w-8 h-8 border-2 border-white/30 border-t-white/80 rounded-full animate-spin"></div>
+						</div>
+					{/if}
 					<img
 						src={optimizedImageUrl || photo.image_url}
 						srcset={imageSrcSet}
 						sizes={imageSizes}
 						alt={displayTitle}
-						class="max-w-full max-h-full object-contain select-none transition-transform duration-200 touch-none"
-						style="transform: scale({zoomLevel}) translate({imagePosition.x /
-							zoomLevel}px, {imagePosition.y / zoomLevel}px)"
+						class="max-w-full max-h-full object-contain select-none transition-[opacity,transform] duration-300 ease-out touch-none {imageLoading ? 'opacity-0' : 'opacity-100'}"
+						style="transform: scale({zoomLevel}) translate({imagePosition.x / zoomLevel}px, {imagePosition.y / zoomLevel}px) translateX({imageLoading ? (navDirection === 'right' ? '20px' : navDirection === 'left' ? '-20px' : '0px') : '0px'})"
 						draggable="false"
 						loading="eager"
 						decoding="async"
+						onload={handleImageLoad}
 					/>
 				</div>
 
@@ -467,3 +508,20 @@
 				</div>
 			</div>
 	{/if}
+
+<style>
+	@keyframes lightbox-open {
+		from {
+			opacity: 0;
+			transform: scale(0.95);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	:global(.animate-lightbox-open) {
+		animation: lightbox-open 200ms ease-out both;
+	}
+</style>
