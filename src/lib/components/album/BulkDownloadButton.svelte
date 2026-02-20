@@ -42,24 +42,46 @@
 			// Dynamic import client-zip for tree-shaking
 			const { downloadZip } = await import('client-zip');
 
-			// Generator that yields file entries for the zip
+			// Concurrent generator — keeps CONCURRENCY fetches in flight, yields in order
+			const CONCURRENCY = 6;
+
 			async function* fileEntries() {
-				for (const photo of photos) {
-					if (abortController?.signal.aborted) return;
+				const signal = abortController!.signal;
+				type Entry = { name: string; response: Response };
 
-					const imageUrl = cfImageUrl(photo.cf_image_id, quality);
-					const proxyUrl = `${base}/api/download?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(photo.image_key + '.jpg')}`;
+				function fetchPhoto(p: (typeof photos)[number]): Promise<Entry> {
+					const url = cfImageUrl(p.cf_image_id, quality);
+					const proxy = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(p.image_key + '.jpg')}`;
+					return fetch(proxy, { signal }).then((response) => ({
+						name: `${p.image_key}.jpg`,
+						response
+					}));
+				}
 
-					const response = await fetch(proxyUrl, { signal: abortController!.signal });
+				let next = 0;
+				const inflight = new Map<number, Promise<Entry>>();
+
+				// Seed the window
+				while (next < photos.length && inflight.size < CONCURRENCY) {
+					inflight.set(next, fetchPhoto(photos[next]));
+					next++;
+				}
+
+				// Yield in order
+				for (let i = 0; i < photos.length; i++) {
+					if (signal.aborted) return;
+					const result = await inflight.get(i)!;
+					inflight.delete(i);
+
+					// Refill the window
+					if (next < photos.length) {
+						inflight.set(next, fetchPhoto(photos[next]));
+						next++;
+					}
 
 					progress.current++;
-					// Force reactivity
 					progress = { ...progress };
-
-					yield {
-						name: `${photo.image_key}.jpg`,
-						input: response
-					};
+					yield { name: result.name, input: result.response };
 				}
 			}
 

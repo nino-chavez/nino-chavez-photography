@@ -28,8 +28,6 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       return new Response('Invalid URL - must be from Cloudflare Images', { status: 400 });
     }
 
-    console.log('[Download Proxy] Request URL:', imageUrl);
-
     // Fetch the image
     const response = await fetch(imageUrl, {
       method: 'GET',
@@ -43,24 +41,22 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       return new Response(`Failed to fetch image: ${response.status} ${response.statusText}`, { status: response.status });
     }
 
-    // Get the image data
-    const imageBlob = await response.blob();
+    // Stream through — pass the ReadableStream directly without buffering
+    const headers: Record<string, string> = {
+      'Content-Type': response.headers.get('content-type') || 'image/jpeg',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'private, no-cache',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
 
-    console.log('[Download Proxy] Successfully fetched image, size:', imageBlob.size, 'bytes');
+    const contentLength = response.headers.get('content-length');
+    if (contentLength) {
+      headers['Content-Length'] = contentLength;
+    }
 
-    // Return the image with proper headers for download
-    return new Response(imageBlob, {
-      status: 200,
-      headers: {
-        'Content-Type': response.headers.get('content-type') || 'image/jpeg',
-        'Content-Length': imageBlob.size.toString(),
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'private, no-cache',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
+    return new Response(response.body, { status: 200, headers });
 
   } catch (error) {
     console.error('[Download Proxy] Error:', error);
