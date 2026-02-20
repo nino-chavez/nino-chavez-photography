@@ -4,11 +4,8 @@
  */
 
 import type { PageServerLoad } from './$types';
-import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
+import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
-
-// Columns needed by transformPhotoRow + diversity balancing (excludes embedding, heavy columns)
-const PHOTO_COLUMNS = 'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, photo_category, play_type, composition, time_of_day, lighting, color_temperature, emotion, action_intensity, sharpness, composition_score, exposure_accuracy, emotional_impact, time_in_game, athlete_id, jersey_number, event_id, ai_provider, ai_cost, ai_confidence, aspect_ratio, photo_date, upload_date, enriched_at';
 
 // In-memory cache for hero photo candidates
 const HERO_CACHE_DURATION_MS = 5 * 60 * 1000;

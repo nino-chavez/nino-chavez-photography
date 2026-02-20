@@ -6,7 +6,7 @@
  */
 
 import { error } from '@sveltejs/kit';
-import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
+import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { trackPhotoView } from '$lib/analytics/tracker';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
@@ -196,7 +196,7 @@ async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promis
 
 	const { data, error } = await supabaseServer
 		.from('photo_metadata')
-		.select('*')
+		.select(PHOTO_COLUMNS)
 		.neq('image_key', currentPhoto.image_key) // Exclude current photo
 		.not('sharpness', 'is', null) // Only enriched photos
 		.or(`album_key.eq.${albumKey},and(sport_type.eq.${sportType},photo_category.eq.${photoCategory}),sport_type.eq.${sportType}`)
@@ -209,7 +209,7 @@ async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promis
 	}
 
 	// Transform to Photo type using shared transform (includes CF Images support)
-	return (data || []).map((row: PhotoMetadataRow) => transformPhotoRow(row));
+	return (data || []).map(transformPhotoRow);
 }
 
 /**
@@ -244,7 +244,7 @@ async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo
 
 	const { data: photos, error: photosError } = await supabaseServer
 		.from('photo_metadata')
-		.select('*')
+		.select(PHOTO_COLUMNS)
 		.in('image_key', imageKeys)
 		.not('sharpness', 'is', null); // Only enriched photos
 
@@ -254,5 +254,5 @@ async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo
 	}
 
 	// Transform to Photo type using shared transform (includes CF Images support)
-	return photos.map((row: PhotoMetadataRow) => transformPhotoRow(row));
+	return photos.map(transformPhotoRow);
 }

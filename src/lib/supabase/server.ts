@@ -13,8 +13,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { Photo, PhotoFilterState } from '$types/photo';
-import type { PhotoMetadataRow, SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } from '$types/database';
+import type { SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+
+/**
+ * Columns needed by transformPhotoRow (excludes embedding vector ~6KB/row and other heavy columns).
+ * Reuse everywhere instead of select('*') to avoid fetching unnecessary data.
+ */
+export const PHOTO_COLUMNS = 'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, photo_category, play_type, composition, time_of_day, lighting, color_temperature, emotion, action_intensity, sharpness, composition_score, exposure_accuracy, emotional_impact, time_in_game, athlete_id, jersey_number, event_id, ai_provider, ai_cost, ai_confidence, aspect_ratio, photo_date, upload_date, enriched_at';
 
 // Server-side environment variables (NOT exposed to browser)
 // In SvelteKit, we need to use import.meta.env even server-side
@@ -114,7 +120,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
 
   let query = supabaseServer
     .from('photo_metadata')
-    .select('*')
+    .select(PHOTO_COLUMNS)
     .not('sharpness', 'is', null); // Only show enriched photos
 
   // CRITICAL: Apply filters BEFORE sorting for better index usage
@@ -221,8 +227,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
   console.log(`[fetchPhotos] Query completed in ${queryTime}ms, returned ${data?.length || 0} photos`);
 
   // Map photo_metadata to Photo type (two-bucket model)
-  const photos: Photo[] = (data || [])
-    .map((row: PhotoMetadataRow) => transformPhotoRow(row));
+  const photos: Photo[] = (data || []).map(transformPhotoRow);
 
   return photos;
 }
@@ -233,7 +238,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
 export async function getPhotoCount(filters?: PhotoFilterState): Promise<number> {
   let query = supabaseServer
     .from('photo_metadata')
-    .select('*', { count: 'exact', head: true })
+    .select('photo_id', { count: 'exact', head: true })
     .not('sharpness', 'is', null);
 
   // Apply same Bucket 1 filters as fetchPhotos
@@ -491,45 +496,76 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
     return conditions.join(' AND ');
   };
 
-  // Aggregation query generator
-  const getAggregatedCounts = async (
-    fieldName: string
-  ): Promise<Array<{ name: string; count: number }>> => {
-    const conditions = buildFilterConditions(fieldName);
+  // Dimensions to count, each with its own WHERE clause (excludes self)
+  const dimensions = [
+    'sport_type',
+    'photo_category',
+    'play_type',
+    'action_intensity',
+    'lighting',
+    'color_temperature',
+    'time_of_day',
+    'composition'
+  ] as const;
 
-    try {
-      // Try using RPC for GROUP BY aggregation (most efficient)
-      const { data, error } = await supabaseServer.rpc('exec_sql', {
-        sql: `
-          SELECT
-            ${fieldName} as name,
-            COUNT(*) as count
-          FROM photo_metadata
-          WHERE ${conditions}
-            AND ${fieldName} IS NOT NULL
-          GROUP BY ${fieldName}
-          ORDER BY count DESC
-        `
-      });
+  // Map dimension column names to FilterCounts keys
+  const dimensionToKey: Record<string, keyof FilterCounts> = {
+    sport_type: 'sports',
+    photo_category: 'categories',
+    play_type: 'playTypes',
+    action_intensity: 'intensities',
+    lighting: 'lighting',
+    color_temperature: 'colorTemperatures',
+    time_of_day: 'timesOfDay',
+    composition: 'compositions'
+  };
 
-      if (error) throw error;
+  try {
+    // Build a single UNION ALL query for all 8 dimensions (1 round-trip instead of 8)
+    const unionParts = dimensions.map(dim => {
+      const conditions = buildFilterConditions(dim);
+      return `SELECT '${dim}' as dimension, ${dim} as name, COUNT(*) as count
+      FROM photo_metadata
+      WHERE ${conditions} AND ${dim} IS NOT NULL
+      GROUP BY ${dim}`;
+    });
 
-      return (data || []).map((row: any) => ({
-        name: row.name,
-        count: parseInt(row.count.toString())
-      }));
-    } catch (error) {
-      // Fallback: fetch distinct values then count each (less efficient but works)
-      console.warn(`[getFilterCounts] RPC failed for ${fieldName}, using fallback:`, error);
+    const sql = unionParts.join('\nUNION ALL\n') + '\nORDER BY dimension, count DESC';
 
-      // Build query to get distinct values for this field
+    const { data, error } = await supabaseServer.rpc('exec_sql', { sql });
+
+    if (error) throw error;
+
+    // Parse flat results back into the FilterCounts structure
+    const result: FilterCounts = {
+      sports: [], categories: [], playTypes: [], intensities: [],
+      lighting: [], colorTemperatures: [], timesOfDay: [], compositions: []
+    };
+
+    for (const row of (data || []) as Array<{ dimension: string; name: string; count: number | string }>) {
+      const key = dimensionToKey[row.dimension];
+      if (key) {
+        const count = typeof row.count === 'string' ? parseInt(row.count) : row.count;
+        if (count > 0) {
+          result[key].push({ name: row.name, count });
+        }
+      }
+    }
+
+    return result;
+  } catch (error) {
+    // Fallback: 8 individual queries in parallel (if exec_sql RPC is missing)
+    console.warn('[getFilterCounts] Batched RPC failed, falling back to individual queries:', error);
+
+    const getAggregatedCounts = async (
+      fieldName: string
+    ): Promise<Array<{ name: string; count: number }>> => {
       let query = supabaseServer
         .from('photo_metadata')
         .select(fieldName)
         .not('sharpness', 'is', null)
         .not(fieldName, 'is', null);
 
-      // Apply current filters (excluding this field)
       if (currentFilters?.sportType && fieldName !== 'sport_type') {
         query = query.eq('sport_type', currentFilters.sportType);
       }
@@ -562,19 +598,16 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
         return [];
       }
 
-      // Get unique values
       const uniqueValues = Array.from(new Set((distinctData || []).map((row: any) => row[fieldName]))).filter(Boolean);
 
-      // Count each value
       const counts = await Promise.all(
         uniqueValues.map(async (value) => {
           let countQuery = supabaseServer
             .from('photo_metadata')
-            .select('*', { count: 'exact', head: true })
+            .select('photo_id', { count: 'exact', head: true })
             .not('sharpness', 'is', null)
             .eq(fieldName, value);
 
-          // Apply same filters
           if (currentFilters?.sportType && fieldName !== 'sport_type') {
             countQuery = countQuery.eq('sport_type', currentFilters.sportType);
           }
@@ -605,41 +638,34 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
         })
       );
 
-      return counts.sort((a, b) => b.count - a.count);
-    }
-  };
+      return counts.filter(c => c.count > 0).sort((a, b) => b.count - a.count);
+    };
 
-  // Execute all 8 aggregation queries in parallel
-  const [
-    sportCounts,
-    categoryCounts,
-    playTypeCounts,
-    intensityCounts,
-    lightingCounts,
-    colorTempCounts,
-    timeOfDayCounts,
-    compositionCounts,
-  ] = await Promise.all([
-    getAggregatedCounts('sport_type'),
-    getAggregatedCounts('photo_category'),
-    getAggregatedCounts('play_type'),
-    getAggregatedCounts('action_intensity'),
-    getAggregatedCounts('lighting'),
-    getAggregatedCounts('color_temperature'),
-    getAggregatedCounts('time_of_day'),
-    getAggregatedCounts('composition'),
-  ]);
+    const [
+      sportCounts, categoryCounts, playTypeCounts, intensityCounts,
+      lightingCounts, colorTempCounts, timeOfDayCounts, compositionCounts,
+    ] = await Promise.all([
+      getAggregatedCounts('sport_type'),
+      getAggregatedCounts('photo_category'),
+      getAggregatedCounts('play_type'),
+      getAggregatedCounts('action_intensity'),
+      getAggregatedCounts('lighting'),
+      getAggregatedCounts('color_temperature'),
+      getAggregatedCounts('time_of_day'),
+      getAggregatedCounts('composition'),
+    ]);
 
-  return {
-    sports: sportCounts.filter(s => s.count > 0),
-    categories: categoryCounts.filter(c => c.count > 0),
-    playTypes: playTypeCounts.filter(p => p.count > 0),
-    intensities: intensityCounts.filter(i => i.count > 0),
-    lighting: lightingCounts.filter(l => l.count > 0),
-    colorTemperatures: colorTempCounts.filter(t => t.count > 0),
-    timesOfDay: timeOfDayCounts.filter(t => t.count > 0),
-    compositions: compositionCounts.filter(c => c.count > 0),
-  };
+    return {
+      sports: sportCounts,
+      categories: categoryCounts,
+      playTypes: playTypeCounts,
+      intensities: intensityCounts,
+      lighting: lightingCounts,
+      colorTemperatures: colorTempCounts,
+      timesOfDay: timeOfDayCounts,
+      compositions: compositionCounts,
+    };
+  }
 }
 
 /**
@@ -777,7 +803,7 @@ export async function fetchPhotosByPeriod(options: {
 
           let photoQuery = supabaseServer
             .from('photo_metadata')
-            .select('*')
+            .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
             .not('sharpness', 'is', null);
@@ -797,7 +823,7 @@ export async function fetchPhotosByPeriod(options: {
 
           return {
             ...period,
-            featuredPhotos: (photos || []).map((row: PhotoMetadataRow) => transformPhotoRow(row))
+            featuredPhotos: (photos || []).map(transformPhotoRow)
           };
         })
       );
@@ -863,7 +889,7 @@ export async function fetchPhotosByPeriod(options: {
 
           let photoQuery = supabaseServer
             .from('photo_metadata')
-            .select('*')
+            .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
             .not('sharpness', 'is', null);
@@ -886,7 +912,7 @@ export async function fetchPhotosByPeriod(options: {
             month: period.month,
             monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
             photoCount: period.count,
-            featuredPhotos: (photos || []).map((row: PhotoMetadataRow) => transformPhotoRow(row))
+            featuredPhotos: (photos || []).map(transformPhotoRow)
           };
         })
       );
@@ -1027,7 +1053,7 @@ export async function fetchPhotosByYearMonth(
 
     let query = supabaseServer
       .from('photo_metadata')
-      .select('*', limit ? { count: 'exact' } : {})
+      .select(PHOTO_COLUMNS, limit ? { count: 'exact' } : {})
       .not('sharpness', 'is', null)
       .gte('upload_date', startDate.toISOString())
       .lte('upload_date', endDate.toISOString());
@@ -1093,7 +1119,7 @@ export async function getAdjacentMonth(
 
     const { count, error } = await supabaseServer
       .from('photo_metadata')
-      .select('*', { count: 'exact', head: true })
+      .select('photo_id', { count: 'exact', head: true })
       .not('sharpness', 'is', null)
       .gte('upload_date', startDate.toISOString())
       .lte('upload_date', endDate.toISOString());
@@ -1140,7 +1166,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
 
     const { data: photosData, error: photosError } = await supabaseServer
       .from('photo_metadata')
-      .select('*')
+      .select(PHOTO_COLUMNS)
       .in('image_key', keys)
       .not('sharpness', 'is', null);
 
@@ -1177,7 +1203,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   // Try: same sport + emotion first, then same sport, then same category
   let query = supabaseServer
     .from('photo_metadata')
-    .select('*')
+    .select(PHOTO_COLUMNS)
     .neq('image_key', imageKey) // Exclude the source photo
     .not('sharpness', 'is', null);
 
@@ -1203,7 +1229,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
 
   const { data: sportFallback } = await supabaseServer
     .from('photo_metadata')
-    .select('*')
+    .select(PHOTO_COLUMNS)
     .neq('image_key', imageKey)
     .not('sharpness', 'is', null)
     .eq('sport_type', sourcePhoto.sport_type || 'Volleyball')
