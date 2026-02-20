@@ -5,6 +5,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import type { Cookies } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 
@@ -29,17 +30,12 @@ export function createSupabaseServerClient(cookies: Cookies) {
 }
 
 /**
- * Create admin client with service role key (bypasses RLS)
+ * Create admin client with service role key (bypasses RLS).
+ * Uses createClient (not createServerClient) so the service role key
+ * is used for auth instead of the user's JWT from cookies.
  */
-export function createSupabaseAdminClient(cookies: Cookies) {
-	return createServerClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY!, {
-		cookies: {
-			getAll: () => cookies.getAll(),
-			setAll: (cookiesToSet) => {
-				cookiesToSet.forEach(({ name, value, options }) => {
-					cookies.set(name, value, { ...options, path: options.path ?? '/' });
-				});
-			}
-		}
+export function createSupabaseAdminClient() {
+	return createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY!, {
+		auth: { persistSession: false }
 	});
 }

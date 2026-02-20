@@ -73,7 +73,7 @@ export const actions = {
 			return fail(400, { error: 'Album key required' });
 		}
 
-		const adminClient = createSupabaseAdminClient(cookies);
+		const adminClient = createSupabaseAdminClient();
 
 		if (currentVisibility === 'unlisted') {
 			// Switch back to public: delete the settings row
@@ -121,7 +121,7 @@ export const actions = {
 			return fail(400, { error: 'Album key required' });
 		}
 
-		const adminClient = createSupabaseAdminClient(cookies);
+		const adminClient = createSupabaseAdminClient();
 
 		// Generate new UUID for share token using crypto
 		const newToken = crypto.randomUUID();

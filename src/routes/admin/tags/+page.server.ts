@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	// User is authenticated - that's enough (signup disabled, only admin exists)
 
 	// Get admin client for tag queries (bypasses RLS)
-	const adminClient = createSupabaseAdminClient(cookies);
+	const adminClient = createSupabaseAdminClient();
 
 	// Load pending tags with photo metadata
 	const { data: pendingTags, error: queryError } = await adminClient
@@ -88,7 +88,7 @@ export const actions = {
 		}
 
 		// Approve the tag
-		const adminClient = createSupabaseAdminClient(cookies);
+		const adminClient = createSupabaseAdminClient();
 		const { error: updateError } = await adminClient
 			.from('user_tags')
 			.update({
@@ -125,7 +125,7 @@ export const actions = {
 		}
 
 		// Delete the tag (rejection = deletion)
-		const adminClient = createSupabaseAdminClient(cookies);
+		const adminClient = createSupabaseAdminClient();
 		const { error: deleteError } = await adminClient.from('user_tags').delete().eq('id', tagId);
 
 		if (deleteError) {
