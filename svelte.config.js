@@ -32,6 +32,9 @@ const config = {
       // Vercel adapter configuration
       runtime: "nodejs20.x",
     }),
+    csrf: {
+      checkOrigin: false,
+    },
     paths: {
       // Serve from /photography subpath
       base: "/photography",
