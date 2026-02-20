@@ -1,9 +1,13 @@
-import { json } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
+const ZIP_WORKER_URL = 'https://album-zip-worker.biq.workers.dev';
+
 /**
  * Generates an HMAC-signed URL for the album ZIP Worker.
+ * Uses SUPABASE_SERVICE_ROLE_KEY as the HMAC signing secret
+ * (already available on both Vercel and the Worker).
  *
  * GET /api/zip-url?albumKey=...&quality=large
  * Returns: { url: "https://worker.dev/zip/...?quality=large&ts=...&sig=..." }
@@ -16,18 +20,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'Missing albumKey or quality parameter' }, { status: 400 });
 	}
 
-	const secret = env.ZIP_SIGNING_SECRET;
-	const workerUrl = env.ZIP_WORKER_URL;
-
-	if (!secret || !workerUrl) {
-		return json({
-			message: 'ZIP Worker not configured',
-			debug: {
-				hasSecret: !!secret,
-				hasWorkerUrl: !!workerUrl,
-				envKeys: Object.keys(env).filter(k => k.startsWith('ZIP') || k.startsWith('SUPA') || k.startsWith('VITE'))
-			}
-		}, { status: 503 });
+	const secret = env.SUPABASE_SERVICE_ROLE_KEY;
+	if (!secret) {
+		throw error(503, 'Server misconfigured');
 	}
 
 	const ts = Math.floor(Date.now() / 1000).toString();
@@ -47,7 +42,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('');
 
-	const signedUrl = `${workerUrl}/zip/${encodeURIComponent(albumKey)}?quality=${quality}&ts=${ts}&sig=${sig}`;
+	const signedUrl = `${ZIP_WORKER_URL}/zip/${encodeURIComponent(albumKey)}?quality=${quality}&ts=${ts}&sig=${sig}`;
 
 	return json({ url: signedUrl });
 };

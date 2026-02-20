@@ -84,7 +84,8 @@ export default {
 			});
 		}
 
-		const valid = await verifySignature(env.ZIP_SIGNING_SECRET, albumKey, quality, ts, sig);
+		// Use SUPABASE_SERVICE_ROLE_KEY as shared HMAC secret (available on both Vercel and Worker)
+		const valid = await verifySignature(env.SUPABASE_SERVICE_ROLE_KEY, albumKey, quality, ts, sig);
 		if (!valid) {
 			return new Response('Invalid signature', {
 				status: 403,

@@ -14,4 +14,4 @@ ALLOWED_ORIGIN = "https://ninochavez.co"
 # Secrets (set via `wrangler secret put`):
 # SUPABASE_URL
 # SUPABASE_SERVICE_ROLE_KEY
-# ZIP_SIGNING_SECRET
+# (SUPABASE_SERVICE_ROLE_KEY doubles as HMAC signing secret)
