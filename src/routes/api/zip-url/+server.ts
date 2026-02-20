@@ -17,7 +17,15 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	if (!ZIP_SIGNING_SECRET || !ZIP_WORKER_URL) {
-		throw error(503, 'ZIP Worker not configured');
+		return json({
+			message: 'ZIP Worker not configured',
+			debug: {
+				hasSecret: !!ZIP_SIGNING_SECRET,
+				secretLen: ZIP_SIGNING_SECRET?.length ?? 0,
+				hasWorkerUrl: !!ZIP_WORKER_URL,
+				workerUrlLen: ZIP_WORKER_URL?.length ?? 0
+			}
+		}, { status: 503 });
 	}
 
 	const ts = Math.floor(Date.now() / 1000).toString();
