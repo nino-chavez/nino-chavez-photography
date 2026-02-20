@@ -52,6 +52,9 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 
     // Deterministic first hero (stable for Cloudflare cache hits), rest random
     const pool = heroCache.balancedPhotos;
+    if (pool.length === 0) {
+      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, staticHeroIndex: 0 };
+    }
     const pinIdx = Math.floor(Date.now() / 3_600_000) % pool.length;
     const pinned = pool[pinIdx];
     const rest = pickRandom(

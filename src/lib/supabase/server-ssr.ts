@@ -35,7 +35,23 @@ export function createSupabaseServerClient(cookies: Cookies) {
  * is used for auth instead of the user's JWT from cookies.
  */
 export function createSupabaseAdminClient() {
-	return createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY!, {
-		auth: { persistSession: false }
+	const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+	if (!key) {
+		throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
+	}
+
+	// Decode JWT to verify this is actually the service_role key
+	try {
+		const payload = JSON.parse(Buffer.from(key.split('.')[1], 'base64').toString());
+		console.log(`[Admin Client] JWT role: ${payload.role}, iss: ${payload.iss}`);
+		if (payload.role !== 'service_role') {
+			console.error(`[Admin Client] WARNING: Expected service_role but got "${payload.role}"`);
+		}
+	} catch {
+		console.error('[Admin Client] Failed to decode JWT - key may be malformed');
+	}
+
+	return createClient(PUBLIC_SUPABASE_URL, key, {
+		auth: { autoRefreshToken: false, persistSession: false }
 	});
 }
