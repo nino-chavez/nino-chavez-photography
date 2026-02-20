@@ -47,15 +47,14 @@
 
 			async function* fileEntries() {
 				const signal = abortController!.signal;
-				type Entry = { name: string; response: Response };
+				type Entry = { name: string; data: Blob };
 
 				function fetchPhoto(p: (typeof photos)[number]): Promise<Entry> {
 					const url = cfImageUrl(p.cf_image_id, quality);
 					const proxy = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(p.image_key + '.jpg')}`;
-					return fetch(proxy, { signal }).then((response) => ({
-						name: `${p.image_key}.jpg`,
-						response
-					}));
+					return fetch(proxy, { signal })
+						.then((r) => r.blob())
+						.then((data) => ({ name: `${p.image_key}.jpg`, data }));
 				}
 
 				let next = 0;
@@ -81,7 +80,7 @@
 
 					progress.current++;
 					progress = { ...progress };
-					yield { name: result.name, input: result.response };
+					yield { name: result.name, input: result.data };
 				}
 			}
 
