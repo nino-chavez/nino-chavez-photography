@@ -15,13 +15,16 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		throw redirect(302, `${base}/login`);
 	}
 
+	// Use admin client for album_settings (RLS may block anon reads)
+	const adminClient = createSupabaseAdminClient();
+
 	// Fetch albums and settings in parallel
 	const [albumsResult, settingsResult] = await Promise.all([
 		supabaseServer
 			.from('albums_summary')
 			.select('album_key, album_name, photo_count')
 			.order('photo_count', { ascending: false }),
-		supabaseServer
+		adminClient
 			.from('album_settings')
 			.select('*')
 	]);
