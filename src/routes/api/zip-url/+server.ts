@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { ZIP_SIGNING_SECRET, ZIP_WORKER_URL } from '$env/static/private';
 import type { RequestHandler } from './$types';
 
 /**
@@ -16,10 +16,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'Missing albumKey or quality parameter' }, { status: 400 });
 	}
 
-	const secret = env.ZIP_SIGNING_SECRET;
-	const workerUrl = env.ZIP_WORKER_URL;
-
-	if (!secret || !workerUrl) {
+	if (!ZIP_SIGNING_SECRET || !ZIP_WORKER_URL) {
 		throw error(503, 'ZIP Worker not configured');
 	}
 
@@ -30,7 +27,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const encoder = new TextEncoder();
 	const key = await crypto.subtle.importKey(
 		'raw',
-		encoder.encode(secret),
+		encoder.encode(ZIP_SIGNING_SECRET),
 		{ name: 'HMAC', hash: 'SHA-256' },
 		false,
 		['sign']
@@ -40,7 +37,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('');
 
-	const signedUrl = `${workerUrl}/zip/${encodeURIComponent(albumKey)}?quality=${quality}&ts=${ts}&sig=${sig}`;
+	const signedUrl = `${ZIP_WORKER_URL}/zip/${encodeURIComponent(albumKey)}?quality=${quality}&ts=${ts}&sig=${sig}`;
 
 	return json({ url: signedUrl });
 };
