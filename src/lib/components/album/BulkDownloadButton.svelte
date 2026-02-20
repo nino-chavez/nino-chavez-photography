@@ -14,6 +14,7 @@
 
 	let showMenu = $state(false);
 	let downloading = $state(false);
+	let workerMode = $state(false);
 	let progress = $state({ current: 0, total: 0 });
 	let abortController: AbortController | null = null;
 
@@ -21,14 +22,62 @@
 		return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
 	}
 
+	function triggerBrowserDownload(blob: Blob, filename: string): void {
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	}
+
+	/**
+	 * Try to download a pre-built ZIP from the edge Worker (R2 cache).
+	 * Returns true if successful, false if we should fall back to client-side.
+	 */
+	async function tryWorkerDownload(signal: AbortSignal): Promise<boolean> {
+		try {
+			const res = await fetch(
+				`${base}/api/zip-url?albumKey=${encodeURIComponent(albumKey)}&quality=large`,
+				{ signal }
+			);
+			if (!res.ok) return false;
+
+			const { url: signedUrl } = (await res.json()) as { url: string };
+			const zipRes = await fetch(signedUrl, { signal });
+			if (!zipRes.ok) return false;
+
+			const blob = await zipRes.blob();
+			if (signal.aborted) return false;
+
+			triggerBrowserDownload(blob, `${slugify(albumName)}.zip`);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	async function startDownload(quality: CFVariant) {
 		showMenu = false;
 		downloading = true;
+		workerMode = false;
 		progress = { current: 0, total: 0 };
 		abortController = new AbortController();
 
 		try {
-			// Fetch photo list from API
+			// Worker-first path for "large" quality
+			if (quality === 'large') {
+				workerMode = true;
+				const success = await tryWorkerDownload(abortController.signal);
+				if (abortController.signal.aborted) return;
+				if (success) return;
+				// Fall through to client-side on failure
+				workerMode = false;
+			}
+
+			// Client-side flow (fallback for "large", primary for "public")
 			const res = await fetch(`${base}/api/album-photos?albumKey=${encodeURIComponent(albumKey)}`);
 			const { photos } = await res.json() as { photos: Array<{ cf_image_id: string; image_key: string }> };
 
@@ -89,21 +138,14 @@
 
 			if (abortController?.signal.aborted) return;
 
-			// Trigger browser download
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement('a');
-			link.href = url;
-			link.download = `${slugify(albumName)}.zip`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
+			triggerBrowserDownload(blob, `${slugify(albumName)}.zip`);
 		} catch (err) {
 			if ((err as Error).name !== 'AbortError') {
 				console.error('[BulkDownload] Error:', err);
 			}
 		} finally {
 			downloading = false;
+			workerMode = false;
 			abortController = null;
 		}
 	}
@@ -136,7 +178,13 @@
 		<div class="flex items-center gap-3">
 			<div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-charcoal-900 border border-charcoal-800 text-sm text-charcoal-300">
 				<div class="w-4 h-4 border-2 border-gold-500 border-t-transparent rounded-full animate-spin"></div>
-				<span>{progress.current} / {progress.total}</span>
+				{#if workerMode}
+					<span>Preparing download...</span>
+				{:else if progress.total > 0}
+					<span>{progress.current} / {progress.total}</span>
+				{:else}
+					<span>Loading...</span>
+				{/if}
 			</div>
 			<button
 				onclick={cancelDownload}

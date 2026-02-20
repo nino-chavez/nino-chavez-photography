@@ -1,0 +1,17 @@
+name = "album-zip-worker"
+main = "src/index.ts"
+compatibility_date = "2025-02-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "ZIP_CACHE"
+bucket_name = "photo-gallery-zips"
+
+[vars]
+CF_ACCOUNT_HASH = "wg34HB28-JkySWVm5fW4kA"
+ALLOWED_ORIGIN = "https://ninochavez.co"
+
+# Secrets (set via `wrangler secret put`):
+# SUPABASE_URL
+# SUPABASE_SERVICE_ROLE_KEY
+# ZIP_SIGNING_SECRET

@@ -17,9 +17,9 @@
 		"process:album": "tsx scripts/process-new-album.ts",
 		"pipeline": "tsx scripts/run-pipeline.ts",
 		"enrich": "tsx scripts/enrich-local-photos.ts",
-		"worker:dev": "cd cloudflare-worker && wrangler dev",
-		"worker:deploy": "cd cloudflare-worker && wrangler deploy",
-		"worker:tail": "cd cloudflare-worker && wrangler tail"
+		"worker:dev": "cd cloudflare-worker/album-zip && wrangler dev",
+		"worker:deploy": "cd cloudflare-worker/album-zip && wrangler deploy",
+		"worker:tail": "cd cloudflare-worker/album-zip && wrangler tail"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.10.2",
