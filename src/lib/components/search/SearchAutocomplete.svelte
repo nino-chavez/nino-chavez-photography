@@ -5,16 +5,15 @@
 
 	interface SearchSuggestion {
 		text: string;
-		type: 'sport' | 'category' | 'keyword' | 'album';
-		icon?: string;
+		type: 'sport' | 'category' | 'keyword';
 		count?: number;
 	}
 
 	interface Props {
 		value?: string;
 		placeholder?: string;
-		sportContext?: string | null; // Current sport filter for context-aware suggestions
-		categoryContext?: string | null; // Current category filter
+		sports?: Array<{ name: string; count: number }>;
+		categories?: Array<{ name: string; count: number }>;
 		onSearch?: (query: string) => void;
 		onClear?: () => void;
 	}
@@ -22,8 +21,8 @@
 	let {
 		value = $bindable(''),
 		placeholder = 'Search photos...',
-		sportContext = null,
-		categoryContext = null,
+		sports = [],
+		categories = [],
 		onSearch,
 		onClear
 	}: Props = $props();
@@ -32,86 +31,40 @@
 	let showSuggestions = $state(false);
 	let focusedIndex = $state(-1);
 
-	// Sport-specific keyword suggestions
-	const sportKeywords: Record<string, string[]> = {
-		volleyball: ['spike', 'block', 'dig', 'set', 'serve', 'ace', 'libero', 'rotation'],
-		basketball: ['dunk', 'layup', 'three-pointer', 'rebound', 'assist', 'fast break'],
-		soccer: ['goal', 'penalty', 'corner kick', 'header', 'dribble', 'pass'],
-		softball: ['pitch', 'bat', 'home run', 'slide', 'catch', 'infield'],
-		baseball: ['pitch', 'bat', 'home run', 'slide', 'catch', 'infield'],
-		football: ['touchdown', 'tackle', 'pass', 'run', 'catch', 'kick'],
-		track: ['sprint', 'hurdles', 'relay', 'finish line', 'starting blocks']
-	};
-
-	// Category-specific suggestions
-	const categoryKeywords: Record<string, string[]> = {
-		action: ['peak moment', 'high intensity', 'athletic', 'dynamic'],
-		celebration: ['victory', 'team', 'huddle', 'cheer', 'trophy'],
-		candid: ['behind the scenes', 'bench', 'timeout', 'sideline'],
-		portrait: ['headshot', 'team photo', 'senior', 'individual'],
-		warmup: ['practice', 'training', 'drill', 'stretching']
-	};
-
-	// General photo keywords
-	const generalKeywords = [
-		'portfolio',
-		'high quality',
-		'sharp',
-		'emotional',
-		'golden hour',
-		'intense',
-		'high intensity',
-		'indoor',
-		'outdoor',
-		'team',
-		'individual'
+	// General keyword suggestions (terms the parser understands)
+	const keywords = [
+		'golden hour', 'spike', 'block', 'dig', 'serve', 'celebration',
+		'dramatic', 'backlit', 'intense', 'peak', 'warm', 'cool',
 	];
 
-	// Generate suggestions based on current context and query
+	// Generate suggestions from server data + keywords
 	const suggestions = $derived.by(() => {
 		if (!value || value.length < 2) return [];
 
 		const query = value.toLowerCase();
 		const results: SearchSuggestion[] = [];
 
-		// Sport-aware suggestions
-		if (sportContext && sportKeywords[sportContext]) {
-			sportKeywords[sportContext].forEach((keyword) => {
-				if (keyword.toLowerCase().includes(query)) {
-					results.push({
-						text: keyword,
-						type: 'sport',
-						icon: '🏐'
-					});
-				}
-			});
-		}
-
-		// Category-aware suggestions
-		if (categoryContext && categoryKeywords[categoryContext]) {
-			categoryKeywords[categoryContext].forEach((keyword) => {
-				if (keyword.toLowerCase().includes(query)) {
-					results.push({
-						text: keyword,
-						type: 'category',
-						icon: '📁'
-					});
-				}
-			});
-		}
-
-		// General keywords
-		generalKeywords.forEach((keyword) => {
-			if (keyword.toLowerCase().includes(query)) {
-				results.push({
-					text: keyword,
-					type: 'keyword',
-					icon: '🔍'
-				});
+		// Match sports (with counts)
+		for (const sport of sports) {
+			if (sport.name.toLowerCase().includes(query)) {
+				results.push({ text: sport.name, type: 'sport', count: sport.count });
 			}
-		});
+		}
 
-		// Limit to top 8 suggestions
+		// Match categories (with counts)
+		for (const cat of categories) {
+			if (cat.name.toLowerCase().includes(query)) {
+				results.push({ text: cat.name, type: 'category', count: cat.count });
+			}
+		}
+
+		// Match keyword suggestions
+		for (const kw of keywords) {
+			if (kw.includes(query) && !results.some(r => r.text.toLowerCase() === kw)) {
+				results.push({ text: kw, type: 'keyword' });
+			}
+		}
+
 		return results.slice(0, 8);
 	});
 
@@ -172,22 +125,11 @@
 	}
 
 	function handleBlur() {
-		// Delay to allow click on suggestion
 		setTimeout(() => {
 			showSuggestions = false;
 			focusedIndex = -1;
 		}, 200);
 	}
-
-	// Context label for suggestions
-	const contextLabel = $derived.by(() => {
-		if (sportContext && categoryContext) {
-			return `${sportContext} ${categoryContext}`;
-		}
-		if (sportContext) return sportContext;
-		if (categoryContext) return categoryContext;
-		return null;
-	});
 </script>
 
 <div class="relative">
@@ -233,14 +175,6 @@
 					use:motion
 					class="absolute z-50 w-full mt-2 bg-charcoal-900 border border-charcoal-800 rounded-lg shadow-2xl overflow-hidden"
 				>
-					{#if contextLabel}
-						<div class="px-4 py-2 bg-charcoal-800 border-b border-charcoal-700">
-							<span class="text-xs text-charcoal-400 uppercase tracking-wide">
-								Suggestions for <span class="text-gold-500 capitalize">{contextLabel}</span>
-							</span>
-						</div>
-					{/if}
-
 					<ul class="py-1">
 						{#each suggestions as suggestion, index}
 							<li>
@@ -251,8 +185,10 @@
 										? 'bg-gold-500/10 text-gold-500'
 										: 'text-charcoal-200 hover:bg-charcoal-800'}"
 								>
-									<span class="text-xl">{suggestion.icon}</span>
-									<span class="flex-1 text-left text-sm">{suggestion.text}</span>
+									<span class="flex-1 text-left text-sm capitalize">{suggestion.text}</span>
+									{#if suggestion.count}
+										<span class="text-xs text-charcoal-500">{suggestion.count.toLocaleString()}</span>
+									{/if}
 									<span class="text-xs text-charcoal-400 capitalize">{suggestion.type}</span>
 								</button>
 							</li>

@@ -1247,6 +1247,172 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
 }
 
 // ============================================================
+// Smart Search (Structured Parse + Vector Fallback)
+// ============================================================
+
+export interface SearchResult {
+  photos: Photo[];
+  totalCount: number;
+  searchMode: 'structured' | 'semantic';
+  parsedDescription: string;
+}
+
+/**
+ * Generate a vector embedding for a search query using Gemini embedding-001.
+ * Returns null on any error (graceful degradation).
+ */
+async function embedSearchQuery(query: string): Promise<number[] | null> {
+  const apiKey = import.meta.env.GOOGLE_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
+  if (!apiKey) {
+    console.warn('[embedSearchQuery] GOOGLE_API_KEY not configured — vector search unavailable');
+    return null;
+  }
+
+  try {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'embedding-001' });
+    const result = await model.embedContent(query);
+    return result.embedding.values;
+  } catch (error) {
+    console.error('[embedSearchQuery] Gemini API error:', error);
+    return null;
+  }
+}
+
+/**
+ * Search photos using Smart Parse + Vector Fallback.
+ *
+ * 1. Parse query into structured metadata filters
+ * 2. If all terms matched → fast structured path via fetchPhotos
+ * 3. If unmatched terms remain or zero results → vector semantic search via match_photos RPC
+ */
+export async function searchPhotos(
+  query: string,
+  existingFilters: Partial<PhotoFilterState>,
+  options: { limit?: number; offset?: number; sortBy?: FetchPhotosOptions['sortBy']; albumNames?: string[] } = {}
+): Promise<SearchResult> {
+  const { limit = 24, offset = 0, sortBy = 'quality', albumNames } = options;
+  const { parseQuery } = await import('$lib/utils/nlp-query-parser');
+
+  const parsed = parseQuery(query, albumNames);
+  console.log('[searchPhotos] Parsed query:', { query, parsed });
+
+  // Merge parsed filters with existing URL filters (parsed takes precedence for new fields)
+  const mergedFilters: Partial<PhotoFilterState> = { ...existingFilters };
+  const pf = parsed.matchedFilters;
+  if (pf.sportType) mergedFilters.sportType = pf.sportType;
+  if (pf.photoCategory) mergedFilters.photoCategory = pf.photoCategory;
+  if (pf.playTypes?.length) mergedFilters.playTypes = pf.playTypes;
+  if (pf.actionIntensity?.length) mergedFilters.actionIntensity = pf.actionIntensity;
+  if (pf.lighting?.length) mergedFilters.lighting = pf.lighting;
+  if (pf.colorTemperature?.length) mergedFilters.colorTemperature = pf.colorTemperature;
+  if (pf.timeOfDay?.length) mergedFilters.timeOfDay = pf.timeOfDay;
+  if (pf.compositions?.length) mergedFilters.compositions = pf.compositions;
+  if (pf.emotion) mergedFilters.emotion = pf.emotion;
+  if (pf.albumKey) mergedFilters.albumKey = pf.albumKey;
+  if (pf.jerseyNumber !== undefined) mergedFilters.jerseyNumber = pf.jerseyNumber;
+
+  const hasMatchedFilters = Object.keys(parsed.matchedFilters).length > 0;
+  const hasUnmatchedTerms = parsed.unmatchedTerms.length > 0;
+
+  // Fast path: all terms matched → use structured filters
+  if (hasMatchedFilters && !hasUnmatchedTerms) {
+    const [photos, totalCount] = await Promise.all([
+      fetchPhotos({ ...mergedFilters, limit, offset, sortBy }),
+      getPhotoCount(mergedFilters),
+    ]);
+
+    // If structured search returned results, use them
+    if (photos.length > 0 || offset > 0) {
+      return {
+        photos,
+        totalCount,
+        searchMode: 'structured',
+        parsedDescription: parsed.description,
+      };
+    }
+    // Zero results on first page — fall through to semantic search
+  }
+
+  // Semantic path: unmatched terms or zero structured results
+  // If we had some matched filters but also unmatched terms, try structured first
+  if (hasMatchedFilters && hasUnmatchedTerms) {
+    const [photos, totalCount] = await Promise.all([
+      fetchPhotos({ ...mergedFilters, limit, offset, sortBy }),
+      getPhotoCount(mergedFilters),
+    ]);
+
+    if (photos.length > 0) {
+      return {
+        photos,
+        totalCount,
+        searchMode: 'structured',
+        parsedDescription: parsed.description,
+      };
+    }
+  }
+
+  // Vector search fallback
+  const embedding = await embedSearchQuery(query);
+  if (!embedding) {
+    return {
+      photos: [],
+      totalCount: 0,
+      searchMode: 'semantic',
+      parsedDescription: 'Search unavailable. Try using filters instead.',
+    };
+  }
+
+  const { data: matches, error } = await supabaseServer.rpc('match_photos', {
+    query_embedding: embedding,
+    match_threshold: 0.5,
+    match_count: limit,
+  });
+
+  if (error || !matches || matches.length === 0) {
+    if (error) console.error('[searchPhotos] match_photos RPC error:', error);
+    return {
+      photos: [],
+      totalCount: 0,
+      searchMode: 'semantic',
+      parsedDescription: `No results found for "${query}"`,
+    };
+  }
+
+  // Fetch full photo data for matched image_keys (same pattern as findSimilarPhotos)
+  const keys = matches.map((m: { image_key: string }) => m.image_key);
+  const { data: photosData, error: photosError } = await supabaseServer
+    .from('photo_metadata')
+    .select(PHOTO_COLUMNS)
+    .in('image_key', keys)
+    .not('sharpness', 'is', null);
+
+  if (photosError || !photosData) {
+    return {
+      photos: [],
+      totalCount: 0,
+      searchMode: 'semantic',
+      parsedDescription: `No results found for "${query}"`,
+    };
+  }
+
+  // Preserve similarity-based ordering
+  const photoMap = new Map(photosData.map(p => [p.image_key, p]));
+  const photos = matches
+    .map((m: { image_key: string }) => photoMap.get(m.image_key))
+    .filter((p: unknown): p is NonNullable<typeof p> => !!p)
+    .map(transformPhotoRow);
+
+  return {
+    photos,
+    totalCount: photos.length,
+    searchMode: 'semantic',
+    parsedDescription: `Results similar to "${query}"`,
+  };
+}
+
+// ============================================================
 // Album Settings (Unlisted Albums / Share Links)
 // ============================================================
 

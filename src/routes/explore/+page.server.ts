@@ -10,7 +10,7 @@
  * because this code runs SERVER-SIDE ONLY
  */
 
-import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, type FilterCounts } from '$lib/supabase/server';
+import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, type FilterCounts } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
@@ -144,21 +144,29 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   // PERFORMANCE: Fetch photos and count in parallel (saves ~100-200ms)
   let photos;
   let totalCount: number;
+  let searchMode: 'structured' | 'semantic' | null = null;
+  let parsedDescription = '';
 
   if (similarToImageKey) {
     // Use vector similarity search if requested
     photos = await findSimilarPhotos(similarToImageKey, pageSize);
     totalCount = photos.length;
+  } else if (searchQuery) {
+    // Smart search: structured parse + vector fallback
+    const result = await searchPhotos(searchQuery, filterOptions, {
+      limit: pageSize,
+      offset,
+      sortBy,
+    });
+    photos = result.photos;
+    totalCount = result.totalCount;
+    searchMode = result.searchMode;
+    parsedDescription = result.parsedDescription;
   } else {
-    // Run both queries in parallel
+    // No search — standard filter + paginate
     const [photosResult, countResult] = await Promise.all([
-      fetchPhotos({
-        ...filterOptions,
-        limit: pageSize,
-        offset,
-        sortBy,
-      }),
-      getPhotoCount(filterOptions)
+      fetchPhotos({ ...filterOptions, limit: pageSize, offset, sortBy }),
+      getPhotoCount(filterOptions),
     ]);
     photos = photosResult;
     totalCount = countResult;
@@ -170,9 +178,9 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     currentPage: page,
     pageSize,
     sortBy,
-    sports, // From parent layout (cached)
+    sports,
     selectedSport: sportFilter || null,
-    categories, // From parent layout (cached)
+    categories,
     selectedCategory: categoryFilter || null,
     selectedPlayType: playTypeFilter || null,
     selectedIntensity: intensityFilter || null,
@@ -180,11 +188,13 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     selectedColorTemp: colorTempFilter || null,
     selectedTimeOfDay: timeOfDayFilter || null,
     selectedComposition: compositionFilter || null,
-    selectedEmotion: emotionFilter || null, // Bucket 2, but used for "Similar Photos" feature
+    selectedEmotion: emotionFilter || null,
     selectedJerseyNumber: jerseyFilter || null,
-    filterCounts, // NEW: Dynamic result counts for smart filtering
-    clearedFilters, // Phase 4: List of auto-cleared filters for notification
-    searchQuery, // Global search query from URL
-    similarToImageKey, // Vector search query
+    filterCounts,
+    clearedFilters,
+    searchQuery,
+    searchMode,
+    parsedDescription,
+    similarToImageKey,
   };
 };

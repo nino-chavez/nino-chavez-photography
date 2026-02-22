@@ -207,7 +207,6 @@ export interface PhotoFilterState {
   // ==========================================================================
   albumKey?: string;
   jerseyNumber?: number;
-  searchQuery?: string;
 
   // ==========================================================================
   // REMOVED: Obsolete/Internal Filters

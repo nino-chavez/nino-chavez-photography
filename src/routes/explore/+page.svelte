@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page, navigating } from '$app/stores';
 	import { untrack } from 'svelte';
-	import { Camera, X, Filter, SlidersHorizontal, Loader2 } from 'lucide-svelte';
+	import { Camera, X, Filter, SlidersHorizontal, Loader2, Search, Sparkles } from 'lucide-svelte';
 	import { preferences } from '$lib/stores/preferences.svelte';
 	import { filterNotifications } from '$lib/stores/filter-notifications.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -22,13 +22,6 @@
 	import { filterHistory, type FilterHistoryEntry } from '$lib/stores/filter-history.svelte';
 	import { filterAnalytics } from '$lib/stores/filter-analytics.svelte';
 	import type { FilterPreset } from '$lib/stores/filter-presets.svelte';
-	import { parseQuery, describeFilters } from '$lib/utils/nlp-query-parser';
-	import {
-		buildFilterState,
-		autoCleanIncompatibleFilters,
-		formatClearedFilters,
-		type FilterState
-	} from '$lib/utils/filter-compatibility';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
@@ -108,38 +101,8 @@
 		searchQuery = data.searchQuery || '';
 	});
 
-	// Parse current search query for detected filters
-	let detectedFilters = $derived.by(() => {
-		if (!searchQuery.trim()) return null;
-		const parsed = parseQuery(searchQuery);
-		return Object.keys(parsed).length > 0 ? describeFilters(parsed) : null;
-	});
-
-	// Check if current search has NLP filters applied (vs client-side text search)
-	let hasActiveNLPFilters = $derived.by(() => {
-		return !!(data.selectedTimeOfDay === 'golden_hour' || 
-		          data.selectedColorTemp === 'warm' || 
-		          data.selectedIntensity === 'high' ||
-		          detectedFilters);
-	});
-
-	// Filter photos by search (client-side only when no NLP filters are active)
-	let displayPhotos = $derived.by(() => {
-		// If we have active NLP filters, don't do client-side text filtering
-		if (hasActiveNLPFilters) {
-			return data.photos;
-		}
-
-		// Only do client-side text search when no NLP filters are active
-		if (!searchQuery.trim()) return data.photos;
-
-		const query = searchQuery.toLowerCase();
-		return data.photos.filter((photo) =>
-			photo.title?.toLowerCase().includes(query) ||
-			photo.caption?.toLowerCase().includes(query) ||
-			photo.image_key?.toLowerCase().includes(query)
-		);
-	});
+	// Photos come directly from server (search filtering is server-side)
+	let displayPhotos = $derived(data.photos);
 
 	// Active filters count
 	let activeFilterCount = $derived.by(() => {
@@ -219,43 +182,15 @@
 	}
 
 	function handleSearch(query: string) {
-		// Parse the query for NLP filters
-		const parsedFilters = parseQuery(query);
-
-		// If we detected filters, apply them to URL
-		if (Object.keys(parsedFilters).length > 0) {
-			const url = new URL($page.url);
-
-			// Apply detected filters
-			if (parsedFilters.sport) url.searchParams.set('sport', parsedFilters.sport);
-			if (parsedFilters.category) url.searchParams.set('category', parsedFilters.category);
-			if (parsedFilters.play_type) url.searchParams.set('play_type', parsedFilters.play_type);
-			if (parsedFilters.action_intensity)
-				url.searchParams.set('intensity', parsedFilters.action_intensity);
-			if (parsedFilters.lighting && parsedFilters.lighting.length > 0) {
-				url.searchParams.delete('lighting');
-				parsedFilters.lighting.forEach((l) => url.searchParams.append('lighting', l));
-			}
-			if (parsedFilters.color_temperature)
-				url.searchParams.set('color_temp', parsedFilters.color_temperature);
-			if (parsedFilters.time_of_day) url.searchParams.set('time_of_day', parsedFilters.time_of_day);
-			if (parsedFilters.composition) url.searchParams.set('composition', parsedFilters.composition);
-
-			// Set the search query
-			url.searchParams.set('q', query);
-
-			url.searchParams.delete('page');
-			url.searchParams.delete('similar_to');
-
-			goto(url.toString());
+		const url = new URL($page.url);
+		if (query.trim()) {
+			url.searchParams.set('q', query.trim());
 		} else {
-			// No NLP filters detected, just set the search query
-			const url = new URL($page.url);
-			url.searchParams.set('q', query);
-			url.searchParams.delete('page');
-			url.searchParams.delete('similar_to');
-			goto(url.toString());
+			url.searchParams.delete('q');
 		}
+		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
+		goto(url.toString());
 	}
 
 	function handleClearSearch() {
@@ -794,6 +729,28 @@
 			<option value="action">By Play Type</option>
 		</select>
 	</div>
+
+	<!-- Search Feedback -->
+	{#if data.searchQuery && data.parsedDescription}
+		<div class="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-lg {data.searchMode === 'semantic' ? 'bg-gold-500/10 border border-gold-500/20' : 'bg-charcoal-900/50 border border-charcoal-800/30'}">
+			<div class="flex items-center gap-2 text-sm">
+				{#if data.searchMode === 'semantic'}
+					<Sparkles class="w-4 h-4 text-gold-400 flex-shrink-0" />
+					<span class="text-charcoal-200">{data.parsedDescription}</span>
+				{:else}
+					<Search class="w-4 h-4 text-charcoal-400 flex-shrink-0" />
+					<span class="text-charcoal-200">Showing <span class="text-white font-medium">{data.totalCount.toLocaleString()}</span> results for: <span class="text-gold-400">{data.parsedDescription}</span></span>
+				{/if}
+			</div>
+			<button
+				onclick={handleClearSearch}
+				class="text-charcoal-400 hover:text-white transition-colors flex-shrink-0"
+				aria-label="Clear search"
+			>
+				<X class="w-4 h-4" />
+			</button>
+		</div>
+	{/if}
 
 	<!-- Photo Grid with Loading State -->
 	{#if isLoading}

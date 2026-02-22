@@ -15,7 +15,6 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { Search, X } from 'lucide-svelte';
-	import { parseQuery } from '$lib/utils/nlp-query-parser';
 
 	let isExpanded = $state(false);
 	let searchQuery = $state('');
@@ -62,23 +61,9 @@
 
 		if (!searchQuery.trim()) return;
 
-		const query = searchQuery.trim();
+		// Navigate to explore page with search query — server handles filtering
 		const url = new URL(`${base}/explore`, window.location.origin);
-
-		// Parse query for NLP filters (e.g. "soccer" → sport=soccer)
-		const parsedFilters = parseQuery(query);
-		if (parsedFilters.sport) url.searchParams.set('sport', parsedFilters.sport);
-		if (parsedFilters.category) url.searchParams.set('category', parsedFilters.category);
-		if (parsedFilters.play_type) url.searchParams.set('play_type', parsedFilters.play_type);
-		if (parsedFilters.action_intensity) url.searchParams.set('intensity', parsedFilters.action_intensity);
-		if (parsedFilters.lighting?.length) {
-			parsedFilters.lighting.forEach((l) => url.searchParams.append('lighting', l));
-		}
-		if (parsedFilters.color_temperature) url.searchParams.set('color_temp', parsedFilters.color_temperature);
-		if (parsedFilters.time_of_day) url.searchParams.set('time_of_day', parsedFilters.time_of_day);
-		if (parsedFilters.composition) url.searchParams.set('composition', parsedFilters.composition);
-
-		url.searchParams.set('q', query);
+		url.searchParams.set('q', searchQuery.trim());
 
 		// Close search and navigate
 		closeSearch();
