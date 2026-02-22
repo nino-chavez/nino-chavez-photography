@@ -81,7 +81,7 @@ async function fetchHeroCandidates(): Promise<Record<string, unknown>[]> {
     .in('photo_category', ['action', 'celebration', 'portrait'])
     .not('sharpness', 'is', null)
     .order('photo_date', { ascending: false })
-    .limit(100);
+    .limit(30);
 
   if (error) {
     console.error('[Homepage] Error fetching hero candidates:', error);
@@ -95,7 +95,7 @@ async function fetchHeroCandidates(): Promise<Record<string, unknown>[]> {
       .eq('sport_type', 'volleyball')
       .not('sharpness', 'is', null)
       .order('photo_date', { ascending: false })
-      .limit(50);
+      .limit(30);
 
     return fallbackData || [];
   }

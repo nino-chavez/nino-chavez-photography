@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { Motion } from 'svelte-motion';
 	import { ArrowLeft, Award, Sparkles } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
@@ -42,16 +40,6 @@
 		url.searchParams.set('page', newPage.toString());
 		goto(url.toString(), { keepFocus: true });
 	}
-
-	// $effect for side effects
-	$effect(() => {
-		console.log('[Collection Detail] Loaded:', {
-			collection: data.collection.title,
-			photoCount: data.photos.length,
-			currentPage: data.currentPage,
-			totalCount: data.totalCount,
-		});
-	});
 </script>
 
 <svelte:head>
@@ -60,104 +48,81 @@
 </svelte:head>
 
 <!-- Page Header -->
-<Motion let:motion initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-	<div use:motion class="bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-			<!-- Back Navigation -->
-			<a
-				href="{base}/collections"
-				class="inline-flex items-center gap-2 text-sm text-charcoal-400 hover:text-gold-500 transition-colors mb-4"
-			>
-				<ArrowLeft class="w-4 h-4" />
-				<span>Back to Collections</span>
-			</a>
+<div class="collection-header-animate bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+		<!-- Back Navigation -->
+		<a
+			href="{base}/collections"
+			class="inline-flex items-center gap-2 text-sm text-charcoal-400 hover:text-gold-500 transition-colors mb-4"
+		>
+			<ArrowLeft class="w-4 h-4" />
+			<span>Back to Collections</span>
+		</a>
 
-			<!-- Collection Header -->
-			<div class="mb-4">
-				<div class="flex items-center gap-3 mb-2">
-					{#if isPortfolio}
-						<div class="bg-gold-500/10 border border-gold-500/20 text-gold-500 px-3 py-1 rounded-full flex items-center gap-2 text-xs font-medium">
-							<Award class="w-3.5 h-3.5" />
-							<span>Excellence</span>
-						</div>
-					{:else}
-						<Sparkles class="w-5 h-5 text-gold-500" />
-					{/if}
-					<Typography variant="caption" class="text-charcoal-400 text-xs">
-						{data.collection.photoCount} photos
-					</Typography>
-				</div>
-
-				<Typography variant="h1" class="text-2xl lg:text-3xl mb-3">
-					{data.collection.title}
-				</Typography>
-
-				<Typography variant="body" class="text-charcoal-400 text-base mb-2 italic">
-					{data.collection.narrative}
-				</Typography>
-
-				<Typography variant="body" class="text-charcoal-400 text-sm max-w-3xl">
-					{data.collection.description}
+		<!-- Collection Header -->
+		<div class="mb-4">
+			<div class="flex items-center gap-3 mb-2">
+				{#if isPortfolio}
+					<div class="bg-gold-500/10 border border-gold-500/20 text-gold-500 px-3 py-1 rounded-full flex items-center gap-2 text-xs font-medium">
+						<Award class="w-3.5 h-3.5" />
+						<span>Excellence</span>
+					</div>
+				{:else}
+					<Sparkles class="w-5 h-5 text-gold-500" />
+				{/if}
+				<Typography variant="caption" class="text-charcoal-400 text-xs">
+					{data.collection.photoCount} photos
 				</Typography>
 			</div>
+
+			<Typography variant="h1" class="text-2xl lg:text-3xl mb-3">
+				{data.collection.title}
+			</Typography>
+
+			<Typography variant="body" class="text-charcoal-400 text-base mb-2 italic">
+				{data.collection.narrative}
+			</Typography>
+
+			<Typography variant="body" class="text-charcoal-400 text-sm max-w-3xl">
+				{data.collection.description}
+			</Typography>
 		</div>
 	</div>
+</div>
 
-	<!-- Photo Grid -->
-	<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-		{#if data.photos.length > 0}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-				{#each data.photos as photo, index}
-					<Motion
-						let:motion
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ ...MOTION.spring.gentle, delay: index * 0.05 }}
-					>
-						<div use:motion>
-							<PhotoCard {photo} {index} onclick={handlePhotoClick} />
-						</div>
-					</Motion>
-				{/each}
-			</div>
-		{:else}
-			<!-- Empty State -->
-			<Motion
-				let:motion
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={MOTION.spring.gentle}
-			>
-				<div use:motion class="text-center py-16">
-					<Sparkles class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
-					<Typography variant="h3" class="mb-2">No Photos Yet</Typography>
-					<Typography variant="body" class="text-charcoal-400 text-sm">
-						Photos will appear once they match this collection's criteria
-					</Typography>
+<!-- Photo Grid -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+	{#if data.photos.length > 0}
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			{#each data.photos as photo, index}
+				<div class="collection-card-animate" style="animation-delay: {index * 50}ms">
+					<PhotoCard {photo} {index} onclick={handlePhotoClick} />
 				</div>
-			</Motion>
-		{/if}
+			{/each}
+		</div>
+	{:else}
+		<!-- Empty State -->
+		<div class="collection-header-animate text-center py-16">
+			<Sparkles class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
+			<Typography variant="h3" class="mb-2">No Photos Yet</Typography>
+			<Typography variant="body" class="text-charcoal-400 text-sm">
+				Photos will appear once they match this collection's criteria
+			</Typography>
+		</div>
+	{/if}
 
-		<!-- Pagination -->
-		{#if data.totalCount > data.pageSize}
-			<Motion
-				let:motion
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={{ ...MOTION.spring.gentle, delay: 0.3 }}
-			>
-				<div use:motion class="mt-8">
-					<Pagination
-						currentPage={data.currentPage}
-						totalCount={data.totalCount}
-						pageSize={data.pageSize}
-						onPageChange={handlePageChange}
-					/>
-				</div>
-			</Motion>
-		{/if}
-	</div>
-</Motion>
+	<!-- Pagination -->
+	{#if data.totalCount > data.pageSize}
+		<div class="collection-header-animate mt-8">
+			<Pagination
+				currentPage={data.currentPage}
+				totalCount={data.totalCount}
+				pageSize={data.pageSize}
+				onPageChange={handlePageChange}
+			/>
+		</div>
+	{/if}
+</div>
 
 <!-- Lightbox -->
 <Lightbox
@@ -167,3 +132,46 @@
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
 />
+
+<style>
+	/* PERFORMANCE: CSS animations instead of svelte-motion (saves 89KB bundle) */
+	@keyframes collection-fade-in {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes collection-card-in {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.collection-header-animate {
+		animation: collection-fade-in 0.3s ease-out forwards;
+	}
+
+	.collection-card-animate {
+		animation: collection-card-in 0.3s ease-out forwards;
+		opacity: 0;
+	}
+
+	/* Reduce motion for accessibility */
+	@media (prefers-reduced-motion: reduce) {
+		.collection-header-animate,
+		.collection-card-animate {
+			animation: none;
+			opacity: 1;
+		}
+	}
+</style>
