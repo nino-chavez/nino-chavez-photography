@@ -13,9 +13,8 @@
 
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { base } from '$app/paths';
 	import { Search, X } from 'lucide-svelte';
-	import { cn } from '$lib/utils';
 
 	let isExpanded = $state(false);
 	let searchQuery = $state('');
@@ -63,7 +62,7 @@
 		if (!searchQuery.trim()) return;
 
 		// Navigate to explore page with search query
-		const url = new URL('/explore', window.location.origin);
+		const url = new URL(`${base}/explore`, window.location.origin);
 		url.searchParams.set('q', searchQuery.trim());
 
 		// Close search and navigate
