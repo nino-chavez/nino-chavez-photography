@@ -2,9 +2,10 @@
 /**
  * Unified Photo Enrichment Pipeline
  *
- * Automates the photo processing pipeline:
- * 1. Enrich: Generate AI metadata from local photos
- * 2. Upload + Sync: Upload to Cloudflare Images and sync to Supabase
+ * Automates the full photo processing pipeline:
+ * 1. Enrich: Generate AI metadata from local photos (Gemini Vision)
+ * 2. Sync: Write enriched metadata to Supabase
+ * 3. Upload: Upload local photos to Cloudflare Images
  *
  * Usage:
  *   # Process photos from a local directory
@@ -14,6 +15,7 @@
  *   npx tsx scripts/run-pipeline.ts --dir ./photos --album-key ABC123 --dry-run
  *
  *   # Resume from specific step
+ *   npx tsx scripts/run-pipeline.ts --dir ./photos --album-key ABC123 --start-from sync
  *   npx tsx scripts/run-pipeline.ts --dir ./photos --album-key ABC123 --start-from upload
  */
 
@@ -33,8 +35,9 @@ interface PipelineConfig {
 	photoDir: string;
 	albumKey: string;
 	dryRun: boolean;
-	startFrom: 'enrich' | 'upload' | 'sync';
+	startFrom: 'enrich' | 'sync' | 'upload';
 	batchSize: number;
+	albumName?: string;
 }
 
 function parseArgs(): PipelineConfig {
@@ -57,12 +60,18 @@ function parseArgs(): PipelineConfig {
 		config.albumKey = args[albumIndex + 1];
 	}
 
+	// Parse --album-name
+	const nameIndex = args.indexOf('--album-name');
+	if (nameIndex !== -1 && args[nameIndex + 1]) {
+		config.albumName = args[nameIndex + 1];
+	}
+
 	// Parse --start-from
 	const startFromIndex = args.indexOf('--start-from');
 	if (startFromIndex !== -1 && args[startFromIndex + 1]) {
 		const step = args[startFromIndex + 1];
-		if (['enrich', 'upload', 'sync'].includes(step)) {
-			config.startFrom = step as 'enrich' | 'upload' | 'sync';
+		if (['enrich', 'sync', 'upload'].includes(step)) {
+			config.startFrom = step as 'enrich' | 'sync' | 'upload';
 		}
 	}
 
@@ -155,10 +164,14 @@ async function runPipeline(config: PipelineConfig) {
 	const pipelineStartTime = Date.now();
 	const results: Record<string, StepResult> = {};
 
-	// Step 1: Enrich - Generate AI metadata
-	if (['enrich'].includes(config.startFrom)) {
-		const enrichCmd = `npx tsx scripts/enrich-local-photos.ts ${config.photoDir} ${
-			config.dryRun ? '--dry-run' : ''
+	const steps: ('enrich' | 'sync' | 'upload')[] = ['enrich', 'sync', 'upload'];
+	const startIdx = steps.indexOf(config.startFrom);
+
+	// Step 1: Enrich - Generate AI metadata via Gemini Vision
+	if (startIdx <= 0) {
+		const albumNameArg = config.albumName ? ` --album-name="${config.albumName}"` : '';
+		const enrichCmd = `npx tsx scripts/enrich-local-photos.ts ${config.photoDir}${albumNameArg}${
+			config.dryRun ? ' --dry-run' : ''
 		}`;
 
 		results.enrich = await runStep(
@@ -174,20 +187,40 @@ async function runPipeline(config: PipelineConfig) {
 		}
 	}
 
-	// Step 2: Upload + Sync - Upload to CF Images and sync to Supabase
-	if (['enrich', 'upload'].includes(config.startFrom)) {
-		const syncCmd = `npx tsx scripts/sync-local-to-supabase.ts ${config.photoDir} ${config.albumKey} ${
-			config.dryRun ? '--dry-run' : ''
+	// Step 2: Sync - Write enriched metadata to Supabase
+	if (startIdx <= 1) {
+		const albumNameArg = config.albumName ? ` --album-name="${config.albumName}"` : '';
+		const syncCmd = `npx tsx scripts/sync-local-to-supabase.ts ${config.photoDir} ${config.albumKey}${albumNameArg}${
+			config.dryRun ? ' --dry-run' : ''
 		}`;
 
 		results.sync = await runStep(
-			'Upload+Sync',
+			'Sync',
 			syncCmd,
-			`Upload photos to CF Images and sync album ${config.albumKey} to Supabase`
+			`Sync enriched metadata for album ${config.albumKey} to Supabase`
 		);
 
 		if (!results.sync.success) {
-			console.error('\n❌ Pipeline failed at Upload+Sync step');
+			console.error('\n❌ Pipeline failed at Sync step');
+			printSummary(results, pipelineStartTime);
+			process.exit(1);
+		}
+	}
+
+	// Step 3: Upload - Upload local photos to Cloudflare Images
+	if (startIdx <= 2) {
+		const uploadCmd = `npx tsx scripts/upload-local-to-cloudflare.ts ${config.photoDir} ${config.albumKey}${
+			config.dryRun ? ' --dry-run' : ''
+		}`;
+
+		results.upload = await runStep(
+			'Upload',
+			uploadCmd,
+			`Upload photos to Cloudflare Images for album ${config.albumKey}`
+		);
+
+		if (!results.upload.success) {
+			console.error('\n❌ Pipeline failed at Upload step');
 			printSummary(results, pipelineStartTime);
 			process.exit(1);
 		}
