@@ -7,8 +7,10 @@ SELECT
   p.album_key,
   MAX(p.album_name) as album_name,
   COUNT(*) as photo_count,
-  -- Get the most recent photo's thumbnail for cover
+  -- Get the most recent photo's thumbnail for cover (legacy SmugMug fallback)
   (ARRAY_AGG(COALESCE(p."ThumbnailUrl", p."ImageUrl") ORDER BY p.upload_date DESC))[1] as cover_image_url,
+  -- Cloudflare Images cover (preferred, picks highest quality photo)
+  (ARRAY_AGG(p.cf_image_id ORDER BY p.sharpness DESC NULLS LAST))[1] as cover_cf_image_id,
   -- Collect unique sports and categories
   ARRAY_AGG(DISTINCT p.sport_type) FILTER (WHERE p.sport_type IS NOT NULL AND p.sport_type != 'unknown') as sports,
   ARRAY_AGG(DISTINCT p.photo_category) FILTER (WHERE p.photo_category IS NOT NULL AND p.photo_category != 'unknown') as categories,

@@ -151,7 +151,9 @@ async function fetchFeaturedAlbums() {
           albumKey: album.album_key,
           albumName: album.album_name || 'Unknown Album',
           photoCount: parseInt(album.photo_count) || 0,
-          coverImageUrl: album.cover_image_url,
+          coverImageUrl: album.cover_cf_image_id
+            ? cfImageUrl(album.cover_cf_image_id, 'medium')
+            : album.cover_image_url,
           primarySport: album.primary_sport || 'volleyball',
           primaryCategory: album.primary_category || 'action',
           avgQualityScore: parseFloat(album.avg_quality_score) || 0,

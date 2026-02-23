@@ -48,6 +48,7 @@
 	let optimizedCoverUrl = $derived(
 		album.coverCfImageId ? cfImageUrl(album.coverCfImageId, 'medium') : album.coverImageUrl
 	);
+	let hasCover = $derived(!!(album.coverCfImageId || album.coverImageUrl));
 	const albumCardSizes = SIZES_PRESETS.albumCard;
 
 	function handleClick(event: MouseEvent) {
@@ -143,12 +144,12 @@
 		onclick={handleClick}
 	>
 		<!-- Loading/Fallback State -->
-		{#if !imageLoaded || imageError || !album.coverImageUrl}
+		{#if !imageLoaded || imageError || !hasCover}
 			<div
 				class="absolute inset-0 bg-gradient-to-br from-charcoal-800 to-charcoal-900 flex items-center justify-center"
 				aria-hidden="true"
 			>
-				{#if !album.coverImageUrl}
+				{#if !hasCover}
 					<Folder class="w-24 h-24 text-charcoal-700 group-hover:text-gold-500/50 transition-colors" />
 				{:else}
 					<Camera class="w-16 h-16 text-charcoal-600" />
@@ -157,7 +158,7 @@
 		{/if}
 
 		<!-- Cover Image with Responsive srcset -->
-		{#if album.coverImageUrl && !imageError}
+		{#if hasCover && !imageError}
 			<img
 				src={optimizedCoverUrl || album.coverImageUrl}
 				srcset={coverSrcset || undefined}
