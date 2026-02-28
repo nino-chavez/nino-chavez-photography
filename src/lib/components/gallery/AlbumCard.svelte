@@ -19,6 +19,7 @@
 		albumKey: string;
 		albumName: string;
 		photoCount: number;
+		videoCount?: number;
 		coverImageUrl: string | null;
 		coverCfImageId?: string | null; // Cloudflare Images ID for cover
 		sports?: string[];
@@ -126,6 +127,13 @@
 	}
 
 	let countTier = $derived(getCountTier(album.photoCount));
+	let isVideoOnly = $derived(album.photoCount === 0 && (album.videoCount ?? 0) > 0);
+	let contentLabel = $derived.by(() => {
+		const parts: string[] = [];
+		if (album.photoCount > 0) parts.push(`${album.photoCount.toLocaleString()} ${album.photoCount === 1 ? 'photo' : 'photos'}`);
+		if ((album.videoCount ?? 0) > 0) parts.push(`${album.videoCount} ${album.videoCount === 1 ? 'video' : 'videos'}`);
+		return parts.join(' · ') || '0 photos';
+	});
 </script>
 
 <Motion
@@ -140,7 +148,7 @@
 		href={albumUrl}
 		data-sveltekit-preload="hover"
 		class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors cursor-pointer outline-none block"
-		aria-label={`Album: ${album.albumName}, ${album.photoCount} photos`}
+		aria-label={`Album: ${album.albumName}, ${contentLabel}`}
 		onclick={handleClick}
 	>
 		<!-- Loading/Fallback State -->
@@ -201,7 +209,7 @@
 				</Typography>
 				<div class="flex items-center justify-between gap-2">
 					<Typography variant="caption" class="text-charcoal-300">
-						{album.photoCount.toLocaleString()} {album.photoCount === 1 ? 'photo' : 'photos'}
+						{contentLabel}
 					</Typography>
 					<!-- Count Tier Badge - Visual differentiation by 50-photo increments -->
 					{#if countTier}

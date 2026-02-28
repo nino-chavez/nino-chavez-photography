@@ -96,12 +96,15 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	// Apply pagination
 	query = query.range(offset, offset + limit - 1);
 
-	const [{ data: albumsData, error, count }, { data: unlistedAlbums }] = await Promise.all([
+	const [{ data: albumsData, error, count }, { data: unlistedAlbums }, { data: videoAlbumsData }] = await Promise.all([
 		query,
 		supabaseServer
 			.from('album_settings')
 			.select('album_key')
-			.eq('visibility', 'unlisted')
+			.eq('visibility', 'unlisted'),
+		supabaseServer
+			.from('videos_summary')
+			.select('*')
 	]);
 
 	if (error) {
@@ -113,10 +116,12 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const unlistedKeys = new Set((unlistedAlbums || []).map((a: { album_key: string }) => a.album_key));
 
 	// Map materialized view results to expected format, filtering out unlisted albums
+	const photoAlbumKeys = new Set((albumsData || []).map((a) => a.album_key));
 	const albums = (albumsData || []).filter((album) => !unlistedKeys.has(album.album_key)).map((album) => ({
 		albumKey: album.album_key,
 		albumName: album.album_name || 'Unknown Album',
 		photoCount: parseInt(album.photo_count) || 0,
+		videoCount: 0,
 		coverImageUrl: album.cover_image_url,
 		coverCfImageId: (album as any).cover_cf_image_id as string | null ?? null,
 		sports: album.sports || [],
@@ -130,6 +135,30 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 			latest: album.latest_photo_date
 		}
 	}));
+
+	// Merge video-only albums from videos_summary
+	const videoOnlyAlbums = (videoAlbumsData || [])
+		.filter((v) => !photoAlbumKeys.has(v.album_key) && !unlistedKeys.has(v.album_key))
+		.map((v) => ({
+			albumKey: v.album_key,
+			albumName: v.album_name || 'Unknown Album',
+			photoCount: 0,
+			videoCount: parseInt(v.video_count) || 0,
+			coverImageUrl: v.cover_thumbnail_url,
+			coverCfImageId: null as string | null,
+			sports: ['volleyball'],
+			categories: ['highlights'],
+			portfolioCount: 0,
+			avgQualityScore: 0,
+			primarySport: 'volleyball',
+			primaryCategory: 'highlights',
+			dateRange: {
+				earliest: v.earliest_video_date,
+				latest: v.latest_video_date
+			}
+		}));
+
+	albums.push(...videoOnlyAlbums);
 
 	const totalAlbums = (count || 0) - unlistedKeys.size;
 	const totalPages = Math.ceil(totalAlbums / limit);
