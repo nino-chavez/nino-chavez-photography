@@ -397,8 +397,8 @@
 							</button>
 						</div>
 
-						<!-- Download Button - Desktop only -->
-						<div class="hidden md:block mr-4">
+						<!-- Download Button -->
+						<div class="mr-2 md:mr-4">
 							<DownloadButton {photo} variant="compact" />
 						</div>
 
