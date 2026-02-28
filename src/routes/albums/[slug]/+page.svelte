@@ -7,11 +7,13 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
+	import VideoCard from '$lib/components/gallery/VideoCard.svelte';
+	import VideoPlayer from '$lib/components/gallery/VideoPlayer.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
 	import type { PageData } from './$types';
-	import type { Photo } from '$types/photo';
+	import type { Photo, Video } from '$types/photo';
 
 	// Svelte 5 Runes: $props to receive server data
 	let { data }: { data: PageData } = $props();
@@ -19,6 +21,13 @@
 	// Lightbox state (same pattern as explore page)
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
+
+	// Video player state
+	let activeVideo = $state<Video | null>(null);
+	let videoPlayerOpen = $state(false);
+
+	let hasVideos = $derived(data.videos.length > 0);
+	let hasPhotos = $derived(data.photos.length > 0);
 
 	// Simple search (client-side filtering of current page)
 	let searchQuery = $state('');
@@ -51,6 +60,11 @@
 
 	function handlePageChange(page: number) {
 		goto(`${base}/albums/${data.slug}?page=${page}`);
+	}
+
+	function handleVideoClick(video: Video) {
+		activeVideo = video;
+		videoPlayerOpen = true;
 	}
 
 	function goBackToAlbums() {
@@ -105,7 +119,7 @@
 				<div class="flex items-center gap-2 min-w-0 flex-1">
 					<Typography variant="h1" class="text-xl lg:text-2xl truncate">{data.albumName}</Typography>
 					<Typography variant="caption" class="text-charcoal-400 text-xs whitespace-nowrap">
-						{data.totalCount.toLocaleString()}
+						{data.totalCount.toLocaleString()}{#if hasVideos}{' '}&middot; {data.videos.length} video{data.videos.length !== 1 ? 's' : ''}{/if}
 					</Typography>
 				</div>
 
@@ -159,8 +173,29 @@
 			</div>
 		{/if}
 
+		<!-- Video Grid -->
+		{#if hasVideos}
+			<div class="mb-8">
+				{#if hasPhotos}
+					<Typography variant="caption" class="text-charcoal-400 text-xs uppercase tracking-wider mb-4 block">
+						Videos
+					</Typography>
+				{/if}
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+					{#each data.videos as video, index}
+						<VideoCard {video} {index} onclick={handleVideoClick} />
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		<!-- Photo Grid -->
 		{#if displayPhotos.length > 0}
+			{#if hasVideos}
+				<Typography variant="caption" class="text-charcoal-400 text-xs uppercase tracking-wider mb-4 block">
+					Photos
+				</Typography>
+			{/if}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each displayPhotos as photo, index}
 					<PhotoCard {photo} {index} onclick={handlePhotoClick} />
@@ -176,8 +211,8 @@
 					onPageChange={handlePageChange}
 				/>
 			</div>
-		{:else}
-			<!-- Empty State -->
+		{:else if !hasVideos}
+			<!-- Empty State (only show if no videos either) -->
 			<Motion
 				let:motion
 				initial={{ opacity: 0 }}
@@ -187,7 +222,7 @@
 				<div use:motion>
 					<Card padding="lg" class="text-center">
 						<FolderOpen class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
-						<Typography variant="h3" class="mb-2">No photos found</Typography>
+						<Typography variant="h3" class="mb-2">No content found</Typography>
 						<Typography variant="body" class="text-charcoal-400 text-sm">
 							{searchQuery ? 'Try adjusting your search' : 'This album is empty'}
 						</Typography>
@@ -206,3 +241,12 @@
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
 />
+
+<!-- Video Player -->
+{#if activeVideo}
+	<VideoPlayer
+		video={activeVideo}
+		bind:open={videoPlayerOpen}
+		onclose={() => { activeVideo = null; }}
+	/>
+{/if}

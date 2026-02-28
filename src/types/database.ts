@@ -166,6 +166,7 @@ export interface AlbumSettingsRow {
 	album_key: string;
 	visibility: 'public' | 'unlisted';
 	share_token: string;
+	gallery_scope: string | null;
 	created_at: string;
 	updated_at: string;
 }

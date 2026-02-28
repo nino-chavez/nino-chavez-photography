@@ -175,6 +175,23 @@ export interface Photo {
 }
 
 /**
+ * Video from Cloudflare Stream
+ */
+export interface Video {
+	id: string;
+	cf_stream_id: string;
+	cf_stream_thumbnail: string | null;
+	album_key: string;
+	album_name: string;
+	title: string | null;
+	description: string | null;
+	duration_seconds: number | null;
+	sport_type: string;
+	video_category: string;
+	video_date: string | null;
+}
+
+/**
  * Filter state for photo browsing (CONCRETE FILTERS ONLY)
  *
  * Only Bucket 1 (user-facing) fields are exposed as filters.

@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { fetchPhotos, getPhotoCount, getAlbumSettings, supabaseServer } from '$lib/supabase/server';
+import { fetchPhotos, getPhotoCount, getAlbumSettings, fetchAlbumVideos, supabaseServer } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
@@ -17,8 +17,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	const pageSize = 48; // Larger page size for album views
 	const offset = (page - 1) * pageSize;
 
-	// Fetch album info, photos, count, and settings in parallel
-	const [albumData, photos, totalCount, albumSettings] = await Promise.all([
+	// Fetch album info, photos, count, videos, and settings in parallel
+	const [albumData, photos, totalCount, videos, albumSettings] = await Promise.all([
 		// Get album name from albums_summary view
 		supabaseServer
 			.from('albums_summary')
@@ -34,6 +34,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		}),
 		// Get total count for pagination
 		getPhotoCount({ albumKey }),
+		// Get videos for this album (CF Stream)
+		fetchAlbumVideos(albumKey),
 		// Check if album is unlisted
 		getAlbumSettings(albumKey)
 	]);
@@ -43,8 +45,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		throw error(404, 'Album not found');
 	}
 
-	if (totalCount === 0) {
-		throw error(404, 'Album not found or contains no enriched photos');
+	if (totalCount === 0 && videos.length === 0) {
+		throw error(404, 'Album not found or contains no content');
 	}
 
 	const albumName = albumData.data?.album_name || albumKey;
@@ -61,6 +63,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		albumName,
 		slug: correctSlug,
 		photos,
+		videos,
 		totalCount,
 		currentPage: page,
 		pageSize

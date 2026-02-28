@@ -12,7 +12,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import type { Photo, PhotoFilterState } from '$types/photo';
+import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
@@ -1471,4 +1471,34 @@ export async function fetchAlbumPhotosForDownload(
   }
 
   return (data || []) as Array<{ cf_image_id: string; image_key: string }>;
+}
+
+/**
+ * Fetch videos for an album from video_metadata table (Cloudflare Stream)
+ */
+export async function fetchAlbumVideos(albumKey: string): Promise<Video[]> {
+  const { data, error } = await supabaseServer
+    .from('video_metadata')
+    .select('video_id, cf_stream_id, cf_stream_thumbnail, album_key, album_name, title, description, duration_seconds, sport_type, video_category, video_date')
+    .eq('album_key', albumKey)
+    .order('upload_date', { ascending: false });
+
+  if (error) {
+    console.error('[fetchAlbumVideos] Error:', error);
+    return [];
+  }
+
+  return (data || []).map((row) => ({
+    id: row.video_id,
+    cf_stream_id: row.cf_stream_id,
+    cf_stream_thumbnail: row.cf_stream_thumbnail || null,
+    album_key: row.album_key,
+    album_name: row.album_name || 'Unknown Album',
+    title: row.title || null,
+    description: row.description || null,
+    duration_seconds: row.duration_seconds || null,
+    sport_type: row.sport_type || 'volleyball',
+    video_category: row.video_category || 'highlights',
+    video_date: row.video_date || null,
+  })) as Video[];
 }
