@@ -128,6 +128,9 @@ interface SmugMugVideo {
 	ArchivedUri: string;
 	WebUri: string;
 	IsVideo: boolean;
+	// Resolved from LargestVideo expansion
+	videoUrl?: string;
+	videoDuration?: number;
 }
 
 interface MigrationResult {
@@ -147,13 +150,29 @@ async function fetchAlbumVideos(albumKey: string): Promise<SmugMugVideo[]> {
 	console.log(`\n  Fetching videos from album ${albumKey}...`);
 
 	const data = await smugmugFetch(
-		`/api/v2/album/${albumKey}!images?count=100&_expand=ImageSizes&_filter=ImageKey,Title,Caption,FileName,Duration,OriginalWidth,OriginalHeight,Date,ArchivedUri,WebUri,IsVideo`
+		`/api/v2/album/${albumKey}!images?count=100&_expand=LargestVideo&_filter=ImageKey,Title,Caption,FileName,Duration,OriginalWidth,OriginalHeight,Date,ArchivedUri,WebUri,IsVideo`
 	);
 
 	const images = data.Response?.AlbumImage || [];
+	const expansions = data.Expansions || {};
 	const videos = images.filter((img: any) => img.IsVideo);
 
-	console.log(`  Found ${videos.length} videos (of ${images.length} total items)`);
+	// Resolve actual video URLs from LargestVideo expansions
+	for (const video of videos) {
+		const key = video.ImageKey;
+		// Expansion keys use the format: /api/v2/image/{key}-0!largestvideo
+		const expKey = Object.keys(expansions).find((k) => k.includes(key) && k.includes('largestvideo'));
+		if (expKey) {
+			const largest = expansions[expKey]?.LargestVideo;
+			if (largest?.Url) {
+				video.videoUrl = largest.Url;
+				video.videoDuration = largest.Duration ? parseFloat(largest.Duration) : undefined;
+			}
+		}
+	}
+
+	const withUrl = videos.filter((v: SmugMugVideo) => v.videoUrl);
+	console.log(`  Found ${videos.length} videos (${withUrl.length} with download URLs) of ${images.length} total items`);
 	return videos;
 }
 
@@ -250,16 +269,16 @@ async function migrateAlbum(albumKey: string): Promise<MigrationResult[]> {
 		}
 
 		if (CONFIG.dryRun) {
-			console.log(`    [DRY RUN] Would upload: ${video.ArchivedUri || video.WebUri}`);
+			console.log(`    [DRY RUN] Would upload: ${video.videoUrl || '(no video URL)'}`);
 			results.push({ albumKey, videoKey, title: video.Title, cfStreamId: 'dry-run', status: 'skipped' });
 			continue;
 		}
 
 		try {
-			// Get downloadable URL via SmugMug
-			const sourceUrl = video.ArchivedUri || video.WebUri;
+			// Get actual video file URL from LargestVideo expansion
+			const sourceUrl = video.videoUrl;
 			if (!sourceUrl) {
-				throw new Error('No downloadable URL found');
+				throw new Error('No video download URL found (LargestVideo expansion missing)');
 			}
 
 			// Upload to CF Stream
@@ -287,7 +306,7 @@ async function migrateAlbum(albumKey: string): Promise<MigrationResult[]> {
 				album_name: albumName,
 				title: video.Title || video.FileName || null,
 				description: video.Caption || null,
-				duration_seconds: streamInfo.duration || video.Duration || null,
+				duration_seconds: streamInfo.duration || video.videoDuration || video.Duration || null,
 				width: video.OriginalWidth || null,
 				height: video.OriginalHeight || null,
 				sport_type: 'volleyball',
