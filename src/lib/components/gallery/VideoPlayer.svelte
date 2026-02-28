@@ -16,7 +16,7 @@
 
 	let { video, open = $bindable(false), onclose }: Props = $props();
 
-	const CF_STREAM_SUBDOMAIN = import.meta.env.VITE_CF_STREAM_SUBDOMAIN || 'mztsxz382jswgq00';
+	const CF_STREAM_SUBDOMAIN = 'mztsxz382jswgq00';
 
 	let streamUrl = $derived(
 		`https://customer-${CF_STREAM_SUBDOMAIN}.cloudflarestream.com/${video.cf_stream_id}/iframe`

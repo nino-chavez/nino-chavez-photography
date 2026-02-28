@@ -219,7 +219,7 @@ async function pollStreamReady(streamId: string): Promise<{ thumbnail: string; d
 
 		if (video.readyToStream) {
 			return {
-				thumbnail: video.thumbnail || `https://customer-f77l9nwspm9h0g13.cloudflarestream.com/${streamId}/thumbnails/thumbnail.jpg`,
+				thumbnail: video.thumbnail || `https://customer-mztsxz382jswgq00.cloudflarestream.com/${streamId}/thumbnails/thumbnail.jpg`,
 				duration: Math.round(video.duration || 0),
 			};
 		}
