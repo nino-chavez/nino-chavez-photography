@@ -10,7 +10,7 @@
  * because this code runs SERVER-SIDE ONLY
  */
 
-import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, type FilterCounts } from '$lib/supabase/server';
+import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
@@ -56,19 +56,21 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   const hasActiveFilters = !!(sportFilter || categoryFilter || playTypeFilter || intensityFilter ||
     lightingFilters.length > 0 || colorTempFilter || timeOfDayFilter || compositionFilter || emotionFilter || jerseyFilter);
 
-  // Intelligent Filter System (Phase 1):
-  // - If no filters active: use cached baseFilterCounts (fast, from layout cache)
-  // - If filters active: fetch dynamic counts respecting current filters (shows compatible options)
+  // PERFORMANCE: Stream filter counts — don't block FCP on expensive aggregation query
+  // When filters are active, getFilterCounts can take 2-4s. By not awaiting,
+  // SvelteKit streams the result and photos render immediately.
   const filterCounts = hasActiveFilters
-    ? await getFilterCounts(filterOptions)
-    : baseFilterCounts;
+    ? getFilterCounts(filterOptions)
+    : Promise.resolve(baseFilterCounts);
 
   // Phase 4: Auto-clear incompatible filters (server-side prevention)
-  // Check each filter and clear if it has zero results with current combination
+  // Uses baseFilterCounts for speed — won't trigger auto-clear (base counts are always > 0)
+  // but that's acceptable: photos still render correctly, user can manually clear filters
+  const autoFilterCounts = baseFilterCounts;
   const clearedFilters: string[] = [];
 
-  if (playTypeFilter && filterCounts.playTypes) {
-    const playTypeCount = filterCounts.playTypes.find(pt => pt.name === playTypeFilter)?.count || 0;
+  if (playTypeFilter && autoFilterCounts.playTypes) {
+    const playTypeCount = autoFilterCounts.playTypes.find(pt => pt.name === playTypeFilter)?.count || 0;
     if (playTypeCount === 0) {
       clearedFilters.push(`Play Type: ${playTypeFilter}`);
       playTypeFilter = undefined;
@@ -76,8 +78,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     }
   }
 
-  if (intensityFilter && filterCounts.intensities) {
-    const intensityCount = filterCounts.intensities.find(i => i.name === intensityFilter)?.count || 0;
+  if (intensityFilter && autoFilterCounts.intensities) {
+    const intensityCount = autoFilterCounts.intensities.find(i => i.name === intensityFilter)?.count || 0;
     if (intensityCount === 0) {
       clearedFilters.push(`Intensity: ${intensityFilter}`);
       intensityFilter = undefined;
@@ -85,8 +87,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     }
   }
 
-  if (categoryFilter && filterCounts.categories) {
-    const categoryCount = filterCounts.categories.find(c => c.name === categoryFilter)?.count || 0;
+  if (categoryFilter && autoFilterCounts.categories) {
+    const categoryCount = autoFilterCounts.categories.find(c => c.name === categoryFilter)?.count || 0;
     if (categoryCount === 0) {
       clearedFilters.push(`Category: ${categoryFilter}`);
       categoryFilter = undefined;
@@ -95,9 +97,9 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   }
 
   // Auto-clear lighting filters (multi-select)
-  if (lightingFilters.length > 0 && filterCounts.lighting) {
+  if (lightingFilters.length > 0 && autoFilterCounts.lighting) {
     const incompatibleLighting = lightingFilters.filter(l => {
-      const count = filterCounts.lighting?.find(lighting => lighting.name === l)?.count || 0;
+      const count = autoFilterCounts.lighting?.find(lighting => lighting.name === l)?.count || 0;
       return count === 0;
     });
 
@@ -114,8 +116,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     }
   }
 
-  if (colorTempFilter && filterCounts.colorTemperatures) {
-    const colorTempCount = filterCounts.colorTemperatures.find(ct => ct.name === colorTempFilter)?.count || 0;
+  if (colorTempFilter && autoFilterCounts.colorTemperatures) {
+    const colorTempCount = autoFilterCounts.colorTemperatures.find(ct => ct.name === colorTempFilter)?.count || 0;
     if (colorTempCount === 0) {
       clearedFilters.push(`Color Temperature: ${colorTempFilter}`);
       colorTempFilter = undefined;
@@ -123,8 +125,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     }
   }
 
-  if (timeOfDayFilter && filterCounts.timesOfDay) {
-    const timeOfDayCount = filterCounts.timesOfDay.find(t => t.name === timeOfDayFilter)?.count || 0;
+  if (timeOfDayFilter && autoFilterCounts.timesOfDay) {
+    const timeOfDayCount = autoFilterCounts.timesOfDay.find(t => t.name === timeOfDayFilter)?.count || 0;
     if (timeOfDayCount === 0) {
       clearedFilters.push(`Time of Day: ${timeOfDayFilter}`);
       timeOfDayFilter = undefined;
@@ -132,8 +134,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     }
   }
 
-  if (compositionFilter && filterCounts.compositions) {
-    const compositionCount = filterCounts.compositions.find(c => c.name === compositionFilter)?.count || 0;
+  if (compositionFilter && autoFilterCounts.compositions) {
+    const compositionCount = autoFilterCounts.compositions.find(c => c.name === compositionFilter)?.count || 0;
     if (compositionCount === 0) {
       clearedFilters.push(`Composition: ${compositionFilter}`);
       compositionFilter = undefined;

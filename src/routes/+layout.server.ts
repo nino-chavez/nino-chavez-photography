@@ -5,7 +5,7 @@
  * This prevents repeated expensive database queries on every page load
  *
  * Phase 1 of Intelligent Filter System:
- * - Caches base filter counts (no filters applied) every 5 minutes
+ * - Caches base filter counts (no filters applied) every 30 minutes
  * - Individual pages fetch filtered counts based on current URL params
  */
 
@@ -15,8 +15,8 @@ import type { LayoutServerLoad } from './$types';
 // Trailing slash behavior: never use trailing slashes (prevents redirect loops with proxy)
 export const trailingSlash = 'never';
 
-// Cache duration: 5 minutes
-const CACHE_DURATION_MS = 5 * 60 * 1000;
+// Cache duration: 30 minutes (distributions change rarely, reduces cold-cache hits 6x)
+const CACHE_DURATION_MS = 30 * 60 * 1000;
 
 interface CachedData<T> {
   data: T;

@@ -78,6 +78,24 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Handle streamed filter counts — show base counts immediately, update when filtered counts arrive
+	let resolvedFilterCounts = $state(data.baseFilterCounts);
+
+	$effect(() => {
+		// Reset to base counts on navigation, then resolve streamed counts
+		const baseCounts = data.baseFilterCounts;
+		resolvedFilterCounts = baseCounts;
+
+		// Promise.resolve handles both streamed promises and direct values
+		let cancelled = false;
+		Promise.resolve(data.filterCounts).then((counts) => {
+			if (!cancelled) {
+				resolvedFilterCounts = counts;
+			}
+		});
+		return () => { cancelled = true; };
+	});
+
 	// Lightbox state
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
@@ -666,7 +684,7 @@
 					onColorTempSelect={handleColorTempSelect}
 					onTimeOfDaySelect={handleTimeOfDaySelect}
 					onCompositionSelect={handleCompositionSelect}
-					filterCounts={data.filterCounts}
+					filterCounts={resolvedFilterCounts}
 				/>
 			{/if}
 		</div>
@@ -702,7 +720,7 @@
 						onTimeOfDaySelect={handleTimeOfDaySelect}
 						onCompositionSelect={handleCompositionSelect}
 						onClearAll={clearAllFilters}
-						filterCounts={data.filterCounts}
+						filterCounts={resolvedFilterCounts}
 					/>
 				{/await}
 			{/if}
