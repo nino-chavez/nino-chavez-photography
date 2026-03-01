@@ -14,8 +14,6 @@
 
 <script lang="ts">
 	import { Calendar, Camera } from 'lucide-svelte';
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 
 	interface Month {
@@ -119,101 +117,93 @@
 	let countTier = $derived(getCountTier(month.photoCount));
 </script>
 
-<Motion
-	let:motion
-	initial={{ opacity: 0, scale: 0.9 }}
-	animate={{ opacity: 1, scale: 1 }}
-	transition={{ ...MOTION.spring.snappy, delay: index * 0.05 }}
-	whileHover={{ scale: 1.05, y: -4 }}
+<div
+	style="animation: fade-scale-in 0.3s ease-out {index * 0.05}s both"
+	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 hover:scale-105 hover:-translate-y-1 transition-transform duration-200 transition-colors cursor-pointer outline-none"
+	role="button"
+	tabindex="0"
+	aria-label="{month.monthName} {month.year}, {month.photoCount} photos"
+	onclick={handleClick}
+	onkeydown={handleKeyDown}
 >
-	<div
-		use:motion
-		class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors cursor-pointer outline-none"
-		role="button"
-		tabindex="0"
-		aria-label="{month.monthName} {month.year}, {month.photoCount} photos"
-		onclick={handleClick}
-		onkeydown={handleKeyDown}
-	>
-		<!-- Loading/Fallback State -->
-		{#if !imageLoaded || imageError || !month.coverImageUrl}
-			<div
-				class="absolute inset-0 bg-gradient-to-br from-charcoal-800 to-charcoal-900 flex items-center justify-center"
-				aria-hidden="true"
-			>
-				{#if !month.coverImageUrl}
-					<Calendar
-						class="w-24 h-24 text-charcoal-700 group-hover:text-gold-500/50 transition-colors"
-					/>
-				{:else}
-					<Camera class="w-16 h-16 text-charcoal-600" />
-				{/if}
-			</div>
-		{/if}
-
-		<!-- Cover Image (Hero photo from month) -->
-		{#if month.coverImageUrl && !imageError}
-			<img
-				src={month.coverImageUrl}
-				alt="{month.monthName} {month.year} cover"
-				width="400"
-				height="300"
-				loading="lazy"
-				decoding="async"
-				class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
-					? 'opacity-100'
-					: 'opacity-0'}"
-				onload={handleImageLoad}
-				onerror={handleImageError}
-			/>
-		{/if}
-
-		<!-- Month Info Overlay -->
+	<!-- Loading/Fallback State -->
+	{#if !imageLoaded || imageError || !month.coverImageUrl}
 		<div
-			class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-between p-4"
+			class="absolute inset-0 bg-gradient-to-br from-charcoal-800 to-charcoal-900 flex items-center justify-center"
+			aria-hidden="true"
 		>
-			<!-- Top Badges -->
-			<div class="flex items-start justify-start gap-2">
-				<!-- Sport Badge -->
-				{#if month.primarySport && month.primarySport !== 'unknown'}
+			{#if !month.coverImageUrl}
+				<Calendar
+					class="w-24 h-24 text-charcoal-700 group-hover:text-gold-500/50 transition-colors"
+				/>
+			{:else}
+				<Camera class="w-16 h-16 text-charcoal-600" />
+			{/if}
+		</div>
+	{/if}
+
+	<!-- Cover Image (Hero photo from month) -->
+	{#if month.coverImageUrl && !imageError}
+		<img
+			src={month.coverImageUrl}
+			alt="{month.monthName} {month.year} cover"
+			width="400"
+			height="300"
+			loading="lazy"
+			decoding="async"
+			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
+				? 'opacity-100'
+				: 'opacity-0'}"
+			onload={handleImageLoad}
+			onerror={handleImageError}
+		/>
+	{/if}
+
+	<!-- Month Info Overlay -->
+	<div
+		class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-between p-4"
+	>
+		<!-- Top Badges -->
+		<div class="flex items-start justify-start gap-2">
+			<!-- Sport Badge -->
+			{#if month.primarySport && month.primarySport !== 'unknown'}
+				<div
+					class="px-2 py-1 rounded-full text-xs font-medium bg-charcoal-900/80 text-white border border-charcoal-700 backdrop-blur-sm"
+				>
+					{sportEmojis[month.primarySport] || '🏆'}
+					<span class="capitalize ml-1">{month.primarySport}</span>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Bottom Info -->
+		<div>
+			<Typography variant="h3" class="text-2xl font-bold text-white mb-1">
+				{month.monthName}
+			</Typography>
+			<Typography variant="caption" class="text-charcoal-300 mb-2">
+				{month.year}
+			</Typography>
+			<div class="flex items-center justify-between gap-2">
+				<Typography variant="caption" class="text-charcoal-300">
+					{month.photoCount.toLocaleString()} {month.photoCount === 1 ? 'photo' : 'photos'}
+				</Typography>
+				<!-- Count Tier Badge -->
+				{#if countTier}
 					<div
-						class="px-2 py-1 rounded-full text-xs font-medium bg-charcoal-900/80 text-white border border-charcoal-700 backdrop-blur-sm"
+						class="px-2 py-0.5 rounded text-xs font-medium {countTier.bgColor} {countTier.textColor} border {countTier.borderColor}"
+						title="{month.photoCount} photos ({countTier.label} tier)"
 					>
-						{sportEmojis[month.primarySport] || '🏆'}
-						<span class="capitalize ml-1">{month.primarySport}</span>
+						{countTier.label}
 					</div>
 				{/if}
 			</div>
-
-			<!-- Bottom Info -->
-			<div>
-				<Typography variant="h3" class="text-2xl font-bold text-white mb-1">
-					{month.monthName}
-				</Typography>
-				<Typography variant="caption" class="text-charcoal-300 mb-2">
-					{month.year}
-				</Typography>
-				<div class="flex items-center justify-between gap-2">
-					<Typography variant="caption" class="text-charcoal-300">
-						{month.photoCount.toLocaleString()} {month.photoCount === 1 ? 'photo' : 'photos'}
-					</Typography>
-					<!-- Count Tier Badge -->
-					{#if countTier}
-						<div
-							class="px-2 py-0.5 rounded text-xs font-medium {countTier.bgColor} {countTier.textColor} border {countTier.borderColor}"
-							title="{month.photoCount} photos ({countTier.label} tier)"
-						>
-							{countTier.label}
-						</div>
-					{/if}
-				</div>
-			</div>
 		</div>
-
-		<!-- Hover Effect Border -->
-		<div
-			class="absolute inset-0 border-2 border-gold-500/0 group-hover:border-gold-500/30 rounded-lg transition-colors pointer-events-none"
-			aria-hidden="true"
-		></div>
 	</div>
-</Motion>
+
+	<!-- Hover Effect Border -->
+	<div
+		class="absolute inset-0 border-2 border-gold-500/0 group-hover:border-gold-500/30 rounded-lg transition-colors pointer-events-none"
+		aria-hidden="true"
+	></div>
+</div>

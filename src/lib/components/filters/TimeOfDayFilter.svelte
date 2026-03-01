@@ -12,10 +12,8 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Sunrise, Sun, Sunset, Moon } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import FilterPill from '$lib/components/ui/FilterPill.svelte';
 
@@ -39,16 +37,10 @@
 	];
 </script>
 
-<Motion
-	let:motion
-	initial={{ opacity: 0, y: -10 }}
-	animate={{ opacity: 1, y: 0 }}
-	transition={MOTION.spring.gentle}
+<div
+	class="mb-4 rounded-lg border border-charcoal-800/30 bg-charcoal-900/50 backdrop-blur-sm"
+	style="animation: fade-slide-down 0.3s ease-out forwards"
 >
-	<div
-		use:motion
-		class="mb-4 rounded-lg border border-charcoal-800/30 bg-charcoal-900/50 backdrop-blur-sm"
-	>
 		<button
 			onclick={() => (isExpanded = !isExpanded)}
 			class="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-charcoal-800/30"
@@ -98,5 +90,4 @@
 				</div>
 			</div>
 		{/if}
-	</div>
-</Motion>
+</div>

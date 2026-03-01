@@ -13,9 +13,8 @@
 -->
 
 <script lang="ts">
-	import { Motion, AnimatePresence } from 'svelte-motion';
+	import { fade, slide } from 'svelte/transition';
 	import { X, Camera, Calendar, MapPin, Award, Zap, ChevronDown, ChevronUp, Sparkles } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import { getPhotoQualityScore } from '$lib/photo-utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -141,35 +140,20 @@
 
 <svelte:window onkeydown={handleKeyDown} />
 
-<AnimatePresence>
-	{#if open && photo}
-		<!-- Backdrop -->
-		<Motion
-			let:motion
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
-			exit={{ opacity: 0 }}
-			transition={MOTION.spring.gentle}
-		>
-			<div
-				use:motion
-				class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-8"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="photo-detail-title"
-				tabindex="-1"
-				onclick={handleBackdropClick}
-				onkeydown={handleBackdropKeyDown}
-			>
-				<!-- Modal Content -->
-				<Motion
-					let:motion
-					initial={{ opacity: 0, scale: 0.9, y: 20 }}
-					animate={{ opacity: 1, scale: 1, y: 0 }}
-					exit={{ opacity: 0, scale: 0.9, y: 20 }}
-					transition={{ ...MOTION.spring.snappy, delay: 0.1 }}
-				>
-					<div use:motion class="w-full max-w-6xl max-h-[90vh] overflow-auto">
+{#if open && photo}
+	<!-- Backdrop -->
+	<div
+		transition:fade={{ duration: 200 }}
+		class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-8"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="photo-detail-title"
+		tabindex="-1"
+		onclick={handleBackdropClick}
+		onkeydown={handleBackdropKeyDown}
+	>
+		<!-- Modal Content -->
+		<div class="w-full max-w-6xl max-h-[90vh] overflow-auto" style="animation: fade-scale-in 0.25s ease-out forwards">
 						<Card padding="none" class="bg-charcoal-950/95 backdrop-blur-lg">
 							<!-- Header -->
 							<div class="flex items-center justify-between p-6 border-b border-charcoal-800">
@@ -259,14 +243,7 @@
 
 									<!-- Collapsible AI Insights -->
 									{#if showAIInsights}
-										<Motion
-											let:motion
-											initial={{ opacity: 0, height: 0 }}
-											animate={{ opacity: 1, height: 'auto' }}
-											exit={{ opacity: 0, height: 0 }}
-											transition={MOTION.spring.gentle}
-										>
-											<div use:motion class="space-y-6 overflow-hidden">
+										<div transition:slide={{ duration: 200 }} class="space-y-6 overflow-hidden">
 												<!-- Quality Score -->
 												<div>
 													<Typography variant="caption" class="text-charcoal-400 mb-2">
@@ -385,14 +362,10 @@
 													</div>
 												</div>
 											</div>
-										</Motion>
 									{/if}
 								</div>
 							</div>
 						</Card>
 					</div>
-				</Motion>
 			</div>
-		</Motion>
 	{/if}
-</AnimatePresence>

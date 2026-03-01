@@ -2,9 +2,7 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { Motion } from 'svelte-motion';
 	import { Calendar, X, Filter } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -171,22 +169,14 @@
 </div>
 
 <!-- Month Cards Grid -->
-<Motion let:motion initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={MOTION.spring.gentle}>
-	<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div style="animation: fade-in 0.3s ease-out forwards" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		{#if data.months.length > 0}
 			<!-- Month Cards Grid: 2 cols mobile, 3 cols tablet, 4 cols desktop -->
 			<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 				{#each data.months as month, index}
-					<Motion
-						let:motion
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ ...MOTION.spring.gentle, delay: index * 0.05 }}
-					>
-						<div use:motion>
-							<MonthCard {month} {index} onclick={handleMonthClick} />
-						</div>
-					</Motion>
+					<div style="animation: fade-slide-up 0.3s ease-out {index * 0.05}s both">
+						<MonthCard {month} {index} onclick={handleMonthClick} />
+					</div>
 				{/each}
 			</div>
 
@@ -221,7 +211,6 @@
 			</Card>
 		{/if}
 	</div>
-</Motion>
 
 <!-- Back to Top Button -->
 <BackToTop threshold={400} />

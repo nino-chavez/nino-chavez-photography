@@ -18,8 +18,7 @@
 
 <script lang="ts">
 	import { X } from 'lucide-svelte';
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
+	import { scale } from 'svelte/transition';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
@@ -69,18 +68,11 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if visible}
-	<Motion
-		let:motion
-		initial={{ opacity: 0, scale: 0.9 }}
-		animate={{ opacity: 1, scale: 1 }}
-		exit={{ opacity: 0, scale: 0.9 }}
-		transition={MOTION.spring.gentle}
+	<div
+		transition:scale={{ start: 0.9, duration: 200 }}
+		role="tooltip"
+		class="absolute {positionClasses[position]} z-50 max-w-sm"
 	>
-		<div
-			use:motion
-			role="tooltip"
-			class="absolute {positionClasses[position]} z-50 max-w-sm"
-		>
 			<div
 				class="bg-charcoal-900/98 backdrop-blur-md border border-gold-500/50 rounded-lg shadow-2xl p-4"
 			>
@@ -121,6 +113,5 @@
 					></div>
 				</div>
 			{/if}
-		</div>
-	</Motion>
+	</div>
 {/if}

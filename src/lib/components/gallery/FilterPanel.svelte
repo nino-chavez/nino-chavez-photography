@@ -19,13 +19,12 @@
 
 <script lang="ts">
 	import { Filter, X, ChevronDown, ChevronUp } from 'lucide-svelte';
-	import { Motion } from 'svelte-motion';
+	import { slide } from 'svelte/transition';
 	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { cn } from '$lib/utils';
 	import { preferences } from '$lib/stores/preferences.svelte';
-	import { MOTION } from '$lib/motion-tokens';
 
 	type Emotion = 'triumph' | 'focus' | 'intensity' | 'determination' | 'excitement' | 'serenity';
 	type PlayType = 'attack' | 'block' | 'dig' | 'set' | 'serve' | 'pass' | 'celebration' | 'timeout';
@@ -136,14 +135,7 @@
 
 	<!-- Collapsible Advanced Filters -->
 	{#if preferences.showAdvancedFilters}
-		<Motion
-			let:motion
-			initial={{ opacity: 0, height: 0 }}
-			animate={{ opacity: 1, height: 'auto' }}
-			exit={{ opacity: 0, height: 0 }}
-			transition={MOTION.spring.gentle}
-		>
-			<div use:motion class="space-y-6 overflow-hidden">
+		<div class="space-y-6 overflow-hidden" transition:slide={{ duration: 200 }}>
 				<!-- Clear All Button -->
 				{#if hasActiveFilters}
 					<div class="flex justify-end">
@@ -212,6 +204,5 @@
 					</div>
 				</div>
 			</div>
-		</Motion>
 	{/if}
 </div>

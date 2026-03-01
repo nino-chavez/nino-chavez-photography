@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { Motion, AnimatePresence } from 'svelte-motion';
+	import { fly } from 'svelte/transition';
 	import { Search, X } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 
 	interface SearchSuggestion {
 		text: string;
@@ -162,19 +161,11 @@
 	</div>
 
 	<!-- Autocomplete Suggestions -->
-	<AnimatePresence>
-		{#if showSuggestions && suggestions.length > 0}
-			<Motion
-				let:motion
-				initial={{ opacity: 0, y: -10 }}
-				animate={{ opacity: 1, y: 0 }}
-				exit={{ opacity: 0, y: -10 }}
-				transition={MOTION.spring.gentle}
-			>
-				<div
-					use:motion
-					class="absolute z-50 w-full mt-2 bg-charcoal-900 border border-charcoal-800 rounded-lg shadow-2xl overflow-hidden"
-				>
+	{#if showSuggestions && suggestions.length > 0}
+		<div
+			transition:fly={{ y: -10, duration: 150 }}
+			class="absolute z-50 w-full mt-2 bg-charcoal-900 border border-charcoal-800 rounded-lg shadow-2xl overflow-hidden"
+		>
 					<ul class="py-1">
 						{#each suggestions as suggestion, index}
 							<li>
@@ -200,10 +191,8 @@
 							Press <kbd class="px-1 bg-charcoal-700 rounded">Enter</kbd> to search
 						</span>
 					</div>
-				</div>
-			</Motion>
-		{/if}
-	</AnimatePresence>
+			</div>
+	{/if}
 </div>
 
 <style>

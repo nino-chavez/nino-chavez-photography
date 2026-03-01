@@ -178,7 +178,7 @@ async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number,
 	// Get unique albums with photo counts from Supabase
 	const { data: albumData, error } = await supabaseServer
 		.from('photo_metadata')
-		.select('*')
+		.select('album_key, album_name, cf_image_id, sport_type, photo_category, sharpness')
 		.not('album_key', 'is', null)
 		.not('sharpness', 'is', null) // Only enriched photos
 		.order('album_key', { ascending: true }); // Order by album for better aggregation

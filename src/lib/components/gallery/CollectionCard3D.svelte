@@ -17,9 +17,7 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { Award, Sparkles } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import type { CoverPhotoRow } from '$types/database';
 
@@ -53,17 +51,11 @@
 	onmouseenter={() => isHovered = true}
 	onmouseleave={() => isHovered = false}
 >
-	<Motion
-		let:motion
-		initial={{ opacity: 0, y: 20 }}
-		animate={{ opacity: 1, y: 0 }}
-		transition={MOTION.spring.gentle}
+	<a
+		{href}
+		class="block w-full h-full"
+		style="animation: fade-slide-up 0.3s ease-out forwards"
 	>
-		<a
-			use:motion
-			{href}
-			class="block w-full h-full"
-		>
 			<!-- Card Body with 3D Transform Container -->
 			<div
 				class="
@@ -163,8 +155,7 @@
 					</div>
 				</div>
 			</div>
-		</a>
-	</Motion>
+	</a>
 </div>
 
 <style>

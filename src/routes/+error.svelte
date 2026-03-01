@@ -13,8 +13,6 @@
 	import { AlertCircle, Home, RefreshCw } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
 
 	function handleRefresh() {
 		window.location.reload();
@@ -26,13 +24,7 @@
 </script>
 
 <div class="min-h-screen flex items-center justify-center p-8 bg-charcoal-950">
-	<Motion
-		let:motion
-		initial={{ opacity: 0, y: 20 }}
-		animate={{ opacity: 1, y: 0 }}
-		transition={MOTION.spring.gentle}
-	>
-		<div use:motion class="max-w-2xl w-full">
+		<div class="max-w-2xl w-full" style="animation: fade-slide-up 0.3s ease-out forwards">
 			<div class="flex flex-col items-center gap-8 text-center">
 				<!-- Error Icon -->
 				<div class="p-6 rounded-full bg-red-500/10 border border-red-500/20">
@@ -79,5 +71,4 @@
 				</div>
 			</div>
 		</div>
-	</Motion>
 </div>

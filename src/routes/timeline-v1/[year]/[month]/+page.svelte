@@ -2,9 +2,7 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { Motion } from 'svelte-motion';
 	import { Calendar, ChevronLeft, ChevronRight, X, Filter } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -206,23 +204,15 @@
 </div>
 
 <!-- Photo Grid -->
-<Motion let:motion initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={MOTION.spring.gentle}>
-	<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div style="animation: fade-in 0.3s ease-out forwards" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		{#if data.photos.length > 0}
 			<!-- Photos Grid -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each data.photos as photo, index}
 					{@const transformedPhoto = transformPhoto(photo)}
-					<Motion
-						let:motion
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ ...MOTION.spring.gentle, delay: index * 0.02 }}
-					>
-						<div use:motion>
-							<PhotoCard photo={transformedPhoto} {index} onclick={handlePhotoClick} />
-						</div>
-					</Motion>
+					<div style="animation: fade-slide-up 0.3s ease-out {index * 0.02}s both">
+						<PhotoCard photo={transformedPhoto} {index} onclick={handlePhotoClick} />
+					</div>
 				{/each}
 			</div>
 
@@ -306,7 +296,6 @@
 			</Card>
 		{/if}
 	</div>
-</Motion>
 
 <!-- Photo Detail Modal -->
 <PhotoDetailModal bind:open={modalOpen} photo={selectedPhoto} />

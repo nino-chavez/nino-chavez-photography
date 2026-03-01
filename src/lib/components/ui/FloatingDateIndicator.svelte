@@ -18,8 +18,7 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
+	import { fly } from 'svelte/transition';
 
 	interface Props {
 		visible: boolean;
@@ -32,27 +31,19 @@
 </script>
 
 {#if visible}
-	<Motion
-		let:motion
-		initial={{ opacity: 0, scale: 0.9, y: -20 }}
-		animate={{ opacity: 1, scale: 1, y: 0 }}
-		exit={{ opacity: 0, scale: 0.9, y: -20 }}
-		transition={MOTION.spring.snappy}
+	<div
+		transition:fly={{ y: -20, duration: 200 }}
+		class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
+		role="status"
+		aria-live="polite"
 	>
 		<div
-			use:motion
-			class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
-			role="status"
-			aria-live="polite"
+			class="px-6 py-3 bg-charcoal-900/95 backdrop-blur-md rounded-xl border border-gold-500/30 shadow-2xl"
 		>
-			<div
-				class="px-6 py-3 bg-charcoal-900/95 backdrop-blur-md rounded-xl border border-gold-500/30 shadow-2xl"
-			>
-				<div class="text-center">
-					<div class="text-2xl font-bold text-white">{month} {year}</div>
-					<div class="text-sm text-charcoal-400 mt-1">{photoCount} photos</div>
-				</div>
+			<div class="text-center">
+				<div class="text-2xl font-bold text-white">{month} {year}</div>
+				<div class="text-sm text-charcoal-400 mt-1">{photoCount} photos</div>
 			</div>
 		</div>
-	</Motion>
+	</div>
 {/if}

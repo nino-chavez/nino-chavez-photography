@@ -14,9 +14,7 @@
 
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { Motion } from 'svelte-motion';
 	import { Camera, Heart, Zap, Mail, Instagram } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import OptimizedImage from '$lib/components/ui/OptimizedImage.svelte';
@@ -57,13 +55,7 @@
 <!-- Hero Section -->
 <section class="py-16 lg:py-24 bg-gradient-to-b from-charcoal-950 to-charcoal-900">
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-		<Motion
-			let:motion
-			initial={{ opacity: 0, y: 30 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={MOTION.spring.gentle}
-		>
-			<div use:motion class="space-y-6">
+		<div style="animation: fade-slide-up 0.4s ease-out forwards" class="space-y-6">
 				<div class="flex justify-center">
 					<div class="p-4 rounded-2xl bg-gold-500/10 border border-gold-500/20">
 						<Camera class="w-12 h-12 text-gold-500" />
@@ -79,7 +71,6 @@
 					</Typography>
 				</div>
 			</div>
-		</Motion>
 	</div>
 </section>
 
@@ -88,13 +79,7 @@
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 			<!-- Story Content -->
-			<Motion
-				let:motion
-				initial={{ opacity: 0, x: -30 }}
-				animate={{ opacity: 1, x: 0 }}
-				transition={{ ...MOTION.spring.gentle, delay: 0.2 }}
-			>
-				<div use:motion class="space-y-6">
+			<div style="animation: fade-slide-up 0.4s ease-out 0.2s both" class="space-y-6">
 					<Typography variant="h2" class="text-3xl lg:text-4xl font-bold text-white">
 						The Story Behind the Lens
 					</Typography>
@@ -113,16 +98,9 @@
 						</Typography>
 					</div>
 				</div>
-			</Motion>
 
 			<!-- Featured Photo -->
-			<Motion
-				let:motion
-				initial={{ opacity: 0, x: 30 }}
-				animate={{ opacity: 1, x: 0 }}
-				transition={{ ...MOTION.spring.gentle, delay: 0.4 }}
-			>
-				<div use:motion class="relative">
+			<div style="animation: fade-slide-up 0.4s ease-out 0.4s both" class="relative">
 					{#if data.featuredPhoto}
 						<div class="aspect-[3/4] rounded-2xl overflow-hidden border border-charcoal-700/50 shadow-2xl">
 							<OptimizedImage
@@ -145,7 +123,6 @@
 						</div>
 					{/if}
 				</div>
-			</Motion>
 		</div>
 	</div>
 </section>
@@ -153,13 +130,7 @@
 <!-- Philosophy Section -->
 <section class="py-16 lg:py-24 bg-charcoal-900/50">
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-		<Motion
-			let:motion
-			initial={{ opacity: 0, y: 30 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ ...MOTION.spring.gentle, delay: 0.2 }}
-		>
-			<div use:motion class="text-center space-y-8">
+		<div style="animation: fade-slide-up 0.4s ease-out 0.2s both" class="text-center space-y-8">
 				<div class="space-y-4">
 					<Typography variant="h2" class="text-3xl lg:text-4xl font-bold text-white">
 						Photography Philosophy
@@ -170,13 +141,7 @@
 				</div>
 
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-					<Motion
-						let:motion
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ ...MOTION.spring.gentle, delay: 0.4 }}
-					>
-						<div use:motion>
+					<div style="animation: fade-slide-up 0.3s ease-out 0.4s both">
 							<Card padding="lg" class="text-center space-y-4 h-full">
 							<div class="p-3 rounded-lg bg-gold-500/10 inline-block mx-auto">
 								<Zap class="w-8 h-8 text-gold-500" />
@@ -191,15 +156,8 @@
 							</div>
 						</Card>
 						</div>
-					</Motion>
 
-					<Motion
-						let:motion
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ ...MOTION.spring.gentle, delay: 0.5 }}
-					>
-						<div use:motion>
+					<div style="animation: fade-slide-up 0.3s ease-out 0.5s both">
 							<Card padding="lg" class="text-center space-y-4 h-full">
 							<div class="p-3 rounded-lg bg-gold-500/10 inline-block mx-auto">
 								<Heart class="w-8 h-8 text-gold-500" />
@@ -214,15 +172,8 @@
 							</div>
 						</Card>
 						</div>
-					</Motion>
 
-					<Motion
-						let:motion
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ ...MOTION.spring.gentle, delay: 0.6 }}
-					>
-						<div use:motion>
+					<div style="animation: fade-slide-up 0.3s ease-out 0.6s both">
 							<Card padding="lg" class="text-center space-y-4 h-full">
 							<div class="p-3 rounded-lg bg-gold-500/10 inline-block mx-auto">
 								<Camera class="w-8 h-8 text-gold-500" />
@@ -237,23 +188,15 @@
 							</div>
 						</Card>
 						</div>
-					</Motion>
 				</div>
 			</div>
-		</Motion>
 	</div>
 </section>
 
 <!-- Call to Action -->
 <section class="py-16 lg:py-24">
 	<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-		<Motion
-			let:motion
-			initial={{ opacity: 0, y: 30 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ ...MOTION.spring.gentle, delay: 0.2 }}
-		>
-			<div use:motion class="space-y-8">
+		<div style="animation: fade-slide-up 0.4s ease-out 0.2s both" class="space-y-8">
 				<div class="space-y-4">
 					<Typography variant="h2" class="text-3xl lg:text-4xl font-bold text-white">
 						See the Work
@@ -272,32 +215,25 @@
 					</a>
 
 					<div class="flex gap-3">
-						<Motion let:motion whileHover={{ scale: 1.05 }} transition={MOTION.spring.snappy}>
-							<a
-								use:motion
-								href="mailto:nino@ninochavez.co"
-								class="p-3 rounded-lg bg-charcoal-800 hover:bg-gold-500/10 border border-charcoal-700 hover:border-gold-500/50 transition-colors"
-								aria-label="Email Nino"
-							>
-								<Mail class="w-5 h-5 text-charcoal-400 hover:text-gold-500 transition-colors" />
-							</a>
-						</Motion>
+						<a
+							href="mailto:nino@ninochavez.co"
+							class="p-3 rounded-lg bg-charcoal-800 hover:bg-gold-500/10 border border-charcoal-700 hover:border-gold-500/50 transition-colors hover:scale-105 transition-transform"
+							aria-label="Email Nino"
+						>
+							<Mail class="w-5 h-5 text-charcoal-400 hover:text-gold-500 transition-colors" />
+						</a>
 
-						<Motion let:motion whileHover={{ scale: 1.05 }} transition={MOTION.spring.snappy}>
-							<a
-								use:motion
-								href="https://www.instagram.com/nino.chavez.photo"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="p-3 rounded-lg bg-charcoal-800 hover:bg-gold-500/10 border border-charcoal-700 hover:border-gold-500/50 transition-colors"
-								aria-label="Follow on Instagram"
-							>
-								<Instagram class="w-5 h-5 text-charcoal-400 hover:text-gold-500 transition-colors" />
-							</a>
-						</Motion>
+						<a
+							href="https://www.instagram.com/nino.chavez.photo"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="p-3 rounded-lg bg-charcoal-800 hover:bg-gold-500/10 border border-charcoal-700 hover:border-gold-500/50 transition-colors hover:scale-105 transition-transform"
+							aria-label="Follow on Instagram"
+						>
+							<Instagram class="w-5 h-5 text-charcoal-400 hover:text-gold-500 transition-colors" />
+						</a>
 					</div>
 				</div>
 			</div>
-		</Motion>
 	</div>
 </section>

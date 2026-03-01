@@ -4,14 +4,14 @@
  */
 
 import { error } from '@sveltejs/kit';
-import { supabaseServer, transformPhotoRow } from '$lib/supabase/server';
+import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Fetch photo data
 	const { data: photoData, error: photoError } = await supabaseServer
 		.from('photo_metadata')
-		.select('*')
+		.select(PHOTO_COLUMNS)
 		.eq('image_key', params.id)
 		.single();
 

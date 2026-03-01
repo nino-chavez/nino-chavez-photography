@@ -14,9 +14,7 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { ImageOff } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import PhotoCard from './PhotoCard.svelte';
 	import Loading from '$lib/components/ui/Loading.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -52,15 +50,9 @@
 	</div>
 {:else if isEmpty}
 	<!-- Empty State -->
-	<Motion
-		let:motion
-		initial={{ opacity: 0, scale: 0.95 }}
-		animate={{ opacity: 1, scale: 1 }}
-		transition={MOTION.spring.gentle}
-	>
 		<div
-			use:motion
 			class="flex flex-col items-center justify-center min-h-[400px] gap-6"
+			style="animation: fade-scale-in 0.3s ease-out forwards"
 			role="status"
 			aria-label="No photos available"
 		>
@@ -76,7 +68,6 @@
 				</Typography>
 			</div>
 		</div>
-	</Motion>
 {:else}
 	<!-- Photo Grid -->
 	<div

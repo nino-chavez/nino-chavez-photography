@@ -24,8 +24,7 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
+	import { slide } from 'svelte/transition';
 
 	interface YearData {
 		year: number;
@@ -158,8 +157,8 @@
 </script>
 
 <!-- Horizontal Timeline Container -->
-<Motion let:motion initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-	<div use:motion class="w-full bg-charcoal-900/80 backdrop-blur-sm border-b border-charcoal-800">
+<div style="animation: fade-slide-down 0.3s ease-out forwards">
+	<div class="w-full bg-charcoal-900/80 backdrop-blur-sm border-b border-charcoal-800">
 		<!-- Years Timeline -->
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
 			<!-- "All Years" button when year is selected -->
@@ -218,14 +217,7 @@
 
 		<!-- Months/Quarters Timeline (only when year is selected) -->
 		{#if selectedYear !== null && availableMonths.length > 0}
-			<Motion
-				let:motion
-				initial={{ opacity: 0, height: 0 }}
-				animate={{ opacity: 1, height: 'auto' }}
-				exit={{ opacity: 0, height: 0 }}
-				transition={MOTION.spring.gentle}
-			>
-				<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 border-t border-charcoal-800/50 pt-3">
+				<div transition:slide={{ duration: 200 }} class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 border-t border-charcoal-800/50 pt-3">
 					<div class="flex items-center gap-2 mb-2">
 						<span class="text-xs text-charcoal-400 font-medium">
 							<span class="md:hidden">Quarters</span>
@@ -316,10 +308,9 @@
 						{/each}
 					</div>
 				</div>
-			</Motion>
 		{/if}
 	</div>
-</Motion>
+</div>
 
 <style>
 	/* Custom scrollbar styles */

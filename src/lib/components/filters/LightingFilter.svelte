@@ -15,10 +15,8 @@
 -->
 
 <script lang="ts">
-	import { Motion } from 'svelte-motion';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Sun, Sunrise, Zap, Cloud, Lightbulb } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 
 	interface Props {
@@ -80,16 +78,10 @@
 	let selectedCount = $derived(selectedLighting?.length || 0);
 </script>
 
-<Motion
-	let:motion
-	initial={{ opacity: 0, y: -10 }}
-	animate={{ opacity: 1, y: 0 }}
-	transition={MOTION.spring.gentle}
+<div
+	class="mb-4 rounded-lg border border-charcoal-800/30 bg-charcoal-900/50 backdrop-blur-sm"
+	style="animation: fade-slide-down 0.3s ease-out forwards"
 >
-	<div
-		use:motion
-		class="mb-4 rounded-lg border border-charcoal-800/30 bg-charcoal-900/50 backdrop-blur-sm"
-	>
 		<!-- Header -->
 		<button
 			onclick={() => (isExpanded = !isExpanded)}
@@ -168,5 +160,4 @@
 				{/if}
 			</div>
 		{/if}
-	</div>
-</Motion>
+</div>

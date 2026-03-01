@@ -2,9 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createAlbumSlug } from '$lib/utils';
@@ -260,13 +258,7 @@
 			{/if}
 		{:else}
 			<!-- Simple Empty State (Browse Mode) -->
-			<Motion
-				let:motion
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={MOTION.spring.gentle}
-			>
-				<div use:motion>
+				<div style="animation: fade-in 0.3s ease-out forwards">
 					<Card padding="lg" class="text-center">
 						<FolderOpen class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
 						<Typography variant="h3" class="mb-2">No albums found</Typography>
@@ -275,7 +267,6 @@
 						</Typography>
 					</Card>
 				</div>
-			</Motion>
 		{/if}
 	</div>
 </div>

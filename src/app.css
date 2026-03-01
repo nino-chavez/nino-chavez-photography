@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Self-hosted Montserrat (weights 300, 700) — replaces Google Fonts CDN */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/montserrat-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /**
  * Tailwind CSS v4 Theme Configuration
  * Reference: src/lib/design-tokens.ts
@@ -197,6 +207,29 @@
       mix-blend-mode: normal;
     }
   }
+}
+
+/* ========================================================================
+ * PERFORMANCE ANIMATIONS (CSS replacements for svelte-motion)
+ * ======================================================================== */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-slide-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @layer utilities {

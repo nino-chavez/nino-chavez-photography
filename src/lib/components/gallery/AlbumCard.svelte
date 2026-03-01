@@ -8,8 +8,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { Folder, Camera } from 'lucide-svelte';
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
@@ -136,98 +134,90 @@
 	});
 </script>
 
-<Motion
-	let:motion
-	initial={{ opacity: 0, scale: 0.9 }}
-	animate={{ opacity: 1, scale: 1 }}
-	transition={{ ...MOTION.spring.snappy, delay: index * 0.05 }}
-	whileHover={{ scale: 1.05, y: -4 }}
+<a
+	href={albumUrl}
+	data-sveltekit-preload="hover"
+	style="animation: fade-scale-in 0.3s ease-out {index * 0.05}s both"
+	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 hover:scale-105 hover:-translate-y-1 transition-transform duration-200 transition-colors cursor-pointer outline-none block"
+	aria-label={`Album: ${album.albumName}, ${contentLabel}`}
+	onclick={handleClick}
 >
-	<a
-		use:motion
-		href={albumUrl}
-		data-sveltekit-preload="hover"
-		class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors cursor-pointer outline-none block"
-		aria-label={`Album: ${album.albumName}, ${contentLabel}`}
-		onclick={handleClick}
-	>
-		<!-- Loading/Fallback State -->
-		{#if !imageLoaded || imageError || !hasCover}
-			<div
-				class="absolute inset-0 bg-gradient-to-br from-charcoal-800 to-charcoal-900 flex items-center justify-center"
-				aria-hidden="true"
-			>
-				{#if !hasCover}
-					<Folder class="w-24 h-24 text-charcoal-700 group-hover:text-gold-500/50 transition-colors" />
-				{:else}
-					<Camera class="w-16 h-16 text-charcoal-600" />
-				{/if}
-			</div>
-		{/if}
-
-		<!-- Cover Image with Responsive srcset -->
-		{#if hasCover && !imageError}
-			<img
-				src={optimizedCoverUrl || album.coverImageUrl}
-				srcset={coverSrcset || undefined}
-				sizes={albumCardSizes}
-				alt={`${album.albumName} cover`}
-				width="400"
-				height="300"
-				loading={priority ? 'eager' : 'lazy'}
-				decoding={priority ? 'sync' : 'async'}
-				fetchpriority={priority ? 'high' : 'auto'}
-				class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
-					? 'opacity-100'
-					: 'opacity-0'}"
-				onload={handleImageLoad}
-				onerror={handleImageError}
-			/>
-		{/if}
-
-		<!-- Album Info Overlay -->
+	<!-- Loading/Fallback State -->
+	{#if !imageLoaded || imageError || !hasCover}
 		<div
-			class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-between p-4"
+			class="absolute inset-0 bg-gradient-to-br from-charcoal-800 to-charcoal-900 flex items-center justify-center"
+			aria-hidden="true"
 		>
-			<!-- Top Badges -->
-			<div class="flex items-start justify-start gap-2">
-				<!-- Sport Badge -->
-				{#if album.primarySport && album.primarySport !== 'unknown'}
+			{#if !hasCover}
+				<Folder class="w-24 h-24 text-charcoal-700 group-hover:text-gold-500/50 transition-colors" />
+			{:else}
+				<Camera class="w-16 h-16 text-charcoal-600" />
+			{/if}
+		</div>
+	{/if}
+
+	<!-- Cover Image with Responsive srcset -->
+	{#if hasCover && !imageError}
+		<img
+			src={optimizedCoverUrl || album.coverImageUrl}
+			srcset={coverSrcset || undefined}
+			sizes={albumCardSizes}
+			alt={`${album.albumName} cover`}
+			width="400"
+			height="300"
+			loading={priority ? 'eager' : 'lazy'}
+			decoding={priority ? 'sync' : 'async'}
+			fetchpriority={priority ? 'high' : 'auto'}
+			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
+				? 'opacity-100'
+				: 'opacity-0'}"
+			onload={handleImageLoad}
+			onerror={handleImageError}
+		/>
+	{/if}
+
+	<!-- Album Info Overlay -->
+	<div
+		class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-between p-4"
+	>
+		<!-- Top Badges -->
+		<div class="flex items-start justify-start gap-2">
+			<!-- Sport Badge -->
+			{#if album.primarySport && album.primarySport !== 'unknown'}
+				<div
+					class="px-2 py-1 rounded-full text-xs font-medium bg-charcoal-900/80 text-white border border-charcoal-700 backdrop-blur-sm"
+				>
+					{sportEmojis[album.primarySport] || '🏆'}
+					<span class="capitalize ml-1">{album.primarySport}</span>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Bottom Info -->
+		<div>
+			<Typography variant="h3" class="text-xl font-semibold text-white mb-2 line-clamp-2">
+				{album.albumName}
+			</Typography>
+			<div class="flex items-center justify-between gap-2">
+				<Typography variant="caption" class="text-charcoal-300">
+					{contentLabel}
+				</Typography>
+				<!-- Count Tier Badge - Visual differentiation by 50-photo increments -->
+				{#if countTier}
 					<div
-						class="px-2 py-1 rounded-full text-xs font-medium bg-charcoal-900/80 text-white border border-charcoal-700 backdrop-blur-sm"
+						class="px-2 py-0.5 rounded text-xs font-medium {countTier.bgColor} {countTier.textColor} border {countTier.borderColor}"
+						title="Album contains {album.photoCount} photos ({countTier.label} tier)"
 					>
-						{sportEmojis[album.primarySport] || '🏆'}
-						<span class="capitalize ml-1">{album.primarySport}</span>
+						{countTier.label}
 					</div>
 				{/if}
 			</div>
-
-			<!-- Bottom Info -->
-			<div>
-				<Typography variant="h3" class="text-xl font-semibold text-white mb-2 line-clamp-2">
-					{album.albumName}
-				</Typography>
-				<div class="flex items-center justify-between gap-2">
-					<Typography variant="caption" class="text-charcoal-300">
-						{contentLabel}
-					</Typography>
-					<!-- Count Tier Badge - Visual differentiation by 50-photo increments -->
-					{#if countTier}
-						<div
-							class="px-2 py-0.5 rounded text-xs font-medium {countTier.bgColor} {countTier.textColor} border {countTier.borderColor}"
-							title="Album contains {album.photoCount} photos ({countTier.label} tier)"
-						>
-							{countTier.label}
-						</div>
-					{/if}
-				</div>
-			</div>
 		</div>
+	</div>
 
-		<!-- Hover Effect Border -->
-		<div
-			class="absolute inset-0 border-2 border-gold-500/0 group-hover:border-gold-500/30 rounded-lg transition-colors pointer-events-none"
-			aria-hidden="true"
-		></div>
-	</a>
-</Motion>
+	<!-- Hover Effect Border -->
+	<div
+		class="absolute inset-0 border-2 border-gold-500/0 group-hover:border-gold-500/30 rounded-lg transition-colors pointer-events-none"
+		aria-hidden="true"
+	></div>
+</a>

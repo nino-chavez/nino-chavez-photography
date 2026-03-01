@@ -81,9 +81,6 @@
 	<meta name="description" content={pageDescription} />
 	<link rel="canonical" href={canonicalUrl} />
 
-	<!-- PERFORMANCE: Preconnect to Cloudflare Images CDN (saves ~200-400ms DNS+TLS on first image) -->
-	<link rel="preconnect" href="https://imagedelivery.net" crossorigin="anonymous" />
-
 	<!-- PERFORMANCE: View Transitions API for smooth page transitions -->
 	<meta name="view-transition" content="same-origin" />
 

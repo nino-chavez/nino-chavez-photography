@@ -9,6 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
 import { getPhotoCount } from '$lib/supabase/server';
+import { photoSelect } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PhotoMetadataRow } from '$types/database';
 
@@ -27,7 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		// Build query
 		let query = supabaseServer
 			.from('photo_metadata')
-			.select('*')
+			.select(photoSelect('width, height'))
 			.not('sharpness', 'is', null); // Only enriched photos
 
 		// Apply filters
@@ -62,7 +63,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		// Get total count
 		const total = await getPhotoCount(filters);
 
-		const photos = (rows || []) as PhotoMetadataRow[];
+		const photos = (rows || []) as unknown as PhotoMetadataRow[];
 
 		// Format response based on format parameter
 		if (format === 'jsonld') {

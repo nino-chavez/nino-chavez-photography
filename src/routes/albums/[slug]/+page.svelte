@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { Motion } from 'svelte-motion';
 	import { FolderOpen, ChevronRight } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
@@ -73,8 +71,8 @@
 </script>
 
 <!-- Minimal Header - Content First Design -->
-<Motion let:motion initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-	<div use:motion class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
+<div style="animation: fade-slide-up 0.3s ease-out forwards">
+	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
 
 			<!-- Compact Breadcrumb Navigation -->
@@ -162,7 +160,7 @@
 	</div>
 
 	<!-- Photo Grid Content -->
-	<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
 		<!-- Search results indicator -->
 		{#if searchQuery && displayPhotos.length > 0}
@@ -213,13 +211,7 @@
 			</div>
 		{:else if !hasVideos}
 			<!-- Empty State (only show if no videos either) -->
-			<Motion
-				let:motion
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={MOTION.spring.gentle}
-			>
-				<div use:motion>
+				<div style="animation: fade-in 0.3s ease-out forwards">
 					<Card padding="lg" class="text-center">
 						<FolderOpen class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
 						<Typography variant="h3" class="mb-2">No content found</Typography>
@@ -228,10 +220,9 @@
 						</Typography>
 					</Card>
 				</div>
-			</Motion>
 		{/if}
 	</div>
-</Motion>
+</div>
 
 <!-- Lightbox (same component as explore page) -->
 <Lightbox

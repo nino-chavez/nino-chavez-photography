@@ -15,7 +15,7 @@
   import { base } from '$app/paths';
   import { onMount } from 'svelte';
   import TimelineV2 from '$lib/components/ui/TimelineV2.svelte';
-  import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+  import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
   import type { Photo } from '$types/photo';
 
   interface TimelineEntry {
@@ -125,14 +125,12 @@
   <!-- Preload featured photos from first periods for LCP optimization -->
   {#each data.periods.slice(0, 2) as period}
     {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
-      {@const preloadUrl = hasCFImage(photo.cf_image_id)
-        ? cfImageUrl(photo.cf_image_id, 'medium')
-        : null}
-      {#if preloadUrl}
+      {#if hasCFImage(photo.cf_image_id)}
         <link
           rel="preload"
           as="image"
-          href={preloadUrl}
+          imagesrcset={cfSrcSet(photo.cf_image_id!)}
+          imagesizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           fetchpriority={i === 0 ? "high" : "low"}
         />
       {/if}

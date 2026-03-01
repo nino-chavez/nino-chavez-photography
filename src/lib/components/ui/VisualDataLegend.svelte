@@ -21,8 +21,7 @@
 <script lang="ts">
 	import { Eye, X } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import { Motion } from 'svelte-motion';
-	import { MOTION } from '$lib/motion-tokens';
+	import { fly } from 'svelte/transition';
 
 	let isOpen = $state(false);
 
@@ -141,17 +140,10 @@
 
 	<!-- Legend panel -->
 	{#if isOpen}
-		<Motion
-			let:motion
-			initial={{ opacity: 0, y: 20, scale: 0.95 }}
-			animate={{ opacity: 1, y: 0, scale: 1 }}
-			exit={{ opacity: 0, y: 20, scale: 0.95 }}
-			transition={MOTION.spring.gentle}
+		<div
+			transition:fly={{ y: 20, duration: 200 }}
+			class="absolute bottom-full right-0 mb-3 w-80"
 		>
-			<div
-				use:motion
-				class="absolute bottom-full right-0 mb-3 w-80"
-			>
 				<Card class="p-5 bg-charcoal-900/98 backdrop-blur-md border-charcoal-700 shadow-2xl">
 					<div class="mb-4">
 						<h3 class="text-base font-semibold text-white mb-1">Photo Hover Guide</h3>
@@ -191,7 +183,6 @@
 					</div>
 				</Card>
 			</div>
-		</Motion>
 	{/if}
 </div>
 

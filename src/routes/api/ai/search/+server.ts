@@ -7,7 +7,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { supabaseServer } from '$lib/supabase/server';
+import { supabaseServer, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PhotoMetadataRow } from '$types/database';
 
@@ -29,7 +29,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		// Build base query
 		let dbQuery = supabaseServer
 			.from('photo_metadata')
-			.select('*')
+			.select(PHOTO_COLUMNS)
 			.not('sharpness', 'is', null); // Only enriched photos
 
 		// Semantic matching: Parse query and build filters

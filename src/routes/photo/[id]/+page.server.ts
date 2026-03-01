@@ -7,6 +7,7 @@
 
 import { error } from '@sveltejs/kit';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
+import { PHOTO_DETAIL_COLUMNS } from '$lib/supabase/columns';
 import { trackPhotoView } from '$lib/analytics/tracker';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
@@ -15,18 +16,20 @@ import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	// Fetch photo from Supabase using image_key
-	const { data: photoData, error: photoError } = await supabaseServer
+	const { data: rawData, error: photoError } = await supabaseServer
 		.from('photo_metadata')
-		.select('*')
+		.select(PHOTO_DETAIL_COLUMNS)
 		.eq('image_key', params.id)
 		.single();
 
-	if (photoError || !photoData) {
+	if (photoError || !rawData) {
 		throw error(404, `Photo not found: ${params.id}`);
 	}
 
+	const photoData = rawData as unknown as PhotoMetadataRow;
+
 	// Transform flat Supabase data to nested Photo type (two-bucket model)
-	const cfId = photoData.cf_image_id;
+	const cfId = photoData.cf_image_id || '';
 	const photo: Photo = {
 		id: photoData.image_key,
 		image_key: photoData.image_key,
@@ -90,7 +93,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// PERFORMANCE: Parallelize secondary queries (related, similar, tags)
 	// This reduces TTFB by running queries concurrently instead of sequentially
 	const [relatedPhotos, similarPhotos, tagsResult] = await Promise.all([
-		fetchRelatedPhotos(photo, photoData.album_key),
+		fetchRelatedPhotos(photo, photoData.album_key || ''),
 		fetchSimilarPhotos(photoData),
 		supabaseServer
 			.from('user_tags')

@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Motion } from 'svelte-motion';
 	import { FolderOpen, Camera } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
@@ -42,8 +40,8 @@
 </svelte:head>
 
 <!-- Clean Header for Shared Albums -->
-<Motion let:motion initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-	<div use:motion class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
+<div style="animation: fade-slide-up 0.3s ease-out forwards">
+	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
 			<div class="flex items-center justify-between gap-4">
 				<div class="flex items-center gap-3 min-w-0">
@@ -65,7 +63,7 @@
 	</div>
 
 	<!-- Photo Grid -->
-	<div use:motion class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 		{#if data.photos.length > 0}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each data.photos as photo, index}
@@ -82,13 +80,7 @@
 				/>
 			</div>
 		{:else}
-			<Motion
-				let:motion
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={MOTION.spring.gentle}
-			>
-				<div use:motion>
+				<div style="animation: fade-in 0.3s ease-out forwards">
 					<Card padding="lg" class="text-center">
 						<FolderOpen class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
 						<Typography variant="h3" class="mb-2">No photos found</Typography>
@@ -97,10 +89,9 @@
 						</Typography>
 					</Card>
 				</div>
-			</Motion>
 		{/if}
 	</div>
-</Motion>
+</div>
 
 <Lightbox
 	bind:open={lightboxOpen}

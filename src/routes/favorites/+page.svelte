@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { Motion } from 'svelte-motion';
 	import { Heart, Trash2, Download, Upload, AlertCircle } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 	import { favorites } from '$lib/stores/favorites.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -100,13 +98,7 @@
 	<link rel="canonical" href={data.seo.canonical} />
 </svelte:head>
 
-<Motion
-	let:motion
-	initial={{ opacity: 0, y: 20 }}
-	animate={{ opacity: 1, y: 0 }}
-	transition={MOTION.spring.gentle}
->
-	<div use:motion class="p-8">
+<div class="p-8" style="animation: fade-slide-up 0.3s ease-out forwards">
 		<div class="max-w-7xl mx-auto">
 			<!-- Header Section -->
 			<div class="mb-8">
@@ -158,17 +150,11 @@
 
 					<!-- Export Success Message -->
 					{#if showExportSuccess}
-						<Motion
-							initial={{ opacity: 0, y: -10 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0 }}
-						>
-							<div class="mt-4 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-								<Typography variant="body" class="text-green-500">
-									Favorites exported successfully!
-								</Typography>
-							</div>
-						</Motion>
+						<div class="mt-4 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg" style="animation: fade-slide-down 0.3s ease-out forwards">
+							<Typography variant="body" class="text-green-500">
+								Favorites exported successfully!
+							</Typography>
+						</div>
 					{/if}
 
 					<!-- Import Error Message -->
@@ -199,13 +185,7 @@
 				</div>
 			{:else}
 				<!-- Empty State -->
-				<Motion
-					let:motion
-					initial={{ opacity: 0 }}
-					animate={{ opacity: 1 }}
-					transition={MOTION.spring.gentle}
-				>
-					<div use:motion>
+				<div style="animation: fade-in 0.3s ease-out forwards">
 						<Card padding="lg" class="text-center py-16">
 							<Heart class="w-24 h-24 text-charcoal-600 mx-auto mb-6" aria-hidden="true" />
 							<Typography variant="h2" class="text-2xl mb-3">No favorites yet</Typography>
@@ -217,12 +197,10 @@
 								Explore Photos
 							</Button>
 						</Card>
-					</div>
-				</Motion>
+				</div>
 			{/if}
 		</div>
 	</div>
-</Motion>
 
 <!-- Lightbox Full-Screen Viewer -->
 <Lightbox

@@ -15,12 +15,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
-
-/**
- * Columns needed by transformPhotoRow (excludes embedding vector ~6KB/row and other heavy columns).
- * Reuse everywhere instead of select('*') to avoid fetching unnecessary data.
- */
-export const PHOTO_COLUMNS = 'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, photo_category, play_type, composition, time_of_day, lighting, color_temperature, emotion, action_intensity, sharpness, composition_score, exposure_accuracy, emotional_impact, time_in_game, athlete_id, jersey_number, event_id, ai_provider, ai_cost, ai_confidence, aspect_ratio, photo_date, upload_date, enriched_at';
+export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
+import { PHOTO_COLUMNS } from '$lib/supabase/columns';
 
 // Server-side environment variables (NOT exposed to browser)
 // In SvelteKit, we need to use import.meta.env even server-side

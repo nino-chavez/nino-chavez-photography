@@ -13,9 +13,8 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Motion } from 'svelte-motion';
+	import { fly } from 'svelte/transition';
 	import { ArrowUp } from 'lucide-svelte';
-	import { MOTION } from '$lib/motion-tokens';
 
 	interface Props {
 		threshold?: number; // Show button after scrolling this many pixels
@@ -47,21 +46,13 @@
 </script>
 
 {#if isVisible}
-	<Motion
-		let:motion
-		initial={{ opacity: 0, scale: 0.8, y: 20 }}
-		animate={{ opacity: 1, scale: 1, y: 0 }}
-		exit={{ opacity: 0, scale: 0.8, y: 20 }}
-		transition={MOTION.spring.snappy}
+	<button
+		transition:fly={{ y: 20, duration: 200 }}
+		onclick={scrollToTop}
+		class="fixed bottom-6 right-6 z-40 p-3 bg-gold-500 text-charcoal-950 rounded-full shadow-lg hover:bg-gold-400 hover:scale-110 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:ring-offset-2 focus:ring-offset-charcoal-950"
+		aria-label="Scroll to top"
+		title="Back to top"
 	>
-		<button
-			use:motion
-			onclick={scrollToTop}
-			class="fixed bottom-6 right-6 z-40 p-3 bg-gold-500 text-charcoal-950 rounded-full shadow-lg hover:bg-gold-400 hover:scale-110 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:ring-offset-2 focus:ring-offset-charcoal-950"
-			aria-label="Scroll to top"
-			title="Back to top"
-		>
-			<ArrowUp class="w-5 h-5" />
-		</button>
-	</Motion>
+		<ArrowUp class="w-5 h-5" />
+	</button>
 {/if}
