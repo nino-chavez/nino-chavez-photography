@@ -16,6 +16,21 @@
       "source": "/",
       "destination": "https://ninochavez.co/photography",
       "permanent": true
+    },
+    {
+      "source": "/photo/:path*",
+      "destination": "/photography/photo/:path*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/robots.txt",
+      "destination": "/photography/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/photography/sitemap.xml"
     }
   ]
 }

@@ -222,7 +222,7 @@ async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promis
 async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo[]> {
 	// Check if current photo has an embedding
 	if (!currentPhoto.embedding) {
-		console.log('[Photo Detail] No embedding available for similarity search');
+		// Embedding not yet generated for this photo — skip similarity search silently
 		return [];
 	}
 
