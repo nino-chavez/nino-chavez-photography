@@ -177,11 +177,11 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
       query = query.order('emotional_impact', { ascending: false }).order('upload_date', { ascending: false });
       break;
     case 'newest':
-      // Use upload_date or date_added (album add) as fallback
-      query = query.order('upload_date', { ascending: false });
+      // Use upload_date, then image_key for deterministic ordering within same-date albums
+      query = query.order('upload_date', { ascending: false }).order('image_key', { ascending: true });
       break;
     case 'oldest':
-      query = query.order('upload_date', { ascending: true });
+      query = query.order('upload_date', { ascending: true }).order('image_key', { ascending: true });
       break;
     case 'action':
       // Sort by play type (alphabetical grouping), then by emotional_impact for deterministic ordering
