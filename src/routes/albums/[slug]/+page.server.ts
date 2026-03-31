@@ -1,6 +1,7 @@
 import { base } from '$app/paths';
 import { fetchPhotos, getPhotoCount, getAlbumSettings, fetchAlbumVideos, supabaseServer } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
+import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
@@ -19,10 +20,10 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 
 	// Fetch album info, photos, count, videos, and settings in parallel
 	const [albumData, photos, totalCount, videos, albumSettings] = await Promise.all([
-		// Get album name from albums_summary view
+		// Get album name + cover image from albums_summary view
 		supabaseServer
 			.from('albums_summary')
-			.select('album_name')
+			.select('album_name, cover_cf_image_id, cover_image_url, primary_sport, photo_count')
 			.eq('album_key', albumKey)
 			.single(),
 		// Get paginated photos for this album
@@ -49,7 +50,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		throw error(404, 'Album not found or contains no content');
 	}
 
-	const albumName = albumData.data?.album_name || albumKey;
+	const album = albumData.data;
+	const albumName = album?.album_name || albumKey;
 
 	// If URL is using old format (just the key), redirect to new slug format
 	const correctSlug = createAlbumSlug(albumName, albumKey);
@@ -57,6 +59,16 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		const pageParam = page > 1 ? `?page=${page}` : '';
 		throw redirect(301, `${base}/albums/${correctSlug}${pageParam}`);
 	}
+
+	// Build OG image URL from cover photo
+	const coverImageUrl = hasCFImage(album?.cover_cf_image_id)
+		? cfImageUrl(album.cover_cf_image_id, 'large')
+		: album?.cover_image_url || null;
+
+	const baseUrl = 'https://photography.ninochavez.co';
+	const canonicalUrl = `${baseUrl}/albums/${correctSlug}`;
+	const sport = album?.primary_sport || 'sports';
+	const ogDescription = `${albumName} — ${totalCount} professional ${sport} photos by Nino Chavez`;
 
 	return {
 		albumKey,
@@ -66,6 +78,12 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		videos,
 		totalCount,
 		currentPage: page,
-		pageSize
+		pageSize,
+		seo: {
+			title: `${albumName} | Nino Chavez Photography`,
+			description: ogDescription,
+			canonical: canonicalUrl,
+			ogImage: coverImageUrl
+		}
 	};
 };

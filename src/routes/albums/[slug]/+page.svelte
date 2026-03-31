@@ -10,6 +10,8 @@
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
+	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
+	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { PageData } from './$types';
 	import type { Photo, Video } from '$types/photo';
 
@@ -65,10 +67,40 @@
 		videoPlayerOpen = true;
 	}
 
+	// Share target for album sharing
+	const albumShareTarget = $derived({
+		title: data.albumName,
+		url: data.seo.canonical,
+		imageUrl: data.seo.ogImage || ''
+	});
+
 	function goBackToAlbums() {
 		goto(`${base}/albums`);
 	}
 </script>
+
+<svelte:head>
+	<title>{data.seo.title}</title>
+	<meta name="description" content={data.seo.description} />
+	<link rel="canonical" href={data.seo.canonical} />
+
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={data.seo.canonical} />
+	<meta property="og:title" content={data.seo.title} />
+	<meta property="og:description" content={data.seo.description} />
+	{#if data.seo.ogImage}
+		<meta property="og:image" content={data.seo.ogImage} />
+		<meta property="og:image:alt" content={data.albumName} />
+	{/if}
+	<meta property="og:site_name" content="Nino Chavez Photography" />
+
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={data.seo.title} />
+	<meta name="twitter:description" content={data.seo.description} />
+	{#if data.seo.ogImage}
+		<meta name="twitter:image" content={data.seo.ogImage} />
+	{/if}
+</svelte:head>
 
 <!-- Minimal Header - Content First Design -->
 <div style="animation: fade-slide-up 0.3s ease-out forwards">
@@ -144,6 +176,9 @@
 						albumName={data.albumName}
 						photoCount={data.totalCount}
 					/>
+					{#if albumShareTarget.imageUrl}
+						<ShareMenu target={albumShareTarget} variant="inline" />
+					{/if}
 				</div>
 			</div>
 

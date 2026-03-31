@@ -14,6 +14,7 @@
 	import { swipe, type SwipeEvent, isTouchDevice } from '$lib/utils/gestures';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
+	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
 	import { generatePhotoTitle, generatePhotoCaption, generateMetadataSummary } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { Photo } from '$types/photo';
@@ -106,6 +107,19 @@
 	const findSimilarUrl = $derived(
 		photo?.image_key ? `${base}/explore?similar_to=${photo.image_key}` : null
 	);
+
+	// Share target for ShareMenu
+	const shareTarget = $derived.by(() => {
+		if (!photo) return null;
+		const baseUrl = 'https://photography.ninochavez.co';
+		return {
+			title: generatePhotoTitle(photo),
+			url: `${baseUrl}/photo/${photo.image_key}`,
+			imageUrl: hasCFImage(photo.cf_image_id)
+				? cfImageUrl(photo.cf_image_id, 'public')
+				: photo.original_url || photo.image_url
+		};
+	});
 
 	// Generate user-friendly display text
 	const displayTitle = $derived(photo ? generatePhotoTitle(photo) : 'Sports Photo');
@@ -401,6 +415,13 @@
 						<div class="mr-2 md:mr-4">
 							<DownloadButton {photo} variant="compact" />
 						</div>
+
+						<!-- Share Button -->
+						{#if shareTarget}
+							<div class="mr-2 md:mr-4">
+								<ShareMenu target={shareTarget} variant="toolbar" />
+							</div>
+						{/if}
 
 						<!-- Close Button -->
 						<button
