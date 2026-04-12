@@ -53,6 +53,13 @@ npm test                         # Playwright E2E tests
 - Filter out `sharpness = null` for unprocessed photos
 - MOTION tokens from `$lib/motion-tokens.ts` for animations
 
+## Album Management Pipeline
+- `ENRICHMENT_WORKFLOW.md` - Full pipeline: enrich → upload → sync
+- `scripts/README-PIPELINE.md` - `run-pipeline.ts` usage and flags
+- `scripts/ALBUM_NORMALIZATION_README.md` - Canonical naming and drift analysis
+- `.agent-os/implementation/ALBUM_NORMALIZATION_WORKFLOW.md` - Naming standard format
+- `.agent-os/implementation/ENRICHMENT_PIPELINE_INTEGRATION.md` - Naming integration
+
 ## Database
 - Primary table: `photo_metadata` (~20K rows)
 - Key columns: photo_id, sport_type, quality_score, cf_image_id

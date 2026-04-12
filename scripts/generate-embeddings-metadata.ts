@@ -22,7 +22,6 @@ import { resolve } from 'path';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 
 // =============================================================================
@@ -52,7 +51,6 @@ if (!GEMINI_API_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // =============================================================================
 // Metadata to Text Description
@@ -124,9 +122,24 @@ function createSemanticDescription(photo: PhotoMetadata): string {
 
 async function generateEmbedding(description: string): Promise<number[] | null> {
 	try {
-		const embeddingModel = genAI.getGenerativeModel({ model: 'embedding-001' });
-		const result = await embeddingModel.embedContent(description);
-		return result.embedding.values;
+		const response = await fetch(
+			`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					model: 'models/gemini-embedding-001',
+					content: { parts: [{ text: description }] },
+					outputDimensionality: 768
+				})
+			}
+		);
+		if (!response.ok) {
+			const err = await response.text();
+			throw new Error(`${response.status}: ${err}`);
+		}
+		const data = await response.json();
+		return data.embedding.values;
 	} catch (error: any) {
 		console.error(`   ⚠️  Failed to generate embedding:`, error.message);
 		return null;
