@@ -38,6 +38,7 @@ interface PipelineConfig {
 	startFrom: 'enrich' | 'sync' | 'upload';
 	batchSize: number;
 	albumName?: string;
+	uploadDate?: string;
 }
 
 function parseArgs(): PipelineConfig {
@@ -64,6 +65,12 @@ function parseArgs(): PipelineConfig {
 	const nameIndex = args.indexOf('--album-name');
 	if (nameIndex !== -1 && args[nameIndex + 1]) {
 		config.albumName = args[nameIndex + 1];
+	}
+
+	// Parse --upload-date
+	const dateIndex = args.indexOf('--upload-date');
+	if (dateIndex !== -1 && args[dateIndex + 1]) {
+		config.uploadDate = args[dateIndex + 1];
 	}
 
 	// Parse --start-from
@@ -157,6 +164,8 @@ async function runPipeline(config: PipelineConfig) {
 	console.log('Configuration:');
 	console.log(`  📁 Photo Directory: ${config.photoDir}`);
 	console.log(`  📸 Album Key: ${config.albumKey}`);
+	if (config.albumName) console.log(`  🏷️  Album Name: ${config.albumName}`);
+	if (config.uploadDate) console.log(`  📅 Upload Date: ${config.uploadDate}`);
 	console.log(`  🔄 Batch Size: ${config.batchSize}`);
 	console.log(`  🏁 Starting From: ${config.startFrom}`);
 	console.log(`  🔍 Dry Run: ${config.dryRun ? 'Yes' : 'No'}`);
@@ -190,7 +199,8 @@ async function runPipeline(config: PipelineConfig) {
 	// Step 2: Sync - Write enriched metadata to Supabase
 	if (startIdx <= 1) {
 		const albumNameArg = config.albumName ? ` --album-name="${config.albumName}"` : '';
-		const syncCmd = `npx tsx scripts/sync-local-to-supabase.ts ${config.photoDir} ${config.albumKey}${albumNameArg}${
+		const uploadDateArg = config.uploadDate ? ` --upload-date="${config.uploadDate}"` : '';
+		const syncCmd = `npx tsx scripts/sync-local-to-supabase.ts ${config.photoDir} ${config.albumKey}${albumNameArg}${uploadDateArg}${
 			config.dryRun ? ' --dry-run' : ''
 		}`;
 

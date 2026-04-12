@@ -65,7 +65,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	// Browse Mode: Simple album listing without filters (IA Mode 1 - Traditionalist)
 	// Get pagination and sorting params
 	const page = parseInt(url.searchParams.get('page') || '1');
-	const sortBy = (url.searchParams.get('sort') || 'count') as SortOption;
+	const sortBy = (url.searchParams.get('sort') || 'date') as SortOption;
 	const limit = 24;
 	const offset = (page - 1) * limit;
 
