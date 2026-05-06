@@ -1,4 +1,4 @@
-import adapter from "@sveltejs/adapter-vercel";
+import adapter from "@sveltejs/adapter-cloudflare";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 // Validate and normalize base path
@@ -29,8 +29,10 @@ const config = {
 
   kit: {
     adapter: adapter({
-      // Vercel adapter configuration
-      runtime: "nodejs20.x",
+      routes: {
+        include: ['/*'],
+        exclude: ['<all>']
+      }
     }),
     csrf: {
       checkOrigin: false,
