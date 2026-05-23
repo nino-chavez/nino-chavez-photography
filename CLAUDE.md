@@ -1,8 +1,12 @@
 # Nino Chavez Gallery - Development Guidelines
 
-**Stack:** SvelteKit 2.x + Svelte 5 + Tailwind CSS 4 + Supabase
+**Stack:** SvelteKit 2.x + Svelte 5 + Tailwind CSS 4 + Supabase (Postgres + Auth)
+**Deploy:** Cloudflare Pages (git integration, no GitHub Actions) + Cloudflare Worker (album-zip) + R2 + Cloudflare Images
+**Adapter:** `@sveltejs/adapter-cloudflare` — `adapter-vercel` not installed
 **Type:** Photography Portfolio (Volleyball Action Sports)
-**Scale:** ~20K photos | Production on Vercel at photography.ninochavez.co
+**Scale:** ~20K photos | Production at photography.ninochavez.co
+
+> **Note:** `vercel.json` and `.vercel/` are stale leftovers from the pre-migration period (see commit `39485b2`). Cloudflare Pages is the live deploy. Do not re-introduce Vercel-specific config.
 
 ## Non-Obvious Rules
 
