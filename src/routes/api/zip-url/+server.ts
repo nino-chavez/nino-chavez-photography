@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
-const ZIP_WORKER_URL = 'https://album-zip-worker.biq.workers.dev';
+const ZIP_WORKER_URL = 'https://zip.ninochavez.co';
 
 /**
  * Generates an HMAC-signed URL for the album ZIP Worker.

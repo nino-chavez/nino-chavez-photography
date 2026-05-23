@@ -1,7 +1,14 @@
 name = "album-zip-worker"
 main = "src/index.ts"
 compatibility_date = "2026-03-01"
-workers_dev = true
+# Browser-callable signed download endpoint. Lives on a custom domain
+# (zip.ninochavez.co) per the worker-domain convention — same root as the
+# consuming app instead of a workers.dev URL. CORS locked to ALLOWED_ORIGIN.
+workers_dev = false
+
+[[routes]]
+pattern = "zip.ninochavez.co"
+custom_domain = true
 
 [[r2_buckets]]
 binding = "ZIP_CACHE"
