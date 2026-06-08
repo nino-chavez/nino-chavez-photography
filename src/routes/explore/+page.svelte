@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page, navigating } from '$app/stores';
 	import { untrack } from 'svelte';
-	import { Camera, X, Filter, SlidersHorizontal, Loader2, Search, Sparkles } from 'lucide-svelte';
+	import { Camera, X, Filter, Loader2, Search, Sparkles } from 'lucide-svelte';
 	import { preferences } from '$lib/stores/preferences.svelte';
 	import { filterNotifications } from '$lib/stores/filter-notifications.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -12,7 +12,6 @@
 	import PhotoGridSkeleton from '$lib/components/ui/PhotoGridSkeleton.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import VisualDataLegend from '$lib/components/ui/VisualDataLegend.svelte';
-	import SearchAutocomplete from '$lib/components/search/SearchAutocomplete.svelte';
 	import FilterChip from '$lib/components/filters/FilterChip.svelte';
 	import ConsolidatedFilter from '$lib/components/filters/ConsolidatedFilter.svelte';
 	// Lazy-loaded components (heavy filters only loaded when needed)
@@ -32,48 +31,12 @@
 	const FilterPresetsPanelPromise = import('$lib/components/filters/FilterPresetsPanel.svelte');
 
 	// Label mappings for user-friendly display
-	const compositionLabels: Record<string, string> = {
-		rule_of_thirds: 'Rule of Thirds',
-		leading_lines: 'Leading Lines',
-		centered: 'Centered',
-		symmetry: 'Symmetry',
-		frame_within_frame: 'Framed',
-	};
-
-	const timeOfDayLabels: Record<string, string> = {
-		golden_hour: 'Golden Hour',
-		midday: 'Midday',
-		evening: 'Evening',
-		night: 'Night',
-	};
-
 	const playTypeLabels: Record<string, string> = {
 		attack: 'Attack',
 		block: 'Block',
 		dig: 'Dig',
 		set: 'Set',
 		serve: 'Serve',
-	};
-
-	const intensityLabels: Record<string, string> = {
-		low: 'Low',
-		medium: 'Medium',
-		high: 'High',
-		peak: 'Peak',
-	};
-
-	const lightingLabels: Record<string, string> = {
-		natural: 'Natural',
-		backlit: 'Backlit',
-		dramatic: 'Dramatic',
-		soft: 'Soft',
-		artificial: 'Artificial',
-	};
-
-	const colorTempLabels: Record<string, string> = {
-		warm: 'Warm',
-		neutral: 'Neutral',
-		cool: 'Cool',
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -128,17 +91,9 @@
 		if (data.selectedSport) count++;
 		if (data.selectedCategory) count++;
 		if (data.selectedPlayType) count++;
-		if (data.selectedIntensity) count++;
-		if (data.selectedLighting && data.selectedLighting.length > 0) count += data.selectedLighting.length;
-		if (data.selectedColorTemp) count++;
-		if (data.selectedTimeOfDay) count++;
-		if (data.selectedComposition) count++;
 		if (data.selectedJerseyNumber) count++;
 		return count;
 	});
-
-	// Mobile filter drawer state
-	let mobileFiltersOpen = $state(false);
 
 	// Zero results detection (Phase 4: Auto-Clear notification)
 	$effect(() => {
@@ -231,72 +186,10 @@
 		goto(url.toString());
 	}
 
-	function handleIntensitySelect(intensity: string | null) {
+	function handleJerseySelect(jersey: number | null) {
 		const url = new URL($page.url);
-		if (intensity) {
-			url.searchParams.set('intensity', intensity);
-		} else {
-			url.searchParams.delete('intensity');
-		}
-		url.searchParams.delete('page');
-		url.searchParams.delete('similar_to');
-		goto(url.toString());
-	}
-
-	function handleLightingSelect(lighting: string[] | null) {
-		const url = new URL($page.url);
-		url.searchParams.delete('lighting'); // Clear existing
-		if (lighting && lighting.length > 0) {
-			lighting.forEach((l) => url.searchParams.append('lighting', l));
-		}
-		url.searchParams.delete('page');
-		url.searchParams.delete('similar_to');
-		goto(url.toString());
-	}
-
-	function handleColorTempSelect(temp: string | null) {
-		const url = new URL($page.url);
-		if (temp) {
-			url.searchParams.set('color_temp', temp);
-		} else {
-			url.searchParams.delete('color_temp');
-		}
-		url.searchParams.delete('page');
-		url.searchParams.delete('similar_to');
-		goto(url.toString());
-	}
-
-	function handleTimeOfDaySelect(time: string | null) {
-		const url = new URL($page.url);
-		if (time) {
-			url.searchParams.set('time_of_day', time);
-		} else {
-			url.searchParams.delete('time_of_day');
-		}
-		url.searchParams.delete('page');
-		url.searchParams.delete('similar_to');
-		goto(url.toString());
-	}
-
-	function handleCompositionSelect(composition: string | null) {
-		const url = new URL($page.url);
-		if (composition) {
-			url.searchParams.set('composition', composition);
-		} else {
-			url.searchParams.delete('composition');
-		}
-		url.searchParams.delete('page');
-		url.searchParams.delete('similar_to');
-		goto(url.toString());
-	}
-
-	// jersey is TEXT ('00' != '0', '7A' is real). Resolves via the relational sightings RPC server-side.
-	let jerseyInput = $state(data.selectedJerseyNumber?.toString() ?? '');
-	function handleJerseySelect(jersey: string | null) {
-		const url = new URL($page.url);
-		const v = jersey?.trim();
-		if (v) {
-			url.searchParams.set('jersey', v);
+		if (jersey !== null) {
+			url.searchParams.set('jersey', jersey.toString());
 		} else {
 			url.searchParams.delete('jersey');
 		}
@@ -312,18 +205,14 @@
 		url.searchParams.delete('sport');
 		url.searchParams.delete('category');
 		url.searchParams.delete('play_type');
-		url.searchParams.delete('intensity');
-		url.searchParams.delete('lighting');
-		url.searchParams.delete('color_temp');
-		url.searchParams.delete('time_of_day');
-		url.searchParams.delete('composition');
-		url.searchParams.delete('emotion'); // Clear emotion filter
 		url.searchParams.delete('jersey'); // Clear jersey filter
 		url.searchParams.delete('q'); // Clear search query too
 		url.searchParams.delete('similar_to'); // Clear similarity search
 		url.searchParams.delete('page');
 		goto(url.toString());
-	}	// Apply filter preset
+	}
+
+	// Apply filter preset
 	function handleApplyPreset(filters: FilterPreset['filters']) {
 		const url = new URL($page.url);
 
@@ -331,12 +220,6 @@
 		url.searchParams.delete('sport');
 		url.searchParams.delete('category');
 		url.searchParams.delete('play_type');
-		url.searchParams.delete('intensity');
-		url.searchParams.delete('lighting');
-		url.searchParams.delete('color_temp');
-		url.searchParams.delete('time_of_day');
-		url.searchParams.delete('composition');
-		url.searchParams.delete('emotion');
 		url.searchParams.delete('similar_to'); // Clear similarity search
 		// Keep search query
 
@@ -344,13 +227,6 @@
 		if (filters.sport) url.searchParams.set('sport', filters.sport);
 		if (filters.category) url.searchParams.set('category', filters.category);
 		if (filters.playType) url.searchParams.set('play_type', filters.playType);
-		if (filters.intensity) url.searchParams.set('intensity', filters.intensity);
-		if (filters.lighting && filters.lighting.length > 0) {
-			filters.lighting.forEach(l => url.searchParams.append('lighting', l));
-		}
-		if (filters.colorTemp) url.searchParams.set('color_temp', filters.colorTemp);
-		if (filters.timeOfDay) url.searchParams.set('time_of_day', filters.timeOfDay);
-		if (filters.composition) url.searchParams.set('composition', filters.composition);
 
 		url.searchParams.delete('page');
 		goto(url.toString());
@@ -367,12 +243,6 @@
 		url.searchParams.delete('sport');
 		url.searchParams.delete('category');
 		url.searchParams.delete('play_type');
-		url.searchParams.delete('intensity');
-		url.searchParams.delete('lighting');
-		url.searchParams.delete('color_temp');
-		url.searchParams.delete('time_of_day');
-		url.searchParams.delete('composition');
-		url.searchParams.delete('emotion');
 		url.searchParams.delete('similar_to'); // Clear similarity search
 		// Keep search query
 
@@ -380,13 +250,6 @@
 		if (filters.sport) url.searchParams.set('sport', filters.sport);
 		if (filters.category) url.searchParams.set('category', filters.category);
 		if (filters.playType) url.searchParams.set('play_type', filters.playType);
-		if (filters.intensity) url.searchParams.set('intensity', filters.intensity);
-		if (filters.lighting && filters.lighting.length > 0) {
-			filters.lighting.forEach(l => url.searchParams.append('lighting', l));
-		}
-		if (filters.colorTemp) url.searchParams.set('color_temp', filters.colorTemp);
-		if (filters.timeOfDay) url.searchParams.set('time_of_day', filters.timeOfDay);
-		if (filters.composition) url.searchParams.set('composition', filters.composition);
 
 		url.searchParams.delete('page');
 		goto(url.toString());
@@ -432,11 +295,6 @@
 			sport: data.selectedSport,
 			category: data.selectedCategory,
 			playType: data.selectedPlayType,
-			intensity: data.selectedIntensity,
-			lighting: data.selectedLighting,
-			colorTemp: data.selectedColorTemp,
-			timeOfDay: data.selectedTimeOfDay,
-			composition: data.selectedComposition,
 		};
 
 		const filterCount = activeFilterCount;
@@ -447,13 +305,6 @@
 			if (data.selectedSport) filterAnalytics.trackFilter('sports', data.selectedSport);
 			if (data.selectedCategory) filterAnalytics.trackFilter('categories', data.selectedCategory);
 			if (data.selectedPlayType) filterAnalytics.trackFilter('playTypes', data.selectedPlayType);
-			if (data.selectedIntensity) filterAnalytics.trackFilter('intensities', data.selectedIntensity);
-			if (data.selectedLighting) {
-				data.selectedLighting.forEach(l => filterAnalytics.trackFilter('lighting', l));
-			}
-			if (data.selectedColorTemp) filterAnalytics.trackFilter('colorTemps', data.selectedColorTemp);
-			if (data.selectedTimeOfDay) filterAnalytics.trackFilter('timesOfDay', data.selectedTimeOfDay);
-			if (data.selectedComposition) filterAnalytics.trackFilter('compositions', data.selectedComposition);
 
 			// Track combination
 			if (filterCount > 0) {
@@ -461,11 +312,6 @@
 				if (data.selectedSport) filterCombination.sport = data.selectedSport;
 				if (data.selectedCategory) filterCombination.category = data.selectedCategory;
 				if (data.selectedPlayType) filterCombination.playType = data.selectedPlayType;
-				if (data.selectedIntensity) filterCombination.intensity = data.selectedIntensity;
-				if (data.selectedLighting) filterCombination.lighting = data.selectedLighting;
-				if (data.selectedColorTemp) filterCombination.colorTemp = data.selectedColorTemp;
-				if (data.selectedTimeOfDay) filterCombination.timeOfDay = data.selectedTimeOfDay;
-				if (data.selectedComposition) filterCombination.composition = data.selectedComposition;
 
 				filterAnalytics.trackCombination(filterCombination);
 			}
@@ -546,11 +392,6 @@
 					sport={data.selectedSport}
 					category={data.selectedCategory}
 					playType={data.selectedPlayType}
-					intensity={data.selectedIntensity}
-					lighting={data.selectedLighting}
-					colorTemp={data.selectedColorTemp}
-					timeOfDay={data.selectedTimeOfDay}
-					composition={data.selectedComposition}
 				/>
 
 				<!-- Mobile Filter Drawer Toggle (visible on small screens only) -->
@@ -616,46 +457,6 @@
 					/>
 				{/if}
 
-				{#if data.selectedIntensity}
-					<FilterChip
-						label="Intensity: {intensityLabels[data.selectedIntensity] || data.selectedIntensity}"
-						onRemove={() => handleIntensitySelect(null)}
-					/>
-				{/if}
-
-				{#if data.selectedLighting && data.selectedLighting.length > 0}
-					{#each data.selectedLighting as lighting}
-						<FilterChip
-							label="Lighting: {lightingLabels[lighting] || lighting}"
-							onRemove={() => {
-								const remaining = data.selectedLighting?.filter(l => l !== lighting) || [];
-								handleLightingSelect(remaining.length > 0 ? remaining : null);
-							}}
-						/>
-					{/each}
-				{/if}
-
-				{#if data.selectedColorTemp}
-					<FilterChip
-						label="Color: {colorTempLabels[data.selectedColorTemp] || data.selectedColorTemp}"
-						onRemove={() => handleColorTempSelect(null)}
-					/>
-				{/if}
-
-				{#if data.selectedTimeOfDay}
-					<FilterChip
-						label="Time: {timeOfDayLabels[data.selectedTimeOfDay] || data.selectedTimeOfDay}"
-						onRemove={() => handleTimeOfDaySelect(null)}
-					/>
-				{/if}
-
-				{#if data.selectedComposition}
-					<FilterChip
-						label="Composition: {compositionLabels[data.selectedComposition] || data.selectedComposition}"
-						onRemove={() => handleCompositionSelect(null)}
-					/>
-				{/if}
-
 				{#if data.selectedJerseyNumber}
 					<FilterChip
 						label="Jersey: #{data.selectedJerseyNumber}"
@@ -665,29 +466,7 @@
 			</div>
 		{/if}
 
-		<!-- Find by jersey number — relational sightings RPC (no naming, no biometrics) -->
-			<form
-				class="mb-4 flex items-center gap-2"
-				onsubmit={(e) => { e.preventDefault(); handleJerseySelect(jerseyInput); }}
-			>
-				<label for="jersey-input" class="text-sm text-charcoal-300">Find by jersey</label>
-				<input
-					id="jersey-input"
-					type="text"
-					inputmode="numeric"
-					maxlength="4"
-					bind:value={jerseyInput}
-					placeholder="#"
-					aria-label="Jersey number"
-					class="w-20 rounded-md border border-charcoal-700 bg-charcoal-800 px-2 py-1 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
-				/>
-				<button
-					type="submit"
-					class="rounded-md bg-charcoal-700 px-3 py-1 text-sm text-white transition-colors hover:bg-charcoal-600"
-				>Find</button>
-			</form>
-
-			<!-- Consolidated Filters (Mobile only - dropdowns) -->
+		<!-- Consolidated Filters (Mobile only - dropdowns) -->
 		<div class="lg:hidden">
 			{#if data.sports && data.sports.length > 0 && data.categories && data.categories.length > 0}
 				<ConsolidatedFilter
@@ -696,19 +475,9 @@
 					selectedSport={data.selectedSport}
 					selectedCategory={data.selectedCategory}
 					selectedPlayType={data.selectedPlayType}
-					selectedIntensity={data.selectedIntensity}
-					selectedLighting={data.selectedLighting}
-					selectedColorTemp={data.selectedColorTemp}
-					selectedTimeOfDay={data.selectedTimeOfDay}
-					selectedComposition={data.selectedComposition}
 					onSportSelect={handleSportSelect}
 					onCategorySelect={handleCategorySelect}
 					onPlayTypeSelect={handlePlayTypeSelect}
-					onIntensitySelect={handleIntensitySelect}
-					onLightingSelect={handleLightingSelect}
-					onColorTempSelect={handleColorTempSelect}
-					onTimeOfDaySelect={handleTimeOfDaySelect}
-					onCompositionSelect={handleCompositionSelect}
 					filterCounts={resolvedFilterCounts}
 				/>
 			{/if}
@@ -731,19 +500,9 @@
 						selectedSport={data.selectedSport}
 						selectedCategory={data.selectedCategory}
 						selectedPlayType={data.selectedPlayType}
-						selectedIntensity={data.selectedIntensity}
-						selectedLighting={data.selectedLighting}
-						selectedColorTemp={data.selectedColorTemp}
-						selectedTimeOfDay={data.selectedTimeOfDay}
-						selectedComposition={data.selectedComposition}
 						onSportSelect={handleSportSelect}
 						onCategorySelect={handleCategorySelect}
 						onPlayTypeSelect={handlePlayTypeSelect}
-						onIntensitySelect={handleIntensitySelect}
-						onLightingSelect={handleLightingSelect}
-						onColorTempSelect={handleColorTempSelect}
-						onTimeOfDaySelect={handleTimeOfDaySelect}
-						onCompositionSelect={handleCompositionSelect}
 						onClearAll={clearAllFilters}
 						filterCounts={resolvedFilterCounts}
 					/>
@@ -768,8 +527,6 @@
 			<option value="quality">Best Photos First</option>
 			<option value="newest">Newest</option>
 			<option value="oldest">Oldest</option>
-			<option value="intensity">Most Action</option>
-			<option value="action">By Play Type</option>
 		</select>
 	</div>
 
