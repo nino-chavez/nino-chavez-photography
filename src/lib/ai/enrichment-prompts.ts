@@ -362,6 +362,36 @@ NO explanations. NO markdown. ONLY JSON.`);
 }
 
 // =============================================================================
+// Caption-only Prompt (Phase 1 backfill — caption + players, no buckets)
+// =============================================================================
+
+/**
+ * Slim prompt that returns ONLY `caption` + `players[]` — the two fields the v-next
+ * backfill actually persists. The full combined prompt also emits bucket1/bucket2,
+ * but the backfill discards those (it never overwrites existing classification), so
+ * paying ~3,850 prompt tokens for them is pure waste.
+ *
+ * Measured 2026-06-08 across 6 albums vs the full prompt at the same 1600px image:
+ *   full @1600  → $0.000731/photo (6,091 in-tok)
+ *   slim @1600  → $0.000349/photo (3,115 in-tok)  ← ~52% cheaper
+ * Jersey detection held (21/30 vs 19/30) and captions stayed search-adequate, because
+ * the image (and thus legibility) is unchanged — only the discarded instructions are cut.
+ *
+ * Use this for backfill / re-embedding. The new-album path (enrich-local-photos.ts) still
+ * needs `buildCombinedPrompt` because it writes bucket1/bucket2 to EXIF.
+ */
+export function buildCaptionPrompt(context?: EnrichmentContext): string {
+	const albumName = context?.albumName;
+	return `This is a VOLLEYBALL sports photo from a volleyball photography portfolio${albumName ? ` (album: "${albumName}")` : ''}. Assume volleyball unless another sport is unmistakable.
+
+Return ONLY JSON with exactly two top-level keys, for people-finding and natural-language search:
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action (spike, block, dig, set, serve, pass, celebration, etc.), and the scene. Plain language, no aesthetic jargon.
+"players": an array (max 8) of objects, one per clearly visible player: {"jersey_number": integer or null, "team_color": string or null, "action": string or null}.
+
+NO markdown. ONLY JSON: {"caption":"...","players":[...]}`;
+}
+
+// =============================================================================
 // TypeScript Interfaces for AI Responses
 // =============================================================================
 

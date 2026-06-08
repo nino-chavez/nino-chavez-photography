@@ -30,7 +30,7 @@ import { resolve, join } from 'path';
 config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { buildCombinedPrompt } from '../src/lib/ai/enrichment-prompts';
+import { buildCaptionPrompt } from '../src/lib/ai/enrichment-prompts';
 import { embedText } from '../src/lib/ai/embeddings';
 import { cfImageUrl } from '../src/lib/utils/cloudflare-images';
 
@@ -107,6 +107,11 @@ async function fetchRows(): Promise<Row[]> {
 			.order('image_key', { ascending: true })
 			.range(from, from + pageSize - 1);
 		if (!ALL && ALBUM_KEY) q = q.eq('album_key', ALBUM_KEY);
+		// Data-driven resume: processRow writes caption + embedding atomically (caption is
+		// never set without a successful embedding), so `caption IS NULL` == "not yet done".
+		// This makes the run resumable even if the checkpoint file is lost, and skips the
+		// already-captioned TRoiyO test rows automatically on a --all run.
+		if (!OVERWRITE) q = q.is('caption', null);
 		const { data, error } = await q;
 		if (error) { console.error('❌ fetch error:', error.message); process.exit(1); }
 		if (!data || data.length === 0) break;
@@ -127,7 +132,9 @@ async function processRow(row: Row): Promise<{ caption: string; players: number;
 	const buf = Buffer.from(await imgRes.arrayBuffer());
 	const dataUrl = `data:image/jpeg;base64,${buf.toString('base64')}`;
 
-	const prompt = buildCombinedPrompt({ albumName: row.album_name || undefined, usePortfolioContext: true });
+	// Slim caption+players prompt — ~52% cheaper than the full combined prompt at equal
+	// quality, because the backfill discards bucket1/bucket2 anyway (measured 2026-06-08).
+	const prompt = buildCaptionPrompt({ albumName: row.album_name || undefined });
 
 	const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 		method: 'POST',
