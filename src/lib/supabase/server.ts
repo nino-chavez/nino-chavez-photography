@@ -1245,6 +1245,34 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   return fetchPhotos({ limit, sortBy: 'quality' });
 }
 
+/**
+ * Find photos by jersey number via the relational sightings (find_photos_by_jersey RPC over
+ * photo_jersey_sightings). Replaces the old singular-column `.eq('jersey_number')`: catches
+ * multi-player jerseys (from the players[] extraction, not just the primary subject), supports
+ * text jerseys ('00', '7A'), and scopes by album/sport. No naming/biometrics involved (jersey
+ * number is non-PII). The RPC returns cf_image_id + display fields, quality-ranked, one row per
+ * photo — map straight to Photo.
+ */
+export async function findPhotosByJersey(
+  jersey: string,
+  opts: { albumKey?: string; sport?: string; teamColor?: string; limit?: number; offset?: number } = {}
+): Promise<Photo[]> {
+  const { albumKey, sport, teamColor, limit = 24, offset = 0 } = opts;
+  const { data: matches, error } = await supabaseServer.rpc('find_photos_by_jersey', {
+    p_jersey: jersey.trim(),
+    p_album_key: albumKey ?? null,
+    p_team_color: teamColor ?? null,
+    p_sport: sport ?? null,
+    p_limit: limit,
+    p_offset: offset
+  });
+  if (error) {
+    console.error('[findPhotosByJersey] RPC error:', error.message);
+    return [];
+  }
+  return (matches ?? []).map((m: any) => transformPhotoRow(m));
+}
+
 // ============================================================
 // Smart Search (Structured Parse + Vector Fallback)
 // ============================================================

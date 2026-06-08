@@ -290,10 +290,13 @@
 		goto(url.toString());
 	}
 
-	function handleJerseySelect(jersey: number | null) {
+	// jersey is TEXT ('00' != '0', '7A' is real). Resolves via the relational sightings RPC server-side.
+	let jerseyInput = $state(data.selectedJerseyNumber?.toString() ?? '');
+	function handleJerseySelect(jersey: string | null) {
 		const url = new URL($page.url);
-		if (jersey !== null) {
-			url.searchParams.set('jersey', jersey.toString());
+		const v = jersey?.trim();
+		if (v) {
+			url.searchParams.set('jersey', v);
 		} else {
 			url.searchParams.delete('jersey');
 		}
@@ -662,7 +665,29 @@
 			</div>
 		{/if}
 
-		<!-- Consolidated Filters (Mobile only - dropdowns) -->
+		<!-- Find by jersey number — relational sightings RPC (no naming, no biometrics) -->
+			<form
+				class="mb-4 flex items-center gap-2"
+				onsubmit={(e) => { e.preventDefault(); handleJerseySelect(jerseyInput); }}
+			>
+				<label for="jersey-input" class="text-sm text-charcoal-300">Find by jersey</label>
+				<input
+					id="jersey-input"
+					type="text"
+					inputmode="numeric"
+					maxlength="4"
+					bind:value={jerseyInput}
+					placeholder="#"
+					aria-label="Jersey number"
+					class="w-20 rounded-md border border-charcoal-700 bg-charcoal-800 px-2 py-1 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				/>
+				<button
+					type="submit"
+					class="rounded-md bg-charcoal-700 px-3 py-1 text-sm text-white transition-colors hover:bg-charcoal-600"
+				>Find</button>
+			</form>
+
+			<!-- Consolidated Filters (Mobile only - dropdowns) -->
 		<div class="lg:hidden">
 			{#if data.sports && data.sports.length > 0 && data.categories && data.categories.length > 0}
 				<ConsolidatedFilter

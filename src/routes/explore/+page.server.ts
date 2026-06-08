@@ -10,7 +10,7 @@
  * because this code runs SERVER-SIDE ONLY
  */
 
-import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos } from '$lib/supabase/server';
+import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, findPhotosByJersey } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
@@ -31,7 +31,9 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   let emotionFilter = url.searchParams.get('emotion') || undefined; // Bucket 2, but used for "Similar Photos"
   let searchQuery = url.searchParams.get('q') || undefined;
   let similarToImageKey = url.searchParams.get('similar_to') || undefined;
-  let jerseyFilter = url.searchParams.get('jersey') ? parseInt(url.searchParams.get('jersey')!) : undefined;
+  // jersey is TEXT now ('00' != '0', '7A' is real) — no parseInt. Resolved via the relational
+  // sightings RPC (findPhotosByJersey), not the deprecated singular-column .eq.
+  let jerseyFilter = url.searchParams.get('jersey')?.trim() || undefined;
 
   // Sort mode (default to quality)
   const sortBy = (url.searchParams.get('sort') || 'quality') as 'quality' | 'newest' | 'oldest' | 'action' | 'intensity';
@@ -49,7 +51,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     timeOfDay: timeOfDayFilter ? [timeOfDayFilter as any] : undefined,
     compositions: compositionFilter ? [compositionFilter as any] : undefined, // Fixed: was 'composition', now 'compositions'
     emotion: emotionFilter as any, // Bucket 2, but used for "Similar Photos" feature
-    jerseyNumber: jerseyFilter,
+    // jersey is no longer a standard .eq filter — it routes through findPhotosByJersey (sightings).
   };
 
   // Check if any filters are active
@@ -152,6 +154,10 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   if (similarToImageKey) {
     // Use vector similarity search if requested
     photos = await findSimilarPhotos(similarToImageKey, pageSize);
+    totalCount = photos.length;
+  } else if (jerseyFilter) {
+    // Jersey people-finding via relational sightings (no naming/biometrics). Scoped by album/sport.
+    photos = await findPhotosByJersey(jerseyFilter, { sport: sportFilter, limit: pageSize, offset });
     totalCount = photos.length;
   } else if (searchQuery) {
     // Smart search: structured parse + vector fallback
