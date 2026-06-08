@@ -141,7 +141,6 @@
 											event_id: undefined,
 											ai_provider: 'openai' as const,
 											ai_cost: 0,
-											ai_confidence: 0,
 											enriched_at: ''
 										},
 									}}

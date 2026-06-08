@@ -80,7 +80,6 @@ export function transformPhotoRow(row: any): Photo {
       event_id: row.event_id || undefined,
       ai_provider: (row.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
       ai_cost: row.ai_cost ?? 0,
-      ai_confidence: row.ai_confidence ?? 0,
       enriched_at: row.enriched_at || new Date().toISOString(),
     },
   } as Photo;

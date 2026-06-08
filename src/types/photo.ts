@@ -121,7 +121,6 @@ export interface PhotoMetadata {
 
   ai_provider: AIProvider;
   ai_cost: number;
-  ai_confidence: number;          // NEW: Overall detection confidence (0-1)
   enriched_at: string;
 }
 

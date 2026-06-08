@@ -78,11 +78,7 @@ export interface PhotoMetadataRow {
 	quality_score: number | null;
 	emotion: string | null;
 
-	// Scene / game context
-	ball_position: string | null;
-	venue_type: string | null;
-	crowd_density: string | null;
-	key_moment: string | null;
+	// Game context
 	time_in_game: string | null;
 	event_id: string | null;
 
@@ -109,12 +105,6 @@ export interface PhotoMetadataRow {
 	// AI metadata
 	ai_provider: string | null;
 	ai_cost: number | null;
-	/**
-	 * @deprecated Dead field (Phase 1 audit): fetched + mapped onto every Photo but
-	 * no consumer ever filtered/sorted/displayed it. Removed from PHOTO_COLUMNS so it
-	 * is no longer fetched. Column retained in DB (no destructive drop in Phase 1).
-	 */
-	ai_confidence: number | null;
 
 	// Timestamps
 	enriched_at: string | null;

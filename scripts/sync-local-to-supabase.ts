@@ -83,7 +83,6 @@ interface ParsedMetadata {
 	exposure_accuracy?: number;
 	emotional_impact?: number;
 	time_in_game?: string | null;
-	ai_confidence?: number;
 	photo_date?: string;
 	// Phase 1 (v-next): natural-language caption + multi-player extraction.
 	caption?: string | null;
@@ -174,7 +173,6 @@ function parseLocalExif(photoPath: string, albumKey: string): ParsedMetadata | n
 			exposure_accuracy: exposureMatch ? parseFloat(exposureMatch[1]) : undefined,
 			emotional_impact: emotionalMatch ? parseFloat(emotionalMatch[1]) : undefined,
 			time_in_game: gameTimeMatch ? gameTimeMatch[1] : null,
-			ai_confidence: 0.9,
 			photo_date: photoDate,
 			caption,
 			players,
@@ -224,7 +222,6 @@ async function syncToSupabase(metadata: ParsedMetadata[]): Promise<{ synced: num
 				exposure_accuracy: meta.exposure_accuracy,
 				emotional_impact: meta.emotional_impact,
 				time_in_game: meta.time_in_game,
-				ai_confidence: meta.ai_confidence,
 				photo_date: meta.photo_date,
 				caption: meta.caption,
 				...(meta.players ? { players: meta.players } : {}),

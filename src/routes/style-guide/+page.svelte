@@ -43,7 +43,6 @@
 				color_temperature: 'warm',
 				ai_provider: 'claude',
 				ai_cost: 0.05,
-				ai_confidence: 0.95,
 				enriched_at: '2025-01-15T10:00:00Z'
 			}
 		},
@@ -72,7 +71,6 @@
 				color_temperature: 'cool',
 				ai_provider: 'claude',
 				ai_cost: 0.05,
-				ai_confidence: 0.88,
 				enriched_at: '2025-01-14T10:00:00Z'
 			}
 		},
@@ -101,7 +99,6 @@
 				color_temperature: 'neutral',
 				ai_provider: 'claude',
 				ai_cost: 0.05,
-				ai_confidence: 0.72,
 				enriched_at: '2025-01-13T10:00:00Z'
 			}
 		}

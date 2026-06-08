@@ -65,7 +65,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			// AI metadata
 			ai_provider: (photoData.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
 			ai_cost: photoData.ai_cost || 0,
-			ai_confidence: photoData.ai_confidence || 0,
 			enriched_at: photoData.enriched_at || new Date().toISOString()
 		},
 		// EXIF metadata for enhanced Schema.org markup

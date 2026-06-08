@@ -67,7 +67,6 @@
 				// AI metadata
 				ai_provider: (raw.ai_provider as any) || 'gemini',
 				ai_cost: raw.ai_cost || 0,
-				ai_confidence: raw.ai_confidence || 0,
 				enriched_at: raw.enriched_at || ''
 			}
 		};

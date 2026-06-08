@@ -14,10 +14,10 @@ indefinitely — each item has a near removal trigger, not "someday."
 |---|---|---|---|---|---|
 | 1 | `photo_metadata.sport_type` (trigger-mirror) + `enforce_album_sport` trigger | photo_metadata | `albums.sport` via `photos_read` view (sport is album-level only) | **Convergence migration C1**: create `photos_read` view, repoint every sport read/filter to it, then `DROP COLUMN sport_type` + drop trigger | **HIGH** — a session could re-add per-photo sport guessing |
 | 2 | Per-photo sport in the vision prompt + "95% volleyball / default volleyball" bias | `src/lib/ai/enrichment-prompts.ts` (BUCKET1, PORTFOLIO_CONTEXT) | `albums.sport` (operator-set) + taxonomy-driven structured extraction | **AI-layer slice**: replace two-bucket prompt with the structured extraction; the prompt must not emit/bias sport | **HIGH** — this bias caused the original 18-album corruption |
-| 3 | `photo_metadata.ai_confidence` | photo_metadata (21,128 set, 0 consumers) | none (contract: not carried) | **Hygiene migration H1**: `DROP COLUMN` | LOW |
-| 4 | Agentic extras: `ball_position`, `venue_type`, `crowd_density`, `key_moment` | photo_metadata (~145 rows, 0 consumers) | none (not in contract's photos table) | **Hygiene migration H1**: `DROP COLUMN` | LOW |
-| 5 | `photo_metadata.players[]` JSONB (2 shapes) + singular `jersey_number` | photo_metadata | `photo_players` (resolved) + sightings store (Slice 2) | **Slice 2 convergence**: after backfill into the relational model, `DROP COLUMN players, jersey_number` | MEDIUM |
-| 6 | `createSemanticDescription()` enum-string embedding fallback | `scripts/generate-embeddings-metadata.ts` | caption embedding only | **NOW** (this commit) — remove the `|| createSemanticDescription(photo)` fallback | MEDIUM — silent regression to enum embeddings |
+| ~~3~~ | ~~`ai_confidence`~~ | — | — | ✅ **DONE (H1)** — column dropped; writer (sync) + 3 transforms + types removed | — |
+| ~~4~~ | ~~Agentic extras (`ball_position`/`venue_type`/`crowd_density`/`key_moment`)~~ | — | — | ✅ **DONE (H1)** — columns dropped; sole writer `run-enhanced-extraction.ts` deleted | — |
+| 5 | `photo_metadata.players[]` JSONB (2 shapes) + singular `jersey_number` | photo_metadata | `photo_players` (resolved) + `photo_jersey_sightings` table (Slice 2) | **Slice 2 convergence**: after backfill into the relational model, `DROP COLUMN players, jersey_number` | MEDIUM |
+| ~~6~~ | ~~`createSemanticDescription()` enum-string embedding fallback~~ | — | — | ✅ **DONE** — fallback + interface removed; captions are the only embedding source | — |
 | 7 | Dual migration dirs: `database/migrations/` (33, manual) vs `supabase/migrations/` (15, CLI-applied) | repo | `supabase/migrations/` is canonical (CLI-applied, in sync with remote) | **Hygiene H2**: archive `database/migrations/` legacy SQL to `database/migrations/_archive/`; keep only the CLI dir authoritative; `database/` reserved for generated + seed | MEDIUM — confusion over which is applied |
 | 8 | `exec_sql` + its 8 callers | `src/lib/supabase/server.ts` | typed aggregation RPCs (contract §7) | **Kernel-RPC slice**: replace the 8 callers, then `DROP FUNCTION exec_sql` (anon already revoked) | MEDIUM — arbitrary-SQL surface |
 | 9 | `find_photos_by_jersey` (defined in a never-applied migration; not in live DB) | `database/migrations/add-enhanced-metadata-fields.sql` | Slice 2 jersey-finding RPC | **Slice 2**: ship the real RPC; the dead definition goes to `_archive` with H2 | LOW |
@@ -25,9 +25,9 @@ indefinitely — each item has a near removal trigger, not "someday."
 
 ## Convergence sequence (prod-safe order)
 
-- **Now**: #6 (enum-fallback removal — code, no prod risk).
-- **Hygiene H1** (next, prod-safe — columns have 0 consumers): drop #3, #4.
-- **Convergence C1** (sport native): `photos_read` view → repoint sport consumers → drop #1. The single most important one for "looks native."
+- ✅ **#6 DONE**: enum-fallback removed.
+- ✅ **Hygiene H1 DONE**: dropped #3 + #4 (columns gone, writers/readers removed, `run-enhanced-extraction.ts` deleted, verified in prod).
+- **Convergence C1** (sport native — NEXT): `photos_read` view → repoint sport consumers → drop #1 (`sport_type` mirror + trigger). The single most important one for "looks native."
 - **Slice 2** (in flight): lands #5 (drop `players[]`/`jersey_number` after relational backfill) + #9.
 - **Hygiene H2**: reconcile #7, archive #9's dead def.
 - **Later slices**: #2 (AI layer), #8 (kernel RPC), #10 (unified ingest).
