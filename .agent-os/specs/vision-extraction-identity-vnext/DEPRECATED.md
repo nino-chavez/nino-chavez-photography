@@ -47,6 +47,15 @@ indefinitely — each item has a near removal trigger, not "someday."
 - **Hygiene H2**: reconcile #7, archive #9's dead def.
 - **Later slices**: #2 (AI layer), #8 (kernel RPC), #10 (unified ingest).
 
+## IA re-architecture (product model: discover event → find photos → share; no sales)
+Done on vnext-phase1: Albums→event-discovery (search all + sport/year), nav reshape (Albums leads, Explore folded into Search), Explore-defacet (lean search-results: search+sport+category+play_type+jersey), Collections re-based on `quality_score` (4 kept, 5 aesthetic ones cut), vanity aesthetic chips removed from live photo displays.
+
+| # | Deprecated artifact | Where | Removal trigger | Risk |
+|---|---|---|---|---|
+| 11 | Vanity aesthetic columns: `composition`, `lighting`, `color_temperature`, `time_of_day`, `emotion`(categorical), `action_intensity` | photo_metadata + PHOTO_COLUMNS + Photo type + transformPhotoRow | **MERGE-GATED cutover**: displays already removed; at cutover remove from PHOTO_COLUMNS/types/mapping then DROP the columns. KEEP the numeric sub-scores `composition_score`/`emotional_impact`/`exposure_accuracy`/`sharpness` (feed quality_score). | MEDIUM |
+| 12 | Dead components referencing vanity facets: `Lightbox.svelte`, `FilterPanel.svelte`, `ContextualCursor.svelte`, + `photo-utils.ts` vanity generators | src/lib/components, src/lib | Zero current importers (dead). MUST be removed (or de-vanity'd) BEFORE #11's type-deprecation or they break typecheck at cutover. | LOW |
+| — | Favorites → "My Selection" + batch download (zip worker exists) | src/routes/favorites | IA slice not yet done (feature + product call) | — |
+
 ## Rule for every future slice
 Definition-of-done includes: (a) the superseded artifact is removed from code AND schema, (b)
 consumers repointed, (c) this ledger updated (row removed when done), (d) `npm run check` green.
