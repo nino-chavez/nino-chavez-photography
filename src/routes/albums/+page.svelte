@@ -26,19 +26,29 @@
 	// Svelte 5 Runes: $props to receive server data
 	let { data }: { data: PageData } = $props();
 
-	// Simple search (client-side)
-	let searchQuery = $state('');
+	// Server-driven event discovery: search runs across ALL albums (not just the loaded page),
+	// plus sport + year facets. data.albums is already filtered server-side.
+	let searchInput = $state(data.query ?? '');
+	const displayAlbums = $derived(data.albums);
+	const hasActiveFilters = $derived(!!(data.query || data.selectedSport || data.selectedYear));
 
-	// Filter albums by search
-	let displayAlbums = $derived.by(() => {
-		if (!searchQuery.trim()) return data.albums;
-
-		const query = searchQuery.toLowerCase();
-		return data.albums.filter((album) =>
-			album.albumName.toLowerCase().includes(query) ||
-			album.albumKey.toLowerCase().includes(query)
-		);
-	});
+	function applyParam(key: string, value: string) {
+		const url = new URL($page.url);
+		if (value) url.searchParams.set(key, value);
+		else url.searchParams.delete(key);
+		url.searchParams.delete('page'); // any filter change resets to page 1
+		goto(url.toString());
+	}
+	function handleSearch(e: SubmitEvent) {
+		e.preventDefault();
+		applyParam('q', searchInput.trim());
+	}
+	function clearFilters() {
+		searchInput = '';
+		const url = new URL($page.url);
+		['q', 'sport', 'year', 'page'].forEach((k) => url.searchParams.delete(k));
+		goto(url.toString());
+	}
 
 	function handleAlbumClick(album: Album) {
 		const slug = createAlbumSlug(album.albumName, album.albumKey);
@@ -139,30 +149,78 @@
 					</select>
 				</div>
 
-				<!-- Responsive Search Bar -->
-				<div class="flex-1 max-w-md">
-					<input
-						type="search"
-						placeholder="Search albums..."
-						bind:value={searchQuery}
-						class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
-						aria-label="Search albums by name"
-					/>
+				<!-- Event discovery: search (all albums) + sport + year -->
+				<div class="flex flex-1 max-w-2xl items-center gap-2 justify-end">
+					<select
+						value={data.selectedSport}
+						onchange={(e) => applyParam('sport', e.currentTarget.value)}
+						class="hidden md:block px-3 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white capitalize"
+						aria-label="Filter by sport"
+					>
+						<option value="">All sports</option>
+						{#each data.availableSports as s}
+							<option value={s}>{s}</option>
+						{/each}
+					</select>
+					<select
+						value={data.selectedYear}
+						onchange={(e) => applyParam('year', e.currentTarget.value)}
+						class="hidden md:block px-3 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white"
+						aria-label="Filter by year"
+					>
+						<option value="">All years</option>
+						{#each data.availableYears as y}
+							<option value={y}>{y}</option>
+						{/each}
+					</select>
+					<form class="flex-1 max-w-md" onsubmit={handleSearch}>
+						<input
+							type="search"
+							placeholder="Search team or event…"
+							bind:value={searchInput}
+							class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
+							aria-label="Search albums by team or event name"
+						/>
+					</form>
+					{#if hasActiveFilters}
+						<button type="button" onclick={clearFilters} class="px-3 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-gold-500 text-charcoal-300 transition-colors whitespace-nowrap">Clear</button>
+					{/if}
 				</div>
 			</div>
 
-			<!-- Mobile Sort -->
-			<div class="sm:hidden mt-3 flex items-center gap-2">
-				<ArrowUpDown class="w-4 h-4 text-charcoal-400" />
+			<!-- Mobile Sort + discovery facets -->
+			<div class="md:hidden mt-3 grid grid-cols-3 gap-2">
 				<select
 					value={data.sortBy}
 					onchange={(e) => changeSortOrder(e.currentTarget.value as any)}
-					class="flex-1 px-3 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white"
+					class="px-2 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 transition-colors text-white"
 					aria-label="Sort albums"
 				>
 					<option value="count">Most Photos</option>
 					<option value="name">Name (A-Z)</option>
-					<option value="date">Latest Photos</option>
+					<option value="date">Latest</option>
+				</select>
+				<select
+					value={data.selectedSport}
+					onchange={(e) => applyParam('sport', e.currentTarget.value)}
+					class="px-2 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 transition-colors text-white capitalize"
+					aria-label="Filter by sport"
+				>
+					<option value="">All sports</option>
+					{#each data.availableSports as s}
+						<option value={s}>{s}</option>
+					{/each}
+				</select>
+				<select
+					value={data.selectedYear}
+					onchange={(e) => applyParam('year', e.currentTarget.value)}
+					class="px-2 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 transition-colors text-white"
+					aria-label="Filter by year"
+				>
+					<option value="">All years</option>
+					{#each data.availableYears as y}
+						<option value={y}>{y}</option>
+					{/each}
 				</select>
 			</div>
 		</div>
@@ -171,11 +229,11 @@
 	<!-- Album Grid Content -->
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-		<!-- Search results indicator -->
-		{#if searchQuery && displayAlbums.length > 0}
+		<!-- Discovery results indicator -->
+		{#if hasActiveFilters}
 			<div class="mb-4">
 				<Typography variant="caption" class="text-charcoal-400 text-xs">
-					{displayAlbums.length.toLocaleString()} {displayAlbums.length === 1 ? 'album' : 'albums'} found
+					{data.totalAlbums.toLocaleString()} {data.totalAlbums === 1 ? 'album' : 'albums'}{data.query ? ` matching “${data.query}”` : ''}{data.selectedSport ? ` · ${data.selectedSport}` : ''}{data.selectedYear ? ` · ${data.selectedYear}` : ''}
 				</Typography>
 			</div>
 		{/if}
@@ -199,8 +257,8 @@
 				{/each}
 			</div>
 
-			<!-- Pagination Controls (only show when not searching) -->
-			{#if !searchQuery && data.totalPages > 1}
+			<!-- Pagination Controls (server-side; works with active filters) -->
+			{#if data.totalPages > 1}
 				<div class="mt-8 flex items-center justify-center gap-2">
 					<!-- Previous Button -->
 					<button
@@ -263,7 +321,7 @@
 						<FolderOpen class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
 						<Typography variant="h3" class="mb-2">No albums found</Typography>
 						<Typography variant="body" class="text-charcoal-400 text-sm">
-							{searchQuery ? 'Try adjusting your search' : 'No albums available'}
+							{hasActiveFilters ? 'Try adjusting your search or filters' : 'No albums available'}
 						</Typography>
 					</Card>
 				</div>
