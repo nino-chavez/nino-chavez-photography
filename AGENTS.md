@@ -1,6 +1,18 @@
 # Nino Chavez Gallery
 > Photography portfolio with ~20K volleyball action sports photos
 
+## ⚠️ Active north-star rebuild — read before touching the data model
+The data model + AI pipeline are being rebuilt to the contract in
+`.agent-os/specs/vision-extraction-identity-vnext/NORTH-STAR-REDESIGN.md` (authoritative).
+Core rule: **sport/event/team/date are KNOWN facts set at the album level — never guessed
+per photo.** `albums.sport` is the sport authority (Slice 1, live); a trigger forces
+`photo_metadata.sport_type` to mirror it. Enums come from `src/lib/ai/taxonomy.ts` (single
+source; `npm run check` runs the drift guard).
+**No-cruft principle (operator directive):** the committed system must read as if this design
+was always there — no transitional/legacy artifacts survive a commit. Anything deprecated is
+tracked to removal in `.agent-os/specs/vision-extraction-identity-vnext/DEPRECATED.md`. If you
+find a deprecated/legacy path still live, REMOVE it per the ledger — never revive it.
+
 ## Docs Index
 
 ### Framework

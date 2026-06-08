@@ -56,72 +56,9 @@ if (!OPENROUTER_API_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // =============================================================================
-// Metadata to Text Description
-// =============================================================================
-
-interface PhotoMetadata {
-	image_key: string;
-	caption?: string | null;
-	sport_type?: string | null;
-	play_type?: string | null;
-	photo_category?: string | null;
-	emotion?: string | null;
-	action_intensity?: string | null;
-	composition?: string | null;
-	time_of_day?: string | null;
-	lighting?: string | null;
-	color_temperature?: string | null;
-}
-
-function createSemanticDescription(photo: PhotoMetadata): string {
-	const parts: string[] = [];
-
-	// Sport and action
-	if (photo.sport_type) {
-		parts.push(photo.sport_type);
-		if (photo.play_type) {
-			parts.push(photo.play_type);
-		}
-	}
-
-	// Category and intensity
-	if (photo.photo_category) {
-		parts.push(photo.photo_category);
-		if (photo.action_intensity && photo.photo_category === 'action') {
-			parts.push(`${photo.action_intensity} intensity`);
-		}
-	}
-
-	// Emotion
-	if (photo.emotion) {
-		parts.push(`${photo.emotion} emotion`);
-	}
-
-	// Visual characteristics
-	if (photo.composition) {
-		parts.push(`${photo.composition.replace(/_/g, ' ')} composition`);
-	}
-
-	if (photo.lighting) {
-		parts.push(`${photo.lighting} lighting`);
-	}
-
-	if (photo.color_temperature) {
-		parts.push(`${photo.color_temperature} color tone`);
-	}
-
-	if (photo.time_of_day) {
-		parts.push(`${photo.time_of_day.replace(/_/g, ' ')}`);
-	}
-
-	// Create semantic description
-	const description = parts.join(', ');
-
-	return description || 'sports photo';
-}
-
-// =============================================================================
 // Embedding Generation
+// Caption is the ONLY embedding source — the enum-string fallback (createSemanticDescription)
+// was removed in the north-star convergence; we embed AI captions, never enum tags.
 // =============================================================================
 
 async function generateEmbedding(description: string): Promise<number[] | null> {
@@ -140,7 +77,7 @@ async function processPhotos() {
 	// Fetch photos with metadata
 	let query = supabase
 		.from('photo_metadata')
-		.select('image_key, caption, sport_type, play_type, photo_category, emotion, action_intensity, composition, time_of_day, lighting, color_temperature')
+		.select('image_key, caption')
 		// Phase 1: embed the AI caption. Only photos that have one are eligible; the
 		// enum-string fallback is kept only for rows captured before captions existed.
 		.not('caption', 'is', null);
@@ -172,7 +109,7 @@ async function processPhotos() {
 	if (CONFIG.dryRun) {
 		console.log('🏃 Dry run mode - showing sample descriptions:\n');
 		photos.slice(0, 5).forEach(photo => {
-			const description = photo.caption?.trim() || createSemanticDescription(photo);
+			const description = (photo.caption ?? '').trim();
 			console.log(`   ${photo.image_key}: "${description}"`);
 		});
 		console.log('\nNo changes will be saved in dry-run mode.\n');
@@ -198,7 +135,7 @@ async function processPhotos() {
 				processed++;
 
 				// Create semantic description from metadata
-				const description = photo.caption?.trim() || createSemanticDescription(photo);
+				const description = (photo.caption ?? '').trim();
 
 				console.log(`   🔄 ${photo.image_key} - "${description.slice(0, 50)}..."`);
 
