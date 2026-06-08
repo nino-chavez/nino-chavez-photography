@@ -1,6 +1,22 @@
 # North-Star Design — Nino Chavez Sports-Photography Platform
 
-**Status:** Build contract. Supersedes the six subsystem drafts and folds in all four adversarial critiques.
+> ⚠️ **SUPERSEDED IN PART (operator clarifications, 2026-06-08).** The product is **event-album
+> discovery → find-my-photos → download/share** (NO photo sales). This invalidates several sections
+> below. The authoritative current model lives in memory `[[album-management-pipeline]]` and
+> `DEPRECATED.md`. Key overrides:
+> - **Identity:** NO per-person naming and NO faces (faces = BIPA liability over minors with ~no
+>   payoff absent sales). The only people-finding is **jersey number** (non-biometric, within-album).
+>   §4.4 named-identity (players/photo_players/rosters/consent/resolve) was built then STRIPPED — do not rebuild.
+> - **Extraction:** the only per-photo signals that earn their cost are **caption** (powers search +
+>   social-OG + accessibility), a **keeper/quality score** (ordering + cover), and **jersey**. The
+>   aesthetic tier — `composition`, `lighting`, `color_temperature`, `time_of_day`, `emotion`,
+>   `action_intensity` — is CUT (no user job); displays removed, columns drop at cutover.
+> - **IA (done):** Albums = primary (event discovery); Explore = lean search-results (no facet wall);
+>   Collections re-based on quality_score; Favorites gained ZIP download; photo-detail gained download/copy-link.
+> - Still valid below: the KNOW-vs-INFER thesis, album-authoritative sport, the data-access seam,
+>   the migration-safety rule, provenance/versioning as a gap, structured-extraction (#10) as a gap.
+
+**Status:** Build contract (partially superseded — see banner). Supersedes the six subsystem drafts and folds in all four adversarial critiques.
 **Stack:** SvelteKit 2 + Svelte 5 + Tailwind 4 + Supabase (Postgres + pgvector + Auth) + Cloudflare (Pages git-integration deploy, Cloudflare Images delivery, R2, album-zip Worker). **Not Vercel.**
 **Scale:** ~21,128 photos, ~260 albums, growing; ~73% volleyball but genuinely multi-sport + non-sport shoots.
 
