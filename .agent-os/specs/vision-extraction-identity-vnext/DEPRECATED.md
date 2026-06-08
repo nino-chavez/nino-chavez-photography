@@ -39,7 +39,10 @@ indefinitely — each item has a near removal trigger, not "someday."
 - ⚠️ **Hygiene H1 PARTIAL**: #4 (agentic extras — `main` doesn't select them) dropped safely. #3 (`ai_confidence`) drop **reverted** (broke prod; `main` selects it) → column restored, branch code already doesn't use it, **drop is MERGE-GATED**. Writers/readers removed in branch code; `run-enhanced-extraction.ts` deleted.
 - ✅ **Data-access seam DONE**: `PHOTOS_READ`/`PHOTOS_WRITE` in columns.ts; all ~70 read sites + the 1 write routed through it. Schema cutover is now a 1-line flip.
 - **Convergence C1** (sport native — MERGE-GATED): `photos_read` view → flip `PHOTOS_READ` (1 line, the seam) → drop #1 (`sport_type` + trigger). Cannot apply pre-merge (`main` selects `sport_type`). Executes at the cutover.
-- **At merge/cutover**: apply the gated drops (#3 `ai_confidence`, #1 `sport_type` via the seam flip) once `main` = this branch's code.
+- ✅ **#2 DONE (bias)**: the "default to volleyball" bias removed from PORTFOLIO_CONTEXT (the corruption cause); model told sport is album-known. Vestigial `sport_type` field stays (trigger-overridden); full field removal rides with the prompt replacement (#10).
+- ✅ **H2 DONE**: `supabase/migrations/` declared canonical (README banner); 8 rebuild-era dupes removed from `database/migrations/` (now a frozen legacy archive).
+- ⏸️ **#8 DEFERRED (rationale)**: `exec_sql` security hole is already closed (anon revoked, service-role-only); the DROP is merge-gated; replacing 8 aggregation callers with typed RPCs is large for marginal gain (service_role is all-powerful regardless). Folded into the #10 ingest rebuild, not done speculatively.
+- **At merge/cutover**: apply the gated drops (#3 `ai_confidence`, #1 `sport_type` via `photos_read` view + the `PHOTOS_READ` seam flip, #5 `players[]`/`jersey_number`) once `main` = this branch's code + deployed.
 - **Slice 2** (in flight): lands #5 (drop `players[]`/`jersey_number` after relational backfill) + #9.
 - **Hygiene H2**: reconcile #7, archive #9's dead def.
 - **Later slices**: #2 (AI layer), #8 (kernel RPC), #10 (unified ingest).
