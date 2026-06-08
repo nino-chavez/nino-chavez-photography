@@ -5,6 +5,7 @@
  */
 
 import { json } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
 import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
@@ -13,7 +14,7 @@ export const GET: RequestHandler = async () => {
 	try {
 		// Get total photo count
 		const { count: totalPhotos } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null);
 
@@ -38,14 +39,14 @@ export const GET: RequestHandler = async () => {
 
 		// Get date range
 		const { data: dateRange } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('photo_date, upload_date')
 			.not('sharpness', 'is', null)
 			.order('upload_date', { ascending: true })
 			.limit(1);
 
 		const { data: latestDate } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('photo_date, upload_date')
 			.not('sharpness', 'is', null)
 			.order('upload_date', { ascending: false })

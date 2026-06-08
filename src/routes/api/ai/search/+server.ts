@@ -6,6 +6,7 @@
  */
 
 import { json } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
 import { supabaseServer, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
@@ -28,7 +29,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Build base query
 		let dbQuery = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS)
 			.not('sharpness', 'is', null); // Only enriched photos
 
@@ -180,7 +181,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Get total count for matching filters
 		let countQuery = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null);
 

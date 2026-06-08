@@ -1,4 +1,5 @@
 import { supabaseServer } from '$lib/supabase/server';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
@@ -19,7 +20,7 @@ async function autoRefreshViewIfStale(): Promise<void> {
 
 		// Get the latest upload date from the base table
 		const { data: tableData } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('upload_date')
 			.not('album_key', 'is', null)
 			.not('sharpness', 'is', null)
@@ -177,7 +178,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number, offset: number) {
 	// Get unique albums with photo counts from Supabase
 	const { data: albumData, error } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('album_key, album_name, cf_image_id, sport_type, photo_category, sharpness')
 		.not('album_key', 'is', null)
 		.not('sharpness', 'is', null) // Only enriched photos

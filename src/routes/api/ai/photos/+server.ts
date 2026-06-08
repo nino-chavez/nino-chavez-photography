@@ -6,6 +6,7 @@
  */
 
 import { json } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
 import { getPhotoCount } from '$lib/supabase/server';
@@ -27,7 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Build query
 		let query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(photoSelect('width, height'))
 			.not('sharpness', 'is', null); // Only enriched photos
 

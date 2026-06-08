@@ -1,4 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
@@ -219,7 +220,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 							// Structured path: filterable enum fields, ranked by the weighted quality blend.
 							let dbQuery = supabase
-								.from('photo_metadata')
+								.from(PHOTOS_READ)
 								.select('image_key, cf_image_id, sport_type, play_type, photo_category, caption')
 								.not('sharpness', 'is', null)
 								.order('quality_score', { ascending: false, nullsFirst: false })

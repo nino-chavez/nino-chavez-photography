@@ -12,6 +12,7 @@
  */
 
 import { supabaseServer } from '$lib/supabase/server';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { PageServerLoad } from './$types';
 
 // Collection definitions (HYBRID: Story + Quality)
@@ -92,7 +93,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 	const collectionQueries = COLLECTIONS.map(async (collection) => {
 		// Build query based on collection type (HYBRID: Story + Quality thresholds)
 		let query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('photo_id, image_key, ImageUrl, ThumbnailUrl, cf_image_id', { count: 'exact' });
 
 		if (collection.slug === 'portfolio-excellence') {

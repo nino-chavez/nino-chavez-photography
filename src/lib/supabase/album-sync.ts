@@ -16,6 +16,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { PHOTOS_READ, PHOTOS_WRITE } from '$lib/supabase/columns';
 
 // Use service role key to bypass RLS
 const supabase = createClient(
@@ -56,7 +57,7 @@ export async function syncAlbumNameToSupabase(
 	try {
 		// Update all photos with this album_key
 		const { data, error } = await supabase
-			.from('photo_metadata')
+			.from(PHOTOS_WRITE)
 			.update({
 				album_name: newAlbumName,
 				// Note: updated_at column doesn't exist in schema, using enriched_at
@@ -98,7 +99,7 @@ export async function verifyAlbumSync(
 ): Promise<VerificationResult> {
 	try {
 		const { data, error } = await supabase
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('photo_id, album_name, image_key')
 			.eq('album_key', albumKey);
 
@@ -191,7 +192,7 @@ export async function getAllAlbumKeys(): Promise<
 > {
 	try {
 		const { data, error } = await supabase
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('album_key, album_name')
 			.not('album_key', 'is', null);
 
@@ -245,7 +246,7 @@ export async function getSyncStats(): Promise<{
 		const albumKeys = await getAllAlbumKeys();
 
 		// Get photo stats (using enriched_at instead of updated_at)
-		const { data, error } = await supabase.from('photo_metadata').select('album_key, enriched_at');
+		const { data, error } = await supabase.from(PHOTOS_READ).select('album_key, enriched_at');
 
 		if (error) {
 			console.error('Error fetching sync stats:', error);

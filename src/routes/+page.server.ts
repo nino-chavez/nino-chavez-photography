@@ -4,6 +4,7 @@
  */
 
 import type { PageServerLoad } from './$types';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
@@ -70,7 +71,7 @@ async function fetchHeroCandidates(): Promise<Record<string, unknown>[]> {
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
 
   const { data, error } = await supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .eq('sport_type', 'volleyball')
     .gte('aspect_ratio', 1.0)
@@ -90,7 +91,7 @@ async function fetchHeroCandidates(): Promise<Record<string, unknown>[]> {
 
   if (!data || data.length === 0) {
     const { data: fallbackData } = await supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select(PHOTO_COLUMNS)
       .eq('sport_type', 'volleyball')
       .not('sharpness', 'is', null)
@@ -178,7 +179,7 @@ async function fetchFeaturedAlbums() {
 async function createEditorsChoiceAlbum() {
   try {
     const { data, error } = await supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select(PHOTO_COLUMNS)
       .eq('sport_type', 'volleyball')
       .gte('emotional_impact', 8.0)
@@ -233,7 +234,7 @@ async function createEditorsChoiceAlbum() {
 async function createActionShowcaseAlbum() {
   try {
     const { data, error } = await supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select(PHOTO_COLUMNS)
       .eq('sport_type', 'volleyball')
       .eq('photo_category', 'action')

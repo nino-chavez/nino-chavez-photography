@@ -18,7 +18,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
-import { PHOTO_COLUMNS } from '$lib/supabase/columns';
+import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
 
 // Browser-safe environment variables (VITE_ prefix = exposed to browser)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -57,7 +57,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
  */
 export async function getPublicPhotos(limit = 20) {
   const { data, error } = await supabase
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .not('sharpness', 'is', null)
     // Use upload_date for correct chronological sorting (photo_date is backfilled with enriched_at)
@@ -123,7 +123,7 @@ export async function fetchPhotosByPeriod(options: {
           const endDate = new Date(period.year, period.month, 1);
 
           const { data: photos } = await supabase
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
@@ -183,7 +183,7 @@ export async function fetchPhotosByPeriod(options: {
 
     // Manual fallback: fetch photos and group them in memory
     const { data: allPhotos, error: photosError } = await supabase
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select('upload_date')
       .not('sharpness', 'is', null)
       .not('upload_date', 'is', null)
@@ -222,7 +222,7 @@ export async function fetchPhotosByPeriod(options: {
           const endDate = new Date(period.year, period.month, 1);
 
           const { data: photos } = await supabase
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())

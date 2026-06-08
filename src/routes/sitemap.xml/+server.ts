@@ -11,6 +11,7 @@
  */
 
 import { supabaseServer } from '$lib/supabase/server';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { createAlbumSlug } from '$lib/utils';
 import type { RequestHandler } from './$types';
 
@@ -27,7 +28,7 @@ export const GET: RequestHandler = async () => {
 	try {
 		// Fetch all photos with relevant metadata
 		const { data: photos, error: photosError } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('image_key, photo_date, enriched_at, sport_type')
 			.order('photo_date', { ascending: false });
 
@@ -38,7 +39,7 @@ export const GET: RequestHandler = async () => {
 
 		// Fetch all unique albums
 		const { data: albums, error: albumsError } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('album_key, album_name')
 			.not('album_key', 'is', null)
 			.order('album_key');

@@ -14,6 +14,7 @@
  */
 
 import { supabaseServer } from '$lib/supabase/server';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
@@ -93,7 +94,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 		// Build photo query with filters
 		let photoQuery = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('cf_image_id, sport_type, photo_category, composition_score, sharpness')
 			.gte('upload_date', monthStart.toISOString())
 			.lte('upload_date', monthEnd.toISOString());
@@ -117,7 +118,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 		// Get sport/category distributions for this month (for badges)
 		let statsQuery = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('sport_type, photo_category')
 			.gte('upload_date', monthStart.toISOString())
 			.lte('upload_date', monthEnd.toISOString());
@@ -163,7 +164,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	// STEP 4: Get sport/category distributions for filters
 	const { data: allPhotosForYear } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('sport_type, photo_category')
 		.gte('upload_date', new Date(selectedYear, 0, 1).toISOString())
 		.lte('upload_date', new Date(selectedYear, 11, 31, 23, 59, 59).toISOString());

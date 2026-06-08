@@ -17,7 +17,7 @@ import type { SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } 
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { embedText } from '$lib/ai/embeddings';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
-import { PHOTO_COLUMNS } from '$lib/supabase/columns';
+import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
 
 // Server-side environment variables (NOT exposed to browser)
 // In SvelteKit, we need to use import.meta.env even server-side
@@ -115,7 +115,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
   console.log('[fetchPhotos] Query params:', { limit, offset, sortBy, filters });
 
   let query = supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .not('sharpness', 'is', null); // Only show enriched photos
 
@@ -235,7 +235,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
  */
 export async function getPhotoCount(filters?: PhotoFilterState): Promise<number> {
   let query = supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select('photo_id', { count: 'exact', head: true })
     .not('sharpness', 'is', null);
 
@@ -336,7 +336,7 @@ export async function getSportDistribution(): Promise<Array<{ name: string; coun
     try {
       // Get total count first
       const { count: totalCount, error: countError } = await supabaseServer
-        .from('photo_metadata')
+        .from(PHOTOS_READ)
         .select('*', { count: 'exact', head: true })
         .not('sharpness', 'is', null)
         .not('sport_type', 'is', null)
@@ -356,7 +356,7 @@ export async function getSportDistribution(): Promise<Array<{ name: string; coun
       const results = await Promise.all(
         sports.map(async (sport) => {
           const { count, error: sportError } = await supabaseServer
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select('*', { count: 'exact', head: true })
             .eq('sport_type', sport)
             .not('sharpness', 'is', null);
@@ -559,7 +559,7 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
       fieldName: string
     ): Promise<Array<{ name: string; count: number }>> => {
       let query = supabaseServer
-        .from('photo_metadata')
+        .from(PHOTOS_READ)
         .select(fieldName)
         .not('sharpness', 'is', null)
         .not(fieldName, 'is', null);
@@ -601,7 +601,7 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
       const counts = await Promise.all(
         uniqueValues.map(async (value) => {
           let countQuery = supabaseServer
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select('photo_id', { count: 'exact', head: true })
             .not('sharpness', 'is', null)
             .eq(fieldName, value);
@@ -705,7 +705,7 @@ export async function getCategoryDistribution(): Promise<Array<{ name: string; c
     try {
       // Get total count first
       const { count: totalCount, error: countError } = await supabaseServer
-        .from('photo_metadata')
+        .from(PHOTOS_READ)
         .select('*', { count: 'exact', head: true })
         .not('sharpness', 'is', null)
         .not('photo_category', 'is', null);
@@ -723,7 +723,7 @@ export async function getCategoryDistribution(): Promise<Array<{ name: string; c
       const results = await Promise.all(
         categories.map(async (category) => {
           const { count, error: categoryError } = await supabaseServer
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select('*', { count: 'exact', head: true })
             .eq('photo_category', category)
             .not('sharpness', 'is', null);
@@ -800,7 +800,7 @@ export async function fetchPhotosByPeriod(options: {
           const endDate = new Date(period.year, period.month, 1);
 
           let photoQuery = supabaseServer
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
@@ -837,7 +837,7 @@ export async function fetchPhotosByPeriod(options: {
 
     // Manual fallback: fetch photos and group them in memory
     let query = supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select('upload_date')
       .not('sharpness', 'is', null)
       .not('upload_date', 'is', null);
@@ -886,7 +886,7 @@ export async function fetchPhotosByPeriod(options: {
           const endDate = new Date(period.year, period.month, 1);
 
           let photoQuery = supabaseServer
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
@@ -975,7 +975,7 @@ export async function fetchAllPeriods(options?: {
 
     // Manual fallback: fetch photos and group them in memory
     let query = supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select('upload_date')
       .not('sharpness', 'is', null)
       .not('upload_date', 'is', null);
@@ -1050,7 +1050,7 @@ export async function fetchPhotosByYearMonth(
     });
 
     let query = supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select(PHOTO_COLUMNS, limit ? { count: 'exact' } : {})
       .not('sharpness', 'is', null)
       .gte('upload_date', startDate.toISOString())
@@ -1117,7 +1117,7 @@ export async function getAdjacentMonth(
     const endDate = new Date(adjYear, adjMonth, 0, 23, 59, 59);
 
     const { count, error } = await supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select('photo_id', { count: 'exact', head: true })
       .not('sharpness', 'is', null)
       .gte('upload_date', startDate.toISOString())
@@ -1164,7 +1164,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
     const keys = similarMatches.map((p: any) => p.image_key);
 
     const { data: photosData, error: photosError } = await supabaseServer
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select(PHOTO_COLUMNS)
       .in('image_key', keys)
       .not('sharpness', 'is', null);
@@ -1187,7 +1187,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
 
   // First, get the source photo's attributes
   const { data: sourcePhoto, error: sourceError } = await supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select('sport_type, emotion, play_type, photo_category, album_key')
     .eq('image_key', imageKey)
     .single();
@@ -1201,7 +1201,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   // Build fallback query - prioritize by matching attributes
   // Try: same sport + emotion first, then same sport, then same category
   let query = supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .neq('image_key', imageKey) // Exclude the source photo
     .not('sharpness', 'is', null);
@@ -1227,7 +1227,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   console.log('[findSimilarPhotos] Emotion match failed, trying sport-only fallback');
 
   const { data: sportFallback } = await supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .neq('image_key', imageKey)
     .not('sharpness', 'is', null)
@@ -1380,7 +1380,7 @@ export async function searchPhotos(
   // Fetch full photo data for matched image_keys (same pattern as findSimilarPhotos)
   const keys = matches.map((m: { image_key: string }) => m.image_key);
   const { data: photosData, error: photosError } = await supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .in('image_key', keys)
     .not('sharpness', 'is', null);
@@ -1456,7 +1456,7 @@ export async function fetchAlbumPhotosForDownload(
   albumKey: string
 ): Promise<Array<{ cf_image_id: string; image_key: string }>> {
   const { data, error } = await supabaseServer
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select('cf_image_id, image_key')
     .eq('album_key', albumKey)
     .not('sharpness', 'is', null)

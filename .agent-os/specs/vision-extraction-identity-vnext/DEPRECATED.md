@@ -1,5 +1,15 @@
 # Deprecation & Convergence Ledger — north-star rebuild
 
+## 🚨 MIGRATION SAFETY RULE (learned the hard way, 2026-06-08)
+There is ONE database and it is PROD. Prod serves `main`'s code, not this branch. Therefore:
+- **ADDITIVE migrations** (new columns/tables/functions, data fixes) are safe to apply pre-merge — `main` ignores what it doesn't select.
+- **DESTRUCTIVE migrations** (DROP COLUMN, table rename, anything `main` still SELECTs) **BREAK PROD** the moment they apply, because `main`'s `PHOTO_COLUMNS` still references the column. They are **MERGE-GATED**: apply only after this branch is merged to `main` and deployed (so prod code no longer selects the dropped thing).
+- Incident: H1 dropped `ai_confidence` → every prod gallery read 500'd ("column does not exist") → restored via `20260608050000_restore_ai_confidence_prod_hotfix`. The drop is now deferred to post-merge.
+- The data-access seam (`PHOTOS_READ` in columns.ts) is what makes the post-merge drop a 1-line flip instead of a 70-site change.
+- **Rule:** before ANY `DROP`/rename migration, confirm `main`'s code (not just this branch) no longer references it — i.e., merged + deployed. Until then: additive only.
+
+
+
 **Principle (operator directive, 2026-06-08):** the committed system must read as if the
 north-star design was there from the start. No transitional/bridge/legacy artifacts survive a
 commit. A slice is not DONE until the thing it replaces is **removed and its consumers
@@ -26,8 +36,10 @@ indefinitely — each item has a near removal trigger, not "someday."
 ## Convergence sequence (prod-safe order)
 
 - ✅ **#6 DONE**: enum-fallback removed.
-- ✅ **Hygiene H1 DONE**: dropped #3 + #4 (columns gone, writers/readers removed, `run-enhanced-extraction.ts` deleted, verified in prod).
-- **Convergence C1** (sport native — NEXT): `photos_read` view → repoint sport consumers → drop #1 (`sport_type` mirror + trigger). The single most important one for "looks native."
+- ⚠️ **Hygiene H1 PARTIAL**: #4 (agentic extras — `main` doesn't select them) dropped safely. #3 (`ai_confidence`) drop **reverted** (broke prod; `main` selects it) → column restored, branch code already doesn't use it, **drop is MERGE-GATED**. Writers/readers removed in branch code; `run-enhanced-extraction.ts` deleted.
+- ✅ **Data-access seam DONE**: `PHOTOS_READ`/`PHOTOS_WRITE` in columns.ts; all ~70 read sites + the 1 write routed through it. Schema cutover is now a 1-line flip.
+- **Convergence C1** (sport native — MERGE-GATED): `photos_read` view → flip `PHOTOS_READ` (1 line, the seam) → drop #1 (`sport_type` + trigger). Cannot apply pre-merge (`main` selects `sport_type`). Executes at the cutover.
+- **At merge/cutover**: apply the gated drops (#3 `ai_confidence`, #1 `sport_type` via the seam flip) once `main` = this branch's code.
 - **Slice 2** (in flight): lands #5 (drop `players[]`/`jersey_number` after relational backfill) + #9.
 - **Hygiene H2**: reconcile #7, archive #9's dead def.
 - **Later slices**: #2 (AI layer), #8 (kernel RPC), #10 (unified ingest).

@@ -6,6 +6,7 @@
  */
 
 import { error } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { PHOTO_DETAIL_COLUMNS } from '$lib/supabase/columns';
 import { trackPhotoView } from '$lib/analytics/tracker';
@@ -17,7 +18,7 @@ import { cfImageUrl } from '$lib/utils/cloudflare-images';
 export const load: PageServerLoad = async ({ params, url }) => {
 	// Fetch photo from Supabase using image_key
 	const { data: rawData, error: photoError } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select(PHOTO_DETAIL_COLUMNS)
 		.eq('image_key', params.id)
 		.single();
@@ -197,7 +198,7 @@ async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promis
 	// Sort by newest and limit to 12
 
 	const { data, error } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select(PHOTO_COLUMNS)
 		.neq('image_key', currentPhoto.image_key) // Exclude current photo
 		.not('sharpness', 'is', null) // Only enriched photos
@@ -245,7 +246,7 @@ async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo
 	const imageKeys = data.map((result: any) => result.image_key);
 
 	const { data: photos, error: photosError } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select(PHOTO_COLUMNS)
 		.in('image_key', imageKeys)
 		.not('sharpness', 'is', null); // Only enriched photos

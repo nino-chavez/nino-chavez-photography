@@ -6,6 +6,21 @@
  */
 
 /**
+ * DATA-ACCESS SEAM — the single knob for the schema cutover.
+ *
+ * Every READ query goes through `PHOTOS_READ`; never hard-code 'photo_metadata' in a read
+ * again. This collapses the ~70 scattered, stringly-typed table references to one place:
+ *   - today           → the base table 'photo_metadata'
+ *   - convergence C1   → flip to the 'photos_read' view (sport from albums; no per-photo sport_type)
+ *   - final cutover    → flip to the renamed 'photos' query path
+ * A column drop or table rename becomes a one-line change here instead of 70-site runtime roulette.
+ *
+ * Writes (sync / backfill / upload) target `PHOTOS_WRITE` (the base table), NOT the read view.
+ */
+export const PHOTOS_READ = 'photo_metadata';
+export const PHOTOS_WRITE = 'photo_metadata';
+
+/**
  * Standard columns for photo listings (excludes embedding, width, height).
  * `ai_confidence` + agentic-extra columns (ball_position/venue_type/crowd_density/key_moment)
  * were dropped entirely (convergence H1) — dead fields, no consumer.

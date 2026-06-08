@@ -5,6 +5,7 @@
  */
 
 import { getPopularPhotos, getTopSearchQueries } from '$lib/analytics/tracker';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
@@ -19,7 +20,7 @@ export const load: PageServerLoad = async () => {
 
 	if (photoIds.length > 0) {
 		const { data } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('photo_id, image_key, cf_image_id, sport_type, photo_category')
 			.in('photo_id', photoIds);
 

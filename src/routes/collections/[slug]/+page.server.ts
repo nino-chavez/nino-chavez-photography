@@ -6,6 +6,7 @@
  */
 
 import { error } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
@@ -91,7 +92,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	if (slug === 'portfolio-excellence') {
 		// Triple-excellent: 9/10+ on all quality metrics
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.gte('sharpness', 9)
 			.gte('composition_score', 9)
@@ -106,7 +107,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	} else if (slug === 'comeback-stories') {
 		// HYBRID: Story (triumph + final minutes) + Quality floor (7/10)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.eq('emotion', 'triumph')
 			.eq('time_in_game', 'final_5_min')
@@ -123,7 +124,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	} else if (slug === 'peak-intensity') {
 		// HYBRID: Story (peak action) + Quality floor (7/10)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.eq('action_intensity', 'peak')
 			.gte('emotional_impact', 8)
@@ -138,7 +139,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		totalCount = count || 0;
 	} else if (slug === 'golden-hour-magic') {
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.eq('time_of_day', 'golden_hour')
 			.gte('composition_score', 7)
@@ -153,7 +154,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	} else if (slug === 'focus-and-determination') {
 		// HYBRID: Story (determination) + Higher quality floor (8/10 sharpness, 7/10 others)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.eq('emotion', 'determination')
 			.gte('sharpness', 8)
@@ -169,7 +170,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	} else if (slug === 'victory-celebrations') {
 		// HYBRID: Story (celebrations) + Quality floor (7/10)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.eq('photo_category', 'celebration')
 			.gte('emotional_impact', 7)
@@ -185,7 +186,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	} else if (slug === 'aerial-artistry') {
 		// HYBRID: Story (attack/block actions) + High quality (8/10+)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.in('play_type', ['attack', 'block'])
 			.gte('sharpness', 8)
@@ -200,7 +201,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	} else if (slug === 'defensive-masterclass') {
 		// HYBRID: Story (dig/block plays) + Quality floor (7/10)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.in('play_type', ['dig', 'block'])
 			.gte('sharpness', 7)
@@ -217,7 +218,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		// HYBRID: Story (evening time) + Higher quality thresholds for curation
 		// Narrowed from 53% to ~37% by requiring composition≥8 and emotional_impact≥8
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.eq('time_of_day', 'evening')
 			.gte('composition_score', 8)
