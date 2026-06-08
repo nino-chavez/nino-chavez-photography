@@ -99,14 +99,13 @@ export const GET: RequestHandler = async ({ url }) => {
 				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
 				title: row.album_name || 'Untitled Photo',
 				description: generateDescription(row),
+				// NOTE: the vanity CATEGORICAL aesthetic fields (action_intensity, composition,
+				// time_of_day, lighting, ...) were removed (cutover prep) — those columns are
+				// being DROPPED at the schema cutover.
 				metadata: {
 					sport_type: row.sport_type,
 					photo_category: row.photo_category,
-					play_type: row.play_type,
-					action_intensity: row.action_intensity,
-					composition: row.composition,
-					time_of_day: row.time_of_day,
-					lighting: row.lighting
+					play_type: row.play_type
 				},
 				date: row.photo_date || row.enriched_at || row.upload_date,
 				album: row.album_key
@@ -157,20 +156,22 @@ function createPhotographSchema(row: PhotoMetadataRow) {
 		keywords: [
 			row.sport_type,
 			row.photo_category,
-			row.play_type,
-			row.action_intensity
+			row.play_type
 		].filter(Boolean).join(', ')
 	};
 }
 
 /**
  * Generate AI-friendly description for photo
+ *
+ * The vanity CATEGORICAL aesthetic attributes (action_intensity, lighting) were removed
+ * (cutover prep) — those columns are being DROPPED at the schema cutover. The description
+ * prefers the durable AI caption and concrete sport/play context.
  */
 function generateDescription(row: PhotoMetadataRow): string {
 	const sport = row.sport_type || 'sports';
 	const category = row.photo_category || 'photo';
 	const playType = row.play_type;
-	const intensity = row.action_intensity;
 
 	let description = `Professional ${sport} ${category} photo`;
 
@@ -178,16 +179,11 @@ function generateDescription(row: PhotoMetadataRow): string {
 		description += ` featuring ${playType}`;
 	}
 
-	if (intensity) {
-		description += ` with ${intensity} action intensity`;
+	if (row.caption) {
+		description += `. ${row.caption}`;
+	} else {
+		description += '. Professional sports photography by Nino Chavez.';
 	}
-
-	if (row.lighting) {
-		description += ` captured with ${row.lighting} lighting`;
-	}
-
-	description += '. Professional sports photography by Nino Chavez.';
 
 	return description;
 }
-

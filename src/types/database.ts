@@ -46,15 +46,13 @@ export interface PhotoMetadataRow {
 	ArchivedUrl: string | null;
 
 	// Core classification (Bucket 1)
+	// NOTE: the vanity CATEGORICAL aesthetic columns (composition, time_of_day, lighting,
+	// color_temperature, emotion, action_intensity) were removed (cutover prep) — they are
+	// being DROPPED at the schema cutover. The numeric quality sub-scores below STAY.
 	sport_type: string;
 	photo_category: string;
 	action_type: string | null;
 	play_type: string | null;
-	action_intensity: string | null;
-	composition: string | null;
-	time_of_day: string | null;
-	lighting: string | null;
-	color_temperature: string | null;
 
 	// People / identity
 	jersey_number: number | null;
@@ -76,7 +74,6 @@ export interface PhotoMetadataRow {
 	emotional_impact: number | null;
 	// Generated column: weighted blend (sharpness .35 / composition .30 / emotional .25 / exposure .10).
 	quality_score: number | null;
-	emotion: string | null;
 
 	// Game context
 	time_in_game: string | null;
@@ -190,7 +187,6 @@ export interface RelatedPhotoRow {
 	cf_image_id: string | null;
 	sport_type: string;
 	photo_category: string;
-	emotion: string | null;
 }
 
 /**

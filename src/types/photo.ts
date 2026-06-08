@@ -20,45 +20,13 @@ export type PlayType =
   | 'transition'
   | null;
 
-export type ActionIntensity = 'low' | 'medium' | 'high' | 'peak';
-
-export type CompositionType =
-  | 'rule_of_thirds'
-  | 'leading_lines'
-  | 'framing'
-  | 'symmetry'
-  | 'depth'
-  | 'negative_space';
-
-export type TimeOfDay =
-  | 'golden_hour'
-  | 'midday'
-  | 'evening'
-  | 'blue_hour'
-  | 'night'
-  | 'dawn';
-
-export type LightingType =
-  | 'natural'
-  | 'backlit'
-  | 'dramatic'
-  | 'soft'
-  | 'artificial';
-
-export type ColorTemperature = 'warm' | 'cool' | 'neutral';
-
 // =============================================================================
-// BUCKET 2: Abstract & Internal (AI-ONLY)
-// These types are NOT exposed as user-facing filters
+// REMOVED: vanity CATEGORICAL aesthetic types (cutover prep)
+// ActionIntensity, CompositionType, TimeOfDay, LightingType, ColorTemperature,
+// EmotionType — the underlying columns are being DROPPED at the schema cutover.
+// The numeric quality sub-scores (sharpness/composition_score/exposure_accuracy/
+// emotional_impact) are DIFFERENT columns and remain below.
 // =============================================================================
-
-export type EmotionType =
-  | 'triumph'
-  | 'determination'
-  | 'intensity'
-  | 'focus'
-  | 'excitement'
-  | 'serenity';
 
 export type TimeInGame =
   | 'first_5_min'
@@ -86,22 +54,12 @@ export interface PhotoMetadata {
 
   // Action dimension
   play_type: PlayType;
-  action_intensity: ActionIntensity;
   sport_type: string;        // volleyball, basketball, soccer
   photo_category: string;    // action, celebration, candid, portrait
-
-  // Aesthetic dimension
-  composition: CompositionType;
-  time_of_day: TimeOfDay;
-  lighting: LightingType;              // NEW
-  color_temperature: ColorTemperature; // NEW
 
   // ==========================================================================
   // BUCKET 2: Abstract & Internal (AI-ONLY, NOT USER-FACING)
   // ==========================================================================
-
-  // Emotion (internal for story detection)
-  emotion: EmotionType;
 
   // Quality metrics (internal scoring)
   sharpness: number;              // 0-10
@@ -194,29 +152,17 @@ export interface Video {
  * Filter state for photo browsing (CONCRETE FILTERS ONLY)
  *
  * Only Bucket 1 (user-facing) fields are exposed as filters.
- * Bucket 2 (internal) fields are NOT searchable.
+ * The vanity CATEGORICAL aesthetic filters (compositions, timeOfDay, lighting,
+ * colorTemperature, emotion, actionIntensity) were removed (cutover prep) — their
+ * backing columns are being DROPPED at the schema cutover.
  */
 export interface PhotoFilterState {
   // ==========================================================================
   // Action Filters (Concrete)
   // ==========================================================================
   playTypes?: PlayType[];
-  actionIntensity?: ActionIntensity[];
   sportType?: string;
   photoCategory?: string;
-
-  // ==========================================================================
-  // Aesthetic Filters (Concrete)
-  // ==========================================================================
-  compositions?: CompositionType[];
-  timeOfDay?: TimeOfDay[];
-  lighting?: LightingType[];              // NEW
-  colorTemperature?: ColorTemperature[];  // NEW
-
-  // ==========================================================================
-  // Emotion Filter (Bucket 2, but used for "Similar Photos" feature)
-  // ==========================================================================
-  emotion?: EmotionType;
 
   // ==========================================================================
   // Context Filters
@@ -231,7 +177,8 @@ export interface PhotoFilterState {
   // ❌ printReady (subjective, not extractable)
   // ❌ socialMediaOptimized (subjective, not extractable)
   // ❌ minQualityScore / maxQualityScore (futile filter)
-  // ❌ emotions (abstract, not useful alone - moved to Bucket 2)
+  // ❌ compositions / timeOfDay / lighting / colorTemperature / emotion /
+  //    actionIntensity (vanity categorical — columns dropped at cutover)
 }
 
 /**
@@ -239,24 +186,23 @@ export interface PhotoFilterState {
  */
 export type PhotoSortMode =
   | 'chronological' // Sort by created_at (default)
-  | 'play-type'     // Sort by play type
-  | 'intensity';    // Sort by action intensity
+  | 'play-type';    // Sort by play type
 
 /**
  * Photo grid view mode
  */
 export type PhotoGridMode =
   | 'standard'      // Equal visual weight (default)
-  | 'play-grouped'  // Grouped by play type
-  | 'time-grouped'; // Grouped by time of day
+  | 'play-grouped'; // Grouped by play type
 
 // =============================================================================
 // REMOVED: Obsolete sort/view modes
 // =============================================================================
 // ❌ 'quality' sort (assumes quality varies)
 // ❌ 'emotion' sort (abstract, not user-facing)
+// ❌ 'intensity' sort (vanity action_intensity — column dropped at cutover)
 // ❌ 'quality-stratified' view (assumes quality varies)
-// ❌ 'emotion-grouped' view (abstract, not user-facing)
+// ❌ 'emotion-grouped' / 'time-grouped' view (vanity categorical — dropped at cutover)
 
 /**
  * Narrative arc type for AI story curation

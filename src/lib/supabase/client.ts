@@ -77,6 +77,10 @@ export async function getPublicPhotos(limit = 20) {
  *
  * Client-safe version for browser components
  * Used for loading additional timeline pages
+ *
+ * NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
+ * color_temperature, emotion, action_intensity) were removed from the mapping (cutover prep)
+ * ahead of their schema DROP. The numeric quality sub-scores below STAY.
  */
 export async function fetchPhotosByPeriod(options: {
   page?: number;
@@ -147,14 +151,8 @@ export async function fetchPhotosByPeriod(options: {
               created_at: row.photo_date || row.enriched_at || row.upload_date,
               metadata: {
                 play_type: (row.play_type || null),
-                action_intensity: (row.action_intensity || 'medium'),
                 sport_type: row.sport_type,
                 photo_category: row.photo_category,
-                composition: (row.composition || ''),
-                time_of_day: (row.time_of_day || ''),
-                lighting: (row.lighting || undefined),
-                color_temperature: (row.color_temperature || undefined),
-                emotion: (row.emotion || 'focus'),
                 sharpness: row.sharpness ?? 0,
                 composition_score: row.composition_score ?? 0,
                 exposure_accuracy: row.exposure_accuracy ?? 0,
@@ -249,14 +247,8 @@ export async function fetchPhotosByPeriod(options: {
               created_at: row.photo_date || row.enriched_at || row.upload_date,
               metadata: {
                 play_type: (row.play_type || null),
-                action_intensity: (row.action_intensity || 'medium'),
                 sport_type: row.sport_type,
                 photo_category: row.photo_category,
-                composition: (row.composition || ''),
-                time_of_day: (row.time_of_day || ''),
-                lighting: (row.lighting || undefined),
-                color_temperature: (row.color_temperature || undefined),
-                emotion: (row.emotion || 'focus'),
                 sharpness: row.sharpness ?? 0,
                 composition_score: row.composition_score ?? 0,
                 exposure_accuracy: row.exposure_accuracy ?? 0,

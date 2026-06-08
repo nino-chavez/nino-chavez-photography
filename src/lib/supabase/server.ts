@@ -43,6 +43,10 @@ if (!import.meta.env.VITE_SUPABASE_ANON_KEY && import.meta.env.PROD) {
 /**
  * Transform database row to Photo type with Cloudflare Images URLs
  * Exported for use in other server-side loaders
+ *
+ * NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
+ * color_temperature, emotion, action_intensity) were removed from this mapping (cutover prep)
+ * ahead of their schema DROP. The numeric quality sub-scores below STAY.
  */
 export function transformPhotoRow(row: any): Photo {
   const imageUrl = cfImageUrl(row.cf_image_id, 'grid');
@@ -62,14 +66,8 @@ export function transformPhotoRow(row: any): Photo {
     created_at: row.photo_date || row.enriched_at || row.upload_date,
     metadata: {
       play_type: (row.play_type || null) as Photo['metadata']['play_type'],
-      action_intensity: (row.action_intensity || 'medium') as Photo['metadata']['action_intensity'],
       sport_type: row.sport_type,
       photo_category: row.photo_category,
-      composition: (row.composition || '') as Photo['metadata']['composition'],
-      time_of_day: (row.time_of_day || '') as Photo['metadata']['time_of_day'],
-      lighting: (row.lighting || undefined) as Photo['metadata']['lighting'],
-      color_temperature: (row.color_temperature || undefined) as Photo['metadata']['color_temperature'],
-      emotion: (row.emotion || 'focus') as Photo['metadata']['emotion'],
       sharpness: row.sharpness ?? 0,
       composition_score: row.composition_score ?? 0,
       exposure_accuracy: row.exposure_accuracy ?? 0,
@@ -96,7 +94,7 @@ export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey, 
 export interface FetchPhotosOptions extends PhotoFilterState {
   limit?: number;
   offset?: number;
-  sortBy?: 'quality' | 'newest' | 'oldest' | 'action' | 'intensity';
+  sortBy?: 'quality' | 'newest' | 'oldest' | 'action';
 }
 
 /**
@@ -135,32 +133,6 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
     query = query.in('play_type', filters.playTypes);
   }
 
-  if (filters?.actionIntensity && filters.actionIntensity.length > 0) {
-    query = query.in('action_intensity', filters.actionIntensity);
-  }
-
-  // Aesthetic filters
-  if (filters?.compositions && filters.compositions.length > 0) {
-    query = query.in('composition', filters.compositions);
-  }
-
-  if (filters?.timeOfDay && filters.timeOfDay.length > 0) {
-    query = query.in('time_of_day', filters.timeOfDay);
-  }
-
-  if (filters?.lighting && filters.lighting.length > 0) {
-    query = query.in('lighting', filters.lighting);
-  }
-
-  if (filters?.colorTemperature && filters.colorTemperature.length > 0) {
-    query = query.in('color_temperature', filters.colorTemperature);
-  }
-
-  // Emotion filter (Bucket 2, but used for "Similar Photos" feature)
-  if (filters?.emotion) {
-    query = query.eq('emotion', filters.emotion);
-  }
-
   // Context filters
   if (filters?.albumKey) {
     query = query.eq('album_key', filters.albumKey);
@@ -188,10 +160,6 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
     case 'action':
       // Sort by play type (alphabetical grouping), then by emotional_impact for deterministic ordering
       query = query.order('play_type', { ascending: true, nullsFirst: false }).order('emotional_impact', { ascending: false });
-      break;
-    case 'intensity':
-      // Sort by action intensity (peak -> high -> medium -> low), then by emotional_impact for deterministic ordering
-      query = query.order('action_intensity', { ascending: false, nullsFirst: false }).order('emotional_impact', { ascending: false });
       break;
   }
 
@@ -244,37 +212,12 @@ export async function getPhotoCount(filters?: PhotoFilterState): Promise<number>
     query = query.in('play_type', filters.playTypes);
   }
 
-  if (filters?.actionIntensity && filters.actionIntensity.length > 0) {
-    query = query.in('action_intensity', filters.actionIntensity);
-  }
-
   if (filters?.sportType) {
     query = query.eq('sport_type', filters.sportType);
   }
 
   if (filters?.photoCategory) {
     query = query.eq('photo_category', filters.photoCategory);
-  }
-
-  if (filters?.compositions && filters.compositions.length > 0) {
-    query = query.in('composition', filters.compositions);
-  }
-
-  if (filters?.timeOfDay && filters.timeOfDay.length > 0) {
-    query = query.in('time_of_day', filters.timeOfDay);
-  }
-
-  if (filters?.lighting && filters.lighting.length > 0) {
-    query = query.in('lighting', filters.lighting);
-  }
-
-  if (filters?.colorTemperature && filters.colorTemperature.length > 0) {
-    query = query.in('color_temperature', filters.colorTemperature);
-  }
-
-  // Emotion filter (Bucket 2, but used for "Similar Photos" feature)
-  if (filters?.emotion) {
-    query = query.eq('emotion', filters.emotion);
   }
 
   if (filters?.jerseyNumber !== undefined) {
@@ -388,30 +331,26 @@ export async function getSportDistribution(): Promise<Array<{ name: string; coun
  * Get filter counts for all filter options (SERVER-SIDE)
  * Returns counts for each filter option while respecting currently active filters
  * This enables "smart" filtering where users can see how many results each option will return
+ *
+ * NOTE: the vanity CATEGORICAL dimensions (lighting, color_temperature, time_of_day,
+ * composition, action_intensity) were removed (cutover prep) — their backing columns are
+ * being DROPPED at the schema cutover.
  */
 export interface FilterCounts {
   sports: Array<{ name: string; count: number }>;
   categories: Array<{ name: string; count: number }>;
   playTypes: Array<{ name: string; count: number }>;
-  intensities: Array<{ name: string; count: number }>;
-  lighting: Array<{ name: string; count: number }>;
-  colorTemperatures: Array<{ name: string; count: number }>;
-  timesOfDay: Array<{ name: string; count: number }>;
-  compositions: Array<{ name: string; count: number }>;
 }
 
 /**
  * OPTIMIZED: Get filter counts using aggregation queries (GROUP BY)
- * Reduces database queries from ~50-80 to ~8 (one per filter dimension)
+ * Reduces database queries by counting all dimensions in a single round-trip.
  *
  * Performance improvements:
  * - Uses COUNT() with GROUP BY instead of individual queries
- * - Single query per dimension (8 queries total vs 50-80)
+ * - Single query for all dimensions (UNION ALL)
  * - Respects current filters to show compatible counts
  * - No hardcoded filter values (uses actual data)
- *
- * Phase 1 of Intelligent Filter System (27-40h total)
- * This function is the foundation - estimate 8-12h
  */
 export async function getFilterCounts(currentFilters?: PhotoFilterState): Promise<FilterCounts> {
   // SECURITY: Whitelist of allowed filter values to prevent SQL injection
@@ -419,11 +358,6 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
     sport_type: ['volleyball', 'basketball', 'soccer', 'football', 'baseball', 'tennis', 'hockey', 'other'],
     photo_category: ['action', 'portrait', 'celebration', 'team', 'warmup', 'candid', 'other'],
     play_type: ['spike', 'block', 'serve', 'dig', 'set', 'pass', 'jump', 'dive', 'other'],
-    action_intensity: ['low', 'medium', 'high', 'peak', 'extreme'],
-    lighting: ['natural', 'artificial', 'mixed', 'dramatic', 'soft'],
-    color_temperature: ['warm', 'cool', 'neutral'],
-    time_of_day: ['morning', 'midday', 'afternoon', 'evening', 'night'],
-    composition: ['rule_of_thirds', 'centered', 'dynamic', 'symmetrical', 'leading_lines', 'framing']
   };
 
   // Sanitize a single value against whitelist (returns null if invalid)
@@ -460,36 +394,6 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
         conditions.push(`play_type IN (${safeList.map(pt => `'${pt}'`).join(', ')})`);
       }
     }
-    if (currentFilters?.actionIntensity && currentFilters.actionIntensity.length > 0 && excludeField !== 'action_intensity') {
-      const safeList = sanitizeArray(currentFilters.actionIntensity, 'action_intensity');
-      if (safeList.length > 0) {
-        conditions.push(`action_intensity IN (${safeList.map(ai => `'${ai}'`).join(', ')})`);
-      }
-    }
-    if (currentFilters?.lighting && currentFilters.lighting.length > 0 && excludeField !== 'lighting') {
-      const safeList = sanitizeArray(currentFilters.lighting, 'lighting');
-      if (safeList.length > 0) {
-        conditions.push(`lighting IN (${safeList.map(l => `'${l}'`).join(', ')})`);
-      }
-    }
-    if (currentFilters?.colorTemperature && currentFilters.colorTemperature.length > 0 && excludeField !== 'color_temperature') {
-      const safeList = sanitizeArray(currentFilters.colorTemperature, 'color_temperature');
-      if (safeList.length > 0) {
-        conditions.push(`color_temperature IN (${safeList.map(ct => `'${ct}'`).join(', ')})`);
-      }
-    }
-    if (currentFilters?.timeOfDay && currentFilters.timeOfDay.length > 0 && excludeField !== 'time_of_day') {
-      const safeList = sanitizeArray(currentFilters.timeOfDay, 'time_of_day');
-      if (safeList.length > 0) {
-        conditions.push(`time_of_day IN (${safeList.map(tod => `'${tod}'`).join(', ')})`);
-      }
-    }
-    if (currentFilters?.compositions && currentFilters.compositions.length > 0 && excludeField !== 'composition') {
-      const safeList = sanitizeArray(currentFilters.compositions, 'composition');
-      if (safeList.length > 0) {
-        conditions.push(`composition IN (${safeList.map(c => `'${c}'`).join(', ')})`);
-      }
-    }
 
     return conditions.join(' AND ');
   };
@@ -498,28 +402,18 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
   const dimensions = [
     'sport_type',
     'photo_category',
-    'play_type',
-    'action_intensity',
-    'lighting',
-    'color_temperature',
-    'time_of_day',
-    'composition'
+    'play_type'
   ] as const;
 
   // Map dimension column names to FilterCounts keys
   const dimensionToKey: Record<string, keyof FilterCounts> = {
     sport_type: 'sports',
     photo_category: 'categories',
-    play_type: 'playTypes',
-    action_intensity: 'intensities',
-    lighting: 'lighting',
-    color_temperature: 'colorTemperatures',
-    time_of_day: 'timesOfDay',
-    composition: 'compositions'
+    play_type: 'playTypes'
   };
 
   try {
-    // Build a single UNION ALL query for all 8 dimensions (1 round-trip instead of 8)
+    // Build a single UNION ALL query for all dimensions (1 round-trip)
     const unionParts = dimensions.map(dim => {
       const conditions = buildFilterConditions(dim);
       return `SELECT '${dim}' as dimension, ${dim} as name, COUNT(*) as count
@@ -536,8 +430,7 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
 
     // Parse flat results back into the FilterCounts structure
     const result: FilterCounts = {
-      sports: [], categories: [], playTypes: [], intensities: [],
-      lighting: [], colorTemperatures: [], timesOfDay: [], compositions: []
+      sports: [], categories: [], playTypes: []
     };
 
     for (const row of (data || []) as Array<{ dimension: string; name: string; count: number | string }>) {
@@ -552,7 +445,7 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
 
     return result;
   } catch (error) {
-    // Fallback: 8 individual queries in parallel (if exec_sql RPC is missing)
+    // Fallback: individual queries in parallel (if exec_sql RPC is missing)
     console.warn('[getFilterCounts] Batched RPC failed, falling back to individual queries:', error);
 
     const getAggregatedCounts = async (
@@ -572,21 +465,6 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
       }
       if (currentFilters?.playTypes && currentFilters.playTypes.length > 0 && fieldName !== 'play_type') {
         query = query.in('play_type', currentFilters.playTypes);
-      }
-      if (currentFilters?.actionIntensity && currentFilters.actionIntensity.length > 0 && fieldName !== 'action_intensity') {
-        query = query.in('action_intensity', currentFilters.actionIntensity);
-      }
-      if (currentFilters?.lighting && currentFilters.lighting.length > 0 && fieldName !== 'lighting') {
-        query = query.in('lighting', currentFilters.lighting);
-      }
-      if (currentFilters?.colorTemperature && currentFilters.colorTemperature.length > 0 && fieldName !== 'color_temperature') {
-        query = query.in('color_temperature', currentFilters.colorTemperature);
-      }
-      if (currentFilters?.timeOfDay && currentFilters.timeOfDay.length > 0 && fieldName !== 'time_of_day') {
-        query = query.in('time_of_day', currentFilters.timeOfDay);
-      }
-      if (currentFilters?.compositions && currentFilters.compositions.length > 0 && fieldName !== 'composition') {
-        query = query.in('composition', currentFilters.compositions);
       }
 
       const { data: distinctData, error: distinctError } = await query;
@@ -615,21 +493,6 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
           if (currentFilters?.playTypes && currentFilters.playTypes.length > 0 && fieldName !== 'play_type') {
             countQuery = countQuery.in('play_type', currentFilters.playTypes);
           }
-          if (currentFilters?.actionIntensity && currentFilters.actionIntensity.length > 0 && fieldName !== 'action_intensity') {
-            countQuery = countQuery.in('action_intensity', currentFilters.actionIntensity);
-          }
-          if (currentFilters?.lighting && currentFilters.lighting.length > 0 && fieldName !== 'lighting') {
-            countQuery = countQuery.in('lighting', currentFilters.lighting);
-          }
-          if (currentFilters?.colorTemperature && currentFilters.colorTemperature.length > 0 && fieldName !== 'color_temperature') {
-            countQuery = countQuery.in('color_temperature', currentFilters.colorTemperature);
-          }
-          if (currentFilters?.timeOfDay && currentFilters.timeOfDay.length > 0 && fieldName !== 'time_of_day') {
-            countQuery = countQuery.in('time_of_day', currentFilters.timeOfDay);
-          }
-          if (currentFilters?.compositions && currentFilters.compositions.length > 0 && fieldName !== 'composition') {
-            countQuery = countQuery.in('composition', currentFilters.compositions);
-          }
 
           const { count } = await countQuery;
           return { name: value as string, count: count || 0 };
@@ -640,28 +503,17 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
     };
 
     const [
-      sportCounts, categoryCounts, playTypeCounts, intensityCounts,
-      lightingCounts, colorTempCounts, timeOfDayCounts, compositionCounts,
+      sportCounts, categoryCounts, playTypeCounts,
     ] = await Promise.all([
       getAggregatedCounts('sport_type'),
       getAggregatedCounts('photo_category'),
       getAggregatedCounts('play_type'),
-      getAggregatedCounts('action_intensity'),
-      getAggregatedCounts('lighting'),
-      getAggregatedCounts('color_temperature'),
-      getAggregatedCounts('time_of_day'),
-      getAggregatedCounts('composition'),
     ]);
 
     return {
       sports: sportCounts,
       categories: categoryCounts,
       playTypes: playTypeCounts,
-      intensities: intensityCounts,
-      lighting: lightingCounts,
-      colorTemperatures: colorTempCounts,
-      timesOfDay: timeOfDayCounts,
-      compositions: compositionCounts,
     };
   }
 }
@@ -1188,7 +1040,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   // First, get the source photo's attributes
   const { data: sourcePhoto, error: sourceError } = await supabaseServer
     .from(PHOTOS_READ)
-    .select('sport_type, emotion, play_type, photo_category, album_key')
+    .select('sport_type, play_type, photo_category, album_key')
     .eq('image_key', imageKey)
     .single();
 
@@ -1199,7 +1051,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   }
 
   // Build fallback query - prioritize by matching attributes
-  // Try: same sport + emotion first, then same sport, then same category
+  // Try: same sport + play_type first, then same sport
   let query = supabaseServer
     .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
@@ -1210,8 +1062,8 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   if (sourcePhoto.sport_type) {
     query = query.eq('sport_type', sourcePhoto.sport_type);
   }
-  if (sourcePhoto.emotion) {
-    query = query.eq('emotion', sourcePhoto.emotion);
+  if (sourcePhoto.play_type) {
+    query = query.eq('play_type', sourcePhoto.play_type);
   }
 
   const { data: fallbackPhotos, error: fallbackError } = await query
@@ -1224,7 +1076,7 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   }
 
   // 3. Ultimate fallback: If still no results, return high-quality photos from same sport
-  console.log('[findSimilarPhotos] Emotion match failed, trying sport-only fallback');
+  console.log('[findSimilarPhotos] Attribute match failed, trying sport-only fallback');
 
   const { data: sportFallback } = await supabaseServer
     .from(PHOTOS_READ)
@@ -1329,12 +1181,6 @@ export async function searchPhotos(
   if (pf.sportType) mergedFilters.sportType = pf.sportType;
   if (pf.photoCategory) mergedFilters.photoCategory = pf.photoCategory;
   if (pf.playTypes?.length) mergedFilters.playTypes = pf.playTypes;
-  if (pf.actionIntensity?.length) mergedFilters.actionIntensity = pf.actionIntensity;
-  if (pf.lighting?.length) mergedFilters.lighting = pf.lighting;
-  if (pf.colorTemperature?.length) mergedFilters.colorTemperature = pf.colorTemperature;
-  if (pf.timeOfDay?.length) mergedFilters.timeOfDay = pf.timeOfDay;
-  if (pf.compositions?.length) mergedFilters.compositions = pf.compositions;
-  if (pf.emotion) mergedFilters.emotion = pf.emotion;
   if (pf.albumKey) mergedFilters.albumKey = pf.albumKey;
   if (pf.jerseyNumber !== undefined) mergedFilters.jerseyNumber = pf.jerseyNumber;
 

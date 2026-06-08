@@ -46,16 +46,10 @@
 			metadata: {
 				// BUCKET 1: Concrete & Filterable
 				play_type: (raw.play_type as any) || null,
-				action_intensity: (raw.action_intensity as any) || 'medium',
 				sport_type: raw.sport_type,
 				photo_category: raw.photo_category,
-				composition: (raw.composition as any) || '',
-				time_of_day: (raw.time_of_day as any) || '',
-				lighting: (raw.lighting as any) || undefined,
-				color_temperature: (raw.color_temperature as any) || undefined,
 
 				// BUCKET 2: Abstract & Internal
-				emotion: (raw.emotion as any) || 'focus',
 				sharpness: raw.sharpness || 0,
 				composition_score: raw.composition_score || 0,
 				exposure_accuracy: raw.exposure_accuracy || 0,
