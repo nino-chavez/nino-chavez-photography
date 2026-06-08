@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 /**
- * Load the operator-confirmed album→sport map into albums.sport (Slice 1 authority).
+ * Load the operator-confirmed album→sport map into albums.sport / albums.category (Slice 1).
  *
- * Reads the confirmation sheet (default .temp/album-sport-sheet.json — review/edit the `proposed`
- * column in the .md first), validates every value against the canonical taxonomy, and sets
- * albums.sport + sport_source='operator' keyed by album_name. NON_SPORT → sport=NULL.
+ * Reads database/seed/album-sports.json — the durable, committed ground truth built from the
+ * operator's sheet rulings (sport is a valid taxonomy value or null; category is the non-sport
+ * classification: portrait/street/pets/drama/flag_football). Sets albums.sport, albums.category,
+ * albums.sport_source keyed by album_name.
  *
- * Run AFTER the Slice 1 migration (albums table + trigger) is applied, and BEFORE the Slice 1
- * backfill migration (which forces photo_metadata.sport_type to mirror albums.sport).
- *
- *   npx tsx scripts/load-album-sports.ts [--sheet=.temp/album-sport-sheet.json] [--dry-run]
+ * Run AFTER the Slice 1 migration (albums + trigger) and BEFORE the backfill migration.
+ *   npx tsx scripts/load-album-sports.ts [--seed=database/seed/album-sports.json] [--dry-run]
  */
 import { config } from 'dotenv';
 import { resolve } from 'path';
@@ -18,42 +17,45 @@ import { readFileSync } from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import { SPORTS } from '../src/lib/ai/taxonomy';
 
-const SHEET = process.argv.find((a) => a.startsWith('--sheet='))?.split('=')[1] || '.temp/album-sport-sheet.json';
+const SEED = process.argv.find((a) => a.startsWith('--seed='))?.split('=')[1] || 'database/seed/album-sports.json';
 const DRY = process.argv.includes('--dry-run');
 const sb = createClient(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-/** Map a sheet `proposed` value to a sport_enum value or null, or throw if unrecognized. */
-function toSport(proposed: string): string | null {
-	const v = (proposed || '').trim();
-	if (/^NON_SPORT/i.test(v) || v === '' || v.toUpperCase() === 'NULL') return null;
-	if ((SPORTS as readonly string[]).includes(v)) return v;
-	throw new Error(`"${proposed}" is not a valid sport (allowed: ${SPORTS.join(', ')}, or NON_SPORT)`);
-}
+interface Row { album_name: string; sport: string | null; category: string | null; source: string; }
 
 async function main() {
-	const rows = JSON.parse(readFileSync(SHEET, 'utf-8')) as Array<{ album: string; proposed: string; status: string }>;
-	console.log(`Loading ${rows.length} album→sport rulings from ${SHEET}${DRY ? ' (DRY RUN)' : ''}\n`);
+	const rows = JSON.parse(readFileSync(SEED, 'utf-8')) as Row[];
 
-	// Validate ALL before writing any (fail fast on a bad edit).
-	const resolved = rows.map((r) => ({ album: r.album, sport: toSport(r.proposed), status: r.status }));
+	// Validate every sport before writing (fail fast on a bad seed).
+	for (const r of rows) {
+		if (r.sport !== null && !(SPORTS as readonly string[]).includes(r.sport)) {
+			throw new Error(`"${r.album_name}": sport "${r.sport}" is not in the taxonomy`);
+		}
+	}
+	console.log(`Loading ${rows.length} album rulings from ${SEED}${DRY ? ' (DRY RUN)' : ''}\n`);
 
-	let updated = 0, unmatched = 0, nonSport = 0;
-	for (const r of resolved) {
-		if (r.sport === null) nonSport++;
-		if (DRY) { console.log(`  ${r.album} → ${r.sport ?? 'NULL (non-sport)'}`); updated++; continue; }
+	let updated = 0, unmatched = 0;
+	const nonSport = rows.filter((r) => r.sport === null).length;
+	for (const r of rows) {
+		if (DRY) { updated++; continue; }
 		const { data, error } = await sb
 			.from('albums')
-			.update({ sport: r.sport, sport_source: 'operator', updated_at: new Date().toISOString() })
-			.eq('album_name', r.album)
+			.update({
+				sport: r.sport,
+				category: r.category,
+				sport_source: r.source === 'operator' ? 'operator' : 'detection-unanimous',
+				updated_at: new Date().toISOString(),
+			})
+			.eq('album_name', r.album_name)
 			.select('album_key');
-		if (error) { console.error(`  ❌ ${r.album}: ${error.message}`); continue; }
-		if (!data || data.length === 0) { console.warn(`  ⚠️  no albums row matched name "${r.album}"`); unmatched++; continue; }
+		if (error) { console.error(`  ❌ ${r.album_name}: ${error.message}`); continue; }
+		if (!data || data.length === 0) { console.warn(`  ⚠️  no albums row matched "${r.album_name}"`); unmatched++; continue; }
 		updated += data.length;
 	}
 
-	console.log(`\n✅ ${DRY ? 'would update' : 'updated'} ${updated} album rows (${nonSport} non-sport → NULL)`);
-	if (unmatched) console.log(`⚠️  ${unmatched} sheet rows matched no albums row — check name drift.`);
-	if (!DRY) console.log('Next: apply 2026-06-08-vnext-slice1-backfill-sport.sql to mirror sport onto photo_metadata + validate.');
+	console.log(`✅ ${DRY ? 'would update' : 'updated'} ${updated} album rows (${nonSport} non-sport → sport NULL)`);
+	if (unmatched) console.log(`⚠️  ${unmatched} seed rows matched no albums row — investigate name drift before the backfill.`);
+	if (!DRY) console.log('Next: apply 2026-06-08-vnext-slice1-backfill-sport.sql (mirror sport onto photo_metadata + validate).');
 }
 
 main().catch((e) => { console.error('Fatal:', e.message); process.exit(1); });
