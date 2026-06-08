@@ -1,5 +1,13 @@
 # Database Migrations
 
+> ⚠️ **NOT the canonical applied source.** `supabase/migrations/` (CLI-format, applied via
+> `supabase db push`, tracked in the remote `schema_migrations` history) is the **single source of
+> truth** for what's applied to prod. This directory is a **frozen legacy/archive**: pre-rebuild
+> manual SQL kept for historical reference. **Do not add new migrations here and do not apply
+> anything here by hand** — author new migrations in `supabase/migrations/` only. (The rebuild-era
+> duplicates that briefly lived here were removed during convergence H2; they live in
+> `supabase/migrations/`.) See `.agent-os/specs/vision-extraction-identity-vnext/DEPRECATED.md`.
+
 ## Fix Albums Summary Dates (2025-10-28)
 
 **Problem:** The `albums_summary` materialized view had mismatched field names:

@@ -15,24 +15,14 @@
 // =============================================================================
 
 export const PORTFOLIO_CONTEXT = `
-CRITICAL CONTEXT: This is a VOLLEYBALL PHOTOGRAPHY PORTFOLIO.
-- 95%+ of all photos in this portfolio are volleyball
-- Default assumption: The photo is volleyball unless you see CLEAR, UNMISTAKABLE evidence otherwise
-- DO NOT classify as basketball just because players are jumping or the image is blurry
-- DO NOT classify as other sports based on uniform colors alone
+CONTEXT: This is a sports-action photography portfolio. The SPORT is already KNOWN at the album
+level and set authoritatively (albums.sport) — do NOT infer, guess, or default the sport. Focus
+your analysis on the action, quality, caption, and visible players/jerseys, not sport identification.
 
-VOLLEYBALL vs BASKETBALL - Key Visual Differences:
-- VOLLEYBALL: Net at ~7-8ft, white/yellow/blue ball with panels, players at net with hands UP (blocking/attacking), indoor court with antenna on net
-- BASKETBALL: Hoop/backboard visible, orange ball with black lines, players jumping TOWARD basket, different court markings
-
-ONLY classify as non-volleyball if you see:
-- A basketball hoop or backboard
-- An orange basketball with black seam lines
-- Soccer goal posts or a soccer ball
-- Football field markings or a football
-- Other sport-specific equipment that CANNOT be volleyball
-
-When in doubt, classify as VOLLEYBALL.
+NOTE (why): an earlier version of this prompt hard-coded a "95% volleyball / when in doubt classify
+as volleyball" bias here. That bias systematically mislabeled whole non-volleyball albums (tennis,
+soccer, football read as volleyball). Sport is now an album property enforced by a DB trigger — any
+sport this prompt emits is overridden by the album's sport. Never reintroduce a sport-default bias.
 `;
 
 // =============================================================================
