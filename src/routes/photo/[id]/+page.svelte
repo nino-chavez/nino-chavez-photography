@@ -5,7 +5,7 @@
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
-	import { formatSport, formatCategory, formatComposition } from '$lib/utils/format-metadata';
+	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 
@@ -194,9 +194,6 @@
 					{/if}
 					{#if data.photo.metadata.photo_category}
 						<span>Category: {formatCategory(data.photo.metadata.photo_category)}</span>
-					{/if}
-					{#if data.photo.metadata.composition}
-						<span>Composition: {formatComposition(data.photo.metadata.composition)}</span>
 					{/if}
 				</div>
 

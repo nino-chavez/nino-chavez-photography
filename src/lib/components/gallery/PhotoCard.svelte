@@ -111,13 +111,6 @@
 					{photo.metadata.photo_category}
 				</span>
 			{/if}
-
-			<!-- Action Intensity (if high/peak) -->
-			{#if photo.metadata?.action_intensity === 'high' || photo.metadata?.action_intensity === 'peak'}
-				<span class="text-xs px-2 py-1 rounded-md bg-red-500 text-white font-semibold shadow-sm">
-					{photo.metadata.action_intensity}
-				</span>
-			{/if}
 		</div>
 	</div>
 </a>
