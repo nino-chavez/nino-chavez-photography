@@ -52,8 +52,8 @@ Done on vnext-phase1: Albums→event-discovery (search all + sport/year), nav re
 
 | # | Deprecated artifact | Where | Removal trigger | Risk |
 |---|---|---|---|---|
-| 11 | Vanity aesthetic columns: `composition`, `lighting`, `color_temperature`, `time_of_day`, `emotion`(categorical), `action_intensity` | photo_metadata + PHOTO_COLUMNS + Photo type + transformPhotoRow | **MERGE-GATED cutover**: displays already removed; at cutover remove from PHOTO_COLUMNS/types/mapping then DROP the columns. KEEP the numeric sub-scores `composition_score`/`emotional_impact`/`exposure_accuracy`/`sharpness` (feed quality_score). | MEDIUM |
-| 12 | Dead components referencing vanity facets: `Lightbox.svelte`, `FilterPanel.svelte`, `ContextualCursor.svelte`, + `photo-utils.ts` vanity generators | src/lib/components, src/lib | Zero current importers (dead). MUST be removed (or de-vanity'd) BEFORE #11's type-deprecation or they break typecheck at cutover. | LOW |
+| 11 | Vanity aesthetic columns: `composition`, `lighting`, `color_temperature`, `time_of_day`, `emotion`(categorical), `action_intensity` | photo_metadata | ✅ **CODE-DEPRECATED** (commit 010ac29): removed from PHOTO_COLUMNS + Photo type + database.ts + transformPhotoRow + all consumers; numeric sub-scores kept. Only the DB `DROP COLUMN` remains — **MERGE-GATED to the cutover**. | LOW (code done) |
+| 12 | Dead components referencing vanity facets | src/lib | ✅ **DONE** (010ac29): `FilterPanel.svelte` + `ContextualCursor.svelte` deleted (0 importers); `Lightbox.svelte` de-vanity'd (it's live, 7 importers); `photo-utils.ts` generators de-vanity'd. | — |
 | — | Favorites → "My Selection" + batch download (zip worker exists) | src/routes/favorites | IA slice not yet done (feature + product call) | — |
 
 ## Rule for every future slice
