@@ -8,6 +8,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
+	import FavoritesDownloadButton from '$lib/components/favorites/FavoritesDownloadButton.svelte';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 
@@ -118,6 +119,9 @@
 				<!-- Action Buttons -->
 				{#if favoriteCount > 0}
 					<div class="flex flex-wrap gap-3">
+						<!-- Download all (ZIP) — client-side, cross-album -->
+						<FavoritesDownloadButton photos={favoritePhotos} />
+
 						<!-- Export -->
 						<Button variant="secondary" onclick={handleExport}>
 							<Download class="w-4 h-4 mr-2" />
