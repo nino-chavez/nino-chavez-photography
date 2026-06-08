@@ -85,11 +85,15 @@ interface ParsedMetadata {
 	time_in_game?: string | null;
 	ai_confidence?: number;
 	photo_date?: string;
+	// Phase 1 (v-next): natural-language caption + multi-player extraction.
+	caption?: string | null;
+	players?: Array<{ jersey_number: number | null; team_color: string | null; action: string | null }>;
+	team_colors?: string[];
 }
 
 function parseLocalExif(photoPath: string, albumKey: string): ParsedMetadata | null {
 	try {
-		const exifJson = execSync(`exiftool -json -Keywords -Subject -DateTimeOriginal "${photoPath}"`, {
+		const exifJson = execSync(`exiftool -json -Keywords -Subject -DateTimeOriginal -ImageDescription -UserComment "${photoPath}"`, {
 			encoding: 'utf-8'
 		});
 		const [exifData] = JSON.parse(exifJson);
@@ -139,6 +143,20 @@ function parseLocalExif(photoPath: string, albumKey: string): ParsedMetadata | n
 			}
 		}
 
+		// Phase 1 (v-next): caption from ImageDescription, players/team_colors from UserComment JSON.
+		const caption = typeof exifData.ImageDescription === 'string' && exifData.ImageDescription.trim()
+			? exifData.ImageDescription.trim()
+			: null;
+		let players: ParsedMetadata['players'] = undefined;
+		let teamColors: string[] | undefined = undefined;
+		if (exifData.UserComment) {
+			try {
+				const vnext = JSON.parse(String(exifData.UserComment));
+				if (Array.isArray(vnext?.players)) players = vnext.players;
+				if (Array.isArray(vnext?.team_colors)) teamColors = vnext.team_colors;
+			} catch { /* not v-next JSON — ignore */ }
+		}
+
 		return {
 			imageKey,
 			albumKey,
@@ -157,7 +175,10 @@ function parseLocalExif(photoPath: string, albumKey: string): ParsedMetadata | n
 			emotional_impact: emotionalMatch ? parseFloat(emotionalMatch[1]) : undefined,
 			time_in_game: gameTimeMatch ? gameTimeMatch[1] : null,
 			ai_confidence: 0.9,
-			photo_date: photoDate
+			photo_date: photoDate,
+			caption,
+			players,
+			team_colors: teamColors
 		};
 	} catch (error: any) {
 		console.error(`   ⚠️  Error reading EXIF from ${basename(photoPath)}: ${error.message}`);
@@ -205,6 +226,9 @@ async function syncToSupabase(metadata: ParsedMetadata[]): Promise<{ synced: num
 				time_in_game: meta.time_in_game,
 				ai_confidence: meta.ai_confidence,
 				photo_date: meta.photo_date,
+				caption: meta.caption,
+				...(meta.players ? { players: meta.players } : {}),
+				...(meta.team_colors ? { team_colors: meta.team_colors } : {}),
 				enriched_at: new Date().toISOString()
 			});
 

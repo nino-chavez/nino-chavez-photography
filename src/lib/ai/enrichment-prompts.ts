@@ -323,7 +323,11 @@ AND ALSO:
 
 ${BUCKET2_PROMPT}
 
-Return ONLY JSON combining both buckets (sport_type FIRST):
+ADDITIONALLY return two more top-level JSON keys alongside bucket1 and bucket2, for people-finding and natural-language search:
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon. Example: "A player in a red jersey, number 12, dives to dig the ball near the sideline as two teammates watch."
+"players": an array (max 8) of objects, one per clearly visible player: {"jersey_number": integer or null, "team_color": string or null, "action": string or null}.
+
+Return ONLY JSON combining both buckets PLUS caption and players (sport_type FIRST):
 {
   "bucket1": {
     "sport_type": "volleyball",
@@ -344,7 +348,12 @@ Return ONLY JSON combining both buckets (sport_type FIRST):
     "emotional_impact": 9.0,
     "time_in_game": "final_5_min",
     "ai_confidence": 0.85
-  }
+  },
+  "caption": "A player in a red jersey, number 12, dives to dig the ball near the sideline as two teammates watch.",
+  "players": [
+    { "jersey_number": 12, "team_color": "red", "action": "dig" },
+    { "jersey_number": null, "team_color": "red", "action": "watching" }
+  ]
 }
 
 NO explanations. NO markdown. ONLY JSON.`);
@@ -378,9 +387,23 @@ export interface Bucket2Response {
   ai_confidence: number;
 }
 
+/**
+ * A single player extracted from a photo, for identity / people-finding.
+ * Emitted in the `players[]` array of the combined enrichment response.
+ */
+export interface PlayerExtract {
+  jersey_number: number | null;
+  team_color: string | null;
+  action: string | null;
+}
+
 export interface CombinedResponse {
   bucket1: Bucket1Response;
   bucket2: Bucket2Response;
+  /** One NL sentence for text/RAG search (jersey numbers, colors, action, scene). */
+  caption: string;
+  /** Multi-player extraction for identity + jersey/team filters. */
+  players: PlayerExtract[];
 }
 
 // =============================================================================
@@ -815,7 +838,17 @@ export function agenticToBuckets(agentic: AgenticVisionResponse): CombinedRespon
       emotional_impact: agentic.quality_assessment.emotional_impact,
       time_in_game: 'unknown', // Not assessed in agentic
       ai_confidence: agentic.sport_confidence,
-    }
+    },
+    // The agentic prompt has no dedicated caption; its investigation notes are the
+    // closest natural-language description, so reuse them for search.
+    caption: agentic.agentic_notes ?? '',
+    // Map detected jersey numbers to the player-extract shape (team_color/action
+    // are not assessed by the standard agentic prompt).
+    players: (agentic.jersey_numbers ?? []).map((j) => ({
+      jersey_number: j.number,
+      team_color: null,
+      action: null,
+    })),
   };
 }
 

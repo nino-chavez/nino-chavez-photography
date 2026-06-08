@@ -40,8 +40,8 @@
 			thumbnail_url: raw.cf_image_id ? cfImageUrl(raw.cf_image_id, 'thumbnail') : '',
 			original_url: raw.cf_image_id ? cfImageUrl(raw.cf_image_id, 'public') : '',
 			title: raw.album_name || 'Untitled',
-			caption: raw.composition || '',
-			keywords: Array.isArray(raw.use_cases) ? raw.use_cases : [],
+			caption: raw.caption || '',
+			keywords: [],
 			created_at: raw.photo_date || raw.enriched_at || '',
 			metadata: {
 				// BUCKET 1: Concrete & Filterable

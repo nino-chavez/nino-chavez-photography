@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { embedText } from '$lib/ai/embeddings';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
 import { PHOTO_COLUMNS } from '$lib/supabase/columns';
 
@@ -56,7 +57,7 @@ export function transformPhotoRow(row: any): Photo {
     thumbnail_url: thumbnailUrl,
     original_url: originalUrl,
     title: row.image_key,
-    caption: '',
+    caption: row.caption || '',
     keywords: [],
     created_at: row.photo_date || row.enriched_at || row.upload_date,
     metadata: {
@@ -173,8 +174,10 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
   // Apply sorting AFTER filters (work on smaller dataset)
   switch (sortBy) {
     case 'quality':
-      // Sort by emotional impact (best photos first), then by upload_date DESC for deterministic ordering
-      query = query.order('emotional_impact', { ascending: false }).order('upload_date', { ascending: false });
+      // "Best Photos": rank by the weighted quality blend (sharpness .35 / composition .30 /
+      // emotional .25 / exposure .10), stored as the generated `quality_score` column — not
+      // emotional_impact alone (which ignored sharpness/composition). upload_date breaks ties.
+      query = query.order('quality_score', { ascending: false, nullsFirst: false }).order('upload_date', { ascending: false });
       break;
     case 'newest':
       // Use upload_date, then image_key for deterministic ordering within same-date albums
@@ -814,7 +817,7 @@ export async function fetchPhotosByPeriod(options: {
           }
 
           const { data: photos } = await photoQuery
-            .order('emotional_impact', { ascending: false })
+            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
             .limit(6); // Top 6 photos per period
 
           return {
@@ -900,7 +903,7 @@ export async function fetchPhotosByPeriod(options: {
           }
 
           const { data: photos } = await photoQuery
-            .order('emotional_impact', { ascending: false })
+            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
             .limit(6); // Top 6 photos per period
 
           return {
@@ -1060,7 +1063,8 @@ export async function fetchPhotosByYearMonth(
     } else if (sortBy === 'oldest') {
       query = query.order('upload_date', { ascending: true });
     } else if (sortBy === 'quality') {
-      query = query.order('emotional_impact', { ascending: false }).order('upload_date', { ascending: false });
+      // Weighted quality blend via the generated quality_score column (see fetchPhotos).
+      query = query.order('quality_score', { ascending: false, nullsFirst: false }).order('upload_date', { ascending: false });
     }
 
     // Apply pagination when limit is provided
@@ -1254,26 +1258,24 @@ export interface SearchResult {
 }
 
 /**
- * Generate a vector embedding for a search query using Gemini embedding-001.
- * Returns null on any error (graceful degradation).
+ * Generate a vector embedding for a search query.
+ *
+ * Delegates to the shared `embedText` (OpenRouter `openai/text-embedding-3-large`
+ * @ 768 dims) so the QUERY path matches the WRITE path exactly. They MUST stay in
+ * lockstep — same model + dims — or query vectors land in a different space than the
+ * stored caption vectors and semantic search returns noise. (The previous code used
+ * Gemini `embedding-001` at query time vs `gemini-embedding-001` at write time AND
+ * relied on now-revoked Google keys; both are fixed by routing through `embedText`.)
+ *
+ * Returns null on any error (graceful degradation → structured search).
  */
 async function embedSearchQuery(query: string): Promise<number[] | null> {
-  const apiKey = import.meta.env.GOOGLE_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
+  const apiKey = import.meta.env.OPENROUTER_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
   if (!apiKey) {
-    console.warn('[embedSearchQuery] GOOGLE_API_KEY not configured — vector search unavailable');
+    console.warn('[embedSearchQuery] OPENROUTER_API_KEY not configured — vector search unavailable');
     return null;
   }
-
-  try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'embedding-001' });
-    const result = await model.embedContent(query);
-    return result.embedding.values;
-  } catch (error) {
-    console.error('[embedSearchQuery] Gemini API error:', error);
-    return null;
-  }
+  return embedText(query, apiKey);
 }
 
 /**

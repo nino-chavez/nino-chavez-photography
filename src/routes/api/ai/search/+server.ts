@@ -170,7 +170,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			return {
 				id: row.image_key,
 				url: `${BASE_URL}/photo/${row.image_key}`,
-				title: row.album_name || row.title || 'Untitled Photo',
+				title: row.album_name || 'Untitled Photo',
 				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
 				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
 				relevance_score: Math.round(relevanceScore * 100) / 100,

@@ -3,6 +3,7 @@ import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
+import { embedText } from '$lib/ai/embeddings';
 import type { RequestHandler } from './$types';
 import { checkRateLimit, getClientIdentifier } from './rate-limit';
 
@@ -152,8 +153,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			tools: {
 				searchPhotos: tool({
 					description:
-						'Search for photos based on criteria like sport, action, emotion, intensity, composition, lighting, time of day, or player jersey number.',
+						'Search photos. For descriptive / natural-language requests (a scene, a moment, a jersey color, "diving save near the sideline") pass `query` — it matches AI-generated captions via semantic embeddings. For exact attribute filters use the structured fields (sport, action, emotion, intensity, composition, lighting, time of day, jersey number). `query` takes precedence when provided.',
 					parameters: z.object({
+						query: z.string().optional().describe('Free-text natural-language description of the photo(s) to find — scene, action, jersey color, named moment — matched against AI-generated photo captions via semantic embeddings. Use this for anything the structured filters do not cover, e.g. "diving save near the sideline" or "player in a red jersey".'),
 						sport_type: z.string().optional().describe('The type of sport, e.g., volleyball, basketball.'),
 						play_type: z.string().optional().describe('The specific action, e.g., spike, block, serve, dig.'),
 						photo_category: z.string().optional().describe('The category of photo, e.g., action, portrait, celebration.'),
@@ -167,6 +169,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					}),
 					// @ts-ignore - Tool typing is complex, but runtime execution works correctly
 					execute: async ({
+						query,
 						sport_type,
 						play_type,
 						photo_category,
@@ -178,6 +181,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						time_of_day,
 						composition
 					}: {
+						query?: string;
 						sport_type?: string;
 						play_type?: string;
 						photo_category?: string;
@@ -191,24 +195,48 @@ export const POST: RequestHandler = async ({ request }) => {
 					}) => {
 						try {
 							const supabase = getSupabaseClient();
-							let query = supabase
+
+							// Semantic path: embed the natural-language query and match against caption
+							// embeddings via match_photos. Must use the SAME embedder as the write path
+							// (embedText → OpenRouter text-embedding-3-large @768).
+							if (query && query.trim()) {
+								const embedding = await embedText(query, env.OPENROUTER_API_KEY);
+								if (embedding) {
+									const { data, error } = await supabase.rpc('match_photos', {
+										query_embedding: embedding,
+										match_threshold: 0.2,
+										match_count: 12
+									});
+									if (!error && Array.isArray(data)) {
+										console.log(`Semantic caption search "${query}" → ${data.length} photos.`);
+										return { photos: data };
+									}
+									console.error('match_photos RPC error (falling back to structured filters):', error);
+								} else {
+									console.warn('Caption embedding unavailable (no OPENROUTER_API_KEY?) — falling back to structured filters.');
+								}
+							}
+
+							// Structured path: filterable enum fields, ranked by the weighted quality blend.
+							let dbQuery = supabase
 								.from('photo_metadata')
-								.select('image_key, thumbnail_url, sport_type, play_type, photo_category')
-								.order('emotional_impact', { ascending: false })
+								.select('image_key, cf_image_id, sport_type, play_type, photo_category, caption')
+								.not('sharpness', 'is', null)
+								.order('quality_score', { ascending: false, nullsFirst: false })
 								.limit(12);
 
-							if (sport_type) query = query.eq('sport_type', sport_type);
-							if (play_type) query = query.eq('play_type', play_type);
-							if (photo_category) query = query.eq('photo_category', photo_category);
-							if (action_intensity) query = query.eq('action_intensity', action_intensity);
-							if (emotion) query = query.eq('emotion', emotion);
-							if (jersey_number !== undefined) query = query.eq('jersey_number', jersey_number);
-							if (lighting) query = query.eq('lighting', lighting);
-							if (color_temperature) query = query.eq('color_temperature', color_temperature);
-							if (time_of_day) query = query.eq('time_of_day', time_of_day);
-							if (composition) query = query.eq('composition', composition);
+							if (sport_type) dbQuery = dbQuery.eq('sport_type', sport_type);
+							if (play_type) dbQuery = dbQuery.eq('play_type', play_type);
+							if (photo_category) dbQuery = dbQuery.eq('photo_category', photo_category);
+							if (action_intensity) dbQuery = dbQuery.eq('action_intensity', action_intensity);
+							if (emotion) dbQuery = dbQuery.eq('emotion', emotion);
+							if (jersey_number !== undefined) dbQuery = dbQuery.eq('jersey_number', jersey_number);
+							if (lighting) dbQuery = dbQuery.eq('lighting', lighting);
+							if (color_temperature) dbQuery = dbQuery.eq('color_temperature', color_temperature);
+							if (time_of_day) dbQuery = dbQuery.eq('time_of_day', time_of_day);
+							if (composition) dbQuery = dbQuery.eq('composition', composition);
 
-							const { data, error } = await query;
+							const { data, error } = await dbQuery;
 
 							if (error) {
 								console.error('Supabase query error:', error);

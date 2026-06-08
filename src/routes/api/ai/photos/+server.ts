@@ -96,7 +96,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				url: `${BASE_URL}/photo/${row.image_key}`,
 				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
 				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
-				title: row.album_name || row.title || 'Untitled Photo',
+				title: row.album_name || 'Untitled Photo',
 				description: generateDescription(row),
 				metadata: {
 					sport_type: row.sport_type,
@@ -145,7 +145,7 @@ function createPhotographSchema(row: PhotoMetadataRow) {
 			width: row.width || undefined,
 			height: row.height || undefined
 		},
-		name: row.album_name || row.title || 'Untitled Photo',
+		name: row.album_name || 'Untitled Photo',
 		description: generateDescription(row),
 		creator: {
 			'@type': 'Person',

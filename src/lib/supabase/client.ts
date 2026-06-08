@@ -128,7 +128,7 @@ export async function fetchPhotosByPeriod(options: {
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
             .not('sharpness', 'is', null)
-            .order('emotional_impact', { ascending: false })
+            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
             .limit(6); // Top 6 photos per period
 
           return {
@@ -228,7 +228,7 @@ export async function fetchPhotosByPeriod(options: {
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
             .not('sharpness', 'is', null)
-            .order('emotional_impact', { ascending: false })
+            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
             .limit(6); // Top 6 photos per period
 
           return {
