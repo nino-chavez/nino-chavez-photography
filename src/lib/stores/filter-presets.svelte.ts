@@ -2,7 +2,7 @@
  * Filter Presets Store
  *
  * Manages pre-configured filter combinations for quick access.
- * Examples: "Action Shots", "Golden Hour", "High Intensity"
+ * Examples: "Action Shots", "Volleyball Attacks"
  *
  * Features:
  * - Predefined presets for common use cases
@@ -14,22 +14,15 @@
  * Resolved in FilterPresetsPanel component.
  */
 
-import type { ComponentType } from 'svelte';
-
 export interface FilterPreset {
 	id: string;
 	name: string;
 	description: string;
-	iconName?: string; // Lucide icon name (e.g., 'Zap', 'Sunrise', 'Flame')
+	iconName?: string; // Lucide icon name (e.g., 'Zap', 'Award')
 	filters: {
 		sport?: string | null;
 		category?: string | null;
 		playType?: string | null;
-		intensity?: string | null;
-		lighting?: string[] | null;
-		colorTemp?: string | null;
-		timeOfDay?: string | null;
-		composition?: string | null;
 	};
 	isCustom?: boolean;
 	createdAt?: number;
@@ -40,43 +33,20 @@ export const PREDEFINED_PRESETS: FilterPreset[] = [
 	{
 		id: 'action-shots',
 		name: 'Action Shots',
-		description: 'High-intensity volleyball action',
+		description: 'Volleyball action photos',
 		iconName: 'Zap',
 		filters: {
 			sport: 'volleyball',
 			category: 'action',
-			intensity: 'peak',
 		},
 	},
 	{
-		id: 'golden-hour',
-		name: 'Golden Hour',
-		description: 'Warm, natural lighting photos',
-		iconName: 'Sunrise',
-		filters: {
-			timeOfDay: 'golden_hour',
-			colorTemp: 'warm',
-			lighting: ['natural'],
-		},
-	},
-	{
-		id: 'high-intensity',
-		name: 'High Intensity',
-		description: 'Peak action moments',
+		id: 'attacks',
+		name: 'Attacks',
+		description: 'Attack plays',
 		iconName: 'Flame',
 		filters: {
-			intensity: 'peak',
 			playType: 'attack',
-		},
-	},
-	{
-		id: 'dramatic-lighting',
-		name: 'Dramatic Lighting',
-		description: 'High-contrast, dramatic shots',
-		iconName: 'Lightbulb',
-		filters: {
-			lighting: ['dramatic', 'backlit'],
-			intensity: 'high',
 		},
 	},
 	{
@@ -86,16 +56,6 @@ export const PREDEFINED_PRESETS: FilterPreset[] = [
 		iconName: 'Award',
 		filters: {
 			category: 'celebration',
-			composition: 'centered',
-		},
-	},
-	{
-		id: 'rule-of-thirds',
-		name: 'Composed Shots',
-		description: 'Well-composed, rule of thirds',
-		iconName: 'Grid3x3',
-		filters: {
-			composition: 'rule_of_thirds',
 		},
 	},
 ];
@@ -191,12 +151,7 @@ class FilterPresetsStore {
 			return (
 				pf.sport === currentFilters.sport &&
 				pf.category === currentFilters.category &&
-				pf.playType === currentFilters.playType &&
-				pf.intensity === currentFilters.intensity &&
-				JSON.stringify(pf.lighting?.sort()) === JSON.stringify(currentFilters.lighting?.sort()) &&
-				pf.colorTemp === currentFilters.colorTemp &&
-				pf.timeOfDay === currentFilters.timeOfDay &&
-				pf.composition === currentFilters.composition
+				pf.playType === currentFilters.playType
 			);
 		}) || null;
 	}
@@ -212,13 +167,6 @@ class FilterPresetsStore {
 		if (filters.sport) params.set('sport', filters.sport);
 		if (filters.category) params.set('category', filters.category);
 		if (filters.playType) params.set('play_type', filters.playType);
-		if (filters.intensity) params.set('intensity', filters.intensity);
-		if (filters.lighting && filters.lighting.length > 0) {
-			filters.lighting.forEach(l => params.append('lighting', l));
-		}
-		if (filters.colorTemp) params.set('color_temp', filters.colorTemp);
-		if (filters.timeOfDay) params.set('time_of_day', filters.timeOfDay);
-		if (filters.composition) params.set('composition', filters.composition);
 
 		return `${baseUrl}?${params.toString()}`;
 	}

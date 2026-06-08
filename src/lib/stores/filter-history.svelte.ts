@@ -15,11 +15,6 @@ export interface FilterState {
 	sport?: string | null;
 	category?: string | null;
 	playType?: string | null;
-	intensity?: string | null;
-	lighting?: string[] | null;
-	colorTemp?: string | null;
-	timeOfDay?: string | null;
-	composition?: string | null;
 }
 
 export interface FilterHistoryEntry {
@@ -43,52 +38,6 @@ const LABELS = {
 			dig: 'Dig',
 			set: 'Set',
 			serve: 'Serve',
-		};
-		return map[v] || v;
-	},
-	intensity: (v: string) => {
-		const map: Record<string, string> = {
-			low: 'Low',
-			medium: 'Medium',
-			high: 'High',
-			peak: 'Peak',
-		};
-		return map[v] || v;
-	},
-	lighting: (v: string) => {
-		const map: Record<string, string> = {
-			natural: 'Natural',
-			backlit: 'Backlit',
-			dramatic: 'Dramatic',
-			soft: 'Soft',
-			artificial: 'Artificial',
-		};
-		return map[v] || v;
-	},
-	colorTemp: (v: string) => {
-		const map: Record<string, string> = {
-			warm: 'Warm',
-			neutral: 'Neutral',
-			cool: 'Cool',
-		};
-		return map[v] || v;
-	},
-	timeOfDay: (v: string) => {
-		const map: Record<string, string> = {
-			golden_hour: 'Golden Hour',
-			midday: 'Midday',
-			evening: 'Evening',
-			night: 'Night',
-		};
-		return map[v] || v;
-	},
-	composition: (v: string) => {
-		const map: Record<string, string> = {
-			rule_of_thirds: 'Rule of Thirds',
-			leading_lines: 'Leading Lines',
-			centered: 'Centered',
-			symmetry: 'Symmetry',
-			frame_within_frame: 'Framed',
 		};
 		return map[v] || v;
 	},
@@ -176,22 +125,6 @@ class FilterHistoryStore {
 		if (filters.playType) {
 			parts.push(LABELS.playType(filters.playType));
 		}
-		if (filters.intensity) {
-			parts.push(`${LABELS.intensity(filters.intensity)} Intensity`);
-		}
-		if (filters.lighting && filters.lighting.length > 0) {
-			const lightingStr = filters.lighting.map(l => LABELS.lighting(l)).join(' + ');
-			parts.push(`${lightingStr} Lighting`);
-		}
-		if (filters.colorTemp) {
-			parts.push(`${LABELS.colorTemp(filters.colorTemp)} Tones`);
-		}
-		if (filters.timeOfDay) {
-			parts.push(LABELS.timeOfDay(filters.timeOfDay));
-		}
-		if (filters.composition) {
-			parts.push(LABELS.composition(filters.composition));
-		}
 
 		return parts.length > 0 ? parts.join(' • ') : 'Mixed Filters';
 	}
@@ -201,12 +134,7 @@ class FilterHistoryStore {
 		return (
 			!filters.sport &&
 			!filters.category &&
-			!filters.playType &&
-			!filters.intensity &&
-			(!filters.lighting || filters.lighting.length === 0) &&
-			!filters.colorTemp &&
-			!filters.timeOfDay &&
-			!filters.composition
+			!filters.playType
 		);
 	}
 
@@ -215,12 +143,7 @@ class FilterHistoryStore {
 		return (
 			a.sport === b.sport &&
 			a.category === b.category &&
-			a.playType === b.playType &&
-			a.intensity === b.intensity &&
-			JSON.stringify(a.lighting?.sort()) === JSON.stringify(b.lighting?.sort()) &&
-			a.colorTemp === b.colorTemp &&
-			a.timeOfDay === b.timeOfDay &&
-			a.composition === b.composition
+			a.playType === b.playType
 		);
 	}
 

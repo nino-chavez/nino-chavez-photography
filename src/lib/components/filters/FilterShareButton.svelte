@@ -8,18 +8,13 @@
   - Generates shareable URL with current filters
   - Copies to clipboard with one click
   - Shows success/error toast notification
-  - Works with all filter types (single, multi-select)
+  - Works with all filter types
 
   Usage:
   <FilterShareButton
     sport={data.selectedSport}
     category={data.selectedCategory}
     playType={data.selectedPlayType}
-    intensity={data.selectedIntensity}
-    lighting={data.selectedLighting}
-    colorTemp={data.selectedColorTemp}
-    timeOfDay={data.selectedTimeOfDay}
-    composition={data.selectedComposition}
   />
 -->
 
@@ -30,11 +25,6 @@
 		sport?: string | null;
 		category?: string | null;
 		playType?: string | null;
-		intensity?: string | null;
-		lighting?: string[] | null;
-		colorTemp?: string | null;
-		timeOfDay?: string | null;
-		composition?: string | null;
 		baseUrl?: string;
 	}
 
@@ -42,11 +32,6 @@
 		sport = null,
 		category = null,
 		playType = null,
-		intensity = null,
-		lighting = null,
-		colorTemp = null,
-		timeOfDay = null,
-		composition = null,
 		baseUrl = '/explore'
 	}: Props = $props();
 
@@ -55,9 +40,7 @@
 
 	// Check if any filters are active
 	let hasActiveFilters = $derived(
-		!!(sport || category || playType || intensity ||
-		   (lighting && lighting.length > 0) || colorTemp ||
-		   timeOfDay || composition)
+		!!(sport || category || playType)
 	);
 
 	// Generate shareable URL
@@ -68,13 +51,6 @@
 		if (sport) params.set('sport', sport);
 		if (category) params.set('category', category);
 		if (playType) params.set('play_type', playType);
-		if (intensity) params.set('intensity', intensity);
-		if (lighting && lighting.length > 0) {
-			lighting.forEach(l => params.append('lighting', l));
-		}
-		if (colorTemp) params.set('color_temp', colorTemp);
-		if (timeOfDay) params.set('time_of_day', timeOfDay);
-		if (composition) params.set('composition', composition);
 
 		return url.toString();
 	}
@@ -115,12 +91,7 @@
 	let activeCount = $derived(
 		(sport ? 1 : 0) +
 		(category ? 1 : 0) +
-		(playType ? 1 : 0) +
-		(intensity ? 1 : 0) +
-		(lighting?.length || 0) +
-		(colorTemp ? 1 : 0) +
-		(timeOfDay ? 1 : 0) +
-		(composition ? 1 : 0)
+		(playType ? 1 : 0)
 	);
 </script>
 
