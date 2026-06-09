@@ -47,6 +47,50 @@ download/share** (NO sales, NO faces, NO per-person naming). Everything below is
 - **Sport is album-authoritative:** `albums.sport` + the `enforce_album_sport` trigger force `photo_metadata.sport_type`.
   Never guess sport per-photo. A new album needs an `albums` row before ingest or its photos get `sport_type=NULL`.
 
+## ⚠️ Methodology migration: `.agent-os/` is the OLD spec workflow — port to Blueprint (MIDSTREAM)
+This project still uses the deprecated agent-os spec-driven workflow. The current methodology is **Blueprint**
+(`~/Workspace/dev/tools/blueprint/`), not yet applied here. Grounded plan (read from the canonical source):
+
+**Variant = MIDSTREAM** (per `docs/variant-selection.md` decision tree): Q1 live-in-prod = yes; Q2 work scoped to
+active in-flight north-star development = **yes** (the vision-extraction rebuild + the IA + #10 ingest ARE
+north-star surfaces built/revised in-flight). This is the **Rally HQ pattern**, NOT brownfield (audit-first).
+Midstream stage sequence: Stage 0 Application-Legibility → Targeted Diagnose (scoped to the change's blast
+radius) → **Prescription** (`prescription.yml`) → Design Principles → **Prototype-as-Patch** → Fact-Check → Docs
+→ Deploy. **#10 ingest fits perfectly as the first midstream cycle** (prescription = `INGEST-REBUILD-10.md`,
+prototype-as-patch = building it).
+
+**On-ramp (canonical CLI — VALIDATED working command):**
+1. Scaffold (confirmed to work via the local CLI; creates a portal monorepo — `apps/portal/` Astro +
+   `packages/ui` design system + `blueprint.yml` + workspace root — into `photography/blueprint/` per the
+   rally-hq structure). The `--target` dir must EXIST first; `--tier` is NUMERIC (use 2):
+   ```bash
+   mkdir -p <photography-repo>/blueprint
+   node ~/Workspace/dev/tools/blueprint/bin/blueprint.mjs init \
+     --name=nino-chavez-photography --display-name="Nino Chavez Photography" \
+     --repo-url=https://github.com/nino-chavez/nino-chavez-photography \
+     --tagline="Volleyball action-sports photography portfolio" \
+     --variant=midstream --tier=2 --pattern=A --target=<photography-repo>/blueprint
+   ```
+   (NOTE: scaffolds a full portal monorepo — this is a multi-stage Blueprint INITIATIVE, not a one-shot.
+   Do it on a fresh branch off `main` in the photography repo, then run the midstream pipeline stages.)
+2. `blueprint.yml`: `execution.depth: standard`, the cost dial, and — REQUIRED Stage-0→1 gate — a `pilot_profile`
+   (the find-my-event parent/fan: `pain_point` = "I know Nino shot my kid's game — find that album and download/
+   share my photos"; `monetization_side` = operator/none-no-sales; `walkthrough_citation` = a REAL artifact, NOT
+   imagined — this session's operator clarifications or a real viewer observation; `competitors_in_scope` derived
+   from that pilot). The `pilot-profile-lock-reviewer` blocks Stage 1 until filled.
+3. Map agent-os → Blueprint: the rebuild decisions (`NORTH-STAR-REDESIGN`) → `decisions/` ADRs;
+   `.agent-os/audits/` → `research/current-state/`; `DEPRECATED.md` ledger → a decision/ADR; `INGEST-REBUILD-10.md`
+   → the midstream `prescription.yml` for the next patch. Retire `SPEC.md`/`TASKS.md` once mapped.
+4. Wire the SessionStart hook (reads the `methodology_version` pin) + the stamped template `CLAUDE.md`.
+5. Register photography in the methodology's `consumers.yml` (repo, pattern A, version pin, owner, synced_at).
+
+**Decisions to lock BEFORE `init` (operator):** (a) confirm variant = midstream; (b) Pattern A; (c) the
+`pilot_profile` + its real `walkthrough_citation` artifact; (d) **structural** — does `init` scaffold INTO the
+photography repo (adds `decisions/`/`research/`/`prototype/`/`blueprint.yml`) or a subdir/sibling? Check how an
+existing consumer (rally-hq, website-nc-v3) structured it before running init.
+
+Recommend doing the Blueprint port FIRST, then run #10 as the first midstream cycle under the new methodology.
+
 ## Remaining work + open decisions
 1. **#10 ingest rebuild** — THE remaining piece. Scoped in `INGEST-REBUILD-10.md`. Slice 1 (`extraction_version`
    provenance column) is done. Slices 2–4 (the sport-aware extraction module + `scripts/ingest-album.ts` that
