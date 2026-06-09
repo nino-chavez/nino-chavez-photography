@@ -761,11 +761,14 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   console.log(`[findSimilarPhotos] Finding photos similar to: ${imageKey}`);
   const start = Date.now();
 
-  // 1. Try vector similarity search first
+  // 1. Try vector similarity search first.
+  // Param names MUST match the RPC signature: find_similar_photos(target_image_key, limit_count,
+  // min_similarity). They were query_image_key/match_count/match_threshold, which don't bind — the
+  // RPC errored every call and the catch fell back to generic photos (the "only a few similar" bug).
   const { data: similarMatches, error } = await supabaseServer.rpc('find_similar_photos', {
-    query_image_key: imageKey,
-    match_count: limit,
-    match_threshold: 0.3
+    target_image_key: imageKey,
+    limit_count: limit,
+    min_similarity: 0.3
   });
 
   // If vector search succeeded and has results, use them
