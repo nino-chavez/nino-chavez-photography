@@ -13,7 +13,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { Photo, Video, PhotoFilterState } from '$types/photo';
-import type { SportDistributionRow, CategoryDistributionRow, AlbumSettingsRow } from '$types/database';
+import type { AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { embedText } from '$lib/ai/embeddings';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
@@ -95,6 +95,58 @@ export interface FetchPhotosOptions extends PhotoFilterState {
   limit?: number;
   offset?: number;
   sortBy?: 'quality' | 'newest' | 'oldest' | 'action';
+}
+
+/**
+ * Discover the distinct non-null values of a categorical column under the anon key.
+ *
+ * WHY this exists: the old GROUP BY queries went through exec_sql, which the security
+ * lockdown revoked from the anon role — under anon in prod they failed into fallbacks.
+ * A plain `.select(col)` to find distinct values silently caps at Supabase's 1000-row
+ * default, so high-cardinality columns lose values. This pages with `.range()` until the
+ * table is exhausted, so the distinct set is complete regardless of row count.
+ *
+ * Counts are computed separately via `{ count: 'exact', head: true }` head requests, which
+ * never return rows and therefore never truncate. The pair (full distinct set + exact head
+ * counts) reproduces a server-side GROUP BY exactly, anon-safe, with no exec_sql.
+ */
+async function distinctColumnValues(
+  column: string,
+  applyBaseFilters?: (q: any) => any
+): Promise<string[]> {
+  const seen = new Set<string>();
+  const pageSize = 1000;
+  let offset = 0;
+
+  // Page until a short page signals end-of-table — no silent 1000-row cap.
+  for (;;) {
+    let query = supabaseServer
+      .from(PHOTOS_READ)
+      .select(column)
+      .not('sharpness', 'is', null)
+      .not(column, 'is', null)
+      .order(column, { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    if (applyBaseFilters) query = applyBaseFilters(query);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error(`[distinctColumnValues] Error paging ${column}:`, error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+
+    for (const row of data as unknown as Array<Record<string, unknown>>) {
+      const value = row[column];
+      if (typeof value === 'string' && value.length > 0) seen.add(value);
+    }
+
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return Array.from(seen);
 }
 
 /**
@@ -244,86 +296,43 @@ export async function getPhotoCount(filters?: PhotoFilterState): Promise<number>
  * Uses SQL aggregation for efficiency (no row limit issues)
  */
 export async function getSportDistribution(): Promise<Array<{ name: string; count: number; percentage: number }>> {
+  // Anon-safe replacement for the old exec_sql GROUP BY (revoked from anon → was failing in prod).
+  // Discover every distinct sport via paged reads (no 1000-row truncation), then count each with an
+  // exact head request. Excludes 'unknown', matching the original WHERE sport_type != 'unknown'.
   try {
-    // Use raw SQL to do GROUP BY aggregation on database side
-    // This avoids fetching 20K rows and hitting Supabase row limits
-    const { data, error } = await supabaseServer.rpc('exec_sql', {
-      sql: `
-        SELECT
-          sport_type as name,
-          COUNT(*) as count,
-          ROUND((COUNT(*) * 100.0 / SUM(COUNT(*)) OVER ()), 1) as percentage
-        FROM photo_metadata
-        WHERE sharpness IS NOT NULL
-          AND sport_type IS NOT NULL
-          AND sport_type != 'unknown'
-        GROUP BY sport_type
-        ORDER BY count DESC
-      `
-    });
+    const sports = (await distinctColumnValues('sport_type')).filter((s) => s !== 'unknown');
 
-    if (error) {
-      throw error; // Trigger fallback
-    }
+    const counts = await Promise.all(
+      sports.map(async (sport) => {
+        const { count, error } = await supabaseServer
+          .from(PHOTOS_READ)
+          .select('photo_id', { count: 'exact', head: true })
+          .not('sharpness', 'is', null)
+          .eq('sport_type', sport);
 
-    // Process SQL results
-    return (data || []).map((row: SportDistributionRow) => ({
-      name: row.name,
-      count: parseInt(row.count.toString()),
-      percentage: parseFloat(row.percentage.toString())
-    }));
+        if (error) {
+          console.error(`[getSportDistribution] Error counting sport ${sport}:`, error.message);
+          return { name: sport, count: 0 };
+        }
+        return { name: sport, count: count || 0 };
+      })
+    );
+
+    const withCounts = counts.filter((s) => s.count > 0);
+    const total = withCounts.reduce((sum, s) => sum + s.count, 0);
+    if (total === 0) return [];
+
+    // Percentages over the included set — reproduces the original SUM(COUNT(*)) OVER () window.
+    return withCounts
+      .map((s) => ({
+        name: s.name,
+        count: s.count,
+        percentage: parseFloat(((s.count / total) * 100).toFixed(1))
+      }))
+      .sort((a, b) => b.count - a.count);
   } catch (error) {
-    // Fallback: If custom RPC doesn't exist, use Supabase's native aggregation
-    console.warn('[Supabase Server] exec_sql RPC not found, using native query method:', error);
-
-    try {
-      // Get total count first
-      const { count: totalCount, error: countError } = await supabaseServer
-        .from(PHOTOS_READ)
-        .select('*', { count: 'exact', head: true })
-        .not('sharpness', 'is', null)
-        .not('sport_type', 'is', null)
-        .neq('sport_type', 'unknown');
-
-      if (countError) {
-        console.error('[Supabase Server] Error fetching total count for sports:', countError);
-        return []; // Return empty array instead of throwing
-      }
-
-      const total = totalCount || 0;
-
-      // Unfortunately, Supabase JS doesn't support GROUP BY natively
-      // So we have to use a workaround: fetch unique sports, then count each
-      const sports = ['volleyball', 'portrait', 'basketball', 'softball', 'soccer', 'track', 'football', 'baseball'];
-
-      const results = await Promise.all(
-        sports.map(async (sport) => {
-          const { count, error: sportError } = await supabaseServer
-            .from(PHOTOS_READ)
-            .select('*', { count: 'exact', head: true })
-            .eq('sport_type', sport)
-            .not('sharpness', 'is', null);
-
-          if (sportError) {
-            console.error(`[Supabase Server] Error fetching count for sport ${sport}:`, sportError);
-            return { name: sport, count: 0, percentage: 0 };
-          }
-
-          return {
-            name: sport,
-            count: count || 0,
-            percentage: parseFloat(((count || 0) / total * 100).toFixed(1))
-          };
-        })
-      );
-
-      return results
-        .filter(s => s.count > 0)
-        .sort((a, b) => b.count - a.count);
-    } catch (fallbackError) {
-      console.error('[Supabase Server] Critical error in getSportDistribution fallback:', fallbackError);
-      return []; // Return empty array as last resort
-    }
+    console.error('[getSportDistribution] Critical error:', error);
+    return [];
   }
 }
 
@@ -353,169 +362,64 @@ export interface FilterCounts {
  * - No hardcoded filter values (uses actual data)
  */
 export async function getFilterCounts(currentFilters?: PhotoFilterState): Promise<FilterCounts> {
-  // SECURITY: Whitelist of allowed filter values to prevent SQL injection
-  const ALLOWED_VALUES = {
-    sport_type: ['volleyball', 'basketball', 'soccer', 'football', 'baseball', 'tennis', 'hockey', 'other'],
-    photo_category: ['action', 'portrait', 'celebration', 'team', 'warmup', 'candid', 'other'],
-    play_type: ['spike', 'block', 'serve', 'dig', 'set', 'pass', 'jump', 'dive', 'other'],
-  };
+  // Anon-safe facet counts. The old implementation used exec_sql (revoked from anon → failed in
+  // prod) and string-interpolated filter values into SQL (injection risk). This counts each facet
+  // value with typed `.eq()` / `.in()` queries — no exec_sql, no string interpolation into SQL.
+  //
+  // For each dimension we count its values while respecting the OTHER active filters (the dimension
+  // being counted is excluded from its own WHERE so users still see sibling options). Distinct
+  // values are discovered with paged reads (no 1000-row truncation); counts use exact head requests
+  // (which never return rows, so never truncate).
 
-  // Sanitize a single value against whitelist (returns null if invalid)
-  const sanitize = (value: string, field: keyof typeof ALLOWED_VALUES): string | null => {
-    const allowed = ALLOWED_VALUES[field];
-    // Only allow alphanumeric and underscore, max 50 chars
-    const cleaned = value.replace(/[^a-z0-9_]/gi, '').substring(0, 50).toLowerCase();
-    return allowed.includes(cleaned) ? cleaned : null;
-  };
-
-  // Sanitize array of values against whitelist
-  const sanitizeArray = (values: (string | null)[], field: keyof typeof ALLOWED_VALUES): string[] => {
-    return values
-      .filter((v): v is string => v !== null && typeof v === 'string')
-      .map(v => sanitize(v, field))
-      .filter((v): v is string => v !== null);
-  };
-
-  // Helper to build WHERE clause from current filters (excluding the dimension being counted)
-  const buildFilterConditions = (excludeField: string): string => {
-    const conditions: string[] = ['sharpness IS NOT NULL']; // Base condition
-
-    if (currentFilters?.sportType && excludeField !== 'sport_type') {
-      const safe = sanitize(currentFilters.sportType, 'sport_type');
-      if (safe) conditions.push(`sport_type = '${safe}'`);
+  // Apply the current filters to a query, skipping the dimension being counted.
+  const applyCrossFilters = (q: any, fieldName: string) => {
+    if (currentFilters?.sportType && fieldName !== 'sport_type') {
+      q = q.eq('sport_type', currentFilters.sportType);
     }
-    if (currentFilters?.photoCategory && excludeField !== 'photo_category') {
-      const safe = sanitize(currentFilters.photoCategory, 'photo_category');
-      if (safe) conditions.push(`photo_category = '${safe}'`);
+    if (currentFilters?.photoCategory && fieldName !== 'photo_category') {
+      q = q.eq('photo_category', currentFilters.photoCategory);
     }
-    if (currentFilters?.playTypes && currentFilters.playTypes.length > 0 && excludeField !== 'play_type') {
-      const safeList = sanitizeArray(currentFilters.playTypes, 'play_type');
-      if (safeList.length > 0) {
-        conditions.push(`play_type IN (${safeList.map(pt => `'${pt}'`).join(', ')})`);
-      }
+    if (currentFilters?.playTypes && currentFilters.playTypes.length > 0 && fieldName !== 'play_type') {
+      q = q.in('play_type', currentFilters.playTypes);
     }
-
-    return conditions.join(' AND ');
+    return q;
   };
 
-  // Dimensions to count, each with its own WHERE clause (excludes self)
-  const dimensions = [
-    'sport_type',
-    'photo_category',
-    'play_type'
-  ] as const;
+  const getAggregatedCounts = async (
+    fieldName: string
+  ): Promise<Array<{ name: string; count: number }>> => {
+    // Full distinct set for this dimension under the current cross-filters (paged, untruncated).
+    const uniqueValues = await distinctColumnValues(fieldName, (q) => applyCrossFilters(q, fieldName));
 
-  // Map dimension column names to FilterCounts keys
-  const dimensionToKey: Record<string, keyof FilterCounts> = {
-    sport_type: 'sports',
-    photo_category: 'categories',
-    play_type: 'playTypes'
+    const counts = await Promise.all(
+      uniqueValues.map(async (value) => {
+        let countQuery = supabaseServer
+          .from(PHOTOS_READ)
+          .select('photo_id', { count: 'exact', head: true })
+          .not('sharpness', 'is', null)
+          .eq(fieldName, value);
+
+        countQuery = applyCrossFilters(countQuery, fieldName);
+
+        const { count } = await countQuery;
+        return { name: value, count: count || 0 };
+      })
+    );
+
+    return counts.filter((c) => c.count > 0).sort((a, b) => b.count - a.count);
   };
 
-  try {
-    // Build a single UNION ALL query for all dimensions (1 round-trip)
-    const unionParts = dimensions.map(dim => {
-      const conditions = buildFilterConditions(dim);
-      return `SELECT '${dim}' as dimension, ${dim} as name, COUNT(*) as count
-      FROM photo_metadata
-      WHERE ${conditions} AND ${dim} IS NOT NULL
-      GROUP BY ${dim}`;
-    });
+  const [sportCounts, categoryCounts, playTypeCounts] = await Promise.all([
+    getAggregatedCounts('sport_type'),
+    getAggregatedCounts('photo_category'),
+    getAggregatedCounts('play_type'),
+  ]);
 
-    const sql = unionParts.join('\nUNION ALL\n') + '\nORDER BY dimension, count DESC';
-
-    const { data, error } = await supabaseServer.rpc('exec_sql', { sql });
-
-    if (error) throw error;
-
-    // Parse flat results back into the FilterCounts structure
-    const result: FilterCounts = {
-      sports: [], categories: [], playTypes: []
-    };
-
-    for (const row of (data || []) as Array<{ dimension: string; name: string; count: number | string }>) {
-      const key = dimensionToKey[row.dimension];
-      if (key) {
-        const count = typeof row.count === 'string' ? parseInt(row.count) : row.count;
-        if (count > 0) {
-          result[key].push({ name: row.name, count });
-        }
-      }
-    }
-
-    return result;
-  } catch (error) {
-    // Fallback: individual queries in parallel (if exec_sql RPC is missing)
-    console.warn('[getFilterCounts] Batched RPC failed, falling back to individual queries:', error);
-
-    const getAggregatedCounts = async (
-      fieldName: string
-    ): Promise<Array<{ name: string; count: number }>> => {
-      let query = supabaseServer
-        .from(PHOTOS_READ)
-        .select(fieldName)
-        .not('sharpness', 'is', null)
-        .not(fieldName, 'is', null);
-
-      if (currentFilters?.sportType && fieldName !== 'sport_type') {
-        query = query.eq('sport_type', currentFilters.sportType);
-      }
-      if (currentFilters?.photoCategory && fieldName !== 'photo_category') {
-        query = query.eq('photo_category', currentFilters.photoCategory);
-      }
-      if (currentFilters?.playTypes && currentFilters.playTypes.length > 0 && fieldName !== 'play_type') {
-        query = query.in('play_type', currentFilters.playTypes);
-      }
-
-      const { data: distinctData, error: distinctError } = await query;
-
-      if (distinctError) {
-        console.error(`[getFilterCounts] Error fetching distinct values for ${fieldName}:`, distinctError);
-        return [];
-      }
-
-      const uniqueValues = Array.from(new Set((distinctData || []).map((row: any) => row[fieldName]))).filter(Boolean);
-
-      const counts = await Promise.all(
-        uniqueValues.map(async (value) => {
-          let countQuery = supabaseServer
-            .from(PHOTOS_READ)
-            .select('photo_id', { count: 'exact', head: true })
-            .not('sharpness', 'is', null)
-            .eq(fieldName, value);
-
-          if (currentFilters?.sportType && fieldName !== 'sport_type') {
-            countQuery = countQuery.eq('sport_type', currentFilters.sportType);
-          }
-          if (currentFilters?.photoCategory && fieldName !== 'photo_category') {
-            countQuery = countQuery.eq('photo_category', currentFilters.photoCategory);
-          }
-          if (currentFilters?.playTypes && currentFilters.playTypes.length > 0 && fieldName !== 'play_type') {
-            countQuery = countQuery.in('play_type', currentFilters.playTypes);
-          }
-
-          const { count } = await countQuery;
-          return { name: value as string, count: count || 0 };
-        })
-      );
-
-      return counts.filter(c => c.count > 0).sort((a, b) => b.count - a.count);
-    };
-
-    const [
-      sportCounts, categoryCounts, playTypeCounts,
-    ] = await Promise.all([
-      getAggregatedCounts('sport_type'),
-      getAggregatedCounts('photo_category'),
-      getAggregatedCounts('play_type'),
-    ]);
-
-    return {
-      sports: sportCounts,
-      categories: categoryCounts,
-      playTypes: playTypeCounts,
-    };
-  }
+  return {
+    sports: sportCounts,
+    categories: categoryCounts,
+    playTypes: playTypeCounts,
+  };
 }
 
 /**
@@ -524,82 +428,44 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
  * Uses SQL aggregation for efficiency (no row limit issues)
  */
 export async function getCategoryDistribution(): Promise<Array<{ name: string; count: number; percentage: number }>> {
+  // Anon-safe replacement for the old exec_sql GROUP BY (revoked from anon → was failing in prod).
+  // Discover every distinct category via paged reads (no 1000-row truncation), then count each with
+  // an exact head request. Uses the live distinct set instead of a hardcoded list so dynamically
+  // present categories are not silently dropped — matching the original GROUP BY photo_category.
   try {
-    // Use raw SQL to do GROUP BY aggregation on database side
-    const { data, error } = await supabaseServer.rpc('exec_sql', {
-      sql: `
-        SELECT
-          photo_category as name,
-          COUNT(*) as count,
-          ROUND((COUNT(*) * 100.0 / SUM(COUNT(*)) OVER ()), 1) as percentage
-        FROM photo_metadata
-        WHERE sharpness IS NOT NULL
-          AND photo_category IS NOT NULL
-        GROUP BY photo_category
-        ORDER BY count DESC
-      `
-    });
+    const categories = await distinctColumnValues('photo_category');
 
-    if (error) {
-      throw error; // Trigger fallback
-    }
+    const counts = await Promise.all(
+      categories.map(async (category) => {
+        const { count, error } = await supabaseServer
+          .from(PHOTOS_READ)
+          .select('photo_id', { count: 'exact', head: true })
+          .not('sharpness', 'is', null)
+          .eq('photo_category', category);
 
-    // Process SQL results
-    return (data || []).map((row: CategoryDistributionRow) => ({
-      name: row.name,
-      count: parseInt(row.count.toString()),
-      percentage: parseFloat(row.percentage.toString())
-    }));
+        if (error) {
+          console.error(`[getCategoryDistribution] Error counting category ${category}:`, error.message);
+          return { name: category, count: 0 };
+        }
+        return { name: category, count: count || 0 };
+      })
+    );
+
+    const withCounts = counts.filter((c) => c.count > 0);
+    const total = withCounts.reduce((sum, c) => sum + c.count, 0);
+    if (total === 0) return [];
+
+    // Percentages over the included set — reproduces the original SUM(COUNT(*)) OVER () window.
+    return withCounts
+      .map((c) => ({
+        name: c.name,
+        count: c.count,
+        percentage: parseFloat(((c.count / total) * 100).toFixed(1))
+      }))
+      .sort((a, b) => b.count - a.count);
   } catch (error) {
-    // Fallback: Use individual COUNT queries for each category
-    console.warn('[Supabase Server] exec_sql RPC not found, using native query method for categories:', error);
-
-    try {
-      // Get total count first
-      const { count: totalCount, error: countError } = await supabaseServer
-        .from(PHOTOS_READ)
-        .select('*', { count: 'exact', head: true })
-        .not('sharpness', 'is', null)
-        .not('photo_category', 'is', null);
-
-      if (countError) {
-        console.error('[Supabase Server] Error fetching total count for categories:', countError);
-        return []; // Return empty array instead of throwing
-      }
-
-      const total = totalCount || 0;
-
-      // Known categories from migration SQL
-      const categories = ['action', 'celebration', 'candid', 'portrait', 'warmup', 'ceremony'];
-
-      const results = await Promise.all(
-        categories.map(async (category) => {
-          const { count, error: categoryError } = await supabaseServer
-            .from(PHOTOS_READ)
-            .select('*', { count: 'exact', head: true })
-            .eq('photo_category', category)
-            .not('sharpness', 'is', null);
-
-          if (categoryError) {
-            console.error(`[Supabase Server] Error fetching count for category ${category}:`, categoryError);
-            return { name: category, count: 0, percentage: 0 };
-          }
-
-          return {
-            name: category,
-            count: count || 0,
-            percentage: parseFloat(((count || 0) / total * 100).toFixed(1))
-          };
-        })
-      );
-
-      return results
-        .filter(c => c.count > 0)
-        .sort((a, b) => b.count - a.count);
-    } catch (fallbackError) {
-      console.error('[Supabase Server] Critical error in getCategoryDistribution fallback:', fallbackError);
-      return []; // Return empty array as last resort
-    }
+    console.error('[getCategoryDistribution] Critical error:', error);
+    return [];
   }
 }
 
@@ -613,171 +479,99 @@ export async function fetchPhotosByPeriod(options: {
   const { page = 1, limit = 12, includeFeatured = false, sportFilter, categoryFilter } = options;
   const offset = (page - 1) * limit;
 
-  try {
-    // Use raw SQL to get periods with photo counts (GROUP BY approach)
-    const { data: periods, error: periodsError } = await supabaseServer.rpc('exec_sql', {
-      sql: `
-        SELECT
-          EXTRACT(YEAR FROM upload_date) as year,
-          EXTRACT(MONTH FROM upload_date) as month,
-          COUNT(*) as photo_count
-        FROM photo_metadata
-        WHERE sharpness IS NOT NULL
-          AND upload_date IS NOT NULL
-          ${sportFilter ? `AND sport_type = '${sportFilter}'` : ''}
-          ${categoryFilter ? `AND photo_category = '${categoryFilter}'` : ''}
-        GROUP BY EXTRACT(YEAR FROM upload_date), EXTRACT(MONTH FROM upload_date)
-        ORDER BY year DESC, month DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `
-    });
+  // Anon-safe replacement for the old exec_sql GROUP BY (revoked from anon → was failing into a
+  // no-limit fallback that hit the 1000-row cap and dropped older months). Approach:
+  //   1. Get the universe of (year, month) periods from the anon-readable timeline_month_sports view
+  //      (already grouped by month, so small — no row-limit truncation).
+  //   2. Count each period exactly with a typed date-range head request (counts never return rows,
+  //      so never truncate) applying sport/category filters via .eq() — no SQL interpolation.
+  //   3. Sort newest-first, paginate, then fetch featured photos per page period.
+  // The head-count on upload_date reproduces the original `COUNT(*) ... GROUP BY EXTRACT(...)`
+  // semantics faithfully (the view's per-sport partition is a different derivation, so it's only
+  // used to enumerate which months exist, not for the displayed counts).
 
-    if (periodsError) {
-      throw periodsError; // This will trigger the fallback below
-    }
+  // Build the (year, month) universe from the view.
+  const { data: viewRows, error: viewError } = await supabaseServer
+    .from('timeline_month_sports')
+    .select('year, month');
 
-    // Process the periods data
-    const processedPeriods = (periods || []).map((row: any) => ({
-      year: parseInt(row.year.toString()),
-      month: parseInt(row.month.toString()),
-      monthName: new Date(parseInt(row.year.toString()), parseInt(row.month.toString()) - 1).toLocaleString('default', { month: 'long' }),
-      photoCount: parseInt(row.photo_count.toString())
-    }));
-
-    // If we need featured photos, fetch them for each period
-    if (includeFeatured && processedPeriods.length > 0) {
-      const periodsWithPhotos = await Promise.all(
-        processedPeriods.map(async (period: { year: number; month: number; monthName: string; photoCount: number }) => {
-          const startDate = new Date(period.year, period.month - 1, 1);
-          const endDate = new Date(period.year, period.month, 1);
-
-          let photoQuery = supabaseServer
-            .from(PHOTOS_READ)
-            .select(PHOTO_COLUMNS)
-            .gte('upload_date', startDate.toISOString())
-            .lt('upload_date', endDate.toISOString())
-            .not('sharpness', 'is', null);
-
-          // Apply filters
-          if (sportFilter) {
-            photoQuery = photoQuery.eq('sport_type', sportFilter);
-          }
-
-          if (categoryFilter) {
-            photoQuery = photoQuery.eq('photo_category', categoryFilter);
-          }
-
-          const { data: photos } = await photoQuery
-            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
-            .limit(6); // Top 6 photos per period
-
-          return {
-            ...period,
-            featuredPhotos: (photos || []).map(transformPhotoRow)
-          };
-        })
-      );
-
-      return periodsWithPhotos;
-    }
-
-    // Return just periods without photos
-    return processedPeriods;
-
-  } catch (error) {
-    console.error('[Supabase] Error with SQL approach, using manual fallback:', error);
-
-    // Manual fallback: fetch photos and group them in memory
-    let query = supabaseServer
-      .from(PHOTOS_READ)
-      .select('upload_date')
-      .not('sharpness', 'is', null)
-      .not('upload_date', 'is', null);
-
-    if (sportFilter) {
-      query = query.eq('sport_type', sportFilter);
-    }
-
-    if (categoryFilter) {
-      query = query.eq('photo_category', categoryFilter);
-    }
-
-    const { data: allPhotos, error: photosError } = await query
-      .order('upload_date', { ascending: false })
-      .limit(1000); // Get a reasonable sample
-
-    if (photosError) {
-      console.error('[Supabase] Fallback query also failed:', photosError);
-      throw photosError;
-    }
-
-    // Group by year/month manually
-    const periodMap = new Map<string, { year: number; month: number; count: number }>();
-    allPhotos?.forEach((photo: any) => {
-      const date = new Date(photo.upload_date);
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const key = `${year}-${month}`;
-
-      if (periodMap.has(key)) {
-        periodMap.get(key)!.count++;
-      } else {
-        periodMap.set(key, { year, month, count: 1 });
-      }
-    });
-
-    const periods = Array.from(periodMap.values())
-      .sort((a, b) => b.year - a.year || b.month - a.month)
-      .slice(offset, offset + limit);
-
-    // If we need featured photos, fetch them for each period
-    if (includeFeatured && periods.length > 0) {
-      const periodsWithPhotos = await Promise.all(
-        periods.map(async (period) => {
-          const startDate = new Date(period.year, period.month - 1, 1);
-          const endDate = new Date(period.year, period.month, 1);
-
-          let photoQuery = supabaseServer
-            .from(PHOTOS_READ)
-            .select(PHOTO_COLUMNS)
-            .gte('upload_date', startDate.toISOString())
-            .lt('upload_date', endDate.toISOString())
-            .not('sharpness', 'is', null);
-
-          // Apply filters
-          if (sportFilter) {
-            photoQuery = photoQuery.eq('sport_type', sportFilter);
-          }
-
-          if (categoryFilter) {
-            photoQuery = photoQuery.eq('photo_category', categoryFilter);
-          }
-
-          const { data: photos } = await photoQuery
-            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
-            .limit(6); // Top 6 photos per period
-
-          return {
-            year: period.year,
-            month: period.month,
-            monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
-            photoCount: period.count,
-            featuredPhotos: (photos || []).map(transformPhotoRow)
-          };
-        })
-      );
-
-      return periodsWithPhotos;
-    }
-
-    // Return just periods without photos
-    return periods.map(period => ({
-      year: period.year,
-      month: period.month,
-      monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
-      photoCount: period.count
-    }));
+  if (viewError) {
+    console.error('[fetchPhotosByPeriod] timeline_month_sports query failed:', viewError.message);
+    return [];
   }
+
+  const monthSet = new Map<string, { year: number; month: number }>();
+  for (const row of viewRows || []) {
+    const year = Number((row as any).year);
+    const month = Number((row as any).month);
+    if (!year || !month) continue;
+    monthSet.set(`${year}-${month}`, { year, month });
+  }
+
+  // Exact count per month with the active filters (date-range head request — untruncated).
+  const periodsWithCounts = await Promise.all(
+    Array.from(monthSet.values()).map(async ({ year, month }) => {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 1);
+
+      let countQuery = supabaseServer
+        .from(PHOTOS_READ)
+        .select('photo_id', { count: 'exact', head: true })
+        .gte('upload_date', startDate.toISOString())
+        .lt('upload_date', endDate.toISOString())
+        .not('sharpness', 'is', null);
+
+      if (sportFilter) countQuery = countQuery.eq('sport_type', sportFilter);
+      if (categoryFilter) countQuery = countQuery.eq('photo_category', categoryFilter);
+
+      const { count } = await countQuery;
+      return { year, month, photoCount: count || 0 };
+    })
+  );
+
+  // Drop empty months (the original GROUP BY only returns months that have matching photos),
+  // sort newest-first, and paginate.
+  const sortedPeriods = periodsWithCounts
+    .filter((p) => p.photoCount > 0)
+    .sort((a, b) => b.year - a.year || b.month - a.month)
+    .slice(offset, offset + limit)
+    .map((p) => ({
+      year: p.year,
+      month: p.month,
+      monthName: new Date(p.year, p.month - 1).toLocaleString('default', { month: 'long' }),
+      photoCount: p.photoCount
+    }));
+
+  if (!includeFeatured || sortedPeriods.length === 0) {
+    return sortedPeriods;
+  }
+
+  // Fetch the top featured photos for each page period.
+  return Promise.all(
+    sortedPeriods.map(async (period) => {
+      const startDate = new Date(period.year, period.month - 1, 1);
+      const endDate = new Date(period.year, period.month, 1);
+
+      let photoQuery = supabaseServer
+        .from(PHOTOS_READ)
+        .select(PHOTO_COLUMNS)
+        .gte('upload_date', startDate.toISOString())
+        .lt('upload_date', endDate.toISOString())
+        .not('sharpness', 'is', null);
+
+      if (sportFilter) photoQuery = photoQuery.eq('sport_type', sportFilter);
+      if (categoryFilter) photoQuery = photoQuery.eq('photo_category', categoryFilter);
+
+      const { data: photos } = await photoQuery
+        .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
+        .limit(6); // Top 6 photos per period
+
+      return {
+        ...period,
+        featuredPhotos: (photos || []).map(transformPhotoRow)
+      };
+    })
+  );
 }
 
 /**
