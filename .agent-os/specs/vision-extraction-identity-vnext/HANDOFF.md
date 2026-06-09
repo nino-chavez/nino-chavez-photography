@@ -47,6 +47,24 @@ download/share** (NO sales, NO faces, NO per-person naming). Everything below is
 - **Sport is album-authoritative:** `albums.sport` + the `enforce_album_sport` trigger force `photo_metadata.sport_type`.
   Never guess sport per-photo. A new album needs an `albums` row before ingest or its photos get `sport_type=NULL`.
 
+## ⚠️ Methodology migration: `.agent-os/` is the OLD spec workflow — port to Blueprint
+This project still uses the deprecated agent-os spec-driven workflow (`.agent-os/specs/`, `SPEC.md`,
+`TASKS.md`, `.agent-os/guides/`). The current methodology is **Blueprint** (`~/Workspace/dev/tools/blueprint/`),
+which has NOT been applied here yet. Port it as a **brownfield consumer** (photography is an existing shipped
+app, not a greenfield initiative):
+- **Canonical on-ramp (do NOT improvise the structure):** `npx @nino-chavez-labs/blueprint-cli init`, set
+  `variant: brownfield` in `blueprint.yml` (read `tools/blueprint/docs/variant-selection.md` FIRST — wrong
+  variant can't be un-retrofitted), choose Pattern A (platform) vs B (redesign-review), configure
+  `blueprint.yml` (project, audience, cost dial), wire the SessionStart hook (reads the `methodology_version` pin).
+- **Port the agent-os artifacts** → Blueprint's structure: `SPEC.md`/`NORTH-STAR-REDESIGN.md`/this rebuild's
+  decisions → `decisions/` (ADRs); audits/research → `research/`; `DEPRECATED.md` ledger + `INGEST-REBUILD-10.md`
+  carry over as decisions/specs. Then register photography in the methodology's `consumers.yml`.
+- **Open decision:** which initiative does the Blueprint portal document — the just-shipped vision-extraction
+  rebuild (as a brownfield case), or is Blueprint adopted purely as the ongoing project methodology/tooling
+  (reviewers, `doctor`, the pinned CLAUDE.md)? Confirm before `init`.
+- This is its own focused task. Decide whether it precedes or follows #10. Recommend doing the Blueprint port
+  FIRST (so #10 is run under the new methodology), but it's the operator's call.
+
 ## Remaining work + open decisions
 1. **#10 ingest rebuild** — THE remaining piece. Scoped in `INGEST-REBUILD-10.md`. Slice 1 (`extraction_version`
    provenance column) is done. Slices 2–4 (the sport-aware extraction module + `scripts/ingest-album.ts` that
