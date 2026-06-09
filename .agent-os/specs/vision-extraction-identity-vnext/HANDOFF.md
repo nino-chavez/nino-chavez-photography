@@ -47,23 +47,37 @@ download/share** (NO sales, NO faces, NO per-person naming). Everything below is
 - **Sport is album-authoritative:** `albums.sport` + the `enforce_album_sport` trigger force `photo_metadata.sport_type`.
   Never guess sport per-photo. A new album needs an `albums` row before ingest or its photos get `sport_type=NULL`.
 
-## ⚠️ Methodology migration: `.agent-os/` is the OLD spec workflow — port to Blueprint
-This project still uses the deprecated agent-os spec-driven workflow (`.agent-os/specs/`, `SPEC.md`,
-`TASKS.md`, `.agent-os/guides/`). The current methodology is **Blueprint** (`~/Workspace/dev/tools/blueprint/`),
-which has NOT been applied here yet. Port it as a **brownfield consumer** (photography is an existing shipped
-app, not a greenfield initiative):
-- **Canonical on-ramp (do NOT improvise the structure):** `npx @nino-chavez-labs/blueprint-cli init`, set
-  `variant: brownfield` in `blueprint.yml` (read `tools/blueprint/docs/variant-selection.md` FIRST — wrong
-  variant can't be un-retrofitted), choose Pattern A (platform) vs B (redesign-review), configure
-  `blueprint.yml` (project, audience, cost dial), wire the SessionStart hook (reads the `methodology_version` pin).
-- **Port the agent-os artifacts** → Blueprint's structure: `SPEC.md`/`NORTH-STAR-REDESIGN.md`/this rebuild's
-  decisions → `decisions/` (ADRs); audits/research → `research/`; `DEPRECATED.md` ledger + `INGEST-REBUILD-10.md`
-  carry over as decisions/specs. Then register photography in the methodology's `consumers.yml`.
-- **Open decision:** which initiative does the Blueprint portal document — the just-shipped vision-extraction
-  rebuild (as a brownfield case), or is Blueprint adopted purely as the ongoing project methodology/tooling
-  (reviewers, `doctor`, the pinned CLAUDE.md)? Confirm before `init`.
-- This is its own focused task. Decide whether it precedes or follows #10. Recommend doing the Blueprint port
-  FIRST (so #10 is run under the new methodology), but it's the operator's call.
+## ⚠️ Methodology migration: `.agent-os/` is the OLD spec workflow — port to Blueprint (MIDSTREAM)
+This project still uses the deprecated agent-os spec-driven workflow. The current methodology is **Blueprint**
+(`~/Workspace/dev/tools/blueprint/`), not yet applied here. Grounded plan (read from the canonical source):
+
+**Variant = MIDSTREAM** (per `docs/variant-selection.md` decision tree): Q1 live-in-prod = yes; Q2 work scoped to
+active in-flight north-star development = **yes** (the vision-extraction rebuild + the IA + #10 ingest ARE
+north-star surfaces built/revised in-flight). This is the **Rally HQ pattern**, NOT brownfield (audit-first).
+Midstream stage sequence: Stage 0 Application-Legibility → Targeted Diagnose (scoped to the change's blast
+radius) → **Prescription** (`prescription.yml`) → Design Principles → **Prototype-as-Patch** → Fact-Check → Docs
+→ Deploy. **#10 ingest fits perfectly as the first midstream cycle** (prescription = `INGEST-REBUILD-10.md`,
+prototype-as-patch = building it).
+
+**On-ramp (canonical CLI — do NOT improvise structure):**
+1. `npx @nino-chavez-labs/blueprint-cli init` (Pattern **A** = platform; it's a working app, not a redesign-review).
+2. `blueprint.yml`: `execution.depth: standard`, the cost dial, and — REQUIRED Stage-0→1 gate — a `pilot_profile`
+   (the find-my-event parent/fan: `pain_point` = "I know Nino shot my kid's game — find that album and download/
+   share my photos"; `monetization_side` = operator/none-no-sales; `walkthrough_citation` = a REAL artifact, NOT
+   imagined — this session's operator clarifications or a real viewer observation; `competitors_in_scope` derived
+   from that pilot). The `pilot-profile-lock-reviewer` blocks Stage 1 until filled.
+3. Map agent-os → Blueprint: the rebuild decisions (`NORTH-STAR-REDESIGN`) → `decisions/` ADRs;
+   `.agent-os/audits/` → `research/current-state/`; `DEPRECATED.md` ledger → a decision/ADR; `INGEST-REBUILD-10.md`
+   → the midstream `prescription.yml` for the next patch. Retire `SPEC.md`/`TASKS.md` once mapped.
+4. Wire the SessionStart hook (reads the `methodology_version` pin) + the stamped template `CLAUDE.md`.
+5. Register photography in the methodology's `consumers.yml` (repo, pattern A, version pin, owner, synced_at).
+
+**Decisions to lock BEFORE `init` (operator):** (a) confirm variant = midstream; (b) Pattern A; (c) the
+`pilot_profile` + its real `walkthrough_citation` artifact; (d) **structural** — does `init` scaffold INTO the
+photography repo (adds `decisions/`/`research/`/`prototype/`/`blueprint.yml`) or a subdir/sibling? Check how an
+existing consumer (rally-hq, website-nc-v3) structured it before running init.
+
+Recommend doing the Blueprint port FIRST, then run #10 as the first midstream cycle under the new methodology.
 
 ## Remaining work + open decisions
 1. **#10 ingest rebuild** — THE remaining piece. Scoped in `INGEST-REBUILD-10.md`. Slice 1 (`extraction_version`
