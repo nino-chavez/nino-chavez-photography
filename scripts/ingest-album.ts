@@ -67,6 +67,7 @@ const CONCURRENCY = Math.max(1, parseInt(flagValue('concurrency') || '4', 10));
 const LIMIT = parseInt(flagValue('limit') || '0', 10) || 0;
 const DRY = process.argv.includes('--dry-run');
 const OVERWRITE = process.argv.includes('--overwrite');
+const UNLISTED = process.argv.includes('--unlisted'); // hide on the live gallery until the operator publishes
 const MODEL = flagValue('model') || INGEST_MODEL;
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -81,7 +82,7 @@ function die(msg: string): never {
 }
 
 if (!DIR || !ALBUM_KEY) {
-	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--concurrency 4] [--limit N] [--dry-run] [--overwrite]\n' +
+	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--concurrency 4] [--limit N] [--unlisted] [--dry-run] [--overwrite]\n' +
 		'  --album-key defaults to the folder-name slug; --sport is detected from --album-name when omitted.');
 }
 if (!OPENROUTER_API_KEY) die('OPENROUTER_API_KEY required (1Password "OpenRouter photography")');
@@ -247,15 +248,17 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		photoDate = captureDateFrom(meta.exif as Buffer | undefined);
 	} catch { /* unreadable image metadata — continue, dims stay null */ }
 
-	// 2. Upload to Cloudflare Images (album-scoped id). 5409 = refuse to alias (Phase 0 invariant).
+	// 2. Upload to Cloudflare Images (album-scoped id `${albumKey}-${imageKey}`).
 	if (!DRY) {
 		const up = await uploadToCF(fileBuffer, cfId, job.file);
 		if (!up.success || !up.result) {
-			if (up.errors?.some((e) => e.code === 5409)) {
-				throw new Error(`CF id "${cfId}" already exists — refusing to auto-link (re-run after partial failure? ` +
-					`confirm it belongs to album ${ALBUM_KEY}, then clear it or use --overwrite once dedup is confirmed).`);
+			// 5409 = an image with this id already exists. Because the id encodes album_key + image_key,
+			// that can ONLY be THIS album's THIS image from a prior (partial) run — never a cross-album
+			// alias (the bug that the album-scoping fixed). So a re-run is idempotent: reuse the existing
+			// id. (The old bare-filename scheme treated 5409 as fatal because it couldn't tell those apart.)
+			if (!up.errors?.some((e) => e.code === 5409)) {
+				throw new Error(`CF upload failed: ${up.errors?.map((e) => e.message).join('; ') || 'unknown'}`);
 			}
-			throw new Error(`CF upload failed: ${up.errors?.map((e) => e.message).join('; ') || 'unknown'}`);
 		}
 	}
 
@@ -299,8 +302,10 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	const { error: upErr } = await sb.from('photo_metadata').upsert(row, { onConflict: 'photo_id' });
 	if (upErr) throw new Error(`photo_metadata upsert: ${upErr.message}`);
 
-	// 6. Sightings from players[] (NEVER the players column). Idempotent on dedup_key.
-	const sightings = shredCaptionPlayers(photoId, ALBUM_KEY!, ex.extraction.players, 'ingest');
+	// 6. Sightings from players[] (NEVER the players column). source='players_new' is the
+	// caption-shape vocabulary the photo_jersey_sightings_source_check constraint allows (same as
+	// the backfill); dedup_key stays consistent across both write paths. Idempotent on dedup_key.
+	const sightings = shredCaptionPlayers(photoId, ALBUM_KEY!, ex.extraction.players);
 	if (sightings.length) {
 		const { error: sErr } = await sb
 			.from('photo_jersey_sightings')
@@ -346,6 +351,16 @@ async function main() {
 
 	const album = await resolveAlbum();
 	console.log(`   Album sport (authoritative): ${album.sport ?? 'none (non-sport)'}\n`);
+
+	// Keep a freshly-ingested album OFF the live gallery until the operator reviews + publishes.
+	if (UNLISTED && !DRY) {
+		const { data: ex } = await sb.from('album_settings').select('album_key').eq('album_key', ALBUM_KEY!).maybeSingle();
+		const res = ex
+			? await sb.from('album_settings').update({ visibility: 'unlisted' }).eq('album_key', ALBUM_KEY!)
+			: await sb.from('album_settings').insert({ album_key: ALBUM_KEY, visibility: 'unlisted' });
+		if (res.error) console.warn(`   ⚠️  could not set unlisted (non-fatal): ${res.error.message}`);
+		else console.log(`   🙈 album_settings.visibility = unlisted (hidden until you publish)\n`);
+	}
 
 	const files = (await readdir(DIR!)).filter((f) => /\.(jpg|jpeg)$/i.test(f)).sort();
 	let jobs: ImageJob[] = files.map((f) => ({ file: f, path: join(DIR!, f), imageKey: f.replace(/\.(jpg|jpeg)$/i, '') }));

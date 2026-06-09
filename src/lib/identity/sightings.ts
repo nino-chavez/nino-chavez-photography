@@ -73,9 +73,9 @@ export interface CaptionPlayer {
 
 /**
  * Shred a photo's extracted `players[]` (new caption shape) into sightings. A player with no
- * usable jersey AND no usable color contributes no signal, so it's dropped. `source` defaults
- * to 'players_new' to match the backfill (identical dedup_keys → re-runs stay idempotent across
- * both paths); the ingest passes 'ingest' for clear provenance on freshly-processed albums.
+ * usable jersey AND no usable color contributes no signal, so it's dropped. `source` defaults to
+ * 'players_new' — the caption-shape value the `photo_jersey_sightings_source_check` constraint
+ * allows; both the ingest and the backfill use it, so dedup_keys stay consistent across paths.
  */
 export function shredCaptionPlayers(
 	photoId: string,
