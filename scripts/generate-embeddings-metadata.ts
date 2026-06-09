@@ -23,6 +23,7 @@ import { resolve } from 'path';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
+import { embedText } from '../src/lib/ai/embeddings';
 
 // =============================================================================
 // Configuration
@@ -30,7 +31,9 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const GEMINI_API_KEY = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+// Embeddings route through OpenRouter (text-embedding-3-large @768) — the project's
+// only live gateway. Direct Google embedding keys are revoked. See embeddings.ts.
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 const CONFIG = {
 	dryRun: process.argv.includes('--dry-run'),
@@ -45,105 +48,23 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 	process.exit(1);
 }
 
-if (!GEMINI_API_KEY) {
-	console.error('❌ Missing GOOGLE_API_KEY or GEMINI_API_KEY');
+if (!OPENROUTER_API_KEY) {
+	console.error('❌ Missing OPENROUTER_API_KEY (embeddings route through OpenRouter)');
 	process.exit(1);
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // =============================================================================
-// Metadata to Text Description
-// =============================================================================
-
-interface PhotoMetadata {
-	image_key: string;
-	sport_type?: string | null;
-	play_type?: string | null;
-	photo_category?: string | null;
-	emotion?: string | null;
-	action_intensity?: string | null;
-	composition?: string | null;
-	time_of_day?: string | null;
-	lighting?: string | null;
-	color_temperature?: string | null;
-}
-
-function createSemanticDescription(photo: PhotoMetadata): string {
-	const parts: string[] = [];
-
-	// Sport and action
-	if (photo.sport_type) {
-		parts.push(photo.sport_type);
-		if (photo.play_type) {
-			parts.push(photo.play_type);
-		}
-	}
-
-	// Category and intensity
-	if (photo.photo_category) {
-		parts.push(photo.photo_category);
-		if (photo.action_intensity && photo.photo_category === 'action') {
-			parts.push(`${photo.action_intensity} intensity`);
-		}
-	}
-
-	// Emotion
-	if (photo.emotion) {
-		parts.push(`${photo.emotion} emotion`);
-	}
-
-	// Visual characteristics
-	if (photo.composition) {
-		parts.push(`${photo.composition.replace(/_/g, ' ')} composition`);
-	}
-
-	if (photo.lighting) {
-		parts.push(`${photo.lighting} lighting`);
-	}
-
-	if (photo.color_temperature) {
-		parts.push(`${photo.color_temperature} color tone`);
-	}
-
-	if (photo.time_of_day) {
-		parts.push(`${photo.time_of_day.replace(/_/g, ' ')}`);
-	}
-
-	// Create semantic description
-	const description = parts.join(', ');
-
-	return description || 'sports photo';
-}
-
-// =============================================================================
 // Embedding Generation
+// Caption is the ONLY embedding source — the enum-string fallback (createSemanticDescription)
+// was removed in the north-star convergence; we embed AI captions, never enum tags.
 // =============================================================================
 
 async function generateEmbedding(description: string): Promise<number[] | null> {
-	try {
-		const response = await fetch(
-			`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
-			{
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					model: 'models/gemini-embedding-001',
-					content: { parts: [{ text: description }] },
-					outputDimensionality: 768
-				})
-			}
-		);
-		if (!response.ok) {
-			const err = await response.text();
-			throw new Error(`${response.status}: ${err}`);
-		}
-		const data = await response.json();
-		return data.embedding.values;
-	} catch (error: any) {
-		console.error(`   ⚠️  Failed to generate embedding:`, error.message);
-		return null;
-	}
+	// Delegates to the shared embedder (OpenRouter text-embedding-3-large @768) so the
+	// write path matches the query path exactly. See src/lib/ai/embeddings.ts.
+	return embedText(description, OPENROUTER_API_KEY);
 }
 
 // =============================================================================
@@ -156,7 +77,10 @@ async function processPhotos() {
 	// Fetch photos with metadata
 	let query = supabase
 		.from('photo_metadata')
-		.select('image_key, sport_type, play_type, photo_category, emotion, action_intensity, composition, time_of_day, lighting, color_temperature');
+		.select('image_key, caption')
+		// Phase 1: embed the AI caption. Only photos that have one are eligible; the
+		// enum-string fallback is kept only for rows captured before captions existed.
+		.not('caption', 'is', null);
 
 	if (!CONFIG.overwrite) {
 		query = query.is('embedding', null);
@@ -185,7 +109,7 @@ async function processPhotos() {
 	if (CONFIG.dryRun) {
 		console.log('🏃 Dry run mode - showing sample descriptions:\n');
 		photos.slice(0, 5).forEach(photo => {
-			const description = createSemanticDescription(photo);
+			const description = (photo.caption ?? '').trim();
 			console.log(`   ${photo.image_key}: "${description}"`);
 		});
 		console.log('\nNo changes will be saved in dry-run mode.\n');
@@ -211,7 +135,7 @@ async function processPhotos() {
 				processed++;
 
 				// Create semantic description from metadata
-				const description = createSemanticDescription(photo);
+				const description = (photo.caption ?? '').trim();
 
 				console.log(`   🔄 ${photo.image_key} - "${description.slice(0, 50)}..."`);
 

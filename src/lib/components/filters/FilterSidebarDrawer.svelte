@@ -48,19 +48,9 @@
 		selectedSport?: string | null;
 		selectedCategory?: string | null;
 		selectedPlayType?: string | null;
-		selectedIntensity?: string | null;
-		selectedLighting?: string[] | null;
-		selectedColorTemp?: string | null;
-		selectedTimeOfDay?: string | null;
-		selectedComposition?: string | null;
 		onSportSelect?: (sport: string | null) => void;
 		onCategorySelect?: (category: string | null) => void;
 		onPlayTypeSelect?: (playType: string | null) => void;
-		onIntensitySelect?: (intensity: string | null) => void;
-		onLightingSelect?: (lighting: string[] | null) => void;
-		onColorTempSelect?: (temp: string | null) => void;
-		onTimeOfDaySelect?: (time: string | null) => void;
-		onCompositionSelect?: (composition: string | null) => void;
 		onClearAll?: () => void;
 		onClose?: () => void;
 		filterCounts?: FilterCounts;
@@ -73,19 +63,9 @@
 		selectedSport = null,
 		selectedCategory = null,
 		selectedPlayType = null,
-		selectedIntensity = null,
-		selectedLighting = null,
-		selectedColorTemp = null,
-		selectedTimeOfDay = null,
-		selectedComposition = null,
 		onSportSelect,
 		onCategorySelect,
 		onPlayTypeSelect,
-		onIntensitySelect,
-		onLightingSelect,
-		onColorTempSelect,
-		onTimeOfDaySelect,
-		onCompositionSelect,
 		onClearAll,
 		onClose,
 		filterCounts
@@ -162,19 +142,9 @@
 					{selectedSport}
 					{selectedCategory}
 					{selectedPlayType}
-					{selectedIntensity}
-					{selectedLighting}
-					{selectedColorTemp}
-					{selectedTimeOfDay}
-					{selectedComposition}
 					{onSportSelect}
 					{onCategorySelect}
 					{onPlayTypeSelect}
-					{onIntensitySelect}
-					{onLightingSelect}
-					{onColorTempSelect}
-					{onTimeOfDaySelect}
-					{onCompositionSelect}
 					{onClearAll}
 					{filterCounts}
 				/>

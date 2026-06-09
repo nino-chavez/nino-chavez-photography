@@ -1,0 +1,112 @@
+/**
+ * CANONICAL TAXONOMY — the single source of truth for every controlled vocabulary in the
+ * extraction pipeline. The Postgres enums/CHECKs, the AI structured-output JSON schema, and
+ * the prompt enum lists are ALL generated from this file (scripts/taxonomy-gen.ts), and
+ * scripts/taxonomy-check.ts fails CI if any generated artifact drifts from these arrays.
+ *
+ * WHY this exists (north-star slice 0): the prior system hand-maintained enum lists in three
+ * places that drifted — the vision prompt listed 9 sports while the data accumulated 13
+ * (golf/baseball/bowling/pickleball escaped the vocabulary entirely), and the photo_category
+ * value 'portrait' bled into sport_type. One source + a drift test makes that whole class of
+ * bug impossible. Add a sport/play here and every consumer updates from one edit.
+ *
+ * NOTE: `sport` is NULLABLE in the data model (NULL = non-sport shoot: portrait/graduation/
+ * family/event). 'other' is for an unrecognized SPORT, not for non-sport. Do not conflate.
+ */
+
+export const SPORTS = [
+	'volleyball', 'basketball', 'soccer', 'softball', 'baseball', 'football',
+	'track', 'cross_country', 'golf', 'tennis', 'bowling', 'pickleball', 'other',
+] as const;
+export type Sport = (typeof SPORTS)[number];
+
+export const PHOTO_CATEGORIES = ['action', 'celebration', 'candid', 'portrait', 'warmup', 'ceremony'] as const;
+export type PhotoCategory = (typeof PHOTO_CATEGORIES)[number];
+
+export const ACTION_INTENSITIES = ['low', 'medium', 'high', 'peak'] as const;
+export type ActionIntensity = (typeof ACTION_INTENSITIES)[number];
+
+export const EMOTIONS = ['triumph', 'determination', 'intensity', 'focus', 'excitement', 'serenity'] as const;
+export type Emotion = (typeof EMOTIONS)[number];
+
+export const COMPOSITIONS = ['rule_of_thirds', 'leading_lines', 'centered', 'symmetry', 'frame_within_frame'] as const;
+export type Composition = (typeof COMPOSITIONS)[number];
+
+export const TIMES_OF_DAY = ['golden_hour', 'midday', 'evening', 'blue_hour', 'night', 'dawn'] as const;
+export type TimeOfDay = (typeof TIMES_OF_DAY)[number];
+
+export const LIGHTINGS = ['natural', 'backlit', 'dramatic', 'soft', 'artificial'] as const;
+export type Lighting = (typeof LIGHTINGS)[number];
+
+export const COLOR_TEMPERATURES = ['warm', 'cool', 'neutral'] as const;
+export type ColorTemperature = (typeof COLOR_TEMPERATURES)[number];
+
+export const TIMES_IN_GAME = ['first_5_min', 'middle', 'final_5_min', 'overtime', 'unknown'] as const;
+export type TimeInGame = (typeof TIMES_IN_GAME)[number];
+
+/**
+ * Per-sport play vocabulary. The flattened union (ALL_PLAY_TYPES) is the play_type enum;
+ * the map additionally validates that a given play belongs to the photo's sport.
+ */
+export const PLAY_TYPES_BY_SPORT = {
+	volleyball: ['spike', 'block', 'dig', 'set', 'serve', 'pass'],
+	basketball: ['dunk', 'layup', 'jump_shot', 'rebound', 'block', 'pass', 'dribble'],
+	soccer: ['kick', 'header', 'tackle', 'save', 'dribble', 'pass'],
+	softball: ['pitch', 'hit', 'catch', 'throw', 'slide', 'run'],
+	baseball: ['pitch', 'hit', 'catch', 'throw', 'slide', 'run'],
+	football: ['throw', 'catch', 'run', 'tackle', 'block', 'kick'],
+	track: ['sprint', 'hurdle', 'relay', 'long_jump', 'high_jump', 'pole_vault', 'shot_put', 'discus', 'javelin'],
+	cross_country: ['running', 'start', 'finish', 'pack_running', 'hill_climb'],
+	golf: ['swing', 'putt', 'chip', 'drive'],
+	tennis: ['serve', 'forehand', 'backhand', 'volley', 'smash'],
+	bowling: ['delivery', 'release', 'approach'],
+	pickleball: ['serve', 'dink', 'volley', 'smash', 'drive'],
+	other: [],
+} as const satisfies Record<Sport, readonly string[]>;
+
+export const ALL_PLAY_TYPES = [...new Set(Object.values(PLAY_TYPES_BY_SPORT).flat())].sort();
+
+// --- guards / helpers -------------------------------------------------------
+export const isSport = (x: unknown): x is Sport => typeof x === 'string' && (SPORTS as readonly string[]).includes(x);
+export const playTypesForSport = (sport: Sport): readonly string[] => PLAY_TYPES_BY_SPORT[sport];
+export const isPlayForSport = (sport: Sport, play: string): boolean => playTypesForSport(sport).includes(play);
+
+/**
+ * The named enums, keyed by their canonical DB type name. The single registry that codegen
+ * and the drift check both iterate — add an enum here and the SQL + JSON schema follow.
+ */
+export const ENUMS: Record<string, readonly string[]> = {
+	sport: SPORTS,
+	photo_category: PHOTO_CATEGORIES,
+	action_intensity: ACTION_INTENSITIES,
+	emotion: EMOTIONS,
+	composition: COMPOSITIONS,
+	time_of_day: TIMES_OF_DAY,
+	lighting: LIGHTINGS,
+	color_temperature: COLOR_TEMPERATURES,
+	time_in_game: TIMES_IN_GAME,
+	play_type: ALL_PLAY_TYPES,
+};
+
+// --- renderers (pure; codegen writes them, the drift check re-renders + diffs) ----------
+
+/** Postgres enum DDL for every taxonomy enum (idempotent CREATE ... pattern). */
+export function renderSql(): string {
+	const header = '-- GENERATED by scripts/taxonomy-gen.ts from src/lib/ai/taxonomy.ts — DO NOT EDIT.\n'
+		+ '-- Run `npx tsx scripts/taxonomy-gen.ts` to regenerate; CI runs taxonomy-check.ts.\n\n';
+	const blocks = Object.entries(ENUMS).map(([name, vals]) => {
+		const lits = vals.map((v) => `'${v}'`).join(', ');
+		return `DO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '${name}_enum') THEN\n    CREATE TYPE ${name}_enum AS ENUM (${lits});\n  END IF;\nEND $$;`;
+	});
+	return header + blocks.join('\n\n') + '\n';
+}
+
+/** JSON-schema $defs (one enum per taxonomy field) for the extraction structured output. */
+export function renderJsonSchema(): string {
+	const defs: Record<string, { type: string; enum: readonly string[] }> = {};
+	for (const [name, vals] of Object.entries(ENUMS)) defs[name] = { type: 'string', enum: vals };
+	return JSON.stringify({
+		$comment: 'GENERATED by scripts/taxonomy-gen.ts from src/lib/ai/taxonomy.ts — DO NOT EDIT.',
+		$defs: defs,
+	}, null, 2) + '\n';
+}

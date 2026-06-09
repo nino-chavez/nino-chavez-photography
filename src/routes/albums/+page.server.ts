@@ -1,4 +1,5 @@
 import { supabaseServer } from '$lib/supabase/server';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
@@ -19,7 +20,7 @@ async function autoRefreshViewIfStale(): Promise<void> {
 
 		// Get the latest upload date from the base table
 		const { data: tableData } = await supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('upload_date')
 			.not('album_key', 'is', null)
 			.not('sharpness', 'is', null)
@@ -62,10 +63,14 @@ type SortOption = 'name' | 'date' | 'count';
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
 
-	// Browse Mode: Simple album listing without filters (IA Mode 1 - Traditionalist)
-	// Get pagination and sorting params
+	// Event-discovery mode: the dominant job is "find the album for the event I know Nino shot."
+	// Discover by free-text (album name = team/event), sport, and season/year — server-side across
+	// ALL albums (the old client name-substring only searched the loaded page).
 	const page = parseInt(url.searchParams.get('page') || '1');
 	const sortBy = (url.searchParams.get('sort') || 'date') as SortOption;
+	const q = url.searchParams.get('q')?.trim() || '';
+	const sport = url.searchParams.get('sport')?.trim() || '';
+	const year = url.searchParams.get('year')?.trim() || '';
 	const limit = 24;
 	const offset = (page - 1) * limit;
 
@@ -76,6 +81,13 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	let query = supabaseServer
 		.from('albums_summary')
 		.select('*', { count: 'exact' });
+
+	// Discovery filters (server-side, across all albums)
+	if (q) query = query.ilike('album_name', `%${q}%`);
+	if (sport) query = query.eq('primary_sport', sport);
+	if (year && /^\d{4}$/.test(year)) {
+		query = query.gte('latest_photo_date', `${year}-01-01`).lte('latest_photo_date', `${year}-12-31`);
+	}
 
 	// Apply sorting
 	switch (sortBy) {
@@ -96,7 +108,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	// Apply pagination
 	query = query.range(offset, offset + limit - 1);
 
-	const [{ data: albumsData, error, count }, { data: unlistedAlbums }, { data: videoAlbumsData }] = await Promise.all([
+	const [{ data: albumsData, error, count }, { data: unlistedAlbums }, { data: videoAlbumsData }, { data: facetRows }] = await Promise.all([
 		query,
 		supabaseServer
 			.from('album_settings')
@@ -104,8 +116,20 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 			.eq('visibility', 'unlisted'),
 		supabaseServer
 			.from('videos_summary')
-			.select('*')
+			.select('*'),
+		// Facet options for the discovery filters (whole table — ~260 rows, cheap)
+		supabaseServer
+			.from('albums_summary')
+			.select('primary_sport, latest_photo_date')
 	]);
+
+	// Build discovery facet options (sports present, years present)
+	const availableSports = [...new Set((facetRows || [])
+		.map((r: any) => r.primary_sport)
+		.filter((s: string | null): s is string => !!s && s !== 'unknown'))].sort();
+	const availableYears = [...new Set((facetRows || [])
+		.map((r: any) => (r.latest_photo_date ? String(r.latest_photo_date).slice(0, 4) : null))
+		.filter((y: string | null): y is string => !!y))].sort().reverse();
 
 	if (error) {
 		console.error('[Albums] Error fetching from albums_summary view:', error);
@@ -136,9 +160,12 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		}
 	}));
 
-	// Merge video-only albums from videos_summary
+	// Merge video-only albums from videos_summary (respect the active discovery filters)
 	const videoOnlyAlbums = (videoAlbumsData || [])
 		.filter((v) => !photoAlbumKeys.has(v.album_key) && !unlistedKeys.has(v.album_key))
+		.filter((v) => !q || (v.album_name || '').toLowerCase().includes(q.toLowerCase()))
+		.filter(() => !sport || sport === 'volleyball') // video albums are volleyball-tagged
+		.filter((v) => !year || String(v.latest_video_date || '').slice(0, 4) === year)
 		.map((v) => ({
 			albumKey: v.album_key,
 			albumName: v.album_name || 'Unknown Album',
@@ -169,7 +196,13 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		totalPhotos: albums.reduce((sum, album) => sum + album.photoCount, 0),
 		currentPage: page,
 		totalPages,
-		sortBy
+		sortBy,
+		// Event-discovery state
+		query: q,
+		selectedSport: sport,
+		selectedYear: year,
+		availableSports,
+		availableYears
 	};
 };
 
@@ -177,7 +210,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number, offset: number) {
 	// Get unique albums with photo counts from Supabase
 	const { data: albumData, error } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('album_key, album_name, cf_image_id, sport_type, photo_category, sharpness')
 		.not('album_key', 'is', null)
 		.not('sharpness', 'is', null) // Only enriched photos
@@ -271,6 +304,11 @@ async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number,
 		totalPhotos: albumData?.length || 0,
 		currentPage: page,
 		totalPages,
-		sortBy
+		sortBy,
+		query: '',
+		selectedSport: '',
+		selectedYear: '',
+		availableSports: [] as string[],
+		availableYears: [] as string[]
 	};
 }

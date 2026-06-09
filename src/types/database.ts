@@ -9,73 +9,105 @@
  * Photo metadata row from photo_metadata table
  * Represents the complete database schema for photo records
  */
+/**
+ * Per-player extraction stored in `photo_metadata.players` (JSONB).
+ * Phase 1 (caption pipeline) shape: { jersey_number, team_color, action }.
+ * Legacy agentic rows used: { jersey_number, team, current_action, position_in_frame }.
+ * Both shapes are accepted on read.
+ */
+export interface PhotoPlayerJson {
+	jersey_number?: number | null;
+	team_color?: string | null;
+	action?: string | null;
+	// legacy agentic keys (pre-Phase-1)
+	team?: string | null;
+	current_action?: string | null;
+	position_in_frame?: string | null;
+}
+
+/** Team color identification stored in `photo_metadata.team_colors` (JSONB). */
+export interface PhotoTeamColorsJson {
+	home_colors?: string[];
+	away_colors?: string[];
+	home_name?: string | null;
+	away_name?: string | null;
+}
+
 export interface PhotoMetadataRow {
-	// Primary identifiers
+	// Identifiers
 	photo_id: string;
 	image_key: string;
 
-	// Image URLs
-	ImageUrl: string;
-	ThumbnailUrl: string | null;
-	OriginalUrl: string | null;
-
-	// Cloudflare Images
+	// Image URLs (Cloudflare + legacy SmugMug-era columns)
 	cf_image_id: string | null;
+	ImageUrl: string | null;
+	OriginalUrl: string | null;
+	ThumbnailUrl: string | null;
+	ArchivedUrl: string | null;
 
-	// Photo metadata
-	title: string | null;
-	description: string | null;
+	// Core classification (Bucket 1)
+	// NOTE: the vanity CATEGORICAL aesthetic columns (composition, time_of_day, lighting,
+	// color_temperature, emotion, action_intensity) were removed (cutover prep) — they are
+	// being DROPPED at the schema cutover. The numeric quality sub-scores below STAY.
 	sport_type: string;
 	photo_category: string;
+	action_type: string | null;
 	play_type: string | null;
-	composition: string | null;
-	time_of_day: string | null;
-	lighting: string | null;
-	color_temperature: string | null;
-	use_cases: string[] | null;
 
-	// Technical scores
-	sharpness: number | null;
-	exposure_accuracy: number | null;
-	composition_score: number | null;
-	color_quality: number | null;
-	emotional_impact: number | null;
-	technical_execution: number | null;
-
-	// Classification
-	emotion: string | null;
-	action_intensity: string | null;
-
-	// Game/Event context
-	time_in_game: string | null;
-	athlete_id: string | null;
+	// People / identity
 	jersey_number: number | null;
+	athlete_id: string | null;
+	players: PhotoPlayerJson[] | null;
+	team_colors: PhotoTeamColorsJson | null;
+	player_count: number | null;
+
+	// Caption + semantic search (Phase 1 — vision-extraction v-next)
+	caption: string | null;
+	// 768-dim vector. Phase 1: caption-derived (OpenRouter text-embedding-3-large).
+	// Pre-Phase-1 rows hold enum-string-derived vectors until backfilled.
+	embedding: number[] | null;
+
+	// Quality scores (Bucket 2)
+	sharpness: number | null;
+	composition_score: number | null;
+	exposure_accuracy: number | null;
+	emotional_impact: number | null;
+	// Generated column: weighted blend (sharpness .35 / composition .30 / emotional .25 / exposure .10).
+	quality_score: number | null;
+
+	// Game context
+	time_in_game: string | null;
 	event_id: string | null;
+
+	// Camera / EXIF
+	file_name: string | null;
+	width: number | null;
+	height: number | null;
+	aspect_ratio: number | null; // numeric in DB
+	camera_make: string | null;
+	camera_model: string | null;
+	lens_model: string | null;
+	focal_length: string | null;
+	aperture: string | null;
+	shutter_speed: string | null;
+	iso: number | null;
+	latitude: number | null;
+	longitude: number | null;
+	location_name: string | null;
+
+	// Album associations
+	album_key: string | null;
+	album_name: string | null;
 
 	// AI metadata
 	ai_provider: string | null;
 	ai_cost: number | null;
-	ai_confidence: number | null;
-
-	// Image dimensions
-	width: number | null;
-	height: number | null;
-	aspect_ratio: string | null; // Stored as DECIMAL string, cast to number in queries
-
-	// Album/Collection associations
-	album_key: string | null;
-	album_name: string | null;
-	collection_slug: string | null;
-
-	// Vector embedding for similarity search (Initiative 3.2)
-	embedding: number[] | null;
 
 	// Timestamps
-	upload_date: string;
-	photo_date: string | null;
 	enriched_at: string | null;
-	created_at: string;
-	updated_at: string;
+	photo_date: string | null;
+	upload_date: string;
+	date_added: string | null;
 }
 
 /**
@@ -155,7 +187,6 @@ export interface RelatedPhotoRow {
 	cf_image_id: string | null;
 	sport_type: string;
 	photo_category: string;
-	emotion: string | null;
 }
 
 /**

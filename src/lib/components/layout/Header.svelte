@@ -28,8 +28,9 @@
 		badge?: () => number; // Optional badge count function
 	}
 
+	// IA: Albums (event discovery) is the primary job and leads the nav. Search is the GlobalSearch
+	// box (right side), which is the entry to /explore results — so "Explore" is no longer a nav item.
 	const navItems: NavItem[] = [
-		{ label: 'Explore', path: `${base}/explore`, icon: Camera },
 		{ label: 'Albums', path: `${base}/albums`, icon: Folder },
 		{ label: 'Timeline', path: `${base}/timeline`, icon: Calendar },
 		{ label: 'Collections', path: `${base}/collections`, icon: Grid },

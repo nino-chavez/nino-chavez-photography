@@ -17,11 +17,6 @@ export interface FilterUsageStats {
 	sports: Record<string, number>;
 	categories: Record<string, number>;
 	playTypes: Record<string, number>;
-	intensities: Record<string, number>;
-	lighting: Record<string, number>;
-	colorTemps: Record<string, number>;
-	timesOfDay: Record<string, number>;
-	compositions: Record<string, number>;
 
 	// Combination patterns (top 10)
 	combinations: Array<{
@@ -43,11 +38,6 @@ class FilterAnalyticsStore {
 		sports: {},
 		categories: {},
 		playTypes: {},
-		intensities: {},
-		lighting: {},
-		colorTemps: {},
-		timesOfDay: {},
-		compositions: {},
 		combinations: [],
 		sessionStartedAt: Date.now(),
 		filterChanges: 0,
@@ -148,12 +138,7 @@ class FilterAnalyticsStore {
 		const totalFilterUsage =
 			Object.values(this.stats.sports).reduce((sum, count) => sum + count, 0) +
 			Object.values(this.stats.categories).reduce((sum, count) => sum + count, 0) +
-			Object.values(this.stats.playTypes).reduce((sum, count) => sum + count, 0) +
-			Object.values(this.stats.intensities).reduce((sum, count) => sum + count, 0) +
-			Object.values(this.stats.lighting).reduce((sum, count) => sum + count, 0) +
-			Object.values(this.stats.colorTemps).reduce((sum, count) => sum + count, 0) +
-			Object.values(this.stats.timesOfDay).reduce((sum, count) => sum + count, 0) +
-			Object.values(this.stats.compositions).reduce((sum, count) => sum + count, 0);
+			Object.values(this.stats.playTypes).reduce((sum, count) => sum + count, 0);
 
 		return {
 			totalFilterUsage,
@@ -172,11 +157,6 @@ class FilterAnalyticsStore {
 			sports: {},
 			categories: {},
 			playTypes: {},
-			intensities: {},
-			lighting: {},
-			colorTemps: {},
-			timesOfDay: {},
-			compositions: {},
 			combinations: [],
 			sessionStartedAt: Date.now(),
 			filterChanges: 0,
@@ -210,17 +190,6 @@ class FilterAnalyticsStore {
 			sport: { volleyball: 'Volleyball', basketball: 'Basketball' },
 			category: { action: 'Action', celebration: 'Celebration', candid: 'Candid' },
 			playType: { attack: 'Attack', block: 'Block', dig: 'Dig', set: 'Set', serve: 'Serve' },
-			intensity: { low: 'Low', medium: 'Medium', high: 'High', peak: 'Peak' },
-			lighting: { natural: 'Natural', backlit: 'Backlit', dramatic: 'Dramatic', soft: 'Soft', artificial: 'Artificial' },
-			colorTemp: { warm: 'Warm', neutral: 'Neutral', cool: 'Cool' },
-			timeOfDay: { golden_hour: 'Golden Hour', midday: 'Midday', evening: 'Evening', night: 'Night' },
-			composition: {
-				rule_of_thirds: 'Rule of Thirds',
-				leading_lines: 'Leading Lines',
-				centered: 'Centered',
-				symmetry: 'Symmetry',
-				frame_within_frame: 'Framed',
-			},
 		};
 
 		const map = labelMaps[type];

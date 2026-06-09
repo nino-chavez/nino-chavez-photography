@@ -86,11 +86,6 @@ export const load: LayoutServerLoad = async () => {
                 sports: [],
                 categories: [],
                 playTypes: [],
-                intensities: [],
-                lighting: [],
-                colorTemperatures: [],
-                timesOfDay: [],
-                compositions: [],
               },
               timestamp: now
             };
@@ -117,11 +112,6 @@ export const load: LayoutServerLoad = async () => {
         sports: [],
         categories: [],
         playTypes: [],
-        intensities: [],
-        lighting: [],
-        colorTemperatures: [],
-        timesOfDay: [],
-        compositions: [],
       },
     };
   }

@@ -6,6 +6,7 @@
  */
 
 import { supabaseServer } from '$lib/supabase/server';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
 
 export interface FAQ {
@@ -20,7 +21,7 @@ export interface FAQ {
 export async function generateFAQs(): Promise<FAQ[]> {
 	// Get statistics
 	const { count: totalPhotos } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('*', { count: 'exact', head: true })
 		.not('sharpness', 'is', null);
 
@@ -33,7 +34,7 @@ export async function generateFAQs(): Promise<FAQ[]> {
 
 	// Get play types count
 	const { data: playTypesData } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('play_type')
 		.not('sharpness', 'is', null)
 		.not('play_type', 'is', null);
@@ -42,14 +43,14 @@ export async function generateFAQs(): Promise<FAQ[]> {
 
 	// Get date range
 	const { data: dateRange } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('photo_date, upload_date')
 		.not('sharpness', 'is', null)
 		.order('upload_date', { ascending: true })
 		.limit(1);
 
 	const { data: latestDate } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('photo_date, upload_date')
 		.not('sharpness', 'is', null)
 		.order('upload_date', { ascending: false })

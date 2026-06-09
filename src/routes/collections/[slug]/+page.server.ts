@@ -1,11 +1,13 @@
 /**
  * Collection Detail Page - Server Loader
  *
- * Loads full photo set for a specific AI-curated collection.
- * Uses hybrid approach: story relevance + quality thresholds.
+ * Loads full photo set for a specific curated collection.
+ * Curation is keeper-score driven: quality_score (0–10) plus kept
+ * categorical fields (photo_category / play_type).
  */
 
 import { error } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
@@ -15,32 +17,8 @@ const COLLECTIONS = [
 	{
 		slug: 'portfolio-excellence',
 		title: 'Portfolio Excellence',
-		narrative: 'The absolute best: technical mastery meets emotional impact',
-		description: 'Triple-excellent photography—the top tier where sharpness, composition, and emotional impact all score 9/10 or higher. These photos represent the pinnacle of sports photography craft.',
-	},
-	{
-		slug: 'comeback-stories',
-		title: 'Comeback Stories',
-		narrative: 'Critical moments of triumph in the final minutes',
-		description: 'Dramatic comebacks and clutch performances when it matters most. These photos capture the intensity and emotion of athletes fighting back in the closing moments of competition.',
-	},
-	{
-		slug: 'peak-intensity',
-		title: 'Peak Intensity',
-		narrative: 'The most intense moments of gameplay',
-		description: 'Maximum effort, maximum focus, maximum intensity. These photos freeze the pinnacle of athletic performance—the moments when everything is on the line and athletes give their absolute all.',
-	},
-	{
-		slug: 'golden-hour-magic',
-		title: 'Golden Hour Magic',
-		narrative: 'Stunning captures during the magic hour',
-		description: 'The warm, ethereal glow of golden hour transforms athletic moments into art. These photos showcase the perfect intersection of technical excellence and natural beauty.',
-	},
-	{
-		slug: 'focus-and-determination',
-		title: 'Focus & Determination',
-		narrative: 'Unwavering concentration and relentless drive',
-		description: 'The quiet intensity before the storm. These photos capture athletes in moments of pure focus and determination, where mental strength is just as visible as physical prowess.',
+		narrative: 'The absolute best: top-tier keeper score',
+		description: 'The top tier of the catalog—photos with an overall quality score of 9/10 or higher. These represent the pinnacle of sports photography craft.',
 	},
 	{
 		slug: 'victory-celebrations',
@@ -52,19 +30,13 @@ const COLLECTIONS = [
 		slug: 'aerial-artistry',
 		title: 'Aerial Artistry',
 		narrative: 'Defying gravity with grace and power',
-		description: 'Athletes suspended in air, captured at the peak of their flight. These photos showcase the beauty of vertical movement—blocks, spikes, jumps—frozen in time with exceptional composition and sharpness.',
+		description: 'Athletes suspended in air, captured at the peak of their flight. These photos showcase the beauty of vertical movement—attacks, blocks, and spikes—frozen in time.',
 	},
 	{
 		slug: 'defensive-masterclass',
 		title: 'Defensive Masterclass',
 		narrative: 'The art of reading, reacting, and rescuing',
 		description: 'Digs, blocks, and defensive saves that change momentum. These photos celebrate the unsung heroes—defenders who turn impossible plays into highlights through anticipation and athleticism.',
-	},
-	{
-		slug: 'sunset-sessions',
-		title: 'Sunset Sessions',
-		narrative: 'Evening light transforms competition into cinema',
-		description: 'The drama of evening competition bathed in warm light. These photos showcase exceptional composition and emotional impact, capturing the intersection of athletic performance and natural beauty as daylight fades into dusk.',
 	},
 ];
 
@@ -84,147 +56,60 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	const pageSize = 24;
 	const offset = (page - 1) * pageSize;
 
-	// Fetch photos based on collection type (HYBRID: Story + Quality)
+	// Fetch photos based on collection type (keeper score + kept categorical fields)
 	let photos: Photo[] = [];
 	let totalCount = 0;
 
 	if (slug === 'portfolio-excellence') {
-		// Triple-excellent: 9/10+ on all quality metrics
+		// Top tier: overall keeper score 9/10+
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
-			.gte('sharpness', 9)
-			.gte('composition_score', 9)
-			.gte('emotional_impact', 9)
+			.gte('quality_score', 9)
 			.not('sharpness', 'is', null)
-			.order('sharpness', { ascending: false });
-
-		const { data, count } = await query.range(offset, offset + pageSize - 1);
-
-		photos = (data || []).map(transformPhotoRow);
-		totalCount = count || 0;
-	} else if (slug === 'comeback-stories') {
-		// HYBRID: Story (triumph + final minutes) + Quality floor (7/10)
-		const query = supabaseServer
-			.from('photo_metadata')
-			.select(PHOTO_COLUMNS, { count: 'exact' })
-			.eq('emotion', 'triumph')
-			.eq('time_in_game', 'final_5_min')
-			.gte('emotional_impact', 7)
-			.gte('sharpness', 7)
-			.gte('composition_score', 7)
-			.not('sharpness', 'is', null)
-			.order('emotional_impact', { ascending: false });
-
-		const { data, count } = await query.range(offset, offset + pageSize - 1);
-
-		photos = (data || []).map(transformPhotoRow);
-		totalCount = count || 0;
-	} else if (slug === 'peak-intensity') {
-		// HYBRID: Story (peak action) + Quality floor (7/10)
-		const query = supabaseServer
-			.from('photo_metadata')
-			.select(PHOTO_COLUMNS, { count: 'exact' })
-			.eq('action_intensity', 'peak')
-			.gte('emotional_impact', 8)
-			.gte('sharpness', 7)
-			.gte('composition_score', 7)
-			.not('sharpness', 'is', null)
-			.order('emotional_impact', { ascending: false });
-
-		const { data, count } = await query.range(offset, offset + pageSize - 1);
-
-		photos = (data || []).map(transformPhotoRow);
-		totalCount = count || 0;
-	} else if (slug === 'golden-hour-magic') {
-		const query = supabaseServer
-			.from('photo_metadata')
-			.select(PHOTO_COLUMNS, { count: 'exact' })
-			.eq('time_of_day', 'golden_hour')
-			.gte('composition_score', 7)
-			.gte('sharpness', 7)
-			.not('sharpness', 'is', null)
-			.order('composition_score', { ascending: false });
-
-		const { data, count } = await query.range(offset, offset + pageSize - 1);
-
-		photos = (data || []).map(transformPhotoRow);
-		totalCount = count || 0;
-	} else if (slug === 'focus-and-determination') {
-		// HYBRID: Story (determination) + Higher quality floor (8/10 sharpness, 7/10 others)
-		const query = supabaseServer
-			.from('photo_metadata')
-			.select(PHOTO_COLUMNS, { count: 'exact' })
-			.eq('emotion', 'determination')
-			.gte('sharpness', 8)
-			.gte('composition_score', 7)
-			.gte('emotional_impact', 7)
-			.not('sharpness', 'is', null)
-			.order('sharpness', { ascending: false });
+			.order('quality_score', { ascending: false });
 
 		const { data, count } = await query.range(offset, offset + pageSize - 1);
 
 		photos = (data || []).map(transformPhotoRow);
 		totalCount = count || 0;
 	} else if (slug === 'victory-celebrations') {
-		// HYBRID: Story (celebrations) + Quality floor (7/10)
+		// Celebration moments above the keeper floor (7/10)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.eq('photo_category', 'celebration')
-			.gte('emotional_impact', 7)
-			.gte('sharpness', 7)
-			.gte('composition_score', 7)
+			.gte('quality_score', 7)
 			.not('sharpness', 'is', null)
-			.order('emotional_impact', { ascending: false });
+			.order('quality_score', { ascending: false });
 
 		const { data, count } = await query.range(offset, offset + pageSize - 1);
 
 		photos = (data || []).map(transformPhotoRow);
 		totalCount = count || 0;
 	} else if (slug === 'aerial-artistry') {
-		// HYBRID: Story (attack/block actions) + High quality (8/10+)
+		// Aerial plays (attack/block/spike) above the keeper floor (7/10)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
-			.in('play_type', ['attack', 'block'])
-			.gte('sharpness', 8)
-			.gte('composition_score', 8)
+			.in('play_type', ['attack', 'block', 'spike'])
+			.gte('quality_score', 7)
 			.not('sharpness', 'is', null)
-			.order('composition_score', { ascending: false });
+			.order('quality_score', { ascending: false });
 
 		const { data, count } = await query.range(offset, offset + pageSize - 1);
 
 		photos = (data || []).map(transformPhotoRow);
 		totalCount = count || 0;
 	} else if (slug === 'defensive-masterclass') {
-		// HYBRID: Story (dig/block plays) + Quality floor (7/10)
+		// Defensive plays (dig/block) above the keeper floor (7/10)
 		const query = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS, { count: 'exact' })
 			.in('play_type', ['dig', 'block'])
-			.gte('sharpness', 7)
-			.gte('emotional_impact', 7)
-			.gte('composition_score', 7)
+			.gte('quality_score', 7)
 			.not('sharpness', 'is', null)
-			.order('sharpness', { ascending: false });
-
-		const { data, count } = await query.range(offset, offset + pageSize - 1);
-
-		photos = (data || []).map(transformPhotoRow);
-		totalCount = count || 0;
-	} else if (slug === 'sunset-sessions') {
-		// HYBRID: Story (evening time) + Higher quality thresholds for curation
-		// Narrowed from 53% to ~37% by requiring composition≥8 and emotional_impact≥8
-		const query = supabaseServer
-			.from('photo_metadata')
-			.select(PHOTO_COLUMNS, { count: 'exact' })
-			.eq('time_of_day', 'evening')
-			.gte('composition_score', 8)
-			.gte('emotional_impact', 8)
-			.gte('sharpness', 7)
-			.not('sharpness', 'is', null)
-			.order('composition_score', { ascending: false });
+			.order('quality_score', { ascending: false });
 
 		const { data, count } = await query.range(offset, offset + pageSize - 1);
 

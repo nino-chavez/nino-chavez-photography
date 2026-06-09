@@ -10,7 +10,6 @@
 		Share2,
 		Sparkles
 	} from 'lucide-svelte';
-	import { getEmotionColor } from '$lib/photo-utils';
 	import { swipe, type SwipeEvent, isTouchDevice } from '$lib/utils/gestures';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
@@ -45,28 +44,28 @@
 	// Image transition state
 	let imageLoading = $state(false);
 	let navDirection = $state<'left' | 'right' | null>(null);
-	
+
 	// Track viewport size for responsive image loading
 	let viewportWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1920);
 	let devicePixelRatio = $state(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
-	
+
 	// Update viewport on resize
 	$effect(() => {
 		if (typeof window === 'undefined') return;
-		
+
 		function updateViewport() {
 			viewportWidth = window.innerWidth;
 			devicePixelRatio = window.devicePixelRatio || 1;
 		}
-		
+
 		window.addEventListener('resize', updateViewport);
 		updateViewport(); // Initial call
-		
+
 		return () => {
 			window.removeEventListener('resize', updateViewport);
 		};
 	});
-	
+
 	// Get optimized image URL based on viewport
 	const optimizedImageUrl = $derived.by(() => {
 		if (!photo) return null;
@@ -102,8 +101,8 @@
 		isTouch = isTouchDevice();
 	});
 
-	// "Find Similar" functionality
-	const emotionColor = $derived(photo ? getEmotionColor(photo.metadata.emotion) : null);
+	// "Find Similar" functionality — keyed by image_key (vector similarity), no longer
+	// emotion-styled (the emotion column is being dropped at the schema cutover).
 	const findSimilarUrl = $derived(
 		photo?.image_key ? `${base}/explore?similar_to=${photo.image_key}` : null
 	);
@@ -502,18 +501,17 @@
 								<span class="capitalize">{tag}</span>
 							{/each}
 
-							<!-- "Find Similar" Button -->
-							{#if findSimilarUrl && emotionColor}
+							<!-- "Find Similar" Button (vector similarity, keyed by image_key) -->
+							{#if findSimilarUrl}
 								<a
 									href={findSimilarUrl}
 									class="px-3 py-1.5 rounded-full text-xs font-medium
 									       bg-white/10 hover:bg-white/20 backdrop-blur-sm
 									       transition-colors flex items-center gap-1.5
-									       border border-white/20 hover:border-current
-									       focus:outline-none focus:ring-2 focus:ring-gold-500"
-									style="color: {emotionColor}"
-									aria-label="Find similar {photo.metadata.emotion} photos"
-									title="Find more photos with {photo.metadata.emotion} emotion"
+									       border border-white/20 hover:border-white/40
+									       focus:outline-none focus:ring-2 focus:ring-gold-500 text-white/90"
+									aria-label="Find similar photos"
+									title="Find more photos like this one"
 								>
 									<Sparkles class="w-3.5 h-3.5" aria-hidden="true" />
 									<span>Similar Photos</span>

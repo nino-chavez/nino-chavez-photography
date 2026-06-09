@@ -6,6 +6,7 @@
  */
 
 import { error } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { PHOTO_DETAIL_COLUMNS } from '$lib/supabase/columns';
 import { trackPhotoView } from '$lib/analytics/tracker';
@@ -17,7 +18,7 @@ import { cfImageUrl } from '$lib/utils/cloudflare-images';
 export const load: PageServerLoad = async ({ params, url }) => {
 	// Fetch photo from Supabase using image_key
 	const { data: rawData, error: photoError } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select(PHOTO_DETAIL_COLUMNS)
 		.eq('image_key', params.id)
 		.single();
@@ -29,6 +30,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const photoData = rawData as unknown as PhotoMetadataRow;
 
 	// Transform flat Supabase data to nested Photo type (two-bucket model)
+	// NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
+	// color_temperature, emotion, action_intensity) were removed (cutover prep) ahead of their
+	// schema DROP. The numeric quality sub-scores below STAY.
 	const cfId = photoData.cf_image_id || '';
 	const photo: Photo = {
 		id: photoData.image_key,
@@ -38,22 +42,16 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		thumbnail_url: cfImageUrl(cfId, 'thumbnail'),
 		original_url: cfImageUrl(cfId, 'public'),
 		title: photoData.album_name || 'Untitled Photo',
-		caption: photoData.composition || '',
+		caption: photoData.caption || '',
 		keywords: [],
 		created_at: photoData.photo_date || photoData.enriched_at || photoData.upload_date,
 		metadata: {
 			// BUCKET 1: Concrete & Filterable
 			play_type: (photoData.play_type || null) as Photo['metadata']['play_type'],
-			action_intensity: (photoData.action_intensity || 'medium') as Photo['metadata']['action_intensity'],
 			sport_type: photoData.sport_type || 'volleyball',
 			photo_category: photoData.photo_category || 'action',
-			composition: (photoData.composition || '') as Photo['metadata']['composition'],
-			time_of_day: (photoData.time_of_day || '') as Photo['metadata']['time_of_day'],
-			lighting: (photoData.lighting || undefined) as Photo['metadata']['lighting'],
-			color_temperature: (photoData.color_temperature || undefined) as Photo['metadata']['color_temperature'],
 
-			// BUCKET 2: Abstract & Internal
-			emotion: (photoData.emotion || 'focus') as Photo['metadata']['emotion'],
+			// BUCKET 2: Abstract & Internal (numeric quality sub-scores)
 			sharpness: photoData.sharpness || 0,
 			composition_score: photoData.composition_score || 0,
 			exposure_accuracy: photoData.exposure_accuracy || 0,
@@ -65,7 +63,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			// AI metadata
 			ai_provider: (photoData.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
 			ai_cost: photoData.ai_cost || 0,
-			ai_confidence: photoData.ai_confidence || 0,
 			enriched_at: photoData.enriched_at || new Date().toISOString()
 		},
 		// EXIF metadata for enhanced Schema.org markup
@@ -150,25 +147,17 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 /**
  * Generate SEO-optimized description for photo (two-bucket model)
- * Includes sport, category, lighting/aesthetic details
+ *
+ * The vanity CATEGORICAL aesthetic attributes (lighting, time_of_day) were removed
+ * (cutover prep) — those columns are being DROPPED at the schema cutover. The description
+ * now prefers the durable AI caption and concrete sport/category context.
  */
 function generatePhotoDescription(photo: Photo): string {
 	const sport = photo.metadata.sport_type || 'sports';
 	const category = photo.metadata.photo_category || 'photo';
-	const lighting = photo.metadata.lighting;
-	const timeOfDay = photo.metadata.time_of_day;
 
 	// Base description (all photos are worthy)
 	let description = `Professional ${sport} ${category} photo`;
-
-	// Add aesthetic details (Bucket 1)
-	if (lighting) {
-		description += ` with ${lighting} lighting`;
-	}
-
-	if (timeOfDay) {
-		description += ` captured during ${timeOfDay}`;
-	}
 
 	// Add caption if present
 	if (photo.caption) {
@@ -198,7 +187,7 @@ async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promis
 	// Sort by newest and limit to 12
 
 	const { data, error } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select(PHOTO_COLUMNS)
 		.neq('image_key', currentPhoto.image_key) // Exclude current photo
 		.not('sharpness', 'is', null) // Only enriched photos
@@ -246,7 +235,7 @@ async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo
 	const imageKeys = data.map((result: any) => result.image_key);
 
 	const { data: photos, error: photosError } = await supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select(PHOTO_COLUMNS)
 		.in('image_key', imageKeys)
 		.not('sharpness', 'is', null); // Only enriched photos

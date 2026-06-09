@@ -10,6 +10,10 @@
  * 1. Transparency: Show disabled options (don't hide)
  * 2. Progressive Disclosure: Show relevant options as context narrows
  * 3. Data-Driven: Use actual result counts to determine compatibility
+ *
+ * NOTE: the vanity CATEGORICAL aesthetic filters (lighting, color_temperature, time_of_day,
+ * composition, intensity) were removed (cutover prep) — their backing columns are being DROPPED
+ * at the schema cutover. Only the durable concrete dimensions (sport, category, play type) remain.
  */
 
 import type { FilterCounts } from '$lib/supabase/server';
@@ -21,11 +25,6 @@ export interface FilterState {
 	sport?: string | null;
 	category?: string | null;
 	playType?: string | null;
-	intensity?: string | null;
-	lighting?: string[] | null;
-	colorTemp?: string | null;
-	timeOfDay?: string | null;
-	composition?: string | null;
 }
 
 /**
@@ -33,11 +32,9 @@ export interface FilterState {
  *
  * Sport-aware filters show different options based on selected sport:
  * - play_type: Different sports have different play types (spike for volleyball, dunk for basketball)
- * - intensity: Action intensity varies by sport characteristics
  *
  * Sport-agnostic filters work across all sports:
  * - category: All sports have action, celebration, candid, etc.
- * - lighting, color_temp, time_of_day, composition: Photography aesthetics
  */
 const FILTER_DEPENDENCIES = {
 	// Sport-aware filters (context-dependent)
@@ -45,29 +42,9 @@ const FILTER_DEPENDENCIES = {
 		dependsOn: ['sport'] as const,
 		sportSpecific: true,
 	},
-	intensity: {
-		dependsOn: ['sport'] as const,
-		sportSpecific: false, // Intensity exists across sports, but may vary
-	},
 
 	// Sport-agnostic filters (universal)
 	category: {
-		dependsOn: [] as const,
-		sportSpecific: false,
-	},
-	lighting: {
-		dependsOn: [] as const,
-		sportSpecific: false,
-	},
-	color_temp: {
-		dependsOn: [] as const,
-		sportSpecific: false,
-	},
-	time_of_day: {
-		dependsOn: [] as const,
-		sportSpecific: false,
-	},
-	composition: {
 		dependsOn: [] as const,
 		sportSpecific: false,
 	},
@@ -80,7 +57,7 @@ const FILTER_DEPENDENCIES = {
  * 1. Result count > 0 (from filterCounts)
  * 2. Sport-specific rules (e.g., volleyball play types only when volleyball selected)
  *
- * @param filterType - The filter dimension (sport, category, play_type, etc.)
+ * @param filterType - The filter dimension (sport, category, play_type)
  * @param optionValue - The specific option value to check (e.g., "volleyball", "spike")
  * @param currentState - Current active filters
  * @param filterCounts - Dynamic result counts respecting current filters
@@ -134,21 +111,6 @@ function getFilterCount(
 		case 'playType':
 			return filterCounts.playTypes?.find((p) => p.name === optionValue)?.count || 0;
 
-		case 'intensity':
-			return filterCounts.intensities?.find((i) => i.name === optionValue)?.count || 0;
-
-		case 'lighting':
-			return filterCounts.lighting?.find((l) => l.name === optionValue)?.count || 0;
-
-		case 'colorTemp':
-			return filterCounts.colorTemperatures?.find((ct) => ct.name === optionValue)?.count || 0;
-
-		case 'timeOfDay':
-			return filterCounts.timesOfDay?.find((t) => t.name === optionValue)?.count || 0;
-
-		case 'composition':
-			return filterCounts.compositions?.find((c) => c.name === optionValue)?.count || 0;
-
 		default:
 			return 0;
 	}
@@ -164,21 +126,11 @@ export function buildFilterState(params: {
 	sport?: string | null;
 	category?: string | null;
 	playType?: string | null;
-	intensity?: string | null;
-	lighting?: string[] | null;
-	colorTemp?: string | null;
-	timeOfDay?: string | null;
-	composition?: string | null;
 }): FilterState {
 	return {
 		sport: params.sport || null,
 		category: params.category || null,
 		playType: params.playType || null,
-		intensity: params.intensity || null,
-		lighting: params.lighting || null,
-		colorTemp: params.colorTemp || null,
-		timeOfDay: params.timeOfDay || null,
-		composition: params.composition || null,
 	};
 }
 
@@ -222,16 +174,7 @@ export function getDisplayCount(
  * @returns true if any filters are active
  */
 export function hasActiveFilters(state: FilterState): boolean {
-	return !!(
-		state.sport ||
-		state.category ||
-		state.playType ||
-		state.intensity ||
-		(state.lighting && state.lighting.length > 0) ||
-		state.colorTemp ||
-		state.timeOfDay ||
-		state.composition
-	);
+	return !!(state.sport || state.category || state.playType);
 }
 
 /**
@@ -245,11 +188,6 @@ export function getActiveFilterCount(state: FilterState): number {
 	if (state.sport) count++;
 	if (state.category) count++;
 	if (state.playType) count++;
-	if (state.intensity) count++;
-	if (state.lighting && state.lighting.length > 0) count += state.lighting.length;
-	if (state.colorTemp) count++;
-	if (state.timeOfDay) count++;
-	if (state.composition) count++;
 	return count;
 }
 
@@ -289,60 +227,11 @@ export function autoCleanIncompatibleFilters(
 		}
 	}
 
-	if (updatedState.intensity) {
-		const count = getFilterCount('intensity', updatedState.intensity, filterCounts);
-		if (count === 0) {
-			clearedFilters.push({ filter: 'intensity', value: updatedState.intensity });
-			updatedState.intensity = null;
-		}
-	}
-
 	if (updatedState.category) {
 		const count = getFilterCount('category', updatedState.category, filterCounts);
 		if (count === 0) {
 			clearedFilters.push({ filter: 'category', value: updatedState.category });
 			updatedState.category = null;
-		}
-	}
-
-	if (updatedState.lighting && updatedState.lighting.length > 0) {
-		const incompatibleLighting = updatedState.lighting.filter((l) => {
-			const count = getFilterCount('lighting', l, filterCounts);
-			return count === 0;
-		});
-
-		if (incompatibleLighting.length > 0) {
-			clearedFilters.push({ filter: 'lighting', value: incompatibleLighting });
-			updatedState.lighting = updatedState.lighting.filter(
-				(l) => !incompatibleLighting.includes(l)
-			);
-			if (updatedState.lighting.length === 0) {
-				updatedState.lighting = null;
-			}
-		}
-	}
-
-	if (updatedState.colorTemp) {
-		const count = getFilterCount('colorTemp', updatedState.colorTemp, filterCounts);
-		if (count === 0) {
-			clearedFilters.push({ filter: 'colorTemp', value: updatedState.colorTemp });
-			updatedState.colorTemp = null;
-		}
-	}
-
-	if (updatedState.timeOfDay) {
-		const count = getFilterCount('timeOfDay', updatedState.timeOfDay, filterCounts);
-		if (count === 0) {
-			clearedFilters.push({ filter: 'timeOfDay', value: updatedState.timeOfDay });
-			updatedState.timeOfDay = null;
-		}
-	}
-
-	if (updatedState.composition) {
-		const count = getFilterCount('composition', updatedState.composition, filterCounts);
-		if (count === 0) {
-			clearedFilters.push({ filter: 'composition', value: updatedState.composition });
-			updatedState.composition = null;
 		}
 	}
 
@@ -362,11 +251,6 @@ export function formatClearedFilters(
 		sport: 'Sport',
 		category: 'Category',
 		playType: 'Play Type',
-		intensity: 'Intensity',
-		lighting: 'Lighting',
-		colorTemp: 'Color Temperature',
-		timeOfDay: 'Time of Day',
-		composition: 'Composition',
 	};
 
 	return clearedFilters.map((cf) => {

@@ -126,12 +126,6 @@
 											sport_type: 'volleyball', // Default for analytics demo
 											photo_category: photo.photo_category,
 											play_type: null,
-											action_intensity: 'medium' as const,
-											composition: 'rule_of_thirds' as const,
-											time_of_day: 'midday' as const,
-											lighting: 'natural' as const,
-											color_temperature: 'neutral' as const,
-											emotion: 'focus' as const,
 											sharpness: 0,
 											composition_score: 0,
 											exposure_accuracy: 0,
@@ -141,7 +135,6 @@
 											event_id: undefined,
 											ai_provider: 'openai' as const,
 											ai_cost: 0,
-											ai_confidence: 0,
 											enriched_at: ''
 										},
 									}}

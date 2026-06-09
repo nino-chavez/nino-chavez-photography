@@ -9,6 +9,7 @@
  */
 
 import { json, error } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
 
@@ -86,7 +87,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		// Check if photo exists
 		const { data: photo, error: photoError } = await supabase
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('photo_id')
 			.eq('photo_id', body.photo_id)
 			.single();

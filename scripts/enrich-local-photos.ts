@@ -68,6 +68,12 @@ function parseArgs(): {
 const GEMINI_API_KEY = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = 'gemini-2.5-flash-lite'; // Cheap and effective
 
+// OpenRouter path (provider failover). When OPENROUTER_API_KEY is set, enrichment
+// routes through the gateway instead of the direct Google SDK -- same model, same
+// prompt, same parsing. Lets a dead/rotated Google key fail over to the gateway.
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL = 'google/gemini-2.5-flash-lite';
+
 const parsedArgs = parseArgs();
 
 const CONFIG = {
@@ -79,8 +85,8 @@ const CONFIG = {
 	costPerImage: 0.00014 // Gemini 2.0 Flash Lite
 };
 
-if (!GEMINI_API_KEY) {
-	console.error('❌ Missing GOOGLE_API_KEY or GEMINI_API_KEY environment variable');
+if (!GEMINI_API_KEY && !OPENROUTER_API_KEY) {
+	console.error('❌ Missing vision credentials: set OPENROUTER_API_KEY (preferred) or GOOGLE_API_KEY/GEMINI_API_KEY');
 	process.exit(1);
 }
 
@@ -95,32 +101,71 @@ interface EnrichmentResult {
 	cost: number;
 }
 
+/** Route enrichment through OpenRouter (gateway). Returns raw model text. */
+async function callOpenRouter(prompt: string, base64Data: string): Promise<string> {
+	const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+			'Content-Type': 'application/json',
+			'HTTP-Referer': 'https://photography.ninochavez.co',
+			'X-Title': 'photography enrichment'
+		},
+		body: JSON.stringify({
+			model: OPENROUTER_MODEL,
+			messages: [
+				{
+					role: 'user',
+					content: [
+						{ type: 'text', text: prompt },
+						{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
+					]
+				}
+			],
+			temperature: 0,
+			max_tokens: 2000
+		})
+	});
+	if (!res.ok) {
+		const t = await res.text();
+		throw new Error(`OpenRouter HTTP ${res.status}: ${t.slice(0, 160)}`);
+	}
+	const json: any = await res.json();
+	const text = json.choices?.[0]?.message?.content;
+	if (!text) throw new Error('OpenRouter returned no content');
+	return text;
+}
+
 async function enrichPhoto(photoPath: string, context?: EnrichmentContext): Promise<EnrichmentResult> {
 	try {
-		const genAI = new GoogleGenerativeAI(GEMINI_API_KEY!);
-		const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-
 		// Read photo as base64 using native Node (no shell spawn)
 		const base64Data = readFileSync(photoPath).toString('base64');
 
 		// Build prompt with context (album name improves sport detection accuracy)
 		const prompt = buildCombinedPrompt(context);
 
-		// Call Gemini with context-aware prompt
-		const result = await model.generateContent([
-			prompt,
-			{
-				inlineData: {
-					data: base64Data,
-					mimeType: 'image/jpeg'
+		// Prefer the gateway when available; fall back to the direct Google SDK.
+		let responseText: string;
+		if (OPENROUTER_API_KEY) {
+			responseText = await callOpenRouter(prompt, base64Data);
+		} else {
+			const genAI = new GoogleGenerativeAI(GEMINI_API_KEY!);
+			const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+			const result = await model.generateContent([
+				prompt,
+				{
+					inlineData: {
+						data: base64Data,
+						mimeType: 'image/jpeg'
+					}
 				}
-			}
-		]);
+			]);
+			responseText = result.response.text();
+		}
 
-		const responseText = result.response.text();
-
-		// Extract JSON from response
-		const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+		// Extract JSON from response (strip markdown fences some models add)
+		const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```/g, '');
+		const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 		if (!jsonMatch) {
 			throw new Error(`Could not extract JSON from response: ${responseText.substring(0, 100)}`);
 		}
@@ -187,6 +232,18 @@ function writeMetadataToExif(photoPath: string, metadata: CombinedResponse): voi
 	// Generate title
 	const title = generateTitle(bucket1, bucket2);
 
+	// Phase 1 (v-next): carry the NL caption + multi-player extraction through EXIF so
+	// sync-local-to-supabase.ts can land them in photo_metadata.caption / players /
+	// team_colors. Keywords can't hold a sentence or a structured array, so:
+	//   caption       → ImageDescription (standard EXIF description field)
+	//   players[]     → UserComment as JSON: {"players":[...],"team_colors":[...]}
+	const caption = (metadata.caption ?? '').toString().slice(0, 300);
+	const players = Array.isArray(metadata.players) ? metadata.players : [];
+	const teamColors = Array.from(
+		new Set(players.map((p) => p?.team_color).filter((c): c is string => typeof c === 'string' && c.trim().length > 0))
+	).slice(0, 8);
+	const vnextComment = JSON.stringify({ players, team_colors: teamColors });
+
 	// Write to EXIF using spawnSync to avoid shell buffer issues
 	const keywordString = keywords.join(',');
 	const args = [
@@ -194,6 +251,8 @@ function writeMetadataToExif(photoPath: string, metadata: CombinedResponse): voi
 		`-Title=${title}`,
 		`-Keywords=${keywordString}`,
 		`-Subject=${keywordString}`,
+		`-ImageDescription=${caption}`,
+		`-UserComment=${vnextComment}`,
 		photoPath
 	];
 
@@ -254,7 +313,7 @@ async function main() {
 
 	console.log('\n🎨 Enriching Local Photos with AI Vision\n');
 	console.log(`📂 Directory: ${photoDir}`);
-	console.log(`🤖 Model: ${GEMINI_MODEL}`);
+	console.log(`🤖 Model: ${OPENROUTER_API_KEY ? `${OPENROUTER_MODEL} (via OpenRouter)` : `${GEMINI_MODEL} (direct Google)`}`);
 	console.log(`⚡ Concurrency: ${CONFIG.concurrency}`);
 	if (CONFIG.albumName) {
 		console.log(`📁 Album Context: ${CONFIG.albumName}`);

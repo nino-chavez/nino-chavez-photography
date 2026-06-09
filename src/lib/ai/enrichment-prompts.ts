@@ -15,24 +15,14 @@
 // =============================================================================
 
 export const PORTFOLIO_CONTEXT = `
-CRITICAL CONTEXT: This is a VOLLEYBALL PHOTOGRAPHY PORTFOLIO.
-- 95%+ of all photos in this portfolio are volleyball
-- Default assumption: The photo is volleyball unless you see CLEAR, UNMISTAKABLE evidence otherwise
-- DO NOT classify as basketball just because players are jumping or the image is blurry
-- DO NOT classify as other sports based on uniform colors alone
+CONTEXT: This is a sports-action photography portfolio. The SPORT is already KNOWN at the album
+level and set authoritatively (albums.sport) — do NOT infer, guess, or default the sport. Focus
+your analysis on the action, quality, caption, and visible players/jerseys, not sport identification.
 
-VOLLEYBALL vs BASKETBALL - Key Visual Differences:
-- VOLLEYBALL: Net at ~7-8ft, white/yellow/blue ball with panels, players at net with hands UP (blocking/attacking), indoor court with antenna on net
-- BASKETBALL: Hoop/backboard visible, orange ball with black lines, players jumping TOWARD basket, different court markings
-
-ONLY classify as non-volleyball if you see:
-- A basketball hoop or backboard
-- An orange basketball with black seam lines
-- Soccer goal posts or a soccer ball
-- Football field markings or a football
-- Other sport-specific equipment that CANNOT be volleyball
-
-When in doubt, classify as VOLLEYBALL.
+NOTE (why): an earlier version of this prompt hard-coded a "95% volleyball / when in doubt classify
+as volleyball" bias here. That bias systematically mislabeled whole non-volleyball albums (tennis,
+soccer, football read as volleyball). Sport is now an album property enforced by a DB trigger — any
+sport this prompt emits is overridden by the album's sport. Never reintroduce a sport-default bias.
 `;
 
 // =============================================================================
@@ -323,7 +313,11 @@ AND ALSO:
 
 ${BUCKET2_PROMPT}
 
-Return ONLY JSON combining both buckets (sport_type FIRST):
+ADDITIONALLY return two more top-level JSON keys alongside bucket1 and bucket2, for people-finding and natural-language search:
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon. Example: "A player in a red jersey, number 12, dives to dig the ball near the sideline as two teammates watch."
+"players": an array (max 8) of objects, one per clearly visible player: {"jersey_number": integer or null, "team_color": string or null, "action": string or null}.
+
+Return ONLY JSON combining both buckets PLUS caption and players (sport_type FIRST):
 {
   "bucket1": {
     "sport_type": "volleyball",
@@ -344,12 +338,47 @@ Return ONLY JSON combining both buckets (sport_type FIRST):
     "emotional_impact": 9.0,
     "time_in_game": "final_5_min",
     "ai_confidence": 0.85
-  }
+  },
+  "caption": "A player in a red jersey, number 12, dives to dig the ball near the sideline as two teammates watch.",
+  "players": [
+    { "jersey_number": 12, "team_color": "red", "action": "dig" },
+    { "jersey_number": null, "team_color": "red", "action": "watching" }
+  ]
 }
 
 NO explanations. NO markdown. ONLY JSON.`);
 
 	return parts.join('\n\n');
+}
+
+// =============================================================================
+// Caption-only Prompt (Phase 1 backfill — caption + players, no buckets)
+// =============================================================================
+
+/**
+ * Slim prompt that returns ONLY `caption` + `players[]` — the two fields the v-next
+ * backfill actually persists. The full combined prompt also emits bucket1/bucket2,
+ * but the backfill discards those (it never overwrites existing classification), so
+ * paying ~3,850 prompt tokens for them is pure waste.
+ *
+ * Measured 2026-06-08 across 6 albums vs the full prompt at the same 1600px image:
+ *   full @1600  → $0.000731/photo (6,091 in-tok)
+ *   slim @1600  → $0.000349/photo (3,115 in-tok)  ← ~52% cheaper
+ * Jersey detection held (21/30 vs 19/30) and captions stayed search-adequate, because
+ * the image (and thus legibility) is unchanged — only the discarded instructions are cut.
+ *
+ * Use this for backfill / re-embedding. The new-album path (enrich-local-photos.ts) still
+ * needs `buildCombinedPrompt` because it writes bucket1/bucket2 to EXIF.
+ */
+export function buildCaptionPrompt(context?: EnrichmentContext): string {
+	const albumName = context?.albumName;
+	return `This is a VOLLEYBALL sports photo from a volleyball photography portfolio${albumName ? ` (album: "${albumName}")` : ''}. Assume volleyball unless another sport is unmistakable.
+
+Return ONLY JSON with exactly two top-level keys, for people-finding and natural-language search:
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action (spike, block, dig, set, serve, pass, celebration, etc.), and the scene. Plain language, no aesthetic jargon.
+"players": an array (max 8) of objects, one per clearly visible player: {"jersey_number": integer or null, "team_color": string or null, "action": string or null}.
+
+NO markdown. ONLY JSON: {"caption":"...","players":[...]}`;
 }
 
 // =============================================================================
@@ -378,9 +407,23 @@ export interface Bucket2Response {
   ai_confidence: number;
 }
 
+/**
+ * A single player extracted from a photo, for identity / people-finding.
+ * Emitted in the `players[]` array of the combined enrichment response.
+ */
+export interface PlayerExtract {
+  jersey_number: number | null;
+  team_color: string | null;
+  action: string | null;
+}
+
 export interface CombinedResponse {
   bucket1: Bucket1Response;
   bucket2: Bucket2Response;
+  /** One NL sentence for text/RAG search (jersey numbers, colors, action, scene). */
+  caption: string;
+  /** Multi-player extraction for identity + jersey/team filters. */
+  players: PlayerExtract[];
 }
 
 // =============================================================================
@@ -815,7 +858,17 @@ export function agenticToBuckets(agentic: AgenticVisionResponse): CombinedRespon
       emotional_impact: agentic.quality_assessment.emotional_impact,
       time_in_game: 'unknown', // Not assessed in agentic
       ai_confidence: agentic.sport_confidence,
-    }
+    },
+    // The agentic prompt has no dedicated caption; its investigation notes are the
+    // closest natural-language description, so reuse them for search.
+    caption: agentic.agentic_notes ?? '',
+    // Map detected jersey numbers to the player-extract shape (team_color/action
+    // are not assessed by the standard agentic prompt).
+    players: (agentic.jersey_numbers ?? []).map((j) => ({
+      jersey_number: j.number,
+      team_color: null,
+      action: null,
+    })),
   };
 }
 

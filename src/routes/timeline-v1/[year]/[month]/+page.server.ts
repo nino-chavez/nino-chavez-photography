@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { PageServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
 import type { PhotoMetadataRow } from '$types/database';
@@ -38,7 +39,7 @@ export const load: PageServerLoad = async ({ params, url, parent }) => {
 
 	// Build base query
 	let query = supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('*', { count: 'exact' })
 		.gte('upload_date', monthStart.toISOString())
 		.lte('upload_date', monthEnd.toISOString())
@@ -119,7 +120,7 @@ async function getMonthStats(
 
 	// Build query
 	let query = supabaseServer
-		.from('photo_metadata')
+		.from(PHOTOS_READ)
 		.select('sport_type, photo_category')
 		.gte('upload_date', monthStart.toISOString())
 		.lte('upload_date', monthEnd.toISOString())

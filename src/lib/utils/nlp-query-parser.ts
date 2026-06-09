@@ -6,7 +6,12 @@
  * - If all terms match → structured filter path (fast, no API call)
  * - If unmatched terms remain → vector semantic search fallback
  *
- * Example: "volleyball spike golden hour" → { sportType: 'volleyball', playTypes: ['attack'], timeOfDay: ['golden_hour'] }
+ * NOTE: the vanity CATEGORICAL aesthetic mappings (composition, time_of_day, lighting,
+ * color_temperature, emotion, action_intensity) were removed (cutover prep) — their backing
+ * columns are being DROPPED at the schema cutover. Queries mentioning those aesthetics now
+ * fall through to the unmatched-terms path and trigger vector semantic search instead.
+ *
+ * Example: "volleyball spike" → { sportType: 'volleyball', playTypes: ['attack'] }
  * Example: "powerful athletic moments" → all terms unmatched → triggers vector search
  */
 
@@ -22,14 +27,6 @@ export interface ParsedSearchResult {
 
 // Multi-word phrases must be checked before single words to avoid partial matches
 const MULTI_WORD_PHRASES: Array<{ phrase: string; filterKey: string; value: string }> = [
-	// Time of day (multi-word)
-	{ phrase: 'golden hour', filterKey: 'timeOfDay', value: 'golden_hour' },
-	{ phrase: 'magic hour', filterKey: 'timeOfDay', value: 'golden_hour' },
-	{ phrase: 'blue hour', filterKey: 'timeOfDay', value: 'blue_hour' },
-	// Composition (multi-word)
-	{ phrase: 'rule of thirds', filterKey: 'compositions', value: 'rule_of_thirds' },
-	{ phrase: 'leading lines', filterKey: 'compositions', value: 'leading_lines' },
-	{ phrase: 'negative space', filterKey: 'compositions', value: 'negative_space' },
 	// Sport (multi-word)
 	{ phrase: 'cross country', filterKey: 'sportType', value: 'cross_country' },
 ];
@@ -80,47 +77,9 @@ addKeywords('playTypes', 'serve', ['serve', 'serving', 'server', 'service', 'ace
 addKeywords('playTypes', 'celebration', ['celebrate']);
 addKeywords('playTypes', 'transition', ['transition']);
 
-// Action intensity
-addKeywords('actionIntensity', 'low', ['calm', 'relaxed']);
-addKeywords('actionIntensity', 'medium', ['moderate']);
-addKeywords('actionIntensity', 'high', ['intense', 'fast']);
-addKeywords('actionIntensity', 'peak', ['peak', 'extreme', 'explosive', 'crucial']);
-
-// Lighting
-addKeywords('lighting', 'natural', ['natural', 'sunlight', 'daylight']);
-addKeywords('lighting', 'backlit', ['backlit', 'backlight', 'silhouette']);
-addKeywords('lighting', 'dramatic', ['dramatic']);
-addKeywords('lighting', 'soft', ['soft', 'diffused']);
-addKeywords('lighting', 'artificial', ['artificial', 'gym', 'arena', 'stadium']);
-
-// Color temperature
-addKeywords('colorTemperature', 'warm', ['warm']);
-addKeywords('colorTemperature', 'cool', ['cool']);
-addKeywords('colorTemperature', 'neutral', ['neutral']);
-
-// Time of day (single-word entries; multi-word handled above)
-addKeywords('timeOfDay', 'golden_hour', ['golden', 'sunset']);
-addKeywords('timeOfDay', 'midday', ['midday', 'noon']);
-addKeywords('timeOfDay', 'evening', ['evening', 'dusk']);
-addKeywords('timeOfDay', 'blue_hour', []);
-addKeywords('timeOfDay', 'night', ['night', 'nighttime']);
-addKeywords('timeOfDay', 'dawn', ['dawn', 'sunrise', 'morning']);
-
-// Composition (single-word entries; multi-word handled above)
-addKeywords('compositions', 'rule_of_thirds', ['thirds']);
-addKeywords('compositions', 'leading_lines', []);
-addKeywords('compositions', 'framing', ['framed', 'framing']);
-addKeywords('compositions', 'symmetry', ['symmetry', 'symmetric', 'symmetrical']);
-addKeywords('compositions', 'depth', ['depth']);
-addKeywords('compositions', 'negative_space', []);
-
-// Emotions
-addKeywords('emotion', 'triumph', ['triumph', 'triumphant']);
-addKeywords('emotion', 'determination', ['determination', 'determined', 'grit']);
-addKeywords('emotion', 'intensity', ['intensity']);
-addKeywords('emotion', 'focus', ['focus', 'focused', 'concentration']);
-addKeywords('emotion', 'excitement', ['excitement', 'excited', 'hype']);
-addKeywords('emotion', 'serenity', ['serenity', 'serene', 'peaceful']);
+// REMOVED: vanity CATEGORICAL keyword mappings (action intensity, lighting, color temperature,
+// time of day, composition, emotions) — those columns are being DROPPED at the schema cutover.
+// Such terms now fall through to the unmatched-terms path → vector semantic search.
 
 // Jersey number regex patterns
 const JERSEY_PATTERNS = [
@@ -224,29 +183,6 @@ function applyFilter(filters: Partial<PhotoFilterState>, key: string, value: str
 			if (!filters.playTypes) filters.playTypes = [];
 			if (!filters.playTypes.includes(value as any)) filters.playTypes.push(value as any);
 			break;
-		case 'actionIntensity':
-			if (!filters.actionIntensity) filters.actionIntensity = [];
-			if (!filters.actionIntensity.includes(value as any)) filters.actionIntensity.push(value as any);
-			break;
-		case 'lighting':
-			if (!filters.lighting) filters.lighting = [];
-			if (!filters.lighting.includes(value as any)) filters.lighting.push(value as any);
-			break;
-		case 'colorTemperature':
-			if (!filters.colorTemperature) filters.colorTemperature = [];
-			if (!filters.colorTemperature.includes(value as any)) filters.colorTemperature.push(value as any);
-			break;
-		case 'timeOfDay':
-			if (!filters.timeOfDay) filters.timeOfDay = [];
-			if (!filters.timeOfDay.includes(value as any)) filters.timeOfDay.push(value as any);
-			break;
-		case 'compositions':
-			if (!filters.compositions) filters.compositions = [];
-			if (!filters.compositions.includes(value as any)) filters.compositions.push(value as any);
-			break;
-		case 'emotion':
-			filters.emotion = value as any;
-			break;
 	}
 }
 
@@ -257,14 +193,8 @@ function buildDescription(result: ParsedSearchResult): string {
 	if (f.sportType) parts.push(f.sportType);
 	if (f.playTypes?.length) parts.push(f.playTypes.join('/'));
 	if (f.photoCategory) parts.push(f.photoCategory);
-	if (f.actionIntensity?.length) parts.push(`${f.actionIntensity.join('/')} intensity`);
-	if (f.timeOfDay?.length) parts.push(f.timeOfDay.map(t => t.replace(/_/g, ' ')).join(', '));
-	if (f.lighting?.length) parts.push(`${f.lighting.join('/')} lighting`);
-	if (f.colorTemperature?.length) parts.push(`${f.colorTemperature.join('/')} colors`);
-	if (f.compositions?.length) parts.push(f.compositions.map(c => c.replace(/_/g, ' ')).join(', '));
-	if (f.emotion) parts.push(f.emotion);
 	if (result.jerseyNumber !== undefined) parts.push(`#${result.jerseyNumber}`);
 	if (result.albumKey) parts.push(`album: ${result.albumKey}`);
 
-	return parts.length > 0 ? parts.join(' \u00b7 ') : '';
+	return parts.length > 0 ? parts.join(' · ') : '';
 }

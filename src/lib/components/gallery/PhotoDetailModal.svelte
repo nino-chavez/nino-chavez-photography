@@ -114,16 +114,6 @@
 		showAIInsights = !showAIInsights;
 	}
 
-	// Emotion color mapping
-	const emotionColors: Record<string, string> = {
-		triumph: 'text-yellow-500',
-		focus: 'text-blue-500',
-		intensity: 'text-red-500',
-		determination: 'text-purple-500',
-		excitement: 'text-orange-500',
-		serenity: 'text-green-500',
-	};
-
 	$effect(() => {
 		console.log('[PhotoDetailModal $effect] open:', open, 'photo:', photo?.image_key);
 		if (open) {
@@ -264,24 +254,6 @@
 
 												<!-- Metadata Grid -->
 												<div class="space-y-4">
-													<!-- Emotion -->
-													{#if metadata?.emotion}
-														<div class="flex items-start gap-3">
-															<Zap class="w-5 h-5 text-charcoal-400 mt-1" aria-hidden="true" />
-															<div class="flex-1">
-																<Typography variant="caption" class="text-charcoal-400 block mb-1">
-																	Detected Emotion
-																</Typography>
-																<Typography
-																	variant="body"
-																	class="capitalize {emotionColors[metadata.emotion] || 'text-white'}"
-																>
-																	{metadata.emotion}
-																</Typography>
-															</div>
-														</div>
-													{/if}
-
 													<!-- Play Type -->
 													{#if metadata?.play_type}
 														<div class="flex items-start gap-3">
@@ -292,21 +264,6 @@
 																</Typography>
 																<Typography variant="body" class="capitalize">
 																	{metadata.play_type}
-																</Typography>
-															</div>
-														</div>
-													{/if}
-
-													<!-- Action Intensity -->
-													{#if metadata?.action_intensity}
-														<div class="flex items-start gap-3">
-															<Zap class="w-5 h-5 text-charcoal-400 mt-1" aria-hidden="true" />
-															<div class="flex-1">
-																<Typography variant="caption" class="text-charcoal-400 block mb-1">
-																	Action Intensity
-																</Typography>
-																<Typography variant="body" class="capitalize">
-																	{metadata.action_intensity}
 																</Typography>
 															</div>
 														</div>

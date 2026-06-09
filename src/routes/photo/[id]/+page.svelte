@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import PhotoDetailModal from '$lib/components/gallery/PhotoDetailModal.svelte';
+	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
+	import { Link, Check } from 'lucide-svelte';
+	import { toast } from '$lib/stores/toast.svelte';
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
-	import { formatSport, formatCategory, formatComposition } from '$lib/utils/format-metadata';
+	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 
@@ -42,6 +44,25 @@
 	function handleRelatedPhotoClick(photo: Photo) {
 		// Navigate to the new photo's detail page
 		goto(`${base}/photo/${photo.image_key}`);
+	}
+
+	// Copy-link: prefer the canonical URL computed for SEO/OG; fall back to a
+	// runtime-built URL if it is ever absent.
+	let linkCopied = $state(false);
+
+	async function copyPhotoLink() {
+		const url =
+			data.seo.canonical ||
+			`${typeof window !== 'undefined' ? window.location.origin : ''}${base}/photo/${data.photo.image_key}`;
+		try {
+			await navigator.clipboard.writeText(url);
+			linkCopied = true;
+			toast.success('Link copied to clipboard.');
+			setTimeout(() => (linkCopied = false), 2000);
+		} catch (err) {
+			console.error('[PhotoDetail] Copy link failed:', err);
+			toast.error('Could not copy link. Please try again.');
+		}
 	}
 
 	// Generate enhanced Schema.org structured data for AEO
@@ -195,9 +216,6 @@
 					{#if data.photo.metadata.photo_category}
 						<span>Category: {formatCategory(data.photo.metadata.photo_category)}</span>
 					{/if}
-					{#if data.photo.metadata.composition}
-						<span>Composition: {formatComposition(data.photo.metadata.composition)}</span>
-					{/if}
 				</div>
 
 				<!-- EXIF Data (technical specs) -->
@@ -228,12 +246,32 @@
 						<TagDisplay tags={data.approvedTags} />
 					</div>
 				{/if}
-				<div class="flex gap-4">
+				<div class="flex flex-wrap items-center gap-4">
 					<button
 						onclick={handleClose}
 						class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
 					>
 						Close
+					</button>
+
+					<!-- Download (high-res via CF Images) -->
+					{#if hasCFImage(data.photo.cf_image_id)}
+						<DownloadButton photo={data.photo} variant="default" />
+					{/if}
+
+					<!-- Copy canonical link -->
+					<button
+						onclick={copyPhotoLink}
+						class="inline-flex items-center gap-2 px-6 py-3 bg-charcoal-800 text-white rounded-md border border-charcoal-700 hover:border-gold-500/50 hover:bg-charcoal-700 transition-colors"
+						aria-label="Copy link to this photo"
+					>
+						{#if linkCopied}
+							<Check class="w-5 h-5 text-green-500" />
+							Link copied
+						{:else}
+							<Link class="w-5 h-5" />
+							Copy link
+						{/if}
 					</button>
 					<a
 						href="{base}/photo/{data.photo.image_key}/tag"

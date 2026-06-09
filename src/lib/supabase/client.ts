@@ -18,7 +18,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
-import { PHOTO_COLUMNS } from '$lib/supabase/columns';
+import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
 
 // Browser-safe environment variables (VITE_ prefix = exposed to browser)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -57,7 +57,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
  */
 export async function getPublicPhotos(limit = 20) {
   const { data, error } = await supabase
-    .from('photo_metadata')
+    .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .not('sharpness', 'is', null)
     // Use upload_date for correct chronological sorting (photo_date is backfilled with enriched_at)
@@ -77,6 +77,10 @@ export async function getPublicPhotos(limit = 20) {
  *
  * Client-safe version for browser components
  * Used for loading additional timeline pages
+ *
+ * NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
+ * color_temperature, emotion, action_intensity) were removed from the mapping (cutover prep)
+ * ahead of their schema DROP. The numeric quality sub-scores below STAY.
  */
 export async function fetchPhotosByPeriod(options: {
   page?: number;
@@ -123,12 +127,12 @@ export async function fetchPhotosByPeriod(options: {
           const endDate = new Date(period.year, period.month, 1);
 
           const { data: photos } = await supabase
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
             .not('sharpness', 'is', null)
-            .order('emotional_impact', { ascending: false })
+            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
             .limit(6); // Top 6 photos per period
 
           return {
@@ -147,14 +151,8 @@ export async function fetchPhotosByPeriod(options: {
               created_at: row.photo_date || row.enriched_at || row.upload_date,
               metadata: {
                 play_type: (row.play_type || null),
-                action_intensity: (row.action_intensity || 'medium'),
                 sport_type: row.sport_type,
                 photo_category: row.photo_category,
-                composition: (row.composition || ''),
-                time_of_day: (row.time_of_day || ''),
-                lighting: (row.lighting || undefined),
-                color_temperature: (row.color_temperature || undefined),
-                emotion: (row.emotion || 'focus'),
                 sharpness: row.sharpness ?? 0,
                 composition_score: row.composition_score ?? 0,
                 exposure_accuracy: row.exposure_accuracy ?? 0,
@@ -164,7 +162,6 @@ export async function fetchPhotosByPeriod(options: {
                 event_id: row.event_id || undefined,
                 ai_provider: (row.ai_provider || 'gemini'),
                 ai_cost: row.ai_cost ?? 0,
-                ai_confidence: row.ai_confidence ?? 0,
                 enriched_at: row.enriched_at || new Date().toISOString(),
               },
             };
@@ -184,7 +181,7 @@ export async function fetchPhotosByPeriod(options: {
 
     // Manual fallback: fetch photos and group them in memory
     const { data: allPhotos, error: photosError } = await supabase
-      .from('photo_metadata')
+      .from(PHOTOS_READ)
       .select('upload_date')
       .not('sharpness', 'is', null)
       .not('upload_date', 'is', null)
@@ -223,12 +220,12 @@ export async function fetchPhotosByPeriod(options: {
           const endDate = new Date(period.year, period.month, 1);
 
           const { data: photos } = await supabase
-            .from('photo_metadata')
+            .from(PHOTOS_READ)
             .select(PHOTO_COLUMNS)
             .gte('upload_date', startDate.toISOString())
             .lt('upload_date', endDate.toISOString())
             .not('sharpness', 'is', null)
-            .order('emotional_impact', { ascending: false })
+            .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
             .limit(6); // Top 6 photos per period
 
           return {
@@ -250,14 +247,8 @@ export async function fetchPhotosByPeriod(options: {
               created_at: row.photo_date || row.enriched_at || row.upload_date,
               metadata: {
                 play_type: (row.play_type || null),
-                action_intensity: (row.action_intensity || 'medium'),
                 sport_type: row.sport_type,
                 photo_category: row.photo_category,
-                composition: (row.composition || ''),
-                time_of_day: (row.time_of_day || ''),
-                lighting: (row.lighting || undefined),
-                color_temperature: (row.color_temperature || undefined),
-                emotion: (row.emotion || 'focus'),
                 sharpness: row.sharpness ?? 0,
                 composition_score: row.composition_score ?? 0,
                 exposure_accuracy: row.exposure_accuracy ?? 0,
@@ -267,7 +258,6 @@ export async function fetchPhotosByPeriod(options: {
                 event_id: row.event_id || undefined,
                 ai_provider: (row.ai_provider || 'gemini'),
                 ai_cost: row.ai_cost ?? 0,
-                ai_confidence: row.ai_confidence ?? 0,
                 enriched_at: row.enriched_at || new Date().toISOString()
               }
             };

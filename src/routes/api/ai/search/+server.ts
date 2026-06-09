@@ -3,9 +3,14 @@
  *
  * Provides semantic photo search for AI crawlers and answer engines.
  * Supports natural language queries with relevance scoring.
+ *
+ * NOTE: the vanity CATEGORICAL aesthetic match (action_intensity) was removed (cutover prep) —
+ * that column is being DROPPED at the schema cutover. The numeric quality signal
+ * (emotional_impact) used for ranking/boosting is a DIFFERENT column and STAYS.
  */
 
 import { json } from '@sveltejs/kit';
+import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
 import { supabaseServer, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
@@ -28,7 +33,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Build base query
 		let dbQuery = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select(PHOTO_COLUMNS)
 			.not('sharpness', 'is', null); // Only enriched photos
 
@@ -65,20 +70,10 @@ export const GET: RequestHandler = async ({ url }) => {
 			serve: 'serve'
 		};
 
-		const intensityKeywords: Record<string, string> = {
-			peak: 'peak',
-			high: 'high',
-			medium: 'medium',
-			low: 'low',
-			intense: 'peak',
-			action: 'high'
-		};
-
 		// Detect filters from query
 		let detectedSport: string | undefined;
 		let detectedCategory: string | undefined;
 		let detectedPlayType: string | undefined;
-		let detectedIntensity: string | undefined;
 
 		for (const [keyword, sport] of Object.entries(sportKeywords)) {
 			if (normalizedQuery.includes(keyword)) {
@@ -101,13 +96,6 @@ export const GET: RequestHandler = async ({ url }) => {
 			}
 		}
 
-		for (const [keyword, intensity] of Object.entries(intensityKeywords)) {
-			if (normalizedQuery.includes(keyword)) {
-				detectedIntensity = intensity;
-				break;
-			}
-		}
-
 		// Apply detected filters
 		if (detectedSport) {
 			dbQuery = dbQuery.eq('sport_type', detectedSport);
@@ -117,9 +105,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 		if (detectedPlayType) {
 			dbQuery = dbQuery.eq('play_type', detectedPlayType);
-		}
-		if (detectedIntensity) {
-			dbQuery = dbQuery.eq('action_intensity', detectedIntensity);
 		}
 
 		// Sort by relevance (emotional_impact for quality, then upload_date)
@@ -154,10 +139,6 @@ export const GET: RequestHandler = async ({ url }) => {
 				matchReasons.push(`play_type: ${row.play_type}`);
 				relevanceScore += 0.2;
 			}
-			if (detectedIntensity && row.action_intensity === detectedIntensity) {
-				matchReasons.push(`intensity: ${row.action_intensity}`);
-				relevanceScore += 0.1;
-			}
 
 			// Boost score based on quality
 			if (row.emotional_impact && row.emotional_impact > 7) {
@@ -170,7 +151,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			return {
 				id: row.image_key,
 				url: `${BASE_URL}/photo/${row.image_key}`,
-				title: row.album_name || row.title || 'Untitled Photo',
+				title: row.album_name || 'Untitled Photo',
 				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
 				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
 				relevance_score: Math.round(relevanceScore * 100) / 100,
@@ -180,7 +161,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Get total count for matching filters
 		let countQuery = supabaseServer
-			.from('photo_metadata')
+			.from(PHOTOS_READ)
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null);
 
@@ -192,9 +173,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 		if (detectedPlayType) {
 			countQuery = countQuery.eq('play_type', detectedPlayType);
-		}
-		if (detectedIntensity) {
-			countQuery = countQuery.eq('action_intensity', detectedIntensity);
 		}
 
 		const { count } = await countQuery;
@@ -238,4 +216,3 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'Failed to search photos' }, { status: 500 });
 	}
 };
-

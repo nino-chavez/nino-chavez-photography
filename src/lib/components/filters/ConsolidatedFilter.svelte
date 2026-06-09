@@ -1,12 +1,12 @@
 <!--
-  ConsolidatedFilter Component - Unified filter dropdown for Intelligent Filter System
+  ConsolidatedFilter Component - Unified filter dropdown
 
-  Reduces component count from 8 individual filters to 2 consolidated dropdowns
-  Implements progressive disclosure and maintains all filter functionality
+  Reduces component count from individual filters to consolidated dropdowns.
+  Implements progressive disclosure and maintains all filter functionality.
 
   Features:
   - Primary Filters: Sport + Category (most used)
-  - Advanced Filters: Play Type, Intensity, Lighting, Color Temp, Time of Day, Composition
+  - Advanced Filters: Play Type
   - Progressive disclosure (advanced filters hidden by default)
   - Context-aware counts showing filtered results
   - Design system integration with FilterPill components
@@ -19,26 +19,16 @@
     selectedSport={data.selectedSport}
     selectedCategory={data.selectedCategory}
     selectedPlayType={data.selectedPlayType}
-    selectedIntensity={data.selectedIntensity}
-    selectedLighting={data.selectedLighting}
-    selectedColorTemp={data.selectedColorTemp}
-    selectedTimeOfDay={data.selectedTimeOfDay}
-    selectedComposition={data.selectedComposition}
     onSportSelect={handleSportSelect}
     onCategorySelect={handleCategorySelect}
     onPlayTypeSelect={handlePlayTypeSelect}
-    onIntensitySelect={handleIntensitySelect}
-    onLightingSelect={handleLightingSelect}
-    onColorTempSelect={handleColorTempSelect}
-    onTimeOfDaySelect={handleTimeOfDaySelect}
-    onCompositionSelect={handleCompositionSelect}
     filterCounts={data.filterCounts}
   />
 -->
 
 <script lang="ts">
 	import { slide } from 'svelte/transition';
-	import { ChevronDown, Trophy, Award, Zap, Activity, Palette, Clock, Frame, Filter } from 'lucide-svelte';
+	import { ChevronDown, Trophy, Award, Zap, Activity, Filter } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import FilterPill from '$lib/components/ui/FilterPill.svelte';
 
@@ -60,19 +50,9 @@
 		selectedSport?: string | null;
 		selectedCategory?: string | null;
 		selectedPlayType?: string | null;
-		selectedIntensity?: string | null;
-		selectedLighting?: string[] | null;
-		selectedColorTemp?: string | null;
-		selectedTimeOfDay?: string | null;
-		selectedComposition?: string | null;
 		onSportSelect?: (sport: string | null) => void;
 		onCategorySelect?: (category: string | null) => void;
 		onPlayTypeSelect?: (playType: string | null) => void;
-		onIntensitySelect?: (intensity: string | null) => void;
-		onLightingSelect?: (lighting: string[] | null) => void;
-		onColorTempSelect?: (temp: string | null) => void;
-		onTimeOfDaySelect?: (time: string | null) => void;
-		onCompositionSelect?: (composition: string | null) => void;
 		filterCounts?: {
 			sports?: Array<{ name: string; count: number }>;
 			categories?: Array<{ name: string; count: number }>;
@@ -85,19 +65,9 @@
 		selectedSport = null,
 		selectedCategory = null,
 		selectedPlayType = null,
-		selectedIntensity = null,
-		selectedLighting = null,
-		selectedColorTemp = null,
-		selectedTimeOfDay = null,
-		selectedComposition = null,
 		onSportSelect,
 		onCategorySelect,
 		onPlayTypeSelect,
-		onIntensitySelect,
-		onLightingSelect,
-		onColorTempSelect,
-		onTimeOfDaySelect,
-		onCompositionSelect,
 		filterCounts
 	}: Props = $props();
 
@@ -108,48 +78,12 @@
 	let advancedRef: HTMLDivElement | undefined = $state();
 
 	// Label mappings for user-friendly display
-	const compositionLabels: Record<string, string> = {
-		rule_of_thirds: 'Rule of Thirds',
-		leading_lines: 'Leading Lines',
-		centered: 'Centered',
-		symmetry: 'Symmetry',
-		frame_within_frame: 'Framed',
-	};
-
-	const timeOfDayLabels: Record<string, string> = {
-		golden_hour: 'Golden Hour',
-		midday: 'Midday',
-		evening: 'Evening',
-		night: 'Night',
-	};
-
 	const playTypeLabels: Record<string, string> = {
 		attack: 'Attack',
 		block: 'Block',
 		dig: 'Dig',
 		set: 'Set',
 		serve: 'Serve',
-	};
-
-	const intensityLabels: Record<string, string> = {
-		low: 'Low',
-		medium: 'Medium',
-		high: 'High',
-		peak: 'Peak',
-	};
-
-	const lightingLabels: Record<string, string> = {
-		natural: 'Natural',
-		backlit: 'Backlit',
-		dramatic: 'Dramatic',
-		soft: 'Soft',
-		artificial: 'Artificial',
-	};
-
-	const colorTempLabels: Record<string, string> = {
-		warm: 'Warm',
-		neutral: 'Neutral',
-		cool: 'Cool',
 	};
 
 	// Merge filterCounts with data for context-aware counts
@@ -207,12 +141,7 @@
 	);
 
 	const advancedActiveCount = $derived(
-		(selectedPlayType ? 1 : 0) +
-		(selectedIntensity ? 1 : 0) +
-		(selectedLighting?.length || 0) +
-		(selectedColorTemp ? 1 : 0) +
-		(selectedTimeOfDay ? 1 : 0) +
-		(selectedComposition ? 1 : 0)
+		(selectedPlayType ? 1 : 0)
 	);
 
 	// Click-outside detection
@@ -259,35 +188,6 @@
 
 	function handlePlayTypeClick(playType: string | null) {
 		onPlayTypeSelect?.(playType);
-		advancedExpanded = false;
-	}
-
-	function handleIntensityClick(intensity: string | null) {
-		onIntensitySelect?.(intensity);
-		advancedExpanded = false;
-	}
-
-	function handleLightingClick(lighting: string) {
-		const current = selectedLighting || [];
-		const updated = current.includes(lighting)
-			? current.filter(l => l !== lighting)
-			: [...current, lighting];
-		onLightingSelect?.(updated.length > 0 ? updated : null);
-		// Don't close dropdown for multi-select
-	}
-
-	function handleColorTempClick(temp: string | null) {
-		onColorTempSelect?.(temp);
-		advancedExpanded = false;
-	}
-
-	function handleTimeOfDayClick(time: string | null) {
-		onTimeOfDaySelect?.(time);
-		advancedExpanded = false;
-	}
-
-	function handleCompositionClick(composition: string | null) {
-		onCompositionSelect?.(composition);
 		advancedExpanded = false;
 	}
 
@@ -441,7 +341,7 @@
 				onclick={(e) => e.stopPropagation()}
 			>
 				<!-- Play Type Section -->
-				<div class="mb-4">
+				<div>
 					<Typography variant="label" class="text-charcoal-300 text-xs font-medium mb-2 block">Play Type</Typography>
 					<div class="flex flex-wrap gap-2">
 						<FilterPill
@@ -459,118 +359,6 @@
 								description="{label} plays"
 								size="sm"
 								onclick={() => handlePlayTypeClick(key)}
-							/>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Intensity Section -->
-				<div class="mb-4">
-					<Typography variant="label" class="text-charcoal-300 text-xs font-medium mb-2 block">Action Intensity</Typography>
-					<div class="flex flex-wrap gap-2">
-						<FilterPill
-							label="All"
-							state={!selectedIntensity ? 'active' : 'available'}
-							description="Show all intensity levels"
-							size="sm"
-							onclick={() => handleIntensityClick(null)}
-						/>
-
-						{#each Object.entries(intensityLabels) as [key, label] (key)}
-							<FilterPill
-								label={label}
-								state={selectedIntensity === key ? 'active' : 'available'}
-								description="{label} intensity"
-								size="sm"
-								onclick={() => handleIntensityClick(key)}
-							/>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Lighting Section (Multi-select) -->
-				<div class="mb-4">
-					<Typography variant="label" class="text-charcoal-300 text-xs font-medium mb-2 block">Lighting</Typography>
-					<div class="flex flex-wrap gap-2">
-						{#each Object.entries(lightingLabels) as [key, label] (key)}
-							<FilterPill
-								label={label}
-								state={selectedLighting?.includes(key) ? 'active' : 'available'}
-								description="{label} lighting"
-								size="sm"
-								onclick={() => handleLightingClick(key)}
-							/>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Color Temperature Section -->
-				<div class="mb-4">
-					<Typography variant="label" class="text-charcoal-300 text-xs font-medium mb-2 block">Color Temperature</Typography>
-					<div class="flex flex-wrap gap-2">
-						<FilterPill
-							label="All"
-							state={!selectedColorTemp ? 'active' : 'available'}
-							description="Show all color temperatures"
-							size="sm"
-							onclick={() => handleColorTempClick(null)}
-						/>
-
-						{#each Object.entries(colorTempLabels) as [key, label] (key)}
-							<FilterPill
-								label={label}
-								state={selectedColorTemp === key ? 'active' : 'available'}
-								description="{label} color temperature"
-								size="sm"
-								onclick={() => handleColorTempClick(key)}
-							/>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Time of Day Section -->
-				<div class="mb-4">
-					<Typography variant="label" class="text-charcoal-300 text-xs font-medium mb-2 block">Time of Day</Typography>
-					<div class="flex flex-wrap gap-2">
-						<FilterPill
-							label="All"
-							state={!selectedTimeOfDay ? 'active' : 'available'}
-							description="Show all times of day"
-							size="sm"
-							onclick={() => handleTimeOfDayClick(null)}
-						/>
-
-						{#each Object.entries(timeOfDayLabels) as [key, label] (key)}
-							<FilterPill
-								label={label}
-								state={selectedTimeOfDay === key ? 'active' : 'available'}
-								description="Photos taken during {label.toLowerCase()}"
-								size="sm"
-								onclick={() => handleTimeOfDayClick(key)}
-							/>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Composition Section -->
-				<div>
-					<Typography variant="label" class="text-charcoal-300 text-xs font-medium mb-2 block">Composition</Typography>
-					<div class="flex flex-wrap gap-2">
-						<FilterPill
-							label="All"
-							state={!selectedComposition ? 'active' : 'available'}
-							description="Show all compositions"
-							size="sm"
-							onclick={() => handleCompositionClick(null)}
-						/>
-
-						{#each Object.entries(compositionLabels) as [key, label] (key)}
-							<FilterPill
-								label={label}
-								state={selectedComposition === key ? 'active' : 'available'}
-								description="{label} composition"
-								size="sm"
-								onclick={() => handleCompositionClick(key)}
 							/>
 						{/each}
 					</div>

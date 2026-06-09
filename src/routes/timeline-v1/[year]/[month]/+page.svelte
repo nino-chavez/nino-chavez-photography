@@ -40,22 +40,16 @@
 			thumbnail_url: raw.cf_image_id ? cfImageUrl(raw.cf_image_id, 'thumbnail') : '',
 			original_url: raw.cf_image_id ? cfImageUrl(raw.cf_image_id, 'public') : '',
 			title: raw.album_name || 'Untitled',
-			caption: raw.composition || '',
-			keywords: Array.isArray(raw.use_cases) ? raw.use_cases : [],
+			caption: raw.caption || '',
+			keywords: [],
 			created_at: raw.photo_date || raw.enriched_at || '',
 			metadata: {
 				// BUCKET 1: Concrete & Filterable
 				play_type: (raw.play_type as any) || null,
-				action_intensity: (raw.action_intensity as any) || 'medium',
 				sport_type: raw.sport_type,
 				photo_category: raw.photo_category,
-				composition: (raw.composition as any) || '',
-				time_of_day: (raw.time_of_day as any) || '',
-				lighting: (raw.lighting as any) || undefined,
-				color_temperature: (raw.color_temperature as any) || undefined,
 
 				// BUCKET 2: Abstract & Internal
-				emotion: (raw.emotion as any) || 'focus',
 				sharpness: raw.sharpness || 0,
 				composition_score: raw.composition_score || 0,
 				exposure_accuracy: raw.exposure_accuracy || 0,
@@ -67,7 +61,6 @@
 				// AI metadata
 				ai_provider: (raw.ai_provider as any) || 'gemini',
 				ai_cost: raw.ai_cost || 0,
-				ai_confidence: raw.ai_confidence || 0,
 				enriched_at: raw.enriched_at || ''
 			}
 		};
