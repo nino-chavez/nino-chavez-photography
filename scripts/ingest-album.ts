@@ -53,7 +53,13 @@ function flagValue(name: string): string | undefined {
 }
 
 const DIR = flagValue('dir');
-const ALBUM_KEY = flagValue('album-key');
+/** Folder basename → a clean slug album_key (matches the live `vla-630-breeze` style). */
+function slugifyKey(s: string): string {
+	return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+const folderBase = DIR ? DIR.replace(/\/+$/, '').split('/').pop() || '' : '';
+// album_key is generated from the folder when not passed — the operator points at a folder, not a key.
+const ALBUM_KEY = flagValue('album-key') || (folderBase ? slugifyKey(folderBase) : undefined);
 const ALBUM_NAME_ARG = flagValue('album-name');
 const SPORT_ARG = flagValue('sport'); // 'volleyball' | ... | 'none'/'null' for non-sport
 const UPLOAD_DATE = flagValue('upload-date') || new Date().toISOString().split('T')[0];
@@ -75,7 +81,8 @@ function die(msg: string): never {
 }
 
 if (!DIR || !ALBUM_KEY) {
-	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> --album-key <KEY> [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--concurrency 4] [--limit N] [--dry-run] [--overwrite]');
+	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--concurrency 4] [--limit N] [--dry-run] [--overwrite]\n' +
+		'  --album-key defaults to the folder-name slug; --sport is detected from --album-name when omitted.');
 }
 if (!OPENROUTER_API_KEY) die('OPENROUTER_API_KEY required (1Password "OpenRouter photography")');
 if (!SUPABASE_URL || !SUPABASE_KEY) die('Supabase creds required (VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
@@ -163,26 +170,43 @@ async function resolveAlbum(): Promise<{ sport: Sport | null; albumName: string 
 		return { sport, albumName: existing.album_name ?? ALBUM_NAME_ARG ?? ALBUM_KEY! };
 	}
 
-	// Album missing → require an explicit operator sport + name to bootstrap the row.
-	if (SPORT_ARG === undefined || !ALBUM_NAME_ARG) {
-		die(`No albums row for album_key="${ALBUM_KEY}". Sport is album-authoritative, so a new album MUST ` +
-			`declare it first. Re-run with --album-name "..." and --sport <taxonomy-sport|none>, or seed the ` +
-			`row via scripts/load-album-sports.ts.`);
+	// Album missing → bootstrap it. Sport must be KNOWN: explicit --sport wins, else it's detected
+	// from the album name (operator convention: "the sport is in the name"). NEVER guessed/defaulted.
+	const name = ALBUM_NAME_ARG || folderBase;
+	let sport: Sport | null;
+	if (SPORT_ARG !== undefined) {
+		sport = parseSportArg();
+	} else {
+		sport = detectSportFromName(name);
+		if (sport === null) {
+			die(`Couldn't determine the sport for new album "${name}" (key="${ALBUM_KEY}"). Sport is ` +
+				`album-authoritative and never guessed — re-run with --sport <${SPORTS.filter((s) => s !== 'other').join('|')}|none>.`);
+		}
+		console.log(`   🔎 Sport detected from album name: ${sport}`);
 	}
-	const sport = parseSportArg();
 	if (DRY) {
-		console.log(`   [DRY] Would create albums row: ${ALBUM_KEY} "${ALBUM_NAME_ARG}" sport=${sport ?? 'none'}`);
+		console.log(`   [DRY] Would create albums row: ${ALBUM_KEY} "${name}" sport=${sport ?? 'none'}`);
 	} else {
 		const { error: insErr } = await sb.from('albums').insert({
 			album_key: ALBUM_KEY,
-			album_name: ALBUM_NAME_ARG,
+			album_name: name,
 			sport, // string value or null; Postgres casts to the sport enum
 			sport_source: 'operator',
 		});
 		if (insErr) die(`failed to create albums row: ${insErr.message}`);
-		console.log(`   ✅ Created albums row: ${ALBUM_KEY} "${ALBUM_NAME_ARG}" sport=${sport ?? 'none'}`);
+		console.log(`   ✅ Created albums row: ${ALBUM_KEY} "${name}" sport=${sport ?? 'none'}`);
 	}
-	return { sport, albumName: ALBUM_NAME_ARG };
+	return { sport, albumName: name };
+}
+
+/** Detect the album's sport from its name (operator convention: "the sport is in the name"). */
+function detectSportFromName(name: string): Sport | null {
+	const n = name.toLowerCase();
+	for (const s of SPORTS) {
+		if (s === 'other') continue;
+		if (n.includes(s) || n.includes(s.replace('_', ' '))) return s as Sport;
+	}
+	return null;
 }
 
 // ---------------------------------------------------------------------------
