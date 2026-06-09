@@ -13,38 +13,19 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
+import { normJersey, normColor, clamp01, teamSide, dedupKey, type Sighting } from '../src/lib/identity/sightings';
 
 const DRY = process.argv.includes('--dry-run');
 const sb = createClient(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-const JERSEY_RE = /^[0-9]{1,3}[A-Z]?$/;
-function normJersey(v: unknown): string | null {
-	if (v === null || v === undefined) return null;
-	const s = String(v).trim().toUpperCase();
-	return JERSEY_RE.test(s) ? s : null;
-}
-function normColor(c: unknown): string | null {
-	if (typeof c !== 'string') return null;
-	const s = c.trim().toLowerCase().split(' ')[0];
-	return s || null;
-}
-const clamp01 = (n: unknown): number | null => (typeof n === 'number' && n >= 0 && n <= 1 ? n : null);
-const teamSide = (t: unknown): string | null => (t === 'home' || t === 'away' ? t : null);
-
-/** OLD agentic shape carries any of these keys; NEW caption shape has none of them. */
+/**
+ * normJersey / normColor / clamp01 / teamSide / dedupKey / Sighting are the SHARED leaf helpers
+ * (src/lib/identity/sightings.ts) — the same ones the live ingest uses, so dedup_key stays
+ * byte-identical across both write paths. isOldShape is backfill-specific: it discriminates the
+ * pre-rebuild agentic players[] shape from the caption shape (ingest only ever emits the latter).
+ */
 function isOldShape(p: any): boolean {
 	return p && (('team' in p) || ('jersey_confidence' in p) || ('position_in_frame' in p) || ('is_primary_subject' in p));
-}
-
-interface Sighting {
-	photo_id: string; album_key: string | null; jersey_number: string | null;
-	team_side: string | null; team_color: string | null; jersey_confidence: number | null;
-	action_text: string | null; position_in_frame: string | null; is_primary_subject: boolean | null;
-	source: string; dedup_key: string;
-}
-
-function dedupKey(s: Omit<Sighting, 'dedup_key'>): string {
-	return [s.source, s.photo_id, s.jersey_number ?? '', s.team_side ?? '', s.team_color ?? '', s.position_in_frame ?? ''].join('|');
 }
 
 async function fetchAll(): Promise<Array<{ photo_id: string; album_key: string | null; players: any; jersey_number: number | null }>> {
