@@ -59,8 +59,20 @@ radius) → **Prescription** (`prescription.yml`) → Design Principles → **Pr
 → Deploy. **#10 ingest fits perfectly as the first midstream cycle** (prescription = `INGEST-REBUILD-10.md`,
 prototype-as-patch = building it).
 
-**On-ramp (canonical CLI — do NOT improvise structure):**
-1. `npx @nino-chavez-labs/blueprint-cli init` (Pattern **A** = platform; it's a working app, not a redesign-review).
+**On-ramp (canonical CLI — VALIDATED working command):**
+1. Scaffold (confirmed to work via the local CLI; creates a portal monorepo — `apps/portal/` Astro +
+   `packages/ui` design system + `blueprint.yml` + workspace root — into `photography/blueprint/` per the
+   rally-hq structure). The `--target` dir must EXIST first; `--tier` is NUMERIC (use 2):
+   ```bash
+   mkdir -p <photography-repo>/blueprint
+   node ~/Workspace/dev/tools/blueprint/bin/blueprint.mjs init \
+     --name=nino-chavez-photography --display-name="Nino Chavez Photography" \
+     --repo-url=https://github.com/nino-chavez/nino-chavez-photography \
+     --tagline="Volleyball action-sports photography portfolio" \
+     --variant=midstream --tier=2 --pattern=A --target=<photography-repo>/blueprint
+   ```
+   (NOTE: scaffolds a full portal monorepo — this is a multi-stage Blueprint INITIATIVE, not a one-shot.
+   Do it on a fresh branch off `main` in the photography repo, then run the midstream pipeline stages.)
 2. `blueprint.yml`: `execution.depth: standard`, the cost dial, and — REQUIRED Stage-0→1 gate — a `pilot_profile`
    (the find-my-event parent/fan: `pain_point` = "I know Nino shot my kid's game — find that album and download/
    share my photos"; `monetization_side` = operator/none-no-sales; `walkthrough_citation` = a REAL artifact, NOT
