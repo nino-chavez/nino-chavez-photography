@@ -92,6 +92,17 @@ function parseModelJson(text: string): any | null {
 	try { return JSON.parse(m[0]); } catch { return null; }
 }
 
+/**
+ * Lenient caption recovery for when JSON.parse fails. The model sometimes emits UNESCAPED double
+ * quotes inside the caption string (team names, jersey text, logos — e.g. ...with "Chargers" on...),
+ * which breaks strict JSON and previously dropped a caption the model actually produced. Grab the
+ * caption value up to the closing quote that precedes the next key or the object end.
+ */
+function extractCaptionLenient(text: string): string {
+	const m = text.match(/"caption"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"[a-z_]+"\s*:|}\s*$)/i);
+	return m ? m[1].replace(/\\"/g, '"').trim() : '';
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface Row { image_key: string; album_key: string; album_name: string | null; cf_image_id: string; caption: string | null; }
@@ -160,7 +171,8 @@ async function processRow(row: Row): Promise<{ caption: string; players: number;
 	const j: any = await res.json();
 	const text = j.choices?.[0]?.message?.content ?? '';
 	const parsed = parseModelJson(text);
-	const caption = (parsed?.caption ?? '').toString().trim();
+	let caption = (parsed?.caption ?? '').toString().trim();
+	if (!caption) caption = extractCaptionLenient(text); // recover captions with unescaped inner quotes
 	if (!caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
 	const players = Array.isArray(parsed?.players) ? parsed.players : [];
 	const teamColors = Array.from(
