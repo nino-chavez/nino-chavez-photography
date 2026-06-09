@@ -790,88 +790,51 @@ export async function fetchAllPeriods(options?: {
   sportFilter?: string;
   categoryFilter?: string;
 }) {
-  const { sportFilter, categoryFilter } = options || {};
+  const { sportFilter } = options || {};
 
-  try {
-    // Use raw SQL to get all periods with photo counts (GROUP BY approach)
-    const { data: periods, error: periodsError } = await supabaseServer.rpc('exec_sql', {
-      sql: `
-        SELECT
-          EXTRACT(YEAR FROM upload_date) as year,
-          EXTRACT(MONTH FROM upload_date) as month,
-          COUNT(*) as photo_count
-        FROM photo_metadata
-        WHERE sharpness IS NOT NULL
-          AND upload_date IS NOT NULL
-          ${sportFilter ? `AND sport_type = '${sportFilter}'` : ''}
-          ${categoryFilter ? `AND photo_category = '${categoryFilter}'` : ''}
-        GROUP BY EXTRACT(YEAR FROM upload_date), EXTRACT(MONTH FROM upload_date)
-        ORDER BY year DESC, month DESC
-      `
-    });
+  // Read the pre-aggregated monthly view. WHY this shape: the previous implementation used exec_sql,
+  // which the security lockdown revoked from the anon role — under the anon key in prod that call
+  // failed into a fallback that fetched photos with NO limit, hit Supabase's 1000-row default, and
+  // collapsed the scrubber to only the most recent ~2 years (2025–26). timeline_month_sports is an
+  // anon-readable view, already grouped by month, so it's small (no row-limit truncation) and needs
+  // no exec_sql. categoryFilter is intentionally not applied here: the scrubber range is
+  // category-agnostic; the photo grid still filters by category.
+  let query = supabaseServer
+    .from('timeline_month_sports')
+    .select('year, month, photo_count, sport_type');
 
-    if (periodsError) {
-      throw periodsError; // This will trigger the fallback below
-    }
-
-    // Process the periods data
-    return (periods || []).map((row: any) => ({
-      year: parseInt(row.year.toString()),
-      month: parseInt(row.month.toString()),
-      monthName: new Date(parseInt(row.year.toString()), parseInt(row.month.toString()) - 1).toLocaleString('default', { month: 'long' }),
-      photoCount: parseInt(row.photo_count.toString())
-    }));
-
-  } catch (error) {
-    console.error('[Supabase] Error with SQL approach for all periods, using manual fallback:', error);
-
-    // Manual fallback: fetch photos and group them in memory
-    let query = supabaseServer
-      .from(PHOTOS_READ)
-      .select('upload_date')
-      .not('sharpness', 'is', null)
-      .not('upload_date', 'is', null);
-
-    if (sportFilter) {
-      query = query.eq('sport_type', sportFilter);
-    }
-
-    if (categoryFilter) {
-      query = query.eq('photo_category', categoryFilter);
-    }
-
-    const { data: allPhotos, error: photosError } = await query
-      .order('upload_date', { ascending: false });
-
-    if (photosError) {
-      console.error('[Supabase] Fallback query also failed:', photosError);
-      throw photosError;
-    }
-
-    // Group by year/month manually
-    const periodMap = new Map<string, { year: number; month: number; count: number }>();
-    allPhotos?.forEach((photo: any) => {
-      const date = new Date(photo.upload_date);
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const key = `${year}-${month}`;
-
-      if (periodMap.has(key)) {
-        periodMap.get(key)!.count++;
-      } else {
-        periodMap.set(key, { year, month, count: 1 });
-      }
-    });
-
-    return Array.from(periodMap.values())
-      .sort((a, b) => b.year - a.year || b.month - a.month)
-      .map(period => ({
-        year: period.year,
-        month: period.month,
-        monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
-        photoCount: period.count
-      }));
+  if (sportFilter) {
+    query = query.eq('sport_type', sportFilter);
   }
+
+  const { data: rows, error } = await query;
+
+  if (error) {
+    console.error('[fetchAllPeriods] timeline_month_sports query failed:', error.message);
+    return [];
+  }
+
+  // Sum photo counts per (year, month) across sports
+  const periodMap = new Map<string, { year: number; month: number; count: number }>();
+  for (const r of rows || []) {
+    const year = Number((r as any).year);
+    const month = Number((r as any).month);
+    if (!year || !month) continue;
+    const key = `${year}-${month}`;
+    const existing = periodMap.get(key);
+    const c = Number((r as any).photo_count) || 0;
+    if (existing) existing.count += c;
+    else periodMap.set(key, { year, month, count: c });
+  }
+
+  return Array.from(periodMap.values())
+    .sort((a, b) => b.year - a.year || b.month - a.month)
+    .map((period) => ({
+      year: period.year,
+      month: period.month,
+      monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
+      photoCount: period.count
+    }));
 }
 
 /**
