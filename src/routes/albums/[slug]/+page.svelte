@@ -22,6 +22,28 @@
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
 
+	// Cross-page lightbox accumulation. `lightboxPhotos` grows beyond the
+	// current server page as the user navigates past its boundary; the lightbox
+	// reads from this list (when not searching) so navigation flows across pages.
+	let lightboxPhotos = $state(data.photos);
+	let loadedThroughPage = $state(data.currentPage);
+	let loadingMore = $state(false);
+
+	// Track the last server page we synced from so the reset $effect fires ONLY
+	// when the page actually changes (e.g. user paginates / lands via ?page=),
+	// not on every reactive tick — which would wipe the accumulated list.
+	let lastPage = data.currentPage;
+	$effect(() => {
+		if (data.currentPage !== lastPage) {
+			lastPage = data.currentPage;
+			lightboxPhotos = data.photos;
+			loadedThroughPage = data.currentPage;
+		}
+	});
+
+	// Index of the first photo on the current server page within the album.
+	const indexOffset = $derived((data.currentPage - 1) * data.pageSize);
+
 	// Video player state
 	let activeVideo = $state<Video | null>(null);
 	let videoPlayerOpen = $state(false);
@@ -44,6 +66,18 @@
 		);
 	});
 
+	// The lightbox's photo source. While searching, stay page-local (search
+	// filters only the current page). When NOT searching, use the accumulated
+	// cross-page list. When not searching, displayPhotos === data.photos ===
+	// lightboxPhotos[0..pageSize], so the click-to-open index maps correctly.
+	const lightboxSource = $derived(searchQuery.trim() ? displayPhotos : lightboxPhotos);
+
+	// Only enable cross-page loading when not searching and there are more
+	// album photos beyond what we've accumulated.
+	const hasMore = $derived(
+		!searchQuery.trim() && indexOffset + lightboxPhotos.length < data.totalCount
+	);
+
 	function handlePhotoClick(photo: Photo) {
 		// Find the index of the clicked photo in displayPhotos
 		const index = displayPhotos.findIndex((p) => p.image_key === photo.image_key);
@@ -56,6 +90,46 @@
 
 	function handleLightboxNavigate(newIndex: number) {
 		selectedPhotoIndex = newIndex;
+	}
+
+	// Fetch the next album page and append it to the accumulated list so the
+	// lightbox can advance into it without closing.
+	async function loadNextPage() {
+		if (loadingMore) return;
+		loadingMore = true;
+		try {
+			const nextPage = loadedThroughPage + 1;
+			const res = await fetch(
+				`${base}/api/album-photos?albumKey=${encodeURIComponent(data.albumKey)}&page=${nextPage}`
+			);
+			if (!res.ok) return;
+
+			const { photos } = (await res.json()) as { photos: Photo[] };
+			if (photos && photos.length > 0) {
+				lightboxPhotos = [...lightboxPhotos, ...photos];
+				loadedThroughPage = nextPage;
+			}
+		} catch (err) {
+			console.error('[album] loadNextPage failed', err);
+		} finally {
+			loadingMore = false;
+		}
+	}
+
+	// Contextual close: land the user on the server page that holds the
+	// last-viewed photo, not the page they opened the lightbox from.
+	function handleLightboxClose() {
+		lightboxOpen = false;
+
+		// Searching stays page-local — no cross-page navigation on close.
+		if (searchQuery.trim()) return;
+
+		const globalIndex = indexOffset + selectedPhotoIndex;
+		const targetPage = Math.floor(globalIndex / data.pageSize) + 1;
+
+		if (targetPage !== data.currentPage) {
+			goto(`${base}/albums/${data.slug}?page=${targetPage}`);
+		}
 	}
 
 	function handlePageChange(page: number) {
@@ -259,13 +333,19 @@
 	</div>
 </div>
 
-<!-- Lightbox (same component as explore page) -->
+<!-- Lightbox (same component as explore page; cross-page nav when not searching) -->
 <Lightbox
 	bind:open={lightboxOpen}
-	photo={displayPhotos[selectedPhotoIndex] || null}
-	photos={displayPhotos}
+	photo={lightboxSource[selectedPhotoIndex] || null}
+	photos={lightboxSource}
 	currentIndex={selectedPhotoIndex}
+	onClose={handleLightboxClose}
 	onNavigate={handleLightboxNavigate}
+	hasMore={hasMore}
+	onLoadMore={loadNextPage}
+	loadingMore={loadingMore}
+	totalCount={searchQuery.trim() ? undefined : data.totalCount}
+	indexOffset={searchQuery.trim() ? 0 : indexOffset}
 />
 
 <!-- Video Player -->

@@ -25,6 +25,12 @@
 		currentIndex?: number;
 		onClose?: () => void;
 		onNavigate?: (index: number) => void;
+		// Cross-page navigation (optional — defaults preserve single-page behavior)
+		hasMore?: boolean;
+		onLoadMore?: () => Promise<void>;
+		loadingMore?: boolean;
+		totalCount?: number;
+		indexOffset?: number;
 	}
 
 	let {
@@ -33,7 +39,12 @@
 		photos = [],
 		currentIndex = 0,
 		onClose,
-		onNavigate
+		onNavigate,
+		hasMore = false,
+		onLoadMore,
+		loadingMore = false,
+		totalCount,
+		indexOffset = 0
 	}: Props = $props();
 
 	let zoomLevel = $state(1);
@@ -92,8 +103,11 @@
 	let initialScale = $state(1);
 	let lastTapTime = $state(0);
 
-	// Navigation availability
-	const canGoNext = $derived(photos.length > 0 && currentIndex < photos.length - 1);
+	// Navigation availability. `hasMore` extends "next" past the loaded list:
+	// at the boundary, advancing triggers onLoadMore to append the next page.
+	const canGoNext = $derived(
+		photos.length > 0 && (currentIndex < photos.length - 1 || hasMore)
+	);
 	const canGoPrev = $derived(photos.length > 0 && currentIndex > 0);
 
 	// Detect touch device
@@ -125,6 +139,11 @@
 	const displayCaption = $derived(photo ? generatePhotoCaption(photo) : '');
 	const metadataSummary = $derived(photo ? generateMetadataSummary(photo) : []);
 
+	// Counter: prefer cross-page totals when provided, else fall back to the
+	// loaded-list position so single-page usages are unchanged.
+	const counterCurrent = $derived(indexOffset + currentIndex + 1);
+	const counterTotal = $derived(typeof totalCount === 'number' ? totalCount : photos.length);
+
 	function handleClose() {
 		open = false;
 		zoomLevel = 1;
@@ -132,14 +151,33 @@
 		onClose?.();
 	}
 
-	function handleNext(event?: MouseEvent) {
-		event?.stopPropagation();
-		if (canGoNext) {
+	// Advance to the next photo. At the boundary of the loaded list, if more
+	// pages are available, load the next page first, then advance into it.
+	async function goNext() {
+		if (currentIndex < photos.length - 1) {
 			zoomLevel = 1;
 			imagePosition = { x: 0, y: 0 };
 			navDirection = 'right';
 			imageLoading = true;
 			onNavigate?.(currentIndex + 1);
+			return;
+		}
+
+		// At the last loaded photo — fetch + append the next page, then advance.
+		if (hasMore && onLoadMore && !loadingMore) {
+			zoomLevel = 1;
+			imagePosition = { x: 0, y: 0 };
+			navDirection = 'right';
+			await onLoadMore();
+			imageLoading = true;
+			onNavigate?.(currentIndex + 1);
+		}
+	}
+
+	function handleNext(event?: MouseEvent) {
+		event?.stopPropagation();
+		if (canGoNext) {
+			void goNext();
 		}
 	}
 
@@ -258,7 +296,7 @@
 				break;
 			case 'ArrowRight':
 				event.preventDefault();
-				handleNext();
+				if (canGoNext) void goNext();
 				break;
 			case '+':
 			case '=':
@@ -371,7 +409,7 @@
 							{/if}
 							{#if photos.length > 0}
 								<Typography variant="caption" class="text-white/60">
-									{currentIndex + 1} / {photos.length}
+									{counterCurrent} / {counterTotal}
 								</Typography>
 							{/if}
 						</div>
@@ -380,7 +418,7 @@
 						<div class="flex-1 md:hidden">
 							{#if photos.length > 0}
 								<Typography variant="caption" class="text-white/80 text-sm">
-									{currentIndex + 1} / {photos.length}
+									{counterCurrent} / {counterTotal}
 								</Typography>
 							{/if}
 						</div>
@@ -482,11 +520,16 @@
 					{#if canGoNext}
 						<button
 							onclick={handleNext}
-							class="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500"
-							aria-label="Next photo"
+							disabled={loadingMore}
+							class="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-wait {loadingMore ? 'animate-pulse' : ''}"
+							aria-label={loadingMore ? 'Loading more photos' : 'Next photo'}
 							title="Next (→)"
 						>
-							<ChevronRight class="w-8 h-8 text-white" />
+							{#if loadingMore}
+								<div class="w-7 h-7 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
+							{:else}
+								<ChevronRight class="w-8 h-8 text-white" />
+							{/if}
 						</button>
 					{/if}
 				{/if}
