@@ -42,7 +42,14 @@ indefinitely — each item has a near removal trigger, not "someday."
 - ✅ **#2 DONE (bias)**: the "default to volleyball" bias removed from PORTFOLIO_CONTEXT (the corruption cause); model told sport is album-known. Vestigial `sport_type` field stays (trigger-overridden); full field removal rides with the prompt replacement (#10).
 - ✅ **H2 DONE**: `supabase/migrations/` declared canonical (README banner); 8 rebuild-era dupes removed from `database/migrations/` (now a frozen legacy archive).
 - ⏸️ **#8 DEFERRED (rationale)**: `exec_sql` security hole is already closed (anon revoked, service-role-only); the DROP is merge-gated; replacing 8 aggregation callers with typed RPCs is large for marginal gain (service_role is all-powerful regardless). Folded into the #10 ingest rebuild, not done speculatively.
-- **At merge/cutover**: apply the gated drops (#3 `ai_confidence`, #1 `sport_type` via `photos_read` view + the `PHOTOS_READ` seam flip, #5 `players[]`/`jersey_number`) once `main` = this branch's code + deployed.
+- ✅ **Rebuild MERGED + DEPLOYED** (PR #6/#7/#8): event-discovery model live on prod; exec_sql cluster fixed (#8 done); timeline regression fixed.
+- ✅ **`ai_confidence` DROPPED** (20260609020000): genuinely inert; H1 loop closed.
+- **Remaining drops — each has a LIVE tendril, so they are a dedicated migration, not leaf drops:**
+  - ✅ **6 vanity columns DROPPED** (20260609030000): `match_photos` recreated without the 4 vanity output cols (all 3 callers use only `image_key`; re-granted to anon + verified anon-callable), `normalize_composition` dropped, then the 6 cols dropped.
+  - **`players`**: still WRITTEN by the new-album sync pipeline — **gated on the #10 ingest rebuild** (switch sync to write sightings, not players).
+  - **`sport_type`**: ⚠️ **RECOMMEND KEEP.** It's a trigger-enforced CORRECT mirror of `albums.sport`, not harmful cruft. Dropping it cascades into 6 live objects (`albums_summary`, `timeline_month_sports`, `find_photos_by_jersey`, `find_similar_photos`, `match_photos`, the trigger) + needs a `photos_read` seam-flip redeploy — high cost/risk for a column that's already correct. The seam exists if we ever want it, but the pragmatic call is to keep it as a documented denormalization.
+  - **`jersey_number`**: still in live `PHOTO_COLUMNS` (used) — keep.
+  - **`exec_sql` function**: now zero callers (#8) → droppable, but it's SELECT-only + service-role-only (secured) and useful for diagnostics — optional, not urgent.
 - **Slice 2** (in flight): lands #5 (drop `players[]`/`jersey_number` after relational backfill) + #9.
 - **Hygiene H2**: reconcile #7, archive #9's dead def.
 - **Later slices**: #2 (AI layer), #8 (kernel RPC), #10 (unified ingest).
