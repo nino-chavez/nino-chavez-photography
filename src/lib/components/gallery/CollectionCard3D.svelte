@@ -19,6 +19,7 @@
 <script lang="ts">
 	import { Award, Sparkles } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
+	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import type { CoverPhotoRow } from '$types/database';
 
 	interface CollectionWithPhotos {
@@ -41,6 +42,14 @@
 	let isHovered = $state(false);
 
 	let isPortfolio = $derived(collection.slug === 'portfolio-excellence');
+
+	// Serve the cover via Cloudflare Images (every photo has cf_image_id); the legacy SmugMug
+	// ImageUrl is only a defensive fallback now and goes away with the URL-column drop.
+	let coverImageUrl = $derived(
+		hasCFImage(collection.coverPhoto?.cf_image_id)
+			? cfImageUrl(collection.coverPhoto!.cf_image_id!, 'medium')
+			: (collection.coverPhoto?.ImageUrl ?? '')
+	);
 </script>
 
 <!-- 3D Card Container with Perspective -->
@@ -82,7 +91,7 @@
 						"
 					>
 						<img
-							src={collection.coverPhoto.ImageUrl}
+							src={coverImageUrl}
 							alt="{collection.title} cover"
 							width="400"
 							height="300"

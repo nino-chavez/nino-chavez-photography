@@ -50,15 +50,32 @@ A single ingest module that, per album, does NOT touch EXIF at all:
 - Optional: extraction **confidence** per field for a future review queue (defer unless needed).
 
 ## Slices
-1. **Migration (additive):** add `photo_metadata.extraction_version`.
-2. **Extraction module:** finalize the sport-aware structured prompt (input: album sport; output: the kept
-   fields + players[]); a `extractOne(imageBuffer, {albumSport, albumName})` returning the typed result.
-3. **Ingest runner:** `scripts/ingest-album.ts --dir --album-key --album-name --upload-date [--dry-run]`
-   that does upload + extract + embed + direct DB write + sightings, per image, resumable.
-4. **Cutover:** repoint `run-pipeline.ts` (or replace it) to the new runner; delete `enrich-local-photos.ts`,
-   `sync-local-to-supabase.ts`, the EXIF write/read code; drop the `players` column (now unwritten).
-5. **Verify:** process a fresh test album end-to-end; assert DB rows have caption+embedding+play_type+
-   scores+cf_image_id, sightings populated, `sport_type` matches the album, no EXIF written, re-run idempotent.
+1. ✅ **Migration (additive):** `photo_metadata.extraction_version` (`20260609040000`).
+2. ✅ **Extraction module** (`src/lib/ai/ingest-extraction.ts`): the single sport-aware structured prompt
+   (`buildIngestPrompt`, play_type constrained to `PLAY_TYPES_BY_SPORT[albumSport]`, never emits sport or
+   vanity facets) + `extractOne(imageBuffer, {albumSport, albumName, apiKey})` → typed result, with a pure
+   `validateExtraction` layer (unit-verified: play-gating, jersey "00" preservation, score clamping).
+   Sightings shred extracted to the shared `src/lib/identity/sightings.ts` (backfill now imports it too — one
+   `dedup_key` definition across both write paths).
+3. ✅ **Ingest runner** (`scripts/ingest-album.ts`): `--dir --album-key [--album-name] [--sport] [--upload-date]
+   [--concurrency] [--limit] [--dry-run] [--overwrite]`. One pass/image: CF upload (album-scoped id, 5409=error)
+   → extract → embed → UPSERT `photo_metadata` (deterministic `photo_id=${albumKey}-${imageKey}` → idempotent;
+   no unique constraint needed) → sightings upsert → refresh `albums_summary`. Album-sport gate: requires the
+   `albums` row, or bootstraps it from an explicit `--sport`. Checkpoint/backoff mirror `backfill-vnext.ts`.
+   Type-clean (`npm run check` green); loads under tsx. **NOT yet run on a real album.**
+4. ⏳ **Cutover (DEFERRED until slice 5 passes):** repoint `run-pipeline.ts` to the new runner; delete
+   `enrich-local-photos.ts`, `sync-local-to-supabase.ts`, the EXIF write/read code; **then** drop the `players`
+   column (MERGE-GATED destructive — ledger #5). Hold the legacy path as a fallback until the new runner is
+   operator-verified.
+5. ⏳ **Verify (operator-in-the-loop — needs a real local album):**
+   ```bash
+   OPENROUTER_API_KEY="$(op read 'op://Developer Secrets/OpenRouter photography/credential')" \
+     npx tsx scripts/ingest-album.ts --dir /path/to/SMALL-test-album \
+     --album-key <KEY> --album-name "<Name>" --sport <taxonomy-sport> --upload-date YYYY-MM-DD --limit 5 --dry-run
+   ```
+   `--dry-run` previews extraction (real API, no CF upload / no DB write). Drop `--dry-run --limit` for the real
+   pass, then assert: DB rows have caption+embedding+play_type+scores+cf_image_id; sightings populated;
+   `sport_type` matches the album (trigger); no EXIF written; re-run is idempotent (no dup rows/sightings).
 
 ## Acceptance
 - A new album processes via ONE command, writes directly to the DB (zero `exiftool` calls), populates

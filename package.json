@@ -57,6 +57,7 @@
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
 		"dotenv": "^17.2.3",
+		"exif-reader": "^2.0.3",
 		"lucide-svelte": "^0.546.0",
 		"oauth-1.0a": "^2.2.6",
 		"sharp": "^0.33.5",

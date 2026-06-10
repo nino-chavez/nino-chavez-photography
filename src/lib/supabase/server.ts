@@ -16,6 +16,7 @@ import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { embedText } from '$lib/ai/embeddings';
+import { planQuery, type QueryPlan } from '$lib/search/query-planner';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
 import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
 
@@ -73,9 +74,7 @@ export function transformPhotoRow(row: any): Photo {
       exposure_accuracy: row.exposure_accuracy ?? 0,
       emotional_impact: row.emotional_impact ?? 0,
       time_in_game: (row.time_in_game || undefined) as Photo['metadata']['time_in_game'],
-      athlete_id: row.athlete_id || undefined,
       jersey_number: row.jersey_number || undefined,
-      event_id: row.event_id || undefined,
       ai_provider: (row.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],
       ai_cost: row.ai_cost ?? 0,
       enriched_at: row.enriched_at || new Date().toISOString(),
@@ -95,6 +94,9 @@ export interface FetchPhotosOptions extends PhotoFilterState {
   limit?: number;
   offset?: number;
   sortBy?: 'quality' | 'newest' | 'oldest' | 'action';
+  /** Inclusive photo_date lower/upper bounds (ISO). Used by the LLM-planner date filter. */
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 /**
@@ -160,7 +162,7 @@ async function distinctColumnValues(
  * Never call from browser components!
  */
 export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]> {
-  const { limit = 24, offset = 0, sortBy = 'newest', ...filters } = options || {};
+  const { limit = 24, offset = 0, sortBy = 'newest', dateFrom, dateTo, ...filters } = options || {};
 
   console.log('[fetchPhotos] Query params:', { limit, offset, sortBy, filters });
 
@@ -193,6 +195,10 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
   if (filters?.jerseyNumber !== undefined) {
     query = query.eq('jersey_number', filters.jerseyNumber);
   }
+
+  // Date-range filter (capture date) — drives "last summer" / "2024" style queries from the planner.
+  if (dateFrom) query = query.gte('photo_date', dateFrom);
+  if (dateTo) query = query.lte('photo_date', dateTo);
 
   // Apply sorting AFTER filters (work on smaller dataset)
   switch (sortBy) {
@@ -253,7 +259,9 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
 /**
  * Get count of photos matching filters (SERVER-SIDE)
  */
-export async function getPhotoCount(filters?: PhotoFilterState): Promise<number> {
+export async function getPhotoCount(
+  filters?: PhotoFilterState & { dateFrom?: string; dateTo?: string }
+): Promise<number> {
   let query = supabaseServer
     .from(PHOTOS_READ)
     .select('photo_id', { count: 'exact', head: true })
@@ -279,6 +287,9 @@ export async function getPhotoCount(filters?: PhotoFilterState): Promise<number>
   if (filters?.albumKey) {
     query = query.eq('album_key', filters.albumKey);
   }
+
+  if (filters?.dateFrom) query = query.gte('photo_date', filters.dateFrom);
+  if (filters?.dateTo) query = query.lte('photo_date', filters.dateTo);
 
   const { count, error } = await query;
 
@@ -917,12 +928,91 @@ async function embedSearchQuery(query: string): Promise<number[] | null> {
   return embedText(query, apiKey);
 }
 
+/** Human-readable summary of how the planner interpreted the query (for the results header). */
+function describePlan(plan: QueryPlan): string {
+  const bits: string[] = [];
+  if (plan.sport) bits.push(plan.sport);
+  if (plan.play_type) bits.push(plan.play_type);
+  if (plan.photo_category) bits.push(plan.photo_category);
+  if (plan.date_from || plan.date_to) bits.push(`${plan.date_from ?? '…'} → ${plan.date_to ?? '…'}`);
+  if (plan.semantic_text) bits.push(`“${plan.semantic_text}”`);
+  if (plan.place) bits.push(`place “${plan.place}” (not yet filterable)`);
+  return bits.length ? `Interpreted as ${bits.join(' · ')}` : '';
+}
+
 /**
- * Search photos using Smart Parse + Vector Fallback.
- *
- * 1. Parse query into structured metadata filters
- * 2. If all terms matched → fast structured path via fetchPhotos
- * 3. If unmatched terms remain or zero results → vector semantic search via match_photos RPC
+ * Preferred search path: LLM query planner → hybrid (facet + date + semantic) retrieval.
+ * Returns null when the planner is unavailable or yields nothing usable, so searchPhotos falls
+ * back to the rule-based parser. The planner only decides WHAT to filter — `plan.place` is parsed
+ * but ignored here because there is no location column yet.
+ */
+async function tryPlannerSearch(
+  query: string,
+  existingFilters: Partial<PhotoFilterState>,
+  opts: { limit: number; offset: number; sortBy: FetchPhotosOptions['sortBy'] }
+): Promise<SearchResult | null> {
+  const { limit, offset, sortBy } = opts;
+  const apiKey = import.meta.env.OPENROUTER_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
+  const plan = await planQuery(query, { apiKey });
+  if (!plan || (!plan.hasStructure && !plan.semantic_text)) return null;
+
+  const f: Partial<PhotoFilterState> = { ...existingFilters };
+  if (plan.sport) f.sportType = plan.sport;
+  if (plan.photo_category) f.photoCategory = plan.photo_category;
+  // plan.play_type is validated against ALL_PLAY_TYPES in the planner; cast to the branded element type.
+  if (plan.play_type) f.playTypes = [plan.play_type] as PhotoFilterState['playTypes'];
+  const dateFrom = plan.date_from || undefined;
+  const dateTo = plan.date_to ? `${plan.date_to}T23:59:59` : undefined; // inclusive end-of-day
+
+  // Hybrid: there's something visual to rank by → filter AND rank by caption similarity.
+  if (plan.semantic_text.trim().length >= 3) {
+    const embedding = await embedSearchQuery(plan.semantic_text);
+    if (embedding) {
+      const { data: matches, error } = await supabaseServer.rpc('match_photos_hybrid', {
+        query_embedding: embedding,
+        match_count: limit,
+        p_sport: f.sportType ?? null,
+        p_category: f.photoCategory ?? null,
+        p_play_type: plan.play_type ?? null,
+        p_album_key: f.albumKey ?? null,
+        p_date_from: dateFrom ?? null,
+        p_date_to: dateTo ?? null,
+      });
+      if (error) console.error('[tryPlannerSearch] match_photos_hybrid error:', error.message);
+      if (!error && matches && matches.length > 0) {
+        const keys = matches.map((m: { image_key: string }) => m.image_key);
+        const { data: rows } = await supabaseServer.from(PHOTOS_READ).select(PHOTO_COLUMNS).in('image_key', keys);
+        const map = new Map((rows ?? []).map((p: any) => [p.image_key, p]));
+        const photos = matches
+          .map((m: { image_key: string }) => map.get(m.image_key))
+          .filter((p: unknown): p is NonNullable<typeof p> => !!p)
+          .map(transformPhotoRow);
+        if (photos.length > 0) {
+          return { photos, totalCount: photos.length, searchMode: 'semantic', parsedDescription: describePlan(plan) };
+        }
+      }
+    }
+    // embedding/hybrid empty → fall through to structured-only if we have facets
+  }
+
+  // Structured-only: facets + date, ranked by the requested sort (no semantic component).
+  if (plan.hasStructure) {
+    const [photos, totalCount] = await Promise.all([
+      fetchPhotos({ ...f, dateFrom, dateTo, limit, offset, sortBy }),
+      getPhotoCount({ ...f, dateFrom, dateTo }),
+    ]);
+    if (photos.length > 0 || offset > 0) {
+      return { photos, totalCount, searchMode: 'structured', parsedDescription: describePlan(plan) };
+    }
+  }
+
+  return null; // nothing usable → caller falls back to the rule-based parser
+}
+
+/**
+ * Search photos. Preferred path is the LLM query planner + hybrid retrieval (tryPlannerSearch);
+ * it falls back to the legacy Smart-Parse + Vector-Fallback rule parser when the planner is
+ * unavailable (no API key, transport error) or returns nothing usable.
  */
 export async function searchPhotos(
   query: string,
@@ -930,6 +1020,11 @@ export async function searchPhotos(
   options: { limit?: number; offset?: number; sortBy?: FetchPhotosOptions['sortBy']; albumNames?: string[] } = {}
 ): Promise<SearchResult> {
   const { limit = 24, offset = 0, sortBy = 'quality', albumNames } = options;
+
+  // Preferred: LLM planner + hybrid search. Falls back to the rule parser below on null.
+  const planned = await tryPlannerSearch(query, existingFilters, { limit, offset, sortBy });
+  if (planned) return planned;
+
   const { parseQuery } = await import('$lib/utils/nlp-query-parser');
 
   const parsed = parseQuery(query, albumNames);

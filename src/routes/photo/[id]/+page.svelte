@@ -113,15 +113,6 @@
 				data.photo.metadata.sport_type
 			].filter(Boolean)
 		},
-		// SportsEvent if event data is available
-		...(data.photo.metadata.event_id ? {
-			about: {
-				'@type': 'SportsEvent',
-				name: data.photo.title,
-				sport: data.photo.metadata.sport_type,
-				eventStatus: 'https://schema.org/EventScheduled'
-			}
-		} : {}),
 		// Additional metadata
 		sport: data.photo.metadata.sport_type,
 		category: data.photo.metadata.photo_category,

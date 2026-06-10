@@ -57,8 +57,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			exposure_accuracy: photoData.exposure_accuracy || 0,
 			emotional_impact: photoData.emotional_impact || 0,
 			time_in_game: (photoData.time_in_game || undefined) as Photo['metadata']['time_in_game'],
-			athlete_id: photoData.athlete_id || undefined,
-			event_id: photoData.event_id || undefined,
 
 			// AI metadata
 			ai_provider: (photoData.ai_provider || 'gemini') as Photo['metadata']['ai_provider'],

@@ -69,9 +69,7 @@ export interface PhotoMetadata {
 
   // Story detection context (internal)
   time_in_game?: TimeInGame;      // NEW: For game-winning rally detection
-  athlete_id?: string;            // NEW: For player highlight reels
   jersey_number?: number;         // NEW: Player jersey number
-  event_id?: string;              // NEW: For grouping by game/tournament
 
   // ==========================================================================
   // AI Metadata

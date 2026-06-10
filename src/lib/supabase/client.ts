@@ -118,8 +118,6 @@ export async function fetchPhotosByPeriod(options: {
       exposure_accuracy: row.exposure_accuracy ?? 0,
       emotional_impact: row.emotional_impact ?? 0,
       time_in_game: (row.time_in_game || undefined),
-      athlete_id: row.athlete_id || undefined,
-      event_id: row.event_id || undefined,
       ai_provider: (row.ai_provider || 'gemini'),
       ai_cost: row.ai_cost ?? 0,
       enriched_at: row.enriched_at || new Date().toISOString(),

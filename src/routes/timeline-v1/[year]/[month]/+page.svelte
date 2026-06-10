@@ -55,8 +55,6 @@
 				exposure_accuracy: raw.exposure_accuracy || 0,
 				emotional_impact: raw.emotional_impact || 0,
 				time_in_game: (raw.time_in_game as any) || undefined,
-				athlete_id: raw.athlete_id || undefined,
-				event_id: raw.event_id || undefined,
 
 				// AI metadata
 				ai_provider: (raw.ai_provider as any) || 'gemini',
