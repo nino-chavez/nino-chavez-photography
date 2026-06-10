@@ -16,15 +16,30 @@ import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
 export const load: PageServerLoad = async ({ params, url }) => {
-	// Fetch photo from Supabase using image_key
-	const { data: rawData, error: photoError } = await supabaseServer
+	// Fetch by image_key. NOTE: image_key is NOT unique — camera DSC numbers reset per card, so the
+	// same image_key recurs across albums. Using .single() here 404s on any collision. Fetch the
+	// candidates and prefer one from a LISTED album, so an unlisted/duplicate album never shadows the
+	// real one (this is what was 404'ing every photo after a duplicate album was ingested).
+	const { data: candidates, error: photoError } = await supabaseServer
 		.from(PHOTOS_READ)
 		.select(PHOTO_DETAIL_COLUMNS)
 		.eq('image_key', params.id)
-		.single();
+		.limit(5);
 
-	if (photoError || !rawData) {
+	if (photoError || !candidates || candidates.length === 0) {
 		throw error(404, `Photo not found: ${params.id}`);
+	}
+
+	let rawData = candidates[0];
+	if (candidates.length > 1) {
+		const albumKeys = [...new Set(candidates.map((c) => (c as { album_key: string }).album_key))];
+		const { data: unlisted } = await supabaseServer
+			.from('album_settings')
+			.select('album_key')
+			.eq('visibility', 'unlisted')
+			.in('album_key', albumKeys);
+		const unlistedSet = new Set((unlisted ?? []).map((a) => a.album_key));
+		rawData = candidates.find((c) => !unlistedSet.has((c as { album_key: string }).album_key)) ?? candidates[0];
 	}
 
 	const photoData = rawData as unknown as PhotoMetadataRow;
