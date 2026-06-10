@@ -110,6 +110,7 @@ export async function fetchPhotosByPeriod(options: {
     keywords: [],
     created_at: row.photo_date || row.enriched_at || row.upload_date,
     metadata: {
+      album_key: row.album_key, // carried for album-scoped photo links (image_key is not unique)
       play_type: (row.play_type || null),
       sport_type: row.sport_type,
       photo_category: row.photo_category,

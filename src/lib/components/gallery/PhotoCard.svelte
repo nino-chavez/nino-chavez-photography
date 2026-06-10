@@ -41,8 +41,11 @@
 	// Responsive sizes for gallery grid layout
 	const galleryCardSizes = SIZES_PRESETS.galleryCard;
 
-	// Generate individual photo URL for SEO
-	let photoUrl = $derived(`${base}/photo/${photo.image_key}`);
+	// Individual photo URL. image_key is NOT unique (camera DSC numbers reset per card), so carry the
+	// album as `?a=` to disambiguate /photo/[id] to the exact photo the user clicked.
+	let photoUrl = $derived(
+		`${base}/photo/${photo.image_key}${photo.metadata?.album_key ? `?a=${encodeURIComponent(photo.metadata.album_key)}` : ''}`
+	);
 
 	// Generate comprehensive alt text for screen readers
 	let accessibleAltText = $derived(generatePhotoAltText(photo));

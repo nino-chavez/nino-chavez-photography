@@ -52,6 +52,9 @@ export interface PhotoMetadata {
   // BUCKET 1: Concrete & Filterable (USER-FACING)
   // ==========================================================================
 
+  /** Source album — carried so /photo/[id] links can disambiguate a non-unique image_key. */
+  album_key?: string;
+
   // Action dimension
   play_type: PlayType;
   sport_type: string;        // volleyball, basketball, soccer
