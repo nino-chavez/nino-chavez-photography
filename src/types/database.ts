@@ -43,7 +43,6 @@ export interface PhotoMetadataRow {
 	ImageUrl: string | null;
 	OriginalUrl: string | null;
 	ThumbnailUrl: string | null;
-	ArchivedUrl: string | null;
 
 	// Core classification (Bucket 1)
 	// NOTE: the vanity CATEGORICAL aesthetic columns (composition, time_of_day, lighting,
@@ -51,15 +50,12 @@ export interface PhotoMetadataRow {
 	// being DROPPED at the schema cutover. The numeric quality sub-scores below STAY.
 	sport_type: string;
 	photo_category: string;
-	action_type: string | null;
 	play_type: string | null;
 
 	// People / identity
 	jersey_number: number | null;
-	athlete_id: string | null;
 	players: PhotoPlayerJson[] | null;
 	team_colors: PhotoTeamColorsJson | null;
-	player_count: number | null;
 
 	// Caption + semantic search (Phase 1 — vision-extraction v-next)
 	caption: string | null;
@@ -77,7 +73,6 @@ export interface PhotoMetadataRow {
 
 	// Game context
 	time_in_game: string | null;
-	event_id: string | null;
 
 	// Camera / EXIF
 	file_name: string | null;

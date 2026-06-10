@@ -131,8 +131,6 @@
 											exposure_accuracy: 0,
 											emotional_impact: 0,
 											time_in_game: undefined,
-											athlete_id: undefined,
-											event_id: undefined,
 											ai_provider: 'openai' as const,
 											ai_cost: 0,
 											enriched_at: ''
