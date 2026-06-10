@@ -291,12 +291,20 @@ function extractExifMeta(exifBuffer: Buffer | undefined): ExifMeta {
 	}
 }
 
-interface ProcessResult { caption: string; players: number; sightings: number; cost: number | null; }
+interface ProcessResult { caption: string; players: number; sightings: number; cost: number | null; reprocessed: boolean; }
+
+/** image_key → the album's existing row (photo_id + cf_image_id). Populated in main() for reprocess-in-place. */
+const existingRows = new Map<string, { photo_id: string; cf_image_id: string | null }>();
 
 async function processImage(job: ImageJob, album: { sport: Sport | null; albumName: string }): Promise<ProcessResult> {
 	const fileBuffer = readFileSync(job.path);
-	const photoId = `${ALBUM_KEY}-${job.imageKey}`;
-	const cfId = `${ALBUM_KEY}-${job.imageKey}`;
+	// Reprocess-in-place (P1): if this album already has a row for this image_key, UPDATE it —
+	// keep its existing photo_id AND cf_image_id — instead of minting a NEW deterministic photo_id,
+	// which is what created the bpo-2026 duplicate. New images still get the deterministic id.
+	const prior = existingRows.get(job.imageKey);
+	const photoId = prior?.photo_id ?? `${ALBUM_KEY}-${job.imageKey}`;
+	const cfId = prior?.cf_image_id ?? `${ALBUM_KEY}-${job.imageKey}`;
+	const alreadyUploaded = !!prior?.cf_image_id; // existing CF image — refresh metadata, don't re-upload/churn
 
 	// 1. Image dims + full EXIF (capture date, camera/lens/exposure, GPS). Non-fatal if absent.
 	let width: number | null = null, height: number | null = null, aspect: number | null = null;
@@ -309,8 +317,9 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		exif = extractExifMeta(meta.exif as Buffer | undefined);
 	} catch { /* unreadable image metadata — continue, fields stay null */ }
 
-	// 2. Upload to Cloudflare Images (album-scoped id `${albumKey}-${imageKey}`).
-	if (!DRY) {
+	// 2. Upload to Cloudflare Images (album-scoped id `${albumKey}-${imageKey}`). Skip when the
+	// existing row already has a CF image — a reprocess refreshes metadata without CF churn/orphans.
+	if (!DRY && !alreadyUploaded) {
 		const up = await uploadToCF(fileBuffer, cfId, job.file);
 		if (!up.success || !up.result) {
 			// 5409 = an image with this id already exists. Because the id encodes album_key + image_key,
@@ -331,7 +340,7 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	if (!embedding) throw new Error('embed failed (null vector)');
 
 	if (DRY) {
-		return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: 0, cost: ex.cost };
+		return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: 0, cost: ex.cost, reprocessed: !!prior };
 	}
 
 	// 5. UPSERT photo_metadata. sport_type is set by the trigger; quality_score is generated.
@@ -383,7 +392,7 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		if (sErr) throw new Error(`sightings upsert: ${sErr.message}`);
 	}
 
-	return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: sightings.length, cost: ex.cost };
+	return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: sightings.length, cost: ex.cost, reprocessed: !!prior };
 }
 
 async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; albumName: string }) {
@@ -432,6 +441,16 @@ async function main() {
 		else console.log(`   🙈 album_settings.visibility = unlisted (hidden until you publish)\n`);
 	}
 
+	// Reprocess-in-place (P1): load this album's existing rows so a re-run UPDATES them (preserving
+	// each photo_id + its CF image) instead of minting duplicates. New images get fresh ids.
+	{
+		const { data } = await sb.from('photo_metadata').select('image_key, photo_id, cf_image_id').eq('album_key', ALBUM_KEY!);
+		for (const r of data ?? []) existingRows.set(r.image_key, { photo_id: r.photo_id, cf_image_id: r.cf_image_id });
+	}
+	if (existingRows.size) {
+		console.log(`   ♻️  ${existingRows.size} existing rows for this album — reprocessing those in place (preserve photo_id, no duplicate rows, no CF churn)\n`);
+	}
+
 	const files = (await readdir(DIR!)).filter((f) => /\.(jpg|jpeg)$/i.test(f)).sort();
 	let jobs: ImageJob[] = files.map((f) => ({ file: f, path: join(DIR!, f), imageKey: f.replace(/\.(jpg|jpeg)$/i, '') }));
 	jobs = jobs.filter((j) => OVERWRITE || !done.has(j.imageKey));
@@ -440,7 +459,7 @@ async function main() {
 	console.log(`   ${files.length} images found · ${jobs.length} to process\n`);
 	if (jobs.length === 0) { console.log('✅ Nothing to do.'); return; }
 
-	let ok = 0, fail = 0, totalCost = 0, totalSightings = 0, index = 0;
+	let ok = 0, fail = 0, totalCost = 0, totalSightings = 0, totalReprocessed = 0, index = 0;
 	const t0 = Date.now();
 
 	async function worker() {
@@ -450,6 +469,7 @@ async function main() {
 				const r = await processImage(job, album);
 				ok++;
 				if (r.cost) totalCost += r.cost;
+				if (r.reprocessed) totalReprocessed++;
 				totalSightings += r.sightings;
 				if (!DRY) { done.add(job.imageKey); delete ck.failed[job.imageKey]; }
 				if (ok <= 8 || ok % 25 === 0) {
@@ -482,7 +502,7 @@ async function main() {
 
 	const mins = ((Date.now() - t0) / 60000).toFixed(1);
 	console.log('\n' + '='.repeat(64));
-	console.log(`   ✅ Ingested: ${ok}   ❌ Failed: ${fail}   👕 Sightings: ${totalSightings}`);
+	console.log(`   ✅ Ingested: ${ok} (${totalReprocessed} updated in place, ${ok - totalReprocessed} new)   ❌ Failed: ${fail}   👕 Sightings: ${totalSightings}`);
 	console.log(`   💰 Cost: $${totalCost.toFixed(4)}   ⏱️  ${mins} min`);
 	console.log(`   📁 Checkpoint: ${CK_PATH}`);
 	if (fail > 0) console.log(`   ⚠️  ${fail} failures recorded in checkpoint.failed — safe to re-run to retry them.`);
