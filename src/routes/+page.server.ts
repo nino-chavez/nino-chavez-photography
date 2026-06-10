@@ -251,11 +251,12 @@ async function createActionShowcaseAlbum() {
       .select(PHOTO_COLUMNS)
       .eq('sport_type', 'volleyball')
       .eq('photo_category', 'action')
-      .in('action_intensity', ['high', 'extreme'])
+      // action_intensity (vanity column) was dropped; the sharpness/emotional gates below already
+      // select intense, high-quality action, and we rank by the quality_score blend.
       .gte('sharpness', 7.5)
       .gte('emotional_impact', 7.0)
       .not('sharpness', 'is', null)
-      .order('action_intensity', { ascending: false })
+      .order('quality_score', { ascending: false, nullsFirst: false })
       .limit(50);
 
     if (error || !data || data.length === 0) return null;
