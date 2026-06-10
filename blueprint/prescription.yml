@@ -1,0 +1,66 @@
+# Prescription — nino-chavez-photography (midstream cycle 1)
+#
+# The first midstream prescription after the agent-os → Blueprint port. The #10
+# unified ingest is the already-shipped prototype-as-patch that opened this cycle;
+# the items below are the next patches, drawn from the current-state work-list and
+# traced to the find-my-photos-athlete persona's JTBD funnel. Evidence paths are real.
+
+inputs:
+  diagnose: research/current-state/0001-system-state-2026-06.md
+  audit: research/current-state/vision-extraction-intent-audit.md
+  observation: research/observations/find-my-photos-demand-signal.md
+  personas: research/personas/find-my-photos-athlete.md
+  decisions: decisions/
+  app_claude_md: /Users/nino/Workspace/dev/apps/photography/CLAUDE.md
+
+variant: midstream
+prescription_for: nino-chavez-photography
+diagnose_findings_covered: ["current-state §gaps 1-3", "ADR-0002", "ADR-0003"]
+
+# PRESERVED PATTERNS — work in production; midstream does not churn them.
+preserved_patterns:
+  - name: album_authoritative_sport
+    what: "Sport is an album property (albums.sport), trigger-mirrored to photo_metadata.sport_type — never guessed per photo."
+    why: "Per-photo sport guessing caused the original corruption; the trigger makes misclassification impossible by construction."
+    evidence:
+      - decisions/0001-album-authoritative-sport.md
+      - supabase/migrations/20260608020000_vnext_slice1_album_sport_authority.sql
+  - name: cloudflare_images_only_serving
+    what: "Images serve via cf_image_id → imagedelivery.net variants; Photo.image_url is cf-derived, not SmugMug."
+    why: "Every photo has a cf_image_id; the legacy SmugMug URL columns are inert fallbacks."
+    evidence:
+      - src/lib/utils/cloudflare-images.ts
+      - src/lib/supabase/columns.ts
+  - name: jersey_sightings_identity_no_naming
+    what: "Identity is pre-resolution photo_jersey_sightings (jersey TEXT + colour), human-resolved — no faces, no naming."
+    why: "The athlete retrieves by jersey/colour without the system asserting who anyone is; 46,702 sightings live."
+    evidence:
+      - decisions/0004-jersey-sightings-identity-no-naming.md
+      - src/lib/identity/sightings.ts
+
+# CHANGE ITEMS — the next patches (ordered by impact descending).
+items:
+  - id: P1
+    what: "Reprocess-in-place ingest mode: UPDATE an existing album's rows (matched by album_key + image_key, preserving each row's photo_id) instead of UPSERTing a new deterministic photo_id that creates a duplicate album on re-run."
+    why: "The runner keys albums by folder, so the operator's 'reprocess the album' request created a full duplicate of TRoiyO (bpo-2026) — 119 duplicate image_keys that 404'd every TRoiyO photo page. The duplicate was deleted, but the gap remains."
+    impact: high
+    monetization_side: operator
+    serves_jtbd: [find-my-photos-athlete/photo/open-and-download-my-photo]
+    rationale_for_ranking: "Only change here that prevents a recurring, data-corrupting operator error (duplicate albums + collisions that break the athlete's photo-open job)."
+    evidence: "scripts/ingest-album.ts (photo_id=`${albumKey}-${imageKey}` UPSERT) + decisions/0002-unified-structured-ingest.md"
+    status: ready
+  - id: P2
+    what: "Make /photo/[id] collision-proof at the source: resolve by photo_id (or album+image_key) end to end and emit album-scoped photo links, instead of the listed-album heuristic over a non-unique image_key."
+    why: "The athlete's 'open and download my photo' job 404'd because image_key is not unique (camera DSC numbers reset per card). Five pre-existing cross-album collisions still resolve ambiguously."
+    impact: medium
+    monetization_side: player
+    serves_jtbd: [find-my-photos-athlete/photo/open-and-download-my-photo]
+    rationale_for_ranking: "Mitigated already (no live 404s), lower urgency than P1, but the latent ambiguity recurs as more albums share DSC ranges."
+    evidence: "src/routes/photo/[id]/+page.server.ts (collision-resilient load) + research/current-state/0001-system-state-2026-06.md (§ gaps #3)"
+    status: ready
+  - id: P3
+    what: "Capture album-level location (city/venue), operator-set, to unlock place search the planner already parses."
+    monetization_side: player
+    serves_jtbd: none-deferred
+    serves_jtbd_reason: "No browse-by-place JTBD exists in the find-my-photos-athlete funnel — the athlete reaches photos by event name/date/sport and by jersey/colour, never by city. A latent capability with no current user job to anchor it."
+    deferred: "No location data exists (legacy lat/long were (0,0) junk; new ingest captures GPS only on a rare Sony Location-Info-Link fix) and the pilot does not need it. Build when a browse-by-place demand surfaces; the planner side is ready. Evidence: research/current-state/0001-system-state-2026-06.md."
