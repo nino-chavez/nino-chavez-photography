@@ -130,14 +130,27 @@ async function fetchHeroCandidates(): Promise<Record<string, unknown>[]> {
  */
 async function fetchFeaturedAlbums() {
   try {
+    // Exclude unlisted albums: the detail route (/albums/[slug]) 404s them ("must use share link"),
+    // so featuring one here produces a dead "Latest Event" card. Mirror the /albums listing's filter.
+    const { data: unlisted } = await supabaseServer
+      .from('album_settings')
+      .select('album_key')
+      .eq('visibility', 'unlisted');
+    const unlistedKeys = (unlisted ?? []).map((a) => a.album_key);
+
+    let recentQuery = supabaseServer
+      .from('albums_summary')
+      .select('*')
+      .not('album_key', 'is', null)
+      .not('latest_photo_date', 'is', null)
+      .order('latest_photo_date', { ascending: false })
+      .limit(1);
+    if (unlistedKeys.length) {
+      recentQuery = recentQuery.not('album_key', 'in', `(${unlistedKeys.map((k) => `"${k}"`).join(',')})`);
+    }
+
     const [albumsResult, editorsChoice, actionShowcase] = await Promise.all([
-      supabaseServer
-        .from('albums_summary')
-        .select('*')
-        .not('album_key', 'is', null)
-        .not('latest_photo_date', 'is', null)
-        .order('latest_photo_date', { ascending: false })
-        .limit(1),
+      recentQuery,
       createEditorsChoiceAlbum(),
       createActionShowcaseAlbum()
     ]);
