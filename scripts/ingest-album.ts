@@ -215,20 +215,80 @@ function detectSportFromName(name: string): Sport | null {
 // ---------------------------------------------------------------------------
 interface ImageJob { file: string; path: string; imageKey: string; }
 
-/** Read capture date from EXIF (DateTimeOriginal) via sharp's exif buffer — no exiftool. */
-function captureDateFrom(exifBuffer: Buffer | undefined): string | null {
-	if (!exifBuffer) return null;
-	try {
-		const tags: any = exifReader(exifBuffer);
-		const d = tags?.Photo?.DateTimeOriginal ?? tags?.exif?.DateTimeOriginal ?? tags?.Image?.DateTime;
-		if (d instanceof Date && !Number.isNaN(d.getTime())) return d.toISOString();
-		if (typeof d === 'string') {
-			// EXIF format "YYYY:MM:DD HH:MM:SS"
-			const m = d.match(/(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
-			if (m) return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
-		}
-	} catch { /* no/garbled EXIF — fall through */ }
+interface ExifMeta {
+	photoDate: string | null;
+	camera_make: string | null;
+	camera_model: string | null;
+	lens_model: string | null;
+	focal_length: string | null;
+	aperture: string | null;
+	shutter_speed: string | null;
+	iso: number | null;
+	latitude: number | null;
+	longitude: number | null;
+}
+const EMPTY_EXIF: ExifMeta = {
+	photoDate: null, camera_make: null, camera_model: null, lens_model: null,
+	focal_length: null, aperture: null, shutter_speed: null, iso: null, latitude: null, longitude: null,
+};
+
+function exifDate(d: unknown): string | null {
+	if (d instanceof Date && !Number.isNaN(d.getTime())) return d.toISOString();
+	if (typeof d === 'string') {
+		const m = d.match(/(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+		if (m) return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
+	}
 	return null;
+}
+function fmtShutter(t: unknown): string | null {
+	const v = typeof t === 'number' ? t : NaN;
+	if (!Number.isFinite(v) || v <= 0) return null;
+	return v < 1 ? `1/${Math.round(1 / v)}` : `${v}s`;
+}
+/** EXIF GPS → signed decimal degrees; tolerates [d,m,s] or decimal; rejects the (0,0) null-island. */
+function gpsDecimal(val: unknown, ref: unknown): number | null {
+	let dec: number;
+	if (Array.isArray(val) && val.length) {
+		const [d = 0, m = 0, s = 0] = (val as any[]).map(Number);
+		dec = d + m / 60 + s / 3600;
+	} else if (typeof val === 'number') {
+		dec = val;
+	} else return null;
+	if (!Number.isFinite(dec)) return null;
+	if (ref === 'S' || ref === 'W') dec = -dec;
+	return dec;
+}
+
+/** Extract capture date + camera/lens/exposure + GPS from sharp's EXIF buffer — no exiftool. */
+function extractExifMeta(exifBuffer: Buffer | undefined): ExifMeta {
+	if (!exifBuffer) return { ...EMPTY_EXIF };
+	try {
+		const t: any = exifReader(exifBuffer);
+		const fnum = typeof t?.Photo?.FNumber === 'number' ? t.Photo.FNumber : null;
+		const focal = typeof t?.Photo?.FocalLength === 'number' ? t.Photo.FocalLength : null;
+		const iso = Number(t?.Photo?.ISO ?? t?.Photo?.ISOSpeedRatings);
+		let latitude: number | null = null, longitude: number | null = null;
+		if (t?.GPSInfo) {
+			const lat = gpsDecimal(t.GPSInfo.GPSLatitude, t.GPSInfo.GPSLatitudeRef);
+			const lon = gpsDecimal(t.GPSInfo.GPSLongitude, t.GPSInfo.GPSLongitudeRef);
+			// Only keep a REAL fix — never the (0,0) placeholder a missing fix leaves behind.
+			if (lat != null && lon != null && !(lat === 0 && lon === 0)) { latitude = lat; longitude = lon; }
+		}
+		return {
+			photoDate: exifDate(t?.Photo?.DateTimeOriginal ?? t?.Image?.DateTime),
+			camera_make: t?.Image?.Make?.toString().trim() || null,
+			camera_model: t?.Image?.Model?.toString().trim() || null,
+			lens_model: t?.Photo?.LensModel?.toString().trim() || null,
+			focal_length: focal != null ? `${focal}mm` : null,
+			aperture: fnum != null ? `f/${fnum}` : null,
+			shutter_speed: fmtShutter(t?.Photo?.ExposureTime),
+			iso: Number.isFinite(iso) && iso > 0 ? iso : null,
+			latitude,
+			longitude,
+		};
+	} catch {
+		return { ...EMPTY_EXIF };
+	}
 }
 
 interface ProcessResult { caption: string; players: number; sightings: number; cost: number | null; }
@@ -238,15 +298,16 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	const photoId = `${ALBUM_KEY}-${job.imageKey}`;
 	const cfId = `${ALBUM_KEY}-${job.imageKey}`;
 
-	// 1. Image dims + capture date (sharp; exif via exif-reader). Non-fatal if metadata is missing.
-	let width: number | null = null, height: number | null = null, aspect: number | null = null, photoDate: string | null = null;
+	// 1. Image dims + full EXIF (capture date, camera/lens/exposure, GPS). Non-fatal if absent.
+	let width: number | null = null, height: number | null = null, aspect: number | null = null;
+	let exif: ExifMeta = { ...EMPTY_EXIF };
 	try {
 		const meta = await sharp(fileBuffer).metadata();
 		width = meta.width ?? null;
 		height = meta.height ?? null;
 		if (width && height) aspect = +(width / height).toFixed(4);
-		photoDate = captureDateFrom(meta.exif as Buffer | undefined);
-	} catch { /* unreadable image metadata — continue, dims stay null */ }
+		exif = extractExifMeta(meta.exif as Buffer | undefined);
+	} catch { /* unreadable image metadata — continue, fields stay null */ }
 
 	// 2. Upload to Cloudflare Images (album-scoped id `${albumKey}-${imageKey}`).
 	if (!DRY) {
@@ -292,8 +353,17 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		width,
 		height,
 		aspect_ratio: aspect,
-		photo_date: photoDate ?? `${UPLOAD_DATE}T12:00:00`,
+		photo_date: exif.photoDate ?? `${UPLOAD_DATE}T12:00:00`,
 		upload_date: UPLOAD_DATE,
+		camera_make: exif.camera_make,
+		camera_model: exif.camera_model,
+		lens_model: exif.lens_model,
+		focal_length: exif.focal_length,
+		aperture: exif.aperture,
+		shutter_speed: exif.shutter_speed,
+		iso: exif.iso,
+		// Only set GPS when a REAL fix exists (extractExifMeta already rejects the (0,0) placeholder).
+		...(exif.latitude != null && exif.longitude != null ? { latitude: exif.latitude, longitude: exif.longitude } : {}),
 		extraction_version: EXTRACTION_VERSION,
 		ai_provider: 'openrouter',
 		...(ex.cost != null ? { ai_cost: ex.cost } : {}),
