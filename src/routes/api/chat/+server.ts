@@ -154,19 +154,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			tools: {
 				searchPhotos: tool({
 					description:
-						'Search photos. For descriptive / natural-language requests (a scene, a moment, a jersey color, "diving save near the sideline") pass `query` — it matches AI-generated captions via semantic embeddings. For exact attribute filters use the structured fields (sport, action, emotion, intensity, composition, lighting, time of day, jersey number). `query` takes precedence when provided.',
+						'Search photos. For descriptive / natural-language requests (a scene, a moment, a jersey color, "diving save near the sideline") pass `query` — it matches AI-generated captions via semantic embeddings. For exact attribute filters use the structured fields (sport, play type, category, jersey number). `query` takes precedence when provided.',
 					parameters: z.object({
 						query: z.string().optional().describe('Free-text natural-language description of the photo(s) to find — scene, action, jersey color, named moment — matched against AI-generated photo captions via semantic embeddings. Use this for anything the structured filters do not cover, e.g. "diving save near the sideline" or "player in a red jersey".'),
 						sport_type: z.string().optional().describe('The type of sport, e.g., volleyball, basketball.'),
 						play_type: z.string().optional().describe('The specific action, e.g., spike, block, serve, dig.'),
 						photo_category: z.string().optional().describe('The category of photo, e.g., action, portrait, celebration.'),
-						action_intensity: z.string().optional().describe('The intensity of the action, e.g., low, medium, high, peak.'),
-						emotion: z.string().optional().describe('The emotion conveyed, e.g., triumph, determination, focus.'),
-						jersey_number: z.number().optional().describe('Player jersey number visible in the photo.'),
-						lighting: z.string().optional().describe('The lighting type, e.g., natural, backlit, dramatic, soft, artificial.'),
-						color_temperature: z.string().optional().describe('The color temperature, e.g., warm, cool, neutral.'),
-						time_of_day: z.string().optional().describe('When the photo was taken, e.g., golden_hour, midday, evening, night.'),
-						composition: z.string().optional().describe('The composition pattern, e.g., rule_of_thirds, leading_lines, centered, symmetry.')
+						jersey_number: z.number().optional().describe('Player jersey number visible in the photo.')
 					}),
 					// @ts-ignore - Tool typing is complex, but runtime execution works correctly
 					execute: async ({
@@ -174,25 +168,13 @@ export const POST: RequestHandler = async ({ request }) => {
 						sport_type,
 						play_type,
 						photo_category,
-						action_intensity,
-						emotion,
-						jersey_number,
-						lighting,
-						color_temperature,
-						time_of_day,
-						composition
+						jersey_number
 					}: {
 						query?: string;
 						sport_type?: string;
 						play_type?: string;
 						photo_category?: string;
-						action_intensity?: string;
-						emotion?: string;
 						jersey_number?: number;
-						lighting?: string;
-						color_temperature?: string;
-						time_of_day?: string;
-						composition?: string;
 					}) => {
 						try {
 							const supabase = getSupabaseClient();
@@ -226,16 +208,12 @@ export const POST: RequestHandler = async ({ request }) => {
 								.order('quality_score', { ascending: false, nullsFirst: false })
 								.limit(12);
 
+							// Only live facets remain; the vanity columns (action_intensity/emotion/lighting/
+							// color_temperature/time_of_day/composition) were dropped in the cleanup.
 							if (sport_type) dbQuery = dbQuery.eq('sport_type', sport_type);
 							if (play_type) dbQuery = dbQuery.eq('play_type', play_type);
 							if (photo_category) dbQuery = dbQuery.eq('photo_category', photo_category);
-							if (action_intensity) dbQuery = dbQuery.eq('action_intensity', action_intensity);
-							if (emotion) dbQuery = dbQuery.eq('emotion', emotion);
 							if (jersey_number !== undefined) dbQuery = dbQuery.eq('jersey_number', jersey_number);
-							if (lighting) dbQuery = dbQuery.eq('lighting', lighting);
-							if (color_temperature) dbQuery = dbQuery.eq('color_temperature', color_temperature);
-							if (time_of_day) dbQuery = dbQuery.eq('time_of_day', time_of_day);
-							if (composition) dbQuery = dbQuery.eq('composition', composition);
 
 							const { data, error } = await dbQuery;
 
