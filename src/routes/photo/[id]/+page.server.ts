@@ -30,16 +30,27 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		throw error(404, `Photo not found: ${params.id}`);
 	}
 
+	// Disambiguate a non-unique image_key:
+	//  1. exact album from the link context (?a=) — the photo the user actually clicked (P2);
+	//  2. else prefer a LISTED album, so an unlisted/duplicate never shadows the real one.
+	const albumHint = url.searchParams.get('a');
 	let rawData = candidates[0];
 	if (candidates.length > 1) {
-		const albumKeys = [...new Set(candidates.map((c) => (c as { album_key: string }).album_key))];
-		const { data: unlisted } = await supabaseServer
-			.from('album_settings')
-			.select('album_key')
-			.eq('visibility', 'unlisted')
-			.in('album_key', albumKeys);
-		const unlistedSet = new Set((unlisted ?? []).map((a) => a.album_key));
-		rawData = candidates.find((c) => !unlistedSet.has((c as { album_key: string }).album_key)) ?? candidates[0];
+		const exact = albumHint
+			? candidates.find((c) => (c as { album_key: string }).album_key === albumHint)
+			: undefined;
+		if (exact) {
+			rawData = exact;
+		} else {
+			const albumKeys = [...new Set(candidates.map((c) => (c as { album_key: string }).album_key))];
+			const { data: unlisted } = await supabaseServer
+				.from('album_settings')
+				.select('album_key')
+				.eq('visibility', 'unlisted')
+				.in('album_key', albumKeys);
+			const unlistedSet = new Set((unlisted ?? []).map((a) => a.album_key));
+			rawData = candidates.find((c) => !unlistedSet.has((c as { album_key: string }).album_key)) ?? candidates[0];
+		}
 	}
 
 	const photoData = rawData as unknown as PhotoMetadataRow;
