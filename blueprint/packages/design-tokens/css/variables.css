@@ -1,0 +1,112 @@
+/**
+ * @blueprint/design-tokens — CSS variables
+ *
+ * Canonical surface for tokens. Every other consumer (Tailwind preset,
+ * Svelte components, vanilla HTML in apps/demos) reads through these.
+ *
+ * Color uses OKLCH for perceptually uniform lightness. Derived backgrounds
+ * and foregrounds use `oklch(from var(...) L C h / alpha)` so re-theming
+ * is a single source-color change.
+ *
+ * Namespace: --nino-* (nino-chavez-photography). Never collides with merchant
+ * storefront tokens or BC platform tokens.
+ */
+
+:root {
+  /* -------- Color (OKLCH triplets: lightness chroma hue) -------- */
+
+  /* Brand — teal/cyan; distinct from BC blue, signals "data/subscriptions" */
+  --nino-brand-lch:            0.55 0.13 215;
+  --nino-brand-background-lch: 0.97 0.03 215;
+  --nino-brand-foreground-lch: 0.28 0.06 215;
+
+  /* Semantic state */
+  --nino-success-lch:            0.72 0.17 152;
+  --nino-success-background-lch: 0.97 0.04 152;
+  --nino-success-foreground-lch: 0.32 0.09 152;
+
+  --nino-error-lch:            0.62 0.22 28;
+  --nino-error-background-lch: 0.96 0.04 28;
+  --nino-error-foreground-lch: 0.32 0.12 28;
+
+  --nino-warning-lch:            0.78 0.16 78;
+  --nino-warning-background-lch: 0.97 0.04 78;
+  --nino-warning-foreground-lch: 0.36 0.10 78;
+
+  --nino-info-lch:            0.62 0.13 245;
+  --nino-info-background-lch: 0.97 0.03 245;
+  --nino-info-foreground-lch: 0.32 0.08 245;
+
+  /* Neutral surfaces */
+  --nino-background-lch: 1 0 0;
+  --nino-foreground-lch: 0.16 0 0;
+
+  /* Neutral scale — 100 lightest, 500 darkest before foreground */
+  --nino-contrast-100-lch: 0.96 0 0;
+  --nino-contrast-200-lch: 0.88 0 0;
+  --nino-contrast-300-lch: 0.78 0 0;
+  --nino-contrast-400-lch: 0.62 0 0;
+  --nino-contrast-500-lch: 0.42 0 0;
+
+  /* -------- Typography -------- */
+  --nino-font-heading: 'Inter Display', 'Inter', system-ui, -apple-system, sans-serif;
+  --nino-font-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --nino-font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* -------- Motion -------- */
+  --nino-duration-instant:    100ms;
+  --nino-duration-fast:       150ms;
+  --nino-duration-normal:     200ms;
+  --nino-duration-slow:       300ms;
+  --nino-duration-deliberate: 500ms;
+
+  --nino-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --nino-easing-decel:    cubic-bezier(0, 0, 0.2, 1);
+  --nino-easing-accel:    cubic-bezier(0.4, 0, 1, 1);
+  --nino-easing-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* -------- Focus rings -------- */
+  --nino-focus-ring-width:  2px;
+  --nino-focus-ring-offset: 2px;
+  --nino-focus-ring-color:  oklch(var(--nino-brand-lch));
+
+  /* -------- Elevation -------- */
+  --nino-shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.04);
+  --nino-shadow-md: 0 4px 8px -2px oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.04);
+  --nino-shadow-lg: 0 12px 24px -8px oklch(0 0 0 / 0.10), 0 4px 8px -4px oklch(0 0 0 / 0.06);
+  --nino-shadow-xl: 0 24px 48px -12px oklch(0 0 0 / 0.14);
+}
+
+/*
+ * Theme = light-mode-first, explicit-opt-in only.
+ *
+ * Dark-mode auto-flip (@media prefers-color-scheme) was removed
+ * 2026-05-20 — the lightness-inversion approach didn't carry the
+ * editorial register and produced an undesigned dark surface.
+ *
+ * Surfaces that explicitly opt in to dark via data-theme="dark"
+ * still get the override block below. A deliberate dark-mode design
+ * pass (correct chroma curves, separate contrast ladder, motion
+ * adjustments) belongs in the Slice 7 brand-identity beat — not as
+ * an automatic side-effect of OS preference.
+ */
+
+[data-theme="light"] {
+  --nino-background-lch: 1 0 0;
+  --nino-foreground-lch: 0.16 0 0;
+  --nino-contrast-100-lch: 0.96 0 0;
+  --nino-contrast-200-lch: 0.88 0 0;
+  --nino-contrast-300-lch: 0.78 0 0;
+  --nino-contrast-400-lch: 0.62 0 0;
+  --nino-contrast-500-lch: 0.42 0 0;
+}
+
+[data-theme="dark"] {
+  --nino-background-lch: 0.16 0 0;
+  --nino-foreground-lch: 0.96 0 0;
+  --nino-contrast-100-lch: 0.22 0 0;
+  --nino-contrast-200-lch: 0.30 0 0;
+  --nino-contrast-300-lch: 0.40 0 0;
+  --nino-contrast-400-lch: 0.56 0 0;
+  --nino-contrast-500-lch: 0.74 0 0;
+}

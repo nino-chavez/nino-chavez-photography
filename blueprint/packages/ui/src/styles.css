@@ -1,0 +1,38 @@
+/**
+ * @blueprint/ui — base styles
+ *
+ * Import once at the root of any consuming surface:
+ *
+ *   import '@blueprint/design-tokens/css';
+ *   import '@blueprint/ui/styles';
+ *
+ * Order matters: design tokens must load before ui styles so component
+ * declarations can resolve `--nino-*` variables.
+ */
+
+/* Type system baseline — body font + foreground color, set on the document */
+html {
+  font-family: var(--nino-font-body);
+  color: oklch(var(--nino-foreground-lch));
+  background: oklch(var(--nino-background-lch));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--nino-font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+code, pre, kbd, samp {
+  font-family: var(--nino-font-mono);
+}
+
+/* Focus-visible default — components extend; never override `focus:outline-none`
+   without immediately replacing the focus indicator on `focus-visible:`. */
+:focus-visible {
+  outline: var(--nino-focus-ring-width) solid var(--nino-focus-ring-color);
+  outline-offset: var(--nino-focus-ring-offset);
+}

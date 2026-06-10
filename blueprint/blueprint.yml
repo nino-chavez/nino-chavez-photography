@@ -1,0 +1,74 @@
+# Blueprint Configuration — stamped by template/tools/blueprint-init on 2026-06-10
+
+project:
+  name: "nino-chavez-photography"
+  description: "Volleyball action-sports photography portfolio"
+  product: "A self-service photo gallery for the athletes Nino shoots: discover the event, find yourself by jersey number or team color, download or share — no sales, no faces, no per-person naming."
+  audience:
+    leadership: []
+    engineering: []
+    broader: ["Athletes and families at grass-volleyball tournaments Nino shoots; event organizers (Let's Pepper Open series)"]
+
+# Stage-0→1 gate (pilot-profile-lock-reviewer). Canonical 7-field schema per
+# template/docs/methodology/pilot-profile-template.md (NOT the older rally-hq shape).
+pilot_profile:
+  slug: "find-my-photos-athlete"
+  display_name: "Athlete finding their own photos at a grass-volleyball tournament Nino shot"
+  pain_point: "A player who knows Nino shot their match wants to find and download their own photos, but can't retrieve them without buying, being named, or scrubbing thousands of frames."
+  monetization_side: "player"   # the athlete/consumer side; the gallery is operator-funded — no sales, no prints, no naming
+  walkthrough_citation: "research/observations/find-my-photos-demand-signal.md"
+  competitors_in_scope:
+    - "SmugMug pro event galleries"
+    - "Hudl"
+    - "MaxPreps"
+    - "Team/league photo services (Vidsync, Shutterfly Sports)"
+  out_of_scope_pilots:
+    - "Event organizer running the tournament (that's Rally HQ's pilot, on the same events)"
+    - "Coach building highlight reels / managing a roster"
+    - "Print or merch buyer (there is no store)"
+
+# Pipeline shape — see Blueprint docs/variant-selection.md (methodology source)
+variant: midstream
+
+# Deliverable sophistication — see Blueprint docs/portal-and-tier-ladder.md (methodology source)
+# Variant × Tier matrix codified in that doc; do not deviate without an ADR.
+tier: 2
+
+# Portal pattern (A = platform-portal, B = redesign-review-portal)
+portal_pattern: A
+
+# ──────────────────────────────────────────────────────────────────
+# Portal harness config (Pattern A). Read by apps/portal/src/lib/portal-config.ts.
+# Tier-0 default: ZERO data sources wired. The portal builds green and shows the
+# decisions catalog + strategy excerpts; every optional substrate section hides.
+# Wire a source = set its path to a repo-relative file that exists, then rebuild.
+# A typo'd path simply keeps the section hidden — it never crashes the build.
+# ──────────────────────────────────────────────────────────────────
+portal:
+  repo_url: "https://github.com/nino-chavez/nino-chavez-photography"
+  decisions:
+    dir: "decisions"               # folder of NNNN-slug.md decision records (ADRs)
+    # filename_pattern: "^(?:ADR-)?(\\d{4})-(.+)\\.md$"  # override the matcher if your ADRs are named differently
+  # Optional derived-data sources. Each is a repo-relative path to a JSON file
+  # produced by a consumer-side derive tool. null = section hidden (Tier 0).
+  sources:
+    state: null                    # capability state-derive   → enables Inspect/coverage
+    board: null                    # work-board derive         → enables Roadmap
+    epic_footprints: null          # per-epic footprint derive → enriches Roadmap epic progress
+    attestations: null             # gate attestations derive  → enables Inspect/attestations
+    proposals: null                # proposal/issue derive     → enables Inspect/dependencies
+    dep_graph: null                # dependency-graph derive   → enables the dep-graph view
+    scenarios: null                # demo scenarios json       → enables Try/scenarios
+    build_order: null              # build-order plan          → enables Roadmap build order
+  # 10-gate Epic-DoD compliance grid. Off by default; needs an epics model + a
+  # state-derive tool. enabled:false keeps @blueprint/gate-derive yielding empty.
+  gates:
+    enabled: false
+    epics_source: null             # repo-relative module/json supplying the EPICS list
+    gate_labels: []                # 10 labels for the gate columns; empty = generic
+  # board:    bucket labels, phase order, epic-tracker issue range (see portal-config.ts)
+  # excerpts: strategy-doc excerpts to surface on the home/strategy pages
+  # home / operate / inspect / surfaces / archaeology: navigation + content (Phase B)
+
+execution:
+  depth: standard
