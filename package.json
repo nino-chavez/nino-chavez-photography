@@ -16,9 +16,7 @@
 		"test:ui": "playwright test --ui",
 		"test:debug": "playwright test --debug",
 		"test:report": "playwright show-report",
-		"process:album": "tsx scripts/process-new-album.ts",
-		"pipeline": "tsx scripts/run-pipeline.ts",
-		"enrich": "tsx scripts/enrich-local-photos.ts",
+		"ingest:album": "tsx scripts/ingest-album.ts",
 		"worker:dev": "cd cloudflare-worker/album-zip && wrangler dev",
 		"worker:deploy": "cd cloudflare-worker/album-zip && wrangler deploy",
 		"worker:tail": "cd cloudflare-worker/album-zip && wrangler tail"

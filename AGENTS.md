@@ -66,8 +66,7 @@ npm test                         # Playwright E2E tests
 - MOTION tokens from `$lib/motion-tokens.ts` for animations
 
 ## Album Management Pipeline
-- `ENRICHMENT_WORKFLOW.md` - Full pipeline: enrich → upload → sync
-- `scripts/README-PIPELINE.md` - `run-pipeline.ts` usage and flags
+- `ENRICHMENT_WORKFLOW.md` - One-command album ingest (`npm run ingest:album`, direct-to-DB; the legacy enrich→sync→EXIF chain was removed in the #10 cutover)
 - `scripts/ALBUM_NORMALIZATION_README.md` - Canonical naming and drift analysis
 - `.agent-os/implementation/ALBUM_NORMALIZATION_WORKFLOW.md` - Naming standard format
 - `.agent-os/implementation/ENRICHMENT_PIPELINE_INTEGRATION.md` - Naming integration
