@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Blueprint Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared.css?v=20260611-docs">
+  <link rel="stylesheet" href="../project-tokens.css?v=20260525-overlay">
+  <style>
+    body { padding-bottom: 80px; }
+
+    /* Three zones: sidebar (doc list) | content | on-this-page rail.
+       The rail only appears ≥1100px — below that the content column
+       carries the full width and the rail's job (heading scan) is served
+       by scrolling. ≤768px the sidebar stacks above the content. */
+    .doc-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--space-8); max-width: 1200px; margin: var(--space-6) auto; padding: 0 var(--space-4); }
+    @media (min-width: 1100px) { .doc-shell { grid-template-columns: 240px minmax(0, 1fr) 200px; } }
+    @media (max-width: 768px) { .doc-shell { grid-template-columns: 1fr; } }
+    /* The rail is a third grid child; below 1100px there's no track for it,
+       so it must be explicitly hidden or it auto-places into an implicit row
+       under the content (verified at 960px). */
+    .doc-toc { display: none; }
+    @media (min-width: 1100px) { .doc-toc { display: block; } }
+
+    .doc-nav {
+      position: sticky;
+      top: var(--space-4);
+      align-self: start;
+      max-height: calc(100vh - var(--space-8));
+      overflow-y: auto;
+      padding-right: var(--space-3);
+    }
+    /* Two-tier sidebar — Strategic artifacts vs Working documents.
+       The tier labels carry stronger weight than the old h4 mono headers
+       because the distinction is editorial, not just organizational. */
+    .doc-nav .tier-label {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -0.005em;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .doc-nav .tier-blurb {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: var(--space-3);
+      padding-right: var(--space-2);
+    }
+    .doc-nav .tier-blurb em {
+      color: var(--text-secondary);
+      font-style: normal;
+      font-weight: 600;
+    }
+    .doc-nav a {
+      display: block;
+      padding: 6px 10px;
+      margin-bottom: 1px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      position: relative;
+    }
+    .doc-nav a[data-tier="strategic"]::before {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 12px;
+      background: var(--brand-500);
+      border-radius: 1px;
+      opacity: 0.45;
+    }
+    .doc-nav a[data-tier="strategic"] { padding-left: 14px; }
+    .doc-nav a[data-tier="strategic"]:hover::before,
+    .doc-nav a[data-tier="strategic"].active::before { opacity: 1; }
+    .doc-nav a:hover { background: var(--surface-2); color: var(--text-primary); }
+    .doc-nav a.active { background: var(--brand-100); color: var(--brand-700); font-weight: 600; }
+
+    /* Doc content frame — lighter than before so it reads as content,
+       not as a heavy island. Matches the rhythm of the Front Door's
+       card-grid + Prototype Studio's slice cards: hairline border,
+       subtle radius, generous-but-not-cavernous padding. */
+    .doc-content {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8) var(--space-8);
+      min-height: 60vh;
+    }
+    .doc-meta {
+      padding: var(--space-3) var(--space-4);
+      background: var(--surface-1);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-6);
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .doc-meta .badge {
+      background: color-mix(in srgb, var(--brand-500) 12%, transparent);
+      color: var(--brand-700);
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .doc-meta .source {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* Markdown render styles — calibrated to match the Front Door and
+       Prototype Studio rhythm. Was: doc-island styling (uppercase H1
+       inherited from global, heavy h2 border, chunky inline code). Now:
+       same Inter 700 sentence-case headlines as other meta-pages. */
+    /* 70ch measure — solidly inside the 66–75ch readable band. The right
+       rail naturally narrows the column ≥1100px; this cap holds the line
+       length below that, where content spans the full two-column width. */
+    .doc-body { line-height: 1.7; color: var(--text-primary); max-width: 70ch; font-size: var(--text-base); }
+
+    /* Reset the global h1 uppercase (set in shared.css for prototype heroes)
+       — doc H1s are sentence case to match Front Door + Prototype Studio. */
+    .doc-body h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 1.5rem + 2.5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      text-transform: none;
+      line-height: 1.1;
+      margin-bottom: var(--space-5);
+      color: var(--text-primary);
+    }
+    .doc-body h2 {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      margin-top: var(--space-10);
+      margin-bottom: var(--space-3);
+      color: var(--text-primary);
+      /* clears the fixed portal top bar when a ToC anchor jumps here */
+      scroll-margin-top: var(--space-8);
+      /* No heavy border — section break is created by margin + smaller h3s below */
+    }
+    .doc-body h3 {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-top: var(--space-8);
+      margin-bottom: var(--space-3);
+      color: var(--text-primary);
+      scroll-margin-top: var(--space-8);
+    }
+    .doc-body h4 {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-top: var(--space-6);
+      margin-bottom: var(--space-2);
+    }
+    .doc-body p {
+      margin-bottom: var(--space-4);
+      color: var(--text-secondary);
+      font-size: var(--text-base);
+      line-height: 1.7;
+    }
+    .doc-body strong { color: var(--text-primary); font-weight: 700; }
+    .doc-body em { color: var(--text-primary); }
+
+    /* Inline code — matches the rest of the blueprint's hairline-pill rhythm
+       (subtle background, no chunky padding). */
+    .doc-body code {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      background: var(--surface-1);
+      border: 1px solid var(--card-border);
+      padding: 1px 5px;
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+    }
+    .doc-body pre {
+      background: var(--arena-900);
+      color: var(--text-on-dark);
+      padding: var(--space-4);
+      border-radius: var(--radius-md);
+      overflow-x: auto;
+      margin: var(--space-4) 0;
+      font-size: var(--text-sm);
+      line-height: 1.55;
+    }
+    .doc-body pre code {
+      background: transparent;
+      border: none;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+    .doc-body ul, .doc-body ol {
+      margin: var(--space-3) 0 var(--space-4);
+      padding-left: var(--space-6);
+      color: var(--text-secondary);
+    }
+    .doc-body li { margin-bottom: var(--space-2); }
+    .doc-body li > p { margin-bottom: var(--space-2); }
+    .doc-body blockquote {
+      border-left: 3px solid var(--brand-500);
+      padding: 2px var(--space-4);
+      margin: var(--space-4) 0;
+      color: var(--text-secondary);
+      font-style: normal;
+    }
+    .doc-body hr { border: none; border-top: 1px solid var(--card-border); margin: var(--space-8) 0; }
+    .doc-body a {
+      color: var(--brand-600);
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--brand-500) 35%, transparent);
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+    }
+    .doc-body a:hover {
+      color: var(--brand-700);
+      text-decoration-color: var(--brand-600);
+    }
+    .doc-body table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: var(--space-4) 0;
+      font-size: var(--text-sm);
+    }
+    .doc-body th, .doc-body td {
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--card-border);
+      text-align: left;
+      vertical-align: top;
+    }
+    .doc-body th {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--text-muted);
+    }
+    .doc-body td code { font-size: 0.85em; }
+    .doc-body img { max-width: 100%; border-radius: var(--radius-md); }
+    .doc-body :first-child { margin-top: 0; }
+
+    /* .doc-meta rules moved up next to .doc-content for cohesion */
+
+    .doc-empty { padding: var(--space-12); text-align: center; color: var(--text-muted); }
+    .doc-error { padding: var(--space-6); background: hsl(0 85% 97%); border: 1px solid hsl(0 85% 80%); border-radius: var(--radius-md); color: hsl(0 70% 30%); }
+
+    /* ─────────────── strategic doc treatment ───────────────
+       Applied when .doc-body has .doc-body-strategic class.
+       Lifts the hero, structures callouts, brands proto-refs. */
+
+    .doc-hero {
+      margin: 0 0 var(--space-8);
+      padding-bottom: var(--space-5);
+      border-bottom: 1px solid var(--card-border);
+    }
+    .doc-hero h1 {
+      margin: 0 0 var(--space-4) 0;
+    }
+    .doc-hero-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+    }
+    .doc-hero-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px 4px 4px;
+      background: var(--surface-1);
+      border: 1px solid var(--card-border);
+      border-radius: 999px;
+      font-size: 11px;
+      line-height: 1;
+    }
+    .doc-hero-chip .chip-label {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--card);
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+    }
+    .doc-hero-chip .chip-value {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .doc-hero-chip .chip-value code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      font-size: 11px;
+      color: var(--text-primary);
+    }
+    /* Status-specific chip color */
+    .doc-hero-chip-status { background: color-mix(in srgb, var(--brand-500) 8%, var(--surface-1)); border-color: color-mix(in srgb, var(--brand-500) 25%, var(--card-border)); }
+    .doc-hero-chip-status .chip-label { color: var(--brand-700); }
+
+    /* Callouts — designed pattern for "Decision: X" / "Why: X" / "Evidence: X"
+       inline conventions that appear repeatedly in strategic docs. Each one
+       gets a structured component instead of being inline-bold prose. */
+    .doc-callout {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      margin: var(--space-3) 0;
+      background: var(--surface-1);
+      border-left: 3px solid var(--card-border);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+    @media (max-width: 720px) {
+      .doc-callout { grid-template-columns: 1fr; gap: var(--space-1); }
+    }
+    .doc-callout-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .doc-callout-body {
+      color: var(--text-primary);
+      font-size: var(--text-base);
+      line-height: 1.65;
+    }
+    .doc-callout-body code {
+      font-size: 0.88em;
+      background: var(--card);
+    }
+
+    /* Per-kind accents */
+    .doc-callout-decision { border-left-color: var(--brand-500); background: color-mix(in srgb, var(--brand-500) 5%, var(--surface-1)); }
+    .doc-callout-decision .doc-callout-label { color: var(--brand-700); }
+
+    .doc-callout-why { border-left-color: hsl(220 30% 50%); }
+    .doc-callout-why .doc-callout-label { color: hsl(220 30% 40%); }
+
+    .doc-callout-evidence { border-left-color: hsl(142 50% 45%); background: color-mix(in srgb, hsl(142 50% 45%) 4%, var(--surface-1)); }
+    .doc-callout-evidence .doc-callout-label { color: hsl(142 50% 30%); }
+
+    .doc-callout-audience { border-left-color: hsl(265 50% 55%); }
+    .doc-callout-audience .doc-callout-label { color: hsl(265 50% 40%); }
+
+    .doc-callout-status { border-left-color: hsl(40 95% 50%); }
+    .doc-callout-status .doc-callout-label { color: hsl(40 95% 30%); }
+
+    .doc-callout-action { border-left-color: var(--brand-700); }
+    .doc-callout-action .doc-callout-label { color: var(--brand-700); }
+
+    /* Prototype-page reference — inline <code> for prototype/pages/X.html
+       gets a brand-tinted treatment so it reads as a deliberate evidence
+       link, not a generic file path. */
+    code.doc-proto-ref {
+      background: color-mix(in srgb, var(--brand-500) 8%, transparent);
+      border-color: color-mix(in srgb, var(--brand-500) 25%, var(--card-border));
+      color: var(--brand-700);
+      font-weight: 500;
+    }
+
+    /* When the strategic class is on, the .doc-meta header chips are redundant
+       — the hero already shows the title + status. Hide it. */
+    .doc-body-strategic ~ #doc-meta,
+    .doc-content:has(.doc-body-strategic) #doc-meta {
+      display: none;
+    }
+
+    /* ─────────────── sidebar search trigger ───────────────
+       The Cmd/Ctrl+K palette (wired globally by proto-nav.js) is the
+       jump-anywhere affordance everywhere else in the portal; the docs
+       sidebar surfaces it visibly so it's discoverable here too. */
+    .doc-search-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: var(--space-2);
+      padding: 7px 10px;
+      margin-bottom: var(--space-5);
+      background: var(--surface-1);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    }
+    .doc-search-trigger:hover {
+      background: var(--surface-2);
+      color: var(--text-primary);
+      border-color: var(--text-muted);
+    }
+    .doc-search-trigger kbd {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--text-secondary);
+    }
+
+    /* ─────────────── on-this-page rail (scroll-spy ToC) ───────────────
+       Mirrors the .doc-nav sticky pattern. Built per-doc from the rendered
+       h2/h3 headings; an IntersectionObserver tracks the heading nearest
+       the top of the viewport and marks its ToC link active. */
+    .doc-toc {
+      position: sticky;
+      top: var(--space-4);
+      align-self: start;
+      max-height: calc(100vh - var(--space-8));
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .doc-toc-label {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: var(--space-3);
+    }
+    .doc-toc a {
+      display: block;
+      padding: 4px 0 4px 12px;
+      margin-left: -1px;
+      color: var(--text-muted);
+      border-left: 2px solid var(--card-border);
+    }
+    .doc-toc a.lvl-3 { padding-left: 24px; font-size: 11px; }
+    .doc-toc a:hover { color: var(--text-primary); }
+    .doc-toc a.active {
+      color: var(--brand-700);
+      border-left-color: var(--brand-500);
+      font-weight: 600;
+    }
+
+    /* ─────────────── prev/next doc pager ───────────────
+       Surfaces the reading path the tier ordering implies. Sits at the
+       bottom of the content column; built from the flattened tier order. */
+    .doc-pager {
+      display: flex;
+      gap: var(--space-4);
+      margin-top: var(--space-10);
+      padding-top: var(--space-5);
+      border-top: 1px solid var(--card-border);
+    }
+    .doc-pager:empty { display: none; }
+    .doc-pager a {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+    }
+    .doc-pager a:hover { border-color: var(--brand-500); background: var(--surface-1); }
+    .doc-pager .doc-pager-next { text-align: right; }
+    .doc-pager .doc-pager-spacer { flex: 1; }
+    .doc-pager .pager-dir {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+    .doc-pager .pager-title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body data-compare-root>
+
+  <header data-portal-shell="docs"></header>
+
+  <div class="doc-shell">
+    <aside class="doc-nav" id="doc-nav-mount">
+      <!-- Sidebar is rendered from _meta/index.json `docs.tiers` at runtime.
+           See docs/index.html `renderSidebar()` below. The empty state below
+           is replaced on manifest load.
+
+           Why data-driven, not hardcoded: prior versions of this file shipped
+           with 13 Rally HQ doc slugs baked into the sidebar HTML, TITLES map,
+           and STRATEGIC_DOCS Set. Consumer projects copy the template, ship a
+           docs viewer full of Rally HQ vocabulary, and notice only when a
+           stakeholder opens /docs/. Encoding the doc list in the manifest
+           means the canonical template ships with zero project-specific
+           leakage, and any consumer that follows the schema gets a working
+           sidebar without editing this file.
+
+           Schema: see template/portal/CONVENTIONS.md § "Docs viewer manifest". -->
+      <div class="doc-empty" style="padding: var(--space-4) 0; text-align: left;">Loading docs manifest…</div>
+    </aside>
+
+    <main class="doc-content">
+      <div id="doc-meta" class="doc-meta hidden">
+        <span class="badge"></span>
+        <span class="source"></span>
+      </div>
+      <article id="doc-body" class="doc-body">
+        <div class="doc-empty">Pick a document from the sidebar →</div>
+      </article>
+      <nav id="doc-pager" class="doc-pager" aria-label="Document navigation"></nav>
+    </main>
+
+    <aside class="doc-toc" id="doc-toc" aria-label="On this page"></aside>
+  </div>
+
+  <!-- Marked for markdown rendering (client-side, CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@14.1.3/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
+  <script>
+    // Manifest-driven state. Populated by loadManifest() at init.
+    // The viewer renders nothing useful until the manifest resolves.
+    let MANIFEST = null;
+    let TITLES = {};                 // slug → title, built from MANIFEST.docs.tiers[].docs[]
+    let STRATEGIC_DOCS = new Set();  // slugs in tiers where `designed: true`
+    let DEFAULT_DOC = null;          // MANIFEST.docs.default || first tier's first doc
+
+    async function loadManifest() {
+      // Manifest lives at /_meta/index.json relative to portal root. The
+      // docs viewer is one level down so the path is "../_meta/index.json".
+      try {
+        const res = await fetch('../_meta/index.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        MANIFEST = await res.json();
+      } catch (err) {
+        // Manifest missing or malformed is a fatal config error — surface it.
+        const mount = document.getElementById('doc-nav-mount');
+        mount.innerHTML = '<div class="doc-error" style="margin: 0;">Couldn\'t load <code>_meta/index.json</code>. Docs viewer requires the manifest. ' + err.message + '</div>';
+        return false;
+      }
+      const docsCfg = (MANIFEST && MANIFEST.docs) || {};
+      const tiers = Array.isArray(docsCfg.tiers) ? docsCfg.tiers : [];
+
+      // Flatten tiers into TITLES + STRATEGIC_DOCS
+      tiers.forEach(tier => {
+        const designed = !!tier.designed;
+        (tier.docs || []).forEach(d => {
+          if (d && d.id) {
+            TITLES[d.id] = d.title || d.id;
+            if (designed) STRATEGIC_DOCS.add(d.id);
+          }
+        });
+      });
+
+      // Resolve default doc: explicit > first tier's first doc > null
+      if (docsCfg.default && TITLES[docsCfg.default]) {
+        DEFAULT_DOC = docsCfg.default;
+      } else {
+        for (const tier of tiers) {
+          if (tier.docs && tier.docs.length && tier.docs[0].id) {
+            DEFAULT_DOC = tier.docs[0].id;
+            break;
+          }
+        }
+      }
+      return true;
+    }
+
+    function renderSidebar() {
+      const mount = document.getElementById('doc-nav-mount');
+      if (!mount) return;
+      const docsCfg = (MANIFEST && MANIFEST.docs) || {};
+      const tiers = Array.isArray(docsCfg.tiers) ? docsCfg.tiers : [];
+      if (!tiers.length) {
+        mount.innerHTML = '<div class="doc-empty" style="padding: var(--space-4) 0; text-align: left;">No doc tiers declared. Add entries to <code>_meta/index.json</code> <code>docs.tiers[].docs</code>.</div>';
+        return;
+      }
+      const hasAnyDocs = tiers.some(t => (t.docs || []).length > 0);
+      if (!hasAnyDocs) {
+        mount.innerHTML = '<div class="doc-empty" style="padding: var(--space-4) 0; text-align: left;">Doc tiers are declared but empty. Add <code>{ id, title }</code> entries to <code>_meta/index.json</code> <code>docs.tiers[].docs</code>.</div>';
+        return;
+      }
+      // Build sidebar HTML from manifest. Skip empty tiers (don't show a
+      // header for "Working documents" if there are none yet).
+      const parts = [];
+      // Visible surface for the global Cmd/Ctrl+K palette (proto-nav.js owns it).
+      parts.push('<button type="button" class="doc-search-trigger" id="doc-search-trigger" aria-label="Jump anywhere (Cmd/Ctrl+K)"><span>Jump anywhere</span><kbd>⌘K</kbd></button>');
+      let isFirst = true;
+      tiers.forEach(tier => {
+        const docs = tier.docs || [];
+        if (!docs.length) return;
+        const designed = !!tier.designed;
+        const tierStyle = isFirst ? '' : ' style="margin-top: var(--space-6)"';
+        isFirst = false;
+        parts.push(`<div class="tier-label"${tierStyle}>${escapeHtml(tier.label || '')}</div>`);
+        if (tier.blurb) {
+          // blurb may contain limited HTML (<em>); template trusts manifest authoring.
+          parts.push(`<p class="tier-blurb">${tier.blurb}</p>`);
+        }
+        docs.forEach(d => {
+          const tierAttr = designed ? 'strategic' : 'working';
+          parts.push(`<a href="./?doc=${encodeURIComponent(d.id)}" data-doc="${escapeAttr(d.id)}" data-tier="${tierAttr}">${escapeHtml(d.title || d.id)}</a>`);
+        });
+      });
+      mount.innerHTML = parts.join('');
+
+      // Search trigger opens the global palette (exposed by proto-nav.js).
+      // Falls back to a synthetic Cmd+K if the shell script hasn't loaded yet.
+      mount.querySelector('#doc-search-trigger')?.addEventListener('click', () => {
+        if (typeof window.openBlueprintPalette === 'function') window.openBlueprintPalette();
+        else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+      });
+
+      // Wire click handlers (replaces the static document.querySelectorAll
+      // block that ran at script-bottom in the pre-refactor version).
+      mount.querySelectorAll('a[data-doc]').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const docId = a.dataset.doc;
+          const url = new URL(window.location.href);
+          url.searchParams.set('doc', docId);
+          window.history.pushState({}, '', url);
+          setActive(docId);
+          loadDoc(docId);
+          window.scrollTo(0, 0);
+        });
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+
+    function getDocId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('doc');
+    }
+
+    function setActive(docId) {
+      document.querySelectorAll('.doc-nav a[data-doc]').forEach(a => {
+        a.classList.toggle('active', a.dataset.doc === docId);
+      });
+    }
+
+    // Convention recognized in strategic docs. The label opens a paragraph
+    // and is followed by content — the post-processor lifts these into
+    // structured callout components. Project consumers extend this map
+    // with their own domain-specific vocabulary (e.g., 'Pricing shape
+    // rationale' for monetization docs; 'Persona' for business-model docs).
+    // Map values are the callout-kind CSS classes: decision / why /
+    // evidence / audience / status / action / falsification / method / source.
+    const CALLOUT_LABELS = {
+      // Decision-shaped (the chosen approach)
+      'Decision': 'decision',
+      'Strategic decision': 'decision',
+      'Sales motion': 'decision',
+      // Why / rationale-shaped
+      'Why': 'why',
+      'Job-to-be-done': 'why',
+      // Evidence-shaped (concrete artifact references)
+      'Evidence': 'evidence',
+      'Prototype evidence': 'evidence',
+      'Surface served': 'evidence',
+      // Audience-shaped
+      'Audience served': 'audience',
+      'Persona': 'audience',
+      // Status-shaped (state of affairs)
+      'Status': 'status',
+      'Outcome': 'status',
+      'Volume': 'status',
+      // Action-shaped (what to do)
+      'Action': 'action',
+      // Method / source-shaped (validation-plan vocabulary)
+      'Falsification signal': 'falsification',
+      'Method': 'method',
+      'Source': 'source'
+    };
+
+    function postProcessStrategic(html, docId, title) {
+      const root = document.createElement('div');
+      root.innerHTML = html;
+
+      // 1. Hero — detect the first paragraph that opens with **Date:** / Status / Inputs
+      //    and lift it next to the H1 into a designed hero block.
+      const firstH1 = root.querySelector('h1');
+      const heroMeta = findHeroMetaParagraph(root);
+      if (firstH1) {
+        const hero = document.createElement('div');
+        hero.className = 'doc-hero';
+        const titleClone = firstH1.cloneNode(true);
+        hero.appendChild(titleClone);
+        if (heroMeta) {
+          const chipRow = buildHeroChips(heroMeta);
+          if (chipRow) hero.appendChild(chipRow);
+          heroMeta.remove();
+        }
+        firstH1.replaceWith(hero);
+      }
+
+      // 2. Callouts — paragraphs whose first <strong> is a recognized label
+      [...root.querySelectorAll('p > strong:first-child')].forEach((strong) => {
+        const raw = strong.textContent.replace(/:$/, '').trim();
+        const kind = CALLOUT_LABELS[raw];
+        if (!kind) return;
+        const p = strong.parentElement;
+        // Body = everything in <p> after the <strong> + trailing colon/space
+        const callout = document.createElement('div');
+        callout.className = `doc-callout doc-callout-${kind}`;
+        const labelEl = document.createElement('div');
+        labelEl.className = 'doc-callout-label';
+        labelEl.textContent = raw;
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'doc-callout-body';
+        // Move the rest of the paragraph contents (skip the leading <strong>
+        // and any immediate ": " text node) into the body container.
+        let node = strong.nextSibling;
+        if (node && node.nodeType === Node.TEXT_NODE) {
+          node.textContent = node.textContent.replace(/^\s*:\s*/, '');
+          if (!node.textContent.trim()) node = node.nextSibling;
+        }
+        while (node) {
+          const next = node.nextSibling;
+          bodyEl.appendChild(node);
+          node = next;
+        }
+        callout.appendChild(labelEl);
+        callout.appendChild(bodyEl);
+        p.replaceWith(callout);
+      });
+
+      // 3. Prototype-page references — inline <code>prototype/pages/X.html</code>
+      //    gets a brand-tinted treatment that reads as a link to the artifact.
+      [...root.querySelectorAll('code')].forEach((c) => {
+        const txt = c.textContent;
+        if (/^prototype\/pages\//.test(txt)) {
+          c.classList.add('doc-proto-ref');
+        }
+      });
+
+      return root.innerHTML;
+    }
+
+    function findHeroMetaParagraph(root) {
+      const ps = root.querySelectorAll('p');
+      for (const p of ps) {
+        const html = p.innerHTML;
+        if (/^<strong>(Date|Status|Inputs|Method|Source):<\/strong>/i.test(html.trim())) {
+          return p;
+        }
+      }
+      return null;
+    }
+
+    function buildHeroChips(metaPara) {
+      // Walk children: each <strong>LABEL:</strong> opens a new segment;
+      // everything between strong tags is the previous segment's value.
+      const segments = [];
+      let currentLabel = null;
+      let currentValueNodes = [];
+      const flush = () => {
+        if (currentLabel) {
+          const wrapNode = document.createElement('span');
+          currentValueNodes.forEach((n) => wrapNode.appendChild(n.cloneNode(true)));
+          const valueHtml = wrapNode.innerHTML.trim().replace(/^[,;\s.]+|[,;\s.]+$/g, '');
+          if (valueHtml) segments.push({ label: currentLabel, valueHtml });
+        }
+      };
+      [...metaPara.childNodes].forEach((child) => {
+        if (child.nodeName === 'STRONG') {
+          flush();
+          currentLabel = child.textContent.replace(/:$/, '').trim();
+          currentValueNodes = [];
+        } else {
+          currentValueNodes.push(child);
+        }
+      });
+      flush();
+      if (!segments.length) return null;
+      const wrap = document.createElement('div');
+      wrap.className = 'doc-hero-chips';
+      segments.forEach((s) => {
+        const chip = document.createElement('div');
+        chip.className = `doc-hero-chip doc-hero-chip-${s.label.toLowerCase().replace(/\s+/g, '-')}`;
+        chip.innerHTML = `<span class="chip-label">${s.label}</span><span class="chip-value">${s.valueHtml}</span>`;
+        wrap.appendChild(chip);
+      });
+      return wrap;
+    }
+
+    // ─────────────── on-this-page ToC + scroll-spy ───────────────
+
+    let TOC_OBSERVER = null;
+
+    function slugify(s) {
+      return String(s).toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    function buildToc() {
+      const tocMount = document.getElementById('doc-toc');
+      const body = document.getElementById('doc-body');
+      if (!tocMount || !body) return;
+      const heads = [...body.querySelectorAll('h2, h3')];
+      // A rail of one (or zero) entries isn't wayfinding — render nothing.
+      if (heads.length < 2) {
+        tocMount.innerHTML = '';
+        if (TOC_OBSERVER) { TOC_OBSERVER.disconnect(); TOC_OBSERVER = null; }
+        return;
+      }
+      const used = new Set();
+      const links = heads.map(h => {
+        let id = slugify(h.textContent) || 'section';
+        let base = id, n = 2;
+        while (used.has(id)) id = `${base}-${n++}`;
+        used.add(id);
+        h.id = id;
+        const lvl = h.tagName === 'H3' ? 3 : 2;
+        return `<a href="#${id}" class="lvl-${lvl}" data-toc="${escapeAttr(id)}">${escapeHtml(h.textContent)}</a>`;
+      }).join('');
+      tocMount.innerHTML = `<div class="doc-toc-label">On this page</div>${links}`;
+
+      // Smooth-scroll without pushing a history entry per heading (back
+      // should return to the previous doc, not unwind scroll positions).
+      tocMount.querySelectorAll('a[data-toc]').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const el = document.getElementById(a.dataset.toc);
+          if (!el) return;
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          window.history.replaceState({}, '', `#${a.dataset.toc}`);
+        });
+      });
+
+      wireTocSpy(heads);
+    }
+
+    function wireTocSpy(heads) {
+      if (TOC_OBSERVER) TOC_OBSERVER.disconnect();
+      const links = new Map([...document.querySelectorAll('.doc-toc a[data-toc]')].map(a => [a.dataset.toc, a]));
+      // -80px top clears the fixed portal bar; -70% bottom keeps "active"
+      // pinned to whatever heading sits in the top third of the viewport.
+      TOC_OBSERVER = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          links.forEach(a => a.classList.remove('active'));
+          links.get(e.target.id)?.classList.add('active');
+        });
+      }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+      heads.forEach(h => TOC_OBSERVER.observe(h));
+    }
+
+    // ─────────────── prev/next pager ───────────────
+
+    function flatDocOrder() {
+      const tiers = (MANIFEST && MANIFEST.docs && MANIFEST.docs.tiers) || [];
+      const out = [];
+      tiers.forEach(t => (t.docs || []).forEach(d => { if (d && d.id) out.push(d); }));
+      return out;
+    }
+
+    function buildPager(docId) {
+      const mount = document.getElementById('doc-pager');
+      if (!mount) return;
+      const order = flatDocOrder();
+      const i = order.findIndex(d => d.id === docId);
+      if (i === -1) { mount.innerHTML = ''; return; }
+      const prev = i > 0 ? order[i - 1] : null;
+      const next = i < order.length - 1 ? order[i + 1] : null;
+      const cell = (d, dir) => d
+        ? `<a class="doc-pager-${dir}" href="./?doc=${encodeURIComponent(d.id)}" data-doc="${escapeAttr(d.id)}"><span class="pager-dir">${dir === 'prev' ? '← Previous' : 'Next →'}</span><span class="pager-title">${escapeHtml(d.title || d.id)}</span></a>`
+        : '<span class="doc-pager-spacer"></span>';
+      mount.innerHTML = cell(prev, 'prev') + cell(next, 'next');
+      mount.querySelectorAll('a[data-doc]').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const id = a.dataset.doc;
+          const url = new URL(window.location.href);
+          url.searchParams.set('doc', id);
+          window.history.pushState({}, '', url);
+          setActive(id);
+          loadDoc(id);
+          window.scrollTo(0, 0);
+        });
+      });
+    }
+
+    async function loadDoc(docId) {
+      if (!docId) return;
+      const body = document.getElementById('doc-body');
+      const meta = document.getElementById('doc-meta');
+      const title = TITLES[docId] || docId;
+
+      body.innerHTML = '<div class="doc-empty">Loading…</div>';
+      meta.classList.add('hidden');
+
+      try {
+        const res = await fetch(`/_docs/${docId}.md`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        let md = await res.text();
+
+        // Cloudflare Pages SPA-fallback returns the root index.html with
+        // HTTP 200 when a static asset is missing — without this sentinel
+        // the home HTML gets parsed as markdown and renders gibberish.
+        // Real markdown never starts with a doctype/html tag. Caught in
+        // the blog consumer session 2026-05-25; encoded here.
+        const looksLikeHtml = /^\s*<(!doctype|html|head|body)/i.test(md);
+        if (looksLikeHtml || md.trim().length === 0) {
+          throw new Error(`No such document: ${docId}`);
+        }
+
+        // Strip YAML frontmatter from the top before marked parses.
+        // Stage artifacts open with --- frontmatter --- blocks; without
+        // stripping, marked treats the delimiters as thematic breaks
+        // and renders the keys as a wall of paragraphs in headline type.
+        // Conservative regex: only strips if file starts with --- on
+        // its own line and contains a closing ---. Standard YAML shape.
+        md = md.replace(/^---\s*\n[\s\S]*?\n---\s*\n+/, '');
+
+        // Configure marked: GFM, breaks off, smartypants off
+        marked.setOptions({ gfm: true, breaks: false, headerIds: false, mangle: false });
+        const rendered = marked.parse(md);
+        const sanitized = DOMPurify.sanitize(rendered);
+
+        // Strategic docs get designed treatment; working docs pass through.
+        const finalHtml = STRATEGIC_DOCS.has(docId)
+          ? postProcessStrategic(sanitized, docId, title)
+          : sanitized;
+
+        body.classList.toggle('doc-body-strategic', STRATEGIC_DOCS.has(docId));
+        body.innerHTML = finalHtml;
+        meta.classList.remove('hidden');
+        meta.querySelector('.badge').textContent = title;
+        meta.querySelector('.source').textContent = `_docs/${docId}.md`;
+        document.title = `${title} — Blueprint`;
+
+        // Build the on-this-page rail + prev/next pager from the rendered doc.
+        buildToc();
+        buildPager(docId);
+      } catch (err) {
+        body.innerHTML = `<div class="doc-error"><strong>Couldn't load that doc.</strong><br/>${err.message}</div>`;
+        document.getElementById('doc-toc').innerHTML = '';
+        document.getElementById('doc-pager').innerHTML = '';
+      }
+    }
+
+    async function init() {
+      const ok = await loadManifest();
+      if (!ok) return;  // loadManifest already rendered an error in the sidebar mount
+      renderSidebar();
+
+      // Resolve doc id: ?doc= param > manifest default > null (empty state)
+      const docId = getDocId() || DEFAULT_DOC;
+      if (!docId) {
+        // No default, no param — show the empty state in the content area
+        document.getElementById('doc-body').innerHTML = '<div class="doc-empty">Pick a document from the sidebar → (or add entries to <code>_meta/index.json</code> <code>docs.tiers</code>)</div>';
+        return;
+      }
+      if (!getDocId()) {
+        // Update URL without reload so the resolved default is shareable
+        const url = new URL(window.location.href);
+        url.searchParams.set('doc', docId);
+        window.history.replaceState({}, '', url);
+      }
+      setActive(docId);
+      loadDoc(docId);
+    }
+
+    window.addEventListener('popstate', () => init());
+
+    init();
+  </script>
+
+  <script>
+    // PORTAL_SHELL_CONFIG intentionally omitted. _portal-shell.js (post
+    // 2026-05-25 refactor) reads productName from _meta/index.json `name`
+    // automatically. Setting PORTAL_SHELL_CONFIG here would short-circuit
+    // the manifest-aware path and reintroduce the project-name placeholder
+    // pattern that this refactor exists to eliminate. Origin of refactor:
+    // docs/case-studies/case-study-v3-portal-css-gap.md "Follow-up — docs viewer".
+    window.PROTO_PAGE = { id: 'docs', title: 'Blueprint Docs' };
+    window.PROTO_CHAT_DISABLED = false;
+  </script>
+  <script src="../_portal-shell.js?v=20260611-docs"></script>
+  <script src="../proto-nav.js?v=20260611-docs"></script>
+  <script src="../chat-widget.js" defer></script>
+  <script src="../proto-annotate.js?v=20260611-docs" defer></script>
+</body>
+</html>

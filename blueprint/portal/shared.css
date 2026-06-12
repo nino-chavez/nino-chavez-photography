@@ -1,0 +1,1505 @@
+/* Blueprint Portal — Shared CSS (CANONICAL CHROME — DO NOT EDIT IN A CONSUMER REPO)
+ *
+ * Static-HTML portal shell (per CONVENTIONS.md). This file is the canonical
+ * Pattern B chrome: design tokens with default values, layout primitives,
+ * components, brand bar, slice header, breadcrumb switchers, command palette,
+ * compare toggle, drawers, flow breadcrumb, annotation overlay.
+ *
+ * Source of truth: ~/Workspace/dev/wip/blueprint/template/portal/shared.css
+ * Re-stamp into a consumer with:
+ *   node ~/Workspace/dev/wip/blueprint/template/tools/blueprint-init/stamp.mjs \
+ *     --mode=restamp-chrome --pattern=B --target=<initiative-root>
+ *
+ * To override tokens for your project, edit `project-tokens.css` (loaded
+ * after this file). Never edit this file in a consumer repo — the
+ * `portal-chrome-canonical-reviewer` gate diffs against template canonical
+ * and fails the build if the consumer's copy has drifted. Drift here means
+ * the next methodology bump won't propagate, and a downstream consumer
+ * mistaking your deployed shared.css for the canonical (the 2026-05-25 v3
+ * bug) re-runs the failure.
+ *
+ * Default tokens below are Rally HQ's Midnight & Copper system as a
+ * reference baseline. Your project's `:root` overrides in project-tokens.css
+ * will win because the cascade loads it after this file.
+ */
+
+/* ─────────────── tokens ─────────────── */
+
+:root {
+  /* Brand — Electric Indigo */
+  --brand-50:  hsl(235, 95%, 97%);
+  --brand-100: hsl(235, 95%, 92%);
+  --brand-300: hsl(235, 95%, 75%);
+  --brand-500: hsl(235, 80%, 60%);
+  --brand-600: hsl(235, 75%, 50%);
+  --brand-700: hsl(235, 80%, 40%);
+  --brand-900: hsl(235, 90%, 20%);
+
+  /* Arena — Navy-based neutral */
+  --arena-50:  hsl(220, 25%, 98%);
+  --arena-100: hsl(220, 20%, 96%);
+  --arena-200: hsl(220, 18%, 90%);
+  --arena-300: hsl(220, 15%, 81%);
+  --arena-400: hsl(220, 12%, 69%);
+  --arena-500: hsl(220, 10%, 54%);
+  --arena-600: hsl(220, 15%, 40%);
+  --arena-700: hsl(220, 20%, 27%);
+  --arena-800: hsl(220, 25%, 18%);
+  --arena-900: hsl(220, 30%, 12%);
+  --arena-950: hsl(220, 30%, 6%);
+
+  /* Victory — Gold */
+  --victory-300: hsl(45, 85%, 65%);
+  --victory-500: hsl(45, 85%, 45%);
+  --victory-600: hsl(45, 85%, 35%);
+
+  /* Live — Coral */
+  --live-500: hsl(12, 85%, 52%);
+  --live-600: hsl(12, 85%, 45%);
+
+  /* Semantic */
+  --success-500: hsl(142, 60%, 50%);
+  --error-500:   hsl(0, 85%, 55%);
+
+  /* Surfaces — Midnight & Copper (warm light + navy dark) */
+  --bg:        hsl(35, 25%, 98%);
+  --surface-1: hsl(35, 20%, 99%);
+  --surface-2: hsl(35, 15%, 96%);
+  --card:      #ffffff;
+  --card-border: var(--arena-200);
+  --cta-bg:    hsl(220, 30%, 12%);
+  --header-bg: hsl(220, 30%, 8%);
+
+  /* Text */
+  --text-primary: var(--arena-900);
+  --text-secondary: hsl(220, 15%, 45%);
+  --text-muted: hsl(220, 10%, 55%);
+  --text-on-dark: hsl(0, 0%, 98%);
+  --text-on-dark-muted: hsl(0, 0%, 70%);
+
+  /* PROPOSED — per-tournament accent (R4) */
+  --tournament-accent: var(--brand-600);
+  --tournament-accent-soft: var(--brand-100);
+
+  /* Type — Athletic identity (2026-05-23)
+     - --font-hero: Anton (condensed uppercase). Tournament names, hero
+       headlines only. Anton at small sizes is unreadable.
+     - --font-display: Inter — general headings (lean on 700/800 weights).
+     - --font-body: Inter — body copy.
+     - --font-mono: JetBrains Mono — data atoms (scores, courts, times). */
+  --font-hero:    'Anton', 'Impact', 'Oswald', 'Arial Narrow', sans-serif;
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-body:    'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* Fluid scale */
+  --text-xs:   clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+  --text-base: clamp(1rem, 0.925rem + 0.375vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+  --text-xl:   clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+  --text-2xl:  clamp(1.5rem, 1.25rem + 1.25vw, 2rem);
+  --text-3xl:  clamp(1.875rem, 1.5rem + 1.875vw, 2.5rem);
+  --text-4xl:  clamp(2.25rem, 1.75rem + 2.5vw, 3rem);
+  --text-5xl:  clamp(3rem, 2.25rem + 3.75vw, 4rem);
+
+  /* Spacing — 4pt grid */
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+  --space-12: 3rem; --space-16: 4rem; --space-20: 5rem; --space-24: 6rem;
+
+  /* Radius */
+  --radius-sm: 0.25rem; --radius-md: 0.5rem; --radius-lg: 0.75rem;
+  --radius-xl: 1rem; --radius-2xl: 1.5rem; --radius-full: 9999px;
+
+  /* Elevation */
+  --shadow-sm: 0 2px 6px rgb(10 14 20 / 0.06);
+  --shadow-md: 0 6px 16px rgb(10 14 20 / 0.08);
+  --shadow-lg: 0 12px 30px rgb(10 14 20 / 0.12);
+  --shadow-focus: 0 0 0 4px hsl(235 80% 60% / 0.25);
+
+  /* Motion */
+  --transition-fast:  150ms cubic-bezier(0, 0, 0.2, 1);
+  --transition-base:  200ms cubic-bezier(0, 0, 0.2, 1);
+  --transition-slow:  300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─────────────── L0 theme registry (added 2026-05-26 wave 9) ─────────────── *
+ *
+ * Blueprint exposes 4 brand families as consumer-selectable themes. Consumer
+ * initiatives pick one via blueprint.yml (design.theme: slate|coral|forest|
+ * minimal|custom), which the stamper writes as <html data-theme="X"> at
+ * scaffold + restamp time. Default = slate.
+ *
+ * Each theme overrides --brand-* + --bg + --surface-{1,2}. Inverted-surface
+ * tokens (--cta-bg, --header-bg) stay theme-neutral. WCAG AA contrast
+ * validated per theme.
+ *
+ * For custom themes: set design.theme: custom in blueprint.yml and declare
+ * your own [data-theme="custom"] block in project-tokens.css. forge-brand
+ * export css produces the right shape.
+ *
+ * Origin: blueprint-redesign dogfood (commit e26c98b on dogfood/self-redesign
+ * @ dogfood-v1). Methodology amendment 2026-05-26 — multi-theme registry.
+ */
+
+/* Slate / indigo — cool neutral, methodology-product default
+ * Register: Linear / Vercel / Notion-adjacent. Confident, deliberate.
+ */
+:root[data-theme="slate"],
+:root:not([data-theme]) {
+  --brand-50:  hsl(225, 60%, 96%);
+  --brand-100: hsl(225, 55%, 88%);
+  --brand-300: hsl(225, 55%, 65%);
+  --brand-500: hsl(225, 60%, 45%);
+  --brand-600: hsl(225, 65%, 38%);
+  --brand-700: hsl(225, 70%, 28%);
+  --brand-900: hsl(225, 75%, 14%);
+  --bg:        hsl(220, 18%, 99%);
+  --surface-1: hsl(220, 14%, 99.5%);
+  --surface-2: hsl(220, 16%, 96%);
+}
+
+/* Deeper coral — keep warmth, force contrast
+ * Register: editorial-publication-adjacent but methodology-product.
+ * Warmth-carrying brand against warm-white paper.
+ */
+:root[data-theme="coral"] {
+  --brand-50:  hsl(8, 80%, 96%);
+  --brand-100: hsl(8, 75%, 88%);
+  --brand-300: hsl(8, 70%, 62%);
+  --brand-500: hsl(8, 65%, 42%);
+  --brand-600: hsl(8, 70%, 35%);
+  --brand-700: hsl(8, 75%, 26%);
+  --brand-900: hsl(8, 80%, 14%);
+  --bg:        hsl(35, 25%, 98%);
+  --surface-1: hsl(35, 20%, 99%);
+  --surface-2: hsl(35, 15%, 96%);
+}
+
+/* Forest / olive — warm earthy, distinctive
+ * Register: craft-tool / Stripe-early / Linear-deep-mode.
+ * Paper-tinted with subtle green undertone.
+ */
+:root[data-theme="forest"] {
+  --brand-50:  hsl(150, 45%, 95%);
+  --brand-100: hsl(150, 42%, 86%);
+  --brand-300: hsl(150, 40%, 55%);
+  --brand-500: hsl(150, 42%, 32%);
+  --brand-600: hsl(150, 45%, 26%);
+  --brand-700: hsl(150, 50%, 18%);
+  --brand-900: hsl(150, 55%, 10%);
+  --bg:        hsl(80, 18%, 98%);
+  --surface-1: hsl(80, 15%, 99%);
+  --surface-2: hsl(80, 18%, 95%);
+}
+
+/* Neutral + amber accent — minimal, type-led
+ * Register: maximum restraint. Body type carries identity; brand color
+ * appears only on emphasis. lethain.com / Stratechery shape.
+ */
+:root[data-theme="minimal"] {
+  --brand-50:  hsl(220, 12%, 96%);
+  --brand-100: hsl(220, 12%, 90%);
+  --brand-300: hsl(220, 12%, 60%);
+  --brand-500: hsl(220, 12%, 32%);
+  --brand-600: hsl(220, 14%, 24%);
+  --brand-700: hsl(220, 16%, 16%);
+  --brand-900: hsl(220, 18%, 8%);
+  --accent-500: hsl(35, 90%, 45%);
+  --accent-700: hsl(35, 95%, 30%);
+  --bg:        hsl(0, 0%, 99%);
+  --surface-1: hsl(0, 0%, 99.5%);
+  --surface-2: hsl(220, 8%, 96%);
+}
+
+/* ─────────────── reset & base ─────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+img { max-width: 100%; display: block; }
+
+h1, h2, h3, h4 {
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+/* Default h1 — restrained editorial register. The hero treatment
+   (Anton condensed uppercase) is opt-in via .h1-hero or .hero-title
+   so prototype pages don't inherit the Rally HQ "tournament name"
+   styling that leaked across initiatives. */
+h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+/* Opt-in hero treatment — apply via class on the h1 (or on a wrapper
+   like .tournament-hero h1). Reach for this only on display moments
+   where the condensed-uppercase weight is intentional. */
+.h1-hero,
+.hero-title,
+.tournament-hero h1 {
+  font-family: var(--font-hero);
+  font-size: var(--text-5xl);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+}
+h2 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; line-height: 1.2; }
+h3 { font-family: var(--font-display); font-size: var(--text-xl);  font-weight: 600; line-height: 1.2; }
+h4 { font-family: var(--font-display); font-size: var(--text-lg);  font-weight: 600; line-height: 1.3; }
+
+p { color: var(--text-secondary); }
+
+/* Mono for data atoms */
+.mono, time, .court, .seed, .score {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ─────────────── layout primitives ─────────────── */
+
+.container { max-width: 1200px; margin-inline: auto; padding-inline: var(--space-4); }
+@media (min-width: 768px) { .container { padding-inline: var(--space-6); } }
+
+.stack > * + * { margin-top: var(--space-4); }
+.row { display: flex; gap: var(--space-3); align-items: center; }
+.row-between { display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; }
+
+/* ─────────────── components ─────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  min-height: 44px;  /* a11y touch target */
+}
+.btn-primary { background: var(--brand-600); color: white; }
+.btn-primary:hover { background: var(--brand-700); }
+.btn-secondary { background: var(--card); color: var(--text-primary); border: 1px solid var(--card-border); }
+.btn-secondary:hover { background: var(--surface-2); }
+.btn-ghost { color: var(--text-secondary); padding: var(--space-2) var(--space-3); }
+.btn-ghost:hover { color: var(--text-primary); background: var(--surface-2); }
+.btn-lg { padding: var(--space-4) var(--space-6); font-size: var(--text-base); }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: var(--arena-100);
+  color: var(--arena-700);
+}
+.badge-brand { background: var(--brand-100); color: var(--brand-700); }
+.badge-victory { background: hsl(45 85% 95%); color: var(--victory-600); }
+.badge-live {
+  background: var(--live-500);
+  color: white;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.badge-accent {
+  background: color-mix(in srgb, var(--tournament-accent) 12%, transparent);
+  color: var(--tournament-accent);
+}
+
+/* PROPOSED — LIVE pulse */
+.live-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--live-500);
+  margin-right: var(--space-2);
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.4); }
+}
+
+/* PROPOSED — proposed-vs-shipped tag */
+.proposed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--victory-500);
+  color: var(--arena-900);
+  border-radius: var(--radius-sm);
+  vertical-align: middle;
+}
+
+/* ─────────────── portal shell (Front Door / Prototype / Docs) ───────────────
+   Canonical meta-page shell. Single source of truth for the three blueprint
+   meta-pages so they can't drift visually. Injected by _portal-shell.js.
+   Origin: Rally HQ 2026-05-24 polish pass. Promoted to template as the
+   canonical going-forward shell. */
+.portal-shell {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  padding: 0 var(--space-4);
+  height: 56px;
+  display: flex;
+  align-items: center;
+}
+.portal-shell-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.portal-shell .brand-mark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1;
+  text-decoration: none;
+}
+.portal-shell .brand-mark-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.portal-shell-nav {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.portal-shell-nav a {
+  position: relative;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 0;
+  line-height: 1;
+  transition: color var(--transition-fast, 150ms ease-out);
+  text-decoration: none;
+}
+.portal-shell-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0;
+  transform: scaleX(0.6);
+  transform-origin: left center;
+  transition: opacity var(--transition-fast, 150ms ease-out), transform var(--transition-fast, 150ms ease-out);
+}
+.portal-shell-nav a:hover { color: var(--text-primary); }
+.portal-shell-nav a.active { color: var(--text-primary); }
+.portal-shell-nav a:hover::after,
+.portal-shell-nav a.active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+/* ─────────────── header (shared across pages) ─────────────── */
+
+.header {
+  background: var(--header-bg);
+  color: var(--text-on-dark);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid hsl(220 30% 15%);
+}
+.header .container { display: flex; align-items: center; justify-content: space-between; }
+.header .logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.header .logo-accent { color: var(--brand-300); }
+.header nav { display: flex; gap: var(--space-5); }
+.header nav a { color: var(--text-on-dark-muted); font-size: var(--text-sm); }
+.header nav a:hover, .header nav a.active { color: var(--text-on-dark); }
+
+/* ─────────────── proto-nav (footer) + panel triggers ─────────────── */
+
+/* Legacy v1 footer nav — kept in DOM for keyboard shortcuts but visually
+ * hidden because top brand bar + slice header + sidebar do the same job
+ * with better positioning. Removable in a future cleanup. */
+.proto-footer-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--arena-900);
+  color: var(--text-on-dark);
+  border-top: 1px solid hsl(220 30% 20%);
+  padding: var(--space-3) var(--space-4);
+  display: none; /* HIDDEN — replaced by top brand bar + slice header */
+  align-items: center;
+  justify-content: space-between;
+  z-index: 40;
+  font-size: var(--text-sm);
+}
+.proto-footer-nav .nav-pages select {
+  background: hsl(220 30% 18%);
+  color: var(--text-on-dark);
+  border: 1px solid hsl(220 30% 25%);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+}
+.proto-footer-nav .nav-actions { display: flex; gap: var(--space-2); }
+.proto-footer-nav button {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-on-dark-muted);
+  border: 1px solid hsl(220 30% 20%);
+}
+.proto-footer-nav button:hover, .proto-footer-nav button.active {
+  background: hsl(220 30% 18%);
+  color: var(--text-on-dark);
+}
+
+/* Bottom reserve no longer needed — footer nav is hidden */
+/* body { padding-bottom: 80px; } */
+
+/* ─────────────── strategy panel (right drawer) ─────────────── */
+
+.strategy-panel, .current-state-panel {
+  position: fixed;
+  top: 0;
+  height: 100vh;
+  width: min(420px, 100%);
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+  overflow-y: auto;
+  transition: transform var(--transition-slow);
+  z-index: 50;
+}
+.strategy-panel { right: 0; transform: translateX(100%); border-left: 1px solid var(--card-border); }
+.current-state-panel { left: 0; transform: translateX(-100%); border-right: 1px solid var(--card-border); }
+.strategy-panel.open, .current-state-panel.open { transform: translateX(0); }
+
+.panel-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  font-size: var(--text-2xl);
+  color: var(--text-muted);
+}
+.current-state-panel .panel-close { right: auto; left: var(--space-3); }
+
+.panel-section { margin-top: var(--space-5); }
+.panel-section h4 {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+.panel-section p { font-size: var(--text-sm); }
+.panel-section code, .panel-section pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--surface-2);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─────────────── side-by-side comparison toggle ─────────────── */
+
+.compare-toggle {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  border: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+.compare-toggle button {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  min-height: 0;
+}
+.compare-toggle button:hover {
+  color: var(--text-secondary);
+}
+.compare-toggle button.active {
+  background: var(--card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* When inside the slice header bar, no extra wrapping */
+.proto-slice-header .compare-toggle {
+  margin-right: var(--space-2);
+}
+
+/* Fallback: floating top-right pill when no slice header is present */
+.compare-toggle-floating {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 35;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.proposed-view, .shipped-view {
+  transition: opacity var(--transition-base);
+}
+[data-view="proposed"] .shipped-view { display: none; }
+[data-view="shipped"] .proposed-view  { display: none; }
+[data-view="split"] {
+  display: grid;
+  /* start, not stretch: when the container ends up taller than its tracks
+     (fixed-position drawers, min-height), stretch distributes the surplus
+     into the auto rows — measured +256px each on the lifecycle strip and
+     page-header rows (create-tournament, 2026-06-11). */
+  align-content: start;
+  /* minmax(0, …): plain 1fr bottoms out at the content's min-width, so a
+     wide panel pushed its sibling past the viewport edge and clipped it
+     (cognitive audit 2026-06-11). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+/* The compare root is usually <body>; in-flow chrome (lifecycle strip,
+   footer) must span both columns or auto-placement pairs it with a view
+   panel and the 50/50 split breaks (cognitive audit 2026-06-11). */
+[data-view="split"] > *:not(.proposed-view):not(.shipped-view) {
+  grid-column: 1 / -1;
+}
+[data-view="split"] .proposed-view { grid-column: 1; }
+[data-view="split"] .shipped-view { grid-column: 2; }
+[data-view="split"] .proposed-view, [data-view="split"] .shipped-view {
+  display: block;
+  min-width: 0;
+  /* Grid gap owns the spacing in split mode; page-level utility margins
+     (e.g. mt-8 on a view) would knock the two panels out of alignment. */
+  margin: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  position: relative;
+  /* Both panels fit the viewport and scroll internally instead of forcing
+     page-level overflow that drifts them out of sync; 140px clears the
+     fixed top bar + lifecycle strip (cognitive audit 2026-06-11). */
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+}
+[data-view="split"] .proposed-view::before {
+  content: "PROPOSED";
+  /* sticky, not absolute: the panels are scroll containers now, and an
+     absolute badge at top:-10px gets clipped (cognitive audit 2026-06-11). */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: table;
+  margin-bottom: var(--space-2);
+  background: var(--victory-500);
+  color: var(--arena-900);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+[data-view="split"] .shipped-view::before {
+  content: "SHIPPED";
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: table;
+  margin-bottom: var(--space-2);
+  background: var(--arena-700);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─────────────── mock frame (canvas rule, 2026-06-11) ───────────────
+   The canvas belongs to the portal; the theme belongs to the mock.
+   proto-nav.js reads meta.mock_frame ("desktop" | "phone" | "none",
+   default desktop) and frames each view section so themed mocks —
+   including fully dark product surfaces — read as windows onto the
+   product instead of restyling the portal canvas. The frame bar is
+   portal-owned and stays light regardless of the mock's theme. Split
+   mode's panel rules above carry higher specificity and override the
+   container styles (border, margin, overflow, padding) by design. */
+.mock-frame-desktop, .mock-frame-phone {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-md);
+  /* clip, not hidden: clip rounds the corners without creating a scroll
+     container, so position:sticky inside the mock keeps working against
+     the viewport (mock-frame wave, 2026-06-11). */
+  overflow: clip;
+  margin: var(--space-6) auto;
+}
+.mock-frame-desktop {
+  border-radius: var(--radius-lg);
+  max-width: 1200px;
+  width: calc(100% - 2 * var(--space-4));
+}
+.mock-frame-phone {
+  max-width: 420px;
+  border: 10px solid hsl(220 15% 12%);
+  border-radius: 36px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.35);
+  /* centers the bezel inside its grid column in split mode (margin
+     auto-centering is zeroed by the split panel rules). */
+  justify-self: center;
+}
+.mock-frame-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 14px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--card-border);
+}
+.mock-frame-bar .frame-dots {
+  display: inline-flex;
+  gap: 5px;
+  flex: none;
+}
+.mock-frame-bar .frame-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--card-border);
+}
+.mock-frame-bar .frame-route {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─────────────── tournament-page specifics ─────────────── */
+
+.tournament-hero {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--tournament-accent) 18%, var(--cta-bg)) 0%,
+    var(--cta-bg) 100%);
+  color: var(--text-on-dark);
+  padding: var(--space-12) 0 var(--space-10);
+}
+.tournament-hero h1 {
+  color: var(--text-on-dark);
+  font-size: var(--text-5xl);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+.tournament-hero .subtitle { color: var(--text-on-dark-muted); margin-top: var(--space-2); }
+
+.match-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+.match-card.live { border-color: var(--live-500); box-shadow: 0 0 0 1px var(--live-500); }
+.match-card .court {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.match-card .teams { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.match-card .team { display: flex; justify-content: space-between; align-items: center; padding: var(--space-2) 0; }
+.match-card .team.winner { font-weight: 700; }
+.match-card .team .score { font-size: var(--text-xl); color: var(--text-primary); }
+
+/* Action-overlay primitive (PROPOSED) */
+.action-overlay {
+  position: sticky;
+  bottom: var(--space-4);
+  display: flex;
+  gap: var(--space-2);
+  background: color-mix(in srgb, var(--cta-bg) 85%, transparent);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3);
+  margin-top: var(--space-6);
+  box-shadow: var(--shadow-lg);
+  z-index: 30;
+}
+.action-overlay .btn { color: var(--text-on-dark); border-color: hsl(220 30% 25%); }
+
+/* ─────────────── utility ─────────────── */
+
+.muted { color: var(--text-muted); }
+.small { font-size: var(--text-sm); }
+.tiny  { font-size: var(--text-xs); }
+.hidden { display: none; }
+.mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
+.mt-8 { margin-top: var(--space-8); }
+
+/* ─────────────── flow breadcrumb (proto-nav.js) ─────────────── */
+
+.proto-flow-breadcrumb {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 41;
+  background: color-mix(in srgb, var(--cta-bg) 95%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid hsl(220 30% 22%);
+  color: var(--text-on-dark);
+  padding: var(--space-2) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.proto-flow-breadcrumb .flow-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.proto-flow-breadcrumb .flow-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-on-dark-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.proto-flow-breadcrumb .flow-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.proto-flow-breadcrumb .flow-step {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-on-dark-muted);
+  padding: 2px 8px;
+  background: hsl(220 30% 18%);
+  border-radius: var(--radius-full);
+}
+
+.proto-flow-breadcrumb .flow-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.proto-flow-breadcrumb .flow-nav-btn {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-on-dark-muted);
+  border-radius: var(--radius-md);
+  border: 1px solid hsl(220 30% 22%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.proto-flow-breadcrumb .flow-nav-btn:hover {
+  background: hsl(220 30% 18%);
+  color: var(--text-on-dark);
+}
+.proto-flow-breadcrumb .flow-nav-btn.primary {
+  background: var(--brand-600);
+  color: white;
+  border-color: var(--brand-600);
+}
+.proto-flow-breadcrumb .flow-nav-btn.primary:hover {
+  background: var(--brand-700);
+}
+.proto-flow-breadcrumb .flow-nav-btn.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.proto-flow-breadcrumb .flow-page-name {
+  display: inline-block;
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Reserve top space when flow is active (proto-nav.js injects this) */
+body:has(.proto-flow-breadcrumb) { padding-top: 44px; }
+
+/* ─────────────── proto-top-bar (single-bar harness chrome — proto-nav.js) ───────────────
+   proto-nav.js evolved from the original two-bar .proto-brand-bar + .proto-slice-header
+   architecture into a single combined .proto-top-bar. The two-bar CSS above still
+   exists for legacy callers; these rules style the current combined shape. Without
+   them, the chrome renders unstyled and the brand mark / nav / compare toggle stack
+   as plain text. Caught in the blog consumer session 2026-05-25; encoded here. */
+
+.proto-top-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+  background: var(--header-bg); color: var(--text-on-dark);
+  border-bottom: 1px solid hsl(220 25% 18%);
+  min-height: 56px; display: flex; align-items: center;
+  padding: 0 var(--space-5);
+}
+body:has(.proto-flow-breadcrumb) .proto-top-bar { top: 44px; }
+
+.proto-top-bar-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-6); width: 100%; max-width: 1400px; margin: 0 auto;
+}
+
+.proto-top-bar .top-bar-lead {
+  display: flex; align-items: center; gap: var(--space-5); min-width: 0;
+}
+
+.proto-top-bar .brand-mark {
+  font-family: var(--font-display); font-weight: 700; font-size: 14px;
+  letter-spacing: -0.01em; color: var(--text-on-dark);
+  display: inline-flex; align-items: baseline; gap: 8px;
+  text-decoration: none;
+}
+.proto-top-bar .brand-mark-tag {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: hsl(220 10% 60%);
+}
+
+.proto-top-bar .top-bar-crumb {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px; color: hsl(220 10% 70%);
+}
+.proto-top-bar .top-bar-crumb .sep { color: hsl(220 10% 40%); }
+.proto-top-bar .top-bar-crumb .slice-label,
+.proto-top-bar .top-bar-crumb .page-label {
+  color: var(--text-on-dark); font-weight: 500;
+}
+
+.proto-top-bar .top-bar-actions {
+  display: flex; align-items: center; gap: var(--space-3);
+}
+
+.proto-top-bar .top-bar-nav {
+  display: flex; align-items: center; gap: var(--space-4);
+}
+.proto-top-bar .top-bar-nav a {
+  color: hsl(220 10% 70%); font-size: 12px; font-weight: 500;
+  padding: 4px 0; position: relative; text-decoration: none;
+}
+.proto-top-bar .top-bar-nav a:hover { color: var(--text-on-dark); }
+.proto-top-bar .top-bar-nav a.is-active { color: var(--text-on-dark); }
+.proto-top-bar .top-bar-nav a.is-active::after {
+  content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+  height: 2px; background: var(--brand-500, hsl(220 60% 50%));
+}
+
+/* Compare toggle inside dark top bar — override defaults for legibility */
+.proto-top-bar .compare-toggle {
+  background: hsl(220 25% 15%); border-color: hsl(220 25% 25%);
+}
+.proto-top-bar .compare-toggle button { color: hsl(220 10% 70%); }
+.proto-top-bar .compare-toggle button:hover { color: var(--text-on-dark); background: hsl(220 25% 20%); }
+.proto-top-bar .compare-toggle button.active {
+  background: hsl(220 25% 22%); color: var(--text-on-dark);
+}
+
+.proto-top-bar .chrome-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; background: hsl(220 25% 15%);
+  border: 1px solid hsl(220 25% 25%); border-radius: var(--radius-sm);
+  font-family: var(--font-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: hsl(220 10% 70%); cursor: pointer;
+}
+.proto-top-bar .chrome-toggle .toggle-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: hsl(220 10% 50%);
+}
+.proto-top-bar .chrome-toggle:hover { color: var(--text-on-dark); }
+
+/* Body padding so fixed chrome doesn't overlap page content */
+body:has(.proto-top-bar) { padding-top: 56px; }
+body:has(.proto-flow-breadcrumb):has(.proto-top-bar) { padding-top: 100px; }
+
+/* ─────────────── annotation overlay (proto-annotate.js) ─────────────── */
+
+.anno-fab {
+  position: fixed;
+  bottom: 90px;
+  left: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  background: var(--victory-500);
+  color: var(--arena-900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  z-index: 45;
+  cursor: pointer;
+  transition: transform 200ms;
+}
+.anno-fab:hover { transform: scale(1.05); }
+.anno-fab .badge-count {
+  position: absolute;
+  top: -4px; right: -4px;
+  background: var(--live-500);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.anno-mode-active * {
+  cursor: crosshair !important;
+}
+.anno-mode-active .proto-footer-nav,
+.anno-mode-active .strategy-panel,
+.anno-mode-active .current-state-panel,
+.anno-mode-active .chat-window,
+.anno-mode-active .chat-fab,
+.anno-mode-active .anno-fab,
+.anno-mode-active .anno-popover,
+.anno-mode-active .anno-marker {
+  cursor: default !important;
+}
+
+.anno-marker {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--victory-500);
+  color: var(--arena-900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid var(--card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 38;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.anno-marker.resolved {
+  background: var(--success-500);
+  color: white;
+  opacity: 0.65;
+}
+
+.anno-popover {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-4);
+  z-index: 46;
+  font-size: var(--text-sm);
+}
+.anno-popover h4 {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+.anno-popover textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-2);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-sm);
+  resize: vertical;
+  margin-bottom: var(--space-3);
+  background: var(--surface-1);
+}
+.anno-popover .anno-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+.anno-popover .anno-actions button {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+}
+.anno-popover .btn-primary {
+  background: var(--brand-600);
+  color: white;
+}
+.anno-popover .btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+.anno-popover .anno-meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+.anno-popover .anno-body {
+  margin-bottom: var(--space-3);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.anno-list-panel {
+  position: fixed;
+  bottom: 90px;
+  left: 16px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 70vh;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 45;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.anno-list-panel.open { display: flex; }
+.anno-list-panel .anno-list-header {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.anno-list-panel .anno-list-header h3 {
+  font-size: var(--text-base);
+  margin: 0;
+}
+.anno-list-panel .anno-list-body {
+  overflow-y: auto;
+  padding: var(--space-2);
+  flex: 1;
+}
+.anno-list-panel .anno-list-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.anno-list-panel .anno-item {
+  padding: var(--space-3);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+.anno-list-panel .anno-item:hover {
+  background: var(--surface-2);
+}
+.anno-list-panel .anno-item .anno-item-meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+  display: flex;
+  justify-content: space-between;
+}
+.anno-list-panel .anno-item .anno-item-body {
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* ─────────────── top brand bar (proto-nav.js, on every prototype page) ─────────────── */
+
+.proto-brand-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 35;
+  background: var(--arena-900);
+  color: var(--text-on-dark);
+  height: 36px;
+  border-bottom: 1px solid hsl(220 30% 18%);
+}
+.proto-brand-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 var(--space-4);
+  font-size: var(--text-xs);
+}
+.proto-brand-bar .brand-mark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-on-dark);
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.proto-brand-bar .brand-mark-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(220 10% 60%);
+  font-weight: 500;
+}
+.proto-brand-bar nav { display: flex; gap: var(--space-4); align-items: center; }
+.proto-brand-bar nav a {
+  color: hsl(220 10% 70%);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 2px 0;
+}
+.proto-brand-bar nav a:hover { color: var(--text-on-dark); }
+.proto-brand-bar nav a.active { color: var(--text-on-dark); }
+
+/* When brand bar is present, reserve space above everything */
+body:has(.proto-brand-bar) { padding-top: 36px; }
+
+/* ─────────────── slice header bar (proto-nav.js, per-slice page) ─────────────── */
+
+.proto-slice-header {
+  position: fixed;
+  top: 36px; /* sits below the brand bar */
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  padding: var(--space-2) var(--space-5);
+  min-height: 44px;
+}
+/* When BOTH brand bar AND slice header are present, reserve combined space */
+body:has(.proto-brand-bar):has(.proto-slice-header) { padding-top: 80px; }
+/* When ONLY slice header is present (legacy), reserve just its space */
+body:has(.proto-slice-header):not(:has(.proto-brand-bar)) { padding-top: 44px; }
+.slice-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.slice-header-meta { min-width: 0; }
+.slice-header-crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.slice-header-crumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.slice-header-crumb a:hover {
+  color: var(--text-primary);
+}
+.slice-header-crumb .sep {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.slice-header-crumb .slice-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.slice-header-crumb .page-label {
+  color: var(--text-secondary);
+}
+.slice-header-surface {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.slice-header-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+.badge-trace {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-100);
+  color: var(--brand-700);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.badge-trace-rule {
+  background: hsl(45 85% 92%);
+  color: var(--victory-700);
+}
+
+/* ─────────────── slice sidebar: REMOVED (nav paradigm wave, 2026-06-11) ───────────────
+   The persistent left rail (.proto-slice-sidebar) is retired: full-bleed
+   mockups are the content; the rail cost ~210px permanently for slice-scoped
+   wayfinding (cognitive audit + operator decision 2026-06-11). Its jobs moved
+   into the breadcrumb switchers, the strategy drawer's slice-context block,
+   and the Cmd/Ctrl+K command palette below. */
+
+/* ─────────────── breadcrumb switchers (nav paradigm wave, 2026-06-11) ───────────────
+   The slice + page crumb segments are dropdown buttons, manifest-driven.
+   Prototype surfaces only — the front door / docs top bar is unchanged. */
+
+.proto-top-bar .crumb-switch-wrap { position: relative; display: inline-flex; }
+.proto-top-bar .crumb-switch {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 6px; margin: -3px -2px;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.2;
+  color: inherit; background: none; border: none;
+  border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.proto-top-bar .crumb-switch:hover,
+.proto-top-bar .crumb-switch[aria-expanded="true"] { background: hsl(220 25% 18%); }
+.proto-top-bar .crumb-switch:focus-visible {
+  outline: 2px solid var(--brand-300); outline-offset: 1px;
+}
+.proto-top-bar .crumb-switch .crumb-chevron { font-size: 8px; opacity: 0.55; }
+.proto-top-bar .crumb-switch[aria-expanded="true"] .crumb-chevron { opacity: 1; }
+
+.proto-top-bar .crumb-menu {
+  /* fixed, JS-positioned from the button rect: absolute menus get clipped by
+     consumer top-bar rules (overflow:hidden ellipsis) — nav paradigm wave,
+     2026-06-11 verify finding. */
+  position: fixed;
+  min-width: 240px; max-width: 340px; max-height: min(60vh, 480px);
+  overflow-y: auto;
+  background: var(--card); color: var(--text-primary);
+  border: 1px solid var(--card-border); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-1);
+  display: none; z-index: 60;
+}
+.proto-top-bar .crumb-menu.open { display: block; }
+.crumb-menu .crumb-menu-item {
+  display: block; padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body); font-size: var(--text-sm); line-height: 1.35;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.crumb-menu .crumb-menu-item:hover,
+.crumb-menu .crumb-menu-item:focus-visible {
+  background: var(--surface-2); color: var(--text-primary); outline: none;
+}
+.crumb-menu .crumb-menu-item.is-current {
+  color: var(--text-primary); font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--brand-500);
+}
+.crumb-menu .item-label { display: block; }
+.crumb-menu .item-summary {
+  display: block; max-width: 300px;
+  font-size: var(--text-xs); font-weight: 400; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.crumb-menu .crumb-menu-divider {
+  height: 1px; background: var(--card-border);
+  margin: var(--space-1) var(--space-2);
+}
+.crumb-menu .crumb-menu-flow .item-label {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+}
+
+/* ⌘K hint — same dark-bar chip vocabulary as the chrome toggle */
+.proto-top-bar .palette-hint {
+  display: inline-flex; align-items: center;
+  padding: 3px 8px;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em;
+  color: hsl(220 10% 70%);
+  background: transparent; border: 1px solid hsl(220 25% 25%);
+  border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.proto-top-bar .palette-hint:hover {
+  color: var(--text-on-dark); border-color: hsl(220 25% 35%);
+}
+
+/* ─────────────── command palette (Cmd/Ctrl+K — nav paradigm wave, 2026-06-11) ─────────────── */
+
+.cmd-palette-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  background: hsl(220 30% 8% / 0.55);
+  display: none;
+  align-items: flex-start; justify-content: center;
+  padding: 12vh var(--space-4) var(--space-4);
+}
+.cmd-palette-overlay.open { display: flex; }
+.cmd-palette {
+  width: min(560px, 100%);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.cmd-palette-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font: inherit; font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: none; border-bottom: 1px solid var(--card-border);
+  outline: none;
+}
+.cmd-palette-list {
+  max-height: min(50vh, 420px); overflow-y: auto; padding: var(--space-1);
+}
+.cmd-palette-item {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: var(--text-sm);
+  text-decoration: none;
+}
+.cmd-palette-item.is-active {
+  background: var(--surface-2); color: var(--text-primary);
+  box-shadow: inset 3px 0 0 var(--brand-500);
+}
+.cmd-palette-item .item-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cmd-palette-item .item-hint {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+  text-transform: lowercase; white-space: nowrap; flex-shrink: 0;
+}
+.cmd-palette-empty {
+  padding: var(--space-4); font-size: var(--text-sm);
+  color: var(--text-muted); text-align: center;
+}
+
+/* ─────────────── strategy drawer slice-context (nav paradigm wave, 2026-06-11) ───────────────
+   Replaces the retired slice rail's framing block — quiet, token-based. */
+
+.strategy-panel .panel-slice-context {
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--surface-1);
+  border-radius: var(--radius-md);
+}
+.strategy-panel .slice-context-label {
+  display: block;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+.strategy-panel .slice-context-summary {
+  font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.45;
+}
+
+/* ─────────────── flow step dots (nav paradigm wave, 2026-06-11) ───────────────
+   The 'Step N of M' pill is now M clickable dots — in-flow navigation. */
+
+.proto-flow-breadcrumb .flow-step-dots {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 2px;
+}
+.proto-flow-breadcrumb .flow-step-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: hsl(220 15% 40%);
+  flex-shrink: 0;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.proto-flow-breadcrumb a.flow-step-dot:hover {
+  background: var(--text-on-dark-muted); transform: scale(1.25);
+}
+.proto-flow-breadcrumb a.flow-step-dot:focus-visible {
+  outline: 2px solid var(--brand-300); outline-offset: 2px;
+}
+.proto-flow-breadcrumb .flow-step-dot.is-current {
+  background: var(--brand-300); transform: scale(1.2);
+}
+
+/* Mobile top bar (nav paradigm wave, 2026-06-11 verify finding): the crumb
+   collapsed to zero width and the palette hint sat off-viewport at 390px;
+   switchers measured ~20px tall vs the 40px touch floor. The crumb takes its
+   own full-width row and scrolls horizontally; targets get real height. */
+@media (max-width: 640px) {
+  .proto-top-bar-inner { flex-wrap: wrap; row-gap: 2px; }
+  .proto-top-bar .top-bar-crumb {
+    flex: 1 1 100%; order: 3; min-width: 0;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .proto-top-bar .crumb-switch { min-height: 40px; padding: 8px 10px; font-size: 12px; }
+  /* No keyboard on touch — the switchers are the mobile nav; the hint sat
+     off-viewport anyway (the right-side toggle group doesn't wrap). */
+  .proto-top-bar .palette-hint { display: none; }
+}
+

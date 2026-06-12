@@ -1,0 +1,71 @@
+/* Blueprint Portal — Project Tokens Overlay (Nino Chavez Photography)
+ *
+ * Consumer-editable seam over shared.css (canonical chrome, byte-identical).
+ * Loaded AFTER shared.css, so overrides below win. Never edit shared.css.
+ *
+ * Brand: extracted from the LIVE gallery's design tokens (src/app.css, Tailwind 4
+ * @theme) — the gallery's real identity, not rally-hq's tokens and not generic
+ * chrome (Blueprint decision c). Signature: dark charcoal ground + gold accent,
+ * Inter body / Montserrat display. Applied as the default theme via
+ * <html data-theme="photography"> on the portal HTML entry points.
+ *
+ * Source of truth for the values: photography repo src/app.css
+ *   gold-*  → --color-gold-*      (accent)
+ *   charcoal-* → --color-charcoal-* (neutral / dark surfaces)
+ */
+
+/* Type is brand-wide (not theme-variant) — set in plain :root. Requires the
+ * Montserrat + Inter @import present in index.html / prototype/index.html. */
+:root {
+  --font-hero:    'Montserrat', 'Inter', system-ui, sans-serif;
+  --font-display: 'Montserrat', 'Inter', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ─────────────── Photography theme (dark charcoal + gold) ─────────────── *
+ * A complete dark theme: unlike the 4 light presets (which only override
+ * brand+bg+surfaces), this also flips text + card + header tokens so the dark
+ * ground reads correctly. Selector specificity beats base :root.
+ */
+:root[data-theme="photography"] {
+  /* Brand — Gold (gallery accent scale, src/app.css --color-gold-*) */
+  --brand-50:  #fefce8;
+  --brand-100: #fef9c3;
+  --brand-300: #fde047;
+  --brand-500: #eab308;
+  --brand-600: #ca8a04;
+  --brand-700: #a16207;
+  --brand-900: #713f12;
+  --accent-500: #eab308;
+  --accent-700: #a16207;
+  --tournament-accent: #eab308;
+  --tournament-accent-soft: #422006;
+
+  /* Surfaces — Charcoal dark (page → elevated → card) */
+  --bg:        #18181b;   /* charcoal-950 — gallery page background */
+  --surface-1: #1e1e23;
+  --surface-2: #27272e;
+  --card:      #1e1e23;
+  --card-border: #3b3c48; /* charcoal-900 */
+  --cta-bg:    #232329;
+  --header-bg: #111113;
+
+  /* Text — light on dark (charcoal-50/300/400) */
+  --text-primary:      #f8f8f9;
+  --text-secondary:    #c0c2c8;
+  --text-muted:        #9fa2ab;
+  --text-on-dark:      #f8f8f9;
+  --text-on-dark-muted:#9fa2ab;
+
+  /* Elevation — dark-appropriate shadows (the light-theme rgba reads invisible) */
+  --shadow-sm: 0 2px 6px rgb(0 0 0 / 0.40);
+  --shadow-md: 0 6px 16px rgb(0 0 0 / 0.50);
+  --shadow-lg: 0 12px 30px rgb(0 0 0 / 0.60);
+  --shadow-focus: 0 0 0 4px hsl(45 93% 47% / 0.30); /* gold focus ring */
+}
+
+/* ─────────────── project components ─────────────── */
+/* (none yet) */
+
+/* ─────────────── component overrides ─────────────── */
+/* (none yet) */

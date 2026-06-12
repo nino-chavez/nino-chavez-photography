@@ -1,0 +1,107 @@
+# Blueprint Configuration — Nino Chavez Photography (find-my-photos north-star)
+#
+# CO-LOCATED under blueprint/ — blueprint.yml lives WITH the initiative artifacts
+# (research/, prescription.yml, decisions/, portal/) so the executable stage
+# reviewers resolve everything from ONE target: run all blueprint tooling with
+#   --target=<repo>/blueprint
+# (The reviewers join paths against --target with no subdir support; rally-hq's
+# "blueprint.yml at repo root + artifacts under blueprint/" split breaks them —
+# see decisions/0005. blueprint/ is the self-contained initiative root, which
+# also keeps the production app's repo root clean.)
+#
+# Variant: MIDSTREAM (docs/variant-selection.md decision tree: live-in-prod=yes,
+# work scoped to active in-flight north-star dev=yes). Pattern: B (decisions/0001).
+
+project:
+  name: "Nino Chavez Photography — find-my-photos north-star"
+  description: "Midstream blueprint for the live volleyball action-sports gallery. Scope: the event-album discovery → find-my-photos → download/share model and the #10 direct-to-DB ingest rebuild that feeds jersey-sightings identity. No sales, no faces, no per-person naming."
+  product: "nino-chavez-photography (SvelteKit gallery — photography.ninochavez.co)"
+  audience:
+    leadership: ["Nino Chavez (operator)"]
+    engineering: ["Nino Chavez (solo development)"]
+    broader: ["Athletes Nino shoots (volleyball players + parents/fans seeking their own photos)"]
+
+# ── Stage 0→1 gate (pilot-profile-lock-reviewer). 7 required fields. ──────────
+# walkthrough_citation resolves to a REAL committed artifact (the 2026-06-09
+# operator observation, written up at research/observations/) — not imagined.
+pilot_profile:
+  slug: "athlete-self-finding"
+  display_name: "The athlete who wants to find themselves"
+  pain_point: "Did you capture my moment? — the athlete can't find their own photos from an event Nino shot, so the catch/dig/celebration they remember is effectively lost to them."
+  monetization_side: "operator"   # single-sided: the operator (Nino) runs it; NO sales, NO marketplace, NO per-athlete selling. Identity is jersey/color sightings, human-resolved — not a naming/selling product (decisions/0003).
+  walkthrough_citation: "research/observations/find-my-photos-demand.md"
+  competitors_in_scope:
+    - "Event-photo find-my-photos delivery galleries (SmugMug / PhotoDay-style event galleries with self-find)"
+    - "Sports-photo delivery platforms with bib/jersey or face self-search"
+  out_of_scope_pilots:
+    - "The print-sales / per-athlete marketplace buyer (NO sales — decisions/0003)"
+    - "The face-recognition naming product (NO faces, NO per-person naming — decisions/0003)"
+    - "The HANDOFF's drafted 'find-my-event parent/fan' buyer — superseded by the athlete-self-finding signal (research/observations/find-my-photos-demand.md)"
+  # Enrichment (NOT gate-required): a specific anchor event sharpens the diagnose +
+  # the competitive set. Operator to name one (rally-hq's analog was "Let's Pepper Open").
+  concrete_reference: null   # TODO(operator): name a specific real event/album.
+
+# Pipeline shape — docs/variant-selection.md
+variant: midstream
+
+# Deliverable sophistication — docs/portal-and-tier-ladder.md (midstream × Tier 2
+# = default: product exists, portal is the front door).
+tier: 2
+
+# Portal pattern (A = platform-portal, B = redesign-review-portal). See decisions/0001.
+portal_pattern: B
+
+# Pattern B portal location, relative to this initiative root (blueprint/).
+prototype:
+  portal_dir: "portal"
+
+# MIRROR of the methodology pin the SessionStart hook reads. Current latest = v0.3.0.
+methodology_version: "0.3.0"
+
+execution:
+  depth: standard
+  # Real-data mode: the diagnose grounds in the live gallery, the production
+  # Supabase schema, the .agent-os audits, and the operator's own observations.
+  # The single database is PROD — additive migrations only; destructive drops are
+  # MERGE-GATED (decisions/0004).
+
+# Decisions / ADRs folder (relative to this initiative root).
+decisions:
+  dir: "decisions"
+
+# ── Stage gating per the MIDSTREAM variant (reviewer agents enforce these) ────
+# First midstream cycle = the #10 ingest rebuild: prescription = prescription.yml,
+# prototype-as-patch = building scripts/ingest-album.ts (direct-to-DB ingest).
+stages:
+  stage_0_application_legibility:
+    sensor: "browse-tool (--profile-name nino-chavez-photography-blueprint)"
+    note: "Mandatory for midstream. Diagnose grounds in the live gallery surfaces."
+
+  stage_1_targeted_diagnose:
+    output: "research/current-state/ + research/competitive/ (both scoped to the find-my-photos / ingest blast radius)"
+    requires:
+      - "research/current-state/"
+      - "research/competitive/"
+
+  stage_2_prescription:
+    output: "prescription.yml"
+    requires: ["research/current-state/"]
+    note: "Seeded from INGEST-REBUILD-10.md. items: block names each change with what/why/impact/evidence/monetization_side; preserved_patterns/revised_patterns carry the full context."
+
+  stage_3_design_principles:
+    output: "DESIGN-PRINCIPLES.md"
+    requires: ["prescription.yml"]
+    note: "Inherits the existing live gallery's visual language. PORTAL brand kit is forge-extracted from the live site into portal/project-tokens.css (NOT rally-hq's tokens, NOT the canonical chrome shared.css)."
+
+  stage_4_prototype_as_patch:
+    output: "portal/ — shows the #10 ingest revision, not a new product"
+    requires: ["DESIGN-PRINCIPLES.md"]
+
+  stage_5_fact_check:
+    note: "Ralph Wiggum convergence loop. Solo degrade path: mechanical verification of every ratified claim."
+
+  stage_6_documents:
+    output: "strategy + integration (skip market research unless the prescription introduces a net-new pattern)"
+
+  stage_7_deploy_iterate:
+    note: "Paired Cloudflare Pages deploy: blueprint.<host> noindex, separate from the gallery at the canonical URL."

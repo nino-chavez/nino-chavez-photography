@@ -1,0 +1,8 @@
+name = "nino-chavez-photography-blueprint"
+compatibility_date = "2026-03-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "."
+
+# Replace PROJECT_SLUG with your project's slug (e.g., "rally-hq", "tna").
+# This wrangler.toml must live at the deploy root so wrangler detects
+# functions/ and compiles them as Pages Functions.

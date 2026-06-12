@@ -1,0 +1,44 @@
+{
+  "name": "Nino Chavez Photography Blueprint",
+  "tagline": "Find-my-photos for a live volleyball action-sports gallery — a midstream Blueprint initiative",
+  "slices": [
+    "example-slice"
+  ],
+  "groups": [
+    { "id": "marketing", "label": "Marketing",  "color": "brand" },
+    { "id": "audience",  "label": "Audience",   "color": "accent" },
+    { "id": "operator",  "label": "Operator",   "color": "neutral" }
+  ],
+  "pages": [
+    "example"
+  ],
+  "flows": [
+    {
+      "id": "main-journey",
+      "label": "Main journey",
+      "summary": "Replace with your primary persona's end-to-end flow across pages.",
+      "pages": ["example"]
+    }
+  ],
+  "docs": {
+    "tiers": [
+      {
+        "label": "Strategic artifacts",
+        "blurb": "Positional briefs — the thinking that justifies the prototype. Read these to understand <em>why</em>.",
+        "designed": true,
+        "docs": []
+      },
+      {
+        "label": "Working documents",
+        "blurb": "Operational scaffolds — tracked, edited, queried. Read these to understand <em>how the work happens</em>.",
+        "designed": false,
+        "docs": []
+      }
+    ],
+    "default": null
+  },
+  "footer": {
+    "line": "Nino Chavez Photography — a Blueprint midstream initiative",
+    "repo_url": "https://github.com/nino-chavez/nino-chavez-photography"
+  }
+}
