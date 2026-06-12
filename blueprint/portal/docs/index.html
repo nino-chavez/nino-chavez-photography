@@ -34,6 +34,19 @@
       overflow-y: auto;
       padding-right: var(--space-3);
     }
+    /* Mobile: position: static so the nav doesn't overlay content in the
+       single-column stack. Must come AFTER the base .doc-nav rule. */
+    @media (max-width: 768px) {
+      .doc-nav {
+        position: static;
+        max-height: 40vh;
+        overflow-y: auto;
+        padding-right: 0;
+        border-bottom: 1px solid var(--card-border);
+        padding-bottom: var(--space-3);
+        margin-bottom: var(--space-2);
+      }
+    }
     /* Two-tier sidebar — Strategic artifacts vs Working documents.
        Eyebrow-label pattern (Stripe/Linear/Notion): group labels recede so
        the nav items dominate. Users navigate to docs, not categories. */
