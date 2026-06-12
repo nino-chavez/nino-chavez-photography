@@ -1,0 +1,13 @@
+{
+  "id": "find-my-photos",
+  "label": "The find-my-photos journey",
+  "color": "brand",
+  "summary": "Discover the event → find yourself by jersey → take your moments. The athlete-self-finding loop, reviewed surface by surface against the shipped gallery.",
+  "production_surface": "src/routes/albums, src/routes/explore, src/routes/favorites",
+  "primary_persona": "The athlete who wants to find themselves",
+  "findings_cited": [],
+  "principles_cited": ["R2", "R5"],
+  "phase": "Shipped",
+  "pages": ["albums", "find-my-photos", "download-share"],
+  "flows_touching_this_slice": ["find-my-photos-journey"]
+}

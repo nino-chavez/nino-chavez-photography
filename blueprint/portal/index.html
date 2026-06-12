@@ -302,17 +302,17 @@
       <div class="stat-tile">
         <div class="stat-label">Docs</div>
         <div class="stat-value" id="stat-docs">…</div>
-        <div class="stat-sub">Strategic artifacts + working documents</div>
+        <div class="stat-sub">Design principles · decisions · research</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-label">Findings</div>
-        <div class="stat-value" id="stat-findings">…</div>
-        <div class="stat-sub">From research synthesis · synthetic until validated</div>
+        <div class="stat-label">Decisions</div>
+        <div class="stat-value">5</div>
+        <div class="stat-sub">ADRs — the product model + the cutover</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-label">Hypotheses</div>
-        <div class="stat-value" id="stat-hypotheses">…</div>
-        <div class="stat-sub">Kill + tune + taste claims · validation queue</div>
+        <div class="stat-label">Cycle</div>
+        <div class="stat-value">#10</div>
+        <div class="stat-sub">ingest rebuild · shipped</div>
       </div>
     </section>
 
@@ -421,6 +421,8 @@
         document.getElementById('stat-pages').textContent = (m.pages || []).length;
         const slicesEl = document.getElementById('stat-slices');
         if (slicesEl) slicesEl.textContent = (m.slices || []).length;
+        const docsEl = document.getElementById('stat-docs');
+        if (docsEl) docsEl.textContent = ((m.docs && m.docs.tiers) || []).reduce((n, t) => n + ((t.docs || []).length), 0);
 
         // Populate footer from manifest. footer.line falls back to tagline.
         // repo_url is optional — anchor stays hidden if absent.

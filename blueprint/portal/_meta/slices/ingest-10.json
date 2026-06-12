@@ -1,0 +1,13 @@
+{
+  "id": "ingest-10",
+  "label": "Behind the scenes — the #10 ingest",
+  "color": "accent",
+  "summary": "How a new event becomes findable-by-jersey the moment it lands: one command, directly to the DB, no EXIF round-trip.",
+  "production_surface": "scripts/ingest-album.ts, src/lib/ai/ingest-extraction.ts, src/lib/identity/sightings.ts",
+  "primary_persona": "Operator (Nino)",
+  "findings_cited": [],
+  "principles_cited": [],
+  "phase": "Shipped",
+  "pages": ["ingest-architecture"],
+  "flows_touching_this_slice": []
+}

@@ -2,7 +2,8 @@
   "name": "Nino Chavez Photography Blueprint",
   "tagline": "Find-my-photos for a live volleyball action-sports gallery — a midstream Blueprint initiative",
   "slices": [
-    "find-my-photos"
+    "find-my-photos",
+    "ingest-10"
   ],
   "groups": [
     { "id": "journey",      "label": "The find-my-photos journey", "color": "brand" },
@@ -26,18 +27,29 @@
     "tiers": [
       {
         "label": "Strategic artifacts",
-        "blurb": "Positional briefs — the thinking that justifies the prototype. Read these to understand <em>why</em>.",
+        "blurb": "The thinking that justifies the prototype. Read these to understand <em>why</em>.",
         "designed": true,
-        "docs": []
+        "docs": [
+          { "id": "design-principles", "title": "Design Principles", "source": "DESIGN-PRINCIPLES.md" },
+          { "id": "adr-0003-product-model", "title": "Product model — find-my-photos", "source": "decisions/0003-product-model-find-my-photos.md" },
+          { "id": "adr-0002-domain-model", "title": "KNOW-vs-INFER domain model", "source": "decisions/0002-know-vs-infer-domain-model.md" }
+        ]
       },
       {
-        "label": "Working documents",
-        "blurb": "Operational scaffolds — tracked, edited, queried. Read these to understand <em>how the work happens</em>.",
+        "label": "Decisions & research",
+        "blurb": "The load-bearing calls, and the evidence behind them.",
         "designed": false,
-        "docs": []
+        "docs": [
+          { "id": "adr-0001-portal-pattern", "title": "0001 — Portal Pattern B", "source": "decisions/0001-portal-pattern-b.md" },
+          { "id": "adr-0004-migration-safety", "title": "0004 — Migration safety + convergence", "source": "decisions/0004-migration-safety-and-convergence.md" },
+          { "id": "adr-0005-co-location", "title": "0005 — Co-located initiative root", "source": "decisions/0005-co-located-initiative-root.md" },
+          { "id": "current-state", "title": "Current state (diagnose)", "source": "research/current-state/README.md" },
+          { "id": "competitive", "title": "Competitive — find-my-photos delivery", "source": "research/competitive/find-my-photos-delivery-platforms.md" },
+          { "id": "demand-signal", "title": "The demand signal — \"did you get that?\"", "source": "research/observations/find-my-photos-demand.md" }
+        ]
       }
     ],
-    "default": null
+    "default": "design-principles"
   },
   "footer": {
     "line": "Nino Chavez Photography — a Blueprint midstream initiative",
