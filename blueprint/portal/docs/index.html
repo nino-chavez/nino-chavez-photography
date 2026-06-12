@@ -35,14 +35,15 @@
       padding-right: var(--space-3);
     }
     /* Two-tier sidebar — Strategic artifacts vs Working documents.
-       The tier labels carry stronger weight than the old h4 mono headers
-       because the distinction is editorial, not just organizational. */
+       Eyebrow-label pattern (Stripe/Linear/Notion): group labels recede so
+       the nav items dominate. Users navigate to docs, not categories. */
     .doc-nav .tier-label {
-      font-family: var(--font-display);
-      font-size: 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: -0.005em;
-      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
       margin-bottom: 6px;
     }
     .doc-nav .tier-blurb {
@@ -365,19 +366,20 @@
     .doc-callout-decision { border-left-color: var(--brand-500); background: color-mix(in srgb, var(--brand-500) 5%, var(--surface-1)); }
     .doc-callout-decision .doc-callout-label { color: var(--brand-700); }
 
-    .doc-callout-why { border-left-color: hsl(220 30% 50%); }
+    .doc-callout-why { border-left-color: hsl(220 30% 50%); background: color-mix(in srgb, hsl(220 30% 50%) 4%, var(--surface-1)); }
     .doc-callout-why .doc-callout-label { color: hsl(220 30% 40%); }
 
     .doc-callout-evidence { border-left-color: hsl(142 50% 45%); background: color-mix(in srgb, hsl(142 50% 45%) 4%, var(--surface-1)); }
     .doc-callout-evidence .doc-callout-label { color: hsl(142 50% 30%); }
 
-    .doc-callout-audience { border-left-color: hsl(265 50% 55%); }
+    .doc-callout-audience { border-left-color: hsl(265 50% 55%); background: color-mix(in srgb, hsl(265 50% 55%) 4%, var(--surface-1)); }
     .doc-callout-audience .doc-callout-label { color: hsl(265 50% 40%); }
 
-    .doc-callout-status { border-left-color: hsl(40 95% 50%); }
-    .doc-callout-status .doc-callout-label { color: hsl(40 95% 30%); }
+    /* status: desaturated from 95% → 65% chroma; muted amber reads as "note" not "alert" */
+    .doc-callout-status { border-left-color: hsl(40 65% 42%); background: color-mix(in srgb, hsl(40 65% 42%) 4%, var(--surface-1)); }
+    .doc-callout-status .doc-callout-label { color: hsl(40 65% 28%); }
 
-    .doc-callout-action { border-left-color: var(--brand-700); }
+    .doc-callout-action { border-left-color: var(--brand-700); background: color-mix(in srgb, var(--brand-700) 4%, var(--surface-1)); }
     .doc-callout-action .doc-callout-label { color: var(--brand-700); }
 
     /* Prototype-page reference — inline <code> for prototype/pages/X.html
@@ -444,7 +446,7 @@
       max-height: calc(100vh - var(--space-8));
       overflow-y: auto;
       font-size: 12px;
-      line-height: 1.45;
+      line-height: 1.55;
     }
     .doc-toc-label {
       font-family: var(--font-mono);
