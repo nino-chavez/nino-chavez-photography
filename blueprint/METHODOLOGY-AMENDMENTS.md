@@ -5,6 +5,36 @@ Append-only, reverse-chronological. Convention:
 
 ---
 
+## 2026-06-11 — Pattern B front door ships the Pattern-A audience pills
+
+**Trigger**: The live portal's front door showed Reviewer / Engineer / Operator "persona toggles." The operator flagged that rally-hq (canonical Pattern B) doesn't use them.
+**Scope**: Candidate for methodology promotion.
+**Status**: Active. Removed locally (the `audience-pills` block + the `audience-note` + the priority-based card-reorder JS in `index.html`).
+
+The template's `portal/index.html` front door ships audience pills + priority-based card reordering — a **Pattern-A audience-switcher** concept (executive/evaluator/engineering). Pattern B is the drawer contract, not an audience switcher; its front door shouldn't carry them. Checked: `template/portal/index.html` has 12 audience-pill refs; `rally-hq/.../index.html` has **0** — rally-hq removed them but **never upstreamed it** as a template change or amendment, so every fresh Pattern B stamp (incl. photography) inherits them. This is a template-vs-canonical-consumer divergence, not a one-off.
+
+**Proposed promotion**: drop the audience pills + reorder JS from the template's Pattern B `portal/index.html` (render the path cards in declared order), or gate them behind a manifest flag (`audience_switcher: true`, default false for Pattern B).
+
+**References**:
+- `template/portal/index.html` (pills present) vs `apps/rally-hq/blueprint/prototype/index.html` (pills absent)
+
+---
+
+## 2026-06-11 — The cited-spec-evidence chrome feature ships unstyled
+
+**Trigger**: A prototype page's top bar rendered a broken `R2·R5 ▾` chip whose overlay ("Cited spec evidence … citation not found in manifest") spilled as **unstyled plain text at the bottom-left of the viewport**.
+**Scope**: Candidate for methodology promotion.
+**Status**: Active. Worked around by emptying `principles_cited` in our slice metadata (the chip is gated on `citationRows.length`, `proto-nav.js:458`).
+
+`proto-nav.js` (canonical chrome) renders a cited-spec-evidence chip + overlay from `slice.findings_cited` / `slice.principles_cited`, resolving each against `MANIFEST.citations`. But **neither `shared.css` nor `proto-nav.js` ships any `.citation-chip` / `.citation-overlay` / `.citation-row` styles** — verified `grep -c citation shared.css` = 0 in both the consumer and `template/portal/shared.css`. So for any consumer that populates those fields, the feature renders unstyled and mispositioned. Two gaps compound it: (a) the styles are missing from canonical chrome; (b) when `MANIFEST.citations` is absent, every citation resolves to "(citation not found in manifest)" rather than the feature no-op'ing.
+
+**Proposed promotion**: add the `.citation-*` styles to canonical `shared.css`, AND have `proto-nav.js` skip the chip when `MANIFEST.citations` is absent (so unresolved citations don't render a broken element).
+
+**References**:
+- `template/portal/proto-nav.js:201-262` (renders the feature) vs `template/portal/shared.css` (no `.citation-*` styles)
+
+---
+
 ## 2026-06-11 — Reviewers and the SessionStart hook disagree on `blueprint.yml` placement
 
 **Trigger**: Scaffolding with `blueprint.yml` at the repo root (mirroring rally-hq's 2026-06-11 move) made every executable stage reviewer fail — they look for `research/` and `prescription.yml` as siblings of `blueprint.yml` at one `--target`, and there were none at the root.

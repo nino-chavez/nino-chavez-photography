@@ -6,7 +6,7 @@
   "production_surface": "src/routes/albums, src/routes/explore, src/routes/favorites",
   "primary_persona": "The athlete who wants to find themselves",
   "findings_cited": [],
-  "principles_cited": ["R2", "R5"],
+  "principles_cited": [],
   "phase": "Shipped",
   "pages": ["albums", "find-my-photos", "download-share"],
   "flows_touching_this_slice": ["find-my-photos-journey"]

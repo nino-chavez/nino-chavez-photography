@@ -273,20 +273,6 @@
         <span class="label">The Nino Chavez Photography Blueprint</span>
         <h1>The find-my-photos<br/>product, end to end.</h1>
       </div>
-      <div class="audience-pills" role="tablist" aria-label="Reorder paths by audience">
-        <button class="is-active" data-audience="reviewer" role="tab" aria-selected="true">
-          <svg class="pill-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
-          Reviewer
-        </button>
-        <button data-audience="engineer" role="tab" aria-selected="false">
-          <svg class="pill-icon" viewBox="0 0 24 24"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>
-          Engineer
-        </button>
-        <button data-audience="operator" role="tab" aria-selected="false">
-          <svg class="pill-icon" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h14M18 18h2"/></svg>
-          Operator
-        </button>
-      </div>
     </div>
 
     <p class="hero-lede">
@@ -318,10 +304,6 @@
 
     <section class="paths-section">
       <div class="paths-grid" id="paths-grid"></div>
-      <div class="audience-note">
-        <strong>The three pills above reorder the cards for whoever's looking.</strong>
-        Reviewer (default) leads with Try + Discover. Engineer leads with Behind the scenes + Roadmap. Operator leads with Roadmap + Try. Selection persists in this session.
-      </div>
     </section>
 
     <footer class="footer-note" id="footer-note">
@@ -365,13 +347,10 @@
       }
     ];
 
-    let currentAudience = 'reviewer';
-
     function renderPaths() {
       const grid = document.getElementById('paths-grid');
       grid.innerHTML = '';
-      const sorted = [...PATHS].sort((a, b) => a.priority[currentAudience] - b.priority[currentAudience]);
-      sorted.forEach(p => {
+      [...PATHS].forEach(p => {
         const card = document.createElement('div');
         card.className = 'path-card';
         card.innerHTML = `
@@ -386,31 +365,6 @@
         grid.appendChild(card);
       });
     }
-
-    document.querySelectorAll('.audience-pills button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        currentAudience = btn.dataset.audience;
-        document.querySelectorAll('.audience-pills button').forEach(b => {
-          const on = b === btn;
-          b.classList.toggle('is-active', on);
-          b.setAttribute('aria-selected', on ? 'true' : 'false');
-        });
-        try { sessionStorage.setItem('blueprint-audience', currentAudience); } catch {}
-        renderPaths();
-      });
-    });
-
-    try {
-      const saved = sessionStorage.getItem('blueprint-audience');
-      if (saved && ['reviewer', 'engineer', 'operator'].includes(saved)) {
-        currentAudience = saved;
-        document.querySelectorAll('.audience-pills button').forEach(b => {
-          const on = b.dataset.audience === saved;
-          b.classList.toggle('is-active', on);
-          b.setAttribute('aria-selected', on ? 'true' : 'false');
-        });
-      }
-    } catch {}
 
     renderPaths();
 
