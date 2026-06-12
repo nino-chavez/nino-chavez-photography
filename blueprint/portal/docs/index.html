@@ -17,8 +17,8 @@
        The rail only appears ≥1100px — below that the content column
        carries the full width and the rail's job (heading scan) is served
        by scrolling. ≤768px the sidebar stacks above the content. */
-    .doc-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--space-8); max-width: 1200px; margin: var(--space-6) auto; padding: 0 var(--space-4); }
-    @media (min-width: 1100px) { .doc-shell { grid-template-columns: 240px minmax(0, 1fr) 200px; } }
+    .doc-shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: var(--space-8); max-width: 1280px; margin: var(--space-6) auto; padding: 0 var(--space-4); }
+    @media (min-width: 1100px) { .doc-shell { grid-template-columns: 230px minmax(0, 1fr) 190px; } }
     @media (max-width: 768px) { .doc-shell { grid-template-columns: 1fr; } }
     /* The rail is a third grid child; below 1100px there's no track for it,
        so it must be explicitly hidden or it auto-places into an implicit row
@@ -39,7 +39,7 @@
        because the distinction is editorial, not just organizational. */
     .doc-nav .tier-label {
       font-family: var(--font-display);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: -0.005em;
       color: var(--text-primary);
@@ -63,7 +63,7 @@
       margin-bottom: 1px;
       border-radius: var(--radius-sm);
       color: var(--text-secondary);
-      font-size: var(--text-sm);
+      font-size: 13px;
       font-weight: 500;
       position: relative;
     }
@@ -126,10 +126,13 @@
        Prototype Studio rhythm. Was: doc-island styling (uppercase H1
        inherited from global, heavy h2 border, chunky inline code). Now:
        same Inter 700 sentence-case headlines as other meta-pages. */
-    /* 70ch measure — solidly inside the 66–75ch readable band. The right
-       rail naturally narrows the column ≥1100px; this cap holds the line
-       length below that, where content spans the full two-column width. */
-    .doc-body { line-height: 1.7; color: var(--text-primary); max-width: 70ch; font-size: var(--text-base); }
+    /* 72ch measure — inside the 66–75ch readable band, sized so the column
+       fills its (widened) content track with standard card padding rather
+       than hugging left. The right rail narrows the column ≥1100px; this cap
+       holds the line length below that, where content spans both tracks.
+       1.6 leading: hybrid setting — tighter than editorial 1.7 so the spec
+       blocks read dense, looser than 1.5 so the strategy prose still breathes. */
+    .doc-body { line-height: 1.6; color: var(--text-primary); max-width: 72ch; font-size: var(--text-base); }
 
     /* Reset the global h1 uppercase (set in shared.css for prototype heroes)
        — doc H1s are sentence case to match Front Door + Prototype Studio. */
@@ -179,7 +182,7 @@
       margin-bottom: var(--space-4);
       color: var(--text-secondary);
       font-size: var(--text-base);
-      line-height: 1.7;
+      line-height: 1.6;
     }
     .doc-body strong { color: var(--text-primary); font-weight: 700; }
     .doc-body em { color: var(--text-primary); }
@@ -351,7 +354,7 @@
     .doc-callout-body {
       color: var(--text-primary);
       font-size: var(--text-base);
-      line-height: 1.65;
+      line-height: 1.6;
     }
     .doc-callout-body code {
       font-size: 0.88em;
