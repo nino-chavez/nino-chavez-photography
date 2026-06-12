@@ -254,9 +254,7 @@
         <div class="studio-stat"><span class="k">Slices</span><span class="v">${validSlices.length}</span></div>
         <div class="studio-stat"><span class="k">Pages</span><span class="v">${valid.length}</span></div>
         <div class="studio-stat"><span class="k">Flows</span><span class="v">${(manifest.flows || []).length}</span></div>
-        <div class="studio-stat"><span class="k">MVP</span><span class="v">${valid.filter(p => p.phase === 'MVP').length}</span></div>
-        <div class="studio-stat"><span class="k">Phase 1</span><span class="v">${valid.filter(p => p.phase === 'Phase 1').length}</span></div>
-        <div class="studio-stat"><span class="k">Phase 2</span><span class="v">${valid.filter(p => p.phase === 'Phase 2').length}</span></div>
+        <div class="studio-stat"><span class="k">Shipped</span><span class="v">${valid.filter(p => p.phase === 'Shipped').length}</span></div>
       `;
 
       // Group pages by slice

@@ -9,16 +9,20 @@
   "route": "/pages/ingest-architecture.html",
   "summary": "What makes a new event findable-by-jersey the moment it lands.",
   "strategy": {
-    "decision": "Every new album flows through **one command** (`ingest-album.ts`): upload → extract → embed → write `photo_metadata` + `photo_jersey_sightings`, directly to the DB. That is what makes a new event findable-by-jersey the moment it lands.",
-    "why": "The find step is only as good as the sightings behind it (`prescription.yml`). The #10 ingest writes sightings on every photo; the legacy enrich → sync → EXIF chain that used to (mis)feed it was **removed** in the cutover (`decisions/0004`).",
-    "shipped": "`scripts/ingest-album.ts` — reprocess-in-place, idempotent, album-authoritative sport (the enforce_album_sport trigger), a single structured prompt (`extractOne`), OpenRouter vision + embeddings. Proven on BPO 2026 (119 photos, zero failures).",
+    "decision": "Every new album flows through <strong>one command</strong> (<code>ingest-album.ts</code>): upload → extract → embed → write <code>photo_metadata</code> + <code>photo_jersey_sightings</code>, directly to the DB. That is what makes a new event findable-by-jersey the moment it lands.",
+    "why": "The find step is only as good as the sightings behind it (<code>prescription.yml</code>). The #10 ingest writes sightings on every photo; the legacy enrich → sync → EXIF chain that used to (mis)feed it was <strong>removed</strong> in the cutover (<code>decisions/0004</code>).",
+    "shipped": "<code>scripts/ingest-album.ts</code> — reprocess-in-place, idempotent, album-authoritative sport (the enforce_album_sport trigger), a single structured prompt (<code>extractOne</code>), OpenRouter vision + embeddings. Proven on BPO 2026 (119 photos, zero failures).",
     "gap": "Existing albums were built by the legacy path (extraction_version=0); only new albums carry #10 provenance — the clean-cutover choice (A): new-only, no back-stamp re-ingest.",
-    "question": "Back-stamp the legacy albums for `extraction_version` provenance, or leave them (provenance only buys future surgical re-runs)?"
+    "question": "Back-stamp the legacy albums for <code>extraction_version</code> provenance, or leave them (provenance only buys future surgical re-runs)?"
   },
   "currentState": {
     "route": "scripts/ingest-album.ts (operator CLI, not a user surface)",
     "summary": "The live new-album path: one resumable module, upload + extract + embed + DB write + sightings per image.",
-    "sourceFiles": ["scripts/ingest-album.ts", "src/lib/ai/ingest-extraction.ts", "src/lib/identity/sightings.ts"],
-    "annotation": "The legacy enrich-local-photos.ts / sync-local-to-supabase.ts / run-pipeline.ts chain + the players[] write were deleted in the #10 cutover. `players` column DROP is the last (operator) step."
+    "sourceFiles": [
+      "scripts/ingest-album.ts",
+      "src/lib/ai/ingest-extraction.ts",
+      "src/lib/identity/sightings.ts"
+    ],
+    "annotation": "The legacy enrich-local-photos.ts / sync-local-to-supabase.ts / run-pipeline.ts chain + the players[] write were deleted in the #10 cutover. <code>players</code> column DROP is the last (operator) step."
   }
 }

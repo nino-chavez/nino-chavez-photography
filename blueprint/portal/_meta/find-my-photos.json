@@ -9,11 +9,11 @@
   "route": "/pages/find-my-photos.html",
   "summary": "The athlete finds their own moments — search the live library by event, sport, or jersey.",
   "strategy": {
-    "decision": "Find-my-photos is the product: discover the event → **find** (by jersey number / jersey color sightings, human-resolved) → download / share. No sales, no faces, no per-person naming.",
-    "why": "Grounds in the pilot's real demand signal — athletes ask Nino mid-match *\"did you get that?\"* (`research/observations/find-my-photos-demand.md`). The find-me mechanism is `find_photos_by_jersey` over `photo_jersey_sightings`; the boundaries (no sales/faces/naming) are `decisions/0003`.",
-    "shipped": "Live at `/explore` (`src/routes/explore/+page.svelte`): full-library caption search + Sport / Category / play_type / jersey filters over 20,829 captioned + embedded photos, ranked Best-Photos-First on `quality_score`.",
-    "gap": "Jersey/color self-search exists as a *filter*; the pilot's \"type your number → here you are\" intent could be elevated from a filter dimension to a first-class find path (per `research/competitive/find-my-photos-delivery-platforms.md`).",
-    "question": "What recall bar do athletes expect for \"every photo of #7\"? Needs the anchor-event walkthrough (`pilot_profile.concrete_reference`)."
+    "decision": "Find-my-photos is the product: discover the event → <strong>find</strong> (by jersey number / jersey color sightings, human-resolved) → download / share. No sales, no faces, no per-person naming.",
+    "why": "Grounds in the pilot's real demand signal — athletes ask Nino mid-match *\"did you get that?\"* (<code>research/observations/find-my-photos-demand.md</code>). The find-me mechanism is <code>find_photos_by_jersey</code> over <code>photo_jersey_sightings</code>; the boundaries (no sales/faces/naming) are <code>decisions/0003</code>.",
+    "shipped": "Live at <code>/explore</code> (<code>src/routes/explore/+page.svelte</code>): full-library caption search + Sport / Category / play_type / jersey filters over 20,829 captioned + embedded photos, ranked Best-Photos-First on <code>quality_score</code>.",
+    "gap": "Jersey/color self-search exists as a *filter*; the pilot's \"type your number → here you are\" intent could be elevated from a filter dimension to a first-class find path (per <code>research/competitive/find-my-photos-delivery-platforms.md</code>).",
+    "question": "What recall bar do athletes expect for \"every photo of #7\"? Needs the anchor-event walkthrough (<code>pilot_profile.concrete_reference</code>)."
   },
   "currentState": {
     "route": "/explore",
@@ -23,6 +23,6 @@
       "src/routes/explore/+page.server.ts",
       "src/lib/supabase (find_photos_by_jersey RPC)"
     ],
-    "annotation": "The #10 ingest writes `photo_jersey_sightings` on every new album, so a new event is immediately findable-by-jersey — the pipeline behind this surface. The legacy enrich/sync chain that used to feed it was removed in the #10 cutover."
+    "annotation": "The #10 ingest writes <code>photo_jersey_sightings</code> on every new album, so a new event is immediately findable-by-jersey — the pipeline behind this surface. The legacy enrich/sync chain that used to feed it was removed in the #10 cutover."
   }
 }
