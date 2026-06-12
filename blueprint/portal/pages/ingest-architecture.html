@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en" data-theme="photography">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Behind the scenes — Nino Chavez Photography</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../project-tokens.css">
+  <style>
+    .pg-hero { padding: var(--space-12) 0 var(--space-6); }
+    .pg-eyebrow { font: 600 var(--text-xs)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--brand-500); }
+    .pg-hero h1 { font-family: var(--font-hero); font-size: var(--text-5xl); line-height: 1.02; margin-top: var(--space-3); }
+    .pg-hero p { color: var(--text-secondary); max-width: 64ch; margin-top: var(--space-4); font-size: var(--text-lg); }
+    .flow { margin-top: var(--space-8); display: grid; gap: var(--space-3); max-width: 720px; }
+    .flow-step { display: grid; grid-template-columns: auto 1fr; gap: var(--space-4); align-items: start;
+      background: var(--surface-1); border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); }
+    .flow-num { font: 700 var(--text-sm)/1 var(--font-mono); color: var(--brand-500);
+      width: 2rem; height: 2rem; display: grid; place-items: center; border: 1px solid var(--brand-700); border-radius: var(--radius-full); }
+    .flow-step h3 { font-size: var(--text-lg); }
+    .flow-step p { color: var(--text-secondary); font-size: var(--text-sm); margin-top: 2px; }
+    .flow-step code { font-family: var(--font-mono); font-size: .85em; color: var(--brand-300); }
+    .flow-arrow { justify-self: center; color: var(--text-muted); font-size: var(--text-lg); line-height: 1; }
+    .pg-caption { color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-5); }
+  </style>
+</head>
+<body data-compare-root data-view="proposed">
+  <section class="proposed-view">
+    <header class="header">
+      <div class="container">
+        <a href="../index.html" class="logo">Nino Chavez<span class="logo-accent"> Photography</span></a>
+      </div>
+    </header>
+    <main class="container">
+      <div class="pg-hero">
+        <span class="pg-eyebrow">Behind the scenes</span>
+        <h1>One command, directly to the DB.</h1>
+        <p>The find step is only as good as the sightings behind it. Every new album runs through one resumable module — <code>scripts/ingest-album.ts</code> — that writes jersey sightings on every photo, so a new event is findable the moment it lands. No EXIF round-trip; the legacy three-script chain was removed in the cutover.</p>
+      </div>
+      <div class="flow">
+        <div class="flow-step"><span class="flow-num">1</span><div><h3>Upload</h3><p>To Cloudflare Images with the album-scoped id <code>${albumKey}-${imageKey}</code> — a 5409 "already exists" is an error, never an alias.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="flow-num">2</span><div><h3>Extract</h3><p>One structured, sport-aware prompt (<code>extractOne</code>) — caption, play_type, quality sub-scores, and players[] for sightings. It never guesses sport.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="flow-num">3</span><div><h3>Embed</h3><p>The caption via <code>embedText</code> (OpenRouter text-embedding-3-large @768) — the same seam the search query uses.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="flow-num">4</span><div><h3>Write — directly</h3><p>UPSERT <code>photo_metadata</code> + <code>photo_jersey_sightings</code>. Never the deprecated players[] column; sport_type is set by the album trigger, not the writer.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="flow-num">5</span><div><h3>Findable by jersey</h3><p><code>find_photos_by_jersey</code> over the sightings answers "every photo of #7" — the mechanism behind <em>"did you get that?" → "here you are."</em></p></div></div>
+      </div>
+      <p class="pg-caption">Reprocess-in-place, idempotent, proven on BPO 2026 (119 photos, zero failures). Source: <code>scripts/ingest-album.ts</code>, <code>src/lib/ai/ingest-extraction.ts</code>, <code>src/lib/identity/sightings.ts</code>.</p>
+    </main>
+  </section>
+  <section class="shipped-view container mt-8">
+    <div class="card">
+      <h3>This is the live ingest path</h3>
+      <p class="mt-4">The legacy enrich → sync → EXIF chain was deleted in the #10 cutover. Existing albums keep their legacy rows; only new albums carry #10 provenance. The current-state drawer has the detail.</p>
+    </div>
+  </section>
+  <script>
+    window.PROTO_PAGE = { id: 'ingest-architecture' };
+  </script>
+  <script src="../proto-nav.js"></script>
+  <script src="../chat-widget.js" defer></script>
+  <script src="../proto-annotate.js" defer></script>
+</body>
+</html>

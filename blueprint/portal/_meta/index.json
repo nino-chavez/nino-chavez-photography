@@ -9,14 +9,17 @@
     { "id": "architecture", "label": "Behind the scenes",          "color": "accent" }
   ],
   "pages": [
-    "find-my-photos"
+    "albums",
+    "find-my-photos",
+    "download-share",
+    "ingest-architecture"
   ],
   "flows": [
     {
-      "id": "find-my-photos",
+      "id": "find-my-photos-journey",
       "label": "Find my photos",
       "summary": "The athlete-self-finding journey: discover the event → find by jersey number / color → download / share.",
-      "pages": ["find-my-photos"]
+      "pages": ["albums", "find-my-photos", "download-share"]
     }
   ],
   "docs": {

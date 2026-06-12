@@ -271,7 +271,7 @@
     <div class="hero-row">
       <div class="hero-lead">
         <span class="label">The Nino Chavez Photography Blueprint</span>
-        <h1>One front door,<br/>five paths in.</h1>
+        <h1>The find-my-photos<br/>product, end to end.</h1>
       </div>
       <div class="audience-pills" role="tablist" aria-label="Reorder paths by audience">
         <button class="is-active" data-audience="reviewer" role="tab" aria-selected="true">
@@ -290,8 +290,7 @@
     </div>
 
     <p class="hero-lede">
-      Synthetic design study against the personas, market, and operational reality of the product.
-      Prototype walk-through, system docs, phased roadmap, active validation queue, and methodology — every surface on one shelf.
+      A walkthrough of the find-my-photos product — the shipped surfaces an athlete uses to find and take their own moments, the decisions behind them, and the ingest that makes a new event findable the moment it lands.
     </p>
 
     <section class="stat-row">
@@ -321,7 +320,7 @@
       <div class="paths-grid" id="paths-grid"></div>
       <div class="audience-note">
         <strong>The three pills above reorder the cards for whoever's looking.</strong>
-        Reviewer (default) leads with Try + Discover. Engineer leads with Operate + Validate. Operator leads with Roadmap + Discover. Selection persists in this session.
+        Reviewer (default) leads with Try + Discover. Engineer leads with Behind the scenes + Roadmap. Operator leads with Roadmap + Try. Selection persists in this session.
       </div>
     </section>
 
@@ -339,37 +338,30 @@
       {
         id: 'try', title: 'Try', status: 'ready',
         icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4V8z" fill="currentColor" stroke="none"/></svg>',
-        description: 'Walk the prototype pages with strategy + current-state drawers, proposed-vs-shipped toggle, and multi-page flows. The interactive study.',
-        links: 'Catalog: <a href="/prototype/">/prototype/</a> · Sample: <a href="/pages/example">example page</a>',
-        priority: { reviewer: 1, engineer: 3, operator: 4 }
+        description: 'Walk the find-my-photos journey — discover the event, find yourself by jersey, take your moments — each page with strategy + current-state drawers and the proposed-vs-shipped toggle.',
+        links: 'Catalog: <a href="/prototype/">/prototype/</a> · Start: <a href="/pages/find-my-photos.html">Find my photos</a>',
+        priority: { reviewer: 1, engineer: 3, operator: 2 }
       },
       {
         id: 'discover', title: 'Discover', status: 'ready',
         icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M16 8l-3 5-5 3 3-5 5-3z" fill="currentColor" stroke="none"/></svg>',
-        description: 'Why the blueprint makes its decisions. CX strategy plus the four system docs — business model, monetization, product lifecycle, adaptive chrome.',
-        links: '<a href="/docs/?doc=cx-strategy">CX Strategy</a> · <a href="/docs/?doc=business-model">Business model</a> · <a href="/docs/?doc=research-synthesis">Research synthesis</a>',
-        priority: { reviewer: 2, engineer: 5, operator: 2 }
+        description: 'The bet: find-my-photos for athletes — discover → find (jersey / color sightings, human-resolved) → download / share. No sales, no faces, no per-person naming. Grounded in a real "did you get that?" demand signal.',
+        links: 'Strategy: <a href="/pages/find-my-photos.html">on every prototype page</a> · Decisions: <code>blueprint/decisions/</code> in repo',
+        priority: { reviewer: 2, engineer: 4, operator: 3 }
       },
       {
-        id: 'roadmap', title: 'Roadmap', status: 'ready',
-        icon: '<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7M8.5 6h7M8.5 18h7"/></svg>',
-        description: 'Phased plan: Phase 1 (~17 hrs) free-mode launch keystones. Phase 2 (~30 hrs) identity + retention. Phase 3 primary-research gates before structural commits.',
-        links: '<a href="/docs/?doc=roadmap">Roadmap</a> · <a href="/docs/?doc=gaps">Per-page gaps</a>',
-        priority: { reviewer: 3, engineer: 4, operator: 1 }
-      },
-      {
-        id: 'operate', title: 'Operate', status: 'ready',
+        id: 'inspect', title: 'Behind the scenes', status: 'ready',
         icon: '<svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h14M18 18h2"/><circle cx="16" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="18" r="2" fill="currentColor" stroke="none"/></svg>',
-        description: 'Conventions for building on top of this blueprint. Design principles, production-UI sanctity rule, page-creation contract, per-tool OWNER-SPECs.',
-        links: '<a href="/docs/?doc=design-principles">Design principles</a> · <a href="/docs/?doc=feasibility">Feasibility</a> · CONVENTIONS.md in repo',
-        priority: { reviewer: 5, engineer: 1, operator: 3 }
+        description: 'How a new event becomes findable-by-jersey the moment it lands — the #10 ingest: one command, directly to the DB, no EXIF round-trip.',
+        links: '<a href="/pages/ingest-architecture.html">The ingest architecture</a>',
+        priority: { reviewer: 3, engineer: 1, operator: 4 }
       },
       {
-        id: 'validate', title: 'Validate', status: 'partial',
-        icon: '<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M14.5 14.5l5 5"/></svg>',
-        description: 'Active validation queue. 19 hypotheses tiered by load. JTBD dry run pressure-tested the conversation guides; real interviews next. The honest fork between hypothesis and evidence.',
-        links: '<a href="/docs/?doc=validation-plan">Validation plan</a> · <a href="/docs/?doc=validation-jtbd-dry-run">JTBD dry run</a>',
-        priority: { reviewer: 4, engineer: 2, operator: 5 }
+        id: 'roadmap', title: 'Roadmap', status: 'partial',
+        icon: '<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7M8.5 6h7M8.5 18h7"/></svg>',
+        description: 'The #10 ingest rebuild: slices 1–4 shipped (the runner + the legacy-path cutover). Remaining — the players-column drop (operator) and the pilot anchor-event walkthrough.',
+        links: 'Prescription: <code>blueprint/prescription.yml</code> in repo',
+        priority: { reviewer: 4, engineer: 2, operator: 1 }
       }
     ];
 
