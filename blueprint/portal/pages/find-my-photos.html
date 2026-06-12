@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" data-theme="photography">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Find my photos — Nino Chavez Photography</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../project-tokens.css">
+  <style>
+    .fmp-hero { padding: var(--space-12) 0 var(--space-6); }
+    .fmp-eyebrow { font: 600 var(--text-xs)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--brand-500); }
+    .fmp-hero h1 { font-family: var(--font-hero); font-size: var(--text-5xl); line-height: 1.02; margin-top: var(--space-3); }
+    .fmp-hero p { color: var(--text-secondary); max-width: 60ch; margin-top: var(--space-4); font-size: var(--text-lg); }
+    .fmp-surface { margin-top: var(--space-8); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--card-border); box-shadow: var(--shadow-lg); }
+    .fmp-surface img { display: block; width: 100%; height: auto; }
+    .fmp-caption { color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-3); }
+    .fmp-caption a { color: var(--brand-500); }
+  </style>
+</head>
+<body data-compare-root data-view="proposed">
+
+  <!-- PROPOSED VIEW: the shipped find-my-photos surface (live at /explore). -->
+  <section class="proposed-view">
+    <header class="header">
+      <div class="container">
+        <a href="../index.html" class="logo">Nino Chavez<span class="logo-accent"> Photography</span></a>
+      </div>
+    </header>
+    <main class="container">
+      <div class="fmp-hero">
+        <span class="fmp-eyebrow">The find-my-photos journey</span>
+        <h1>Find my photos.</h1>
+        <p>An athlete makes a play they're proud of and wants to see it. The library answers that — search 20,829 photos by event, sport, or jersey, and take your moments with you.</p>
+      </div>
+      <figure class="fmp-surface">
+        <img src="../assets/find-my-photos-shipped.png" alt="The live Explore surface: library-wide search with Sport and Category filters over a quality-ranked grid of action photos, jersey numbers visible." />
+      </figure>
+      <p class="fmp-caption">Shipped surface — live at <a href="https://ninochavez.co/photography/explore" target="_blank" rel="noopener">ninochavez.co/photography/explore</a>. Jersey-number / jersey-color sightings (written by the #10 ingest) make a new event findable the moment it lands.</p>
+    </main>
+  </section>
+
+  <!-- SHIPPED VIEW: the north-star already shipped — proposed IS shipped. The
+       current-state drawer carries the what-changed narrative (historical axis). -->
+  <section class="shipped-view container mt-8">
+    <div class="card">
+      <h3>This surface is live</h3>
+      <p class="mt-4">The find-my-photos model shipped with the north-star rebuild. There is no speculative "proposed" version — this page reviews a shipped product. What it replaced (the old gallery model) and how the pipeline feeds it is in the current-state drawer.</p>
+    </div>
+  </section>
+
+  <script>
+    window.PROTO_PAGE = { id: 'find-my-photos' };
+  </script>
+  <script src="../proto-nav.js"></script>
+  <script src="../chat-widget.js" defer></script>
+  <script src="../proto-annotate.js" defer></script>
+</body>
+</html>
