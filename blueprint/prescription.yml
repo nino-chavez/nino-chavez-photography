@@ -1,0 +1,124 @@
+# prescription.yml — Blueprint MIDSTREAM Stage 2 (Prescription)
+#
+# Cycle 1: the #10 ingest rebuild. A midstream prescription names which existing
+# patterns to PRESERVE and which to REVISE, with an evidence cite per item
+# (docs/variant-selection.md §"Stage shapes per variant").
+#
+# The `items:` block below is the prescription-evidence-reviewer's gate surface
+# (each change carries what/why/impact/evidence/monetization_side, ordered by
+# impact descending). The preserved_patterns / revised_patterns blocks beneath it
+# carry the full engineering context. Ported from:
+#   .agent-os/specs/vision-extraction-identity-vnext/INGEST-REBUILD-10.md
+
+meta:
+  cycle: 1
+  name: "Ingest rebuild (#10) — unified structured ingest, direct-to-DB, no EXIF round-trip"
+  blast_radius: "New-album processing ONLY — the last system path still on the pre-rebuild pattern."
+  status: "Verified against main 2026-06-11 (NOT the stale 2026-06-08 HANDOFF): slice 1 DONE; slices 2-3 BUILT (scripts/ingest-album.ts exists, 2026-06-09); slice 4 (CUTOVER) is the real remaining work — the legacy enrich/sync/run-pipeline scripts + the players[] write + the EXIF round-trip are STILL LIVE, coexisting with the new runner (a no-bridge-rule violation, decisions/0004). Slice 5 (verify) GATED on a real local test album."
+  prototype_as_patch: "Building scripts/ingest-album.ts IS the Stage-4 prototype-as-patch — it shows the revision, not a new product."
+  source_spec: ".agent-os/specs/vision-extraction-identity-vnext/INGEST-REBUILD-10.md"
+
+# ── Actionable changes (impact-ordered, descending) ──────────────────────────
+items:
+  - what: "Kill the lossy EXIF round-trip; write typed columns directly to the DB in one pass."
+    why: "enrich writes AI metadata into each file's EXIF, then sync shells out to exiftool to read it back and INSERT — wasteful and lossy. The regex keyword parser is deleted."
+    impact: high
+    evidence: "INGEST-REBUILD-10.md §Why/§Kills; research/current-state/convergence-ledger.md #10; NORTH-STAR §9 (EXIF-keyword round-trip)."
+    monetization_side: operator
+  - what: "Write photo_jersey_sightings (relational, multi-player) instead of the dead players[] JSONB."
+    why: "The players[] write is the last legacy tendril that blocks the players-column drop, and sightings is the surface the find-my-photos pilot queries (find_photos_by_jersey)."
+    impact: high
+    evidence: "INGEST-REBUILD-10.md §Target/§Kills; convergence-ledger.md #5; research/observations/find-my-photos-demand.md."
+    monetization_side: operator
+  - what: "Make sport album-authoritative in the ingest: never emit/parse sport per-photo; the enforce_album_sport trigger sets it from albums.sport."
+    why: "A per-photo volleyball-biased prompt caused the measured 18-album sport mislabel corruption. The writer must not send sport_type."
+    impact: high
+    evidence: "INGEST-REBUILD-10.md §Why(b)/§Kills; convergence-ledger.md #1/#2; decisions/0002-know-vs-infer-domain-model.md."
+    monetization_side: operator
+  - what: "Replace the 3-script execSync orchestration with one resumable module (scripts/ingest-album.ts): upload + extract + embed + DB write + sightings, bounded concurrency, --dry-run, 429 backoff."
+    why: "The run-pipeline → enrich → sync → upload chain is brittle; reuse the proven backfill-vnext worker-pool engine in a single module."
+    impact: medium
+    evidence: "INGEST-REBUILD-10.md §Target/§Kills/§Slices.3; prescription preserved_patterns P4."
+    monetization_side: operator
+  - what: "Finalize ONE structured, taxonomy-driven, sport-aware extraction prompt; retire the two-bucket variants (BUCKET1_PROMPT / ENHANCED_AGENTIC)."
+    why: "The two-bucket prompt zoo drifts; one prompt + one taxonomy.ts prevents the enum-drift class of bug."
+    impact: medium
+    evidence: "INGEST-REBUILD-10.md §Kills; convergence-ledger.md #2/#10; NORTH-STAR §9 (5-prompt-zoo)."
+    monetization_side: operator
+  - what: "Reconcile the ingest entry point: ship scripts/ingest-album.ts ONLY if slice 4 deletes the path it replaces in the same slice (net entry-point count must not grow)."
+    why: "INGEST-REBUILD-10 proposes a new runner, but NORTH-STAR §0 LOCKED CONTRACTS forbids a third entry point. A replace-in-place honors both; a net-new one does not."
+    impact: medium
+    evidence: "INGEST-REBUILD-10.md §Slices.3 vs NORTH-STAR §0 (pipeline entry points); decisions/0004 (no-bridge convergence)."
+    monetization_side: operator
+  - what: "Per-field extraction confidence for a future review queue."
+    deferred: "Defer unless a review queue is actually built (INGEST-REBUILD-10 §Adds). Stamped extraction_version already enables surgical re-runs."
+    monetization_side: operator
+
+# ── PRESERVED PATTERNS — proven; lift-and-shift, do not rebuild ───────────────
+# (Context for the items above. NORTH-STAR principle 8.)
+preserved_patterns:
+  - id: P1
+    pattern: "Cloudflare Images album-scoped id cf_image_id='${albumKey}-${imageKey}' (hyphen) + UNIQUE(content_hash); 5409 'already exists' is an ERROR, never an alias."
+    where: "upload-local-to-cloudflare.ts."
+    evidence: "NORTH-STAR §0 (cf_image_id); INGEST-REBUILD-10 §Target step 2; memory [[project_album_pipeline]]."
+  - id: P2
+    pattern: "Album-authoritative sport: albums.sport + enforce_album_sport trigger; the prompt never guesses sport."
+    where: "albums.sport + trigger; database/seed/album-sports.json."
+    evidence: "NORTH-STAR §0/§2.2/§9; convergence-ledger.md #1/#2 (HIGH regression risk)."
+  - id: P3
+    pattern: "One embedText() seam (OpenRouter text-embedding-3-large@768) for write AND query."
+    where: "embeddings.ts."
+    evidence: "NORTH-STAR §0 (text embedding)/§9; memory [[photography-live-credentials]]."
+  - id: P4
+    pattern: "Worker-pool ingest engine: bounded concurrency, 429 backoff, resumable checkpoint, lenient-caption parse."
+    where: "backfill-vnext.ts."
+    evidence: "INGEST-REBUILD-10 §Reference; NORTH-STAR §2.8."
+  - id: P5
+    pattern: "Shred players[] → photo_jersey_sightings with dedup_key."
+    where: "backfill-jersey-sightings.ts."
+    evidence: "INGEST-REBUILD-10 §Target step 2; convergence-ledger.md #5 (2,272 sightings backfilled)."
+  - id: P6
+    pattern: "Taxonomy single-source PLAY_TYPES_BY_SPORT; sport-aware prompt constrains play_type to the album's sport."
+    where: "src/lib/ai/taxonomy.ts."
+    evidence: "NORTH-STAR §0 (taxonomy rule)/§9; INGEST-REBUILD-10 §Reference."
+  - id: P7
+    pattern: "extraction_version provenance ('<version>:<model>') — stamp every row; re-process only stale rows."
+    where: "photo_metadata.extraction_version (additive — DONE, slice 1)."
+    evidence: "NORTH-STAR §0/§2.4; INGEST-REBUILD-10 §Adds/§Slices.1."
+
+# ── REVISED PATTERNS — measured-wrong; rebuild (maps to items R1–R5) ──────────
+revised_patterns:
+  - id: R1
+    from: "Lossy EXIF round-trip (enrich-to-EXIF + sync-from-EXIF + exiftool)."
+    to: "Direct typed-column DB writes; the regex keyword parser is deleted."
+    removal_trigger: "Slice 4 cutover — delete enrich-local-photos.ts + sync-local-to-supabase.ts + EXIF code."
+  - id: R2
+    from: "Writes the dead photo_metadata.players[] JSONB + singular jersey_number."
+    to: "Writes photo_jersey_sightings (relational) via P5."
+    removal_trigger: "Slice 4 — DROP COLUMN players (MERGE-GATED; decisions/0004)."
+  - id: R3
+    from: "sport_type parsed from a Keyword regex during sync."
+    to: "Album-authoritative only (P2); the writer never sends sport_type."
+    removal_trigger: "Slice 2/3 — the extraction module never emits sport."
+  - id: R4
+    from: "Legacy two-bucket prompt (BUCKET1_PROMPT / ENHANCED_AGENTIC)."
+    to: "One structured, taxonomy-driven, sport-aware prompt."
+    removal_trigger: "Slice 2 — ship the single prompt; delete the bucket variants."
+  - id: R5
+    from: "3-script execSync orchestration."
+    to: "One resumable module (scripts/ingest-album.ts) — see items + OR1."
+    removal_trigger: "Slice 4 cutover."
+
+# ── SLICES (INGEST-REBUILD-10 §Slices) ───────────────────────────────────────
+slices:
+  - { n: 1, title: "Migration (additive): photo_metadata.extraction_version", status: done }
+  - { n: 2, title: "Extraction module: sport-aware structured prompt + extractOne()", status: likely-done, note: "folded into scripts/ingest-album.ts (2026-06-09) — verify it ships the single structured prompt and the bucket variants are gone (R4)" }
+  - { n: 3, title: "Ingest runner: scripts/ingest-album.ts (upload+extract+embed+DB write+sightings, resumable)", status: built, note: "runner exists (23KB, 2026-06-09); reprocess-in-place + collision-proof landed (recent commits). Confirm it writes sightings not players[] (R2)." }
+  - { n: 4, title: "Cutover: delete enrich-local-photos.ts + sync-local-to-supabase.ts + run-pipeline.ts + EXIF round-trip; DROP players (MERGE-GATED)", status: NOT-DONE, note: "THE remaining work. Verified 2026-06-11: all 3 legacy scripts still present; sync still writes players[] + uses exiftool round-trip. The new runner coexists with the bridge it replaces — violates the no-bridge rule (decisions/0004). This is the convergence slice." }
+  - { n: 5, title: "Verify: fresh test album end-to-end; idempotent re-run", status: blocked, blocked_on: "a real local test album — only the operator has one" }
+
+acceptance:
+  - "A new album processes via ONE command, writes directly to the DB (zero exiftool calls)."
+  - "Populates photo_metadata (album-correct sport via trigger) + photo_jersey_sightings; embeds captions."
+  - "Resumable / idempotent on re-run (reprocess-in-place — updates rows, never duplicates)."
+  - "The 3 legacy scripts + the EXIF round-trip are gone; the players column is droppable."

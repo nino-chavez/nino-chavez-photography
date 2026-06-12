@@ -1,0 +1,59 @@
+/* Blueprint Portal — Project Tokens Overlay
+ *
+ * This file is the consumer-editable seam over `shared.css`. Override design
+ * tokens, add project-specific component variants, and define any
+ * brand-specific chrome here. The cascade loads this file AFTER shared.css,
+ * so any `:root` override below wins over the default.
+ *
+ * Why this file exists: shared.css is canonical chrome — it must remain
+ * byte-identical to the template so `portal-chrome-canonical-reviewer` can
+ * mechanically detect drift. Project-specific styling belongs here so the
+ * canonical can be re-stamped (`stamp.mjs --mode=restamp-chrome --pattern=B`)
+ * without losing your overrides.
+ *
+ * Rule of thumb:
+ *   - Token override (color, spacing, font, radius) → :root block below
+ *   - New component (project-specific UI not in chrome) → component block below
+ *   - Variation on an existing chrome component (button hover color, badge
+ *     palette extension, etc.) → component-override block below
+ *   - Anything that should ship in the chrome for ALL Blueprint consumers →
+ *     upstream into template/portal/shared.css via a methodology PR, not here
+ *
+ * Examples (commented; uncomment + adapt for your project):
+ */
+
+:root {
+  /* Brand override — replace with your project palette */
+  /* --brand-50:  hsl(...);
+     --brand-100: hsl(...);
+     --brand-500: hsl(...);
+     --brand-600: hsl(...);
+     --brand-700: hsl(...);
+     --brand-900: hsl(...); */
+
+  /* Type override — replace with your project type stack */
+  /* --font-hero:    'YourHero', 'Impact', sans-serif;
+     --font-display: 'YourDisplay', ui-sans-serif, system-ui, sans-serif;
+     --font-body:    'YourBody', ui-sans-serif, system-ui, sans-serif; */
+
+  /* Surface override — replace if your brand is dark-mode-default or
+     uses a non-warm-neutral background system */
+  /* --bg:        hsl(...);
+     --surface-1: hsl(...);
+     --surface-2: hsl(...); */
+}
+
+/* ─────────────── project components ─────────────── *
+ * Net-new components specific to this initiative. If a component would be
+ * useful to every Blueprint consumer, upstream it into shared.css instead.
+ */
+
+/* (none yet) */
+
+/* ─────────────── component overrides ─────────────── *
+ * Variations on chrome components (button hover, badge color extensions,
+ * card border-radius bump). Use sparingly — the more you override, the
+ * more your portal visually diverges from peer Blueprint deploys.
+ */
+
+/* (none yet) */

@@ -1,0 +1,92 @@
+<!doctype html>
+<!--
+  Canonical wedge-page template (T1 from decisions/02-design-system.md § L4).
+
+  Copy this file into portal/pages/<wedge-id>.html when creating a new wedge
+  page. Substitute the {{PLACEHOLDER}} markers below; remove this comment.
+
+  ┌──────────────────────────── PLACEHOLDERS ────────────────────────────┐
+  │ {{PAGE_TITLE}}      — browser tab title, e.g. "Gap inventory"        │
+  │ {{WEDGE_ID}}        — manifest id from _meta/index.json#pages[]      │
+  │ {{PROPOSED_BODY}}   — main content for the proposed-view section     │
+  │ {{CURRENT_BODY}}    — main content for the current-view (shipped)    │
+  │                       section. Use the "single-state" variant by     │
+  │                       removing the entire .shipped-view section if   │
+  │                       there is no current state to compare against.  │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  Composition (per decisions/02-design-system.md § L4 T1):
+
+    M1 — Header brand strip      (the <header class="header"> block)
+
+    M2 — Compare-toggle root     (the data-compare-root + data-view attrs)
+         Contract: <body data-compare-root data-view="proposed|shipped|split">
+           - "proposed" (default): .proposed-view visible, .shipped-view hidden
+           - "shipped": .shipped-view visible, .proposed-view hidden
+           - "split": both visible side-by-side with ::before labels
+         Behavior fully owned by canonical chrome (shared.css lines ~514-543
+         + proto-nav.js). Pages declare the contract via the body attributes
+         + the two named sections; do NOT override the toggle CSS in
+         project-tokens.css.
+
+    M3 — Section meta-strip      (the <p class="meta-strip"> line in body)
+         Mono uppercase tracked-out label locating the page in the document
+         hierarchy. Use class="meta-strip", NEVER inline style="font-family...".
+
+    M4 — Cross-reference block   (forward-compat; place after main content)
+         Use .xref-block > .xref-label.{informs|derived-from} + .xref-link[]
+         when wedge body cross-references other docs in the portal.
+
+  Per-page styles: do NOT add an inline <style> block. Promote page-specific
+  declarations to portal/project-tokens.css "page-specific components"
+  section, named after the wedge id. See audit-gap 5 in
+  research/current-state/03-portal-surface-audit.md for the reason.
+
+  Cross-surface molecules (M7 wedge-label, terminal/code blocks, ASCII
+  diagrams) are already declared in portal/project-tokens.css — reuse them
+  by class name.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>{{PAGE_TITLE}} — Blueprint Redesign</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../project-tokens.css">
+</head>
+<body data-compare-root data-view="proposed">
+
+  <section class="proposed-view">
+    <header class="header">
+      <div class="container">
+        <a href="../index.html" class="logo">Blueprint<span class="logo-accent">Redesign</span></a>
+      </div>
+    </header>
+
+    <main class="container" style="padding-top: var(--space-12); padding-bottom: var(--space-12);">
+      {{PROPOSED_BODY}}
+    </main>
+  </section>
+
+  <section class="shipped-view container mt-8">
+    <div class="card">
+      {{CURRENT_BODY}}
+    </div>
+  </section>
+
+  <script>
+    window.PROTO_PAGE = { id: '{{WEDGE_ID}}' };
+  </script>
+  <script src="../proto-nav.js"></script>
+  <script src="../chat-widget.js" defer></script>
+  <script src="../proto-annotate.js" defer></script>
+  <script src="../theme-switcher.js" defer></script>
+</body>
+</html>
