@@ -15,6 +15,8 @@ The reviewers resolve every artifact with `path.join(targetDir, 'research/…' |
 
 Verified the same break on **rally-hq** (the canonical reference): its root-`blueprint.yml` + `blueprint/`-artifacts split breaks its reviewers too. This is not a photography-specific quirk; any consumer that keeps the initiative in a `blueprint/` subdir of a product repo hits it.
 
+**Update (2026-06-11, Stage 4):** it's worse — **different reviewers want different `--target`s.** The stage reviewers (pilot-lock / prescription-evidence / research-completeness) pass at `--target=<repo>/blueprint` (artifacts co-located with `blueprint.yml`). But `portal-pattern-b-conformance-reviewer` hardcodes the canonical portal path `blueprint/portal/` and so only passes at `--target=<repo-root>` (at `--target=blueprint` it sees the portal as `portal/` and BLOCKs "non-canonical path"). No single target satisfies both reviewer families today. A configurable initiative root would resolve all of them.
+
 **Proposed promotion**: give the reviewers a configurable initiative root — read it from the `blueprint.yml` location, or add an `artifacts_root` / `initiative_root` field the reviewers + the hook both honor — so the subdir convention works with both. Reconcile rally-hq at the same time.
 
 **References**:

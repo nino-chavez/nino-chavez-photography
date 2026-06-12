@@ -2,22 +2,24 @@
   "name": "Nino Chavez Photography Blueprint",
   "tagline": "Find-my-photos for a live volleyball action-sports gallery — a midstream Blueprint initiative",
   "slices": [
-    "example-slice"
+    "find-my-photos"
   ],
   "groups": [
-    { "id": "marketing", "label": "Marketing",  "color": "brand" },
-    { "id": "audience",  "label": "Audience",   "color": "accent" },
-    { "id": "operator",  "label": "Operator",   "color": "neutral" }
+    { "id": "journey",      "label": "The find-my-photos journey", "color": "brand" },
+    { "id": "architecture", "label": "Behind the scenes",          "color": "accent" }
   ],
   "pages": [
-    "example"
+    "albums",
+    "find-my-photos",
+    "download-share",
+    "ingest-architecture"
   ],
   "flows": [
     {
-      "id": "main-journey",
-      "label": "Main journey",
-      "summary": "Replace with your primary persona's end-to-end flow across pages.",
-      "pages": ["example"]
+      "id": "find-my-photos-journey",
+      "label": "Find my photos",
+      "summary": "The athlete-self-finding journey: discover the event → find by jersey number / color → download / share.",
+      "pages": ["albums", "find-my-photos", "download-share"]
     }
   ],
   "docs": {

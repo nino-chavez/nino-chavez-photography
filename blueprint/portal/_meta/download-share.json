@@ -1,0 +1,24 @@
+{
+  "id": "download-share",
+  "title": "Take your moments",
+  "group": "journey",
+  "slice": "find-my-photos",
+  "destination": "product",
+  "surface": "/favorites — heart a selection, then download (single, copy-link, or ZIP)",
+  "phase": "Shipped",
+  "route": "/pages/download-share.html",
+  "summary": "The deliver step is self-serve and free — take your photos, no sales, no gate.",
+  "strategy": {
+    "decision": "Deliver is **self-serve and free**: heart photos into a selection (My Favorites), then download — single photo, copy-link, or the whole selection as a ZIP. No sales, no purchase gate.",
+    "why": "Monetization side is operator / none (`decisions/0003`) — the athlete takes their moments; the operator doesn't sell them. The favorites → ZIP worker already ships (`cloudflare-worker/album-zip`).",
+    "shipped": "Live at `/favorites` (`src/routes/favorites`): a device-local selection, per-photo download + copy-link, and a batch ZIP via the album-zip Cloudflare Worker. The empty state coaches the heart-to-collect mechanism.",
+    "gap": "The selection is device-local (localStorage); a cross-device \"my selection\" would need an account, which the no-accounts product model deliberately avoids.",
+    "question": "Is device-local selection enough, or do athletes expect their selection to follow them across devices?"
+  },
+  "currentState": {
+    "route": "/favorites",
+    "summary": "localStorage-backed 'My Favorites' selection; per-photo download + copy-link; batch ZIP via the album-zip Worker.",
+    "sourceFiles": ["src/routes/favorites/+page.svelte", "cloudflare-worker/album-zip"],
+    "annotation": "No sales surface anywhere in the flow — find-and-download is the whole loop, never a teaser for a store."
+  }
+}

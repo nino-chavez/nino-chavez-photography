@@ -1,0 +1,24 @@
+{
+  "id": "albums",
+  "title": "Find your event",
+  "group": "journey",
+  "slice": "find-my-photos",
+  "destination": "product",
+  "surface": "/albums — 263 event albums, sport / year filters, team-or-event search",
+  "phase": "Shipped",
+  "route": "/pages/albums.html",
+  "summary": "Discovery is event-first — start from the game you were in, not a 20K-photo firehose.",
+  "strategy": {
+    "decision": "Discovery is **event-first**: browse 263 albums filtered by sport and year, searchable by team or event. The album is the unit, not a flat photo stream.",
+    "why": "The product model (`decisions/0003`) is discover → find → download/share, and Albums leads the IA (`research/current-state/convergence-ledger.md` §IA re-architecture). An athlete starts from \"the game I played in.\"",
+    "shipped": "Live at `/albums` (`src/routes/albums`): 263 albums, Latest-Photos sort, All-Sports / All-years filters, \"Search team or event.\" Each card shows event, sport, photo count, and a quality-range badge.",
+    "gap": "Discovery is strong; the bridge from \"my event\" → \"my photos in it\" (jersey self-search within an album) is the find step — see the find-my-photos page.",
+    "question": "Do athletes arrive knowing their event/date, or do they need a \"find me across all events\" entry first? Needs the anchor-event walkthrough."
+  },
+  "currentState": {
+    "route": "/albums",
+    "summary": "263 event albums; sport/year filters; team-or-event search; quality-range badges per card.",
+    "sourceFiles": ["src/routes/albums/+page.svelte", "src/routes/albums/+page.server.ts"],
+    "annotation": "Sport is album-authoritative (`albums.sport` + the enforce_album_sport trigger). A new album needs its row before the #10 ingest runs, or its photos get sport_type=NULL."
+  }
+}
