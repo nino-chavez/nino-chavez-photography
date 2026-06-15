@@ -18,7 +18,7 @@
  *     --out /tmp/stream-map.json [--dry-run]
  */
 import { config } from 'dotenv';
-import { resolve, basename, join } from 'path';
+import { resolve, join } from 'path';
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'fs';
 
 config({ path: resolve(process.cwd(), '.env.local') });
