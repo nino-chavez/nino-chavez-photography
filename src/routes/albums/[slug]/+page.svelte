@@ -47,6 +47,7 @@
 	// Video player state
 	let activeVideo = $state<Video | null>(null);
 	let videoPlayerOpen = $state(false);
+	let activeVideoIndex = $state(0);
 
 	let hasVideos = $derived(data.videos.length > 0);
 	let hasPhotos = $derived(data.photos.length > 0);
@@ -144,6 +145,8 @@
 	}
 
 	function handleVideoClick(video: Video) {
+		const i = data.videos.findIndex((v) => v.cf_stream_id === video.cf_stream_id);
+		activeVideoIndex = i < 0 ? 0 : i;
 		activeVideo = video;
 		videoPlayerOpen = true;
 	}
@@ -388,7 +391,8 @@
 <!-- Video Player -->
 {#if activeVideo}
 	<VideoPlayer
-		video={activeVideo}
+		videos={data.videos}
+		bind:index={activeVideoIndex}
 		bind:open={videoPlayerOpen}
 		onclose={() => { activeVideo = null; }}
 	/>
