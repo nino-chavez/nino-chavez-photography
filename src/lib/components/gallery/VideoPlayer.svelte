@@ -143,8 +143,10 @@
 			</svg>
 		</button>
 
-		<!-- Video container -->
-		<div class="relative w-full max-w-5xl mx-4 aspect-video rounded-lg overflow-hidden">
+		<!-- Video container: fill the viewport so the Stream player scales the clip
+		     to fit — portrait reels play near-full-height, landscape at full width
+		     (no fixed 16:9 box shrinking vertical videos). -->
+		<div class="relative mx-4 h-[88vh] w-full max-w-6xl overflow-hidden rounded-lg">
 			<iframe
 				src={streamUrl}
 				class="absolute inset-0 w-full h-full"
