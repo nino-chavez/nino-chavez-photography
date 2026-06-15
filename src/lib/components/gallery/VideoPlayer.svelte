@@ -21,6 +21,11 @@
 	let streamUrl = $derived(
 		`https://customer-${CF_STREAM_SUBDOMAIN}.cloudflarestream.com/${video.cf_stream_id}/iframe`
 	);
+	// MP4 download (enabled per-video at ingest); the /downloads endpoint serves
+	// the file with attachment disposition.
+	let downloadUrl = $derived(
+		`https://customer-${CF_STREAM_SUBDOMAIN}.cloudflarestream.com/${video.cf_stream_id}/downloads/default.mp4`
+	);
 
 	function handleClose() {
 		open = false;
@@ -52,6 +57,22 @@
 		aria-label={video.title || 'Video player'}
 		aria-modal="true"
 	>
+		<!-- Download button -->
+		<a
+			href={downloadUrl}
+			download={`${video.title || 'video'}`}
+			target="_blank"
+			rel="noopener"
+			onclick={(e) => e.stopPropagation()}
+			class="absolute top-4 right-16 z-10 w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+			aria-label="Download video"
+			title="Download video"
+		>
+			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" />
+			</svg>
+		</a>
+
 		<!-- Close button -->
 		<button
 			type="button"

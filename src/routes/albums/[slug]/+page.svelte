@@ -51,6 +51,13 @@
 	let hasVideos = $derived(data.videos.length > 0);
 	let hasPhotos = $derived(data.photos.length > 0);
 
+	// Section nav: with many videos the photos sit far down the page, so offer a
+	// jump bar + a collapsible videos section to reach photos in one click.
+	let videosCollapsed = $state(false);
+	function scrollToSection(id: string) {
+		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
 	// Simple search (client-side filtering of current page)
 	let searchQuery = $state('');
 
@@ -280,24 +287,54 @@
 			</div>
 		{/if}
 
+		<!-- Section jump bar (only when both videos and photos exist) -->
+		{#if hasVideos && hasPhotos}
+			<div class="sticky top-0 z-20 -mx-4 mb-4 flex items-center gap-2 bg-charcoal-900/85 px-4 py-2 text-xs backdrop-blur">
+				<button
+					type="button"
+					onclick={() => scrollToSection('videos-section')}
+					class="rounded-full bg-charcoal-800 px-3 py-1 text-charcoal-200 transition-colors hover:bg-charcoal-700"
+				>
+					Videos ({data.videos.length})
+				</button>
+				<button
+					type="button"
+					onclick={() => scrollToSection('photos-section')}
+					class="rounded-full bg-charcoal-800 px-3 py-1 text-charcoal-200 transition-colors hover:bg-charcoal-700"
+				>
+					Photos ({data.totalCount.toLocaleString()})
+				</button>
+				<button
+					type="button"
+					onclick={() => (videosCollapsed = !videosCollapsed)}
+					class="ml-auto rounded-full px-3 py-1 text-charcoal-300 transition-colors hover:text-white"
+				>
+					{videosCollapsed ? 'Show' : 'Hide'} videos
+				</button>
+			</div>
+		{/if}
+
 		<!-- Video Grid -->
 		{#if hasVideos}
-			<div class="mb-8">
+			<div id="videos-section" class="mb-8 scroll-mt-16">
 				{#if hasPhotos}
 					<Typography variant="caption" class="text-charcoal-400 text-xs uppercase tracking-wider mb-4 block">
 						Videos
 					</Typography>
 				{/if}
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-					{#each data.videos as video, index}
-						<VideoCard {video} {index} onclick={handleVideoClick} />
-					{/each}
-				</div>
+				{#if !videosCollapsed}
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+						{#each data.videos as video, index}
+							<VideoCard {video} {index} onclick={handleVideoClick} />
+						{/each}
+					</div>
+				{/if}
 			</div>
 		{/if}
 
 		<!-- Photo Grid -->
 		{#if displayPhotos.length > 0}
+			<div id="photos-section" class="scroll-mt-16"></div>
 			{#if hasVideos}
 				<Typography variant="caption" class="text-charcoal-400 text-xs uppercase tracking-wider mb-4 block">
 					Photos
