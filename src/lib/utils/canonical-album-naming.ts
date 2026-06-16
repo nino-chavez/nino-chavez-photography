@@ -141,7 +141,7 @@ export function generateCanonicalNameFromAlbum(
 	}
 
 	if (latest) {
-		const canonicalDate = formatCanonicalDate(earliest, latest);
+		const canonicalDate = formatCanonicalDate(earliest, latest, dateResult.precision);
 		if (canonicalDate) {
 			parts.push(canonicalDate);
 			isMultiDay = earliest !== latest;
@@ -187,6 +187,7 @@ function extractDateRange(album: AlbumData): {
 	earliest: string | undefined;
 	latest: string | undefined;
 	source: 'exif' | 'album_field' | 'inferred' | 'fallback';
+	precision: 'day' | 'year';
 } {
 	// Priority 1: Extract from photo EXIF data (most reliable)
 	if (album.photos && album.photos.length > 0) {
@@ -202,6 +203,7 @@ function extractDateRange(album: AlbumData): {
 				earliest: exifDates[0],
 				latest: exifDates[exifDates.length - 1],
 				source: 'exif',
+				precision: 'day',
 			};
 		}
 	}
@@ -212,16 +214,19 @@ function extractDateRange(album: AlbumData): {
 			earliest: album.dateStart,
 			latest: album.dateEnd || album.dateStart,
 			source: 'album_field',
+			precision: 'day',
 		};
 	}
 
-	// Priority 3: Try to infer from existing name (low confidence)
+	// Priority 3: Try to infer from existing name (low confidence). A year-only
+	// match carries precision: 'year' so we don't fabricate a precise day.
 	const inferredDate = inferDateFromName(album.name);
 	if (inferredDate) {
 		return {
-			earliest: inferredDate,
-			latest: inferredDate,
+			earliest: inferredDate.date,
+			latest: inferredDate.date,
 			source: 'inferred',
+			precision: inferredDate.precision,
 		};
 	}
 
@@ -230,6 +235,7 @@ function extractDateRange(album: AlbumData): {
 		earliest: undefined,
 		latest: undefined,
 		source: 'fallback',
+		precision: 'day',
 	};
 }
 
@@ -260,23 +266,25 @@ function normalizeExifDate(exifDate: string): string | undefined {
  * Try to infer date from existing album name (low confidence)
  * Looks for patterns like: 2025, 09-12-2022, 2022-09-12
  */
-function inferDateFromName(name: string): string | undefined {
+function inferDateFromName(name: string): { date: string; precision: 'day' | 'year' } | undefined {
 	// Try ISO date: YYYY-MM-DD
 	const isoMatch = name.match(/(\d{4})-(\d{2})-(\d{2})/);
 	if (isoMatch) {
-		return isoMatch[0];
+		return { date: isoMatch[0], precision: 'day' };
 	}
 
 	// Try US date: MM-DD-YYYY
 	const usMatch = name.match(/(\d{2})-(\d{2})-(\d{4})/);
 	if (usMatch) {
-		return `${usMatch[3]}-${usMatch[1]}-${usMatch[2]}`;
+		return { date: `${usMatch[3]}-${usMatch[1]}-${usMatch[2]}`, precision: 'day' };
 	}
 
-	// Try year only: YYYY (but only if 2000-2099)
+	// Try year only: YYYY (but only if 2000-2099). We know the year but NOT the
+	// month/day, so carry precision: 'year' — the formatter renders just "2025"
+	// instead of fabricating a precise "Jan 1" (the old placeholder bug).
 	const yearMatch = name.match(/\b(20\d{2})\b/);
 	if (yearMatch) {
-		return `${yearMatch[1]}-01-01`; // Use January 1st as placeholder
+		return { date: `${yearMatch[1]}-01-01`, precision: 'year' };
 	}
 
 	return undefined;
@@ -502,13 +510,26 @@ function cleanEventName(event: string, sport?: string): string {
  * Format date for canonical album names
  * Single-day: "May 30"
  * Multi-day: "May 2024"
+ * Year-only precision (date inferred from a bare year, month/day unknown): "2024"
  */
-function formatCanonicalDate(earliest: string | undefined, latest: string | undefined): string {
+function formatCanonicalDate(
+	earliest: string | undefined,
+	latest: string | undefined,
+	precision: 'day' | 'year' = 'day'
+): string {
 	if (!latest) return '';
 
 	// Parse as UTC to avoid timezone shifts
 	const [year, month, day] = latest.split('-').map(Number);
 	const date = new Date(Date.UTC(year, month - 1, day));
+
+	const yearNum = date.getUTCFullYear();
+
+	// Year-only signal: we know the year but not the month/day. Render just the
+	// year rather than fabricating a precise "Jan 1".
+	if (precision === 'year') {
+		return `${yearNum}`;
+	}
 
 	const monthNames = [
 		'Jan',
@@ -526,7 +547,6 @@ function formatCanonicalDate(earliest: string | undefined, latest: string | unde
 	];
 	const monthName = monthNames[date.getUTCMonth()];
 	const dayNum = date.getUTCDate();
-	const yearNum = date.getUTCFullYear();
 
 	// Single day event
 	if (earliest === latest) {
