@@ -6,7 +6,9 @@ import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
-	setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+	// Always fresh: album content changes (new/re-tagged photos & videos, settings)
+	// must show immediately. stale-while-revalidate was serving ~15-min-stale pages.
+	setHeaders({ 'cache-control': 'no-cache' });
 
 	const { slug } = params;
 

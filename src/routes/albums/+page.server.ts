@@ -61,7 +61,8 @@ interface AlbumMetadata {
 type SortOption = 'name' | 'date' | 'count';
 
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
-	setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+	// Always fresh so newly-added albums / cover changes show immediately.
+	setHeaders({ 'cache-control': 'no-cache' });
 
 	// Event-discovery mode: the dominant job is "find the album for the event I know Nino shot."
 	// Discover by free-text (album name = team/event), sport, and season/year — server-side across
