@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { FolderOpen, ChevronRight } from 'lucide-svelte';
@@ -8,7 +9,7 @@
 	import VideoCard from '$lib/components/gallery/VideoCard.svelte';
 	import VideoPlayer from '$lib/components/gallery/VideoPlayer.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
-	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import LoadMoreButton from '$lib/components/ui/LoadMoreButton.svelte';
 	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
@@ -22,27 +23,17 @@
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
 
-	// Cross-page lightbox accumulation. `lightboxPhotos` grows beyond the
-	// current server page as the user navigates past its boundary; the lightbox
-	// reads from this list (when not searching) so navigation flows across pages.
-	let lightboxPhotos = $state(data.photos);
-	let loadedThroughPage = $state(data.currentPage);
+	// One growing photo list feeds the grid AND the lightbox. The first page is
+	// server-rendered; "Load more" appends each subsequent page client-side, so
+	// the video grid above never re-renders and the lightbox walks past page
+	// boundaries without a navigation. (The API paginates at the same size as the
+	// server's initial fetch, so page N is a clean continuation.)
+	// Seed once from the server page — this is a mutable snapshot, not a mirror of
+	// `data.photos`, so untrack makes the "initial value only" intent explicit.
+	let loadedPhotos = $state(untrack(() => data.photos));
+	let nextPage = $state(2);
 	let loadingMore = $state(false);
-
-	// Track the last server page we synced from so the reset $effect fires ONLY
-	// when the page actually changes (e.g. user paginates / lands via ?page=),
-	// not on every reactive tick — which would wipe the accumulated list.
-	let lastPage = data.currentPage;
-	$effect(() => {
-		if (data.currentPage !== lastPage) {
-			lastPage = data.currentPage;
-			lightboxPhotos = data.photos;
-			loadedThroughPage = data.currentPage;
-		}
-	});
-
-	// Index of the first photo on the current server page within the album.
-	const indexOffset = $derived((data.currentPage - 1) * data.pageSize);
+	let loadingAll = $state(false);
 
 	// Video player state
 	let activeVideo = $state<Video | null>(null);
@@ -59,32 +50,25 @@
 		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
-	// Simple search (client-side filtering of current page)
+	// Client-side search filters the full loaded set. When a query goes active we
+	// pull any not-yet-loaded pages first (see $effect below), so search always
+	// covers the whole album rather than just the first page.
 	let searchQuery = $state('');
 
-	// Filter photos by search (client-side for current page only)
 	let displayPhotos = $derived.by(() => {
-		if (!searchQuery.trim()) return data.photos;
+		if (!searchQuery.trim()) return loadedPhotos;
 
 		const query = searchQuery.toLowerCase();
-		return data.photos.filter((photo) =>
+		return loadedPhotos.filter((photo) =>
 			photo.title?.toLowerCase().includes(query) ||
 			photo.caption?.toLowerCase().includes(query) ||
 			photo.image_key?.toLowerCase().includes(query)
 		);
 	});
 
-	// The lightbox's photo source. While searching, stay page-local (search
-	// filters only the current page). When NOT searching, use the accumulated
-	// cross-page list. When not searching, displayPhotos === data.photos ===
-	// lightboxPhotos[0..pageSize], so the click-to-open index maps correctly.
-	const lightboxSource = $derived(searchQuery.trim() ? displayPhotos : lightboxPhotos);
-
-	// Only enable cross-page loading when not searching and there are more
-	// album photos beyond what we've accumulated.
-	const hasMore = $derived(
-		!searchQuery.trim() && indexOffset + lightboxPhotos.length < data.totalCount
-	);
+	// More album photos exist beyond what's been loaded.
+	const hasMore = $derived(loadedPhotos.length < data.totalCount);
+	const remaining = $derived(data.totalCount - loadedPhotos.length);
 
 	function handlePhotoClick(photo: Photo) {
 		// Find the index of the clicked photo in displayPhotos
@@ -100,48 +84,71 @@
 		selectedPhotoIndex = newIndex;
 	}
 
-	// Fetch the next album page and append it to the accumulated list so the
-	// lightbox can advance into it without closing.
-	async function loadNextPage() {
-		if (loadingMore) return;
+	// Fetch one album page in order and append it to the loaded list. Returns the
+	// fetched photos (empty on failure) so loadAllRemaining can drain the album.
+	async function fetchPage(page: number): Promise<Photo[]> {
+		const res = await fetch(
+			`${base}/api/album-photos?albumKey=${encodeURIComponent(data.albumKey)}&page=${page}`
+		);
+		if (!res.ok) return [];
+		const { photos } = (await res.json()) as { photos: Photo[] };
+		return photos ?? [];
+	}
+
+	// "Load more" — append the next page in place. The lightbox also calls this at
+	// its boundary so it can advance into the next page without closing.
+	async function loadMore() {
+		if (loadingMore || !hasMore) return;
 		loadingMore = true;
 		try {
-			const nextPage = loadedThroughPage + 1;
-			const res = await fetch(
-				`${base}/api/album-photos?albumKey=${encodeURIComponent(data.albumKey)}&page=${nextPage}`
-			);
-			if (!res.ok) return;
-
-			const { photos } = (await res.json()) as { photos: Photo[] };
-			if (photos && photos.length > 0) {
-				lightboxPhotos = [...lightboxPhotos, ...photos];
-				loadedThroughPage = nextPage;
+			const photos = await fetchPage(nextPage);
+			if (photos.length > 0) {
+				loadedPhotos = [...loadedPhotos, ...photos];
+				nextPage += 1;
 			}
 		} catch (err) {
-			console.error('[album] loadNextPage failed', err);
+			console.error('[album] loadMore failed', err);
 		} finally {
 			loadingMore = false;
 		}
 	}
 
-	// Contextual close: land the user on the server page that holds the
-	// last-viewed photo, not the page they opened the lightbox from.
-	function handleLightboxClose() {
-		lightboxOpen = false;
-
-		// Searching stays page-local — no cross-page navigation on close.
-		if (searchQuery.trim()) return;
-
-		const globalIndex = indexOffset + selectedPhotoIndex;
-		const targetPage = Math.floor(globalIndex / data.pageSize) + 1;
-
-		if (targetPage !== data.currentPage) {
-			goto(`${base}/albums/${data.slug}?page=${targetPage}`);
+	// Pull every remaining page so a search covers the whole album, not just the
+	// pages already loaded. Albums top out in the low hundreds, so this is a few
+	// requests at most.
+	async function loadAllRemaining() {
+		if (loadingAll || !hasMore) return;
+		loadingAll = true;
+		try {
+			let page = nextPage;
+			const acc: Photo[] = [];
+			while (loadedPhotos.length + acc.length < data.totalCount) {
+				const photos = await fetchPage(page);
+				if (photos.length === 0) break;
+				acc.push(...photos);
+				page += 1;
+			}
+			if (acc.length > 0) {
+				loadedPhotos = [...loadedPhotos, ...acc];
+				nextPage = page;
+			}
+		} catch (err) {
+			console.error('[album] loadAllRemaining failed', err);
+		} finally {
+			loadingAll = false;
 		}
 	}
 
-	function handlePageChange(page: number) {
-		goto(`${base}/albums/${data.slug}?page=${page}`);
+	// When a search goes active, make sure the whole album is loaded so the filter
+	// can't silently miss matches on not-yet-loaded pages.
+	$effect(() => {
+		if (searchQuery.trim() && hasMore && !loadingAll) {
+			void loadAllRemaining();
+		}
+	});
+
+	function handleLightboxClose() {
+		lightboxOpen = false;
 	}
 
 	function handleVideoClick(video: Video) {
@@ -282,10 +289,14 @@
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
 		<!-- Search results indicator -->
-		{#if searchQuery && displayPhotos.length > 0}
+		{#if searchQuery.trim()}
 			<div class="mb-4">
 				<Typography variant="caption" class="text-charcoal-400 text-xs">
-					{displayPhotos.length.toLocaleString()} {displayPhotos.length === 1 ? 'photo' : 'photos'} found
+					{#if loadingAll}
+						Loading all {data.totalCount.toLocaleString()} photos to search…
+					{:else}
+						{displayPhotos.length.toLocaleString()} {displayPhotos.length === 1 ? 'photo' : 'photos'} found
+					{/if}
 				</Typography>
 			</div>
 		{/if}
@@ -327,7 +338,7 @@
 				{/if}
 				{#if !videosCollapsed}
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-						{#each data.videos as video, index}
+						{#each data.videos as video, index (video.cf_stream_id)}
 							<VideoCard {video} {index} onclick={handleVideoClick} />
 						{/each}
 					</div>
@@ -344,20 +355,24 @@
 				</Typography>
 			{/if}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-				{#each displayPhotos as photo, index}
+				{#each displayPhotos as photo, index (photo.image_key)}
 					<PhotoCard {photo} {index} onclick={handlePhotoClick} priority={index < 4} />
 				{/each}
 			</div>
 
-			<!-- Pagination -->
-			<div class="mt-8">
-				<Pagination
-					currentPage={data.currentPage}
-					totalCount={data.totalCount}
-					pageSize={data.pageSize}
-					onPageChange={handlePageChange}
-				/>
-			</div>
+			<!-- Load more — appends in place; videos above never re-render. Hidden
+			     during search since the $effect loads the whole album to filter. -->
+			{#if hasMore && !searchQuery.trim()}
+				<div class="mt-8">
+					<LoadMoreButton
+						hasMore={hasMore}
+						remaining={remaining}
+						batchSize={48}
+						loading={loadingMore}
+						onLoadMore={loadMore}
+					/>
+				</div>
+			{/if}
 		{:else if !hasVideos}
 			<!-- Empty State (only show if no videos either) -->
 				<div style="animation: fade-in 0.3s ease-out forwards">
@@ -373,19 +388,20 @@
 	</div>
 </div>
 
-<!-- Lightbox (same component as explore page; cross-page nav when not searching) -->
+<!-- Lightbox (same component as explore page; walks the full loaded list and
+     pulls the next page at its boundary when not searching) -->
 <Lightbox
 	bind:open={lightboxOpen}
-	photo={lightboxSource[selectedPhotoIndex] || null}
-	photos={lightboxSource}
+	photo={displayPhotos[selectedPhotoIndex] || null}
+	photos={displayPhotos}
 	currentIndex={selectedPhotoIndex}
 	onClose={handleLightboxClose}
 	onNavigate={handleLightboxNavigate}
-	hasMore={hasMore}
-	onLoadMore={loadNextPage}
+	hasMore={searchQuery.trim() ? false : hasMore}
+	onLoadMore={loadMore}
 	loadingMore={loadingMore}
 	totalCount={searchQuery.trim() ? undefined : data.totalCount}
-	indexOffset={searchQuery.trim() ? 0 : indexOffset}
+	indexOffset={0}
 />
 
 <!-- Video Player -->
