@@ -5,7 +5,15 @@
 	import { createAlbumSlug } from '$lib/utils';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
-	import { Camera, Trophy, Calendar } from 'lucide-svelte';
+	import { Camera, Trophy, Calendar, Search, ArrowRight } from 'lucide-svelte';
+
+	/** "Jun 13, 2026" from an ISO timestamp; empty string if absent/invalid (no fake dates). */
+	function formatEventDate(iso: string | null): string {
+		if (!iso) return '';
+		const d = new Date(iso);
+		if (Number.isNaN(d.getTime())) return '';
+		return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+	}
 
 	interface Props {
 		data: PageData;
@@ -57,32 +65,110 @@
 	<link rel="preload" as="image" href="{base}/images/hero/hero-1-desktop.webp" fetchpriority="high" media="(min-width: 1024px)" />
 </svelte:head>
 
-<!-- Premium Hero Section with rotating images -->
+<!-- Compact hero: names the work + promotes search (the find-my-photos entry) -->
 <PremiumHero
+	compact
 	images={heroImages}
 	staticHeroIndex={data.staticHeroIndex ?? 0}
-	title="SPORTS PHOTOGRAPHY"
-	subtitle="INTENSITY • DETERMINATION • TRIUMPH"
-/>
+	title="VOLLEYBALL EVENT GALLERIES"
+	subtitle=""
+>
+	<div class="w-full max-w-md">
+		<p class="text-base text-charcoal-300 mb-4 normal-case tracking-normal font-normal">
+			Find your photos from a recent event — search by event, team, or your name.
+		</p>
+		<form role="search" method="get" action="{base}/explore" class="flex flex-col sm:flex-row gap-2">
+			<label class="relative flex-1">
+				<span class="sr-only">Search events, teams, or player names</span>
+				<Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400 pointer-events-none" aria-hidden="true" />
+				<input
+					type="search"
+					name="q"
+					placeholder="Find your event, team, or name…"
+					autocomplete="off"
+					class="w-full h-12 pl-10 pr-4 rounded-lg bg-charcoal-900 border border-charcoal-700 text-white
+					       placeholder:text-charcoal-500 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+				/>
+			</label>
+			<button
+				type="submit"
+				class="h-12 px-6 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-colors shrink-0"
+			>
+				Search
+			</button>
+		</form>
+		<div class="mt-3">
+			<a href="{base}/albums" class="text-sm text-charcoal-400 hover:text-gold-500 transition-colors">
+				Or browse all events →
+			</a>
+		</div>
+	</div>
+</PremiumHero>
 
 <!-- Content Sections Below Hero -->
 <!-- PERFORMANCE: Using CSS animation instead of svelte-motion for better render performance -->
 <div class="relative z-10 bg-charcoal-950">
-	<!-- Featured Content Section -->
+	<!-- Recent Events: the find-my-photos priority — real galleries, newest first, above the fold -->
+	{#if data.recentAlbums && data.recentAlbums.length > 0}
+		<section aria-label="Recent events" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 lg:pt-12">
+			<div class="flex items-end justify-between mb-6">
+				<h2 class="text-2xl lg:text-3xl font-bold text-white">Recent events</h2>
+				<a href="{base}/albums" class="text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors">
+					View all →
+				</a>
+			</div>
+			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+				{#each data.recentAlbums as album}
+					{@const date = formatEventDate(album.latestPhotoDate)}
+					<a
+						href="{base}/albums/{createAlbumSlug(album.albumName, album.albumKey)}"
+						data-sveltekit-preload="hover"
+						class="group block"
+					>
+						<div class="aspect-[4/3] relative overflow-hidden rounded-lg bg-charcoal-800 border border-charcoal-800 group-hover:border-gold-500/50 transition-colors">
+							{#if album.coverImageUrl}
+								<img
+									src={album.coverImageUrl}
+									alt={album.albumName}
+									width="400"
+									height="300"
+									loading="lazy"
+									decoding="async"
+									class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+								/>
+							{:else}
+								<div class="w-full h-full flex items-center justify-center">
+									<Camera class="w-8 h-8 text-charcoal-600" />
+								</div>
+							{/if}
+						</div>
+						<h3 class="mt-2 text-sm font-semibold text-white group-hover:text-gold-500 transition-colors truncate">
+							{album.albumName}
+						</h3>
+						<p class="text-xs text-charcoal-400">
+							{#if date}{date} · {/if}{album.photoCount} photos
+						</p>
+					</a>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- Curated Content Section -->
 	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-fade-in-delayed">
 			<div class="text-center mb-12">
 				<h2 class="text-2xl lg:text-3xl font-bold text-white mb-4">
-					Featured Albums
+					Curated picks
 				</h2>
 				<p class="text-lg text-charcoal-300 max-w-2xl mx-auto leading-relaxed">
-					Discover our latest events, most comprehensive collections, and highest quality photography.
+					Hand-picked collections — the most emotionally compelling moments and peak-action frames across every event.
 				</p>
 			</div>
 
-			<!-- Featured Album Cards -->
-			{#if data.featuredAlbums && data.featuredAlbums.length > 0}
+			<!-- Curated collection cards (recent events live in their own row above) -->
+			{#if data.featuredAlbums && data.featuredAlbums.filter((a) => a.type !== 'recent').length > 0}
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-					{#each data.featuredAlbums as featuredAlbum}
+					{#each data.featuredAlbums.filter((a) => a.type !== 'recent') as featuredAlbum}
 						{@const albumLink = featuredAlbum.album.isVirtual
 							? getVirtualAlbumLink(featuredAlbum.type)
 							: `${base}/albums/${createAlbumSlug(featuredAlbum.album.albumName, featuredAlbum.album.albumKey)}`
@@ -217,6 +303,27 @@
 				</div>
 			{/if}
 		</section>
+
+	<!-- Booking path: lower slot — attendees win the fold, organizers get a real CTA -->
+	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+		<div class="rounded-2xl border border-charcoal-800 bg-gradient-to-br from-charcoal-900 to-charcoal-950 p-8 lg:p-12
+		            flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+			<div>
+				<h2 class="text-2xl lg:text-3xl font-bold text-white mb-2">Shooting an event?</h2>
+				<p class="text-charcoal-300 max-w-xl leading-relaxed">
+					Tournament, league, or club — full-coverage action galleries your athletes can find themselves in.
+				</p>
+			</div>
+			<a
+				href="{base}/about"
+				class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold
+				       rounded-lg transition-colors shrink-0 self-start lg:self-auto"
+			>
+				Book a shoot
+				<ArrowRight class="w-4 h-4" />
+			</a>
+		</div>
+	</section>
 </div>
 
 <style>

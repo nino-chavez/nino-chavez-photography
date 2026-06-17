@@ -13,6 +13,7 @@ const HERO_CACHE_DURATION_MS = 5 * 60 * 1000;
 interface HeroCache {
   balancedPhotos: Record<string, unknown>[];
   featuredAlbums: Awaited<ReturnType<typeof fetchFeaturedAlbums>>;
+  recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>;
   timestamp: number;
 }
 let heroCache: HeroCache | null = null;
@@ -26,16 +27,17 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     const now = Date.now();
 
     if (!heroCache || now - heroCache.timestamp > HERO_CACHE_DURATION_MS) {
-      const [balancedPhotos, featuredAlbums] = await Promise.all([
+      const [balancedPhotos, featuredAlbums, recentAlbums] = await Promise.all([
         fetchHeroCandidates(),
-        fetchFeaturedAlbums()
+        fetchFeaturedAlbums(),
+        fetchRecentAlbums()
       ]);
-      heroCache = { balancedPhotos, featuredAlbums, timestamp: now };
+      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, timestamp: now };
     }
 
     const pool = heroCache.balancedPhotos;
     if (pool.length === 0) {
-      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, staticHeroIndex: 0 };
+      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, staticHeroIndex: 0 };
     }
     const pinIdx = Math.floor(Date.now() / 3_600_000) % pool.length;
     const pinned = pool[pinIdx];
@@ -45,10 +47,10 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     );
     const heroCandidates = [pinned, ...rest].map(transformPhotoRow);
 
-    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, staticHeroIndex: 0 };
+    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, staticHeroIndex: 0 };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
-    return { heroCandidates: [], featuredAlbums: [] };
+    return { heroCandidates: [], featuredAlbums: [], recentAlbums: [] };
   }
 };
 
@@ -185,6 +187,50 @@ async function fetchFeaturedAlbums() {
     return featuredAlbums;
   } catch (err) {
     console.error('[Homepage] Error fetching featured albums:', err);
+    return [];
+  }
+}
+
+/**
+ * Recent events for the homepage above-the-fold row — real galleries, newest first.
+ * Mirrors fetchFeaturedAlbums' unlisted exclusion (the detail route 404s unlisted albums).
+ * Returns event name + date + photo count + cover; the page formats date/count for display.
+ */
+async function fetchRecentAlbums(limit = 6) {
+  try {
+    const { data: unlisted } = await supabaseServer
+      .from('album_settings')
+      .select('album_key')
+      .eq('visibility', 'unlisted');
+    const unlistedKeys = (unlisted ?? []).map((a) => a.album_key);
+
+    let query = supabaseServer
+      .from('albums_summary')
+      .select('album_key, album_name, photo_count, cover_cf_image_id, cover_image_url, primary_sport, primary_category, latest_photo_date')
+      .not('album_key', 'is', null)
+      .not('latest_photo_date', 'is', null)
+      .order('latest_photo_date', { ascending: false })
+      .limit(limit);
+    if (unlistedKeys.length) {
+      query = query.not('album_key', 'in', `(${unlistedKeys.map((k) => `"${k}"`).join(',')})`);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) return [];
+
+    return data.map((album) => ({
+      albumKey: album.album_key as string,
+      albumName: (album.album_name as string) || 'Untitled Event',
+      photoCount: parseInt(album.photo_count as string) || 0,
+      coverImageUrl: album.cover_cf_image_id
+        ? cfImageUrl(album.cover_cf_image_id as string, 'medium')
+        : (album.cover_image_url as string | null),
+      primarySport: (album.primary_sport as string) || 'volleyball',
+      primaryCategory: (album.primary_category as string) || 'action',
+      latestPhotoDate: album.latest_photo_date as string | null
+    }));
+  } catch (err) {
+    console.error('[Homepage] Error fetching recent albums:', err);
     return [];
   }
 }

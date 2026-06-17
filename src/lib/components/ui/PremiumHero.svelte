@@ -19,6 +19,7 @@
 -->
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import Typography from './Typography.svelte';
   import { cn } from '$lib/utils';
   import { base } from '$app/paths';
@@ -29,6 +30,10 @@
     staticHeroIndex?: number;
     title?: string;
     subtitle?: string;
+    /** Compact band (~50vh) instead of the full 70–80vh splash — task-first homepage. */
+    compact?: boolean;
+    /** Replaces the default "Browse Gallery" CTA in the content area (e.g. a search form). */
+    children?: Snippet;
     class?: string;
   }
 
@@ -37,8 +42,16 @@
     staticHeroIndex = 0,
     title = 'SPORTS PHOTOGRAPHY',
     subtitle = 'ACTION & MOMENTS',
+    compact = false,
+    children,
     class: className
   }: Props = $props();
+
+  // Height tokens: compact lets the recent-events row sit above the fold; default keeps the splash.
+  const sectionH = $derived(compact ? 'min-h-[46vh] lg:min-h-[52vh]' : 'min-h-[70vh] lg:min-h-[80vh]');
+  const desktopGridH = $derived(compact ? 'lg:min-h-[52vh]' : 'min-h-[80vh]');
+  const mobileWrapH = $derived(compact ? 'min-h-[44vh]' : 'min-h-[70vh]');
+  const mobileImgH = $derived(compact ? 'h-[30vh]' : 'h-[45vh]');
 
   // --- Static hero for instant LCP ---
   const STATIC_HEROES = [
@@ -139,14 +152,15 @@
 <!-- Split Hero Section -->
 <section
   class={cn(
-    "relative min-h-[70vh] lg:min-h-[80vh] w-full bg-charcoal-950 overflow-hidden",
+    "relative w-full bg-charcoal-950 overflow-hidden",
+    sectionH,
     className
   )}
   role="banner"
   aria-label="Hero section"
 >
   <!-- Desktop: Split Layout (50/50) -->
-  <div class="hidden lg:grid lg:grid-cols-2 h-full min-h-[80vh]">
+  <div class={cn("hidden lg:grid lg:grid-cols-2 h-full", desktopGridH)}>
     <!-- Left: Text Content -->
     <div class="relative z-10 flex items-center justify-center px-8 xl:px-16 bg-gradient-to-r from-charcoal-950 via-charcoal-950 to-charcoal-900/50">
       <div class="max-w-xl text-left hero-content-animate">
@@ -158,23 +172,29 @@
           {title}
         </Typography>
 
-        <Typography
-          variant="h2"
-          class="text-lg xl:text-xl font-light text-charcoal-300 uppercase tracking-widest mb-8"
-          style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.12em; font-weight: 300;"
-        >
-          {subtitle}
-        </Typography>
+        {#if subtitle}
+          <Typography
+            variant="h2"
+            class="text-lg xl:text-xl font-light text-charcoal-300 uppercase tracking-widest mb-8"
+            style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.12em; font-weight: 300;"
+          >
+            {subtitle}
+          </Typography>
+        {/if}
 
-        <a
-          href="{base}/explore"
-          class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg"
-        >
-          Browse Gallery
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-          </svg>
-        </a>
+        {#if children}
+          {@render children()}
+        {:else}
+          <a
+            href="{base}/explore"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg"
+          >
+            Browse Gallery
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </a>
+        {/if}
       </div>
     </div>
 
@@ -245,9 +265,9 @@
   </div>
 
   <!-- Mobile: Stacked Layout -->
-  <div class="lg:hidden flex flex-col min-h-[70vh]">
+  <div class={cn("lg:hidden flex flex-col", mobileWrapH)}>
     <!-- Top: Image (constrained height for faster LCP) -->
-    <div class="relative h-[45vh] overflow-hidden">
+    <div class={cn("relative overflow-hidden", mobileImgH)}>
       <!-- Static hero for instant LCP (Vercel CDN) -->
       <img
         src={staticHero.mobile}
@@ -321,23 +341,29 @@
           {title}
         </Typography>
 
-        <Typography
-          variant="h2"
-          class="text-sm sm:text-base font-light text-charcoal-300 uppercase tracking-widest mb-6"
-          style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.12em; font-weight: 300;"
-        >
-          {subtitle}
-        </Typography>
+        {#if subtitle}
+          <Typography
+            variant="h2"
+            class="text-sm sm:text-base font-light text-charcoal-300 uppercase tracking-widest mb-6"
+            style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.12em; font-weight: 300;"
+          >
+            {subtitle}
+          </Typography>
+        {/if}
 
-        <a
-          href="{base}/explore"
-          class="inline-flex items-center gap-2 px-5 py-2.5 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-colors text-sm"
-        >
-          Browse Gallery
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-          </svg>
-        </a>
+        {#if children}
+          {@render children()}
+        {:else}
+          <a
+            href="{base}/explore"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-colors text-sm"
+          >
+            Browse Gallery
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </a>
+        {/if}
       </div>
     </div>
   </div>
