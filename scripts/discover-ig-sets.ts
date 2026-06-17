@@ -93,6 +93,23 @@ function subjectSig(caption: string | null): string {
 	return cols.join('-'); // '' when only generic colors → not used for dedup
 }
 
+/** Reject fragments (e.g. a bare "Motion"): need real length, sentence count, and hashtags. */
+function isValidCaption(t: string): boolean {
+	const s = t.trim();
+	return s.length >= 60 && s.split(/\s+/).length >= 12 && /#\w+/.test(s);
+}
+
+async function callModel(sys: string, user: string): Promise<string | null> {
+	const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+		method: 'POST',
+		headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+		body: JSON.stringify({ model: MODEL, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.7 })
+	});
+	if (!res.ok) return null;
+	const j: any = await res.json();
+	return (j?.choices?.[0]?.message?.content || '').trim() || null;
+}
+
 async function synthCaption(albumName: string, date: string | null, captions: string[]): Promise<string> {
 	if (!OPENROUTER_API_KEY) return '[caption pending — sign in to 1Password (OpenRouter) and re-run to synthesize]';
 	const sys = 'You write Instagram captions for a sports photographer. Output ONLY the caption text: ' +
@@ -105,14 +122,19 @@ async function synthCaption(albumName: string, date: string | null, captions: st
 	const user = `Event: ${albumName}${date ? `\nDate: ${new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}\n\n` +
 		`These are the photos in the carousel (described):\n${captions.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\n` +
 		`Write ONE caption for this carousel as a whole.`;
-	const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-		method: 'POST',
-		headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
-		body: JSON.stringify({ model: MODEL, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.7 })
-	});
-	if (!res.ok) return `[caption synthesis failed: ${res.status}]`;
-	const j: any = await res.json();
-	return (j?.choices?.[0]?.message?.content || '[no caption returned]').trim();
+
+	// Retry: the model intermittently returns a fragment (a bare "Motion"). Validate and re-roll,
+	// keeping the longest attempt as a clearly-flagged fallback. NEVER silently emit garbage.
+	let best = '';
+	for (let attempt = 1; attempt <= 3; attempt++) {
+		const c = (await callModel(sys, user)) ?? '';
+		if (isValidCaption(c)) return c;
+		if (c.length > best.length) best = c;
+		console.log(`   ⚠️  caption attempt ${attempt} rejected (too short / no hashtags) — retrying`);
+	}
+	return best
+		? `[⚠️ REVIEW — low-confidence caption, rewrite before posting]\n${best}`
+		: '[caption synthesis failed after 3 attempts — write the caption manually]';
 }
 
 async function main() {
