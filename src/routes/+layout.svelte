@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { page, navigating } from '$app/stores';
+	import { base } from '$app/paths';
 	import '../app.css';
 	import Header from '$lib/components/layout/Header.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
@@ -34,8 +35,26 @@
 	const siteDescription =
 		'MOTION. EMOTION. Frame by Frame. Professional action sports photography capturing the intensity, emotion, and dynamic energy of volleyball, basketball, softball, and more.';
 	const siteUrl = 'https://photography.ninochavez.co';
-	const ogImage = `${siteUrl}/images/og-image.jpg`;
+	const defaultKeywords =
+		'sports photography, volleyball photography, action sports, basketball photography, softball photography, professional photography, Nino Chavez, motion photography, emotion photography';
 	const twitterHandle = '@flickday.media';
+
+	// Page-level SEO override (set by leaf load functions as `data.seo`). The
+	// layout is the SINGLE source of og/twitter tags — pages must NOT emit their
+	// own, or crawlers see duplicate og:image and may pick the wrong one (this is
+	// what surfaced the stale brand card on album shares).
+	type PageSeo = {
+		title?: string;
+		description?: string;
+		canonical?: string;
+		keywords?: string;
+		ogType?: string;
+		ogImage?: string;
+		ogImageAlt?: string;
+		ogImageWidth?: number;
+		ogImageHeight?: number;
+	};
+	const seo = $derived(($page.data?.seo ?? undefined) as PageSeo | undefined);
 
 	// Derive page-specific title
 	const pageTitle = $derived.by(() => {
@@ -64,39 +83,62 @@
 
 	// Canonical URL
 	const canonicalUrl = $derived(`${siteUrl}${$page.url.pathname}`);
+
+	// Resolved SEO values: page override (data.seo) → site default.
+	const resolvedTitle = $derived(seo?.title ?? pageTitle);
+	const resolvedDescription = $derived(seo?.description ?? pageDescription);
+	const resolvedCanonical = $derived(seo?.canonical ?? canonicalUrl);
+	const resolvedKeywords = $derived(seo?.keywords ?? defaultKeywords);
+	const resolvedOgType = $derived(seo?.ogType ?? 'website');
+	// Default share card is the branded /og.png endpoint, origin-relative so it
+	// unfurls on whichever host served the page (apex + base, or subdomain).
+	const resolvedOgImage = $derived(seo?.ogImage ?? `${$page.url.origin}${base}/og.png`);
+	const resolvedOgImageAlt = $derived(seo?.ogImageAlt ?? siteTitle);
+	// Dimensions are only truthful for our generated 1200×630 cards (default +
+	// albums). Pages that override with a raw image (photos) omit them.
+	const resolvedOgWidth = $derived(seo?.ogImage ? seo?.ogImageWidth : 1200);
+	const resolvedOgHeight = $derived(seo?.ogImage ? seo?.ogImageHeight : 630);
 </script>
 
 <svelte:head>
 	<!-- Primary Meta Tags -->
-	<title>{pageTitle}</title>
-	<meta name="title" content={pageTitle} />
-	<meta name="description" content={pageDescription} />
-	<link rel="canonical" href={canonicalUrl} />
+	<title>{resolvedTitle}</title>
+	<meta name="title" content={resolvedTitle} />
+	<meta name="description" content={resolvedDescription} />
+	<meta name="keywords" content={resolvedKeywords} />
+	<link rel="canonical" href={resolvedCanonical} />
 
 	<!-- PERFORMANCE: View Transitions API for smooth page transitions -->
 	<meta name="view-transition" content="same-origin" />
 
-	<!-- Open Graph / Facebook -->
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content={canonicalUrl} />
-	<meta property="og:title" content={pageTitle} />
-	<meta property="og:description" content={pageDescription} />
-	<meta property="og:image" content={ogImage} />
-	<meta property="og:image:width" content="1200" />
-	<meta property="og:image:height" content="630" />
+	<!--
+		Open Graph / Twitter — emitted ONCE here for every page. Leaf pages provide
+		overrides via `data.seo` (see PageSeo above); they must not emit their own
+		og/twitter tags or crawlers see duplicates.
+	-->
+	<meta property="og:type" content={resolvedOgType} />
+	<meta property="og:url" content={resolvedCanonical} />
+	<meta property="og:title" content={resolvedTitle} />
+	<meta property="og:description" content={resolvedDescription} />
+	<meta property="og:image" content={resolvedOgImage} />
+	<meta property="og:image:alt" content={resolvedOgImageAlt} />
+	{#if resolvedOgWidth && resolvedOgHeight}
+		<meta property="og:image:width" content={String(resolvedOgWidth)} />
+		<meta property="og:image:height" content={String(resolvedOgHeight)} />
+	{/if}
 	<meta property="og:site_name" content={siteTitle} />
 
 	<!-- Twitter -->
 	<meta property="twitter:card" content="summary_large_image" />
-	<meta property="twitter:url" content={canonicalUrl} />
-	<meta property="twitter:title" content={pageTitle} />
-	<meta property="twitter:description" content={pageDescription} />
-	<meta property="twitter:image" content={ogImage} />
+	<meta property="twitter:url" content={resolvedCanonical} />
+	<meta property="twitter:title" content={resolvedTitle} />
+	<meta property="twitter:description" content={resolvedDescription} />
+	<meta property="twitter:image" content={resolvedOgImage} />
+	<meta property="twitter:image:alt" content={resolvedOgImageAlt} />
 	<meta property="twitter:site" content={twitterHandle} />
 	<meta property="twitter:creator" content={twitterHandle} />
 
 	<!-- Additional Meta Tags -->
-	<meta name="keywords" content="sports photography, volleyball photography, action sports, basketball photography, softball photography, professional photography, Nino Chavez, motion photography, emotion photography" />
 	<meta name="author" content="Nino Chavez" />
 	<meta name="robots" content="index, follow" />
 	<meta name="theme-color" content="#D4AF37" />

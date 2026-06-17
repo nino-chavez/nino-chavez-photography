@@ -1,11 +1,10 @@
 import { base } from '$app/paths';
 import { fetchPhotos, getPhotoCount, getAlbumSettings, fetchAlbumVideos, supabaseServer } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
-import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params, setHeaders }) => {
+export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	// Always fresh: album content changes (new/re-tagged photos & videos, settings)
 	// must show immediately. stale-while-revalidate was serving ~15-min-stale pages.
 	setHeaders({ 'cache-control': 'no-cache' });
@@ -60,15 +59,15 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
 		throw redirect(301, `${base}/albums/${correctSlug}`);
 	}
 
-	// Build OG image URL from cover photo
-	const coverImageUrl = hasCFImage(album?.cover_cf_image_id)
-		? cfImageUrl(album.cover_cf_image_id, 'large')
-		: album?.cover_image_url || null;
-
 	const baseUrl = 'https://photography.ninochavez.co';
 	const canonicalUrl = `${baseUrl}/albums/${correctSlug}`;
 	const sport = album?.primary_sport || 'sports';
 	const ogDescription = `${albumName} — ${totalCount} professional ${sport} photos by Nino Chavez`;
+
+	// Branded OG card rendered by /albums/[slug]/og.png. Built from the request
+	// origin (+ base path) so it unfurls on whichever host served the page
+	// (apex /photography and the photography.* subdomain both serve this app).
+	const ogImage = `${url.origin}${base}/albums/${correctSlug}/og.png`;
 
 	return {
 		albumKey,
@@ -81,7 +80,10 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
 			title: `${albumName} | Nino Chavez Photography`,
 			description: ogDescription,
 			canonical: canonicalUrl,
-			ogImage: coverImageUrl
+			ogImage,
+			ogImageAlt: albumName,
+			ogImageWidth: 1200,
+			ogImageHeight: 630
 		}
 	};
 };

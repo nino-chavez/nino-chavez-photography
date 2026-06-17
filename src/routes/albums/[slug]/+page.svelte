@@ -170,28 +170,11 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{data.seo.title}</title>
-	<meta name="description" content={data.seo.description} />
-	<link rel="canonical" href={data.seo.canonical} />
-
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content={data.seo.canonical} />
-	<meta property="og:title" content={data.seo.title} />
-	<meta property="og:description" content={data.seo.description} />
-	{#if data.seo.ogImage}
-		<meta property="og:image" content={data.seo.ogImage} />
-		<meta property="og:image:alt" content={data.albumName} />
-	{/if}
-	<meta property="og:site_name" content="Nino Chavez Photography" />
-
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content={data.seo.title} />
-	<meta name="twitter:description" content={data.seo.description} />
-	{#if data.seo.ogImage}
-		<meta name="twitter:image" content={data.seo.ogImage} />
-	{/if}
-</svelte:head>
+<!--
+	Title/description/OG/Twitter tags are emitted once by the root layout from
+	`data.seo` (returned by this route's +page.server.ts). Don't re-declare them
+	here — duplicate og:image tags let crawlers pick the wrong card.
+-->
 
 <!-- Minimal Header - Content First Design -->
 <div style="animation: fade-slide-up 0.3s ease-out forwards">
