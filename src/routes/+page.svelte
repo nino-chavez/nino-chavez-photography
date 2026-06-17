@@ -165,9 +165,11 @@
 				</p>
 			</div>
 
-			<!-- Curated collection cards (recent events live in their own row above) -->
+			<!-- Curated collection cards (recent events live in their own row above).
+			     Recent moved out, so this is the two virtual collections — a centered 2-up,
+			     not a 3-up with an empty third column (don't pin content in a void). -->
 			{#if data.featuredAlbums && data.featuredAlbums.filter((a) => a.type !== 'recent').length > 0}
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
 					{#each data.featuredAlbums.filter((a) => a.type !== 'recent') as featuredAlbum}
 						{@const albumLink = featuredAlbum.album.isVirtual
 							? getVirtualAlbumLink(featuredAlbum.type)
