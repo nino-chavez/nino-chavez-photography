@@ -1,34 +1,22 @@
 # Image Assets
 
-## Open Graph Image
+## Open Graph / Share Images
 
-**File:** `og-image.jpg`
-**Required Dimensions:** 1200x630px (Facebook/Twitter recommended size)
-**Format:** JPG (optimized) or PNG
-**Max Size:** <300KB for fast loading
+Share cards are now **generated dynamically** (1200×630 PNG, charcoal + gold theme)
+— there is no static `og-image.jpg` to maintain:
 
-### Current Image:
-Place your branded "Nino Chavez Photography - MOTION. EMOTION. Frame by Frame" image here as `og-image.jpg`.
+- **General site:** `/og.png` — branded card with a hero action photo + wordmark
+  + "MOTION. EMOTION. Frame by Frame." tagline. Built by
+  `src/routes/og.png/+server.ts` via the helpers in `src/lib/server/og-card.ts`.
+- **Albums:** `/albums/[slug]/og.png` — cover photo + gold accent bar + album name
+  + photo count + wordmark. Built by `src/routes/albums/[slug]/og.png/+server.ts`.
+- **Photos:** the photo's own image (set in `photo/[id]/+page.server.ts`).
 
-This image will appear when sharing links on:
-- Facebook
-- Twitter / X
-- LinkedIn
-- Pinterest
-- Slack
-- Discord
-- WhatsApp
-- iMessage
+All og/twitter tags are emitted once by the root layout (`+layout.svelte`) from each
+route's `data.seo`. Renderer: `@cf-wasm/og` (Satori + resvg) on the Cloudflare
+Workers runtime — mirrors the rally-hq recap-card setup.
 
-### Requirements:
-- ✅ 1200×630px (1.91:1 aspect ratio)
-- ✅ Text and logos should be centered (avoid edges due to mobile cropping)
-- ✅ File size under 300KB
-- ✅ High contrast for readability
-- ✅ Include branding (logo, tagline, handles)
-
-### Testing:
-After adding the image, test social sharing with:
+### Testing social unfurls:
 - **Facebook Debugger:** https://developers.facebook.com/tools/debug/
 - **Twitter Card Validator:** https://cards-dev.twitter.com/validator
 - **LinkedIn Post Inspector:** https://www.linkedin.com/post-inspector/

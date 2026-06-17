@@ -162,6 +162,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			title: `${photo.title} | Nino Chavez Photography`,
 			description: seoDescription,
 			ogImage: ogImage,
+			ogImageAlt: photo.title,
 			ogType: 'article' as const,
 			canonical: canonicalUrl,
 			keywords: photo.keywords.join(', ')
