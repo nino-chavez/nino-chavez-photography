@@ -34,9 +34,10 @@
 	interface Props {
 		collection: CollectionWithPhotos;
 		href: string;
+		priority?: boolean; // Above-the-fold cards: eager-load so the LCP cover isn't lazy-deferred
 	}
 
-	let { collection, href }: Props = $props();
+	let { collection, href, priority = false }: Props = $props();
 
 	let isPortfolio = $derived(collection.slug === 'portfolio-excellence');
 
@@ -64,8 +65,9 @@
 				width="300"
 				height="400"
 				class="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
-				loading="lazy"
-				decoding="async"
+				loading={priority ? 'eager' : 'lazy'}
+				decoding={priority ? 'sync' : 'async'}
+				fetchpriority={priority ? 'high' : 'auto'}
 			/>
 			<!-- Gradient Overlay - darkens on hover for better text readability -->
 			<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent group-hover:from-black/95 group-hover:via-black/50 transition-colors duration-150"></div>

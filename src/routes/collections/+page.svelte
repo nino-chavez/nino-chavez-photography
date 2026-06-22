@@ -80,6 +80,7 @@
 					<CollectionCard
 						{collection}
 						href="{base}/collections/{collection.slug}"
+						priority={index < 3}
 					/>
 				</div>
 			{/each}
