@@ -6,7 +6,21 @@ declare global {
 		// interface Locals {}
 		// interface PageData {}
 		// interface PageState {}
-		// interface Platform {}
+
+		// Cloudflare Pages runtime surface (adapter-cloudflare). Structurally typed and all
+		// optional — `caches`/`waitUntil` are undefined in local dev, so callers must guard.
+		interface Platform {
+			env?: Record<string, unknown>;
+			cf?: unknown;
+			context?: { waitUntil(promise: Promise<unknown>): void };
+			ctx?: { waitUntil(promise: Promise<unknown>): void };
+			caches?: {
+				default: {
+					match(request: Request): Promise<Response | undefined>;
+					put(request: Request, response: Response): Promise<void>;
+				};
+			};
+		}
 	}
 }
 

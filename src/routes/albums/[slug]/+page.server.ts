@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { fetchPhotos, getPhotoCount, getAlbumSettings, fetchAlbumVideos, supabaseServer } from '$lib/supabase/server';
+import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
@@ -18,9 +18,12 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	// rest via "Load more" against /api/album-photos, which uses the same size.
 	const pageSize = 48;
 
-	// Fetch album info, photos, count, videos, and settings in parallel
-	const [albumData, photos, totalCount, videos, albumSettings] = await Promise.all([
-		// Get album name + cover image from albums_summary view
+	// Fetch album info, photos, videos, and settings in parallel.
+	// Total count comes from albums_summary.photo_count (already selected below) — not a
+	// separate count(exact) over the base table (ADR 0001). Same semantics: the MV is defined
+	// WHERE sharpness IS NOT NULL, matching getPhotoCount's filter.
+	const [albumData, photos, videos, albumSettings] = await Promise.all([
+		// Get album name + cover image + photo_count from albums_summary view
 		supabaseServer
 			.from('albums_summary')
 			.select('album_name, cover_cf_image_id, cover_image_url, primary_sport, photo_count')
@@ -33,20 +36,24 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 			limit: pageSize,
 			offset: 0,
 		}),
-		// Get total count so the client knows how many pages remain
-		getPhotoCount({ albumKey }),
 		// Get videos for this album (CF Stream)
 		fetchAlbumVideos(albumKey),
 		// Check if album is unlisted
 		getAlbumSettings(albumKey)
 	]);
 
+	const totalCount = albumData.data?.photo_count ?? 0;
+
 	// Block direct access to unlisted albums (must use share link)
 	if (albumSettings?.visibility === 'unlisted') {
 		throw error(404, 'Album not found');
 	}
 
-	if (totalCount === 0 && videos.length === 0) {
+	// Existence is decided by the base-table page-1 photos (already fetched above), NOT by the
+	// MV count — so a missing/stale albums_summary row can't make a real album 404 (ADR 0001).
+	// The MV photo_count stays as the display/pagination total; it's an optimization, not a
+	// correctness dependency.
+	if (photos.length === 0 && totalCount === 0 && videos.length === 0) {
 		throw error(404, 'Album not found or contains no content');
 	}
 

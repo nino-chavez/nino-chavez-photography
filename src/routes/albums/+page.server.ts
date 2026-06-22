@@ -3,49 +3,11 @@ import { PHOTOS_READ } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
-/**
- * Auto-refresh materialized view if stale
- * Checks if photo_metadata has newer data than albums_summary view
- * and refreshes the view automatically if needed
- */
-async function autoRefreshViewIfStale(): Promise<void> {
-	try {
-		// Get the latest upload date from the materialized view
-		const { data: viewData } = await supabaseServer
-			.from('albums_summary')
-			.select('last_upload_date')
-			.order('last_upload_date', { ascending: false })
-			.limit(1)
-			.single();
-
-		// Get the latest upload date from the base table
-		const { data: tableData } = await supabaseServer
-			.from(PHOTOS_READ)
-			.select('upload_date')
-			.not('album_key', 'is', null)
-			.not('sharpness', 'is', null)
-			.order('upload_date', { ascending: false })
-			.limit(1)
-			.single();
-
-		if (!viewData || !tableData) {
-			return;
-		}
-
-		const viewLastUpdate = new Date(viewData.last_upload_date);
-		const tableLastUpdate = new Date(tableData.upload_date);
-
-		// If base table has newer data, refresh the view
-		if (tableLastUpdate > viewLastUpdate) {
-			const { error } = await supabaseServer.rpc('refresh_albums_summary');
-			if (error) {
-				console.error('[Albums] Auto-refresh failed:', error.message);
-			}
-		}
-	} catch {
-		// Don't throw - continue with existing data
-	}
-}
+// NOTE: read-path MV refresh removed (ADR 0001). `albums_summary` is maintained by the
+// write event — `scripts/ingest-album.ts` refreshes it after every ingest, the only event
+// that changes album data. Refreshing from a public page load was redundant, took an
+// ACCESS EXCLUSIVE lock that stalled concurrent readers, and (via the anon EXECUTE grant)
+// was triggerable by unauthenticated traffic. Reads now only read.
 
 interface AlbumMetadata {
 	name: string;
@@ -75,10 +37,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const limit = 24;
 	const offset = (page - 1) * limit;
 
-	// AUTO-REFRESH: Check if view needs refresh and refresh if stale
-	await autoRefreshViewIfStale();
-
-	// OPTIMIZED: Query materialized view for instant results with pagination
+	// Query materialized view for instant results with pagination.
+	// (View is refreshed by ingest — ADR 0001 — not on read.)
 	let query = supabaseServer
 		.from('albums_summary')
 		.select('*', { count: 'exact' });
