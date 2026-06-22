@@ -4,7 +4,7 @@
 	import { base } from '$app/paths';
 	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
-	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createAlbumSlug } from '$lib/utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -102,17 +102,19 @@
 	<title>Albums | Nino Chavez Photography</title>
 	<meta name="description" content="Browse {data.totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches." />
 
-	<!-- Preload first album cover with responsive srcset for LCP optimization -->
-	{#if data.albums[0]?.coverImageUrl}
+	<!-- Preload first album cover for LCP — must match what AlbumCard actually loads:
+	     cfImageUrl(id, 'medium') for CF covers, else the raw cover URL. The old block emitted
+	     no href and only set imagesrcset for CF covers, so it preloaded nothing. -->
+	{#if data.albums[0] && (hasCFImage(data.albums[0].coverCfImageId) || data.albums[0].coverImageUrl)}
 		{@const firstAlbum = data.albums[0]}
-		{@const srcset = hasCFImage(firstAlbum.coverCfImageId)
-			? cfSrcSet(firstAlbum.coverCfImageId)
-			: ''}
 		<link
 			rel="preload"
 			as="image"
-			imagesrcset={srcset}
-			imagesizes={SIZES_PRESETS.albumCard}
+			href={hasCFImage(firstAlbum.coverCfImageId)
+				? cfImageUrl(firstAlbum.coverCfImageId, 'medium')
+				: firstAlbum.coverImageUrl}
+			imagesrcset={hasCFImage(firstAlbum.coverCfImageId) ? cfSrcSet(firstAlbum.coverCfImageId) : undefined}
+			imagesizes={hasCFImage(firstAlbum.coverCfImageId) ? SIZES_PRESETS.albumCard : undefined}
 			fetchpriority="high"
 		/>
 	{/if}
