@@ -8,45 +8,64 @@
 import type { Photo, PhotoMetadata } from '$types/photo';
 
 /**
- * Calculate average quality score from photo metadata
+ * Quality-score weights — the SINGLE source of truth for how the four AI
+ * sub-scores combine into a composite quality score.
  *
- * Quality score is the average of 4 metrics:
- * - Sharpness (0-10)
- * - Exposure accuracy (0-10)
- * - Composition score (0-10)
- * - Emotional impact (0-10)
+ * INVARIANT: these MUST stay in sync with the `quality_score` GENERATED column in
+ * supabase/migrations/20260608000000_vnext_phase1_captions_quality_searchpath.sql:
+ *
+ *   quality_score = COALESCE(sharpness,0)*0.35 + COALESCE(composition_score,0)*0.30
+ *                 + COALESCE(emotional_impact,0)*0.25 + COALESCE(exposure_accuracy,0)*0.10
+ *
+ * The DB column is what ranks photos (the "Best Photos" / `quality` sort). This JS
+ * mirror exists so the per-photo score shown in the UI equals the score photos are
+ * ranked by — they previously diverged (JS averaged equally; the DB weights). If you
+ * change the weighting, change BOTH here and the migration, and re-rank is automatic
+ * (the column is STORED/generated).
+ */
+export const QUALITY_WEIGHTS = {
+  sharpness: 0.35,
+  composition_score: 0.3,
+  emotional_impact: 0.25,
+  exposure_accuracy: 0.1
+} as const;
+
+/**
+ * Calculate the composite quality score from photo metadata.
+ *
+ * Weighted blend of the four AI metrics (each 0–10), matching the DB
+ * `quality_score` column. Missing sub-scores count as 0 (mirrors the column's
+ * COALESCE), so the result stays on the same 0–10 scale.
  *
  * @param metadata - Photo metadata with quality scores
- * @returns Average quality score (0-10)
+ * @returns Weighted quality score (0–10), rounded to 1 decimal for display
  *
  * @example
  * const score = calculateQualityScore(photo.metadata);
  * // => 8.5
  */
 export function calculateQualityScore(metadata: PhotoMetadata | undefined | null): number {
-  // Handle undefined or null metadata
   if (!metadata) {
     return 0;
   }
 
-  const { sharpness, exposure_accuracy, composition_score, emotional_impact } = metadata;
+  const { sharpness, composition_score, emotional_impact, exposure_accuracy } = metadata;
 
-  // Validate all scores are numbers
-  const scores = [sharpness, exposure_accuracy, composition_score, emotional_impact];
-  const validScores = scores.filter((score) => typeof score === 'number' && !isNaN(score));
+  const score =
+    (sharpness ?? 0) * QUALITY_WEIGHTS.sharpness +
+    (composition_score ?? 0) * QUALITY_WEIGHTS.composition_score +
+    (emotional_impact ?? 0) * QUALITY_WEIGHTS.emotional_impact +
+    (exposure_accuracy ?? 0) * QUALITY_WEIGHTS.exposure_accuracy;
 
-  if (validScores.length === 0) {
-    return 0;
-  }
-
-  return validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
+  // Round to 1 decimal for display; the DB column ranks on full precision.
+  return Math.round(score * 10) / 10;
 }
 
 /**
- * Calculate average quality score directly from a Photo object
+ * Calculate the weighted quality score directly from a Photo object.
  *
  * @param photo - Photo object with metadata
- * @returns Average quality score (0-10)
+ * @returns Weighted quality score (0-10)
  */
 export function getPhotoQualityScore(photo: Photo): number {
   return calculateQualityScore(photo.metadata);
