@@ -1,13 +1,33 @@
--- Materialized view for album summaries
--- This pre-aggregates album data for instant retrieval
--- Refresh this view after bulk photo uploads/updates
+-- Exclude legacy SmugMug URLs from album cover selection (read-model cleanup).
+--
+-- Context: SmugMug was removed from the product months ago, but the albums_summary
+-- "legacy SmugMug fallback" cover expression still surfaces photos.smugmug.com URLs as
+-- cover_image_url for 256 albums (the ThumbnailUrl source column was never repointed off
+-- SmugMug; only cf_image_id was added). cover_image_url is materialized-view-derived, so a
+-- direct UPDATE would be overwritten on the next REFRESH — the fix belongs in the view.
+--
+-- Verified safe before writing this migration (service_role read):
+--   * 256 albums have a SmugMug cover_image_url; ALL 256 already have a cover_cf_image_id.
+--   * 0 albums have a SmugMug cover with no CF cover → 0 albums lose a visible cover.
+-- The app prefers cover_cf_image_id, so nulling the SmugMug fallbacks is a no-op visually;
+-- it only removes dead SmugMug references from the read model and every album-list payload.
+--
+-- This recreates albums_summary with a FILTER that drops SmugMug URLs from cover selection
+-- (cover becomes the newest non-SmugMug photo thumbnail, or NULL → folder fallback).
+-- It re-creates the view's indexes AND the unique index that backs the CONCURRENTLY refresh
+-- from 20260622000000 (ADR 0001). The refresh_albums_summary() function and its REVOKEs are
+-- left untouched — this migration does not redefine them.
+--
+-- CASCADE is safe: verified no other objects depend on albums_summary.
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS albums_summary AS
+DROP MATERIALIZED VIEW IF EXISTS albums_summary CASCADE;
+
+CREATE MATERIALIZED VIEW albums_summary AS
 SELECT
   p.album_key,
   MAX(p.album_name) as album_name,
   COUNT(*) as photo_count,
-  -- Cover: newest NON-SmugMug photo thumbnail (legacy SmugMug URLs excluded; SmugMug removed).
+  -- Cover: newest NON-SmugMug photo thumbnail (legacy SmugMug URLs excluded);
   -- NULL when an album has only SmugMug-thumbnailed photos (app falls back to cover_cf_image_id).
   (ARRAY_AGG(COALESCE(p."ThumbnailUrl", p."ImageUrl") ORDER BY p.upload_date DESC)
      FILTER (WHERE COALESCE(p."ThumbnailUrl", p."ImageUrl") NOT LIKE '%smugmug.com%'))[1] as cover_image_url,
@@ -37,29 +57,16 @@ WHERE
 GROUP BY p.album_key
 ORDER BY photo_count DESC;
 
--- Create indexes on the materialized view for fast lookups and sorting
+-- Data indexes (dropped with the MV above; recreated identically).
 CREATE INDEX IF NOT EXISTS idx_albums_summary_album_key ON albums_summary(album_key);
 CREATE INDEX IF NOT EXISTS idx_albums_summary_photo_count ON albums_summary(photo_count DESC);
 CREATE INDEX IF NOT EXISTS idx_albums_summary_latest_photo_date ON albums_summary(latest_photo_date DESC);
 CREATE INDEX IF NOT EXISTS idx_albums_summary_primary_sport ON albums_summary(primary_sport);
 CREATE INDEX IF NOT EXISTS idx_albums_summary_primary_category ON albums_summary(primary_category);
 
--- Grant read access
+-- Unique index required by refresh_albums_summary()'s CONCURRENTLY refresh (from 20260622000000).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_summary_album_key_uniq ON albums_summary(album_key);
+
+-- Read grants (dropped with the MV; refresh-function EXECUTE grants are untouched).
 GRANT SELECT ON albums_summary TO anon;
 GRANT SELECT ON albums_summary TO authenticated;
-
--- Refresh function (call this after bulk uploads)
--- Note: Uses non-concurrent refresh since view doesn't have a unique index
--- For concurrent refresh, add: CREATE UNIQUE INDEX ON albums_summary(album_key);
-CREATE OR REPLACE FUNCTION refresh_albums_summary()
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  REFRESH MATERIALIZED VIEW albums_summary;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION refresh_albums_summary() TO anon;
-GRANT EXECUTE ON FUNCTION refresh_albums_summary() TO authenticated;
