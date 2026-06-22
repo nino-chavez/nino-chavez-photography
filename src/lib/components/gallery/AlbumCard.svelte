@@ -168,7 +168,7 @@
 			loading={priority ? 'eager' : 'lazy'}
 			decoding={priority ? 'sync' : 'async'}
 			fetchpriority={priority ? 'high' : 'auto'}
-			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded
+			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded || priority
 				? 'opacity-100'
 				: 'opacity-0'}"
 			onload={handleImageLoad}

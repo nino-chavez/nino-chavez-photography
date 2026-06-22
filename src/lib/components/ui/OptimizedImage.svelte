@@ -178,8 +178,8 @@
 			decoding="async"
 			fetchpriority={priority ? 'high' : 'auto'}
 			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-out"
-			class:opacity-0={!imageLoaded}
-			class:opacity-100={imageLoaded}
+			class:opacity-0={!imageLoaded && !priority}
+			class:opacity-100={imageLoaded || priority}
 			onload={handleLoad}
 			onerror={handleError}
 		/>
