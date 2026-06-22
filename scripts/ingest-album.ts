@@ -53,13 +53,36 @@ function flagValue(name: string): string | undefined {
 }
 
 const DIR = flagValue('dir');
-/** Folder basename → a clean slug album_key (matches the live `vla-630-breeze` style). */
-function slugifyKey(s: string): string {
-	return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+/**
+ * Folder basename → a SmugMug-style album_key: a 6-char base62 token (e.g. `5dvLQR`).
+ * EVERY live album_key on this site is exactly this shape — the gallery URL router
+ * (`extractAlbumKey` in src/lib/utils.ts) splits the slug on hyphens and treats the LAST
+ * 5–8-char alphanumeric segment as the key. A hyphenated folder-slug key (e.g.
+ * `msow-raiders-open`) has a 4-char tail (`open`) that fails that test, so the page 404s.
+ * Deterministic (FNV-1a over the folder name) so re-runs without --album-key stay idempotent
+ * and resumable; the operator can always pass an explicit --album-key to override.
+ */
+function smugmugStyleKey(seed: string): string {
+	const ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	let h1 = 2166136261 >>> 0;
+	for (let i = 0; i < seed.length; i++) { h1 ^= seed.charCodeAt(i); h1 = Math.imul(h1, 16777619) >>> 0; }
+	let h2 = 0x811c9dc5 >>> 0;
+	for (let i = seed.length - 1; i >= 0; i--) { h2 ^= seed.charCodeAt(i); h2 = Math.imul(h2, 2246822519) >>> 0; }
+	let n = (BigInt(h1) << 32n) | BigInt(h2 >>> 0);
+	let out = '';
+	for (let i = 0; i < 6; i++) { out = ALPHABET[Number(n % 62n)] + out; n /= 62n; }
+	return out;
 }
+/** The shape the gallery URL router can round-trip (see extractAlbumKey). */
+const ALBUM_KEY_RE = /^[a-zA-Z0-9]{5,8}$/;
 const folderBase = DIR ? DIR.replace(/\/+$/, '').split('/').pop() || '' : '';
 // album_key is generated from the folder when not passed — the operator points at a folder, not a key.
-const ALBUM_KEY = flagValue('album-key') || (folderBase ? slugifyKey(folderBase) : undefined);
+const EXPLICIT_KEY = flagValue('album-key');
+if (EXPLICIT_KEY !== undefined && !ALBUM_KEY_RE.test(EXPLICIT_KEY)) {
+	die(`--album-key "${EXPLICIT_KEY}" won't round-trip through the gallery URL (needs 5–8 alphanumerics, ` +
+		`no hyphens — every live key is a 6-char SmugMug-style token). Omit --album-key to auto-generate one.`);
+}
+const ALBUM_KEY = EXPLICIT_KEY || (folderBase ? smugmugStyleKey(folderBase) : undefined);
 const ALBUM_NAME_ARG = flagValue('album-name');
 const SPORT_ARG = flagValue('sport'); // 'volleyball' | ... | 'none'/'null' for non-sport
 const UPLOAD_DATE = flagValue('upload-date') || new Date().toISOString().split('T')[0];
@@ -69,6 +92,22 @@ const DRY = process.argv.includes('--dry-run');
 const OVERWRITE = process.argv.includes('--overwrite');
 const UNLISTED = process.argv.includes('--unlisted'); // hide on the live gallery until the operator publishes
 const MODEL = flagValue('model') || INGEST_MODEL;
+
+// Operator GPS override (e.g. --lat 43.04781 --lng -87.90931). Cameras without a GPS receiver
+// (Sony A7-series) never record a fix; rather than re-export 300+ frames to bake one in, the
+// operator can pass the venue coordinate once. It's a FALLBACK: a real per-photo EXIF fix always
+// wins; the override only fills frames that have none. Both flags required together; ranges validated.
+function floatFlag(name: string): number | null {
+	const v = flagValue(name);
+	if (v === undefined) return null;
+	const n = Number(v);
+	if (!Number.isFinite(n)) die(`--${name} "${v}" is not a number`);
+	return n;
+}
+const OP_LAT = floatFlag('lat');
+const OP_LNG = floatFlag('lng');
+if ((OP_LAT === null) !== (OP_LNG === null)) die('--lat and --lng must be passed together (venue GPS override)');
+if (OP_LAT !== null && (Math.abs(OP_LAT) > 90 || Math.abs(OP_LNG!) > 180)) die(`--lat/--lng out of range (lat ${OP_LAT}, lng ${OP_LNG})`);
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -82,7 +121,7 @@ function die(msg: string): never {
 }
 
 if (!DIR || !ALBUM_KEY) {
-	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--concurrency 4] [--limit N] [--unlisted] [--dry-run] [--overwrite]\n' +
+	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--lat <deg> --lng <deg>] [--concurrency 4] [--limit N] [--unlisted] [--dry-run] [--overwrite]\n' +
 		'  --album-key defaults to the folder-name slug; --sport is detected from --album-name when omitted.');
 }
 if (!OPENROUTER_API_KEY) die('OPENROUTER_API_KEY required (1Password "OpenRouter photography")');
@@ -371,8 +410,11 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		aperture: exif.aperture,
 		shutter_speed: exif.shutter_speed,
 		iso: exif.iso,
-		// Only set GPS when a REAL fix exists (extractExifMeta already rejects the (0,0) placeholder).
-		...(exif.latitude != null && exif.longitude != null ? { latitude: exif.latitude, longitude: exif.longitude } : {}),
+		// GPS: a REAL per-photo EXIF fix wins (extractExifMeta already rejects the (0,0) placeholder);
+		// otherwise fall back to the operator's venue override (--lat/--lng) when one was passed.
+		...((exif.latitude ?? OP_LAT) != null && (exif.longitude ?? OP_LNG) != null
+			? { latitude: exif.latitude ?? OP_LAT, longitude: exif.longitude ?? OP_LNG }
+			: {}),
 		extraction_version: EXTRACTION_VERSION,
 		ai_provider: 'openrouter',
 		...(ex.cost != null ? { ai_cost: ex.cost } : {}),
@@ -429,7 +471,9 @@ async function main() {
 	console.log(`   Checkpoint: ${CK_PATH} (${done.size} already done)\n`);
 
 	const album = await resolveAlbum();
-	console.log(`   Album sport (authoritative): ${album.sport ?? 'none (non-sport)'}\n`);
+	console.log(`   Album sport (authoritative): ${album.sport ?? 'none (non-sport)'}`);
+	if (OP_LAT !== null) console.log(`   📍 Venue GPS override (fallback for frames without an EXIF fix): ${OP_LAT}, ${OP_LNG}`);
+	console.log('');
 
 	// Keep a freshly-ingested album OFF the live gallery until the operator reviews + publishes.
 	if (UNLISTED && !DRY) {
@@ -493,11 +537,39 @@ async function main() {
 	await Promise.all(Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, () => worker()));
 	if (!DRY) saveCheckpoint();
 
-	// Refresh the albums materialized view once (powers the albums listing).
+	// Ingest is the sole owner of read-model maintenance (ADR 0001): refresh the albums
+	// materialized view, then invalidate the edge cache. Both run only here, on the write event.
 	if (!DRY && ok > 0) {
 		const { error: rErr } = await sb.rpc('refresh_albums_summary');
-		if (rErr) console.warn(`   ⚠️  refresh_albums_summary failed (non-fatal): ${rErr.message}`);
-		else console.log('   🔄 albums_summary refreshed');
+		if (rErr) {
+			// LOUD, not a buried warn: album existence/metadata reads lean on this MV. A silent
+			// miss could leave a freshly-ingested album under-served until the next ingest.
+			console.error(`   ❌ refresh_albums_summary FAILED: ${rErr.message}`);
+			console.error('      → Re-run the refresh (service_role) before relying on the albums listing.');
+		} else {
+			console.log('   🔄 albums_summary refreshed');
+		}
+
+		// Edge-cache invalidation. Tag/prefix purge is Cloudflare Enterprise-only; on this plan we
+		// purge the zone (one call) — cheap at this traffic, and the album API's s-maxage=300 bounds
+		// staleness to ~5 min if this is skipped. Best-effort, non-fatal, env-gated.
+		const CF_ZONE_ID = process.env.CF_ZONE_ID;
+		const CF_CACHE_PURGE_TOKEN = process.env.CF_CACHE_PURGE_TOKEN;
+		if (CF_ZONE_ID && CF_CACHE_PURGE_TOKEN) {
+			try {
+				const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache`, {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${CF_CACHE_PURGE_TOKEN}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ purge_everything: true })
+				});
+				const body = (await r.json().catch(() => ({}))) as { success?: boolean };
+				console.log(r.ok && body.success ? '   🧹 Cloudflare cache purged' : `   ⚠️  cache purge failed (HTTP ${r.status}) — s-maxage bounds staleness to ~5 min`);
+			} catch (e) {
+				console.warn(`   ⚠️  cache purge error (non-fatal): ${(e as Error).message}`);
+			}
+		} else {
+			console.log('   ℹ️  cache purge skipped — set CF_ZONE_ID + CF_CACHE_PURGE_TOKEN for instant freshness (else ~5 min s-maxage staleness)');
+		}
 	}
 
 	const mins = ((Date.now() - t0) / 60000).toFixed(1);
