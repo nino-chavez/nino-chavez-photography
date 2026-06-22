@@ -1,6 +1,6 @@
 # ADR 0001 — Ingest-owned read model + edge cache tier
 
-**Status:** Accepted — all code landed (Phases 1–4); migration `database/migrations/2026-06-22-album-read-model-hardening.sql` pending apply in Supabase. Album-HTML-page edge caching deferred (see Implementation notes).
+**Status:** Implemented & live (2026-06-22). Migration `supabase/migrations/20260622000000_album_read_model_hardening.sql` applied + verified in prod. Edge caching achieved via `Cache-Control` headers (`cf-cache-status: HIT` confirmed) — the code-level Cache API was tried, 500'd in the Pages runtime, and was reverted (see Implementation notes). Album-HTML-page edge caching still deferred.
 **Date:** 2026-06-22
 **Author:** Abelino Chavez (with architecture audit)
 **Supersedes:** the implicit "read-on-request against OLTP" pattern currently in place
@@ -79,16 +79,17 @@ End-state topology: **bots and humans hit edge cache / projection; Postgres sees
 
 ### Phase 3 — Read model covers the hot path (code + index)
 
-- Add `getAlbumPhotoCount(albumKey)` to `src/lib/supabase/server.ts` that reads `albums_summary.photo_count` (single indexed lookup) instead of `count: 'exact'` over the base table.
-- Swap call sites: `src/routes/api/album-photos/+server.ts:43` and `src/routes/albums/[slug]/+page.server.ts:38`. Also only fetch the count on `page === 1` (the client accumulates it).
+- `albums/[slug]/+page.server.ts`: `totalCount` now reads `albums_summary.photo_count` from the MV query the page *already* runs (it selected `photo_count` alongside name/cover) — no new helper, no extra round-trip. The redundant `getPhotoCount` `count: 'exact'` call is dropped.
+- `api/album-photos/+server.ts`: the per-page count is **removed entirely** — the client only consumes `photos` from this endpoint (it gets `totalCount` once from the SSR load), so no count is needed on "Load more" at all.
 - **Migration:** covering index for the photo-page query so cold misses are index-only:
   `CREATE INDEX CONCURRENTLY idx_photo_metadata_album_feed ON photo_metadata (album_key, upload_date DESC, image_key) WHERE sharpness IS NOT NULL;`
 
-### Phase 4 — Edge cache + ingest-owned invalidation (the tier-0)
+### Phase 4 — Edge cache + ingest-owned invalidation (the tier-0) — as shipped
 
-- `src/routes/api/album-photos/+server.ts` response: `Cache-Control: public, s-maxage=300, stale-while-revalidate=86400` + `Cache-Tag: album:<albumKey>`.
-- `src/routes/albums/[slug]/+page.server.ts`: replace `no-cache` with `s-maxage` + `Cache-Tag: album:<albumKey>` (drop the freshness workaround; purge now guarantees freshness).
-- `scripts/ingest-album.ts` (after the `refresh_albums_summary` call at `:542`): purge Cloudflare cache by tag `album:<ALBUM_KEY>` plus the album-list/home tags. Ingest now owns **both** data refresh and cache invalidation — one write event, one freshness boundary. (CF token: `op://Developer Secrets/Cloudflare account-ops claude-code/credential`, with Cache Purge permission added.)
+- `src/routes/api/album-photos/+server.ts` response: `Cache-Control: public, s-maxage=300, stale-while-revalidate=86400`. The CF edge honors this for the Pages-Function response — **`cf-cache-status: HIT` confirmed in prod** — so the header alone provides the edge tier. No `Cache-Tag` (tag purge is Enterprise-only).
+- **A code-level Cache API layer (`caches.default` match/put) was tried and reverted** — it threw at runtime on CF Pages and 500'd every call. The header achieves the same goal without it. See Implementation notes.
+- `scripts/ingest-album.ts` (after `refresh_albums_summary`): best-effort **zone** purge (`purge_everything`, env-gated on `CF_ZONE_ID` + `CF_CACHE_PURGE_TOKEN`) — tag/prefix purge being Enterprise-only. Ingest owns both data refresh and cache invalidation. If the token is unset, `s-maxage=300` bounds staleness to ~5 min.
+- The album **HTML page** (`albums/[slug]/+page.server.ts`) stays `no-cache` — deferred (see Implementation notes); bots crawl HTML, so this is the next lever if page-path 504s persist.
 
 ### Phase 5 — (Optional, deeper) per-album materialized photo projection
 
@@ -102,7 +103,7 @@ If cold-miss reads must be O(1) regardless of album size, write a per-album orde
 - Postgres load decouples from public/bot traffic; storms hit cache, not the DB.
 - 504 surface collapses: no read-path refresh lock, cached reads, index-only cold misses.
 - Security: `anon` can no longer trigger a full MV refresh.
-- The `no-cache` compromise is removed without losing freshness — freshness is now guaranteed by purge-on-ingest.
+- The album-data API is edge-cacheable (header-based, `HIT` confirmed); freshness is bounded by `s-maxage` (~5 min) and tightened by best-effort zone purge on ingest. (The album HTML page keeps `no-cache` — deferred.)
 
 **Negative / risk**
 - Cache invalidation must be reliable. If a purge fails, an album is stale up to `s-maxage` (5 min) — bounded, and the SWR window keeps serving while revalidating. Mitigation: retry the purge in ingest; keep `s-maxage` modest.
@@ -117,7 +118,8 @@ If cold-miss reads must be O(1) regardless of album size, write a per-album orde
 
 - **Security: `REVOKE` must include `PUBLIC`.** `EXECUTE` is granted to `PUBLIC` by default at function creation, and `anon` is a member of `PUBLIC` — so `REVOKE ... FROM anon, authenticated` alone is a no-op. The migration revokes `FROM PUBLIC, anon, authenticated` and grants only `service_role`, matching the repo pattern in `fix-security-lint-2025-03.sql`. The unauthenticated `/api/admin/refresh-albums` endpoint (anon-key `rpc`, no auth) was **deleted** — it was a second public refresh-DoS vector and is superseded by ingest-owned refresh.
 - **Existence is decided by the base table, not the MV.** `albums/[slug]/+page.server.ts` now 404s only when page-1 `photos` (base table), `totalCount`, and `videos` are all empty. So a missing/stale `albums_summary` row can't make a real album disappear — the MV is an optimization for the displayed total, not a correctness dependency. The ingest refresh failure is logged **loudly** (`console.error`), not buried.
-- **Where the 504 relief actually comes from.** The album **HTML page** is still `no-cache` — and bots crawl HTML, not the client-fetched JSON API. So most of the album-*page* SSR relief comes from the **covering index** (page-1 query becomes index-only) plus the **dropped `count(exact)`**, *not* from the edge cache. The Cache API on `album-photos` absorbs repeat hits on the *JSON API* path (the 643-timeout hotspot). If album-page-path 504s persist after deploy, the next lever is caching the HTML SSR (a `hooks.server.ts` Cache-API layer or a CF Cache Rule) — deferred deliberately to keep this change scoped and low-risk.
+- **Edge cache: headers, not a code-level Cache API.** The first cut added a `caches.default` match/put layer to `album-photos`. It **threw at runtime on CF Pages and 500'd every call** (the album page using the same `fetchPhotos` stayed 200, isolating the fault). It was reverted; the `Cache-Control` header alone gets the edge cache (`cf-cache-status: HIT` confirmed). Lesson: `platform.caches` is undefined in `vite dev`, so `svelte-check` is blind to this — a code-level cache must be proven in `wrangler pages dev` first, and an accelerator layer must never be able to 500 the endpoint it fronts.
+- **Where the 504 relief actually comes from.** The album **HTML page** is still `no-cache`, and bots crawl HTML, not the client-fetched JSON API. So most of the album-*page* SSR relief comes from the **covering index** (page-1 query becomes index-only) plus the **dropped `count(exact)`**, *not* from the edge cache. The header cache on `album-photos` absorbs repeat hits on the *JSON API* path (the 643-timeout hotspot). If album-page-path 504s persist, the next lever is caching the HTML SSR (a CF Cache Rule, or a `wrangler-dev-tested` hook) — deferred deliberately to keep this change scoped and low-risk.
 - **Invalidation on a non-Enterprise plan.** Cache-tag/prefix purge is Enterprise-only. Ingest purges the whole zone (one API call, env-gated on `CF_ZONE_ID` + `CF_CACHE_PURGE_TOKEN`, best-effort/non-fatal). If unset, the API's `s-maxage=300` bounds staleness to ~5 min — acceptable for an operator-run, infrequent ingest.
 
 ## Validation (how we confirm the root was fixed, not the symptom)
