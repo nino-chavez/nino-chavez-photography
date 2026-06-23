@@ -7,6 +7,7 @@
  */
 
 import { supabaseServer } from '$lib/supabase/server';
+import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 
 export interface PhotoViewEvent {
 	photo_id: string;
@@ -25,7 +26,11 @@ export interface SearchQueryEvent {
  */
 export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
 	try {
-		await supabaseServer.from('photo_views').insert({
+		// Writes go through the service-role client: photo_views/search_queries
+		// have RLS that (correctly) forbids anon INSERT, so using the anon-key
+		// supabaseServer here silently failed every view (42501) and starved
+		// popular_photos. These tracker fns are server-side only.
+		await createSupabaseAdminClient().from('photo_views').insert({
 			photo_id: event.photo_id,
 			view_source: event.view_source,
 			referrer: event.referrer || null,
@@ -41,7 +46,7 @@ export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
  */
 export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 	try {
-		await supabaseServer.from('search_queries').insert({
+		await createSupabaseAdminClient().from('search_queries').insert({
 			query_text: event.query_text,
 			filters_used: event.filters_used || null,
 			results_count: event.results_count,
