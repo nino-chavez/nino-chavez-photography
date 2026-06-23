@@ -8,6 +8,8 @@ import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS, getProgramFacets } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { topPhotoCoverMap } from '$lib/analytics/covers';
+import { getTopPhotos } from '$lib/analytics/popularity';
+import type { Photo } from '$types/photo';
 
 // In-memory cache for hero photo candidates
 const HERO_CACHE_DURATION_MS = 5 * 60 * 1000;
@@ -16,6 +18,8 @@ interface HeroCache {
   featuredAlbums: Awaited<ReturnType<typeof fetchFeaturedAlbums>>;
   recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>;
   programs: Awaited<ReturnType<typeof getProgramFacets>>;
+  trendingPhotos: Photo[];
+  fanFavorites: Photo[];
   timestamp: number;
 }
 let heroCache: HeroCache | null = null;
@@ -29,18 +33,20 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     const now = Date.now();
 
     if (!heroCache || now - heroCache.timestamp > HERO_CACHE_DURATION_MS) {
-      const [balancedPhotos, featuredAlbums, recentAlbums, programs] = await Promise.all([
+      const [balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites] = await Promise.all([
         fetchHeroCandidates(),
         fetchFeaturedAlbums(),
         fetchRecentAlbums(),
-        getProgramFacets()
+        getProgramFacets(),
+        getTopPhotos(supabaseServer, { metric: 'trending', limit: 12 }),
+        getTopPhotos(supabaseServer, { metric: 'all_time', limit: 12 })
       ]);
-      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, programs, timestamp: now };
+      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites, timestamp: now };
     }
 
     const pool = heroCache.balancedPhotos;
     if (pool.length === 0) {
-      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, staticHeroIndex: 0 };
+      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, staticHeroIndex: 0 };
     }
     const pinIdx = Math.floor(Date.now() / 3_600_000) % pool.length;
     const pinned = pool[pinIdx];
@@ -50,7 +56,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     );
     const heroCandidates = [pinned, ...rest].map(transformPhotoRow);
 
-    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, staticHeroIndex: 0 };
+    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, staticHeroIndex: 0 };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
     return { heroCandidates: [], featuredAlbums: [], recentAlbums: [], programs: [] };
