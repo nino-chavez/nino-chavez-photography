@@ -23,10 +23,15 @@
 	// Navigation loading state
 	let isNavigating = $derived($navigating !== null);
 
+	// Kill switch: chat is OFF unless VITE_CHAT_ENABLED === 'true' (disabled in prod for now,
+	// pending the v5 stream-contract fix + a verifiable output guardrail). Re-enable by setting
+	// the env var and redeploying. Gated server-side too (see /api/chat).
+	const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
+
 	// PERFORMANCE: Only load ChatWidget on pages where AI search is useful
 	// Reduces ~50-100KB JS on single photo pages, album pages, etc.
 	const chatEnabledRoutes = ['/', '/explore', '/collections', '/albums', '/timeline'];
-	let showChat = $derived(chatEnabledRoutes.some(route =>
+	let showChat = $derived(chatEnabled && chatEnabledRoutes.some(route =>
 		$page.url.pathname === route || $page.url.pathname.startsWith(route + '/')
 	));
 
