@@ -200,6 +200,23 @@ export const POST: RequestHandler = async ({ request }) => {
 								}
 							}
 
+							// Jersey lookups resolve via photo_jersey_sightings (comprehensive, multi-player,
+							// privacy-safe — excludes unlisted albums) through the find_photos_by_jersey RPC,
+							// NOT the sparse legacy photo_metadata.jersey_number column (~10x fewer hits).
+							// We take the RPC's privacy-filtered image_keys, then hydrate full rows below so
+							// caption + the other facets still apply.
+							let jerseyImageKeys: string[] | null = null;
+							if (jersey_number !== undefined) {
+								const { data: jr, error: jErr } = await supabase.rpc('find_photos_by_jersey', {
+									p_jersey: String(jersey_number), p_album_key: null, p_team_color: null,
+									p_sport: null, p_limit: 100, p_offset: 0
+								});
+								if (jErr) console.error('find_photos_by_jersey RPC error:', jErr.message);
+								const keys = (jr ?? []).map((r: { image_key: string }) => r.image_key);
+								if (keys.length === 0) return { photos: [] };
+								jerseyImageKeys = keys;
+							}
+
 							// Structured path: filterable enum fields, ranked by the weighted quality blend.
 							let dbQuery = supabase
 								.from(PHOTOS_READ)
@@ -210,10 +227,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
 							// Only live facets remain; the vanity columns (action_intensity/emotion/lighting/
 							// color_temperature/time_of_day/composition) were dropped in the cleanup.
+							if (jerseyImageKeys) dbQuery = dbQuery.in('image_key', jerseyImageKeys);
 							if (sport_type) dbQuery = dbQuery.eq('sport_type', sport_type);
 							if (play_type) dbQuery = dbQuery.eq('play_type', play_type);
 							if (photo_category) dbQuery = dbQuery.eq('photo_category', photo_category);
-							if (jersey_number !== undefined) dbQuery = dbQuery.eq('jersey_number', jersey_number);
 
 							const { data, error } = await dbQuery;
 
