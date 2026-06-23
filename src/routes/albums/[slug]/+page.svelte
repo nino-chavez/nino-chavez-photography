@@ -251,7 +251,7 @@
 						photoCount={data.totalCount}
 					/>
 					{#if albumShareTarget.imageUrl}
-						<ShareMenu target={albumShareTarget} variant="inline" />
+						<ShareMenu target={albumShareTarget} variant="inline" albumKey={data.albumKey} />
 					{/if}
 				</div>
 			</div>

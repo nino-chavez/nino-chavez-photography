@@ -13,6 +13,8 @@ export interface PhotoViewEvent {
 	photo_id: string;
 	view_source: 'explore' | 'collection' | 'album' | 'direct' | 'search' | 'timeline' | 'favorites';
 	referrer?: string; // collection slug, album key, or search query
+	album_key?: string; // enables album-level popularity roll-up
+	session_hash?: string; // per-visitor dedup (one view per visitor/photo/day)
 }
 
 export interface SearchQueryEvent {
@@ -26,15 +28,22 @@ export interface SearchQueryEvent {
  */
 export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
 	try {
-		// Writes go through the service-role client: photo_views/search_queries
-		// have RLS that (correctly) forbids anon INSERT, so using the anon-key
-		// supabaseServer here silently failed every view (42501) and starved
-		// popular_photos. These tracker fns are server-side only.
-		await createSupabaseAdminClient().from('photo_views').insert({
-			photo_id: event.photo_id,
-			view_source: event.view_source,
-			referrer: event.referrer || null,
-		});
+		// Views feed the popularity engine (engagement_events). Service-role write
+		// (RLS denies anon). The per-day dedup index makes a repeat view from the
+		// same visitor a no-op (23505) — intended, so refresh/re-renders don't
+		// inflate counts. Server-side only.
+		const { error: dbError } = await createSupabaseAdminClient()
+			.from('engagement_events')
+			.insert({
+				event_type: 'view',
+				photo_id: event.photo_id,
+				album_key: event.album_key ?? null,
+				source: event.view_source,
+				session_hash: event.session_hash ?? null,
+			});
+		if (dbError && dbError.code !== '23505') {
+			console.error('[Analytics] Failed to track photo view:', dbError.message);
+		}
 	} catch (error) {
 		// Fail silently - analytics should never break the app
 		console.error('[Analytics] Failed to track photo view:', error);
@@ -63,9 +72,9 @@ export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 export async function getPopularPhotos(limit: number = 10) {
 	try {
 		const { data, error } = await supabaseServer
-			.from('popular_photos')
-			.select('photo_id, view_count, days_active, last_viewed')
-			.order('view_count', { ascending: false })
+			.from('photo_popularity')
+			.select('photo_id, trending_score, all_time_score, views, favorites, downloads, shares, last_event')
+			.order('trending_score', { ascending: false })
 			.limit(limit);
 
 		if (error) throw error;
@@ -101,13 +110,14 @@ export async function getTopSearchQueries(limit: number = 10) {
  */
 export async function getPhotoViewCount(photoId: string): Promise<number> {
 	try {
-		const { count, error } = await supabaseServer
-			.from('photo_views')
-			.select('*', { count: 'exact', head: true })
-			.eq('photo_id', photoId);
+		const { data, error } = await supabaseServer
+			.from('photo_popularity')
+			.select('views')
+			.eq('photo_id', photoId)
+			.maybeSingle();
 
 		if (error) throw error;
-		return count || 0;
+		return data?.views ?? 0;
 	} catch (error) {
 		console.error('[Analytics] Failed to get photo view count:', error);
 		return 0;
