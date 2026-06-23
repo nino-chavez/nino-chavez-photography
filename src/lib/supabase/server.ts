@@ -350,7 +350,8 @@ export async function fetchPhotosByAlbumName(
 /**
  * "Find your club" facets (SERVER-SIDE) — the first consumer of the album-name enrichment.
  *
- * Programs are the recurring clubs/circuits a returning visitor looks for by name. We derive them
+ * Programs are the recurring teams/events a returning visitor looks for by name — a mix of clubs
+ * (630, VLA), a league/tournament org (KRUSH), a pro circuit (AVP), and schools (ACC). We derive them
  * from `album_name` (no schema dependency): each program's `query` drives the SAME album-name search
  * the explore page uses, so a chip and a typed search land identically. Counts exclude unlisted
  * (private) albums. Cached by the caller's page cache; cheap (one head request per program).
