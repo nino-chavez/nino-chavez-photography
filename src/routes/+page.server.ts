@@ -7,6 +7,7 @@ import type { PageServerLoad } from './$types';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS, getProgramFacets } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { topPhotoCoverMap } from '$lib/analytics/covers';
 
 // In-memory cache for hero photo candidates
 const HERO_CACHE_DURATION_MS = 5 * 60 * 1000;
@@ -162,6 +163,9 @@ async function fetchFeaturedAlbums() {
     let mostRecentAlbum = null;
     if (!albumsResult.error && albumsResult.data && albumsResult.data.length > 0) {
       const album = albumsResult.data[0];
+      // Auto-cover: prefer the album's top-engaged photo, else its existing cover.
+      const coverMap = await topPhotoCoverMap(supabaseServer, [album.album_key]);
+      const coverCfId = coverMap.get(album.album_key) ?? album.cover_cf_image_id;
       mostRecentAlbum = {
         type: 'recent',
         title: 'Latest Event',
@@ -169,8 +173,8 @@ async function fetchFeaturedAlbums() {
           albumKey: album.album_key,
           albumName: album.album_name || 'Unknown Album',
           photoCount: parseInt(album.photo_count) || 0,
-          coverImageUrl: album.cover_cf_image_id
-            ? cfImageUrl(album.cover_cf_image_id, 'medium')
+          coverImageUrl: coverCfId
+            ? cfImageUrl(coverCfId, 'medium')
             : album.cover_image_url,
           primarySport: album.primary_sport || 'volleyball',
           primaryCategory: album.primary_category || 'action',

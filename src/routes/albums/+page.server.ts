@@ -1,6 +1,7 @@
 import { supabaseServer } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { topPhotoCoverMap } from '$lib/analytics/covers';
 import type { PageServerLoad } from './$types';
 
 // NOTE: read-path MV refresh removed (ADR 0001). `albums_summary` is maintained by the
@@ -120,6 +121,14 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 			latest: album.latest_photo_date
 		}
 	}));
+
+	// Auto-covers: override each album's cover with its top-engaged photo
+	// (falls back to the existing cover for albums with no engagement yet).
+	const coverMap = await topPhotoCoverMap(supabaseServer, albums.map((a) => a.albumKey));
+	for (const a of albums) {
+		const top = coverMap.get(a.albumKey);
+		if (top) a.coverCfImageId = top;
+	}
 
 	// Merge video-only albums from videos_summary (respect the active discovery filters)
 	const videoOnlyAlbums = (videoAlbumsData || [])
