@@ -92,6 +92,12 @@
 					>
 						About
 					</a>
+					<a
+						href="{base}/privacy"
+						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
+					>
+						Privacy
+					</a>
 				</nav>
 
 				<!-- Social Links -->

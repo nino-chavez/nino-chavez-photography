@@ -24,6 +24,7 @@ interface CreateTagRequest {
 	photo_id: string;
 	athlete_name: string;
 	jersey_number?: string;
+	consent_obtained?: boolean | string;
 }
 
 interface UserTag {
@@ -36,6 +37,7 @@ interface UserTag {
 	approved: boolean;
 	approved_by: string | null;
 	approved_at: string | null;
+	consent_obtained: boolean;
 	created_at: string;
 }
 
@@ -85,6 +87,13 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			throw error(400, 'athlete_name cannot be empty');
 		}
 
+		// Validate consent_obtained is explicitly true
+		// Accept both boolean and string 'true' (form submissions send strings)
+		const consentValue = body.consent_obtained === true || body.consent_obtained === 'true';
+		if (!consentValue) {
+			throw error(400, 'Consent from athlete (or parent/guardian if under 18) is required');
+		}
+
 		// Check if photo exists
 		const { data: photo, error: photoError } = await supabase
 			.from(PHOTOS_READ)
@@ -105,7 +114,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				jersey_number: body.jersey_number?.trim() || null,
 				tagged_by_user_id: user.id,
 				tagged_by_user_name: user.email || user.user_metadata?.name || null,
-				approved: false
+				approved: false,
+				consent_obtained: consentValue
 			})
 			.select()
 			.single();
