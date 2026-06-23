@@ -10,7 +10,7 @@
  * because this code runs SERVER-SIDE ONLY
  */
 
-import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet } from '$lib/supabase/server';
+import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet, searchByJersey } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
@@ -39,6 +39,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   const facetAlbumKeys = (divisionFilter || levelFilter)
     ? await getAlbumKeysByFacet({ division: divisionFilter, level: levelFilter })
     : undefined;
+
+  const useJersey = jerseyFilter !== undefined && !Number.isNaN(jerseyFilter);
 
   const filterOptions = {
     sportType: sportFilter,
@@ -92,6 +94,14 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     // Use vector similarity search if requested
     photos = await findSimilarPhotos(similarToImageKey, pageSize);
     totalCount = photos.length;
+  } else if (useJersey) {
+    // Jersey filter → comprehensive sightings (RPC), not the sparse jersey_number column.
+    // Jersey-primary: scoped by sport only (the RPC join can't compose with category/play_type).
+    const r = await searchByJersey(String(jerseyFilter), { sport: sportFilter, limit: pageSize, offset });
+    photos = r.photos;
+    totalCount = r.totalCount;
+    parsedDescription = `Jersey #${jerseyFilter}${sportFilter ? ` · ${sportFilter}` : ''}`;
+    searchMode = 'structured';
   } else if (searchQuery) {
     // Smart search: structured parse + vector fallback
     const result = await searchPhotos(searchQuery, filterOptions, {

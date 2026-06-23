@@ -358,6 +358,33 @@ export async function fetchPhotosByAlbumName(
  * The columns live on `albums`; explore filters photos by the resulting key set. Returns [] when
  * no album matches (caller turns that into a no-results query, not an unfiltered one).
  */
+/**
+ * Jersey search (SERVER-SIDE): page + total in one shot, entirely through find_photos_by_jersey.
+ *
+ * `photo_jersey_sightings` is admin-only (RLS) — a direct SELECT for the count returns nothing under
+ * the gallery's read role. The RPC is SECURITY DEFINER (its whole reason to exist) and is the only
+ * reliable path; it also excludes unlisted albums and quality-ranks. It returns no count, so we fetch
+ * the full deduped set once (one row per photo, all small fields) and slice the page in JS — accurate
+ * count + page from a single call. Jersey result sets are bounded (~1.5k for the most-photographed
+ * numbers), so this stays cheap.
+ */
+export async function searchByJersey(
+  jersey: string,
+  opts: { sport?: string; albumKey?: string; limit?: number; offset?: number } = {}
+): Promise<{ photos: Photo[]; totalCount: number }> {
+  const { sport, albumKey, limit = 24, offset = 0 } = opts;
+  // PostgREST caps each response at 1000 rows regardless of p_limit, so page in 1000-chunks to get
+  // the true total. Jersey sets are bounded (~1.5k for the most-photographed numbers) → 1-2 calls.
+  const PAGE = 1000;
+  const all: Photo[] = [];
+  for (let o = 0; ; o += PAGE) {
+    const chunk = await findPhotosByJersey(jersey, { sport, albumKey, limit: PAGE, offset: o });
+    all.push(...chunk);
+    if (chunk.length < PAGE) break;
+  }
+  return { photos: all.slice(offset, offset + limit), totalCount: all.length };
+}
+
 export async function getAlbumKeysByFacet(facet: { division?: string; level?: string }): Promise<string[]> {
   if (!facet.division && !facet.level) return [];
   let q = supabaseServer.from('albums').select('album_key');
@@ -1216,6 +1243,21 @@ export async function searchPhotos(
 
   const hasMatchedFilters = Object.keys(parsed.matchedFilters).length > 0;
   const hasUnmatchedTerms = parsed.unmatchedTerms.length > 0;
+
+  // Jersey lookup ("#12") → the find_photos_by_jersey RPC over photo_jersey_sightings (every detected
+  // jersey, multi-player — ~10x the sparse photo_metadata.jersey_number column; RPC excludes unlisted
+  // and is quality-ranked). Count comes from countPhotosByJersey (same privacy gate). The RPC does the
+  // photo_id↔sightings join server-side, avoiding the IN-list URL-length cap of a client-side join.
+  if (mergedFilters.jerseyNumber !== undefined && !hasUnmatchedTerms) {
+    const jersey = String(mergedFilters.jerseyNumber);
+    const { photos, totalCount } = await searchByJersey(jersey, {
+      sport: mergedFilters.sportType, albumKey: mergedFilters.albumKey, limit, offset,
+    });
+    if (photos.length > 0 || offset > 0) {
+      const sportBit = mergedFilters.sportType ? ` · ${mergedFilters.sportType}` : '';
+      return { photos, totalCount, searchMode: 'structured', parsedDescription: `Jersey #${jersey}${sportBit}` };
+    }
+  }
 
   // Event/team/name lookup (find-my-photos primary): unmatched free-text terms are almost
   // always an event, team, or school name, which live in `album_name`. Match there before
