@@ -416,7 +416,22 @@ const PROGRAM_FACETS: Array<{ label: string; query: string; match: string }> = [
 ];
 export async function getProgramFacets(): Promise<ProgramFacet[]> {
   const unlisted = await getUnlistedAlbumKeys();
-  const counts = await Promise.all(
+  const unlistedSet = new Set(unlisted);
+
+  // Recent engagement per album (album_popularity), mapped to album names so we
+  // can attribute it to each program via the same name match used for counts.
+  const [albumsRes, popRes] = await Promise.all([
+    supabaseServer.from('albums_summary').select('album_key, album_name'),
+    supabaseServer.from('album_popularity').select('album_key, trending_score')
+  ]);
+  const popByKey = new Map<string, number>(
+    (popRes.data ?? []).map((r) => [r.album_key as string, Number(r.trending_score) || 0])
+  );
+  const albums = (albumsRes.data ?? []).filter(
+    (a) => a.album_key && !unlistedSet.has(a.album_key)
+  );
+
+  const facets = await Promise.all(
     PROGRAM_FACETS.map(async (p) => {
       const { count } = await excludeUnlisted(
         supabaseServer
@@ -426,10 +441,21 @@ export async function getProgramFacets(): Promise<ProgramFacet[]> {
           .ilike('album_name', `%${p.match}%`),
         unlisted
       );
-      return { label: p.label, query: p.query, count: count || 0 };
+      const needle = p.match.toLowerCase();
+      const engagement = albums
+        .filter((a) => (a.album_name ?? '').toLowerCase().includes(needle))
+        .reduce((sum, a) => sum + (popByKey.get(a.album_key) ?? 0), 0);
+      return { label: p.label, query: p.query, count: count || 0, engagement };
     })
   );
-  return counts.filter((c) => c.count > 0).sort((a, b) => b.count - a.count);
+
+  // Popularity-aware ordering: recent engagement first, photo volume as the
+  // tiebreaker. During cold-start engagement is ~0 for all programs, so this
+  // gracefully degrades to the prior photo-count order.
+  return facets
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.engagement - a.engagement || b.count - a.count)
+    .map(({ label, query, count }) => ({ label, query, count }));
 }
 
 /**
