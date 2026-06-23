@@ -456,7 +456,7 @@
 						<!-- Share Button -->
 						{#if shareTarget}
 							<div class="mr-2 md:mr-4">
-								<ShareMenu target={shareTarget} variant="toolbar" />
+								<ShareMenu target={shareTarget} variant="toolbar" photoId={photo?.id} albumKey={photo?.album_key} />
 							</div>
 						{/if}
 

@@ -89,6 +89,7 @@ export interface PhotoMetadata {
 export interface Photo {
   id: string;
   image_key: string;
+  album_key?: string; // source album — disambiguates the non-unique image_key; popularity attribution
   cf_image_id?: string; // Cloudflare Images ID (uses imagedelivery.net)
   image_url: string;
   thumbnail_url?: string; // Thumbnail URL for blur placeholders

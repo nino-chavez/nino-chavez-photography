@@ -11,6 +11,7 @@
 	} from 'lucide-svelte';
 	import { downloadBrandedImage } from '$lib/utils/branded-image';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { trackEngagement } from '$lib/analytics/client';
 
 	interface ShareTarget {
 		/** Title for the shared content */
@@ -27,9 +28,16 @@
 		target: ShareTarget;
 		/** Visual style: 'toolbar' for lightbox/header, 'inline' for page body */
 		variant?: 'toolbar' | 'inline';
+		/** Popularity attribution: the photo's canonical id (Photo.id) and/or its album. */
+		photoId?: string;
+		albumKey?: string;
 	}
 
-	let { target, variant = 'toolbar' }: Props = $props();
+	let { target, variant = 'toolbar', photoId, albumKey }: Props = $props();
+
+	// Popularity signals (fire-and-forget; no-op if neither id is provided).
+	const trackShare = () => trackEngagement('share', { photoId, albumKey, source: 'share' });
+	const trackDownload = () => trackEngagement('download', { photoId, albumKey, source: 'share' });
 
 	let menuOpen = $state(false);
 	let copySuccess = $state(false);
@@ -73,6 +81,7 @@
 				text: shareText,
 				url: target.url
 			});
+			trackShare();
 		} catch (err) {
 			// User cancelled or not supported — ignore
 			if ((err as DOMException).name !== 'AbortError') {
@@ -87,6 +96,7 @@
 		try {
 			await navigator.clipboard.writeText(target.url);
 			copySuccess = true;
+			trackShare();
 			setTimeout(() => { copySuccess = false; }, 2000);
 		} catch (err) {
 			console.error('Failed to copy:', err);
@@ -96,6 +106,7 @@
 	function handlePlatformShare(platform: 'twitter' | 'facebook' | 'pinterest', event: MouseEvent) {
 		event.stopPropagation();
 		window.open(shareUrls[platform], '_blank', 'width=600,height=400');
+		trackShare();
 		closeMenu();
 	}
 
@@ -106,6 +117,7 @@
 			const slug = target.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 			const filename = `${slug}.jpg`;
 			await downloadBrandedImage({ imageUrl: target.imageUrl }, filename);
+			trackDownload();
 		} catch (err) {
 			console.error('Image download failed:', err);
 		} finally {

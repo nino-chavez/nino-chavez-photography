@@ -6,6 +6,7 @@
 
 import type { Photo } from '$types/photo';
 import { toast } from './toast.svelte';
+import { trackEngagement } from '$lib/analytics/client';
 
 const STORAGE_KEY = 'gallery-favorites';
 const MAX_FAVORITES = 100; // Prevent unlimited storage growth
@@ -81,6 +82,13 @@ function createFavoritesStore() {
 			state.photoIds.add(photo.image_key);
 			state.photos.set(photo.image_key, photo);
 			saveToStorage();
+
+			// Favoriting is a strong popularity signal (weight 4). Fire-and-forget.
+			trackEngagement('favorite', {
+				photoId: photo.id,
+				albumKey: photo.album_key,
+				source: 'favorites'
+			});
 		},
 
 		// Remove photo from favorites

@@ -57,6 +57,7 @@ export function transformPhotoRow(row: any): Photo {
   return {
     id: row.photo_id,
     image_key: row.image_key,
+    album_key: row.album_key || undefined,
     cf_image_id: row.cf_image_id || undefined,
     image_url: imageUrl,
     thumbnail_url: thumbnailUrl,
