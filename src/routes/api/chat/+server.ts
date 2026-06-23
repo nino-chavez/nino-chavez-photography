@@ -8,10 +8,15 @@ import { embedText } from '$lib/ai/embeddings';
 import type { RequestHandler } from './$types';
 import { checkRateLimit, getClientIdentifier } from './rate-limit';
 
-// Create Supabase client with fallback for build time
+// Create Supabase client with fallback for build time.
+// SECURITY: this is a PUBLIC, prompt-injectable endpoint — it must NOT hold the service_role key
+// (which bypasses RLS). Use the anon key so RLS is the backstop: everything the chat reads
+// (photo_metadata, album_settings) is anon-readable and find_photos_by_jersey is granted to anon;
+// the underlying photo_jersey_sightings stays RLS-blocked for anon. Even if the tool code regressed
+// or an injection found a new path, RLS — not just careful code — prevents data exposure.
 function getSupabaseClient() {
 	const supabaseUrl = env.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-	const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+	const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 	return createClient(supabaseUrl, supabaseKey);
 }
 
@@ -158,10 +163,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			apiKey: googleApiKey
 		});
 
+		// Injection hardening: the client controls the messages array, so drop any forged system/tool
+		// roles — only user/assistant turns reach the model; the server SYSTEM_PROMPT stays authoritative.
+		const safeMessages = messages.filter((m: { role?: string }) => m.role === 'user' || m.role === 'assistant');
+
 		const result = streamText({
 			model: google('gemini-2.5-flash'),
 			system: SYSTEM_PROMPT,
-			messages,
+			messages: safeMessages,
 			temperature: 0.7, // Balanced creativity vs consistency
 			tools: {
 				searchPhotos: tool({
@@ -285,7 +294,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		return result.toTextStreamResponse();
 	} catch (error) {
 		console.error('Error in chat API:', error);
-		return new Response(JSON.stringify({ error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) }), {
+		// Don't leak internal error details (table names, etc.) to a public client — log server-side only.
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
 			status: 500,
 			headers: { 'Content-Type': 'application/json' }
 		});
