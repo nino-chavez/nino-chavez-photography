@@ -162,6 +162,33 @@ async function distinctColumnValues(
  *
  * Never call from browser components!
  */
+// --- Unlisted-album privacy gate ------------------------------------------------
+// Personal/private client albums (album_settings.visibility='unlisted') must not surface
+// in PUBLIC DISCOVERY — browse, search, timeline, facet counts. They stay reachable via
+// their direct share link (gated in albums/[slug]). Single-album views (a query filtered
+// by albumKey) are NOT gated here — the caller is already scoped to one album.
+let _unlistedCache: { keys: string[]; at: number } | null = null;
+async function getUnlistedAlbumKeys(): Promise<string[]> {
+  if (_unlistedCache && Date.now() - _unlistedCache.at < 60_000) return _unlistedCache.keys;
+  const { data, error } = await supabaseServer
+    .from('album_settings')
+    .select('album_key')
+    .eq('visibility', 'unlisted');
+  if (error) {
+    console.error('[getUnlistedAlbumKeys]', error.message);
+    return _unlistedCache?.keys ?? [];
+  }
+  const keys = (data ?? []).map((r: { album_key: string }) => r.album_key);
+  _unlistedCache = { keys, at: Date.now() };
+  return keys;
+}
+/** Append a NOT-IN exclusion for unlisted album_keys to a photo_metadata query. No-op when empty. */
+function excludeUnlisted<T>(query: T, keys: string[]): T {
+  if (!keys.length) return query;
+  // @ts-expect-error supabase PostgrestFilterBuilder is chainable but not generically typed here
+  return query.not('album_key', 'in', `(${keys.join(',')})`);
+}
+
 export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]> {
   const { limit = 24, offset = 0, sortBy = 'newest', dateFrom, dateTo, ...filters } = options || {};
 
@@ -171,6 +198,9 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
     .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .not('sharpness', 'is', null); // Only show enriched photos
+
+  // Privacy: exclude unlisted albums from cross-album discovery (not single-album views).
+  if (!filters?.albumKey) query = excludeUnlisted(query, await getUnlistedAlbumKeys());
 
   // CRITICAL: Apply filters BEFORE sorting for better index usage
   // This reduces the dataset that needs to be sorted
@@ -279,8 +309,10 @@ export async function fetchPhotosByAlbumName(
   // Escape PostgREST ILIKE wildcards so a literal % or _ in a query can't widen the match.
   const escape = (t: string) => t.replace(/[%_]/g, (c) => `\\${c}`);
 
+  const unlisted = await getUnlistedAlbumKeys(); // privacy: name search must not surface private albums
   const applyFilters = (q: any) => {
     q = q.not('sharpness', 'is', null);
+    q = excludeUnlisted(q, unlisted);
     for (const term of cleanTerms) q = q.ilike('album_name', `%${escape(term)}%`);
     if (filters.sportType) q = q.eq('sport_type', filters.sportType);
     if (filters.photoCategory) q = q.eq('photo_category', filters.photoCategory);
@@ -313,6 +345,43 @@ export async function fetchPhotosByAlbumName(
   }
 
   return { photos: (data || []).map(transformPhotoRow), totalCount: count || 0 };
+}
+
+/**
+ * "Find your club" facets (SERVER-SIDE) — the first consumer of the album-name enrichment.
+ *
+ * Programs are the recurring teams/events a returning visitor looks for by name — a mix of clubs
+ * (630, VLA), a league/tournament org (KRUSH), a pro circuit (AVP), and schools (ACC). We derive them
+ * from `album_name` (no schema dependency): each program's `query` drives the SAME album-name search
+ * the explore page uses, so a chip and a typed search land identically. Counts exclude unlisted
+ * (private) albums. Cached by the caller's page cache; cheap (one head request per program).
+ */
+export interface ProgramFacet { label: string; query: string; count: number; }
+const PROGRAM_FACETS: Array<{ label: string; query: string; match: string }> = [
+  { label: 'KRUSH', query: 'krush', match: 'krush' },
+  { label: '630 Volleyball', query: '630', match: '630' },
+  { label: 'VLA', query: 'vla', match: 'vla' },
+  { label: 'AVP', query: 'avp', match: 'avp' },
+  { label: 'Aurora Central Catholic', query: 'ACC', match: 'acc' },
+  { label: 'Players Sports', query: 'players sports', match: 'players sport' },
+  { label: 'TeamOne', query: 'teamone', match: 'teamone' },
+];
+export async function getProgramFacets(): Promise<ProgramFacet[]> {
+  const unlisted = await getUnlistedAlbumKeys();
+  const counts = await Promise.all(
+    PROGRAM_FACETS.map(async (p) => {
+      const { count } = await excludeUnlisted(
+        supabaseServer
+          .from(PHOTOS_READ)
+          .select('photo_id', { count: 'exact', head: true })
+          .not('sharpness', 'is', null)
+          .ilike('album_name', `%${p.match}%`),
+        unlisted
+      );
+      return { label: p.label, query: p.query, count: count || 0 };
+    })
+  );
+  return counts.filter((c) => c.count > 0).sort((a, b) => b.count - a.count);
 }
 
 /**
@@ -350,6 +419,9 @@ export async function getPhotoCount(
   if (filters?.dateFrom) query = query.gte('photo_date', filters.dateFrom);
   if (filters?.dateTo) query = query.lte('photo_date', filters.dateTo);
 
+  // Privacy: keep unlisted-album photos out of discovery counts (not single-album counts).
+  if (!filters?.albumKey) query = excludeUnlisted(query, await getUnlistedAlbumKeys());
+
   const { count, error } = await query;
 
   if (error) {
@@ -371,14 +443,18 @@ export async function getSportDistribution(): Promise<Array<{ name: string; coun
   // exact head request. Excludes 'unknown', matching the original WHERE sport_type != 'unknown'.
   try {
     const sports = (await distinctColumnValues('sport_type')).filter((s) => s !== 'unknown');
+    const unlisted = await getUnlistedAlbumKeys(); // privacy: keep private albums out of sport facet counts
 
     const counts = await Promise.all(
       sports.map(async (sport) => {
-        const { count, error } = await supabaseServer
-          .from(PHOTOS_READ)
-          .select('photo_id', { count: 'exact', head: true })
-          .not('sharpness', 'is', null)
-          .eq('sport_type', sport);
+        const { count, error } = await excludeUnlisted(
+          supabaseServer
+            .from(PHOTOS_READ)
+            .select('photo_id', { count: 'exact', head: true })
+            .not('sharpness', 'is', null)
+            .eq('sport_type', sport),
+          unlisted
+        );
 
         if (error) {
           console.error(`[getSportDistribution] Error counting sport ${sport}:`, error.message);
@@ -441,8 +517,11 @@ export async function getFilterCounts(currentFilters?: PhotoFilterState): Promis
   // values are discovered with paged reads (no 1000-row truncation); counts use exact head requests
   // (which never return rows, so never truncate).
 
+  const unlisted = await getUnlistedAlbumKeys(); // privacy: facets must not count private-album photos
+
   // Apply the current filters to a query, skipping the dimension being counted.
   const applyCrossFilters = (q: any, fieldName: string) => {
+    q = excludeUnlisted(q, unlisted);
     if (currentFilters?.sportType && fieldName !== 'sport_type') {
       q = q.eq('sport_type', currentFilters.sportType);
     }
@@ -548,6 +627,7 @@ export async function fetchPhotosByPeriod(options: {
 }) {
   const { page = 1, limit = 12, includeFeatured = false, sportFilter, categoryFilter } = options;
   const offset = (page - 1) * limit;
+  const unlisted = await getUnlistedAlbumKeys(); // privacy: keep private albums out of the timeline
 
   // Anon-safe replacement for the old exec_sql GROUP BY (revoked from anon → was failing into a
   // no-limit fallback that hit the 1000-row cap and dropped older months). Approach:
@@ -591,6 +671,7 @@ export async function fetchPhotosByPeriod(options: {
         .lt('upload_date', endDate.toISOString())
         .not('sharpness', 'is', null);
 
+      countQuery = excludeUnlisted(countQuery, unlisted);
       if (sportFilter) countQuery = countQuery.eq('sport_type', sportFilter);
       if (categoryFilter) countQuery = countQuery.eq('photo_category', categoryFilter);
 
@@ -629,6 +710,7 @@ export async function fetchPhotosByPeriod(options: {
         .lt('upload_date', endDate.toISOString())
         .not('sharpness', 'is', null);
 
+      photoQuery = excludeUnlisted(photoQuery, unlisted);
       if (sportFilter) photoQuery = photoQuery.eq('sport_type', sportFilter);
       if (categoryFilter) photoQuery = photoQuery.eq('photo_category', categoryFilter);
 
@@ -734,6 +816,8 @@ export async function fetchPhotosByYearMonth(
       .not('sharpness', 'is', null)
       .gte('upload_date', startDate.toISOString())
       .lte('upload_date', endDate.toISOString());
+
+    query = excludeUnlisted(query, await getUnlistedAlbumKeys()); // privacy: month detail excludes private albums
 
     // Apply sorting
     if (sortBy === 'newest') {
@@ -845,11 +929,14 @@ export async function findSimilarPhotos(imageKey: string, limit: number = 24): P
   if (!error && similarMatches && similarMatches.length > 0) {
     const keys = similarMatches.map((p: any) => p.image_key);
 
-    const { data: photosData, error: photosError } = await supabaseServer
-      .from(PHOTOS_READ)
-      .select(PHOTO_COLUMNS)
-      .in('image_key', keys)
-      .not('sharpness', 'is', null);
+    const { data: photosData, error: photosError } = await excludeUnlisted(
+      supabaseServer
+        .from(PHOTOS_READ)
+        .select(PHOTO_COLUMNS)
+        .in('image_key', keys)
+        .not('sharpness', 'is', null),
+      await getUnlistedAlbumKeys()
+    ); // privacy: "similar photos" must not surface private albums
 
     if (!photosError && photosData && photosData.length > 0) {
       const photoMap = new Map(photosData.map(p => [p.image_key, p]));
@@ -1040,7 +1127,10 @@ async function tryPlannerSearch(
       if (error) console.error('[tryPlannerSearch] match_photos_hybrid error:', error.message);
       if (!error && matches && matches.length > 0) {
         const keys = matches.map((m: { image_key: string }) => m.image_key);
-        const { data: rows } = await supabaseServer.from(PHOTOS_READ).select(PHOTO_COLUMNS).in('image_key', keys);
+        const { data: rows } = await excludeUnlisted(
+          supabaseServer.from(PHOTOS_READ).select(PHOTO_COLUMNS).in('image_key', keys),
+          await getUnlistedAlbumKeys()
+        ); // privacy: semantic results must not surface private albums
         const map = new Map((rows ?? []).map((p: any) => [p.image_key, p]));
         const photos = matches
           .map((m: { image_key: string }) => map.get(m.image_key))
@@ -1080,10 +1170,11 @@ export async function searchPhotos(
 ): Promise<SearchResult> {
   const { limit = 24, offset = 0, sortBy = 'quality', albumNames } = options;
 
-  // Preferred: LLM planner + hybrid search. Falls back to the rule parser below on null.
-  const planned = await tryPlannerSearch(query, existingFilters, { limit, offset, sortBy });
-  if (planned) return planned;
-
+  // Name/event/team lookup runs FIRST (below) — it's the dominant find-my-photos query and lives in
+  // album_name. The LLM planner (semantic/visual) is the FALLBACK for descriptive queries that don't
+  // resolve to a name/facet, applied just before the vector path. (Previously the planner ran first
+  // and could return a weak semantic match for a name like "vla"/"630", preempting the exact
+  // album-name result.)
   const { parseQuery } = await import('$lib/utils/nlp-query-parser');
 
   const parsed = parseQuery(query, albumNames);
@@ -1156,6 +1247,11 @@ export async function searchPhotos(
     }
   }
 
+  // Fallback for descriptive/semantic queries that didn't resolve to a name or facet above:
+  // the LLM planner (facet + date + caption-similarity hybrid).
+  const planned = await tryPlannerSearch(query, existingFilters, { limit, offset, sortBy });
+  if (planned) return planned;
+
   // Vector search fallback
   const embedding = await embedSearchQuery(query);
   if (!embedding) {
@@ -1185,11 +1281,14 @@ export async function searchPhotos(
 
   // Fetch full photo data for matched image_keys (same pattern as findSimilarPhotos)
   const keys = matches.map((m: { image_key: string }) => m.image_key);
-  const { data: photosData, error: photosError } = await supabaseServer
-    .from(PHOTOS_READ)
-    .select(PHOTO_COLUMNS)
-    .in('image_key', keys)
-    .not('sharpness', 'is', null);
+  const { data: photosData, error: photosError } = await excludeUnlisted(
+    supabaseServer
+      .from(PHOTOS_READ)
+      .select(PHOTO_COLUMNS)
+      .in('image_key', keys)
+      .not('sharpness', 'is', null),
+    await getUnlistedAlbumKeys()
+  ); // privacy: semantic results must not surface private albums
 
   if (photosError || !photosData) {
     return {
