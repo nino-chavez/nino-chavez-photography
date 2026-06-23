@@ -1,6 +1,7 @@
 import { base } from '$app/paths';
 import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
+import { getTopPhotos } from '$lib/analytics/popularity';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
@@ -76,6 +77,13 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	// (apex /photography and the photography.* subdomain both serve this app).
 	const ogImage = `${url.origin}${base}/albums/${correctSlug}/og.png`;
 
+	// "Popular in this album" — top engaged photos from this album (may be empty).
+	const popularInAlbum = await getTopPhotos(supabaseServer, {
+		albumKey,
+		metric: 'trending',
+		limit: 12
+	});
+
 	return {
 		albumKey,
 		albumName,
@@ -83,6 +91,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		photos,
 		videos,
 		totalCount,
+		popularInAlbum,
 		seo: {
 			title: `${albumName} | Nino Chavez Photography`,
 			description: ogDescription,

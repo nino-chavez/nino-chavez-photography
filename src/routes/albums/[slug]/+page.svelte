@@ -6,6 +6,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
+	import PopularityRail from '$lib/components/gallery/PopularityRail.svelte';
 	import VideoCard from '$lib/components/gallery/VideoCard.svelte';
 	import VideoPlayer from '$lib/components/gallery/VideoPlayer.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
@@ -326,6 +327,13 @@
 						{/each}
 					</div>
 				{/if}
+			</div>
+		{/if}
+
+		<!-- Popular in this album (engagement-ranked highlights; hides if no data) -->
+		{#if data.popularInAlbum && data.popularInAlbum.length > 2}
+			<div class="mb-12">
+				<PopularityRail title="Popular in this album" trending={data.popularInAlbum} />
 			</div>
 		{/if}
 
