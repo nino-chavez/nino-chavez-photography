@@ -2,6 +2,7 @@
 	import type { PageData } from './$types';
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
+	import PopularityRail from '$lib/components/gallery/PopularityRail.svelte';
 	import { createAlbumSlug } from '$lib/utils';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
@@ -168,6 +169,17 @@
 					</a>
 				{/each}
 			</div>
+		</section>
+	{/if}
+
+	<!-- Trending rail — engagement-ranked, Trending<->Fan Favorites toggle. Hides if sparse. -->
+	{#if data.trendingPhotos && data.trendingPhotos.length > 2}
+		<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-fade-in-delayed">
+			<PopularityRail
+				title="Trending this week"
+				trending={data.trendingPhotos}
+				favorites={data.fanFavorites}
+			/>
 		</section>
 	{/if}
 
