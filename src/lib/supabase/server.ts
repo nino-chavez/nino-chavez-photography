@@ -223,6 +223,11 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
     query = query.eq('album_key', filters.albumKey);
   }
 
+  // Facet filter (division/level → set of album_keys). Empty array = no matching albums → no rows.
+  if (filters?.albumKeys) {
+    query = query.in('album_key', filters.albumKeys.length ? filters.albumKeys : ['__none__']);
+  }
+
   if (filters?.jerseyNumber !== undefined) {
     query = query.eq('jersey_number', filters.jerseyNumber);
   }
@@ -348,6 +353,21 @@ export async function fetchPhotosByAlbumName(
 }
 
 /**
+ * Resolve a division/level facet to the set of album_keys carrying it (SERVER-SIDE).
+ * The columns live on `albums`; explore filters photos by the resulting key set. Returns [] when
+ * no album matches (caller turns that into a no-results query, not an unfiltered one).
+ */
+export async function getAlbumKeysByFacet(facet: { division?: string; level?: string }): Promise<string[]> {
+  if (!facet.division && !facet.level) return [];
+  let q = supabaseServer.from('albums').select('album_key');
+  if (facet.division) q = q.eq('division', facet.division);
+  if (facet.level) q = q.eq('level', facet.level);
+  const { data, error } = await q;
+  if (error) { console.error('[getAlbumKeysByFacet]', error.message); return []; }
+  return (data ?? []).map((r: { album_key: string }) => r.album_key);
+}
+
+/**
  * "Find your club" facets (SERVER-SIDE) — the first consumer of the album-name enrichment.
  *
  * Programs are the recurring teams/events a returning visitor looks for by name — a mix of clubs
@@ -414,6 +434,10 @@ export async function getPhotoCount(
 
   if (filters?.albumKey) {
     query = query.eq('album_key', filters.albumKey);
+  }
+
+  if (filters?.albumKeys) {
+    query = query.in('album_key', filters.albumKeys.length ? filters.albumKeys : ['__none__']);
   }
 
   if (filters?.dateFrom) query = query.gte('photo_date', filters.dateFrom);

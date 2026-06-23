@@ -169,6 +169,8 @@ export interface PhotoFilterState {
   // Context Filters
   // ==========================================================================
   albumKey?: string;
+  /** Restrict to a set of album_keys (e.g. all albums of a given division/level facet). */
+  albumKeys?: string[];
   jerseyNumber?: number;
 
   // ==========================================================================

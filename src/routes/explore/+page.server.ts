@@ -10,7 +10,7 @@
  * because this code runs SERVER-SIDE ONLY
  */
 
-import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos } from '$lib/supabase/server';
+import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet } from '$lib/supabase/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
@@ -26,6 +26,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   let searchQuery = url.searchParams.get('q') || undefined;
   let similarToImageKey = url.searchParams.get('similar_to') || undefined;
   let jerseyFilter = url.searchParams.get('jersey') ? parseInt(url.searchParams.get('jersey')!) : undefined;
+  const divisionFilter = url.searchParams.get('division') || undefined;
+  const levelFilter = url.searchParams.get('level') || undefined;
 
   // Sort mode (default to quality)
   const sortBy = (url.searchParams.get('sort') || 'quality') as 'quality' | 'newest' | 'oldest';
@@ -33,15 +35,21 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
   const pageSize = 24; // Fixed page size for consistent pagination
   const offset = (page - 1) * pageSize;
 
+  // Album-facet filters (division/level) live on `albums` → resolve to the album_key set photos filter by.
+  const facetAlbumKeys = (divisionFilter || levelFilter)
+    ? await getAlbumKeysByFacet({ division: divisionFilter, level: levelFilter })
+    : undefined;
+
   const filterOptions = {
     sportType: sportFilter,
     photoCategory: categoryFilter,
     playTypes: playTypeFilter ? [playTypeFilter as any] : undefined,
     jerseyNumber: jerseyFilter,
+    albumKeys: facetAlbumKeys,
   };
 
   // Check if any filters are active
-  const hasActiveFilters = !!(sportFilter || categoryFilter || playTypeFilter || jerseyFilter);
+  const hasActiveFilters = !!(sportFilter || categoryFilter || playTypeFilter || jerseyFilter || divisionFilter || levelFilter);
 
   // PERFORMANCE: Stream filter counts — don't block FCP on expensive aggregation query
   // When filters are active, getFilterCounts can take 2-4s. By not awaiting,
@@ -117,6 +125,8 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     selectedCategory: categoryFilter || null,
     selectedPlayType: playTypeFilter || null,
     selectedJerseyNumber: jerseyFilter || null,
+    selectedDivision: divisionFilter || null,
+    selectedLevel: levelFilter || null,
     filterCounts,
     clearedFilters,
     searchQuery,
