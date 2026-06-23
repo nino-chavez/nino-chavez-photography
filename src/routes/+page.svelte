@@ -57,8 +57,8 @@
 </script>
 
 <svelte:head>
-	<title>Nino Chavez — Volleyball Photography</title>
-	<meta name="description" content="Professional volleyball action sports photography. Browse portfolio-quality photos from tournaments, matches, and events." />
+	<title>Nino Chavez — Action Sports Photography</title>
+	<meta name="description" content="Professional action sports photography — volleyball, basketball, soccer, and more. Browse portfolio-quality photos from tournaments, matches, and events." />
 
 	<!-- Preload static hero WebP for instant LCP (Vercel CDN, no proxy chain) -->
 	<link rel="preload" as="image" href="{base}/images/hero/hero-1-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />
@@ -70,21 +70,21 @@
 	compact
 	images={heroImages}
 	staticHeroIndex={data.staticHeroIndex ?? 0}
-	title="VOLLEYBALL EVENT GALLERIES"
+	title="ACTION SPORTS GALLERIES"
 	subtitle=""
 >
 	<div class="w-full max-w-md">
 		<p class="text-base text-charcoal-300 mb-4 normal-case tracking-normal font-normal">
-			Find your photos from a recent event — search by event, team, or your name.
+			Find your photos from a recent event — search by event, team, or jersey number.
 		</p>
 		<form role="search" method="get" action="{base}/explore" class="flex flex-col sm:flex-row gap-2">
 			<label class="relative flex-1">
-				<span class="sr-only">Search events, teams, or player names</span>
+				<span class="sr-only">Search events, teams, or jersey numbers</span>
 				<Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400 pointer-events-none" aria-hidden="true" />
 				<input
 					type="search"
 					name="q"
-					placeholder="Find your event, team, or name…"
+					placeholder="Find your event, team, or jersey #…"
 					autocomplete="off"
 					class="w-full h-12 pl-10 pr-4 rounded-lg bg-charcoal-900 border border-charcoal-700 text-white
 					       placeholder:text-charcoal-500 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
