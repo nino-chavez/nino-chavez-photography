@@ -258,6 +258,64 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
 }
 
 /**
+ * Find photos by EVENT/TEAM/SCHOOL name (SERVER-SIDE).
+ *
+ * The find-my-photos primary path: people search the name of an event, team, or school
+ * ("msoe", "lewis", "krush") — strings that live in `album_name`, NOT in captions. The
+ * semantic/embedding path matches visual caption content, so it can never satisfy these
+ * queries (and is dead in prod when OPENROUTER_API_KEY is absent). Each term is AND'd as an
+ * `album_name ILIKE %term%` so "msoe aurora" still matches "MSOE vs Aurora - Mar 21"
+ * regardless of order. Any structured filters (sport, category, …) are layered on top.
+ */
+export async function fetchPhotosByAlbumName(
+  terms: string[],
+  filters: Partial<PhotoFilterState> = {},
+  options: { limit?: number; offset?: number; sortBy?: FetchPhotosOptions['sortBy'] } = {}
+): Promise<{ photos: Photo[]; totalCount: number }> {
+  const { limit = 24, offset = 0, sortBy = 'quality' } = options;
+  const cleanTerms = terms.map((t) => t.trim()).filter((t) => t.length >= 2).slice(0, 5);
+  if (cleanTerms.length === 0) return { photos: [], totalCount: 0 };
+
+  // Escape PostgREST ILIKE wildcards so a literal % or _ in a query can't widen the match.
+  const escape = (t: string) => t.replace(/[%_]/g, (c) => `\\${c}`);
+
+  const applyFilters = (q: any) => {
+    q = q.not('sharpness', 'is', null);
+    for (const term of cleanTerms) q = q.ilike('album_name', `%${escape(term)}%`);
+    if (filters.sportType) q = q.eq('sport_type', filters.sportType);
+    if (filters.photoCategory) q = q.eq('photo_category', filters.photoCategory);
+    if (filters.playTypes && filters.playTypes.length > 0) q = q.in('play_type', filters.playTypes);
+    if (filters.jerseyNumber !== undefined) q = q.eq('jersey_number', filters.jerseyNumber);
+    return q;
+  };
+
+  let rowsQuery = applyFilters(supabaseServer.from(PHOTOS_READ).select(PHOTO_COLUMNS));
+  switch (sortBy) {
+    case 'newest':
+      rowsQuery = rowsQuery.order('upload_date', { ascending: false }).order('image_key', { ascending: true });
+      break;
+    case 'oldest':
+      rowsQuery = rowsQuery.order('upload_date', { ascending: true }).order('image_key', { ascending: true });
+      break;
+    default:
+      rowsQuery = rowsQuery.order('quality_score', { ascending: false, nullsFirst: false }).order('upload_date', { ascending: false });
+  }
+  rowsQuery = rowsQuery.range(offset, offset + limit - 1);
+
+  const countQuery = applyFilters(
+    supabaseServer.from(PHOTOS_READ).select('photo_id', { count: 'exact', head: true })
+  );
+
+  const [{ data, error }, { count, error: countError }] = await Promise.all([rowsQuery, countQuery]);
+  if (error || countError) {
+    console.error('[fetchPhotosByAlbumName] Error:', error?.message || countError?.message);
+    return { photos: [], totalCount: 0 };
+  }
+
+  return { photos: (data || []).map(transformPhotoRow), totalCount: count || 0 };
+}
+
+/**
  * Get count of photos matching filters (SERVER-SIDE)
  */
 export async function getPhotoCount(
@@ -1043,6 +1101,24 @@ export async function searchPhotos(
   const hasMatchedFilters = Object.keys(parsed.matchedFilters).length > 0;
   const hasUnmatchedTerms = parsed.unmatchedTerms.length > 0;
 
+  // Event/team/name lookup (find-my-photos primary): unmatched free-text terms are almost
+  // always an event, team, or school name, which live in `album_name`. Match there before
+  // falling to the semantic caption path (which can't satisfy name queries and is offline in
+  // prod without an embedding key). Any matched facet filters are layered on.
+  if (hasUnmatchedTerms) {
+    const byAlbum = await fetchPhotosByAlbumName(parsed.unmatchedTerms, mergedFilters, { limit, offset, sortBy });
+    if (byAlbum.totalCount > 0 || offset > 0) {
+      const terms = parsed.unmatchedTerms.join(' ');
+      const facets = parsed.description ? ` · ${parsed.description}` : '';
+      return {
+        photos: byAlbum.photos,
+        totalCount: byAlbum.totalCount,
+        searchMode: 'structured',
+        parsedDescription: `Events matching “${terms}”${facets}`,
+      };
+    }
+  }
+
   // Fast path: all terms matched → use structured filters
   if (hasMatchedFilters && !hasUnmatchedTerms) {
     const [photos, totalCount] = await Promise.all([
@@ -1087,7 +1163,7 @@ export async function searchPhotos(
       photos: [],
       totalCount: 0,
       searchMode: 'semantic',
-      parsedDescription: 'Search unavailable. Try using filters instead.',
+      parsedDescription: `No events match “${query}”. Try a team or event name, or browse all albums.`,
     };
   }
 

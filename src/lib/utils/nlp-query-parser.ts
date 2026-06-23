@@ -83,7 +83,9 @@ addKeywords('playTypes', 'transition', ['transition']);
 
 // Jersey number regex patterns
 const JERSEY_PATTERNS = [
-	/\b#(\d{1,3})\b/,
+	// `#` is its own delimiter — no leading \b (it fails at string start since `#` isn't a word char,
+	// which is exactly the "#12" form the hero advertises).
+	/#\s*(\d{1,3})\b/,
 	/\bnumber\s+(\d{1,3})\b/i,
 	/\bjersey\s+(\d{1,3})\b/i,
 	/\bno\.?\s*(\d{1,3})\b/i,
