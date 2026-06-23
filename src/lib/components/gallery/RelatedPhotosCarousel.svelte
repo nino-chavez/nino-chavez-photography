@@ -81,7 +81,7 @@
 		<div
 			bind:this={scrollContainer}
 			onscroll={handleScroll}
-			class="flex gap-6 overflow-x-auto scroll-smooth pb-4 -mx-2 px-2 scrollbar-thin scrollbar-thumb-charcoal-700 scrollbar-track-charcoal-900"
+			class="flex gap-6 overflow-x-auto scroll-smooth pb-2 -mx-2 px-2 rail-scroll"
 		>
 			{#each photos as photo, index}
 				<div class="flex-none w-[280px]">
@@ -107,28 +107,13 @@
 {/if}
 
 <style>
-	/* Custom scrollbar styling */
-	.scrollbar-thin::-webkit-scrollbar {
-		height: 6px;
+	/* Hide the native scrollbar — scroll is driven by the prev/next buttons and
+	   gradient edge fades, so the visible track read as an artifact. */
+	.rail-scroll {
+		scrollbar-width: none; /* Firefox */
+		-ms-overflow-style: none; /* legacy Edge */
 	}
-
-	.scrollbar-thin::-webkit-scrollbar-track {
-		background: theme('colors.charcoal.900');
-		border-radius: 3px;
-	}
-
-	.scrollbar-thin::-webkit-scrollbar-thumb {
-		background: theme('colors.charcoal.700');
-		border-radius: 3px;
-	}
-
-	.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-		background: theme('colors.gold.500');
-	}
-
-	/* Hide scrollbar for Firefox */
-	.scrollbar-thin {
-		scrollbar-width: thin;
-		scrollbar-color: theme('colors.charcoal.700') theme('colors.charcoal.900');
+	.rail-scroll::-webkit-scrollbar {
+		display: none; /* WebKit/Blink */
 	}
 </style>
