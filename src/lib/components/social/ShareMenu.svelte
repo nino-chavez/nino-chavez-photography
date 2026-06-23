@@ -6,11 +6,10 @@
 		Check,
 		Twitter,
 		Facebook,
-		Instagram,
 		Image,
 		Link
 	} from 'lucide-svelte';
-	import { downloadBrandedImage, type ShareFormat } from '$lib/utils/branded-image';
+	import { downloadBrandedImage } from '$lib/utils/branded-image';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 
 	interface ShareTarget {
@@ -34,7 +33,7 @@
 
 	let menuOpen = $state(false);
 	let copySuccess = $state(false);
-	let downloading = $state<ShareFormat | null>(null);
+	let downloading = $state(false);
 	let menuEl: HTMLDivElement | undefined = $state();
 
 	const hasWebShare = $derived(typeof navigator !== 'undefined' && !!navigator.share);
@@ -100,20 +99,17 @@
 		closeMenu();
 	}
 
-	async function handleDownloadBranded(format: ShareFormat, event: MouseEvent) {
+	async function handleDownload(event: MouseEvent) {
 		event.stopPropagation();
-		downloading = format;
+		downloading = true;
 		try {
 			const slug = target.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-			const filename = `${slug}-${format}.jpg`;
-			await downloadBrandedImage(
-				{ imageUrl: target.imageUrl, title: target.title, format },
-				filename
-			);
+			const filename = `${slug}.jpg`;
+			await downloadBrandedImage({ imageUrl: target.imageUrl }, filename);
 		} catch (err) {
-			console.error('Branded image download failed:', err);
+			console.error('Image download failed:', err);
 		} finally {
-			downloading = null;
+			downloading = false;
 		}
 	}
 
@@ -200,39 +196,19 @@
 
 				<div class="border-t border-charcoal-800/50 my-2"></div>
 
-				<!-- Instagram Downloads -->
-				<div class="px-4 py-1">
-					<span class="text-xs text-charcoal-500 uppercase tracking-wider">Download for Instagram</span>
-				</div>
-
+				<!-- Image Download -->
 				<button
-					onclick={(e) => handleDownloadBranded('story', e)}
-					disabled={downloading !== null}
-					class="share-menu-item"
-					role="menuitem"
-				>
-					<Instagram class="w-4 h-4" />
-					<span>
-						{#if downloading === 'story'}
-							Creating image...
-						{:else}
-							IG Story (9:16)
-						{/if}
-					</span>
-				</button>
-
-				<button
-					onclick={(e) => handleDownloadBranded('post', e)}
-					disabled={downloading !== null}
+					onclick={handleDownload}
+					disabled={downloading}
 					class="share-menu-item"
 					role="menuitem"
 				>
 					<Image class="w-4 h-4" />
 					<span>
-						{#if downloading === 'post'}
-							Creating image...
+						{#if downloading}
+							Preparing image...
 						{:else}
-							IG Post (1:1)
+							Download image
 						{/if}
 					</span>
 				</button>
