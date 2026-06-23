@@ -92,6 +92,8 @@
 		if (data.selectedCategory) count++;
 		if (data.selectedPlayType) count++;
 		if (data.selectedJerseyNumber) count++;
+		if (data.selectedDivision) count++;
+		if (data.selectedLevel) count++;
 		return count;
 	});
 
@@ -198,6 +200,23 @@
 		goto(url.toString());
 	}
 
+	// Division facet (album-level): toggle ?division, preserving other params. Click active = clear.
+	const DIVISIONS = [
+		{ value: 'girls', label: 'Girls' },
+		{ value: 'boys', label: 'Boys' },
+		{ value: 'womens', label: "Women's" },
+		{ value: 'mens', label: "Men's" },
+		{ value: 'coed', label: 'Co-ed' }
+	];
+	function toggleDivision(value: string) {
+		const url = new URL($page.url);
+		if (data.selectedDivision === value) url.searchParams.delete('division');
+		else url.searchParams.set('division', value);
+		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
+		goto(url.toString());
+	}
+
 	function clearAllFilters(event?: MouseEvent) {
 		event?.stopPropagation();
 		const url = new URL($page.url);
@@ -206,6 +225,8 @@
 		url.searchParams.delete('category');
 		url.searchParams.delete('play_type');
 		url.searchParams.delete('jersey'); // Clear jersey filter
+		url.searchParams.delete('division'); // Clear division facet
+		url.searchParams.delete('level'); // Clear level facet
 		url.searchParams.delete('q'); // Clear search query too
 		url.searchParams.delete('similar_to'); // Clear similarity search
 		url.searchParams.delete('page');
@@ -528,6 +549,23 @@
 			<option value="newest">Newest</option>
 			<option value="oldest">Oldest</option>
 		</select>
+	</div>
+
+	<!-- Division facet chips (album-level browse axis free-text can't express) -->
+	<div class="flex flex-wrap items-center gap-2 mb-4">
+		<span class="text-xs uppercase tracking-wide text-charcoal-500">Division</span>
+		{#each DIVISIONS as d}
+			<button
+				type="button"
+				onclick={() => toggleDivision(d.value)}
+				aria-pressed={data.selectedDivision === d.value}
+				class="px-3 py-1 rounded-full border text-xs transition-colors {data.selectedDivision === d.value
+					? 'border-gold-500 bg-gold-500/15 text-white'
+					: 'border-charcoal-700 bg-charcoal-900 text-charcoal-300 hover:border-gold-500/60 hover:text-white'}"
+			>
+				{d.label}
+			</button>
+		{/each}
 	</div>
 
 	<!-- Search Feedback -->
