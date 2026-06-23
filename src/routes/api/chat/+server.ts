@@ -15,6 +15,18 @@ function getSupabaseClient() {
 	return createClient(supabaseUrl, supabaseKey);
 }
 
+// Unlisted (private client) album_keys — this is a PUBLIC, unauthenticated endpoint, so every search
+// path must exclude them, matching the gallery's privacy gate. Cached briefly per worker.
+let _unlistedCache: { keys: string[]; at: number } | null = null;
+async function getUnlistedKeys(supabase: ReturnType<typeof getSupabaseClient>): Promise<string[]> {
+	if (_unlistedCache && Date.now() - _unlistedCache.at < 60_000) return _unlistedCache.keys;
+	const { data, error } = await supabase.from('album_settings').select('album_key').eq('visibility', 'unlisted');
+	if (error) { console.error('[chat getUnlistedKeys]', error.message); return _unlistedCache?.keys ?? []; }
+	const keys = (data ?? []).map((r: { album_key: string }) => r.album_key);
+	_unlistedCache = { keys, at: Date.now() };
+	return keys;
+}
+
 const SYSTEM_PROMPT = `You are Shot Bot, the AI assistant for Nino Chavez's photography gallery.
 
 **Your Role:**
@@ -188,11 +200,26 @@ export const POST: RequestHandler = async ({ request }) => {
 									const { data, error } = await supabase.rpc('match_photos', {
 										query_embedding: embedding,
 										match_threshold: 0.2,
-										match_count: 12
+										match_count: 24
 									});
 									if (!error && Array.isArray(data)) {
-										console.log(`Semantic caption search "${query}" → ${data.length} photos.`);
-										return { photos: data };
+										// match_photos returns no album_key → hydrate to exclude unlisted (privacy) and
+										// add cf_image_id/caption. Preserve similarity order; trim to 12.
+										const unlisted = await getUnlistedKeys(supabase);
+										const orderedKeys: string[] = data.map((d: { image_key: string }) => d.image_key);
+										let hq = supabase
+											.from(PHOTOS_READ)
+											.select('image_key, cf_image_id, sport_type, play_type, photo_category, caption')
+											.in('image_key', orderedKeys)
+											.not('sharpness', 'is', null);
+										if (unlisted.length) hq = hq.not('album_key', 'in', `(${unlisted.join(',')})`);
+										const { data: rows } = await hq;
+										const rank = new Map(orderedKeys.map((k, i) => [k, i]));
+										const photos = (rows ?? [])
+											.sort((a, b) => (rank.get(a.image_key) ?? 0) - (rank.get(b.image_key) ?? 0))
+											.slice(0, 12);
+										console.log(`Semantic caption search "${query}" → ${photos.length} photos (unlisted excluded).`);
+										return { photos };
 									}
 									console.error('match_photos RPC error (falling back to structured filters):', error);
 								} else {
@@ -231,6 +258,11 @@ export const POST: RequestHandler = async ({ request }) => {
 							if (sport_type) dbQuery = dbQuery.eq('sport_type', sport_type);
 							if (play_type) dbQuery = dbQuery.eq('play_type', play_type);
 							if (photo_category) dbQuery = dbQuery.eq('photo_category', photo_category);
+							// Privacy: exclude unlisted albums (jersey path keys already came privacy-filtered via RPC).
+							if (!jerseyImageKeys) {
+								const unlisted = await getUnlistedKeys(supabase);
+								if (unlisted.length) dbQuery = dbQuery.not('album_key', 'in', `(${unlisted.join(',')})`);
+							}
 
 							const { data, error } = await dbQuery;
 
