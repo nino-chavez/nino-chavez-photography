@@ -217,6 +217,22 @@
 		goto(url.toString());
 	}
 
+	// Level facet (album-level): same toggle pattern as division.
+	const LEVELS = [
+		{ value: 'high_school', label: 'High School' },
+		{ value: 'college', label: 'College' },
+		{ value: 'club', label: 'Club' },
+		{ value: 'middle_school', label: 'Middle School' }
+	];
+	function toggleLevel(value: string) {
+		const url = new URL($page.url);
+		if (data.selectedLevel === value) url.searchParams.delete('level');
+		else url.searchParams.set('level', value);
+		url.searchParams.delete('page');
+		url.searchParams.delete('similar_to');
+		goto(url.toString());
+	}
+
 	function clearAllFilters(event?: MouseEvent) {
 		event?.stopPropagation();
 		const url = new URL($page.url);
@@ -564,6 +580,23 @@
 					: 'border-charcoal-700 bg-charcoal-900 text-charcoal-300 hover:border-gold-500/60 hover:text-white'}"
 			>
 				{d.label}
+			</button>
+		{/each}
+	</div>
+
+	<!-- Level facet chips -->
+	<div class="flex flex-wrap items-center gap-2 mb-4">
+		<span class="text-xs uppercase tracking-wide text-charcoal-500">Level</span>
+		{#each LEVELS as l}
+			<button
+				type="button"
+				onclick={() => toggleLevel(l.value)}
+				aria-pressed={data.selectedLevel === l.value}
+				class="px-3 py-1 rounded-full border text-xs transition-colors {data.selectedLevel === l.value
+					? 'border-gold-500 bg-gold-500/15 text-white'
+					: 'border-charcoal-700 bg-charcoal-900 text-charcoal-300 hover:border-gold-500/60 hover:text-white'}"
+			>
+				{l.label}
 			</button>
 		{/each}
 	</div>
