@@ -57,8 +57,8 @@
 </script>
 
 <svelte:head>
-	<title>Nino Chavez — Action Sports Photography</title>
-	<meta name="description" content="Professional action sports photography — volleyball, basketball, soccer, and more. Browse portfolio-quality photos from tournaments, matches, and events." />
+	<title>Nino Chavez — Volleyball Event Photography</title>
+	<meta name="description" content="Find your photos from volleyball events — club, high school, and college tournaments and matches. Browse and search galleries by event, team, or jersey number." />
 
 	<!-- Preload static hero WebP for instant LCP (Vercel CDN, no proxy chain) -->
 	<link rel="preload" as="image" href="{base}/images/hero/hero-1-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />
@@ -70,12 +70,12 @@
 	compact
 	images={heroImages}
 	staticHeroIndex={data.staticHeroIndex ?? 0}
-	title="ACTION SPORTS GALLERIES"
+	title="FIND YOUR PHOTOS"
 	subtitle=""
 >
 	<div class="w-full max-w-md">
 		<p class="text-base text-charcoal-300 mb-4 normal-case tracking-normal font-normal">
-			Find your photos from a recent event — search by event, team, or jersey number.
+			Volleyball events — club, high school, and college. Search by event, team, or jersey number.
 		</p>
 		<form role="search" method="get" action="{base}/explore" class="flex flex-col sm:flex-row gap-2">
 			<label class="relative flex-1">
