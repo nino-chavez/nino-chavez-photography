@@ -5,7 +5,7 @@
 
 import type { PageServerLoad } from './$types';
 import { PHOTOS_READ } from '$lib/supabase/columns';
-import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
+import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS, getProgramFacets } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
 // In-memory cache for hero photo candidates
@@ -14,6 +14,7 @@ interface HeroCache {
   balancedPhotos: Record<string, unknown>[];
   featuredAlbums: Awaited<ReturnType<typeof fetchFeaturedAlbums>>;
   recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>;
+  programs: Awaited<ReturnType<typeof getProgramFacets>>;
   timestamp: number;
 }
 let heroCache: HeroCache | null = null;
@@ -27,17 +28,18 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     const now = Date.now();
 
     if (!heroCache || now - heroCache.timestamp > HERO_CACHE_DURATION_MS) {
-      const [balancedPhotos, featuredAlbums, recentAlbums] = await Promise.all([
+      const [balancedPhotos, featuredAlbums, recentAlbums, programs] = await Promise.all([
         fetchHeroCandidates(),
         fetchFeaturedAlbums(),
-        fetchRecentAlbums()
+        fetchRecentAlbums(),
+        getProgramFacets()
       ]);
-      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, timestamp: now };
+      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, programs, timestamp: now };
     }
 
     const pool = heroCache.balancedPhotos;
     if (pool.length === 0) {
-      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, staticHeroIndex: 0 };
+      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, staticHeroIndex: 0 };
     }
     const pinIdx = Math.floor(Date.now() / 3_600_000) % pool.length;
     const pinned = pool[pinIdx];
@@ -47,10 +49,10 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     );
     const heroCandidates = [pinned, ...rest].map(transformPhotoRow);
 
-    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, staticHeroIndex: 0 };
+    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, staticHeroIndex: 0 };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
-    return { heroCandidates: [], featuredAlbums: [], recentAlbums: [] };
+    return { heroCandidates: [], featuredAlbums: [], recentAlbums: [], programs: [] };
   }
 };
 

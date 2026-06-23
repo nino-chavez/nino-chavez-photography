@@ -97,6 +97,23 @@
 				Search
 			</button>
 		</form>
+		{#if data.programs && data.programs.length > 0}
+			<div class="mt-4">
+				<p class="text-xs uppercase tracking-wide text-charcoal-500 mb-2">Find your club</p>
+				<div class="flex flex-wrap gap-2">
+					{#each data.programs as program}
+						<a
+							href="{base}/explore?q={encodeURIComponent(program.query)}"
+							class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-charcoal-700 bg-charcoal-900
+							       text-sm text-charcoal-200 hover:border-gold-500 hover:text-white transition-colors"
+						>
+							{program.label}
+							<span class="text-xs text-charcoal-500">{program.count}</span>
+						</a>
+					{/each}
+				</div>
+			</div>
+		{/if}
 		<div class="mt-3">
 			<a href="{base}/albums" class="text-sm text-charcoal-400 hover:text-gold-500 transition-colors">
 				Or browse all events →

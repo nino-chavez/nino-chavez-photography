@@ -348,6 +348,42 @@ export async function fetchPhotosByAlbumName(
 }
 
 /**
+ * "Find your club" facets (SERVER-SIDE) — the first consumer of the album-name enrichment.
+ *
+ * Programs are the recurring clubs/circuits a returning visitor looks for by name. We derive them
+ * from `album_name` (no schema dependency): each program's `query` drives the SAME album-name search
+ * the explore page uses, so a chip and a typed search land identically. Counts exclude unlisted
+ * (private) albums. Cached by the caller's page cache; cheap (one head request per program).
+ */
+export interface ProgramFacet { label: string; query: string; count: number; }
+const PROGRAM_FACETS: Array<{ label: string; query: string; match: string }> = [
+  { label: 'KRUSH', query: 'krush', match: 'krush' },
+  { label: '630 Volleyball', query: '630', match: '630' },
+  { label: 'VLA', query: 'vla', match: 'vla' },
+  { label: 'AVP', query: 'avp', match: 'avp' },
+  { label: 'Aurora Central Catholic', query: 'ACC', match: 'acc' },
+  { label: 'Players Sports', query: 'players sports', match: 'players sport' },
+  { label: 'TeamOne', query: 'teamone', match: 'teamone' },
+];
+export async function getProgramFacets(): Promise<ProgramFacet[]> {
+  const unlisted = await getUnlistedAlbumKeys();
+  const counts = await Promise.all(
+    PROGRAM_FACETS.map(async (p) => {
+      const { count } = await excludeUnlisted(
+        supabaseServer
+          .from(PHOTOS_READ)
+          .select('photo_id', { count: 'exact', head: true })
+          .not('sharpness', 'is', null)
+          .ilike('album_name', `%${p.match}%`),
+        unlisted
+      );
+      return { label: p.label, query: p.query, count: count || 0 };
+    })
+  );
+  return counts.filter((c) => c.count > 0).sort((a, b) => b.count - a.count);
+}
+
+/**
  * Get count of photos matching filters (SERVER-SIDE)
  */
 export async function getPhotoCount(
@@ -1133,10 +1169,11 @@ export async function searchPhotos(
 ): Promise<SearchResult> {
   const { limit = 24, offset = 0, sortBy = 'quality', albumNames } = options;
 
-  // Preferred: LLM planner + hybrid search. Falls back to the rule parser below on null.
-  const planned = await tryPlannerSearch(query, existingFilters, { limit, offset, sortBy });
-  if (planned) return planned;
-
+  // Name/event/team lookup runs FIRST (below) — it's the dominant find-my-photos query and lives in
+  // album_name. The LLM planner (semantic/visual) is the FALLBACK for descriptive queries that don't
+  // resolve to a name/facet, applied just before the vector path. (Previously the planner ran first
+  // and could return a weak semantic match for a name like "vla"/"630", preempting the exact
+  // album-name result.)
   const { parseQuery } = await import('$lib/utils/nlp-query-parser');
 
   const parsed = parseQuery(query, albumNames);
@@ -1208,6 +1245,11 @@ export async function searchPhotos(
       };
     }
   }
+
+  // Fallback for descriptive/semantic queries that didn't resolve to a name or facet above:
+  // the LLM planner (facet + date + caption-similarity hybrid).
+  const planned = await tryPlannerSearch(query, existingFilters, { limit, offset, sortBy });
+  if (planned) return planned;
 
   // Vector search fallback
   const embedding = await embedSearchQuery(query);
