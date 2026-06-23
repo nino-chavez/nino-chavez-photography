@@ -101,6 +101,15 @@ Conversational, helpful, and genuinely excited about great photography. Keep res
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
+		// 0. Kill switch — chat is disabled in prod for now (v5 stream contract + output guardrail
+		// pending). Re-enable by setting VITE_CHAT_ENABLED=true. Gated client-side too (+layout).
+		if (import.meta.env.VITE_CHAT_ENABLED !== 'true') {
+			return new Response(JSON.stringify({ error: 'Chat is temporarily unavailable.' }), {
+				status: 503,
+				headers: { 'Content-Type': 'application/json', 'Retry-After': '3600' }
+			});
+		}
+
 		// 1. Rate Limiting - Protect against cost attacks
 		const clientId = getClientIdentifier(request);
 		const rateCheck = checkRateLimit(clientId);
