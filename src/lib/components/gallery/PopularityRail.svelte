@@ -110,7 +110,7 @@
 		<ul
 			bind:this={scrollContainer}
 			onscroll={updateScrollButtons}
-			class="flex gap-6 overflow-x-auto scroll-smooth pb-4 -mx-2 px-2 list-none m-0 scrollbar-thin scrollbar-thumb-charcoal-700 scrollbar-track-charcoal-900"
+			class="flex gap-6 overflow-x-auto scroll-smooth pb-2 -mx-2 px-2 list-none m-0 rail-scroll"
 		>
 			{#each photos as photo, index (photo.id)}
 				<li class="flex-none w-[280px] relative">
@@ -140,9 +140,13 @@
 {/if}
 
 <style>
-	.scrollbar-thin::-webkit-scrollbar { height: 6px; }
-	.scrollbar-thin::-webkit-scrollbar-track { background: theme('colors.charcoal.900'); border-radius: 3px; }
-	.scrollbar-thin::-webkit-scrollbar-thumb { background: theme('colors.charcoal.700'); border-radius: 3px; }
-	.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: theme('colors.gold.500'); }
-	.scrollbar-thin { scrollbar-width: thin; scrollbar-color: theme('colors.charcoal.700') theme('colors.charcoal.900'); }
+	/* Hide the native scrollbar — the rail is driven by the prev/next buttons and
+	   the gradient edge fades, so the visible track read as an iframe/artifact. */
+	.rail-scroll {
+		scrollbar-width: none; /* Firefox */
+		-ms-overflow-style: none; /* legacy Edge */
+	}
+	.rail-scroll::-webkit-scrollbar {
+		display: none; /* WebKit/Blink */
+	}
 </style>
