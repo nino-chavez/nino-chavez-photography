@@ -27,20 +27,6 @@ interface CreateTagRequest {
 	consent_obtained?: boolean | string;
 }
 
-interface UserTag {
-	id: string;
-	photo_id: string;
-	athlete_name: string;
-	jersey_number: string | null;
-	tagged_by_user_id: string;
-	tagged_by_user_name: string | null;
-	approved: boolean;
-	approved_by: string | null;
-	approved_at: string | null;
-	consent_obtained: boolean;
-	created_at: string;
-}
-
 // ============================================
 // POST /api/tags - Create new tag
 // ============================================
@@ -49,7 +35,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	try {
 		// Get auth token from cookies
 		const authToken = cookies.get('sb-access-token');
-		const refreshToken = cookies.get('sb-refresh-token');
 
 		if (!authToken) {
 			throw error(401, 'Authentication required');
