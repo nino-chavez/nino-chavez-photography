@@ -214,36 +214,6 @@
 		</section>
 	{/if}
 
-	<!-- Full-bleed photo moment — a photography product should show its work BIG, not
-	     only as thumbnails. One edge-to-edge frame punctuates the grid and sells the craft. -->
-	{#if heroImages.length > 1}
-		<section aria-label="Featured frame" class="relative my-2 h-[58vh] min-h-[420px] w-full overflow-hidden">
-			<img
-				src={heroImages[heroImages.length - 1]}
-				alt="Peak-action volleyball photography by Nino Chavez"
-				class="absolute inset-0 w-full h-full object-cover"
-				loading="lazy"
-				decoding="async"
-			/>
-			<div class="absolute inset-0 bg-gradient-to-t from-charcoal-950 via-charcoal-950/40 to-transparent"></div>
-			<div class="absolute inset-x-0 bottom-0">
-				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-					<p class="text-[11px] uppercase tracking-[0.3em] text-gold-500 mb-3">Motion. Emotion. Frame by frame.</p>
-					<h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white max-w-2xl leading-[1.05]">
-						Every frame, the peak of the play.
-					</h2>
-					<a
-						href="{base}/explore"
-						class="btn-gold mt-6 inline-flex items-center gap-2 h-12 px-6 rounded-xl text-base"
-					>
-						Explore the gallery
-						<ArrowRight class="w-4 h-4" />
-					</a>
-				</div>
-			</div>
-		</section>
-	{/if}
-
 	<!-- Curated lanes: navigational entry points into the archive — distinct from
 	     Trending (social proof of what's popular now). Reframed to avoid the
 	     "best moments" overlap with the Trending rail above. -->
