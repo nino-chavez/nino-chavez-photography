@@ -20,6 +20,7 @@ interface HeroCache {
   programs: Awaited<ReturnType<typeof getProgramFacets>>;
   trendingPhotos: Photo[];
   fanFavorites: Photo[];
+  stats: { totalPhotos: number; eventCount: number };
   timestamp: number;
 }
 let heroCache: HeroCache | null = null;
@@ -33,20 +34,21 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     const now = Date.now();
 
     if (!heroCache || now - heroCache.timestamp > HERO_CACHE_DURATION_MS) {
-      const [balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites] = await Promise.all([
+      const [balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites, stats] = await Promise.all([
         fetchHeroCandidates(),
         fetchFeaturedAlbums(),
         fetchRecentAlbums(),
         getProgramFacets(),
         getTopPhotos(supabaseServer, { metric: 'trending', limit: 12 }),
-        getTopPhotos(supabaseServer, { metric: 'all_time', limit: 12 })
+        getTopPhotos(supabaseServer, { metric: 'all_time', limit: 12 }),
+        fetchStats()
       ]);
-      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites, timestamp: now };
+      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites, stats, timestamp: now };
     }
 
     const pool = heroCache.balancedPhotos;
     if (pool.length === 0) {
-      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, staticHeroIndex: 0 };
+      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, stats: heroCache.stats, staticHeroIndex: 0 };
     }
     const pinIdx = Math.floor(Date.now() / 3_600_000) % pool.length;
     const pinned = pool[pinIdx];
@@ -56,12 +58,36 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     );
     const heroCandidates = [pinned, ...rest].map(transformPhotoRow);
 
-    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, staticHeroIndex: 0 };
+    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, stats: heroCache.stats, staticHeroIndex: 0 };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
-    return { heroCandidates: [], featuredAlbums: [], recentAlbums: [], programs: [] };
+    return { heroCandidates: [], featuredAlbums: [], recentAlbums: [], programs: [], stats: { totalPhotos: 0, eventCount: 0 } };
   }
 };
+
+/**
+ * Lightweight credibility stats for the hero strip: total enriched photos +
+ * event count. Reads the albums_summary matview via service_role (anon REVOKE'd,
+ * grant flaky — see matviewClient). ~250 small rows, cached in heroCache.
+ * Degrades to zeros on failure so the strip can hide itself.
+ */
+async function fetchStats(): Promise<{ totalPhotos: number; eventCount: number }> {
+  try {
+    const { data, error } = await matviewClient()
+      .from('albums_summary')
+      .select('photo_count')
+      .not('album_key', 'is', null);
+    if (error || !data) return { totalPhotos: 0, eventCount: 0 };
+    const totalPhotos = (data as Array<{ photo_count: string | number | null }>).reduce(
+      (sum, r) => sum + (parseInt(String(r.photo_count ?? 0)) || 0),
+      0
+    );
+    return { totalPhotos, eventCount: data.length };
+  } catch (err) {
+    console.error('[Homepage] Error fetching stats:', err);
+    return { totalPhotos: 0, eventCount: 0 };
+  }
+}
 
 function pickRandom<T>(arr: T[], count: number): T[] {
   if (arr.length <= count) return [...arr];
