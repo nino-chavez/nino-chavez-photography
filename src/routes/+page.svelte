@@ -16,6 +16,14 @@
 		return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 	}
 
+	/** Conservative "19,000+" / "250+" rounding for the credibility strip — always
+	 *  rounds DOWN so the number never overstates the real count. */
+	function approxCount(n: number): string {
+		if (n >= 1000) return `${Math.floor(n / 1000).toLocaleString()},000+`;
+		if (n >= 100) return `${Math.floor(n / 10) * 10}+`;
+		return String(n);
+	}
+
 	interface Props {
 		data: PageData;
 	}
@@ -74,52 +82,75 @@
 	title="FIND YOUR PHOTOS"
 	subtitle=""
 >
-	<div class="w-full max-w-md">
-		<p class="text-base text-charcoal-300 mb-4 normal-case tracking-normal font-normal">
+	<div class="w-full max-w-xl">
+		<p class="text-base text-charcoal-300 mb-5 normal-case tracking-normal font-normal">
 			Volleyball events — club, high school, and college. Search by event, team, or jersey number.
 		</p>
-		<form role="search" method="get" action="{base}/explore" class="flex flex-col sm:flex-row gap-2">
-			<label class="relative flex-1">
+		<form role="search" method="get" action="{base}/explore" class="flex flex-col sm:flex-row gap-2.5">
+			<label class="field relative flex-1 rounded-xl">
 				<span class="sr-only">Search events, teams, or jersey numbers</span>
-				<Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400 pointer-events-none" aria-hidden="true" />
+				<Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-500/80 pointer-events-none" aria-hidden="true" />
 				<input
 					type="search"
 					name="q"
 					placeholder="Find your event, team, or jersey #…"
 					autocomplete="off"
-					class="w-full h-12 pl-10 pr-4 rounded-lg bg-charcoal-900 border border-charcoal-700 text-white
-					       placeholder:text-charcoal-500 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+					class="w-full h-14 pl-12 pr-4 rounded-xl bg-transparent text-white
+					       placeholder:text-charcoal-500 focus:outline-none"
 				/>
 			</label>
 			<button
 				type="submit"
-				class="h-12 px-6 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold rounded-lg transition-colors shrink-0"
+				class="btn-gold h-14 px-7 rounded-xl shrink-0 inline-flex items-center justify-center text-base"
 			>
 				Search
 			</button>
 		</form>
+
+		<!-- Lower the barrier + set expectations (parent-trust microcopy) -->
+		<p class="mt-3 text-xs text-charcoal-500">
+			Free to browse — find your photos, download in seconds.
+		</p>
+
 		{#if data.programs && data.programs.length > 0}
-			<div class="mt-4">
-				<p class="text-xs uppercase tracking-wide text-charcoal-500 mb-2">Find your team or event</p>
+			<div class="mt-5">
+				<p class="text-[11px] uppercase tracking-wider text-charcoal-500 mb-2.5">Find your team or event</p>
 				<div class="flex flex-wrap gap-2">
 					{#each data.programs as program}
 						<a
 							href="{base}/explore?q={encodeURIComponent(program.query)}"
-							class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-charcoal-700 bg-charcoal-900
-							       text-sm text-charcoal-200 hover:border-gold-500 hover:text-white transition-colors"
+							class="chip px-3.5 py-2 text-sm font-medium"
 						>
 							{program.label}
-							<span class="text-xs text-charcoal-500">{program.count}</span>
+							<span class="chip-count">{program.count}</span>
 						</a>
 					{/each}
 				</div>
 			</div>
 		{/if}
-		<div class="mt-3">
+		<div class="mt-4">
 			<a href="{base}/albums" class="text-sm text-charcoal-400 hover:text-gold-500 transition-colors">
 				Or browse all events →
 			</a>
 		</div>
+
+		<!-- Credibility strip: scale at a glance — fills the hero's lower-left, builds trust -->
+		{#if data.stats && data.stats.totalPhotos > 0}
+			<dl class="mt-7 flex flex-wrap items-end gap-x-7 gap-y-3 border-t border-charcoal-800/80 pt-5">
+				<div class="flex flex-col gap-0.5">
+					<dt class="text-[11px] uppercase tracking-wider text-charcoal-500">Photos</dt>
+					<dd class="text-xl font-bold text-white tabular-nums">{approxCount(data.stats.totalPhotos)}</dd>
+				</div>
+				<div class="flex flex-col gap-0.5">
+					<dt class="text-[11px] uppercase tracking-wider text-charcoal-500">Events</dt>
+					<dd class="text-xl font-bold text-white tabular-nums">{approxCount(data.stats.eventCount)}</dd>
+				</div>
+				<div class="flex flex-col gap-0.5">
+					<dt class="text-[11px] uppercase tracking-wider text-charcoal-500">Levels</dt>
+					<dd class="text-xl font-bold text-white">Club · HS · College</dd>
+				</div>
+			</dl>
+		{/if}
 	</div>
 </PremiumHero>
 
@@ -141,9 +172,9 @@
 					<a
 						href="{base}/albums/{createAlbumSlug(album.albumName, album.albumKey)}"
 						data-sveltekit-preload="hover"
-						class="group block"
+						class="group block transition-transform duration-200 ease-out hover:-translate-y-1"
 					>
-						<div class="aspect-[4/3] relative overflow-hidden rounded-lg bg-charcoal-800 border border-charcoal-800 group-hover:border-gold-500/50 transition-colors">
+						<div class="aspect-[4/3] relative overflow-hidden rounded-xl bg-charcoal-800 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 group-hover:border-gold-500/50 group-hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)]">
 							{#if album.coverImageUrl}
 								<img
 									src={album.coverImageUrl}
@@ -183,14 +214,46 @@
 		</section>
 	{/if}
 
-	<!-- Curated Content Section -->
+	<!-- Full-bleed photo moment — a photography product should show its work BIG, not
+	     only as thumbnails. One edge-to-edge frame punctuates the grid and sells the craft. -->
+	{#if heroImages.length > 1}
+		<section aria-label="Featured frame" class="relative my-2 h-[58vh] min-h-[420px] w-full overflow-hidden">
+			<img
+				src={heroImages[heroImages.length - 1]}
+				alt="Peak-action volleyball photography by Nino Chavez"
+				class="absolute inset-0 w-full h-full object-cover"
+				loading="lazy"
+				decoding="async"
+			/>
+			<div class="absolute inset-0 bg-gradient-to-t from-charcoal-950 via-charcoal-950/40 to-transparent"></div>
+			<div class="absolute inset-x-0 bottom-0">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+					<p class="text-[11px] uppercase tracking-[0.3em] text-gold-500 mb-3">Motion. Emotion. Frame by frame.</p>
+					<h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white max-w-2xl leading-[1.05]">
+						Every frame, the peak of the play.
+					</h2>
+					<a
+						href="{base}/explore"
+						class="btn-gold mt-6 inline-flex items-center gap-2 h-12 px-6 rounded-xl text-base"
+					>
+						Explore the gallery
+						<ArrowRight class="w-4 h-4" />
+					</a>
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	<!-- Curated lanes: navigational entry points into the archive — distinct from
+	     Trending (social proof of what's popular now). Reframed to avoid the
+	     "best moments" overlap with the Trending rail above. -->
 	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-fade-in-delayed">
 			<div class="text-center mb-12">
 				<h2 class="text-2xl lg:text-3xl font-bold text-white mb-4">
-					Curated picks
+					Browse by collection
 				</h2>
 				<p class="text-lg text-charcoal-300 max-w-2xl mx-auto leading-relaxed">
-					Hand-picked collections — the most emotionally compelling moments and peak-action frames across every event.
+					Hand-built lanes into the archive — jump straight to the kind of frame you're after.
 				</p>
 			</div>
 
@@ -207,8 +270,7 @@
 						<a
 							href={albumLink}
 							data-sveltekit-preload="hover"
-							class="group bg-charcoal-900 border border-charcoal-800 rounded-lg overflow-hidden
-							       hover:border-gold-500/50 transition-all duration-200 block"
+							class="group surface-raised surface-raised-interactive rounded-xl overflow-hidden block"
 						>
 							<!-- Album Cover Image -->
 							<div class="aspect-[4/3] relative overflow-hidden">
@@ -335,24 +397,33 @@
 			{/if}
 		</section>
 
-	<!-- Booking path: lower slot — attendees win the fold, organizers get a real CTA -->
+	<!-- Booking path: lower slot — attendees win the fold, organizers get a real CTA.
+	     "Book a shoot" now triggers a real inquiry (mailto), paired with proof. -->
 	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-		<div class="rounded-2xl border border-charcoal-800 bg-gradient-to-br from-charcoal-900 to-charcoal-950 p-8 lg:p-12
+		<div class="surface-raised rounded-2xl p-8 lg:p-12
 		            flex flex-col lg:flex-row lg:items-center justify-between gap-6">
 			<div>
 				<h2 class="text-2xl lg:text-3xl font-bold text-white mb-2">Shooting an event?</h2>
 				<p class="text-charcoal-300 max-w-xl leading-relaxed">
-					Tournament, league, or club — full-coverage action galleries your athletes can find themselves in.
+					Tournament, league, or club — full-coverage action galleries your athletes can find
+					themselves in, usually live within days of the final whistle.
 				</p>
 			</div>
-			<a
-				href="{base}/about"
-				class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-semibold
-				       rounded-lg transition-colors shrink-0 self-start lg:self-auto"
-			>
-				Book a shoot
-				<ArrowRight class="w-4 h-4" />
-			</a>
+			<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">
+				<a
+					href="mailto:nino@ninochavez.co?subject=Event%20coverage%20inquiry"
+					class="btn-gold inline-flex items-center gap-2 h-12 px-6 rounded-xl"
+				>
+					Book a shoot
+					<ArrowRight class="w-4 h-4" />
+				</a>
+				<a
+					href="{base}/albums"
+					class="text-sm font-medium text-charcoal-300 hover:text-gold-500 transition-colors"
+				>
+					See sample coverage →
+				</a>
+			</div>
 		</div>
 	</section>
 </div>

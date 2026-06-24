@@ -44,30 +44,8 @@
     size = 'md'
   }: Props = $props();
 
-  // Design system integration (from INTELLIGENT_FILTERS_PLAN.md)
-  const stateStyles = {
-    available: {
-      bg: 'bg-charcoal-800/50',
-      hover: 'hover:bg-charcoal-800',
-      text: 'text-charcoal-300 hover:text-charcoal-100',
-      badge: 'text-charcoal-400',
-      cursor: 'cursor-pointer'
-    },
-    active: {
-      bg: 'bg-gold-500',
-      hover: '',
-      text: 'text-charcoal-950',
-      badge: 'text-charcoal-950/70',
-      cursor: 'cursor-pointer'
-    },
-    disabled: {
-      bg: 'bg-charcoal-900/30',
-      hover: '',
-      text: 'text-charcoal-600',
-      badge: 'text-charcoal-700',
-      cursor: 'cursor-not-allowed'
-    }
-  };
+  // Visual treatment now comes from the shared elevated `.chip` / `.chip-active`
+  // classes (app.css). Only size tokens remain component-local.
 
   // Ensure minimum 44px touch targets for accessibility
   const sizeStyles = {
@@ -91,7 +69,6 @@
     }
   };
 
-  const styles = $derived(stateStyles[state]);
   const sizes = $derived(sizeStyles[size]);
 
   function handleClick(event: MouseEvent): void {
@@ -111,17 +88,11 @@
 <button
   onclick={handleClick}
   class="
-    filter-pill-animate
-    group inline-flex items-center gap-1.5 rounded-full font-medium
-    transition-all duration-200
+    filter-pill-animate group font-medium chip
     {sizes.padding}
     {sizes.text}
-    {styles.bg}
-    {styles.hover}
-    {styles.text}
-    {styles.cursor}
-    {state === 'active' ? 'shadow-md' : ''}
-    {state === 'disabled' ? 'opacity-40' : ''}
+    {state === 'active' ? 'chip-active' : ''}
+    {state === 'disabled' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
   "
     aria-pressed={state === 'active'}
     aria-disabled={state === 'disabled'}
@@ -146,13 +117,7 @@
 
       <!-- Count badge (transparency principle: show before selection) -->
       {#if count !== undefined}
-        <span class="
-          {sizes.badge}
-          {styles.badge}
-          font-normal opacity-70
-        ">
-          ({count.toLocaleString()})
-        </span>
+        <span class="chip-count">{count.toLocaleString()}</span>
       {/if}
 </button>
 

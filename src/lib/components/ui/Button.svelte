@@ -41,16 +41,17 @@
 	// Disable button when loading
 	const isDisabled = $derived(disabled || loading);
 
-	// Variant styles
+	// Variant styles — primary/secondary use the elevated component classes
+	// (.btn-gold / .btn-charcoal in app.css) which own their gradient, depth, and
+	// transition. Don't add `transition-*`/`bg-*`/`font-*` utilities to those two —
+	// Tailwind's utilities layer would override the component-layer transition.
 	const variantClasses: Record<ButtonVariant, string> = {
-		primary:
-			'bg-gold-500 hover:bg-gold-600 text-charcoal-950 font-medium disabled:bg-gold-500/50 disabled:cursor-not-allowed',
-		secondary:
-			'bg-charcoal-800 hover:bg-charcoal-700 text-white border border-charcoal-700 disabled:bg-charcoal-800/50 disabled:cursor-not-allowed',
+		primary: 'btn-gold disabled:opacity-50 disabled:cursor-not-allowed',
+		secondary: 'btn-charcoal disabled:opacity-50 disabled:cursor-not-allowed',
 		ghost:
-			'bg-transparent hover:bg-charcoal-800 text-charcoal-300 hover:text-white disabled:text-charcoal-400 disabled:cursor-not-allowed',
+			'bg-transparent hover:bg-charcoal-800 text-charcoal-300 hover:text-white font-medium transition-colors disabled:text-charcoal-400 disabled:cursor-not-allowed',
 		outline:
-			'bg-transparent border-2 border-gold-500 text-gold-500 hover:bg-gold-500 hover:text-charcoal-950 font-medium disabled:border-gold-500/50 disabled:text-gold-500/50 disabled:cursor-not-allowed',
+			'bg-transparent border-2 border-gold-500/70 text-gold-400 hover:border-gold-400 hover:bg-gold-500 hover:text-charcoal-950 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed',
 	};
 
 	// Size styles - All sizes ensure minimum 44px touch targets for mobile accessibility
@@ -60,9 +61,10 @@
 		lg: 'px-8 py-4 text-lg min-h-[44px]',
 	};
 
-	// Base classes (shared across all variants)
+	// Base classes (shared across all variants). No transition/font/bg here — those
+	// are owned per-variant so the elevated component classes aren't overridden.
 	const baseClasses =
-		'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal-950';
+		'inline-flex items-center justify-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal-950';
 
 	// Combine all classes (reactive to prop changes)
 	let combinedClasses = $derived(cn(

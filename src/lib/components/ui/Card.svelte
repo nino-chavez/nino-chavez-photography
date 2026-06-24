@@ -35,10 +35,12 @@
 		...restProps
 	}: Props = $props();
 
-	// Variant styles
+	// Variant styles — `elevated` uses the shared raised-surface treatment
+	// (hairline highlight + two-layer shadow); `default` keeps just the hairline.
 	const variantClasses: Record<CardVariant, string> = {
-		default: 'bg-charcoal-900 border border-charcoal-800',
-		elevated: 'bg-charcoal-900 border border-charcoal-800 shadow-lg shadow-black/20',
+		default:
+			'bg-charcoal-900 border border-charcoal-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]',
+		elevated: 'surface-raised',
 		bordered: 'bg-charcoal-950 border-2 border-charcoal-700',
 	};
 
