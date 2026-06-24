@@ -1,4 +1,4 @@
-import { supabaseServer } from '$lib/supabase/server';
+import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { topPhotoCoverMap } from '$lib/analytics/covers';
@@ -40,7 +40,10 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 
 	// Query materialized view for instant results with pagination.
 	// (View is refreshed by ingest — ADR 0001 — not on read.)
-	let query = supabaseServer
+	// albums_summary / videos_summary are MATERIALIZED VIEWS (anon REVOKE'd — read via
+	// service_role). The anon read 42501'd, tripping the legacy fallback (which only
+	// returned a stale ~14-album base-table aggregation). See matviewClient.
+	let query = matviewClient()
 		.from('albums_summary')
 		.select('*', { count: 'exact' });
 
@@ -76,11 +79,11 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 			.from('album_settings')
 			.select('album_key')
 			.eq('visibility', 'unlisted'),
-		supabaseServer
+		matviewClient()
 			.from('videos_summary')
 			.select('*'),
 		// Facet options for the discovery filters (whole table — ~260 rows, cheap)
-		supabaseServer
+		matviewClient()
 			.from('albums_summary')
 			.select('primary_sport, latest_photo_date')
 	]);

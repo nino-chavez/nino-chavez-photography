@@ -2,7 +2,6 @@ import { base } from '$app/paths';
 import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
-import { supabaseServer } from '$lib/supabase/server';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 
 export const load: PageServerLoad = async ({ cookies }) => {
@@ -23,9 +22,10 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	// Use admin client for album_settings (RLS may block anon reads)
 	const adminClient = createSupabaseAdminClient();
 
-	// Fetch albums and settings in parallel
+	// Fetch albums and settings in parallel. albums_summary is a matview (anon REVOKE'd) →
+	// use the service_role adminClient (already created for album_settings).
 	const [albumsResult, settingsResult] = await Promise.all([
-		supabaseServer
+		adminClient
 			.from('albums_summary')
 			.select('album_key, album_name, photo_count')
 			.order('photo_count', { ascending: false }),

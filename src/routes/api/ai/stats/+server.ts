@@ -7,7 +7,7 @@
 import { json } from '@sveltejs/kit';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
-import { supabaseServer } from '$lib/supabase/server';
+import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
 
 export const GET: RequestHandler = async () => {
@@ -18,8 +18,8 @@ export const GET: RequestHandler = async () => {
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null);
 
-		// Get total album count
-		const { count: totalAlbums } = await supabaseServer
+		// Get total album count (albums_summary is a matview — anon REVOKE'd → service_role)
+		const { count: totalAlbums } = await matviewClient()
 			.from('albums_summary')
 			.select('*', { count: 'exact', head: true });
 

@@ -6,7 +6,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { supabaseServer } from '$lib/supabase/server';
+import { matviewClient } from '$lib/supabase/server';
 
 const BASE_URL = 'https://ninochavez.co/photography';
 
@@ -18,8 +18,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		const sport = url.searchParams.get('sport') || undefined;
 		const year = url.searchParams.get('year') ? parseInt(url.searchParams.get('year')!) : undefined;
 
-		// Build query using materialized view
-		let query = supabaseServer
+		// Build query using materialized view (anon REVOKE'd → read via service_role)
+		let query = matviewClient()
 			.from('albums_summary')
 			.select('*', { count: 'exact' });
 
