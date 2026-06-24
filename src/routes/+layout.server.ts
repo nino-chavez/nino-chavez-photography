@@ -1,124 +1,68 @@
 /**
  * Root Layout Server Load
  *
- * Cache distributions and base filter counts for the entire session
- * This prevents repeated expensive database queries on every page load
+ * Provides the sport/category distributions and base (no-filter) filter counts that the
+ * site chrome (filter bar, stats) needs on every route.
  *
- * Phase 1 of Intelligent Filter System:
- * - Caches base filter counts (no filters applied) every 30 minutes
- * - Individual pages fetch filtered counts based on current URL params
+ * Source of truth is the facet_base_counts matview (refreshed on ingest + 30-min pg_cron),
+ * read in ONE round-trip via getBaseFacets(). This replaced getSportDistribution() +
+ * getCategoryDistribution() + getFilterCounts() — three functions that fanned out to 80+
+ * paged-distinct + per-value head-count requests on EVERY page load. The previous in-memory
+ * cache didn't save it on Cloudflare Pages (module globals are per-isolate; isolates churn),
+ * so cold isolates re-ran the whole fan-out — the dominant query volume in pg_stat_statements.
+ *
+ * A short in-memory cache still avoids re-reading the matview within a hot isolate. If the
+ * matview read fails, we fall back to live computation so the chrome never goes empty.
  */
 
-import { getSportDistribution, getCategoryDistribution, getFilterCounts, type FilterCounts } from '$lib/supabase/server';
+import {
+  getBaseFacets,
+  getSportDistribution,
+  getCategoryDistribution,
+  getFilterCounts,
+  type BaseFacets,
+} from '$lib/supabase/server';
 import type { LayoutServerLoad } from './$types';
 
 // Trailing slash behavior: never use trailing slashes (prevents redirect loops with proxy)
 export const trailingSlash = 'never';
 
-// Cache duration: 30 minutes (distributions change rarely, reduces cold-cache hits 6x)
+// Cache duration: 30 minutes (matches the matview's refresh cadence)
 const CACHE_DURATION_MS = 30 * 60 * 1000;
 
-interface CachedData<T> {
-  data: T;
-  timestamp: number;
-}
+let facetsCache: { data: BaseFacets; timestamp: number } | null = null;
 
-// In-memory cache (persists during server runtime)
-let sportsCache: CachedData<Awaited<ReturnType<typeof getSportDistribution>>> | null = null;
-let categoriesCache: CachedData<Awaited<ReturnType<typeof getCategoryDistribution>>> | null = null;
-let baseFilterCountsCache: CachedData<FilterCounts> | null = null;
+// Fallback: reproduce the matview payload via the live functions if the matview read fails.
+async function liveBaseFacets(): Promise<BaseFacets> {
+  const [sports, categories, filterCounts] = await Promise.all([
+    getSportDistribution(),
+    getCategoryDistribution(),
+    getFilterCounts(),
+  ]);
+  return { sports, categories, filterCounts };
+}
 
 export const load: LayoutServerLoad = async () => {
   const now = Date.now();
 
-  // PERFORMANCE: Refresh expired caches in parallel
-  // When cache expires, all 3 queries execute simultaneously instead of sequentially
-  const refreshPromises: Promise<void>[] = [];
-
-  // Check if sport cache is valid
-  if (!sportsCache || now - sportsCache.timestamp > CACHE_DURATION_MS) {
-    refreshPromises.push(
-      getSportDistribution()
-        .then((sports) => {
-          sportsCache = { data: sports, timestamp: now };
-        })
-        .catch((error) => {
-          console.error('[Layout] Failed to refresh sports cache:', error);
-          // Keep existing cache if available, otherwise initialize empty
-          if (!sportsCache) {
-            sportsCache = { data: [], timestamp: now };
-          }
-        })
-    );
-  }
-
-  // Check if category cache is valid
-  if (!categoriesCache || now - categoriesCache.timestamp > CACHE_DURATION_MS) {
-    refreshPromises.push(
-      getCategoryDistribution()
-        .then((categories) => {
-          categoriesCache = { data: categories, timestamp: now };
-        })
-        .catch((error) => {
-          console.error('[Layout] Failed to refresh categories cache:', error);
-          // Keep existing cache if available, otherwise initialize empty
-          if (!categoriesCache) {
-            categoriesCache = { data: [], timestamp: now };
-          }
-        })
-    );
-  }
-
-  // Check if base filter counts cache is valid
-  // These are counts with NO filters applied (baseline for entire gallery)
-  if (!baseFilterCountsCache || now - baseFilterCountsCache.timestamp > CACHE_DURATION_MS) {
-    refreshPromises.push(
-      getFilterCounts()
-        .then((baseFilterCounts) => {
-          baseFilterCountsCache = { data: baseFilterCounts, timestamp: now };
-        })
-        .catch((error) => {
-          console.error('[Layout] Failed to refresh filter counts cache:', error);
-          // Keep existing cache if available, otherwise initialize empty
-          if (!baseFilterCountsCache) {
-            baseFilterCountsCache = {
-              data: {
-                sports: [],
-                categories: [],
-                playTypes: [],
-              },
-              timestamp: now
-            };
-          }
-        })
-    );
-  }
-
-  // Wait for all cache refreshes to complete in parallel
-  // Errors are caught individually above, so this won't throw
-  if (refreshPromises.length > 0) {
-    await Promise.all(refreshPromises);
-  }
-
-  // TypeScript safety: Ensure all caches are populated
-  // With error handlers above, caches will always exist (possibly empty on errors)
-  if (!sportsCache || !categoriesCache || !baseFilterCountsCache) {
-    console.error('[Layout] Critical: Cache initialization failed completely');
-    // Return empty data rather than crashing the entire app
-    return {
-      sports: [],
-      categories: [],
-      baseFilterCounts: {
-        sports: [],
-        categories: [],
-        playTypes: [],
-      },
-    };
+  if (!facetsCache || now - facetsCache.timestamp > CACHE_DURATION_MS) {
+    try {
+      const data = (await getBaseFacets()) ?? (await liveBaseFacets());
+      facetsCache = { data, timestamp: now };
+    } catch (error) {
+      console.error('[Layout] Failed to load base facets:', error);
+      if (!facetsCache) {
+        facetsCache = {
+          data: { sports: [], categories: [], filterCounts: { sports: [], categories: [], playTypes: [] } },
+          timestamp: now,
+        };
+      }
+    }
   }
 
   return {
-    sports: sportsCache.data,
-    categories: categoriesCache.data,
-    baseFilterCounts: baseFilterCountsCache.data,
+    sports: facetsCache.data.sports,
+    categories: facetsCache.data.categories,
+    baseFilterCounts: facetsCache.data.filterCounts,
   };
 };

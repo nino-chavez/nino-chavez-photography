@@ -696,6 +696,62 @@ export async function getCategoryDistribution(): Promise<Array<{ name: string; c
   }
 }
 
+/**
+ * The three base (no-filter) facet payloads the root layout needs, read from the
+ * facet_base_counts matview in ONE round-trip instead of the 80+ paged-distinct + per-value
+ * head-count requests getFilterCounts()/getSportDistribution()/getCategoryDistribution() did
+ * on every page load. The matview is refreshed on ingest + a 30-min pg_cron safety net.
+ *
+ * Semantics are reproduced in TS so the matview stays a pure (dimension, value, count) source:
+ * percentages over the included set, and the 'unknown' sport exclusion that getSportDistribution
+ * applies (but getFilterCounts does not). Returns null on any read error so the caller can fall
+ * back to live computation.
+ */
+export interface BaseFacets {
+  sports: Array<{ name: string; count: number; percentage: number }>;
+  categories: Array<{ name: string; count: number; percentage: number }>;
+  filterCounts: FilterCounts;
+}
+
+export async function getBaseFacets(): Promise<BaseFacets | null> {
+  const { data, error } = await supabaseServer
+    .from('facet_base_counts')
+    .select('dimension, value, count');
+
+  if (error || !data) {
+    console.error('[getBaseFacets] read failed, caller will fall back:', error?.message);
+    return null;
+  }
+
+  const byDim = (dim: string): Array<{ name: string; count: number }> =>
+    (data as Array<{ dimension: string; value: string; count: number }>)
+      .filter((r) => r.dimension === dim)
+      .map((r) => ({ name: r.value, count: Number(r.count) }))
+      .filter((c) => c.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+  const withPct = (rows: Array<{ name: string; count: number }>) => {
+    const total = rows.reduce((sum, r) => sum + r.count, 0);
+    if (total === 0) return [];
+    return rows.map((r) => ({
+      name: r.name,
+      count: r.count,
+      percentage: parseFloat(((r.count / total) * 100).toFixed(1))
+    }));
+  };
+
+  const sports = byDim('sport_type');
+  const categories = byDim('photo_category');
+  const playTypes = byDim('play_type');
+
+  return {
+    // getSportDistribution excludes 'unknown'; getFilterCounts.sports does not.
+    sports: withPct(sports.filter((s) => s.name !== 'unknown')),
+    categories: withPct(categories),
+    filterCounts: { sports, categories, playTypes }
+  };
+}
+
 export async function fetchPhotosByPeriod(options: {
   page?: number;
   limit?: number;
