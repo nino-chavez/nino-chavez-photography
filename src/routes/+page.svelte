@@ -4,7 +4,7 @@
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import { createAlbumSlug } from '$lib/utils';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
-	import { Camera, Search, ArrowRight } from 'lucide-svelte';
+	import { Camera, Search, ArrowRight, X, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	/** "Jun 13, 2026" from an ISO timestamp; empty string if absent/invalid (no fake dates). */
 	function formatEventDate(iso: string | null): string {
@@ -37,7 +37,26 @@
 	const flickdayPortfolio = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '13'].map(
 		(n) => `${base}/images/hero/flickday/portfolio/p-${n}.webp`
 	);
+
+	// Portfolio lightbox (view-only — these are curated static frames, not gallery DB rows,
+	// so there's no download/find; the section CTA points to the full gallery for that).
+	let lightboxIndex = $state<number | null>(null);
+	const openLightbox = (i: number) => (lightboxIndex = i);
+	const closeLightbox = () => (lightboxIndex = null);
+	const prevPhoto = () =>
+		lightboxIndex !== null &&
+		(lightboxIndex = (lightboxIndex - 1 + flickdayPortfolio.length) % flickdayPortfolio.length);
+	const nextPhoto = () =>
+		lightboxIndex !== null && (lightboxIndex = (lightboxIndex + 1) % flickdayPortfolio.length);
+	function onLightboxKey(e: KeyboardEvent) {
+		if (lightboxIndex === null) return;
+		if (e.key === 'Escape') closeLightbox();
+		else if (e.key === 'ArrowLeft') prevPhoto();
+		else if (e.key === 'ArrowRight') nextPhoto();
+	}
 </script>
+
+<svelte:window onkeydown={onLightboxKey} />
 
 <svelte:head>
 	<title>Nino Chavez — Volleyball Event Photography</title>
@@ -160,10 +179,12 @@
 			</a>
 		</div>
 		<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
-			{#each flickdayPortfolio as src}
-				<a
-					href="{base}/explore"
-					class="group relative block aspect-[2/3] overflow-hidden rounded-xl bg-charcoal-900 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/50 hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)]"
+			{#each flickdayPortfolio as src, i}
+				<button
+					type="button"
+					onclick={() => openLightbox(i)}
+					aria-label="View frame {i + 1} of {flickdayPortfolio.length}"
+					class="group relative block w-full aspect-[2/3] overflow-hidden rounded-xl bg-charcoal-900 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/50 hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal-950"
 				>
 					<img
 						{src}
@@ -173,7 +194,7 @@
 						class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
 					/>
 					<div class="absolute inset-0 bg-gradient-to-t from-charcoal-950/55 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-				</a>
+				</button>
 			{/each}
 		</div>
 	</section>
@@ -208,6 +229,61 @@
 		</div>
 	</section>
 </div>
+
+<!-- Portfolio lightbox — view-only viewer for the Selected work frames -->
+{#if lightboxIndex !== null}
+	<div
+		class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Selected work viewer"
+	>
+		<button
+			type="button"
+			class="absolute inset-0 z-0 cursor-default bg-charcoal-950/95 backdrop-blur-sm"
+			aria-label="Close viewer"
+			onclick={closeLightbox}
+		></button>
+
+		<img
+			src={flickdayPortfolio[lightboxIndex]}
+			alt="Volleyball photography by Nino Chavez"
+			class="relative z-10 max-h-[86vh] max-w-[92vw] w-auto h-auto object-contain rounded-lg shadow-2xl"
+		/>
+
+		<button
+			type="button"
+			onclick={closeLightbox}
+			aria-label="Close"
+			class="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-charcoal-900/80 border border-charcoal-700 text-white hover:border-gold-500/60 hover:text-gold-400 transition-colors"
+		>
+			<X class="w-5 h-5" />
+		</button>
+		<button
+			type="button"
+			onclick={prevPhoto}
+			aria-label="Previous frame"
+			class="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-charcoal-900/80 border border-charcoal-700 text-white hover:border-gold-500/60 hover:text-gold-400 transition-colors"
+		>
+			<ChevronLeft class="w-6 h-6" />
+		</button>
+		<button
+			type="button"
+			onclick={nextPhoto}
+			aria-label="Next frame"
+			class="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-charcoal-900/80 border border-charcoal-700 text-white hover:border-gold-500/60 hover:text-gold-400 transition-colors"
+		>
+			<ChevronRight class="w-6 h-6" />
+		</button>
+
+		<div class="absolute bottom-5 inset-x-0 z-20 flex items-center justify-center gap-4 text-sm text-charcoal-300">
+			<span class="tabular-nums">{lightboxIndex + 1} / {flickdayPortfolio.length}</span>
+			<a href="{base}/explore" class="font-medium text-gold-500 hover:text-gold-400 transition-colors">
+				Browse the full gallery →
+			</a>
+		</div>
+	</div>
+{/if}
 
 <style>
 	/* PERFORMANCE: CSS animation instead of JS Motion for better render performance */
