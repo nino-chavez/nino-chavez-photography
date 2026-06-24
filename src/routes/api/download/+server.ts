@@ -9,21 +9,32 @@
 
 import type { RequestHandler } from './$types';
 
-/** Allowed image source domains */
-const ALLOWED_DOMAINS = ['imagedelivery.net'];
+/** Allowed image source hosts (exact hostname match — NOT substring) */
+const ALLOWED_HOSTS = ['imagedelivery.net'];
 
 export const GET: RequestHandler = async ({ url, fetch }) => {
   try {
     // Get parameters from query string
     const imageUrl = url.searchParams.get('url');
-    const filename = url.searchParams.get('filename') || 'download.jpg';
+    // Sanitize the filename before reflecting it into Content-Disposition (no header injection).
+    const filename = (url.searchParams.get('filename') || 'download.jpg')
+      .replace(/[^\w.\- ]+/g, '_')
+      .slice(0, 100);
 
     if (!imageUrl) {
       return new Response('Missing url parameter', { status: 400 });
     }
 
-    // Validate URL is from an allowed domain
-    const isAllowed = ALLOWED_DOMAINS.some(domain => imageUrl.includes(domain));
+    // Validate the URL by parsed hostname, not substring — a substring check (`includes`) is
+    // bypassable with `https://imagedelivery.net.evil.com/x` or `https://evil.com/?x=imagedelivery.net`,
+    // turning this into an open proxy. Require https + an exact allowed host.
+    let parsed: URL;
+    try {
+      parsed = new URL(imageUrl);
+    } catch {
+      return new Response('Invalid URL', { status: 400 });
+    }
+    const isAllowed = parsed.protocol === 'https:' && ALLOWED_HOSTS.includes(parsed.hostname);
     if (!isAllowed) {
       return new Response('Invalid URL - must be from Cloudflare Images', { status: 400 });
     }

@@ -4,10 +4,13 @@
  * Displays popular photos, search analytics, and view statistics
  */
 
+import { base } from '$app/paths';
+import { redirect, error } from '@sveltejs/kit';
 import { getPopularPhotos, getTopSearchQueries } from '$lib/analytics/tracker';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer } from '$lib/supabase/server';
-import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
+import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
@@ -15,7 +18,19 @@ import type { PageServerLoad } from './$types';
 // engagement_events is RLS-locked from anon (writes are service-role only).
 const SINCE_30D = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ cookies }) => {
+	// Internal dashboard — gate behind auth (reads RLS-locked engagement data via service_role).
+	const supabase = createSupabaseServerClient(cookies);
+	const {
+		data: { user }
+	} = await supabase.auth.getUser();
+	if (!user) {
+		throw redirect(302, `${base}/login`);
+	}
+	if (!isAllowedAdmin(user.email)) {
+		throw error(403, 'Admin access required');
+	}
+
 	// Get popular photos with full metadata
 	const popularPhotoIds = await getPopularPhotos(20);
 

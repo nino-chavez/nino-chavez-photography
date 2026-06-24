@@ -45,8 +45,8 @@ const DRY = process.argv.includes('--dry-run');
 const POLL_INTERVAL = 5000;
 const POLL_TIMEOUT = 300_000;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !CF_ACCOUNT_ID || !CF_STREAM_API_TOKEN) {
-	console.error('Missing env (VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CF_ACCOUNT_ID, CF_STREAM_API_TOKEN)');
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !CF_ACCOUNT_ID || !CF_STREAM_API_TOKEN || !SUBDOMAIN) {
+	console.error('Missing env (VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CF_ACCOUNT_ID, CF_STREAM_API_TOKEN, VITE_CF_STREAM_SUBDOMAIN)');
 	process.exit(1);
 }
 if (!DIR || !existsSync(DIR)) { console.error(`--dir not found: ${DIR}`); process.exit(1); }

@@ -14,6 +14,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
+import { isAllowedAdmin } from '$lib/server/admin-auth';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -50,7 +51,11 @@ async function verifyAdmin(request: Request): Promise<string> {
 		throw error(401, 'Invalid authentication token');
 	}
 
-	// User is authenticated - that's enough (signup disabled, only admin exists)
+	// Authorization (not just authentication): enforce the admin allowlist when configured.
+	if (!isAllowedAdmin(user.email)) {
+		throw error(403, 'Admin access required');
+	}
+
 	return user.id;
 }
 

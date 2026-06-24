@@ -156,22 +156,27 @@
 		}
 	}
 
+	// Stable handler references — inline arrows would create a new function each call, so
+	// removeEventListener (a different reference) never unregistered them → listener leak.
+	const onPrimaryClickOutside = (e: MouseEvent) => handleClickOutside(e, 'primary');
+	const onAdvancedClickOutside = (e: MouseEvent) => handleClickOutside(e, 'advanced');
+
 	$effect(() => {
 		if (primaryExpanded) {
-			document.addEventListener('click', (e) => handleClickOutside(e, 'primary'));
+			document.addEventListener('click', onPrimaryClickOutside);
 		} else {
-			document.removeEventListener('click', (e) => handleClickOutside(e, 'primary'));
+			document.removeEventListener('click', onPrimaryClickOutside);
 		}
 
 		if (advancedExpanded) {
-			document.addEventListener('click', (e) => handleClickOutside(e, 'advanced'));
+			document.addEventListener('click', onAdvancedClickOutside);
 		} else {
-			document.removeEventListener('click', (e) => handleClickOutside(e, 'advanced'));
+			document.removeEventListener('click', onAdvancedClickOutside);
 		}
 
 		return () => {
-			document.removeEventListener('click', (e) => handleClickOutside(e, 'primary'));
-			document.removeEventListener('click', (e) => handleClickOutside(e, 'advanced'));
+			document.removeEventListener('click', onPrimaryClickOutside);
+			document.removeEventListener('click', onAdvancedClickOutside);
 		};
 	});
 
