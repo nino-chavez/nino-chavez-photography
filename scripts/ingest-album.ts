@@ -550,6 +550,15 @@ async function main() {
 			console.log('   🔄 albums_summary refreshed');
 		}
 
+		// Base facet counts (sport/category/play_type) are read from the facet_base_counts
+		// matview by the root layout. Ingest is the write event, so refresh it here too.
+		const { error: fErr } = await sb.rpc('refresh_facet_base_counts');
+		if (fErr) {
+			console.error(`   ⚠️  refresh_facet_base_counts FAILED: ${fErr.message} (30-min cron will catch up)`);
+		} else {
+			console.log('   🔄 facet_base_counts refreshed');
+		}
+
 		// Edge-cache invalidation. Tag/prefix purge is Cloudflare Enterprise-only; on this plan we
 		// purge the zone (one call) — cheap at this traffic, and the album API's s-maxage=300 bounds
 		// staleness to ~5 min if this is skipped. Best-effort, non-fatal, env-gated.
