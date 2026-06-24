@@ -3,7 +3,6 @@
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
 	import { createAlbumSlug } from '$lib/utils';
-	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
 	import { Camera, Search, ArrowRight } from 'lucide-svelte';
 
@@ -40,6 +39,12 @@
 		`${base}/images/hero/flickday/fd-21.webp`,
 		`${base}/images/hero/flickday/fd-48.webp`
 	];
+
+	// "Selected work" = Nino's curated flickday portfolio (portrait), his actual selected
+	// work — a stronger statement than an engagement heuristic. Source: apps/flickdaymedia.
+	const flickdayPortfolio = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '13'].map(
+		(n) => `${base}/images/hero/flickday/portfolio/p-${n}.webp`
+	);
 </script>
 
 <svelte:head>
@@ -166,41 +171,36 @@
 		</section>
 	{/if}
 
-	<!-- Selected work — the strongest curated frames, shown big. One gallery moment that
-	     replaces the engagement "Trending" rail (mixed quality) and the collection cards. -->
-	{#if data.showcase && data.showcase.length > 2}
-		<section aria-label="Selected work" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 lg:pt-24">
-			<div class="flex items-end justify-between mb-8">
-				<div>
-					<h2 class="text-3xl lg:text-4xl font-bold text-white tracking-tight">Selected work</h2>
-					<p class="mt-2 text-charcoal-400">A few frames worth slowing down for.</p>
-				</div>
-				<a href="{base}/explore" class="text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors shrink-0">
-					Explore the gallery →
+	<!-- Selected work — Nino's curated flickday portfolio (portrait gallery). Tiles link to
+	     /explore to browse the full archive (these are portfolio frames, not findable DB rows). -->
+	<section aria-label="Selected work" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 lg:pt-24">
+		<div class="flex items-end justify-between mb-8">
+			<div>
+				<h2 class="text-3xl lg:text-4xl font-bold text-white tracking-tight">Selected work</h2>
+				<p class="mt-2 text-charcoal-400">A few frames worth slowing down for.</p>
+			</div>
+			<a href="{base}/explore" class="text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors shrink-0">
+				Explore the gallery →
+			</a>
+		</div>
+		<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+			{#each flickdayPortfolio as src}
+				<a
+					href="{base}/explore"
+					class="group relative block aspect-[2/3] overflow-hidden rounded-xl bg-charcoal-900 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/50 hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)]"
+				>
+					<img
+						{src}
+						alt="Volleyball photography by Nino Chavez"
+						loading="lazy"
+						decoding="async"
+						class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+					/>
+					<div class="absolute inset-0 bg-gradient-to-t from-charcoal-950/55 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
 				</a>
-			</div>
-			<div class="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
-				{#each data.showcase as photo}
-					<a
-						href="{base}/photo/{photo.id}"
-						data-sveltekit-preload="hover"
-						class="group relative block aspect-[3/2] overflow-hidden rounded-xl bg-charcoal-900 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/50 hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)]"
-					>
-						{#if photo.cf_image_id}
-							<img
-								src={cfImageUrl(photo.cf_image_id, 'large')}
-								alt={photo.caption || 'Volleyball action photograph'}
-								loading="lazy"
-								decoding="async"
-								class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-							/>
-						{/if}
-						<div class="absolute inset-0 bg-gradient-to-t from-charcoal-950/55 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-					</a>
-				{/each}
-			</div>
-		</section>
-	{/if}
+			{/each}
+		</div>
+	</section>
 
 	<!-- Booking path: lower slot — attendees win the fold, organizers get a real CTA.
 	     "Book a shoot" triggers a real inquiry (mailto), paired with proof. -->
