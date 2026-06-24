@@ -9,8 +9,10 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '6');
+    // Clamp + NaN-guard: a non-numeric ?limit yields NaN (propagates through the query); an
+    // unbounded ?limit=999999 would force a full scan. Keep page >= 1 and limit in [1, 24].
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1);
+    const limit = Math.min(24, Math.max(1, parseInt(url.searchParams.get('limit') || '6') || 6));
     const sport = url.searchParams.get('sport') || undefined;
     const category = url.searchParams.get('category') || undefined;
 

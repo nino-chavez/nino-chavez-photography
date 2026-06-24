@@ -311,7 +311,7 @@
 		}
 	}
 
-	function handleBackdropClick(event: MouseEvent) {
+	function handleBackdropClick(event: MouseEvent | KeyboardEvent) {
 		if (event.target === event.currentTarget) {
 			handleClose();
 		}
@@ -388,7 +388,7 @@
 		class="fixed inset-0 bg-black/95 flex items-center justify-center animate-lightbox-open"
 		style="z-index: 9999;"
 		onclick={handleBackdropClick}
-		onkeydown={(e) => e.key === 'Enter' && handleBackdropClick(e as any)}
+		onkeydown={(e) => e.key === 'Enter' && handleBackdropClick(e)}
 		role="dialog"
 		aria-modal="true"
 		aria-label="Photo lightbox"

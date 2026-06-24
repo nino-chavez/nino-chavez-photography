@@ -27,10 +27,12 @@ import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
 // Use fallback values during build to avoid build-time errors
 // Variables will be validated at runtime when actually used
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key'; // For now, using anon key (read-only is safe)
-
-// TODO: Once we need write operations, add SUPABASE_SERVICE_ROLE_KEY to .env.local
-// and update SvelteKit config to expose it server-side only
+// supabaseServer DELIBERATELY uses the anon key, not service_role. photo_metadata RLS gates unlisted
+// albums (migration 20260624040000), so the gallery read role MUST be anon for that gate to apply —
+// a service_role client here would bypass RLS and re-leak private albums plus expose RLS-gated PII
+// tables (players, photo_jersey_sightings, engagement_events). Writes / unlisted single-album reads
+// use createSupabaseAdminClient() ($lib/supabase/server-ssr) explicitly instead.
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
 // Validate environment variables are set (will warn but not throw during build)
 if (!import.meta.env.VITE_SUPABASE_URL && import.meta.env.PROD) {
@@ -84,8 +86,8 @@ export function transformPhotoRow(row: any): Photo {
   } as Photo;
 }
 
-// Create Supabase client with service role for server-side operations
-export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey, {
+// Gallery read client (anon key — RLS-gated; see note above). NOT a service_role client.
+export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
