@@ -3,6 +3,7 @@ import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { supabaseServer } from '$lib/supabase/server';
+import { isAllowedAdmin } from '$lib/server/admin-auth';
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	// Check authentication
@@ -13,6 +14,10 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	if (!user) {
 		throw redirect(302, `${base}/login`);
+	}
+
+	if (!isAllowedAdmin(user.email)) {
+		throw error(403, 'Admin access required');
 	}
 
 	// Use admin client for album_settings (RLS may block anon reads)
@@ -68,6 +73,10 @@ export const actions = {
 			return fail(401, { error: 'Unauthorized' });
 		}
 
+		if (!isAllowedAdmin(user.email)) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
 		const formData = await request.formData();
 		const albumKey = formData.get('albumKey')?.toString();
 		const currentVisibility = formData.get('currentVisibility')?.toString();
@@ -115,6 +124,10 @@ export const actions = {
 
 		if (!user) {
 			return fail(401, { error: 'Unauthorized' });
+		}
+
+		if (!isAllowedAdmin(user.email)) {
+			return fail(403, { error: 'Admin access required' });
 		}
 
 		const formData = await request.formData();

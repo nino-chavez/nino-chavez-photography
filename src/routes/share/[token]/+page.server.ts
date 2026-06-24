@@ -1,4 +1,5 @@
-import { getAlbumByShareToken, fetchPhotos, getPhotoCount, supabaseServer } from '$lib/supabase/server';
+import { getAlbumByShareToken, fetchPhotos, getPhotoCount } from '$lib/supabase/server';
+import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 
@@ -20,6 +21,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	const albumKey = albumSettings.album_key;
 
+	// Share targets are typically UNLISTED albums, whose photo_metadata rows are gated from the anon
+	// client by RLS. Read them with the service_role client — the share token is the access boundary.
+	const admin = createSupabaseAdminClient();
+
 	// Pagination
 	const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
 	const pageSize = 48;
@@ -27,18 +32,21 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	// Fetch album metadata, photos, and count in parallel
 	const [albumData, photos, totalCount] = await Promise.all([
-		supabaseServer
+		admin
 			.from('albums_summary')
 			.select('album_name')
 			.eq('album_key', albumKey)
 			.single(),
-		fetchPhotos({
-			albumKey,
-			sortBy: 'newest',
-			limit: pageSize,
-			offset,
-		}),
-		getPhotoCount({ albumKey })
+		fetchPhotos(
+			{
+				albumKey,
+				sortBy: 'newest',
+				limit: pageSize,
+				offset,
+			},
+			admin
+		),
+		getPhotoCount({ albumKey }, admin)
 	]);
 
 	if (totalCount === 0) {

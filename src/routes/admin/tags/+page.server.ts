@@ -9,6 +9,7 @@ import { base } from '$app/paths';
 import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
+import { isAllowedAdmin } from '$lib/server/admin-auth';
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	// Check authentication
@@ -20,6 +21,10 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	if (!user) {
 		// Redirect to login page if not authenticated
 		throw redirect(302, `${base}/login`);
+	}
+
+	if (!isAllowedAdmin(user.email)) {
+		throw error(403, 'Admin access required');
 	}
 
 	// User is authenticated - that's enough (signup disabled, only admin exists)
@@ -80,6 +85,10 @@ export const actions = {
 			return fail(401, { error: 'Unauthorized' });
 		}
 
+		if (!isAllowedAdmin(user.email)) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
 		const data = await request.formData();
 		const tagId = data.get('tagId')?.toString();
 
@@ -115,6 +124,10 @@ export const actions = {
 
 		if (!user) {
 			return fail(401, { error: 'Unauthorized' });
+		}
+
+		if (!isAllowedAdmin(user.email)) {
+			return fail(403, { error: 'Admin access required' });
 		}
 
 		const data = await request.formData();
