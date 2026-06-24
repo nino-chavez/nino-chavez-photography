@@ -4,6 +4,7 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
+	import { trackEngagement } from '$lib/analytics/client';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -60,6 +61,14 @@
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
+
+			// Capture the download for the popularity engine (fire-and-forget; the server
+			// dedups per session/day, so multiple size picks don't inflate the count).
+			trackEngagement('download', {
+				photoId: photo.id,
+				albumKey: photo.album_key,
+				source: 'download-button'
+			});
 
 			// Show success feedback (we assume success since the download was triggered)
 			downloadSuccess = true;

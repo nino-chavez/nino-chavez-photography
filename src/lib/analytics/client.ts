@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { base } from '$app/paths';
 
 export type EngagementType = 'favorite' | 'download' | 'share';
 
@@ -17,7 +18,7 @@ export function trackEngagement(
 	if (!browser) return;
 	if (!target.photoId && !target.albumKey) return;
 	try {
-		void fetch('/api/engagement', {
+		void fetch(`${base}/api/engagement`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
