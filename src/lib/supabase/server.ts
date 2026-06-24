@@ -11,7 +11,7 @@
  * Uses non-VITE environment variables (not exposed to browser)
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
@@ -190,12 +190,17 @@ function excludeUnlisted<T>(query: T, keys: string[]): T {
   return query.not('album_key', 'in', `(${keys.join(',')})`);
 }
 
-export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]> {
+export async function fetchPhotos(
+  options?: FetchPhotosOptions,
+  // Single-album reads of UNLISTED albums (share flow) must pass a service_role client, since
+  // photo_metadata RLS gates unlisted rows from the anon `supabaseServer`. Defaults to anon.
+  client: SupabaseClient = supabaseServer
+): Promise<Photo[]> {
   const { limit = 24, offset = 0, sortBy = 'newest', dateFrom, dateTo, ...filters } = options || {};
 
   console.log('[fetchPhotos] Query params:', { limit, offset, sortBy, filters });
 
-  let query = supabaseServer
+  let query = client
     .from(PHOTOS_READ)
     .select(PHOTO_COLUMNS)
     .not('sharpness', 'is', null); // Only show enriched photos
@@ -277,7 +282,7 @@ export async function fetchPhotos(options?: FetchPhotosOptions): Promise<Photo[]
       // Fallback: If quality sort times out (likely due to missing index), try newest
       if (sortBy === 'quality') {
         console.warn('[Supabase Server] Quality sort timed out, falling back to newest sort');
-        return fetchPhotos({ ...options, sortBy: 'newest' });
+        return fetchPhotos({ ...options, sortBy: 'newest' }, client);
       }
       throw new Error('Database query timeout - try adding filters to narrow your search');
     }
@@ -462,9 +467,11 @@ export async function getProgramFacets(): Promise<ProgramFacet[]> {
  * Get count of photos matching filters (SERVER-SIDE)
  */
 export async function getPhotoCount(
-  filters?: PhotoFilterState & { dateFrom?: string; dateTo?: string }
+  filters?: PhotoFilterState & { dateFrom?: string; dateTo?: string },
+  // See fetchPhotos: pass a service_role client for single-album counts of unlisted (share) albums.
+  client: SupabaseClient = supabaseServer
 ): Promise<number> {
-  let query = supabaseServer
+  let query = client
     .from(PHOTOS_READ)
     .select('photo_id', { count: 'exact', head: true })
     .not('sharpness', 'is', null);
@@ -1507,9 +1514,12 @@ export async function getAlbumByShareToken(shareToken: string): Promise<AlbumSet
  * Fetch minimal photo data for bulk download (cf_image_id + image_key only)
  */
 export async function fetchAlbumPhotosForDownload(
-  albumKey: string
+  albumKey: string,
+  // Pass a service_role client to include UNLISTED albums (shared client downloads); photo_metadata
+  // RLS gates unlisted rows from the anon default.
+  client: SupabaseClient = supabaseServer
 ): Promise<Array<{ cf_image_id: string; image_key: string }>> {
-  const { data, error } = await supabaseServer
+  const { data, error } = await client
     .from(PHOTOS_READ)
     .select('cf_image_id, image_key')
     .eq('album_key', albumKey)

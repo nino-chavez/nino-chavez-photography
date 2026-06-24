@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { fetchAlbumPhotosForDownload, fetchPhotos } from '$lib/supabase/server';
+import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import type { RequestHandler } from './$types';
 
 const PAGE_SIZE = 48;
@@ -30,21 +31,30 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'Missing albumKey' }, { status: 400 });
 	}
 
+	// Single-album-by-key reads serve shared UNLISTED albums too (the share lightbox paginates and
+	// the bulk-download manifest both come through here). photo_metadata RLS gates unlisted rows from
+	// the anon client, so read with service_role — consistent with the worker zip path. Album-key
+	// scoping (not visibility) is the intended boundary for single-album endpoints.
+	const admin = createSupabaseAdminClient();
+
 	const pageParam = url.searchParams.get('page');
 	if (pageParam === null) {
 		// Legacy download-manifest mode.
-		const photos = await fetchAlbumPhotosForDownload(albumKey);
+		const photos = await fetchAlbumPhotosForDownload(albumKey, admin);
 		return json({ photos }, { headers: CACHE_HEADERS });
 	}
 
 	// Paginated mode for cross-page lightbox navigation.
 	const page = Math.max(1, parseInt(pageParam || '1'));
-	const photos = await fetchPhotos({
-		albumKey,
-		sortBy: 'newest',
-		limit: PAGE_SIZE,
-		offset: (page - 1) * PAGE_SIZE
-	});
+	const photos = await fetchPhotos(
+		{
+			albumKey,
+			sortBy: 'newest',
+			limit: PAGE_SIZE,
+			offset: (page - 1) * PAGE_SIZE
+		},
+		admin
+	);
 
 	return json({ photos, page }, { headers: CACHE_HEADERS });
 };
