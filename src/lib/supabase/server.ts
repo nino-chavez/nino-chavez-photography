@@ -435,18 +435,28 @@ export async function getProgramFacets(): Promise<ProgramFacet[]> {
   const unlisted = await getUnlistedAlbumKeys();
   const unlistedSet = new Set(unlisted);
 
-  // Recent engagement per album (album_popularity), mapped to album names so we
-  // can attribute it to each program via the same name match used for counts.
-  const [albumsRes, popRes] = await Promise.all([
-    supabaseServer.from('albums_summary').select('album_key, album_name'),
-    supabaseServer.from('album_popularity').select('album_key, trending_score')
-  ]);
+  // Recent engagement per album (album_popularity), mapped to album names so we can attribute it to
+  // each program via the same name match used for counts. albums_summary + album_popularity are
+  // MATVIEWS → read via service_role (anon is REVOKE'd; reading via the anon supabaseServer silently
+  // returned nothing, degrading this to photo-count-only ordering). Falls back to that degraded
+  // ordering if the admin client is unavailable.
+  let albumsData: Array<{ album_key: string; album_name: string }> = [];
+  let popData: Array<{ album_key: string; trending_score: number }> = [];
+  try {
+    const admin = matviewClient();
+    const [albumsRes, popRes] = await Promise.all([
+      admin.from('albums_summary').select('album_key, album_name'),
+      admin.from('album_popularity').select('album_key, trending_score')
+    ]);
+    albumsData = (albumsRes.data ?? []) as typeof albumsData;
+    popData = (popRes.data ?? []) as typeof popData;
+  } catch (e) {
+    console.error('[getProgramFacets] matview read failed, ordering by photo count only:', (e as Error)?.message);
+  }
   const popByKey = new Map<string, number>(
-    (popRes.data ?? []).map((r) => [r.album_key as string, Number(r.trending_score) || 0])
+    popData.map((r) => [r.album_key, Number(r.trending_score) || 0])
   );
-  const albums = (albumsRes.data ?? []).filter(
-    (a) => a.album_key && !unlistedSet.has(a.album_key)
-  );
+  const albums = albumsData.filter((a) => a.album_key && !unlistedSet.has(a.album_key));
 
   const facets = await Promise.all(
     PROGRAM_FACETS.map(async (p) => {
