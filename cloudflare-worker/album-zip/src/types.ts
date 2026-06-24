@@ -1,5 +1,6 @@
 export interface Env {
 	ZIP_CACHE: R2Bucket;
+	ZIP_RATE_LIMITER: RateLimit;
 	CF_ACCOUNT_HASH: string;
 	ALLOWED_ORIGIN: string;
 	SUPABASE_URL: string;
