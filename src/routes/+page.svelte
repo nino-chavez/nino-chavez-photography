@@ -20,16 +20,27 @@
 
 	let { data }: Props = $props();
 
-	// Hero rotation = curated flickday landscape frames (the brand's recent/homepage shots),
-	// served as optimized static webp. The portrait portfolio shots are excluded — they crop
-	// badly in the full-bleed landscape hero. Source: apps/flickdaymedia/images/gallery.
-	const heroImages = [
-		`${base}/images/hero/flickday/fd-12.webp`,
-		`${base}/images/hero/flickday/fd-38.webp`,
-		`${base}/images/hero/flickday/fd-18.webp`,
-		`${base}/images/hero/flickday/fd-26.webp`,
-		`${base}/images/hero/flickday/fd-21.webp`,
-		`${base}/images/hero/flickday/fd-48.webp`
+	// Hero rotation = curated flickday frames. Single landscape frames AND 3-portrait
+	// triptychs (which tile to the same 2:1 landscape footprint, so portrait shots get used
+	// without cropping). Interleaved so the rotation alternates single ↔ triptych.
+	// Source: apps/flickdaymedia/images/gallery.
+	const fd = (n: string) => `${base}/images/hero/flickday/fd-${n}.webp`;
+	// Portrait pool for the triptychs. Passing the whole pool as a slide makes the hero pick
+	// 3 at random each time the slot is shown — so the grouping is never the same trio twice.
+	const triptychPool = ['14', '15', '16', '17', '19', '20', '22', '23', '24', '25', '27', '28'].map(
+		(n) => `${base}/images/hero/flickday/triptych/t-${n}.webp`
+	);
+	const heroSlides: (string | string[])[] = [
+		fd('12'), // Cyclones celebration — the LCP lead (matches staticDesktop)
+		triptychPool,
+		fd('38'),
+		triptychPool,
+		fd('18'),
+		triptychPool,
+		fd('26'),
+		triptychPool,
+		fd('21'),
+		fd('48')
 	];
 
 	// "Selected work" = Nino's curated flickday portfolio (portrait), his actual selected
@@ -70,7 +81,7 @@
 <!-- Full-bleed gallery hero: one curated frame + the find-your-photos search overlaid. -->
 <PremiumHero
 	fullBleed
-	images={heroImages}
+	slides={heroSlides}
 	staticDesktop="{base}/images/hero/flickday/fd-12.webp"
 	staticMobile="{base}/images/hero/flickday/fd-12-mobile.webp"
 	title="FIND YOUR PHOTOS"

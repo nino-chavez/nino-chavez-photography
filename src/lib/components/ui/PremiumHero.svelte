@@ -37,6 +37,10 @@
     /** Override the built-in static LCP hero (e.g. a curated flickday lead frame). */
     staticDesktop?: string;
     staticMobile?: string;
+    /** Full-bleed rotation slides. A slide is a single landscape URL, OR an array of 3
+     *  portrait URLs rendered as a side-by-side triptych (fills the same landscape footprint).
+     *  When set, takes precedence over `images` in fullBleed mode. */
+    slides?: (string | string[])[];
     /** Replaces the default "Browse Gallery" CTA in the content area (e.g. a search form). */
     children?: Snippet;
     class?: string;
@@ -51,9 +55,30 @@
     fullBleed = false,
     staticDesktop,
     staticMobile,
+    slides = [],
     children,
     class: className
   }: Props = $props();
+
+  // Rotation operates on slides (fullBleed triptych support) or plain images (split mode).
+  type Slide = string | string[];
+  const rotationItems = $derived<Slide[]>(fullBleed && slides.length > 0 ? slides : images);
+  const firstUrlOf = (s: Slide): string => (Array.isArray(s) ? s[0] : s);
+
+  // A triptych slot is passed as a POOL (>3 portraits); resolve it to 3 chosen at random
+  // each time the slot is shown, so the grouping is never statically the same trio. A fixed
+  // 3-array or a single landscape passes through unchanged.
+  function resolveSlide(slide: Slide): Slide {
+    if (Array.isArray(slide) && slide.length > 3) {
+      const pool = [...slide];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool.slice(0, 3);
+    }
+    return slide;
+  }
 
   // Height tokens: compact lets the recent-events row sit above the fold; default keeps the splash.
   const sectionH = $derived(compact ? 'min-h-[46vh] lg:min-h-[52vh]' : 'min-h-[70vh] lg:min-h-[80vh]');
@@ -72,43 +97,43 @@
   );
   let dynamicReady = $state(false);
 
-  // --- Image rotation state ---
-  // Two layers for crossfade: layer 0 starts visible, layer 1 is preload target
+  // --- Rotation state ---
+  // Two layers for crossfade: layer 0 starts visible, layer 1 is preload target.
+  // A layer source is a Slide (single URL or a 3-portrait triptych array).
   let activeLayer = $state<0 | 1>(0);
   let currentIndex = $state(0);
-  let layerSources = $state<[string, string]>(['', '']);
+  let layerSources = $state<[Slide, Slide]>(['', '']);
 
-  // Sync layer sources when images prop changes
+  // Sync layer sources when the rotation list changes
   $effect(() => {
     layerSources = [
-      images[0] || '',
-      images.length > 1 ? images[1] : ''
+      resolveSlide(rotationItems[0] ?? ''),
+      resolveSlide(rotationItems.length > 1 ? rotationItems[1] : '')
     ];
     currentIndex = 0;
     activeLayer = 0;
   });
 
-  // Preload first dynamic image, then reveal dynamic layer + start rotation
+  // Preload the first slide, then reveal the dynamic layer + start rotation
   $effect(() => {
-    if (images.length === 0) return;
-    const firstUrl = getOptimizedUrl(images[0], 'desktop');
-    preloadImage(firstUrl).then(() => { dynamicReady = true; });
+    if (rotationItems.length === 0) return;
+    preloadSlide(rotationItems[0]).then(() => { dynamicReady = true; });
   });
 
-  // Rotation: every 8s, preload next image then crossfade (only after dynamic ready)
+  // Rotation: every 8s, preload the next slide then crossfade (only after dynamic ready)
   $effect(() => {
-    if (!dynamicReady || images.length <= 1) return;
+    if (!dynamicReady || rotationItems.length <= 1) return;
 
     const interval = setInterval(async () => {
-      const nextIdx = (currentIndex + 1) % images.length;
-      const nextUrl = images[nextIdx];
-      if (!nextUrl) return;
+      const nextIdx = (currentIndex + 1) % rotationItems.length;
+      const nextSlide = rotationItems[nextIdx];
+      if (!nextSlide) return;
 
-      const desktopUrl = getOptimizedUrl(nextUrl, 'desktop');
-      await preloadImage(desktopUrl);
+      const resolved = resolveSlide(nextSlide);
+      await preloadSlide(resolved);
 
       const inactive: 0 | 1 = activeLayer === 0 ? 1 : 0;
-      layerSources[inactive] = nextUrl;
+      layerSources[inactive] = resolved;
 
       requestAnimationFrame(() => {
         activeLayer = inactive;
@@ -128,6 +153,14 @@
     });
   }
 
+  // Preload every image in a slide (1 for single, 3 for a triptych).
+  function preloadSlide(slide: Slide): Promise<void> {
+    const urls = (Array.isArray(slide) ? slide : [slide])
+      .filter(Boolean)
+      .map((u) => getOptimizedUrl(u, 'desktop'));
+    return Promise.all(urls.map(preloadImage)).then(() => {});
+  }
+
   // --- Image URL optimization ---
   function getOptimizedUrl(imageUrl: string, size: 'mobile' | 'desktop' | 'thumbnail'): string {
     if (!imageUrl) return '';
@@ -145,23 +178,43 @@
     return imageUrl;
   }
 
-  // Derived URLs for active layer (used by blur placeholder)
+  // Derived URLs for active layer (used by blur placeholder) — first frame of the slide.
   let activeSource = $derived(layerSources[activeLayer]);
-  let thumbnailUrl = $derived(getOptimizedUrl(activeSource, 'thumbnail'));
+  let thumbnailUrl = $derived(getOptimizedUrl(firstUrlOf(activeSource), 'thumbnail'));
 
-  // Per-layer optimized URLs
-  let layer0Desktop = $derived(getOptimizedUrl(layerSources[0], 'desktop'));
-  let layer0Mobile = $derived(getOptimizedUrl(layerSources[0], 'mobile'));
-  let layer1Desktop = $derived(getOptimizedUrl(layerSources[1], 'desktop'));
-  let layer1Mobile = $derived(getOptimizedUrl(layerSources[1], 'mobile'));
+  // Per-layer optimized URLs for the split (non-fullBleed) mode. fullBleed renders slides
+  // (single or triptych) via the slideLayer snippet, so these only ever see single images.
+  let layer0Desktop = $derived(getOptimizedUrl(firstUrlOf(layerSources[0]), 'desktop'));
+  let layer0Mobile = $derived(getOptimizedUrl(firstUrlOf(layerSources[0]), 'mobile'));
+  let layer1Desktop = $derived(getOptimizedUrl(firstUrlOf(layerSources[1]), 'desktop'));
+  let layer1Mobile = $derived(getOptimizedUrl(firstUrlOf(layerSources[1]), 'mobile'));
 
-  let hasImages = $derived(images.length > 0);
+  let hasImages = $derived(rotationItems.length > 0);
 
   // Grain texture SVG (from nino-chavez-website)
   const grainSvg = "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')";
 </script>
 
 {#if fullBleed}
+  <!-- A rotation slide: a single landscape frame, or a 3-portrait triptych (desktop) that
+       tiles to the same 2:1 landscape footprint; mobile shows the lead portrait. -->
+  {#snippet slideLayer(slide: Slide, isActive: boolean)}
+    <div class="absolute inset-0 hero-crossfade" style="opacity: {isActive ? 1 : 0}">
+      {#if Array.isArray(slide)}
+        <div class="hidden lg:grid grid-cols-3 h-full">
+          {#each slide as s}
+            <img src={s} alt="" class="w-full h-full object-cover object-center" decoding="async" loading="lazy" />
+          {/each}
+        </div>
+        {#if slide[0]}
+          <img src={slide[0]} alt="" class="lg:hidden w-full h-full object-cover object-center" decoding="async" loading="lazy" />
+        {/if}
+      {:else if slide}
+        <img src={slide} alt="" class="w-full h-full object-cover object-center" decoding="async" />
+      {/if}
+    </div>
+  {/snippet}
+
   <!-- Full-bleed gallery hero: one curated frame fills the viewport, content overlaid. -->
   <section
     class={cn('relative w-full bg-charcoal-950 overflow-hidden min-h-[56vh] lg:min-h-[62vh]', className)}
@@ -199,19 +252,9 @@
         ></div>
       {/if}
 
-      <!-- Crossfade layers (desktop large / mobile medium) -->
-      {#if layer0Desktop}
-        <img src={layer0Desktop} alt="" width="2048" height="1365" class="hidden lg:block absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 0 ? 1 : 0}" fetchpriority={activeLayer === 0 ? 'high' : 'low'} decoding={activeLayer === 0 ? 'sync' : 'async'} />
-      {/if}
-      {#if layer0Mobile}
-        <img src={layer0Mobile} alt="" width="1024" height="683" class="lg:hidden absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 0 ? 1 : 0}" decoding="async" />
-      {/if}
-      {#if layer1Desktop}
-        <img src={layer1Desktop} alt="" width="2048" height="1365" class="hidden lg:block absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 1 ? 1 : 0}" decoding="async" />
-      {/if}
-      {#if layer1Mobile}
-        <img src={layer1Mobile} alt="" width="1024" height="683" class="lg:hidden absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 1 ? 1 : 0}" decoding="async" />
-      {/if}
+      <!-- Crossfade slide layers (each: single landscape OR 3-portrait triptych) -->
+      {@render slideLayer(layerSources[0], activeLayer === 0)}
+      {@render slideLayer(layerSources[1], activeLayer === 1)}
 
       {#if hasImages}
         <div class="absolute inset-0 opacity-[0.08] mix-blend-overlay pointer-events-none" style="background-image: {grainSvg}" aria-hidden="true"></div>
