@@ -282,7 +282,7 @@ async function fetchFeaturedAlbums() {
  * Mirrors fetchFeaturedAlbums' unlisted exclusion (the detail route 404s unlisted albums).
  * Returns event name + date + photo count + cover; the page formats date/count for display.
  */
-async function fetchRecentAlbums(limit = 6) {
+async function fetchRecentAlbums(limit = 8) {
   try {
     const { data: unlisted } = await supabaseServer
       .from('album_settings')

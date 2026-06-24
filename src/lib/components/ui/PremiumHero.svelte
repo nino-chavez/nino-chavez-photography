@@ -164,7 +164,7 @@
 {#if fullBleed}
   <!-- Full-bleed gallery hero: one curated frame fills the viewport, content overlaid. -->
   <section
-    class={cn('relative w-full bg-charcoal-950 overflow-hidden min-h-[86vh] lg:min-h-[92vh]', className)}
+    class={cn('relative w-full bg-charcoal-950 overflow-hidden min-h-[56vh] lg:min-h-[62vh]', className)}
     role="banner"
     aria-label="Hero section"
   >
@@ -223,7 +223,7 @@
     </div>
 
     <!-- Overlaid content -->
-    <div class="relative z-10 min-h-[86vh] lg:min-h-[92vh] flex items-end lg:items-center pb-10 lg:pb-0">
+    <div class="relative z-10 min-h-[56vh] lg:min-h-[62vh] flex items-end lg:items-center pb-10 lg:pb-0">
       <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="max-w-xl hero-content-animate">
           <Typography
