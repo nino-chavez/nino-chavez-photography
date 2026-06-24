@@ -93,24 +93,29 @@
 		<p class="mt-3 text-xs text-charcoal-400">Free to browse — find your photos, download in seconds.</p>
 
 		{#if data.programs && data.programs.length > 0}
-			<div class="mt-5 flex flex-wrap items-baseline gap-x-5 gap-y-2.5 max-w-2xl">
-				{#each data.programs.slice(0, 6) as program}
+			<div class="mt-6">
+				<p class="text-[11px] font-medium uppercase tracking-wider text-charcoal-400 mb-2.5">Jump to your team</p>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 max-w-2xl">
+					{#each data.programs.slice(0, 6) as program}
+						<a
+							href="{base}/explore?q={encodeURIComponent(program.query)}"
+							class="text-sm font-medium text-white border-b border-gold-500/60 pb-0.5 hover:text-gold-300 hover:border-gold-400 transition-colors"
+						>
+							{program.label}
+						</a>
+					{/each}
 					<a
-						href="{base}/explore?q={encodeURIComponent(program.query)}"
-						class="group inline-flex items-baseline gap-1.5 text-sm text-charcoal-200 hover:text-white transition-colors"
+						href="{base}/albums"
+						class="inline-flex items-center gap-1 text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors"
 					>
-						<span class="border-b border-transparent group-hover:border-gold-500 pb-0.5">{program.label}</span>
-						<span class="text-xs text-charcoal-500 tabular-nums">{program.count}</span>
+						All events <span aria-hidden="true">→</span>
 					</a>
-				{/each}
-				<a href="{base}/albums" class="text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors">
-					All events →
-				</a>
+				</div>
 			</div>
 		{/if}
 
 		{#if data.stats && data.stats.totalPhotos > 0}
-			<p class="mt-6 text-sm text-charcoal-400">
+			<p class="mt-7 pt-5 border-t border-white/10 text-sm text-charcoal-400 max-w-lg">
 				<span class="text-white font-semibold tabular-nums">{approxCount(data.stats.totalPhotos)}</span> photos
 				· <span class="text-white font-semibold tabular-nums">{approxCount(data.stats.eventCount)}</span> events
 				· club, HS &amp; college
