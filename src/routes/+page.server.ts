@@ -18,8 +18,7 @@ interface HeroCache {
   featuredAlbums: Awaited<ReturnType<typeof fetchFeaturedAlbums>>;
   recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>;
   programs: Awaited<ReturnType<typeof getProgramFacets>>;
-  trendingPhotos: Photo[];
-  fanFavorites: Photo[];
+  topEngaged: Photo[];
   stats: { totalPhotos: number; eventCount: number };
   timestamp: number;
 }
@@ -34,21 +33,25 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     const now = Date.now();
 
     if (!heroCache || now - heroCache.timestamp > HERO_CACHE_DURATION_MS) {
-      const [balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites, stats] = await Promise.all([
+      const [balancedPhotos, featuredAlbums, recentAlbums, programs, topEngaged, stats] = await Promise.all([
         fetchHeroCandidates(),
         fetchFeaturedAlbums(),
         fetchRecentAlbums(),
         getProgramFacets(),
-        getTopPhotos(supabaseServer, { metric: 'trending', limit: 12 }),
-        getTopPhotos(supabaseServer, { metric: 'all_time', limit: 12 }),
+        getTopPhotos(supabaseServer, { metric: 'all_time', limit: 48 }),
         fetchStats()
       ]);
-      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, programs, trendingPhotos, fanFavorites, stats, timestamp: now };
+      heroCache = { balancedPhotos, featuredAlbums, recentAlbums, programs, topEngaged, stats, timestamp: now };
     }
 
     const pool = heroCache.balancedPhotos;
+    // "Selected work" = audience-voted best, NOT a naive quality score off a skewed pool.
+    // Rank by all-time engagement (favorites/downloads/shares across events), enforce a
+    // per-event cap so one shoot can't dominate, and backfill from the quality pool.
+    const showcase = buildShowcase(heroCache.topEngaged, pool);
+
     if (pool.length === 0) {
-      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, stats: heroCache.stats, staticHeroIndex: 0 };
+      return { heroCandidates: [], featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, showcase, stats: heroCache.stats, staticHeroIndex: 0 };
     }
     const pinIdx = Math.floor(Date.now() / 3_600_000) % pool.length;
     const pinned = pool[pinIdx];
@@ -58,12 +61,55 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     );
     const heroCandidates = [pinned, ...rest].map(transformPhotoRow);
 
-    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, trendingPhotos: heroCache.trendingPhotos, fanFavorites: heroCache.fanFavorites, stats: heroCache.stats, staticHeroIndex: 0 };
+    return { heroCandidates, featuredAlbums: heroCache.featuredAlbums, recentAlbums: heroCache.recentAlbums, programs: heroCache.programs, showcase, stats: heroCache.stats, staticHeroIndex: 0 };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
-    return { heroCandidates: [], featuredAlbums: [], recentAlbums: [], programs: [], stats: { totalPhotos: 0, eventCount: 0 } };
+    return { heroCandidates: [], featuredAlbums: [], recentAlbums: [], programs: [], showcase: [], stats: { totalPhotos: 0, eventCount: 0 } };
   }
 };
+
+/** Quality blend used to rank curated frames. */
+function qualityScore(p: Record<string, unknown>): number {
+  return ((p.sharpness as number) || 0) + ((p.composition_score as number) || 0) + ((p.emotional_impact as number) || 0);
+}
+
+/**
+ * "Selected work" — audience-voted best, diversified across events.
+ *
+ * Candidate order: all-time engagement first (what people favorited / downloaded / shared —
+ * the real "best work" signal), then quality-curated frames as backfill. A per-event cap
+ * stops a single heavily-shot tournament from filling the grid: one frame per event first
+ * (maximum spread), relaxed to two, then anything to fill the last slots.
+ */
+function buildShowcase(engaged: Photo[], pool: Record<string, unknown>[], count = 9): Photo[] {
+  const qualityPhotos = [...pool]
+    .sort((a, b) => qualityScore(b) - qualityScore(a))
+    .map(transformPhotoRow);
+  const candidates = [...engaged, ...qualityPhotos].filter((p) => p.cf_image_id);
+  const albumOf = (p: Photo) => (p.album_key || '') as string;
+
+  const fill = (cap: number, seed: Photo[]): Photo[] => {
+    const out = [...seed];
+    const ids = new Set(out.map((p) => p.id));
+    const perAlbum = new Map<string, number>();
+    for (const p of out) perAlbum.set(albumOf(p), (perAlbum.get(albumOf(p)) || 0) + 1);
+    for (const p of candidates) {
+      if (out.length >= count) break;
+      if (ids.has(p.id)) continue;
+      const a = albumOf(p);
+      if (a && (perAlbum.get(a) || 0) >= cap) continue;
+      out.push(p);
+      ids.add(p.id);
+      perAlbum.set(a, (perAlbum.get(a) || 0) + 1);
+    }
+    return out;
+  };
+
+  let result = fill(1, []); // one frame per event — maximum spread
+  if (result.length < count) result = fill(2, result); // relax the cap to fill the grid
+  if (result.length < count) result = fill(Number.POSITIVE_INFINITY, result); // last resort
+  return result.slice(0, count);
+}
 
 /**
  * Lightweight credibility stats for the hero strip: total enriched photos +

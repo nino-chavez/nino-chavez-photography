@@ -47,10 +47,12 @@
   --color-gold-50: #fefce8;
   --color-gold-100: #fef9c3;
   --color-gold-200: #fef08a;
-  --color-gold-300: #fde047;
-  --color-gold-400: #facc15;
-  --color-gold-500: #eab308;
-  --color-gold-600: #ca8a04;
+  /* Accent mid-tones retuned to the brand's metallic "old gold" (#D4AF37, the
+     <meta theme-color>) — warmer and more refined than the prior neon-yellow gold. */
+  --color-gold-300: #ecd47a;
+  --color-gold-400: #e3c358;
+  --color-gold-500: #D4AF37;
+  --color-gold-600: #b8962e;
   --color-gold-700: #a16207;
   --color-gold-800: #854d0e;
   --color-gold-900: #713f12;
@@ -298,31 +300,24 @@
       0 0 0 1px color-mix(in srgb, var(--color-gold-500) 18%, transparent);
   }
 
-  /* Polished gold — primary action. Gradient + inner highlight + gold glow. */
+  /* Ghost outline — primary action. Metallic-gold hairline; fills on hover.
+     Editorial restraint over a solid fill (gold reads as a precise accent, not paint). */
   .btn-gold {
-    background-image: linear-gradient(180deg, var(--color-gold-400), var(--color-gold-500));
-    color: var(--color-charcoal-950);
+    background: transparent;
+    color: var(--color-gold-500);
+    border: 1px solid color-mix(in srgb, var(--color-gold-500) 65%, transparent);
     font-weight: 600;
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.32),
-      0 1px 2px rgba(0, 0, 0, 0.45),
-      0 10px 24px -10px rgba(234, 179, 8, 0.5);
-    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.18s,
-      background-image 0.18s, filter 0.18s;
+    transition: background-color 0.18s, color 0.18s, border-color 0.18s,
+      transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
   }
   .btn-gold:hover {
-    background-image: linear-gradient(180deg, var(--color-gold-300), var(--color-gold-400));
+    background: var(--color-gold-500);
+    color: var(--color-charcoal-950);
+    border-color: var(--color-gold-500);
     transform: translateY(-1px);
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-      0 2px 4px rgba(0, 0, 0, 0.45),
-      0 18px 36px -12px rgba(234, 179, 8, 0.62);
   }
   .btn-gold:active {
     transform: translateY(0) scale(0.985);
-    box-shadow:
-      inset 0 1px 3px rgba(0, 0, 0, 0.2),
-      0 1px 2px rgba(0, 0, 0, 0.4);
   }
 
   /* Charcoal — secondary action. Subtle gradient + hairline, gold-warming edge. */
@@ -348,30 +343,23 @@
     transform: translateY(0) scale(0.985);
   }
 
-  /* Chip / pill — layered charcoal, hairline, gold-warming hover. */
+  /* Chip / pill — clean hairline (filters keep a pill affordance; the homepage program
+     nav uses plain text links instead). Selected state (.chip-active) fills metallic gold. */
   .chip {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     border-radius: 9999px;
-    background-image: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-charcoal-800) 80%, transparent),
-      color-mix(in srgb, var(--color-charcoal-900) 80%, transparent)
-    );
+    background: transparent;
     border: 1px solid var(--color-charcoal-700);
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
     color: var(--color-charcoal-200);
-    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1), border-color 0.18s,
-      box-shadow 0.18s, color 0.18s, background-image 0.18s;
+    transition: border-color 0.18s, color 0.18s,
+      transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
   }
   .chip:hover {
     transform: translateY(-1px);
     color: #fff;
     border-color: color-mix(in srgb, var(--color-gold-500) 55%, transparent);
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-      0 10px 22px -10px rgba(234, 179, 8, 0.4);
   }
   .chip:active {
     transform: translateY(0) scale(0.97);
