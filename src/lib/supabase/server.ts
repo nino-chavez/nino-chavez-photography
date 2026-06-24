@@ -19,6 +19,16 @@ import { embedText } from '$lib/ai/embeddings';
 import { planQuery, type QueryPlan } from '$lib/search/query-planner';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
 import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
+import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
+
+// Lazy service_role client for reading public MATERIALIZED VIEWS. Matviews carry no RLS and are
+// REVOKE'd from anon (migration 20260624030000), so the anon `supabaseServer` cannot read them —
+// reads must go through service_role. Lazily created + cached so a missing key degrades gracefully.
+let _matviewClient: SupabaseClient | null = null;
+function matviewClient(): SupabaseClient {
+  if (!_matviewClient) _matviewClient = createSupabaseAdminClient();
+  return _matviewClient;
+}
 
 // Server-side environment variables (NOT exposed to browser)
 // In SvelteKit, we need to use import.meta.env even server-side
@@ -723,9 +733,19 @@ export interface BaseFacets {
 }
 
 export async function getBaseFacets(): Promise<BaseFacets | null> {
-  const { data, error } = await supabaseServer
-    .from('facet_base_counts')
-    .select('dimension, value, count');
+  // Read the matview via service_role — anon can't (REVOKE'd, no RLS). Reading it via the anon
+  // `supabaseServer` silently failed, so EVERY page load fell back to the live per-value count/distinct
+  // storm (the dominant DB-time consumer). The matview already excludes unlisted albums, so privacy
+  // semantics match the fallback. Any failure (e.g. missing service-role key) → null → live fallback.
+  let data, error;
+  try {
+    ({ data, error } = await matviewClient()
+      .from('facet_base_counts')
+      .select('dimension, value, count'));
+  } catch (e) {
+    console.error('[getBaseFacets] admin client unavailable, caller will fall back:', (e as Error)?.message);
+    return null;
+  }
 
   if (error || !data) {
     console.error('[getBaseFacets] read failed, caller will fall back:', error?.message);
