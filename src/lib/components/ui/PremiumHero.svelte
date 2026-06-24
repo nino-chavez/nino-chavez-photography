@@ -32,6 +32,11 @@
     subtitle?: string;
     /** Compact band (~50vh) instead of the full 70–80vh splash — task-first homepage. */
     compact?: boolean;
+    /** Full-bleed image with content overlaid (gallery hero) instead of the split band. */
+    fullBleed?: boolean;
+    /** Override the built-in static LCP hero (e.g. a curated flickday lead frame). */
+    staticDesktop?: string;
+    staticMobile?: string;
     /** Replaces the default "Browse Gallery" CTA in the content area (e.g. a search form). */
     children?: Snippet;
     class?: string;
@@ -43,6 +48,9 @@
     title = 'SPORTS PHOTOGRAPHY',
     subtitle = 'ACTION & MOMENTS',
     compact = false,
+    fullBleed = false,
+    staticDesktop,
+    staticMobile,
     children,
     class: className
   }: Props = $props();
@@ -57,7 +65,11 @@
   const STATIC_HEROES = [
     { desktop: `${base}/images/hero/hero-1-desktop.webp`, mobile: `${base}/images/hero/hero-1-mobile.webp` }
   ];
-  let staticHero = $derived(STATIC_HEROES[staticHeroIndex] ?? STATIC_HEROES[0]);
+  let staticHero = $derived(
+    staticDesktop
+      ? { desktop: staticDesktop, mobile: staticMobile ?? staticDesktop }
+      : (STATIC_HEROES[staticHeroIndex] ?? STATIC_HEROES[0])
+  );
   let dynamicReady = $state(false);
 
   // --- Image rotation state ---
@@ -149,6 +161,85 @@
   const grainSvg = "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')";
 </script>
 
+{#if fullBleed}
+  <!-- Full-bleed gallery hero: one curated frame fills the viewport, content overlaid. -->
+  <section
+    class={cn('relative w-full bg-charcoal-950 overflow-hidden min-h-[56vh] lg:min-h-[62vh]', className)}
+    role="banner"
+    aria-label="Hero section"
+  >
+    <div class="absolute inset-0">
+      <!-- Static LCP hero (responsive) -->
+      <img
+        src={staticHero.desktop}
+        alt="Volleyball action photography"
+        width="2048"
+        height="1365"
+        class="hidden lg:block absolute inset-0 w-full h-full object-cover object-center hero-crossfade"
+        style="opacity: {dynamicReady ? 0 : 1}"
+        fetchpriority="high"
+        decoding="sync"
+      />
+      <img
+        src={staticHero.mobile}
+        alt="Volleyball action photography"
+        width="1024"
+        height="683"
+        class="lg:hidden absolute inset-0 w-full h-full object-cover object-center hero-crossfade"
+        style="opacity: {dynamicReady ? 0 : 1}"
+        fetchpriority="high"
+        decoding="sync"
+      />
+
+      {#if thumbnailUrl}
+        <div
+          class="absolute inset-0 bg-cover bg-center blur-xl scale-110 transition-opacity duration-1000"
+          style="background-image: url('{thumbnailUrl}');"
+          aria-hidden="true"
+        ></div>
+      {/if}
+
+      <!-- Crossfade layers (desktop large / mobile medium) -->
+      {#if layer0Desktop}
+        <img src={layer0Desktop} alt="" width="2048" height="1365" class="hidden lg:block absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 0 ? 1 : 0}" fetchpriority={activeLayer === 0 ? 'high' : 'low'} decoding={activeLayer === 0 ? 'sync' : 'async'} />
+      {/if}
+      {#if layer0Mobile}
+        <img src={layer0Mobile} alt="" width="1024" height="683" class="lg:hidden absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 0 ? 1 : 0}" decoding="async" />
+      {/if}
+      {#if layer1Desktop}
+        <img src={layer1Desktop} alt="" width="2048" height="1365" class="hidden lg:block absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 1 ? 1 : 0}" decoding="async" />
+      {/if}
+      {#if layer1Mobile}
+        <img src={layer1Mobile} alt="" width="1024" height="683" class="lg:hidden absolute inset-0 w-full h-full object-cover object-center hero-crossfade" style="opacity: {activeLayer === 1 ? 1 : 0}" decoding="async" />
+      {/if}
+
+      {#if hasImages}
+        <div class="absolute inset-0 opacity-[0.08] mix-blend-overlay pointer-events-none" style="background-image: {grainSvg}" aria-hidden="true"></div>
+      {/if}
+
+      <!-- Legibility scrim: heavy on the content (left/bottom), clears the image on the right -->
+      <div class="absolute inset-0 bg-gradient-to-r from-charcoal-950 via-charcoal-950/80 to-charcoal-950/10 lg:to-transparent pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-charcoal-950 via-charcoal-950/10 to-charcoal-950/25 pointer-events-none" aria-hidden="true"></div>
+    </div>
+
+    <!-- Overlaid content — bottom-anchored so it flows into the section below (no void);
+         the image fills the space above. -->
+    <div class="relative z-10 min-h-[56vh] lg:min-h-[62vh] flex items-end pb-12 lg:pb-16">
+      <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-xl hero-content-animate">
+          <Typography
+            variant="h1"
+            class="text-5xl sm:text-6xl xl:text-7xl font-bold text-white uppercase leading-[0.95] mb-6"
+            style="font-family: 'Montserrat', 'Helvetica Neue', sans-serif; letter-spacing: 0.03em; font-weight: 700;"
+          >
+            {title}
+          </Typography>
+          {#if children}{@render children()}{/if}
+        </div>
+      </div>
+    </div>
+  </section>
+{:else}
 <!-- Split Hero Section -->
 <section
   class={cn(
@@ -368,6 +459,7 @@
     </div>
   </div>
 </section>
+{/if}
 
 <style>
   /* Crossfade transition for hero image layers */

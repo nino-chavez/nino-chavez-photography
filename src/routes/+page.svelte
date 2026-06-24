@@ -2,11 +2,9 @@
 	import type { PageData } from './$types';
 	import { base } from '$app/paths';
 	import PremiumHero from '$lib/components/ui/PremiumHero.svelte';
-	import PopularityRail from '$lib/components/gallery/PopularityRail.svelte';
 	import { createAlbumSlug } from '$lib/utils';
-	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	// PERFORMANCE: Removed svelte-motion, using CSS animations instead
-	import { Camera, Trophy, Calendar, Search, ArrowRight } from 'lucide-svelte';
+	import { Camera, Search, ArrowRight, X, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	/** "Jun 13, 2026" from an ISO timestamp; empty string if absent/invalid (no fake dates). */
 	function formatEventDate(iso: string | null): string {
@@ -16,77 +14,73 @@
 		return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 	}
 
-	/** Conservative "19,000+" / "250+" rounding for the credibility strip — always
-	 *  rounds DOWN so the number never overstates the real count. */
-	function approxCount(n: number): string {
-		if (n >= 1000) return `${Math.floor(n / 1000).toLocaleString()},000+`;
-		if (n >= 100) return `${Math.floor(n / 10) * 10}+`;
-		return String(n);
-	}
-
 	interface Props {
 		data: PageData;
 	}
 
 	let { data }: Props = $props();
 
-	// Get optimized image URL via CF Images
-	function getOptimizedImageUrl(imageUrl: string | null, width: number, cfId?: string | null): string {
-		if (!imageUrl) return '';
+	// Hero rotation = curated flickday landscape frames (the brand's recent/homepage shots),
+	// served as optimized static webp. The portrait portfolio shots are excluded — they crop
+	// badly in the full-bleed landscape hero. Source: apps/flickdaymedia/images/gallery.
+	const heroImages = [
+		`${base}/images/hero/flickday/fd-12.webp`,
+		`${base}/images/hero/flickday/fd-38.webp`,
+		`${base}/images/hero/flickday/fd-18.webp`,
+		`${base}/images/hero/flickday/fd-26.webp`,
+		`${base}/images/hero/flickday/fd-21.webp`,
+		`${base}/images/hero/flickday/fd-48.webp`
+	];
 
-		if (hasCFImage(cfId)) {
-			if (width >= 800) return cfImageUrl(cfId, 'large');
-			if (width >= 400) return cfImageUrl(cfId, 'medium');
-			return cfImageUrl(cfId, 'grid');
-		}
-
-		return imageUrl;
-	}
-
-	// Generate links for virtual albums
-	function getVirtualAlbumLink(type: string): string {
-		switch (type) {
-			case 'editors-choice':
-				// Link to explore page with filters for high emotional impact + quality
-				return `${base}/explore?sport=volleyball&sort=emotional_impact`;
-			case 'action-showcase':
-				// Link to explore page with action category and high intensity
-				return `${base}/explore?category=action&sport=volleyball&sort=quality`;
-			default:
-				return `${base}/explore`;
-		}
-	}
-
-	// Hero images — array of URLs for client-side rotation
-	let heroImages = $derived(
-		(data.heroCandidates || [])
-			.filter((p: any) => p.image_url)
-			.map((p: any) => p.image_url as string)
+	// "Selected work" = Nino's curated flickday portfolio (portrait), his actual selected
+	// work — a stronger statement than an engagement heuristic. Source: apps/flickdaymedia.
+	const flickdayPortfolio = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '13'].map(
+		(n) => `${base}/images/hero/flickday/portfolio/p-${n}.webp`
 	);
+
+	// Portfolio lightbox (view-only — these are curated static frames, not gallery DB rows,
+	// so there's no download/find; the section CTA points to the full gallery for that).
+	let lightboxIndex = $state<number | null>(null);
+	const openLightbox = (i: number) => (lightboxIndex = i);
+	const closeLightbox = () => (lightboxIndex = null);
+	const prevPhoto = () =>
+		lightboxIndex !== null &&
+		(lightboxIndex = (lightboxIndex - 1 + flickdayPortfolio.length) % flickdayPortfolio.length);
+	const nextPhoto = () =>
+		lightboxIndex !== null && (lightboxIndex = (lightboxIndex + 1) % flickdayPortfolio.length);
+	function onLightboxKey(e: KeyboardEvent) {
+		if (lightboxIndex === null) return;
+		if (e.key === 'Escape') closeLightbox();
+		else if (e.key === 'ArrowLeft') prevPhoto();
+		else if (e.key === 'ArrowRight') nextPhoto();
+	}
 </script>
+
+<svelte:window onkeydown={onLightboxKey} />
 
 <svelte:head>
 	<title>Nino Chavez — Volleyball Event Photography</title>
 	<meta name="description" content="Find your photos from volleyball events — club, high school, and college tournaments and matches. Browse and search galleries by event, team, or jersey number." />
 
-	<!-- Preload static hero WebP for instant LCP (Vercel CDN, no proxy chain) -->
-	<link rel="preload" as="image" href="{base}/images/hero/hero-1-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />
-	<link rel="preload" as="image" href="{base}/images/hero/hero-1-desktop.webp" fetchpriority="high" media="(min-width: 1024px)" />
+	<!-- Preload the flickday lead frame for instant LCP -->
+	<link rel="preload" as="image" href="{base}/images/hero/flickday/fd-12-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />
+	<link rel="preload" as="image" href="{base}/images/hero/flickday/fd-12.webp" fetchpriority="high" media="(min-width: 1024px)" />
 </svelte:head>
 
-<!-- Compact hero: names the work + promotes search (the find-my-photos entry) -->
+<!-- Full-bleed gallery hero: one curated frame + the find-your-photos search overlaid. -->
 <PremiumHero
-	compact
+	fullBleed
 	images={heroImages}
-	staticHeroIndex={data.staticHeroIndex ?? 0}
+	staticDesktop="{base}/images/hero/flickday/fd-12.webp"
+	staticMobile="{base}/images/hero/flickday/fd-12-mobile.webp"
 	title="FIND YOUR PHOTOS"
 	subtitle=""
 >
-	<div class="w-full max-w-xl">
-		<p class="text-base text-charcoal-300 mb-5 normal-case tracking-normal font-normal">
+	<div class="w-full">
+		<p class="text-base sm:text-lg text-charcoal-200 mb-5 normal-case tracking-normal font-normal max-w-md">
 			Volleyball events — club, high school, and college. Search by event, team, or jersey number.
 		</p>
-		<form role="search" method="get" action="{base}/explore" class="flex flex-col sm:flex-row gap-2.5">
+		<form role="search" method="get" action="{base}/explore" class="flex flex-col sm:flex-row gap-2.5 max-w-lg">
 			<label class="field relative flex-1 rounded-xl">
 				<span class="sr-only">Search events, teams, or jersey numbers</span>
 				<Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-500/80 pointer-events-none" aria-hidden="true" />
@@ -107,80 +101,49 @@
 			</button>
 		</form>
 
-		<!-- Lower the barrier + set expectations (parent-trust microcopy) -->
-		<p class="mt-3 text-xs text-charcoal-500">
-			Free to browse — find your photos, download in seconds.
-		</p>
+		<p class="mt-3 text-xs text-charcoal-400">Free to browse — find your photos, download in seconds.</p>
 
-		{#if data.programs && data.programs.length > 0}
-			<div class="mt-5">
-				<p class="text-[11px] uppercase tracking-wider text-charcoal-500 mb-2.5">Find your team or event</p>
-				<div class="flex flex-wrap gap-2">
-					{#each data.programs as program}
-						<a
-							href="{base}/explore?q={encodeURIComponent(program.query)}"
-							class="chip px-3.5 py-2 text-sm font-medium"
-						>
-							{program.label}
-							<span class="chip-count">{program.count}</span>
-						</a>
-					{/each}
-				</div>
-			</div>
-		{/if}
 		<div class="mt-4">
-			<a href="{base}/albums" class="text-sm text-charcoal-400 hover:text-gold-500 transition-colors">
-				Or browse all events →
+			<a
+				href="{base}/albums"
+				class="inline-flex items-center gap-1.5 text-sm font-semibold text-gold-500 hover:text-gold-400 transition-colors"
+			>
+				Or browse all events <span aria-hidden="true">→</span>
 			</a>
 		</div>
-
-		<!-- Credibility strip: scale at a glance — fills the hero's lower-left, builds trust -->
-		{#if data.stats && data.stats.totalPhotos > 0}
-			<dl class="mt-7 flex flex-wrap items-end gap-x-7 gap-y-3 border-t border-charcoal-800/80 pt-5">
-				<div class="flex flex-col gap-0.5">
-					<dt class="text-[11px] uppercase tracking-wider text-charcoal-500">Photos</dt>
-					<dd class="text-xl font-bold text-white tabular-nums">{approxCount(data.stats.totalPhotos)}</dd>
-				</div>
-				<div class="flex flex-col gap-0.5">
-					<dt class="text-[11px] uppercase tracking-wider text-charcoal-500">Events</dt>
-					<dd class="text-xl font-bold text-white tabular-nums">{approxCount(data.stats.eventCount)}</dd>
-				</div>
-				<div class="flex flex-col gap-0.5">
-					<dt class="text-[11px] uppercase tracking-wider text-charcoal-500">Levels</dt>
-					<dd class="text-xl font-bold text-white">Club · HS · College</dd>
-				</div>
-			</dl>
-		{/if}
 	</div>
 </PremiumHero>
 
 <!-- Content Sections Below Hero -->
 <!-- PERFORMANCE: Using CSS animation instead of svelte-motion for better render performance -->
 <div class="relative z-10 bg-charcoal-950">
-	<!-- Recent Events: the find-my-photos priority — real galleries, newest first, above the fold -->
+	<!-- Recent events: the find-my-photos path — newest galleries, given room to breathe -->
 	{#if data.recentAlbums && data.recentAlbums.length > 0}
-		<section aria-label="Recent events" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 lg:pt-12">
-			<div class="flex items-end justify-between mb-6">
-				<h2 class="text-2xl lg:text-3xl font-bold text-white">Recent events</h2>
-				<a href="{base}/albums" class="text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors">
+		<section aria-label="Recent events" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 lg:pt-16">
+			<div class="flex items-end justify-between mb-8">
+				<div>
+					<h2 class="text-3xl lg:text-4xl font-bold text-white tracking-tight">Recent events</h2>
+					<p class="mt-2 text-charcoal-300">Were you there? Find your event — newest first.</p>
+				</div>
+				<a href="{base}/albums" class="text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors shrink-0">
 					View all →
 				</a>
 			</div>
-			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-				{#each data.recentAlbums as album}
+			<div class="grid grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
+				{#each data.recentAlbums.slice(0, 8) as album}
 					{@const date = formatEventDate(album.latestPhotoDate)}
 					<a
 						href="{base}/albums/{createAlbumSlug(album.albumName, album.albumKey)}"
 						data-sveltekit-preload="hover"
 						class="group block transition-transform duration-200 ease-out hover:-translate-y-1"
 					>
-						<div class="aspect-[4/3] relative overflow-hidden rounded-xl bg-charcoal-800 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 group-hover:border-gold-500/50 group-hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)]">
+						<div class="aspect-[3/2] relative overflow-hidden rounded-xl bg-charcoal-800 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 group-hover:border-gold-500/50 group-hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)]">
 							{#if album.coverImageUrl}
 								<img
 									src={album.coverImageUrl}
 									alt={album.albumName}
-									width="400"
-									height="300"
+									width="600"
+									height="400"
 									loading="lazy"
 									decoding="async"
 									class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -191,10 +154,10 @@
 								</div>
 							{/if}
 						</div>
-						<h3 class="mt-2 text-sm font-semibold text-white group-hover:text-gold-500 transition-colors truncate">
+						<h3 class="mt-3 text-base font-semibold text-white group-hover:text-gold-500 transition-colors truncate">
 							{album.albumName}
 						</h3>
-						<p class="text-xs text-charcoal-400">
+						<p class="text-sm text-charcoal-400">
 							{#if date}{date} · {/if}{album.photoCount} photos
 						</p>
 					</a>
@@ -203,173 +166,42 @@
 		</section>
 	{/if}
 
-	<!-- Trending rail — engagement-ranked, Trending<->Fan Favorites toggle. Hides if sparse. -->
-	{#if data.trendingPhotos && data.trendingPhotos.length > 2}
-		<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-fade-in-delayed">
-			<PopularityRail
-				title="Trending this week"
-				trending={data.trendingPhotos}
-				favorites={data.fanFavorites}
-			/>
-		</section>
-	{/if}
-
-	<!-- Curated lanes: navigational entry points into the archive — distinct from
-	     Trending (social proof of what's popular now). Reframed to avoid the
-	     "best moments" overlap with the Trending rail above. -->
-	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-fade-in-delayed">
-			<div class="text-center mb-12">
-				<h2 class="text-2xl lg:text-3xl font-bold text-white mb-4">
-					Browse by collection
-				</h2>
-				<p class="text-lg text-charcoal-300 max-w-2xl mx-auto leading-relaxed">
-					Hand-built lanes into the archive — jump straight to the kind of frame you're after.
-				</p>
+	<!-- Selected work — Nino's curated flickday portfolio (portrait gallery). Tiles link to
+	     /explore to browse the full archive (these are portfolio frames, not findable DB rows). -->
+	<section aria-label="Selected work" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 lg:pt-24">
+		<div class="flex items-end justify-between mb-8">
+			<div>
+				<h2 class="text-3xl lg:text-4xl font-bold text-white tracking-tight">Selected work</h2>
+				<p class="mt-2 text-charcoal-400">A few frames worth slowing down for.</p>
 			</div>
-
-			<!-- Curated collection cards (recent events live in their own row above).
-			     Recent moved out, so this is the two virtual collections — a centered 2-up,
-			     not a 3-up with an empty third column (don't pin content in a void). -->
-			{#if data.featuredAlbums && data.featuredAlbums.filter((a) => a.type !== 'recent').length > 0}
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
-					{#each data.featuredAlbums.filter((a) => a.type !== 'recent') as featuredAlbum}
-						{@const albumLink = featuredAlbum.album.isVirtual
-							? getVirtualAlbumLink(featuredAlbum.type)
-							: `${base}/albums/${createAlbumSlug(featuredAlbum.album.albumName, featuredAlbum.album.albumKey)}`
-						}
-						<a
-							href={albumLink}
-							data-sveltekit-preload="hover"
-							class="group surface-raised surface-raised-interactive rounded-xl overflow-hidden block"
-						>
-							<!-- Album Cover Image -->
-							<div class="aspect-[4/3] relative overflow-hidden">
-								{#if featuredAlbum.album.coverImageUrl}
-									<img
-										src="{getOptimizedImageUrl(featuredAlbum.album.coverImageUrl, 800)}"
-										alt="{featuredAlbum.album.albumName}"
-										width="800"
-										height="600"
-										class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-										loading="lazy"
-										decoding="async"
-									/>
-								{:else}
-									<div class="w-full h-full bg-charcoal-800 flex items-center justify-center">
-										<Camera class="w-12 h-12 text-charcoal-600" />
-									</div>
-								{/if}
-
-								<!-- Overlay with album info -->
-								<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-									<div class="absolute bottom-0 left-0 right-0 p-4">
-										<div class="flex items-center gap-2 text-xs text-white/80 mb-1">
-											<span class="capitalize">{featuredAlbum.album.primarySport}</span>
-											<span>•</span>
-											<span class="capitalize">{featuredAlbum.album.primaryCategory}</span>
-											{#if featuredAlbum.album.isVirtual}
-												<span class="ml-auto text-gold-400">★ Curated</span>
-											{/if}
-										</div>
-										<div class="text-xs text-white/60">
-											{featuredAlbum.album.photoCount} photos
-											{#if featuredAlbum.album.avgQualityScore > 0}
-												• ★{featuredAlbum.album.avgQualityScore.toFixed(1)}
-											{/if}
-										</div>
-									</div>
-								</div>
-							</div>
-
-							<!-- Album Info -->
-							<div class="p-6">
-								<div class="flex items-center gap-2 mb-2">
-									<span class="text-xs font-medium text-gold-500 bg-gold-500/10 px-2 py-1 rounded-full uppercase tracking-wide">
-										{featuredAlbum.title}
-									</span>
-									{#if featuredAlbum.album.isVirtual}
-										<span class="text-xs text-gold-400 ml-auto">Virtual Collection</span>
-									{/if}
-								</div>
-								<h3 class="text-lg font-semibold text-white group-hover:text-gold-500 transition-colors mb-2">
-									{featuredAlbum.album.albumName}
-								</h3>
-								<p class="text-sm text-charcoal-300 leading-relaxed">
-									{#if featuredAlbum.type === 'recent'}
-										Latest event coverage with fresh action photography.
-									{:else if featuredAlbum.type === 'editors-choice'}
-										Curated selection of emotionally compelling moments and technical excellence.
-									{:else if featuredAlbum.type === 'action-showcase'}
-										High-intensity action shots capturing peak athletic performance.
-									{/if}
-								</p>
-							</div>
-						</a>
-					{/each}
-				</div>
-			{:else}
-				<!-- Fallback: Show navigation cards if no featured albums -->
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-					<a
-						href="{base}/explore"
-						data-sveltekit-preload="viewport"
-						class="group bg-charcoal-900 border border-charcoal-800 rounded-lg p-6
-						       hover:border-gold-500/50 transition-all duration-200"
-					>
-						<div class="flex items-center gap-3 mb-3">
-							<Camera class="w-6 h-6 text-gold-500" />
-							<h3 class="text-lg font-semibold text-white group-hover:text-gold-500 transition-colors">
-								Browse Gallery
-							</h3>
-						</div>
-						<p class="text-sm text-charcoal-300 leading-relaxed">
-							Explore our complete collection of volleyball action photography
-							with advanced filtering and search.
-						</p>
-					</a>
-
-					<a
-						href="{base}/collections"
-						data-sveltekit-preload="hover"
-						class="group bg-charcoal-900 border border-charcoal-800 rounded-lg p-6
-						       hover:border-gold-500/50 transition-all duration-200"
-					>
-						<div class="flex items-center gap-3 mb-3">
-							<Trophy class="w-6 h-6 text-gold-500" />
-							<h3 class="text-lg font-semibold text-white group-hover:text-gold-500 transition-colors">
-								Collections
-							</h3>
-						</div>
-						<p class="text-sm text-charcoal-300 leading-relaxed">
-							Curated collections showcasing championship tournaments,
-							elite athletes, and memorable moments.
-						</p>
-					</a>
-
-					<a
-						href="{base}/albums"
-						data-sveltekit-preload="hover"
-						class="group bg-charcoal-900 border border-charcoal-800 rounded-lg p-6
-						       hover:border-gold-500/50 transition-all duration-200"
-					>
-						<div class="flex items-center gap-3 mb-3">
-							<Calendar class="w-6 h-6 text-gold-500" />
-							<h3 class="text-lg font-semibold text-white group-hover:text-gold-500 transition-colors">
-								Event Albums
-							</h3>
-						</div>
-						<p class="text-sm text-charcoal-300 leading-relaxed">
-							Complete event coverage from tournaments, matches, and
-							special volleyball events.
-						</p>
-					</a>
-				</div>
-			{/if}
-		</section>
+			<a href="{base}/explore" class="text-sm font-medium text-gold-500 hover:text-gold-400 transition-colors shrink-0">
+				Explore the gallery →
+			</a>
+		</div>
+		<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+			{#each flickdayPortfolio as src, i}
+				<button
+					type="button"
+					onclick={() => openLightbox(i)}
+					aria-label="View frame {i + 1} of {flickdayPortfolio.length}"
+					class="group relative block w-full aspect-[2/3] overflow-hidden rounded-xl bg-charcoal-900 border border-charcoal-800 shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/50 hover:shadow-[0_22px_44px_-18px_rgba(0,0,0,0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal-950"
+				>
+					<img
+						{src}
+						alt="Volleyball photography by Nino Chavez"
+						loading="lazy"
+						decoding="async"
+						class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+					/>
+					<div class="absolute inset-0 bg-gradient-to-t from-charcoal-950/55 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+				</button>
+			{/each}
+		</div>
+	</section>
 
 	<!-- Booking path: lower slot — attendees win the fold, organizers get a real CTA.
-	     "Book a shoot" now triggers a real inquiry (mailto), paired with proof. -->
-	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+	     "Book a shoot" triggers a real inquiry (mailto), paired with proof. -->
+	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 lg:pt-24 pb-16 lg:pb-24">
 		<div class="surface-raised rounded-2xl p-8 lg:p-12
 		            flex flex-col lg:flex-row lg:items-center justify-between gap-6">
 			<div>
@@ -397,6 +229,61 @@
 		</div>
 	</section>
 </div>
+
+<!-- Portfolio lightbox — view-only viewer for the Selected work frames -->
+{#if lightboxIndex !== null}
+	<div
+		class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Selected work viewer"
+	>
+		<button
+			type="button"
+			class="absolute inset-0 z-0 cursor-default bg-charcoal-950/95 backdrop-blur-sm"
+			aria-label="Close viewer"
+			onclick={closeLightbox}
+		></button>
+
+		<img
+			src={flickdayPortfolio[lightboxIndex]}
+			alt="Volleyball photography by Nino Chavez"
+			class="relative z-10 max-h-[86vh] max-w-[92vw] w-auto h-auto object-contain rounded-lg shadow-2xl"
+		/>
+
+		<button
+			type="button"
+			onclick={closeLightbox}
+			aria-label="Close"
+			class="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-charcoal-900/80 border border-charcoal-700 text-white hover:border-gold-500/60 hover:text-gold-400 transition-colors"
+		>
+			<X class="w-5 h-5" />
+		</button>
+		<button
+			type="button"
+			onclick={prevPhoto}
+			aria-label="Previous frame"
+			class="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-charcoal-900/80 border border-charcoal-700 text-white hover:border-gold-500/60 hover:text-gold-400 transition-colors"
+		>
+			<ChevronLeft class="w-6 h-6" />
+		</button>
+		<button
+			type="button"
+			onclick={nextPhoto}
+			aria-label="Next frame"
+			class="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-charcoal-900/80 border border-charcoal-700 text-white hover:border-gold-500/60 hover:text-gold-400 transition-colors"
+		>
+			<ChevronRight class="w-6 h-6" />
+		</button>
+
+		<div class="absolute bottom-5 inset-x-0 z-20 flex items-center justify-center gap-4 text-sm text-charcoal-300">
+			<span class="tabular-nums">{lightboxIndex + 1} / {flickdayPortfolio.length}</span>
+			<a href="{base}/explore" class="font-medium text-gold-500 hover:text-gold-400 transition-colors">
+				Browse the full gallery →
+			</a>
+		</div>
+	</div>
+{/if}
 
 <style>
 	/* PERFORMANCE: CSS animation instead of JS Motion for better render performance */
