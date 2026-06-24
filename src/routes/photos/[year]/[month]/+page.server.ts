@@ -73,6 +73,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
       pageSize: PHOTOS_PER_PAGE
     };
   } catch (err) {
+    // Re-throw SvelteKit HttpErrors (e.g. the 404 above) instead of masking them as 500s.
+    if (err && typeof err === 'object' && 'status' in err) {
+      throw err;
+    }
     console.error('[Month Detail Server] Failed to load photos:', err);
     throw error(500, 'Failed to load photos');
   }

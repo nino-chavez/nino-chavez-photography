@@ -26,31 +26,46 @@ export const GET: RequestHandler = async () => {
 	const baseUrl = 'https://ninochavez.co/photography';
 
 	try {
-		// Fetch all photos with relevant metadata
-		const { data: photos, error: photosError } = await supabaseServer
-			.from(PHOTOS_READ)
-			.select('image_key, photo_date, enriched_at, sport_type')
-			.order('photo_date', { ascending: false });
+		// Page through the full table — a plain .select() silently caps at Supabase's 1000-row default,
+		// which truncated the sitemap to ~5% of ~20K photos. One scan yields photos + albums + sports.
+		// Excludes unprocessed photos (sharpness null) per project rule; unlisted albums are excluded
+		// at the DB layer (photo_metadata RLS) since this reads via the anon supabaseServer.
+		type SitemapRow = {
+			image_key: string;
+			photo_date: string | null;
+			enriched_at: string | null;
+			sport_type: string | null;
+			album_key: string | null;
+			album_name: string | null;
+		};
+		const PAGE = 1000;
+		const photos: SitemapRow[] = [];
+		for (let offset = 0; ; offset += PAGE) {
+			const { data, error: photosError } = await supabaseServer
+				.from(PHOTOS_READ)
+				.select('image_key, photo_date, enriched_at, sport_type, album_key, album_name')
+				.not('sharpness', 'is', null)
+				.order('photo_id', { ascending: true })
+				.range(offset, offset + PAGE - 1);
 
-		if (photosError) {
-			console.error('Error fetching photos for sitemap:', photosError);
-			return new Response('Error generating sitemap', { status: 500 });
+			if (photosError) {
+				console.error('Error fetching photos for sitemap:', photosError);
+				return new Response('Error generating sitemap', { status: 500 });
+			}
+			if (!data || data.length === 0) break;
+			photos.push(...(data as SitemapRow[]));
+			if (data.length < PAGE) break;
 		}
 
-		// Fetch all unique albums
-		const { data: albums, error: albumsError } = await supabaseServer
-			.from(PHOTOS_READ)
-			.select('album_key, album_name')
-			.not('album_key', 'is', null)
-			.order('album_key');
-
-		// Get unique albums (Supabase doesn't have DISTINCT with select, so dedupe in code)
+		// Unique albums (dedupe in code — Supabase has no DISTINCT on select)
 		const uniqueAlbums = Array.from(
-			new Map(albums?.map((a) => [a.album_key, a]) || []).values()
+			new Map(
+				photos.filter((p) => p.album_key).map((p) => [p.album_key, p])
+			).values()
 		);
 
-		// Get unique sports for landing pages
-		const uniqueSports = Array.from(new Set(photos?.map((p) => p.sport_type).filter(Boolean) || []));
+		// Unique sports for landing pages
+		const uniqueSports = Array.from(new Set(photos.map((p) => p.sport_type).filter(Boolean)));
 
 		// Build URL list
 		const urls: SitemapUrl[] = [
@@ -88,12 +103,15 @@ export const GET: RequestHandler = async () => {
 				changefreq: 'weekly' as const
 			})),
 
-			// Album detail pages (using SEO-friendly slugs)
-			...uniqueAlbums.map((album) => ({
-				loc: `${baseUrl}/albums/${createAlbumSlug(album.album_name || album.album_key, album.album_key)}`,
-				priority: 0.6,
-				changefreq: 'monthly' as const
-			})),
+			// Album detail pages (using SEO-friendly slugs). album_key is non-null here (filtered above).
+			...uniqueAlbums.map((album) => {
+				const albumKey = album.album_key as string;
+				return {
+					loc: `${baseUrl}/albums/${createAlbumSlug(album.album_name || albumKey, albumKey)}`,
+					priority: 0.6,
+					changefreq: 'monthly' as const
+				};
+			}),
 
 			// Individual photo URLs (THE MONEY MAKER - 20K+ URLs!)
 			...(photos?.map((photo) => ({
