@@ -2,11 +2,15 @@ import { zipSync } from 'fflate';
 import type { AlbumPhoto } from './types';
 
 const BATCH_SIZE = 10;
+// Per-image fetch timeout. Without it, one slow/hung imagedelivery response can stall an entire
+// batch (and with ~300 photos, cascade into the Worker CPU/wall-clock limit). On timeout the image
+// is skipped like any other failure.
+const FETCH_TIMEOUT_MS = 10_000;
 
 /**
  * Build a ZIP file from album photos using fflate (store mode, no compression).
  * Fetches images in parallel batches to balance memory and throughput.
- * Skips individual images that fail to fetch.
+ * Skips individual images that fail to fetch (incl. timeouts).
  */
 export async function buildZip(
 	photos: AlbumPhoto[],
@@ -19,7 +23,7 @@ export async function buildZip(
 		const results = await Promise.allSettled(
 			batch.map(async (photo) => {
 				const url = `https://imagedelivery.net/${cfAccountHash}/${photo.cf_image_id}/large`;
-				const response = await fetch(url);
+				const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
 				if (!response.ok) {
 					throw new Error(`Failed to fetch ${photo.image_key}: ${response.status}`);
 				}
