@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Photo } from '$types/photo';
-import { transformPhotoRow } from '$lib/supabase/server';
+import { transformPhotoRow, matviewClient } from '$lib/supabase/server';
 
 export type PopularityMetric = 'trending' | 'all_time';
 
@@ -31,15 +31,27 @@ export async function getTopPhotos(
 		if (!albumIds.length) return [];
 	}
 
-	let rankQuery = client
-		.from('photo_popularity')
-		.select(`photo_id, ${scoreCol}`)
-		.order(scoreCol, { ascending: false, nullsFirst: false })
-		.limit(limit * 4);
-	if (albumIds) rankQuery = rankQuery.in('photo_id', albumIds);
-
-	const { data: ranked, error } = await rankQuery;
-	if (error || !ranked?.length) return [];
+	// photo_popularity is a MATERIALIZED VIEW (no RLS, anon REVOKE'd — and the grant is flaky, see
+	// matviewClient). Read it via service_role; the anon `client` silently returned nothing, which
+	// emptied this rail everywhere (homepage Trending, /api/top-photos, "Popular in this album").
+	// The photo_metadata / album_settings reads below stay on the anon `client` so RLS still gates
+	// unlisted/PII rows. Guard the matview client so a missing service key hides the rail, not crash.
+	let ranked: Array<{ photo_id: string }> | null = null;
+	try {
+		let rankQuery = matviewClient()
+			.from('photo_popularity')
+			.select(`photo_id, ${scoreCol}`)
+			.order(scoreCol, { ascending: false, nullsFirst: false })
+			.limit(limit * 4);
+		if (albumIds) rankQuery = rankQuery.in('photo_id', albumIds);
+		const { data, error } = await rankQuery;
+		if (error) return [];
+		ranked = data;
+	} catch (e) {
+		console.error('[getTopPhotos] popularity matview read failed:', (e as Error)?.message);
+		return [];
+	}
+	if (!ranked?.length) return [];
 	const orderedIds = ranked.map((r) => r.photo_id);
 
 	// 2. Unlisted-album exclusion (don't surface private albums publicly).

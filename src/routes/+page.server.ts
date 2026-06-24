@@ -5,7 +5,7 @@
 
 import type { PageServerLoad } from './$types';
 import { PHOTOS_READ } from '$lib/supabase/columns';
-import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS, getProgramFacets } from '$lib/supabase/server';
+import { supabaseServer, matviewClient, transformPhotoRow, PHOTO_COLUMNS, getProgramFacets } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { topPhotoCoverMap } from '$lib/analytics/covers';
 import { getTopPhotos } from '$lib/analytics/popularity';
@@ -149,7 +149,9 @@ async function fetchFeaturedAlbums() {
       .eq('visibility', 'unlisted');
     const unlistedKeys = (unlisted ?? []).map((a) => a.album_key);
 
-    let recentQuery = supabaseServer
+    // albums_summary is a MATERIALIZED VIEW (anon REVOKE'd, grant flaky) → read via service_role.
+    // The unlisted exclusion below is the privacy gate; album_settings is read on anon separately.
+    let recentQuery = matviewClient()
       .from('albums_summary')
       .select('*')
       .not('album_key', 'is', null)
@@ -170,7 +172,7 @@ async function fetchFeaturedAlbums() {
     if (!albumsResult.error && albumsResult.data && albumsResult.data.length > 0) {
       const album = albumsResult.data[0];
       // Auto-cover: prefer the album's top-engaged photo, else its existing cover.
-      const coverMap = await topPhotoCoverMap(supabaseServer, [album.album_key]);
+      const coverMap = await topPhotoCoverMap([album.album_key]);
       const coverCfId = coverMap.get(album.album_key) ?? album.cover_cf_image_id;
       mostRecentAlbum = {
         type: 'recent',
@@ -216,7 +218,10 @@ async function fetchRecentAlbums(limit = 6) {
       .eq('visibility', 'unlisted');
     const unlistedKeys = (unlisted ?? []).map((a) => a.album_key);
 
-    let query = supabaseServer
+    // albums_summary is a MATERIALIZED VIEW (anon REVOKE'd, grant flaky) → read via service_role.
+    // Reading it on the anon supabaseServer silently returned nothing, emptying the "Recent events"
+    // row. album_settings (unlisted) is read on anon above; the .not.in below is the privacy gate.
+    let query = matviewClient()
       .from('albums_summary')
       .select('album_key, album_name, photo_count, cover_cf_image_id, cover_image_url, primary_sport, primary_category, latest_photo_date')
       .not('album_key', 'is', null)
