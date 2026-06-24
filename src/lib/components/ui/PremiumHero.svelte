@@ -34,6 +34,9 @@
     compact?: boolean;
     /** Full-bleed image with content overlaid (gallery hero) instead of the split band. */
     fullBleed?: boolean;
+    /** Override the built-in static LCP hero (e.g. a curated flickday lead frame). */
+    staticDesktop?: string;
+    staticMobile?: string;
     /** Replaces the default "Browse Gallery" CTA in the content area (e.g. a search form). */
     children?: Snippet;
     class?: string;
@@ -46,6 +49,8 @@
     subtitle = 'ACTION & MOMENTS',
     compact = false,
     fullBleed = false,
+    staticDesktop,
+    staticMobile,
     children,
     class: className
   }: Props = $props();
@@ -60,7 +65,11 @@
   const STATIC_HEROES = [
     { desktop: `${base}/images/hero/hero-1-desktop.webp`, mobile: `${base}/images/hero/hero-1-mobile.webp` }
   ];
-  let staticHero = $derived(STATIC_HEROES[staticHeroIndex] ?? STATIC_HEROES[0]);
+  let staticHero = $derived(
+    staticDesktop
+      ? { desktop: staticDesktop, mobile: staticMobile ?? staticDesktop }
+      : (STATIC_HEROES[staticHeroIndex] ?? STATIC_HEROES[0])
+  );
   let dynamicReady = $state(false);
 
   // --- Image rotation state ---

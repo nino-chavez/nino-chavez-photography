@@ -29,29 +29,34 @@
 
 	let { data }: Props = $props();
 
-	// Hero images — array of URLs for client-side rotation (PremiumHero swaps to the
-	// 'large' CF variant internally for desktop).
-	let heroImages = $derived(
-		(data.heroCandidates || [])
-			.filter((p: any) => p.image_url)
-			.map((p: any) => p.image_url as string)
-	);
+	// Hero rotation = curated flickday landscape frames (the brand's recent/homepage shots),
+	// served as optimized static webp. The portrait portfolio shots are excluded — they crop
+	// badly in the full-bleed landscape hero. Source: apps/flickdaymedia/images/gallery.
+	const heroImages = [
+		`${base}/images/hero/flickday/fd-12.webp`,
+		`${base}/images/hero/flickday/fd-38.webp`,
+		`${base}/images/hero/flickday/fd-18.webp`,
+		`${base}/images/hero/flickday/fd-26.webp`,
+		`${base}/images/hero/flickday/fd-21.webp`,
+		`${base}/images/hero/flickday/fd-48.webp`
+	];
 </script>
 
 <svelte:head>
 	<title>Nino Chavez — Volleyball Event Photography</title>
 	<meta name="description" content="Find your photos from volleyball events — club, high school, and college tournaments and matches. Browse and search galleries by event, team, or jersey number." />
 
-	<!-- Preload static hero WebP for instant LCP (Vercel CDN, no proxy chain) -->
-	<link rel="preload" as="image" href="{base}/images/hero/hero-1-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />
-	<link rel="preload" as="image" href="{base}/images/hero/hero-1-desktop.webp" fetchpriority="high" media="(min-width: 1024px)" />
+	<!-- Preload the flickday lead frame for instant LCP -->
+	<link rel="preload" as="image" href="{base}/images/hero/flickday/fd-12-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />
+	<link rel="preload" as="image" href="{base}/images/hero/flickday/fd-12.webp" fetchpriority="high" media="(min-width: 1024px)" />
 </svelte:head>
 
 <!-- Full-bleed gallery hero: one curated frame + the find-your-photos search overlaid. -->
 <PremiumHero
 	fullBleed
 	images={heroImages}
-	staticHeroIndex={data.staticHeroIndex ?? 0}
+	staticDesktop="{base}/images/hero/flickday/fd-12.webp"
+	staticMobile="{base}/images/hero/flickday/fd-12-mobile.webp"
 	title="FIND YOUR PHOTOS"
 	subtitle=""
 >
