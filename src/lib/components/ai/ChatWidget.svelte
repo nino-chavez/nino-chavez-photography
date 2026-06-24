@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { base } from '$app/paths';
 	import { fly } from 'svelte/transition';
 	import { MessageSquare, X, CornerDownLeft, Loader } from 'lucide-svelte';
 	import PhotoGrid from './PhotoGrid.svelte';
@@ -61,7 +62,7 @@ What are you looking for?`
 		isLoading = true;
 
 		try {
-			const response = await fetch('/api/chat', {
+			const response = await fetch(`${base}/api/chat`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
