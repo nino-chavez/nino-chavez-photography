@@ -67,6 +67,20 @@ export default {
 		const ts = url.searchParams.get('ts');
 		const sig = url.searchParams.get('sig');
 
+		// 0. Per-IP rate limit (before signature work) — best-effort dampener for sustained
+		// bandwidth/R2-egress floods. CF's binding is permissive + eventually-consistent (per-isolate
+		// local counters), so it won't hard-gate small bursts; it kicks in under sustained high volume.
+		// Hard limiting would need a Durable Object — over-engineering given the signature + R2 cache +
+		// 300-photo cap already bound the blast radius. Keyed on the real client IP from CF's edge.
+		const clientIp = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+		const { success: withinLimit } = await env.ZIP_RATE_LIMITER.limit({ key: clientIp });
+		if (!withinLimit) {
+			return new Response('Rate limit exceeded — try again shortly', {
+				status: 429,
+				headers: corsHeaders(allowedOrigin)
+			});
+		}
+
 		// 1. Verify HMAC signature
 		if (!quality || !ts || !sig) {
 			return new Response('Missing signature parameters', {
