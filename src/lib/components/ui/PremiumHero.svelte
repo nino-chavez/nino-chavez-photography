@@ -222,8 +222,9 @@
       <div class="absolute inset-0 bg-gradient-to-t from-charcoal-950 via-charcoal-950/10 to-charcoal-950/25 pointer-events-none" aria-hidden="true"></div>
     </div>
 
-    <!-- Overlaid content -->
-    <div class="relative z-10 min-h-[56vh] lg:min-h-[62vh] flex items-end lg:items-center pb-10 lg:pb-0">
+    <!-- Overlaid content — bottom-anchored so it flows into the section below (no void);
+         the image fills the space above. -->
+    <div class="relative z-10 min-h-[56vh] lg:min-h-[62vh] flex items-end pb-12 lg:pb-16">
       <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="max-w-xl hero-content-animate">
           <Typography
