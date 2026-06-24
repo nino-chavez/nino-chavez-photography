@@ -5,7 +5,7 @@
  * Used by FAQ page and FAQ API endpoint.
  */
 
-import { supabaseServer } from '$lib/supabase/server';
+import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
 
@@ -25,7 +25,7 @@ export async function generateFAQs(): Promise<FAQ[]> {
 		.select('*', { count: 'exact', head: true })
 		.not('sharpness', 'is', null);
 
-	const { count: totalAlbums } = await supabaseServer
+	const { count: totalAlbums } = await matviewClient()
 		.from('albums_summary')
 		.select('*', { count: 'exact', head: true });
 

@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer } from '$lib/supabase/server';
+import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer, matviewClient } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import { getTopPhotos } from '$lib/analytics/popularity';
 import type { PageServerLoad } from './$types';
@@ -24,8 +24,10 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	// separate count(exact) over the base table (ADR 0001). Same semantics: the MV is defined
 	// WHERE sharpness IS NOT NULL, matching getPhotoCount's filter.
 	const [albumData, photos, videos, albumSettings] = await Promise.all([
-		// Get album name + cover image + photo_count from albums_summary view
-		supabaseServer
+		// Get album name + cover image + photo_count from albums_summary (a MATERIALIZED VIEW,
+		// anon REVOKE'd — read via service_role; the anon read 42501'd, so the name fell back to
+		// the album key and the count to 0). See matviewClient.
+		matviewClient()
 			.from('albums_summary')
 			.select('album_name, cover_cf_image_id, cover_image_url, primary_sport, photo_count')
 			.eq('album_key', albumKey)

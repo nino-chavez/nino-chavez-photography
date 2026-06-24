@@ -8,7 +8,7 @@
 
 import { error } from '@sveltejs/kit';
 import { ImageResponse } from '@cf-wasm/og';
-import { supabaseServer, getPhotoCount } from '$lib/supabase/server';
+import { getPhotoCount, matviewClient } from '$lib/supabase/server';
 import { extractAlbumKey } from '$lib/utils';
 import { hasCFImage } from '$lib/utils/cloudflare-images';
 import { buildAlbumCard, fetchImageDataUri, OG_WIDTH, OG_HEIGHT, OG_CACHE_CONTROL } from '$lib/server/og-card';
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	// albums_summary.photo_count) so the card matches the album page and its
 	// og:description — the view's count includes unprocessed null-sharpness rows.
 	const [{ data: album }, photoCount] = await Promise.all([
-		supabaseServer
+		matviewClient()
 			.from('albums_summary')
 			.select('album_name, cover_cf_image_id, primary_sport')
 			.eq('album_key', albumKey)
