@@ -22,10 +22,14 @@ import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 
 // Lazy service_role client for reading public MATERIALIZED VIEWS. Matviews carry no RLS and are
-// REVOKE'd from anon (migration 20260624030000), so the anon `supabaseServer` cannot read them —
-// reads must go through service_role. Lazily created + cached so a missing key degrades gracefully.
+// REVOKE'd from anon (migration 20260624030000), so the anon `supabaseServer` cannot read them.
+// NOTE: a matview's grants are flaky — recreating it (CREATE MATERIALIZED VIEW) lets Supabase
+// default-privileges re-grant anon, while a plain REFRESH preserves the revoke. So whether anon can
+// read a given matview drifts over time; ALL matview reads must go through service_role regardless.
+// Exported so analytics helpers (popularity, covers) read their matviews the same way getProgramFacets
+// does. Lazily created + cached so a missing key degrades gracefully (callers guard with try/catch).
 let _matviewClient: SupabaseClient | null = null;
-function matviewClient(): SupabaseClient {
+export function matviewClient(): SupabaseClient {
   if (!_matviewClient) _matviewClient = createSupabaseAdminClient();
   return _matviewClient;
 }

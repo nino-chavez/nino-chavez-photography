@@ -124,7 +124,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 
 	// Auto-covers: override each album's cover with its top-engaged photo
 	// (falls back to the existing cover for albums with no engagement yet).
-	const coverMap = await topPhotoCoverMap(supabaseServer, albums.map((a) => a.albumKey));
+	const coverMap = await topPhotoCoverMap(albums.map((a) => a.albumKey));
 	for (const a of albums) {
 		const top = coverMap.get(a.albumKey);
 		if (top) a.coverCfImageId = top;
