@@ -55,8 +55,8 @@ portal_pattern: B
 prototype:
   portal_dir: "portal"
 
-# MIRROR of the methodology pin the SessionStart hook reads. Current latest = v0.3.0.
-methodology_version: "0.3.0"
+# MIRROR of the methodology pin the SessionStart hook reads. Current latest = v0.4.0.
+methodology_version: "0.4.0"
 
 execution:
   depth: standard
