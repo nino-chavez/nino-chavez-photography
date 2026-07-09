@@ -10,13 +10,34 @@
 import type { PageServerLoad } from './$types';
 import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { trackArrival } from '$lib/analytics/tracker';
+import { computeSessionHash } from '$lib/analytics/session';
 
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 let cache: { recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>; timestamp: number } | null =
   null;
 
-export const load: PageServerLoad = async ({ setHeaders }) => {
+// Channel value on an inbound ?src= param — see $lib/utils/share-url for the values
+// the app hands out (share-copy, share-web, share-x, share-fb, share-pin) plus the
+// operator-side-only reserved values (ig-bio, qr) documented alongside it.
+const SRC_PARAM_PATTERN = /^[a-z0-9_-]{1,32}$/;
+
+export const load: PageServerLoad = async ({ setHeaders, url, request, getClientAddress }) => {
   setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
+
+  // Arrival attribution → popularity engine. Only fires when the incoming link carried
+  // a valid ?src= channel; normal navigation inserts nothing. Non-blocking, mirrors the
+  // photo page's fire-and-forget view tracking — never awaited, never allowed to affect
+  // the response. NOTE: this route is edge-cached (s-maxage=300) — see CLAUDE.md/PR notes,
+  // a ?src= arrival that lands on a cached response never re-runs this load function, so
+  // repeat visitors hitting the same evergreen link (bio link, QR code) within the cache
+  // window will undercount. Not fixed here (out of scope — don't change caching behavior).
+  const src = url.searchParams.get('src');
+  if (src && SRC_PARAM_PATTERN.test(src)) {
+    void computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
+      (sessionHash) => trackArrival({ src, sessionHash })
+    );
+  }
 
   try {
     const now = Date.now();

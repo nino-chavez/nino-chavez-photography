@@ -12,6 +12,7 @@
 	import { downloadBrandedImage } from '$lib/utils/branded-image';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { trackEngagement } from '$lib/analytics/client';
+	import { withSrc } from '$lib/utils/share-url';
 
 	interface ShareTarget {
 		/** Title for the shared content */
@@ -51,9 +52,9 @@
 	);
 
 	const shareUrls = $derived({
-		twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(target.url)}`,
-		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(target.url)}`,
-		pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(target.url)}&media=${encodeURIComponent(target.imageUrl)}&description=${encodeURIComponent(shareText)}`
+		twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withSrc(target.url, 'share-x'))}`,
+		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withSrc(target.url, 'share-fb'))}`,
+		pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(withSrc(target.url, 'share-pin'))}&media=${encodeURIComponent(target.imageUrl)}&description=${encodeURIComponent(shareText)}`
 	});
 
 	function toggleMenu(event: MouseEvent) {
@@ -79,7 +80,7 @@
 			await navigator.share({
 				title: target.title,
 				text: shareText,
-				url: target.url
+				url: withSrc(target.url, 'share-web')
 			});
 			trackShare();
 		} catch (err) {
@@ -94,7 +95,7 @@
 	async function handleCopyLink(event: MouseEvent) {
 		event.stopPropagation();
 		try {
-			await navigator.clipboard.writeText(target.url);
+			await navigator.clipboard.writeText(withSrc(target.url, 'share-copy'));
 			copySuccess = true;
 			trackShare();
 			setTimeout(() => { copySuccess = false; }, 2000);

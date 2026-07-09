@@ -23,6 +23,12 @@ export interface SearchQueryEvent {
 	results_count: number;
 }
 
+export interface ArrivalEvent {
+	albumKey?: string; // omitted for homepage arrivals (site-wide, not album-scoped)
+	src: string; // channel value carried on the incoming ?src= param (see $lib/utils/share-url)
+	sessionHash?: string;
+}
+
 /**
  * Track a photo view (server-side only)
  */
@@ -47,6 +53,35 @@ export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
 	} catch (error) {
 		// Fail silently - analytics should never break the app
 		console.error('[Analytics] Failed to track photo view:', error);
+	}
+}
+
+/**
+ * Track a page arrival that carries a valid ?src= attribution param (server-side only).
+ *
+ * Logged as a 'view' engagement event with photo_id null, so it never competes with
+ * the per-photo dedup index — it dedups instead via engagement_events_album_dedup_idx
+ * (session_hash, album_key, event_type, event_day), added in the
+ * 20260709121000_album_visit_dedup.sql migration. albumKey is omitted for
+ * site-wide (homepage) arrivals.
+ */
+export async function trackArrival(event: ArrivalEvent): Promise<void> {
+	try {
+		const { error: dbError } = await createSupabaseAdminClient()
+			.from('engagement_events')
+			.insert({
+				event_type: 'view',
+				photo_id: null,
+				album_key: event.albumKey ?? null,
+				source: event.src,
+				session_hash: event.sessionHash ?? null,
+			});
+		if (dbError && dbError.code !== '23505') {
+			console.error('[Analytics] Failed to track arrival:', dbError.message);
+		}
+	} catch (error) {
+		// Fail silently - analytics should never break the app
+		console.error('[Analytics] Failed to track arrival:', error);
 	}
 }
 
