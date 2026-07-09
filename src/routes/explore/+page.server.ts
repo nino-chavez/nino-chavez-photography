@@ -11,6 +11,7 @@
  */
 
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet, searchByJersey } from '$lib/supabase/server';
+import { trackSearchQuery } from '$lib/analytics/tracker';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
@@ -102,6 +103,16 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     totalCount = r.totalCount;
     parsedDescription = `Jersey #${jerseyFilter}${sportFilter ? ` · ${sportFilter}` : ''}`;
     searchMode = 'structured';
+    // Jersey lookups are the find-my-photos demand signal — a zero-result one is
+    // a person asking "did you get that?" and leaving empty-handed. First page
+    // only, so pagination doesn't multiply rows. Fire-and-forget, never awaited.
+    if (offset === 0) {
+      void trackSearchQuery({
+        query_text: `jersey #${jerseyFilter}`,
+        filters_used: sportFilter ? { sport: sportFilter } : undefined,
+        results_count: totalCount,
+      });
+    }
   } else if (searchQuery) {
     // Smart search: structured parse + vector fallback
     const result = await searchPhotos(searchQuery, filterOptions, {
@@ -113,6 +124,13 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     totalCount = result.totalCount;
     searchMode = result.searchMode;
     parsedDescription = result.parsedDescription;
+    if (offset === 0) {
+      void trackSearchQuery({
+        query_text: searchQuery,
+        filters_used: hasActiveFilters ? filterOptions : undefined,
+        results_count: totalCount,
+      });
+    }
   } else {
     // No search — standard filter + paginate
     const [photosResult, countResult] = await Promise.all([
