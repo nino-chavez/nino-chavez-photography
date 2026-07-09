@@ -84,7 +84,9 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		.eq('event_type', 'view')
 		.gte('created_at', SINCE_30D());
 
-	const { count: totalSearches } = await supabaseServer
+	// search_queries is RLS-hidden from anon (count silently reads 0) — use the
+	// admin client like every other engagement read on this dashboard.
+	const { count: totalSearches } = await createSupabaseAdminClient()
 		.from('search_queries')
 		.select('*', { count: 'exact', head: true })
 		.gte('searched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
