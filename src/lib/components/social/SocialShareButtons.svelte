@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Share2, Twitter, Facebook, Linkedin, Mail, Check, Copy } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
+	import { withSrc } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -19,16 +20,16 @@
 	);
 
 	const shareUrls = $derived({
-		twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`,
-		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-		linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
-		pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(photo.image_url)}&description=${encodeURIComponent(shareText)}`,
-		email: `mailto:?subject=${encodeURIComponent(photo.title)}&body=${encodeURIComponent(`Check out this photo: ${shareText}\n\n${url}`)}`
+		twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withSrc(url, 'share-x'))}`,
+		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withSrc(url, 'share-fb'))}`,
+		linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(withSrc(url, 'share-linkedin'))}`,
+		pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(withSrc(url, 'share-pin'))}&media=${encodeURIComponent(photo.image_url)}&description=${encodeURIComponent(shareText)}`,
+		email: `mailto:?subject=${encodeURIComponent(photo.title)}&body=${encodeURIComponent(`Check out this photo: ${shareText}\n\n${withSrc(url, 'share-email')}`)}`
 	});
 
 	async function copyLink() {
 		try {
-			await navigator.clipboard.writeText(url);
+			await navigator.clipboard.writeText(withSrc(url, 'share-copy'));
 			copySuccess = true;
 			setTimeout(() => {
 				copySuccess = false;

@@ -2,10 +2,17 @@ import { base } from '$app/paths';
 import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer, matviewClient } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import { getTopPhotos } from '$lib/analytics/popularity';
+import { trackArrival } from '$lib/analytics/tracker';
+import { computeSessionHash } from '$lib/analytics/session';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
+// Channel value on an inbound ?src= param — see $lib/utils/share-url for the values
+// the app hands out (share-copy, share-web, share-x, share-fb, share-pin) plus the
+// operator-side-only reserved values (ig-bio, qr) documented alongside it.
+const SRC_PARAM_PATTERN = /^[a-z0-9_-]{1,32}$/;
+
+export const load: PageServerLoad = async ({ params, url, setHeaders, request, getClientAddress }) => {
 	// Always fresh: album content changes (new/re-tagged photos & videos, settings)
 	// must show immediately. stale-while-revalidate was serving ~15-min-stale pages.
 	setHeaders({ 'cache-control': 'no-cache' });
@@ -85,6 +92,17 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		metric: 'trending',
 		limit: 12
 	});
+
+	// Arrival attribution → popularity engine. Only fires when the incoming link carried
+	// a valid ?src= channel (share links minted by $lib/utils/share-url); normal
+	// navigation inserts nothing. Non-blocking, mirrors the photo page's fire-and-forget
+	// view tracking — never awaited, never allowed to affect the response.
+	const src = url.searchParams.get('src');
+	if (src && SRC_PARAM_PATTERN.test(src)) {
+		void computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
+			(sessionHash) => trackArrival({ albumKey, src, sessionHash })
+		);
+	}
 
 	return {
 		albumKey,

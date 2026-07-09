@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { TrendingUp, Eye, Search, BarChart3 } from 'lucide-svelte';
+	import { TrendingUp, Eye, Search, BarChart3, Users, SearchX } from 'lucide-svelte';
+	import { base } from '$app/paths';
+	import { createAlbumSlug } from '$lib/utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import type { PageData } from './$types';
@@ -186,4 +188,113 @@
 				</div>
 			</div>
 		{/if}
+
+		<!-- Album Reach -->
+		<div
+			style="animation: fade-in 0.3s ease-out 0.7s both"
+			class="bg-charcoal-900/50 border border-charcoal-700/50 rounded-lg p-6 mt-8"
+		>
+			<Typography variant="h3" class="text-xl mb-1 flex items-center gap-2">
+				<Users class="w-5 h-5 text-gold-500" />
+				Album Reach — Last 30 Days
+			</Typography>
+			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">
+				After you shared each album, who came and what they did.
+			</Typography>
+
+			{#if data.albumReach.length > 0}
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm border-collapse">
+						<thead>
+							<tr class="border-b border-charcoal-800">
+								<th class="text-left py-3 px-4 text-charcoal-400 font-medium">Album</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Visitors</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Views</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Downloads</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Favorites</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Shares</th>
+								<th class="text-left py-3 px-4 text-charcoal-400 font-medium">Last Activity</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-charcoal-800">
+							{#each data.albumReach as album}
+								<tr>
+									<td class="py-3 px-4 text-charcoal-200">
+										{#if album.album_name}
+											<a
+												href="{base}/albums/{createAlbumSlug(album.album_name, album.album_key)}"
+												class="hover:text-gold-400 transition-colors"
+											>
+												{album.album_name}
+											</a>
+										{:else}
+											{album.album_key}
+										{/if}
+									</td>
+									<td class="text-right py-3 px-4 text-gold-500 font-medium">
+										{formatNumber(album.unique_visitors)}
+									</td>
+									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.views)}</td>
+									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.downloads)}</td>
+									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.favorites)}</td>
+									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.shares)}</td>
+									<td class="text-left py-3 px-4 text-charcoal-500 text-xs">{formatDate(album.last_event)}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<div class="text-center py-12 bg-charcoal-900/30 rounded-lg">
+					<Typography variant="body" class="text-charcoal-500">
+						No album activity yet. Share an album link to start tracking reach.
+					</Typography>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Zero-Result Searches -->
+		<div
+			style="animation: fade-in 0.3s ease-out 0.8s both"
+			class="bg-charcoal-900/50 border border-charcoal-700/50 rounded-lg p-6 mt-8"
+		>
+			<Typography variant="h3" class="text-xl mb-1 flex items-center gap-2">
+				<SearchX class="w-5 h-5 text-gold-500" />
+				Zero-Result Searches — Last 30 Days
+			</Typography>
+			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">
+				Searches that returned nothing — content or tagging gaps.
+			</Typography>
+
+			{#if data.zeroResultSearches.length > 0}
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm border-collapse">
+						<thead>
+							<tr class="border-b border-charcoal-800">
+								<th class="text-left py-3 px-4 text-charcoal-400 font-medium">Query</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Searches</th>
+								<th class="text-left py-3 px-4 text-charcoal-400 font-medium">Last Seen</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-charcoal-800">
+							{#each data.zeroResultSearches as search}
+								<tr>
+									<td class="py-3 px-4 text-charcoal-200">{search.query_text || '(empty query)'}</td>
+									<td class="text-right py-3 px-4 text-gold-500 font-medium">
+										{formatNumber(search.searches)}
+									</td>
+									<td class="text-left py-3 px-4 text-charcoal-500 text-xs">{formatDate(search.last_searched)}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<div class="text-center py-12 bg-charcoal-900/30 rounded-lg">
+					<Typography variant="body" class="text-charcoal-500">
+						No zero-result searches in the last 30 days.
+					</Typography>
+				</div>
+			{/if}
+		</div>
 	</div>
