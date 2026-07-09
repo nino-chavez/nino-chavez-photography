@@ -10,7 +10,7 @@
 import type { PageServerLoad } from './$types';
 import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
-import { trackArrival } from '$lib/analytics/tracker';
+import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { computeSessionHash } from '$lib/analytics/session';
 
 const CACHE_DURATION_MS = 5 * 60 * 1000;
@@ -22,7 +22,7 @@ let cache: { recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>; timest
 // operator-side-only reserved values (ig-bio, qr) documented alongside it.
 const SRC_PARAM_PATTERN = /^[a-z0-9_-]{1,32}$/;
 
-export const load: PageServerLoad = async ({ setHeaders, url, request, getClientAddress }) => {
+export const load: PageServerLoad = async ({ setHeaders, url, request, getClientAddress, platform }) => {
   setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
 
   // Arrival attribution → popularity engine. Only fires when the incoming link carried
@@ -34,8 +34,11 @@ export const load: PageServerLoad = async ({ setHeaders, url, request, getClient
   // window will undercount. Not fixed here (out of scope — don't change caching behavior).
   const src = url.searchParams.get('src');
   if (src && SRC_PARAM_PATTERN.test(src)) {
-    void computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
-      (sessionHash) => trackArrival({ src, sessionHash })
+    keepTrackingAlive(
+      platform,
+      computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
+        (sessionHash) => trackArrival({ src, sessionHash })
+      )
     );
   }
 
