@@ -36,7 +36,16 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	// Fetch full photo data for popular photos
 	const photoIds = popularPhotoIds.map((p) => p.photo_id);
-	let popularPhotos: Array<{ photo_id: string; view_count: number; image_key: string; thumbnail_url: string; photo_category: string }> = [];
+	let popularPhotos: Array<{
+		photo_id: string;
+		view_count: number;
+		download_count: number;
+		favorite_count: number;
+		share_count: number;
+		image_key: string;
+		thumbnail_url: string;
+		photo_category: string;
+	}> = [];
 
 	if (photoIds.length > 0) {
 		const { data } = await supabaseServer
@@ -44,18 +53,27 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			.select('photo_id, image_key, cf_image_id, sport_type, photo_category')
 			.in('photo_id', photoIds);
 
-		// Merge with view counts
-		popularPhotos =
-			data?.map((photo) => {
-				const stats = popularPhotoIds.find((p) => p.photo_id === photo.photo_id);
-				return {
+		// Merge engagement counts, iterating popularPhotoIds so the panel keeps the
+		// trending order (the .in() refetch returns rows unordered). All four count
+		// types ride along: trending is multi-signal (download=6 outweighs view=1),
+		// so a views-only badge makes a download-ranked photo read as "0 views".
+		const byId = new Map((data || []).map((photo) => [photo.photo_id, photo]));
+		popularPhotos = popularPhotoIds.flatMap((stats) => {
+			const photo = byId.get(stats.photo_id);
+			if (!photo) return [];
+			return [
+				{
 					photo_id: photo.photo_id,
 					image_key: photo.image_key,
 					thumbnail_url: cfImageUrl(photo.cf_image_id, 'thumbnail'),
 					photo_category: photo.photo_category,
-					view_count: stats?.views || 0,
-				};
-			}) || [];
+					view_count: stats.views || 0,
+					download_count: stats.downloads || 0,
+					favorite_count: stats.favorites || 0,
+					share_count: stats.shares || 0,
+				},
+			];
+		});
 	}
 
 	// Get recent search queries

@@ -145,7 +145,11 @@
 									class="absolute top-2 right-2 bg-charcoal-950/90 backdrop-blur-sm px-2 py-1 rounded-full border border-gold-500/30"
 								>
 									<Typography variant="caption" class="text-xs text-gold-400 font-medium">
-										{formatNumber(photo.view_count)} views
+										{formatNumber(photo.view_count)} views{photo.download_count
+											? ` · ${formatNumber(photo.download_count)} dl`
+											: ''}{photo.favorite_count
+											? ` · ${formatNumber(photo.favorite_count)} fav`
+											: ''}{photo.share_count ? ` · ${formatNumber(photo.share_count)} sh` : ''}
 									</Typography>
 								</div>
 							</div>
