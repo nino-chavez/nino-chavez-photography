@@ -35,10 +35,13 @@ WHERE e.photo_id IS NULL
 
 -- Dedup: at most one photo_id-NULL event per session+album+type+day. Partial
 -- index (WHERE photo_id IS NULL) so it never overlaps the per-photo dedup index
--- above. NOTE: rows with NULL session_hash stay non-deduped (NULLs distinct in
--- a unique index) — accepted, matches the existing per-photo index's behavior.
+-- above. album_key is COALESCE'd because homepage/site-wide arrivals carry
+-- album_key NULL, and a raw NULL column never collides in a unique index —
+-- without the COALESCE those rows would re-inherit the exact bug this migration
+-- fixes, one level up. NOTE: rows with NULL session_hash stay non-deduped
+-- (NULLs distinct) — accepted, matches the existing per-photo index's behavior.
 CREATE UNIQUE INDEX IF NOT EXISTS engagement_events_album_dedup_idx
-  ON public.engagement_events (session_hash, album_key, event_type, event_day)
+  ON public.engagement_events (session_hash, COALESCE(album_key, ''), event_type, event_day)
   WHERE photo_id IS NULL;
 
 COMMIT;
