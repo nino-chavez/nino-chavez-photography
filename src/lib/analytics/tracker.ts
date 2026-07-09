@@ -6,7 +6,7 @@
  * - Tracks aggregate data only
  */
 
-import { supabaseServer } from '$lib/supabase/server';
+import { matviewClient } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 
 export interface PhotoViewEvent {
@@ -106,7 +106,11 @@ export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
  */
 export async function getPopularPhotos(limit: number = 10) {
 	try {
-		const { data, error } = await supabaseServer
+		// photo_popularity is a matview — anon grants are flaky (recreate re-grants,
+		// refresh keeps the revoke), so read via matviewClient like every other
+		// matview consumer (#64/#65/#66/#72). Anon reads 42501'd, which left the
+		// dashboard's popular-photos panel permanently empty.
+		const { data, error } = await matviewClient()
 			.from('photo_popularity')
 			.select('photo_id, trending_score, all_time_score, views, favorites, downloads, shares, last_event')
 			.order('trending_score', { ascending: false })
@@ -125,7 +129,9 @@ export async function getPopularPhotos(limit: number = 10) {
  */
 export async function getTopSearchQueries(limit: number = 10) {
 	try {
-		const { data, error } = await supabaseServer
+		// search_queries is written service-role and RLS-hidden from anon (reads
+		// silently return zero rows) — read with the admin client to match.
+		const { data, error } = await createSupabaseAdminClient()
 			.from('search_queries')
 			.select('query_text, filters_used, results_count, searched_at')
 			.gte('searched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
@@ -145,7 +151,7 @@ export async function getTopSearchQueries(limit: number = 10) {
  */
 export async function getPhotoViewCount(photoId: string): Promise<number> {
 	try {
-		const { data, error } = await supabaseServer
+		const { data, error } = await matviewClient()
 			.from('photo_popularity')
 			.select('views')
 			.eq('photo_id', photoId)
