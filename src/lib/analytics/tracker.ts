@@ -30,6 +30,20 @@ export interface ArrivalEvent {
 }
 
 /**
+ * Keep a fire-and-forget tracking promise alive on the Workers runtime.
+ *
+ * On Cloudflare Pages, pending promises are cancelled when the response
+ * completes unless registered via ctx.waitUntil — a floating `void promise`
+ * only finishes if the isolate happens to stay warm serving other requests.
+ * That silently dropped most low-traffic view tracking (~270 recorded vs ~850
+ * RUM pageviews over 30 days). In local dev `platform` is undefined and the
+ * promise completes normally on the Node event loop.
+ */
+export function keepTrackingAlive(platform: App.Platform | undefined, promise: Promise<unknown>): void {
+	(platform?.context ?? platform?.ctx)?.waitUntil?.(promise);
+}
+
+/**
  * Track a photo view (server-side only)
  */
 export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {

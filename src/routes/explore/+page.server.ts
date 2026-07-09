@@ -11,10 +11,10 @@
  */
 
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet, searchByJersey } from '$lib/supabase/server';
-import { trackSearchQuery } from '$lib/analytics/tracker';
+import { trackSearchQuery, keepTrackingAlive } from '$lib/analytics/tracker';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
+export const load: PageServerLoad = async ({ url, parent, setHeaders, platform }) => {
   setHeaders({ 'cache-control': 's-maxage=60, stale-while-revalidate=120' });
 
   // Get cached data from parent layout
@@ -107,11 +107,11 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     // a person asking "did you get that?" and leaving empty-handed. First page
     // only, so pagination doesn't multiply rows. Fire-and-forget, never awaited.
     if (offset === 0) {
-      void trackSearchQuery({
+      keepTrackingAlive(platform, trackSearchQuery({
         query_text: `jersey #${jerseyFilter}`,
         filters_used: sportFilter ? { sport: sportFilter } : undefined,
         results_count: totalCount,
-      });
+      }));
     }
   } else if (searchQuery) {
     // Smart search: structured parse + vector fallback
@@ -125,11 +125,11 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     searchMode = result.searchMode;
     parsedDescription = result.parsedDescription;
     if (offset === 0) {
-      void trackSearchQuery({
+      keepTrackingAlive(platform, trackSearchQuery({
         query_text: searchQuery,
         filters_used: hasActiveFilters ? filterOptions : undefined,
         results_count: totalCount,
-      });
+      }));
     }
   } else {
     // No search — standard filter + paginate

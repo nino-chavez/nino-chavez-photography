@@ -9,14 +9,14 @@ import { error } from '@sveltejs/kit';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { PHOTO_DETAIL_COLUMNS } from '$lib/supabase/columns';
-import { trackPhotoView } from '$lib/analytics/tracker';
+import { trackPhotoView, keepTrackingAlive } from '$lib/analytics/tracker';
 import { computeSessionHash } from '$lib/analytics/session';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
-export const load: PageServerLoad = async ({ params, url, request, getClientAddress }) => {
+export const load: PageServerLoad = async ({ params, url, request, getClientAddress, platform }) => {
 	// Fetch by image_key. NOTE: image_key is NOT unique — camera DSC numbers reset per card, so the
 	// same image_key recurs across albums. Using .single() here 404s on any collision. Fetch the
 	// candidates and prefer one from a LISTED album, so an unlisted/duplicate album never shadows the
@@ -149,15 +149,20 @@ export const load: PageServerLoad = async ({ params, url, request, getClientAddr
 
 	// Track view → popularity engine. Non-blocking; deduped per visitor/photo/day
 	// via the hashed session. album_key enables the album-level roll-up.
-	void computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
-		(sessionHash) =>
-			trackPhotoView({
-				photo_id: photoData.photo_id,
-				view_source: viewSource,
-				referrer: referrer || undefined,
-				album_key: photoData.album_key ?? undefined,
-				session_hash: sessionHash,
-			})
+	// keepTrackingAlive: without waitUntil the Workers runtime cancels this
+	// promise when the response completes, silently dropping the view.
+	keepTrackingAlive(
+		platform,
+		computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
+			(sessionHash) =>
+				trackPhotoView({
+					photo_id: photoData.photo_id,
+					view_source: viewSource,
+					referrer: referrer || undefined,
+					album_key: photoData.album_key ?? undefined,
+					session_hash: sessionHash,
+				})
+		)
 	);
 
 	return {
