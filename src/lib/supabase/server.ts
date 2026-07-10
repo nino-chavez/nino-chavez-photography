@@ -12,6 +12,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { env as privateEnv } from '$env/dynamic/private';
 import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
@@ -315,6 +316,73 @@ export async function fetchPhotos(
 }
 
 /**
+ * Resolve free-text terms against team entities (SERVER-SIDE).
+ *
+ * Team identity lives in `teams`/`team_aliases`/`album_teams` (backfilled from album names by
+ * scripts/extract-album-entities.ts), so official names people actually type resolve even when
+ * no album string contains them — "lewis university" → Lewis University → its 8 albums, though
+ * every album says just "Lewis". An alias matches only when EVERY one of its words appears in
+ * the query (so "aurora university" does NOT match the query "lewis university"). Multiple
+ * matched teams prefer the matchup (albums featuring ALL of them), falling back to the union.
+ */
+async function resolveTeamAlbums(
+  terms: string[]
+): Promise<{ albumKeys: string[]; teamNames: string[]; leftoverTerms: string[] } | null> {
+  const words = terms.map((t) => t.toLowerCase().replace(/[^a-z0-9'’.\-–]/g, '')).filter((w) => w.length >= 2);
+  if (words.length === 0) return null;
+
+  // Candidate pull: aliases containing any query word (the table is small); exact word-set
+  // containment is decided locally so ILIKE overmatch can't produce false teams.
+  const orExpr = words.slice(0, 5)
+    .map((w) => `alias.ilike.%${w.replace(/[%_]/g, (c) => `\\${c}`)}%`)
+    .join(',');
+  const { data: candidates, error } = await supabaseServer
+    .from('team_aliases')
+    .select('alias, team_id, teams(name)')
+    .or(orExpr)
+    .limit(200);
+  if (error || !candidates || candidates.length === 0) {
+    if (error) console.error('[resolveTeamAlbums] alias lookup:', error.message);
+    return null;
+  }
+
+  const wordSet = new Set(words);
+  const byTeam = new Map<string, { name: string; consumed: Set<string> }>();
+  for (const c of candidates) {
+    const aliasWords = c.alias.split(' ');
+    if (!aliasWords.every((w: string) => wordSet.has(w))) continue;
+    const teamName = (Array.isArray(c.teams) ? c.teams[0]?.name : (c.teams as any)?.name) ?? c.alias;
+    const entry = byTeam.get(c.team_id) ?? { name: teamName, consumed: new Set<string>() };
+    for (const w of aliasWords) entry.consumed.add(w);
+    byTeam.set(c.team_id, entry);
+  }
+  if (byTeam.size === 0) return null;
+
+  const teamIds = [...byTeam.keys()];
+  const { data: links, error: linkError } = await supabaseServer
+    .from('album_teams')
+    .select('album_key, team_id')
+    .in('team_id', teamIds);
+  if (linkError || !links || links.length === 0) return null;
+
+  const keysByTeam = new Map<string, Set<string>>();
+  for (const l of links) {
+    if (!keysByTeam.has(l.team_id)) keysByTeam.set(l.team_id, new Set());
+    keysByTeam.get(l.team_id)!.add(l.album_key);
+  }
+  const allKeys = [...new Set(links.map((l) => l.album_key))];
+  let albumKeys = allKeys;
+  if (teamIds.length > 1) {
+    const matchup = allKeys.filter((k) => teamIds.every((t) => keysByTeam.get(t)?.has(k)));
+    if (matchup.length > 0) albumKeys = matchup;
+  }
+
+  const consumed = new Set([...byTeam.values()].flatMap((t) => [...t.consumed]));
+  const leftoverTerms = terms.filter((t) => !consumed.has(t.toLowerCase().replace(/[^a-z0-9'’.\-–]/g, '')));
+  return { albumKeys, teamNames: [...byTeam.values()].map((t) => t.name), leftoverTerms };
+}
+
+/**
  * Find photos by EVENT/TEAM/SCHOOL name (SERVER-SIDE).
  *
  * The find-my-photos primary path: people search the name of an event, team, or school
@@ -327,20 +395,38 @@ export async function fetchPhotos(
 export async function fetchPhotosByAlbumName(
   terms: string[],
   filters: Partial<PhotoFilterState> = {},
-  options: { limit?: number; offset?: number; sortBy?: FetchPhotosOptions['sortBy'] } = {}
+  options: {
+    limit?: number; offset?: number; sortBy?: FetchPhotosOptions['sortBy'];
+    /** Albums resolved via team_aliases (see resolveTeamAlbums). UNION semantics: these WIDEN
+     * the ILIKE match rather than replace it, so entity resolution can only add results. */
+    teamAlbums?: { albumKeys: string[]; leftoverTerms: string[] };
+  } = {}
 ): Promise<{ photos: Photo[]; totalCount: number }> {
-  const { limit = 24, offset = 0, sortBy = 'quality' } = options;
+  const { limit = 24, offset = 0, sortBy = 'quality', teamAlbums } = options;
   const cleanTerms = terms.map((t) => t.trim()).filter((t) => t.length >= 2).slice(0, 5);
-  if (cleanTerms.length === 0) return { photos: [], totalCount: 0 };
+  if (cleanTerms.length === 0 && !teamAlbums) return { photos: [], totalCount: 0 };
 
   // Escape PostgREST ILIKE wildcards so a literal % or _ in a query can't widen the match.
+  // For terms embedded in a .or() expression, also strip PostgREST syntax chars (, ( )).
   const escape = (t: string) => t.replace(/[%_]/g, (c) => `\\${c}`);
+  const orSafe = (t: string) => escape(t).replace(/[(),]/g, '');
 
   const unlisted = await getUnlistedAlbumKeys(); // privacy: name search must not surface private albums
   const applyFilters = (q: any) => {
     q = q.not('sharpness', 'is', null);
     q = excludeUnlisted(q, unlisted);
-    for (const term of cleanTerms) q = q.ilike('album_name', `%${escape(term)}%`);
+    if (teamAlbums && teamAlbums.albumKeys.length > 0) {
+      // OR of (all terms in album_name) and (album in the team's set + any leftover terms).
+      // "lewis university" has no all-terms album match but resolves to the Lewis album set;
+      // "630" keeps its full ILIKE match AND gains the 630 Volleyball team's albums.
+      const ilikeBranch = cleanTerms.map((t) => `album_name.ilike.%${orSafe(t)}%`).join(',');
+      const teamParts = [`album_key.in.(${teamAlbums.albumKeys.join(',')})`]
+        .concat(teamAlbums.leftoverTerms.map((t) => `album_name.ilike.%${orSafe(t)}%`));
+      const teamBranch = teamParts.length > 1 ? `and(${teamParts.join(',')})` : teamParts[0];
+      q = q.or(cleanTerms.length > 0 ? `and(${ilikeBranch}),${teamBranch}` : teamBranch);
+    } else {
+      for (const term of cleanTerms) q = q.ilike('album_name', `%${escape(term)}%`);
+    }
     if (filters.sportType) q = q.eq('sport_type', filters.sportType);
     if (filters.photoCategory) q = q.eq('photo_category', filters.photoCategory);
     if (filters.playTypes && filters.playTypes.length > 0) q = q.in('play_type', filters.playTypes);
@@ -1243,7 +1329,10 @@ export interface SearchResult {
  * Returns null on any error (graceful degradation → structured search).
  */
 async function embedSearchQuery(query: string): Promise<number[] | null> {
-  const apiKey = import.meta.env.OPENROUTER_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
+  // $env/dynamic/private, NOT import.meta.env: import.meta.env is substituted at BUILD time and
+  // never carries non-VITE_ vars, so the key could not reach this code in prod (Cloudflare Pages
+  // injects secrets at runtime via platform.env, which adapter-cloudflare exposes here).
+  const apiKey = privateEnv.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.warn('[embedSearchQuery] OPENROUTER_API_KEY not configured — vector search unavailable');
     return null;
@@ -1275,7 +1364,7 @@ async function tryPlannerSearch(
   opts: { limit: number; offset: number; sortBy: FetchPhotosOptions['sortBy'] }
 ): Promise<SearchResult | null> {
   const { limit, offset, sortBy } = opts;
-  const apiKey = import.meta.env.OPENROUTER_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
+  const apiKey = privateEnv.OPENROUTER_API_KEY; // runtime env — see embedSearchQuery
   const plan = await planQuery(query, { apiKey });
   if (!plan || (!plan.hasStructure && !plan.semantic_text)) return null;
 
@@ -1385,19 +1474,25 @@ export async function searchPhotos(
   }
 
   // Event/team/name lookup (find-my-photos primary): unmatched free-text terms are almost
-  // always an event, team, or school name, which live in `album_name`. Match there before
-  // falling to the semantic caption path (which can't satisfy name queries and is offline in
-  // prod without an embedding key). Any matched facet filters are layered on.
+  // always an event, team, or school name. Resolve TEAM ENTITIES first (aliases cover the
+  // official names people type that album strings never contain — "lewis university"), then
+  // match `album_name` directly; the two paths UNION so entity resolution only widens results.
+  // Both run before the semantic caption path (which can't satisfy name queries).
   if (hasUnmatchedTerms) {
-    const byAlbum = await fetchPhotosByAlbumName(parsed.unmatchedTerms, mergedFilters, { limit, offset, sortBy });
+    const teamHit = await resolveTeamAlbums(parsed.unmatchedTerms);
+    const byAlbum = await fetchPhotosByAlbumName(parsed.unmatchedTerms, mergedFilters, {
+      limit, offset, sortBy,
+      teamAlbums: teamHit ? { albumKeys: teamHit.albumKeys, leftoverTerms: teamHit.leftoverTerms } : undefined,
+    });
     if (byAlbum.totalCount > 0 || offset > 0) {
       const terms = parsed.unmatchedTerms.join(' ');
       const facets = parsed.description ? ` · ${parsed.description}` : '';
+      const featuring = teamHit ? ` · featuring ${teamHit.teamNames.join(' & ')}` : '';
       return {
         photos: byAlbum.photos,
         totalCount: byAlbum.totalCount,
         searchMode: 'structured',
-        parsedDescription: `Events matching “${terms}”${facets}`,
+        parsedDescription: `Events matching “${terms}”${featuring}${facets}`,
       };
     }
   }

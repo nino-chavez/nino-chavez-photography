@@ -22,7 +22,7 @@ import { normJersey, normColor } from '$lib/identity/sightings';
 
 export const INGEST_MODEL = 'google/gemini-2.5-flash-lite';
 /** Stamped into `photo_metadata.extraction_version` so future prompt/model changes re-process only stale rows. */
-export const EXTRACTION_VERSION = `ingest-v1:${INGEST_MODEL}`;
+export const EXTRACTION_VERSION = `ingest-v2:${INGEST_MODEL}`; // v2: + visible_text (garment/signage text)
 
 /** Only "action" photos carry a play_type; everything else is null by rule. */
 const ACTION_CATEGORY = 'action';
@@ -43,6 +43,9 @@ export interface IngestExtraction {
 	exposure_accuracy: number | null;
 	emotional_impact: number | null;
 	players: IngestPlayer[];
+	/** Readable text in the frame — jersey fronts/backs, banners, scoreboards. The photo often
+	 * literally names the school/player; without this field that signal was discarded. */
+	visible_text: string[];
 }
 
 export interface ExtractContext {
@@ -87,6 +90,7 @@ ${playLine}
 "exposure_accuracy": number 0-10 (10=perfect exposure).
 "emotional_impact": number 0-10 (how strongly the photo conveys emotion).
 "players": an array (max 8) of objects, one per clearly visible player: {"jersey_number": string-or-null (e.g. "12", "00"; null if unreadable), "team_color": string-or-null (primary jersey color), "action": string-or-null}.
+"visible_text": an array (max 12) of distinct text strings CLEARLY READABLE in the frame — school/team names on jerseys or warmups, player surnames on jersey backs, banner/signage text, scoreboard team names. Transcribe exactly what is printed (e.g. "LEWIS", "FLYERS", "SIKORA"). Do NOT include jersey numbers (captured above), guessed/partially-legible text, or generic words like "VOLLEYBALL" alone on equipment. Empty array if none.
 
 Do NOT include sport, composition style, lighting, color temperature, time of day, or confidence fields.
 NO markdown. NO explanation. ONLY the JSON object.`;
@@ -149,6 +153,15 @@ export function validateExtraction(raw: any, ctx: ExtractContext): IngestExtract
 				.filter((p: IngestPlayer) => p.jersey_number || p.team_color || p.action)
 		: [];
 
+	const visibleText: string[] = Array.isArray(raw?.visible_text)
+		? [...new Set(
+				raw.visible_text
+					.filter((t: unknown): t is string => typeof t === 'string')
+					.map((t: string) => t.trim())
+					.filter((t: string) => t.length >= 2 && t.length <= 60)
+			)].slice(0, 12) as string[]
+		: [];
+
 	let caption = (raw?.caption ?? '').toString().trim();
 
 	return {
@@ -160,6 +173,7 @@ export function validateExtraction(raw: any, ctx: ExtractContext): IngestExtract
 		exposure_accuracy: clampScore(raw?.exposure_accuracy),
 		emotional_impact: clampScore(raw?.emotional_impact),
 		players,
+		visible_text: visibleText,
 	};
 }
 
