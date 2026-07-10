@@ -145,8 +145,18 @@ async function processRow(row: Row): Promise<{ texts: string[]; cost: number | n
 
 	const j: any = await res.json();
 	const text: string = j.choices?.[0]?.message?.content ?? '';
-	const m = text.replace(/```json/gi, '').replace(/```/g, '').match(/\{[\s\S]*\}/);
-	const texts = coerceVisibleText(m ? JSON.parse(m[0]) : null);
+	const cleaned = text.replace(/```json/gi, '').replace(/```/g, '');
+	const m = cleaned.match(/\{[\s\S]*\}/);
+	let parsed: any = null;
+	if (m) { try { parsed = JSON.parse(m[0]); } catch { /* salvage below */ } }
+	// Salvage truncated arrays: at temperature 0 the model occasionally loops one token
+	// ("WILSON","WILSON",…) until max_tokens cuts the JSON mid-array — a plain retry hits the
+	// same wall. Recover the quoted strings we did get; dedupe+brand filters turn a loop into [].
+	if (parsed === null && cleaned.includes('"visible_text"')) {
+		const tail = cleaned.slice(cleaned.indexOf('"visible_text"') + '"visible_text"'.length);
+		parsed = { visible_text: [...tail.matchAll(/"([^"\n]{2,60})"/g)].map((x) => x[1]) };
+	}
+	const texts = coerceVisibleText(parsed);
 	if (texts === null) throw new Error(`unparseable response: ${text.slice(0, 80)}`);
 	const cost = j.usage?.cost ?? null;
 
