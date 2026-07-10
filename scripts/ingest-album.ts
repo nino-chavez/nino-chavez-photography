@@ -21,7 +21,8 @@
  * Usage:
  *   OPENROUTER_API_KEY=... npx tsx scripts/ingest-album.ts \
  *     --dir /path/to/album --album-key xSqPJB --album-name "FUTURE — Fall 2025" \
- *     --sport volleyball --upload-date 2025-11-03 [--concurrency 4] [--limit N] [--dry-run] [--overwrite]
+ *     --sport volleyball --upload-date 2025-11-03 [--teams "Lewis University, UCLA"] \
+ *     [--venue "Neil Carey Arena"] [--concurrency 4] [--limit N] [--dry-run] [--overwrite]
  *
  * Credentials (runtime-injected; see [[photography-live-credentials]]):
  *   OPENROUTER_API_KEY (1Password "OpenRouter photography"), Supabase creds + CF creds (.env.local).
@@ -108,6 +109,13 @@ const OP_LAT = floatFlag('lat');
 const OP_LNG = floatFlag('lng');
 if ((OP_LAT === null) !== (OP_LNG === null)) die('--lat and --lng must be passed together (venue GPS override)');
 if (OP_LAT !== null && (Math.abs(OP_LAT) > 90 || Math.abs(OP_LNG!) > 180)) die(`--lat/--lng out of range (lat ${OP_LAT}, lng ${OP_LNG})`);
+
+// Operator-known-at-ingest context the schema previously had no home for. --teams takes the
+// competing programs by CANONICAL name, comma-separated (e.g. --teams "Lewis University, UCLA");
+// each is upserted into teams/album_teams so name search resolves this album immediately —
+// without waiting for an extract-album-entities re-run. --venue lands on albums.venue.
+const TEAMS_ARG = (flagValue('teams') ?? '').split(',').map((t) => t.trim()).filter(Boolean);
+const VENUE_ARG = flagValue('venue');
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -237,6 +245,40 @@ async function resolveAlbum(): Promise<{ sport: Sport | null; albumName: string 
 		console.log(`   ✅ Created albums row: ${ALBUM_KEY} "${name}" sport=${sport ?? 'none'}`);
 	}
 	return { sport, albumName: name };
+}
+
+/**
+ * Persist operator-declared album context (--teams / --venue). Idempotent upserts; alias rows
+ * use ignoreDuplicates so an operator name never steals an alias already owned by another team.
+ */
+async function captureAlbumContext(): Promise<void> {
+	if (TEAMS_ARG.length === 0 && VENUE_ARG === undefined) return;
+	if (DRY) {
+		if (TEAMS_ARG.length) console.log(`   [DRY] Would link teams: ${TEAMS_ARG.join(' · ')}`);
+		if (VENUE_ARG !== undefined) console.log(`   [DRY] Would set venue: "${VENUE_ARG}"`);
+		return;
+	}
+	if (VENUE_ARG !== undefined) {
+		const { error } = await sb.from('albums').update({ venue: VENUE_ARG }).eq('album_key', ALBUM_KEY!);
+		if (error) console.warn(`   ⚠️  venue update failed (non-fatal): ${error.message}`);
+		else console.log(`   🏟  Venue: "${VENUE_ARG}"`);
+	}
+	if (TEAMS_ARG.length) {
+		const { error: tErr } = await sb.from('teams').upsert(TEAMS_ARG.map((name) => ({ name })), { onConflict: 'name' });
+		if (tErr) { console.warn(`   ⚠️  teams upsert failed (non-fatal): ${tErr.message}`); return; }
+		const { data: ids, error: idErr } = await sb.from('teams').select('team_id, name').in('name', TEAMS_ARG);
+		if (idErr || !ids) { console.warn(`   ⚠️  teams read-back failed (non-fatal): ${idErr?.message}`); return; }
+		await sb.from('team_aliases').upsert(
+			ids.map((t) => ({ alias: t.name.toLowerCase(), team_id: t.team_id, source: 'operator' })),
+			{ onConflict: 'alias', ignoreDuplicates: true }
+		);
+		const { error: lErr } = await sb.from('album_teams').upsert(
+			ids.map((t) => ({ album_key: ALBUM_KEY!, team_id: t.team_id, source: 'operator' })),
+			{ onConflict: 'album_key,team_id', ignoreDuplicates: true }
+		);
+		if (lErr) console.warn(`   ⚠️  album_teams upsert failed (non-fatal): ${lErr.message}`);
+		else console.log(`   🏷  Teams: ${ids.map((t) => t.name).join(' · ')}`);
+	}
 }
 
 /** Detect the album's sport from its name (operator convention: "the sport is in the name"). */
@@ -393,6 +435,7 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		caption: ex.extraction.caption,
 		photo_category: ex.extraction.photo_category,
 		play_type: ex.extraction.play_type,
+		visible_text: ex.extraction.visible_text.length ? ex.extraction.visible_text : null,
 		sharpness: ex.extraction.sharpness,
 		composition_score: ex.extraction.composition_score,
 		exposure_accuracy: ex.extraction.exposure_accuracy,
@@ -474,6 +517,8 @@ async function main() {
 	console.log(`   Album sport (authoritative): ${album.sport ?? 'none (non-sport)'}`);
 	if (OP_LAT !== null) console.log(`   📍 Venue GPS override (fallback for frames without an EXIF fix): ${OP_LAT}, ${OP_LNG}`);
 	console.log('');
+
+	await captureAlbumContext();
 
 	// Keep a freshly-ingested album OFF the live gallery until the operator reviews + publishes.
 	if (UNLISTED && !DRY) {
