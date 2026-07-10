@@ -435,6 +435,12 @@ export async function fetchPhotosByAlbumName(
       branches.push(teamParts.length > 1 ? `and(${teamParts.join(',')})` : teamParts[0]);
     }
     if (branches.length > 0) q = q.or(branches.join(','));
+    // Division/level facet chips resolve to an album_key set (getAlbumKeysByFacet) — AND it in
+    // so it INTERSECTS every union branch. It was silently dropped on the search path (facets
+    // only composed with browse), which reads as "the chip does nothing" now that the
+    // level/division backfill made facets real. Same empty-set sentinel as fetchPhotos: an
+    // empty facet set must yield zero results, not an unfiltered query.
+    if (filters.albumKeys) q = q.in('album_key', filters.albumKeys.length ? filters.albumKeys : ['__none__']);
     if (filters.sportType) q = q.eq('sport_type', filters.sportType);
     if (filters.photoCategory) q = q.eq('photo_category', filters.photoCategory);
     if (filters.playTypes && filters.playTypes.length > 0) q = q.in('play_type', filters.playTypes);
