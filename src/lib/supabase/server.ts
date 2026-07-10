@@ -415,18 +415,26 @@ export async function fetchPhotosByAlbumName(
   const applyFilters = (q: any) => {
     q = q.not('sharpness', 'is', null);
     q = excludeUnlisted(q, unlisted);
-    if (teamAlbums && teamAlbums.albumKeys.length > 0) {
-      // OR of (all terms in album_name) and (album in the team's set + any leftover terms).
-      // "lewis university" has no all-terms album match but resolves to the Lewis album set;
-      // "630" keeps its full ILIKE match AND gains the 630 Volleyball team's albums.
-      const ilikeBranch = cleanTerms.map((t) => `album_name.ilike.%${orSafe(t)}%`).join(',');
-      const teamParts = [`album_key.in.(${teamAlbums.albumKeys.join(',')})`]
-        .concat(teamAlbums.leftoverTerms.map((t) => `album_name.ilike.%${orSafe(t)}%`));
-      const teamBranch = teamParts.length > 1 ? `and(${teamParts.join(',')})` : teamParts[0];
-      q = q.or(cleanTerms.length > 0 ? `and(${ilikeBranch}),${teamBranch}` : teamBranch);
-    } else {
-      for (const term of cleanTerms) q = q.ilike('album_name', `%${escape(term)}%`);
+    // UNION of the three ways a name query can hit — each branch only ever widens results:
+    //   1. album_name carries every term ("msoe aurora" → "MSOE vs Aurora - Mar 21")
+    //   2. visible_text carries every term ("sikora" → frames where the jersey-back surname is
+    //      legible; flattened lowercase projection backfilled for ALL rows by
+    //      scripts/backfill-visible-text.ts, trigram-indexed)
+    //   3. team-entity resolution ("lewis university" → the Lewis album set), leftover terms
+    //      matching album_name OR in-frame text within that set ("lewis sikora")
+    const branches: string[] = [];
+    if (cleanTerms.length > 0) {
+      branches.push(`and(${cleanTerms.map((t) => `album_name.ilike.%${orSafe(t)}%`).join(',')})`);
+      branches.push(`and(${cleanTerms.map((t) => `visible_text_flat.ilike.%${orSafe(t)}%`).join(',')})`);
     }
+    if (teamAlbums && teamAlbums.albumKeys.length > 0) {
+      const teamParts = [`album_key.in.(${teamAlbums.albumKeys.join(',')})`]
+        .concat(teamAlbums.leftoverTerms.map(
+          (t) => `or(album_name.ilike.%${orSafe(t)}%,visible_text_flat.ilike.%${orSafe(t)}%)`
+        ));
+      branches.push(teamParts.length > 1 ? `and(${teamParts.join(',')})` : teamParts[0]);
+    }
+    if (branches.length > 0) q = q.or(branches.join(','));
     if (filters.sportType) q = q.eq('sport_type', filters.sportType);
     if (filters.photoCategory) q = q.eq('photo_category', filters.photoCategory);
     if (filters.playTypes && filters.playTypes.length > 0) q = q.in('play_type', filters.playTypes);
