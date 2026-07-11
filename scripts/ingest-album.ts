@@ -22,7 +22,13 @@
  *   OPENROUTER_API_KEY=... npx tsx scripts/ingest-album.ts \
  *     --dir /path/to/album --album-key xSqPJB --album-name "FUTURE — Fall 2025" \
  *     --sport volleyball --upload-date 2025-11-03 [--teams "Lewis University, UCLA"] \
- *     [--venue "Neil Carey Arena"] [--concurrency 4] [--limit N] [--dry-run] [--overwrite]
+ *     [--venue "Neil Carey Arena"] [--level college] [--division mens] \
+ *     [--concurrency 4] [--limit N] [--dry-run] [--overwrite]
+ *
+ * Findability context (teams/venue/level/division) is operator-known at ingest — pass it here.
+ * Skipped flags can be batch-derived later: extract-album-entities.ts (teams/aliases/dates) and
+ * backfill-album-facets.ts (level/division) are both idempotent fill-if-null re-runs.
+ * event_date is stamped automatically from the album's earliest capture date (fill-if-null).
  *
  * Credentials (runtime-injected; see [[photography-live-credentials]]):
  *   OPENROUTER_API_KEY (1Password "OpenRouter photography"), Supabase creds + CF creds (.env.local).
@@ -114,8 +120,21 @@ if (OP_LAT !== null && (Math.abs(OP_LAT) > 90 || Math.abs(OP_LNG!) > 180)) die(`
 // competing programs by CANONICAL name, comma-separated (e.g. --teams "Lewis University, UCLA");
 // each is upserted into teams/album_teams so name search resolves this album immediately —
 // without waiting for an extract-album-entities re-run. --venue lands on albums.venue.
+// (Batch alternative: scripts/extract-album-entities.ts --apply is idempotent — re-run it
+// after ingesting albums without --teams to derive teams/aliases from the album names.)
 const TEAMS_ARG = (flagValue('teams') ?? '').split(',').map((t) => t.trim()).filter(Boolean);
 const VENUE_ARG = flagValue('venue');
+
+// Facet columns the explore Division/Level chips filter on. Without these a new album is
+// silently EXCLUDED from any faceted view (the chips filter by album_key set; NULL = absent) —
+// the drift the 2026-07-10 backfill (scripts/backfill-album-facets.ts, also idempotent) fixed.
+// Vocabulary must match existing rows / what the UI sends.
+const LEVEL_VOCAB = ['high_school', 'college', 'club', 'middle_school'];
+const DIVISION_VOCAB = ['girls', 'boys', 'womens', 'mens', 'coed'];
+const LEVEL_ARG = flagValue('level');
+const DIVISION_ARG = flagValue('division');
+if (LEVEL_ARG !== undefined && !LEVEL_VOCAB.includes(LEVEL_ARG)) die(`--level "${LEVEL_ARG}" invalid. Valid: ${LEVEL_VOCAB.join(', ')}`);
+if (DIVISION_ARG !== undefined && !DIVISION_VOCAB.includes(DIVISION_ARG)) die(`--division "${DIVISION_ARG}" invalid. Valid: ${DIVISION_VOCAB.join(', ')}`);
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -252,16 +271,22 @@ async function resolveAlbum(): Promise<{ sport: Sport | null; albumName: string 
  * use ignoreDuplicates so an operator name never steals an alias already owned by another team.
  */
 async function captureAlbumContext(): Promise<void> {
-	if (TEAMS_ARG.length === 0 && VENUE_ARG === undefined) return;
+	if (TEAMS_ARG.length === 0 && VENUE_ARG === undefined && LEVEL_ARG === undefined && DIVISION_ARG === undefined) return;
 	if (DRY) {
 		if (TEAMS_ARG.length) console.log(`   [DRY] Would link teams: ${TEAMS_ARG.join(' · ')}`);
 		if (VENUE_ARG !== undefined) console.log(`   [DRY] Would set venue: "${VENUE_ARG}"`);
+		if (LEVEL_ARG || DIVISION_ARG) console.log(`   [DRY] Would set facets: ${[LEVEL_ARG && `level=${LEVEL_ARG}`, DIVISION_ARG && `division=${DIVISION_ARG}`].filter(Boolean).join(' ')}`);
 		return;
 	}
-	if (VENUE_ARG !== undefined) {
-		const { error } = await sb.from('albums').update({ venue: VENUE_ARG }).eq('album_key', ALBUM_KEY!);
-		if (error) console.warn(`   ⚠️  venue update failed (non-fatal): ${error.message}`);
-		else console.log(`   🏟  Venue: "${VENUE_ARG}"`);
+	// Operator-explicit values win (unlike the fill-if-null backfills) — a flag is a statement.
+	const albumPatch: Record<string, string> = {};
+	if (VENUE_ARG !== undefined) albumPatch.venue = VENUE_ARG;
+	if (LEVEL_ARG !== undefined) albumPatch.level = LEVEL_ARG;
+	if (DIVISION_ARG !== undefined) albumPatch.division = DIVISION_ARG;
+	if (Object.keys(albumPatch).length) {
+		const { error } = await sb.from('albums').update(albumPatch).eq('album_key', ALBUM_KEY!);
+		if (error) console.warn(`   ⚠️  album context update failed (non-fatal): ${error.message}`);
+		else console.log(`   🏟  Album context: ${Object.entries(albumPatch).map(([k, v]) => `${k}="${v}"`).join(' · ')}`);
 	}
 	if (TEAMS_ARG.length) {
 		const { error: tErr } = await sb.from('teams').upsert(TEAMS_ARG.map((name) => ({ name })), { onConflict: 'name' });
@@ -585,6 +610,29 @@ async function main() {
 	// Ingest is the sole owner of read-model maintenance (ADR 0001): refresh the albums
 	// materialized view, then invalidate the edge cache. Both run only here, on the write event.
 	if (!DRY && ok > 0) {
+		// event_date: derive from the photos' capture dates (EXIF-backed photo_date) so the
+		// planner's date filters and the timeline stay truthful as new albums arrive — the
+		// 2026-07-10 backfill only covered albums that existed then. Fill-if-null: an
+		// operator-set event_date is never overwritten. DB-side MIN so resumed runs work.
+		const { data: minRow, error: mErr } = await sb
+			.from('photo_metadata')
+			.select('photo_date')
+			.eq('album_key', ALBUM_KEY!)
+			.not('photo_date', 'is', null)
+			.order('photo_date', { ascending: true })
+			.limit(1)
+			.maybeSingle();
+		if (!mErr && minRow?.photo_date) {
+			const eventDate = String(minRow.photo_date).slice(0, 10);
+			const { error: eErr } = await sb
+				.from('albums')
+				.update({ event_date: eventDate })
+				.eq('album_key', ALBUM_KEY!)
+				.is('event_date', null);
+			if (eErr) console.warn(`   ⚠️  event_date update failed (non-fatal): ${eErr.message}`);
+			else console.log(`   📅 event_date: ${eventDate} (min capture date; fill-if-null)`);
+		}
+
 		const { error: rErr } = await sb.rpc('refresh_albums_summary');
 		if (rErr) {
 			// LOUD, not a buried warn: album existence/metadata reads lean on this MV. A silent
