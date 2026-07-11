@@ -117,6 +117,30 @@ function extractCaptionLenient(text: string): string {
 	return m ? m[1].replace(/\\"/g, '"').trim() : '';
 }
 
+/**
+ * Parse with token-loop repair. At temperature 0 the model occasionally repeats one
+ * visible_text element ("WILSON","WILSON",…) until max_tokens truncates the JSON mid-array
+ * (~1% of frames in the 21.7K backfill; a retry hits the same wall). visible_text is the LAST
+ * key, so the object can be closed just before it — recovering caption/scores/players intact —
+ * and the array salvaged from the tail (coerceVisibleText's dedupe+filters reduce a loop to []).
+ * Without this the whole row degrades to a lenient-caption-only extraction AND gets stamped
+ * with the current EXTRACTION_VERSION, so nothing would ever reprocess it.
+ */
+export function parseWithRepair(text: string): any | null {
+	const parsed = parseModelJson(text);
+	if (parsed) return parsed;
+	const cleaned = text.replace(/```json/gi, '').replace(/```/g, '');
+	const idx = cleaned.indexOf('"visible_text"');
+	if (idx < 0) return null;
+	const head = cleaned.slice(0, idx).replace(/,\s*$/, '') + '}';
+	const m = head.match(/\{[\s\S]*\}/);
+	if (!m) return null;
+	let obj: any;
+	try { obj = JSON.parse(m[0]); } catch { return null; }
+	obj.visible_text = [...cleaned.slice(idx + '"visible_text"'.length).matchAll(/"([^"\n]{2,60})"/g)].map((x) => x[1]);
+	return obj;
+}
+
 function clampScore(n: unknown): number | null {
 	const v = typeof n === 'string' ? parseFloat(n) : n;
 	if (typeof v !== 'number' || Number.isNaN(v)) return null;
@@ -126,6 +150,23 @@ function clampScore(n: unknown): number | null {
 // ---------------------------------------------------------------------------
 // Validation — coerce a raw model object into a clean IngestExtraction
 // ---------------------------------------------------------------------------
+
+/** Noise the legacy corpus was cleaned of (backfill-visible-text.ts) — keep new rows consistent. */
+const VISIBLE_TEXT_BRANDS = new Set(['adidas', 'nike', 'wilson', 'molten', 'mizuno', 'asics', 'under armour', 'nba', 'baden']);
+
+/** Coerce a raw visible_text value: strings only, trimmed, deduped, capped; drop digit-only
+ * strings (scoreboards/clocks) and apparel brands. Same rules as the legacy backfill. */
+function coerceVisibleText(raw: unknown): string[] {
+	if (!Array.isArray(raw)) return [];
+	return [...new Set(
+		raw
+			.filter((t: unknown): t is string => typeof t === 'string')
+			.map((t: string) => t.trim())
+			.filter((t: string) => t.length >= 2 && t.length <= 60)
+			.filter((t: string) => !/^[\d\s:.\-#]+$/.test(t))
+			.filter((t: string) => !VISIBLE_TEXT_BRANDS.has(t.toLowerCase()))
+	)].slice(0, 12) as string[];
+}
 
 /** Public for unit tests: the validation/coercion layer with NO network call. */
 export function validateExtraction(raw: any, ctx: ExtractContext): IngestExtraction {
@@ -153,14 +194,7 @@ export function validateExtraction(raw: any, ctx: ExtractContext): IngestExtract
 				.filter((p: IngestPlayer) => p.jersey_number || p.team_color || p.action)
 		: [];
 
-	const visibleText: string[] = Array.isArray(raw?.visible_text)
-		? [...new Set(
-				raw.visible_text
-					.filter((t: unknown): t is string => typeof t === 'string')
-					.map((t: string) => t.trim())
-					.filter((t: string) => t.length >= 2 && t.length <= 60)
-			)].slice(0, 12) as string[]
-		: [];
+	const visibleText: string[] = coerceVisibleText(raw?.visible_text);
 
 	let caption = (raw?.caption ?? '').toString().trim();
 
@@ -240,7 +274,7 @@ export async function extractOne(
 
 	const j: any = await res.json();
 	const text: string = j.choices?.[0]?.message?.content ?? '';
-	const parsed = parseModelJson(text);
+	const parsed = parseWithRepair(text);
 	const extraction = validateExtraction(parsed ?? {}, opts);
 	if (!extraction.caption) extraction.caption = extractCaptionLenient(text);
 	if (!extraction.caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
