@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { TrendingUp, Eye, Search, BarChart3, Users, SearchX } from 'lucide-svelte';
+	import { TrendingUp, Eye, Search, BarChart3, Users, SearchX, BotOff } from 'lucide-svelte';
 	import { base } from '$app/paths';
 	import { createAlbumSlug } from '$lib/utils';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -42,7 +42,7 @@
 		</div>
 
 		<!-- Stats Overview -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 			<div style="animation: fade-scale-in 0.3s ease-out 0.1s both" class="bg-charcoal-900/50 border border-charcoal-700/50 rounded-lg p-6">
 					<div class="flex items-center gap-3 mb-2">
 						<Eye class="w-6 h-6 text-gold-500" />
@@ -76,6 +76,18 @@
 					</div>
 					<Typography variant="h2" class="text-3xl text-gold-500">
 						{formatNumber(data.popularPhotos.length)}
+					</Typography>
+				</div>
+
+			<div style="animation: fade-scale-in 0.3s ease-out 0.4s both" class="bg-charcoal-900/50 border border-charcoal-700/50 rounded-lg p-6">
+					<div class="flex items-center gap-3 mb-2">
+						<BotOff class="w-6 h-6 text-gold-500" />
+						<Typography variant="label" class="text-sm text-charcoal-400 uppercase">
+							Bot Traffic Filtered
+						</Typography>
+					</div>
+					<Typography variant="h2" class="text-3xl text-gold-500">
+						{formatNumber(data.stats.botFilteredCount)}
 					</Typography>
 				</div>
 		</div>

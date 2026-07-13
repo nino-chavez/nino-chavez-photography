@@ -48,10 +48,24 @@ export function keepTrackingAlive(platform: App.Platform | undefined, promise: P
 }
 
 /**
+ * Bump the daily bot-filtered-event counter (service-role, fire-and-forget).
+ * Visibility into gate volume without storing any per-request IP/UA — see
+ * 20260713150000_bot_filtered_events.sql.
+ */
+async function recordBotFiltered(): Promise<void> {
+	try {
+		const { error } = await createSupabaseAdminClient().rpc('increment_bot_filtered_count');
+		if (error) console.error('[Analytics] Failed to record bot-filtered event:', error.message);
+	} catch (error) {
+		console.error('[Analytics] Failed to record bot-filtered event:', error);
+	}
+}
+
+/**
  * Track a photo view (server-side only)
  */
 export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
-	if (isBotUserAgent(event.userAgent)) return;
+	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		// Views feed the popularity engine (engagement_events). Service-role write
 		// (RLS denies anon). The per-day dedup index makes a repeat view from the
@@ -85,7 +99,7 @@ export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
  * site-wide (homepage) arrivals.
  */
 export async function trackArrival(event: ArrivalEvent): Promise<void> {
-	if (isBotUserAgent(event.userAgent)) return;
+	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		const { error: dbError } = await createSupabaseAdminClient()
 			.from('engagement_events')
@@ -109,7 +123,7 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
  * Track a search query (server-side only)
  */
 export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
-	if (isBotUserAgent(event.userAgent)) return;
+	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		await createSupabaseAdminClient().from('search_queries').insert({
 			query_text: event.query_text,
@@ -164,6 +178,25 @@ export async function getTopSearchQueries(limit: number = 10) {
 	} catch (error) {
 		console.error('[Analytics] Failed to get top search queries:', error);
 		return [];
+	}
+}
+
+/**
+ * Get the total bot-filtered event count over the trailing N days
+ */
+export async function getBotFilteredCount(days: number = 30): Promise<number> {
+	try {
+		const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+		const { data, error } = await createSupabaseAdminClient()
+			.from('bot_filtered_events')
+			.select('count')
+			.gte('day', since);
+
+		if (error) throw error;
+		return (data || []).reduce((sum, row) => sum + Number(row.count), 0);
+	} catch (error) {
+		console.error('[Analytics] Failed to get bot-filtered count:', error);
+		return 0;
 	}
 }
 
