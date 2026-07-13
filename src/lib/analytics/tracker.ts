@@ -8,6 +8,7 @@
 
 import { matviewClient } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
+import { isBotUserAgent } from '$lib/analytics/bot-detection';
 
 export interface PhotoViewEvent {
 	photo_id: string;
@@ -15,18 +16,21 @@ export interface PhotoViewEvent {
 	referrer?: string; // collection slug, album key, or search query
 	album_key?: string; // enables album-level popularity roll-up
 	session_hash?: string; // per-visitor dedup (one view per visitor/photo/day)
+	userAgent: string; // gates the write below — crawler traffic never reaches engagement_events
 }
 
 export interface SearchQueryEvent {
 	query_text: string;
 	filters_used?: Record<string, any>;
 	results_count: number;
+	userAgent: string;
 }
 
 export interface ArrivalEvent {
 	albumKey?: string; // omitted for homepage arrivals (site-wide, not album-scoped)
 	src: string; // channel value carried on the incoming ?src= param (see $lib/utils/share-url)
 	sessionHash?: string;
+	userAgent: string;
 }
 
 /**
@@ -47,6 +51,7 @@ export function keepTrackingAlive(platform: App.Platform | undefined, promise: P
  * Track a photo view (server-side only)
  */
 export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
+	if (isBotUserAgent(event.userAgent)) return;
 	try {
 		// Views feed the popularity engine (engagement_events). Service-role write
 		// (RLS denies anon). The per-day dedup index makes a repeat view from the
@@ -80,6 +85,7 @@ export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
  * site-wide (homepage) arrivals.
  */
 export async function trackArrival(event: ArrivalEvent): Promise<void> {
+	if (isBotUserAgent(event.userAgent)) return;
 	try {
 		const { error: dbError } = await createSupabaseAdminClient()
 			.from('engagement_events')
@@ -103,6 +109,7 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
  * Track a search query (server-side only)
  */
 export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
+	if (isBotUserAgent(event.userAgent)) return;
 	try {
 		await createSupabaseAdminClient().from('search_queries').insert({
 			query_text: event.query_text,

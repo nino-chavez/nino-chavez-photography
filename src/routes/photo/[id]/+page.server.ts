@@ -151,9 +151,10 @@ export const load: PageServerLoad = async ({ params, url, request, getClientAddr
 	// via the hashed session. album_key enables the album-level roll-up.
 	// keepTrackingAlive: without waitUntil the Workers runtime cancels this
 	// promise when the response completes, silently dropping the view.
+	const userAgent = request.headers.get('user-agent') ?? '';
 	keepTrackingAlive(
 		platform,
-		computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
+		computeSessionHash(getClientAddress(), userAgent).then(
 			(sessionHash) =>
 				trackPhotoView({
 					photo_id: photoData.photo_id,
@@ -161,6 +162,7 @@ export const load: PageServerLoad = async ({ params, url, request, getClientAddr
 					referrer: referrer || undefined,
 					album_key: photoData.album_key ?? undefined,
 					session_hash: sessionHash,
+					userAgent,
 				})
 		)
 	);

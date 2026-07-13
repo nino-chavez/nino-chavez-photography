@@ -14,8 +14,9 @@ import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchP
 import { trackSearchQuery, keepTrackingAlive } from '$lib/analytics/tracker';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, parent, setHeaders, platform }) => {
+export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, request }) => {
   setHeaders({ 'cache-control': 's-maxage=60, stale-while-revalidate=120' });
+  const userAgent = request.headers.get('user-agent') ?? '';
 
   // Get cached data from parent layout
   const { sports, categories, baseFilterCounts } = await parent();
@@ -111,6 +112,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform }
         query_text: `jersey #${jerseyFilter}`,
         filters_used: sportFilter ? { sport: sportFilter } : undefined,
         results_count: totalCount,
+        userAgent,
       }));
     }
   } else if (searchQuery) {
@@ -129,6 +131,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform }
         query_text: searchQuery,
         filters_used: hasActiveFilters ? filterOptions : undefined,
         results_count: totalCount,
+        userAgent,
       }));
     }
   } else {

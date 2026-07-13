@@ -99,10 +99,11 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 	// view tracking — never awaited, never allowed to affect the response.
 	const src = url.searchParams.get('src');
 	if (src && SRC_PARAM_PATTERN.test(src)) {
+		const userAgent = request.headers.get('user-agent') ?? '';
 		keepTrackingAlive(
 			platform,
-			computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
-				(sessionHash) => trackArrival({ albumKey, src, sessionHash })
+			computeSessionHash(getClientAddress(), userAgent).then(
+				(sessionHash) => trackArrival({ albumKey, src, sessionHash, userAgent })
 			)
 		);
 	}
