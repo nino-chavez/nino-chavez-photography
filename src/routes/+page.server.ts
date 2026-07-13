@@ -34,10 +34,11 @@ export const load: PageServerLoad = async ({ setHeaders, url, request, getClient
   // window will undercount. Not fixed here (out of scope — don't change caching behavior).
   const src = url.searchParams.get('src');
   if (src && SRC_PARAM_PATTERN.test(src)) {
+    const userAgent = request.headers.get('user-agent') ?? '';
     keepTrackingAlive(
       platform,
-      computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '').then(
-        (sessionHash) => trackArrival({ src, sessionHash })
+      computeSessionHash(getClientAddress(), userAgent).then(
+        (sessionHash) => trackArrival({ src, sessionHash, userAgent })
       )
     );
   }
