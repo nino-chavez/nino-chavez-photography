@@ -6,7 +6,7 @@
 
 import { base } from '$app/paths';
 import { redirect, error } from '@sveltejs/kit';
-import { getPopularPhotos, getTopSearchQueries } from '$lib/analytics/tracker';
+import { getPopularPhotos, getTopSearchQueries, getBotFilteredCount } from '$lib/analytics/tracker';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
@@ -78,6 +78,10 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	// Get recent search queries
 	const recentSearches = await getTopSearchQueries(20);
+
+	// Bot-filtered events: crawler hits the isbot gate suppressed before they
+	// reached engagement_events (see 20260713150000_bot_filtered_events.sql).
+	const botFilteredCount = await getBotFilteredCount(30);
 
 	// Get view source distribution
 	const { data: viewSourceData } = await createSupabaseAdminClient()
@@ -182,6 +186,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			totalViews: totalViews || 0,
 			totalSearches: totalSearches || 0,
 			viewSourceCounts,
+			botFilteredCount,
 		},
 	};
 };
