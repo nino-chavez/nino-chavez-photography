@@ -204,7 +204,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 ### Photo & Image Handling
 
-- [ ] Uses SmugMug URL optimizer for image sizes
+- [ ] Uses the Cloudflare Images URL builder (`cfImageUrl`) for variant sizes
 - [ ] Includes `fetchpriority="high"` on LCP images
 - [ ] Reserves space with `aspect-ratio` to prevent CLS
 - [ ] Uses appropriate thumbnail sizes for grids
@@ -214,8 +214,8 @@ export const load: PageServerLoad = async ({ fetch }) => {
 <!-- CORRECT -->
 <div class="relative w-full" style="aspect-ratio: {width}/{height}">
   <img
-    src={getOptimizedSmugMugUrl(url, 'download')}
-    srcset={getSmugMugSrcSet(url)}
+    src={cfImageUrl(photo.cf_image_id, 'large')}
+    srcset={cfSrcSet(photo.cf_image_id)}
     sizes="(max-width: 768px) 100vw, 896px"
     fetchpriority="high"
     loading="eager"
@@ -295,7 +295,7 @@ Nit: Consider renaming `x` to `photoCount` for clarity.
 Question: Why do we need to fetch albums here if we already have them from the layout?
 
 # FYI
-FYI: There's a helper in `$lib/utils/smugmug-image-optimizer` for this: `getOptimizedSmugMugUrl()`.
+FYI: There's a helper in `$lib/utils/cloudflare-images` for this: `cfImageUrl()` / `cfSrcSet()`.
 ```
 
 ### Tone Guidelines

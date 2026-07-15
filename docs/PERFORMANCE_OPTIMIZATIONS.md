@@ -412,9 +412,9 @@ npm run preview
 # SEO: 100
 ```
 
-### In Production (Vercel)
+### In Production (Cloudflare Pages)
 
-1. **Vercel Analytics** - Monitor Web Vitals
+1. **Cloudflare Web Analytics** - Monitor Web Vitals
 2. **Supabase Logs** - Check query performance
 3. **Browser DevTools** - Use Performance tab
 
@@ -435,12 +435,12 @@ npm run preview
 - Background sync
 
 ### 2. Image CDN
-- Vercel Image Optimization
+- Cloudflare Images resizing/format optimization (already in use)
 - Automatic WebP/AVIF conversion
 - Responsive srcset
 
 ### 3. Edge Caching
-- Cache at Vercel Edge Network
+- Cache at the Cloudflare edge via `Cache-Control` headers (see ADR-0001)
 - Stale-while-revalidate strategy
 - Geographic distribution
 

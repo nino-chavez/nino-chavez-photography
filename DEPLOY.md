@@ -7,9 +7,12 @@
 - **Preview URL pattern**: TODO
 
 ## Deploy trigger
-- **Canonical**: TODO — verify whether git-integrated OR wrangler-only. rally-hq turned out to be wrangler-only despite similar config; check before assuming.
+- **Canonical**: CLAUDE.md and README state a git-integrated Cloudflare Pages project — a push
+  to `main` builds and deploys, no GitHub Actions. The actual trigger is a Pages *dashboard*
+  setting; confirm there before relying on it (rally-hq looked git-integrated but was
+  wrangler-only despite similar config).
 - **Manual fallback**: `npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography`
-- **Build time**: TODO
+- **Build time**: TODO — confirm in the CF Pages dashboard
 
 ## Database
 - **Provider**: Supabase — project `skywzpcekhntecegyjoj`, **already linked** (`supabase/.temp/`).
@@ -33,8 +36,11 @@
 - `cloudflare-worker/album-zip/` — separate Worker for ZIP downloads. Deploy with `npm run worker:deploy`.
 
 ## Environment variables
-- **Where they live**: Cloudflare Pages dashboard (Supabase keys, etc.)
-- **Required for deploy**: TODO
+- **Where they live**: Cloudflare Pages dashboard (set as Pages secrets)
+- **Required at runtime** (see `.env.example` for the full set): `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only, bypasses RLS), and
+  `OPENROUTER_API_KEY` (runtime embeddings for semantic search). Ingest/upload tooling also
+  needs `CF_ACCOUNT_ID` + `CF_IMAGES_API_TOKEN`.
 
 ## Domains
 - photography.ninochavez.co

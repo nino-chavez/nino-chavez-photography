@@ -177,23 +177,22 @@ if (dailyCost > 10) {
 
 ## Production Hardening (Optional Upgrades)
 
-### 1. Vercel KV for Rate Limiting
+### 1. Cloudflare KV for Rate Limiting
 
-Replace in-memory store with Redis:
+The current limiter is the in-memory store in `src/routes/api/chat/rate-limit.ts`. For a
+durable, multi-region limiter, back it with a Cloudflare KV binding instead:
 
 ```typescript
-import { kv } from '@vercel/kv';
-
-async function checkRateLimit(ip: string) {
-  const key = `rate-limit:${ip}:${Date.now()}`;
-  const count = await kv.incr(key);
-  await kv.expire(key, 60); // 1 minute
+// KV namespace bound as `RATE_LIMIT` in the Pages project (wrangler.toml / dashboard)
+async function checkRateLimit(ip: string, env) {
+  const key = `rate-limit:${ip}`;
+  const count = Number(await env.RATE_LIMIT.get(key)) + 1;
+  await env.RATE_LIMIT.put(key, String(count), { expirationTtl: 60 }); // 1 minute
   return count <= 10;
 }
 ```
 
-**Cost:** $1/month (Hobby plan)
-**Benefit:** Survives server restarts, multi-region support
+**Benefit:** Survives isolate recycling, shared across all edge locations
 
 ### 2. Bot Detection
 
@@ -253,8 +252,8 @@ gcloud services quota update \
 
 2. **Check logs for attack pattern:**
    ```bash
-   # Vercel logs
-   vercel logs --limit 1000 | grep "Rate limit exceeded"
+   # Cloudflare Pages deployment logs
+   wrangler pages deployment tail --project-name nino-chavez-photography | grep "Rate limit exceeded"
    ```
 
 3. **Add IP to blocklist:**
@@ -281,7 +280,7 @@ gcloud services quota update \
 | SQL Injection | NONE | Parameterized queries |
 | DoS | MEDIUM | Rate limiting helps, but not perfect |
 
-**Recommendation:** Current protections are adequate for public beta. Monitor daily costs and add Vercel KV if traffic grows.
+**Recommendation:** Current protections are adequate for public beta. Monitor daily costs and add Cloudflare KV if traffic grows.
 
 ---
 
@@ -341,7 +340,7 @@ test('rate limiting', async ({ request }) => {
 
 **Production Ready:** YES ✅
 
-Your chat is **secure enough for public deployment** with current traffic levels. Monitor costs and upgrade to Vercel KV if usage grows significantly.
+Your chat is **secure enough for public deployment** with current traffic levels. Monitor costs and upgrade to Cloudflare KV if usage grows significantly.
 
 ---
 

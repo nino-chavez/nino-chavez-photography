@@ -33,7 +33,7 @@
              │ (+page.server.ts)
              ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           VERCEL EDGE                                        │
+│                           CLOUDFLARE PAGES                                   │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
 │  │                    SvelteKit Server                                  │    │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │    │
@@ -70,7 +70,7 @@
 | **Icons** | lucide-svelte | Icon library |
 | **Database** | Supabase PostgreSQL | Photo metadata, user data |
 | **Photo CDN** | Cloudflare Images | Original photo hosting |
-| **Hosting** | Vercel | Edge deployment |
+| **Hosting** | Cloudflare Pages | Edge deployment (`adapter-cloudflare`) |
 | **Analytics** | Cloudflare Web Analytics | Privacy-first analytics |
 
 ---

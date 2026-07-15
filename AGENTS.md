@@ -1,17 +1,19 @@
 # Nino Chavez Gallery
 > Photography portfolio with ~20K volleyball action sports photos
 
-## ⚠️ Active north-star rebuild — read before touching the data model
-The data model + AI pipeline are being rebuilt to the contract in
-`.agent-os/specs/vision-extraction-identity-vnext/NORTH-STAR-REDESIGN.md` (authoritative).
+## Data-model invariants — read before touching the data model or AI pipeline
+The data model and AI ingest were rebuilt to the north-star contract in
+`.agent-os/specs/vision-extraction-identity-vnext/NORTH-STAR-REDESIGN.md` (the #10 ingest
+cutover, 2026-06). These are standing invariants, not an in-flight migration:
 Core rule: **sport/event/team/date are KNOWN facts set at the album level — never guessed
-per photo.** `albums.sport` is the sport authority (Slice 1, live); a trigger forces
+per photo.** `albums.sport` is the sport authority; a trigger forces
 `photo_metadata.sport_type` to mirror it. Enums come from `src/lib/ai/taxonomy.ts` (single
 source; `npm run check` runs the drift guard).
 **No-cruft principle (operator directive):** the committed system must read as if this design
-was always there — no transitional/legacy artifacts survive a commit. Anything deprecated is
-tracked to removal in `.agent-os/specs/vision-extraction-identity-vnext/DEPRECATED.md`. If you
-find a deprecated/legacy path still live, REMOVE it per the ledger — never revive it.
+was always there — no transitional/legacy artifacts survive a commit. Remaining deprecations
+(e.g. the merge-gated `players[]` JSONB drop) are tracked to removal in
+`.agent-os/specs/vision-extraction-identity-vnext/DEPRECATED.md`. If you find a
+deprecated/legacy path still live, REMOVE it per the ledger — never revive it.
 
 ## Docs Index
 
