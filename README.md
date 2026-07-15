@@ -1,353 +1,129 @@
 # Nino Chavez Gallery
 
-A high-performance photography portfolio showcasing professional volleyball action sports photography. Built with modern web technologies and optimized for scale (~20,000 photos).
+<img src="static/images/hero/hero-1-desktop.webp" alt="Black-and-white courtside candid: two volleyball players embrace, a blurred gym court behind them." width="100%">
 
-🌐 **Live Site:** [photography.ninochavez.co](https://photography.ninochavez.co)
+**MOTION. EMOTION. Frame by Frame.**
+
+A high-performance photography portfolio for professional volleyball action-sports work, built to scale to ~20,000 AI-enriched photos.
+
+**Live:** [photography.ninochavez.co](https://photography.ninochavez.co)
 
 ## Features
 
-- **Dynamic Gallery Views**
-  - Grid gallery with advanced filtering (sport type, category, quality)
-  - Timeline view organized by date
-  - Album/collection browsing
-  - Full-featured lightbox with keyboard navigation
+- **Gallery & discovery** — grid gallery with filtering (sport, category, quality), timeline view, album and collection browsing, a keyboard-navigable lightbox, autocomplete search, and a localStorage favorites system.
+- **AI photo enrichment** — every photo is auto-tagged by Google Gemini (`@ai-sdk/google`): sport type, category, emotion, action intensity, and a quality score that drives portfolio-worthy sorting. EXIF is read with `exif-reader`; resizing and transforms via `sharp` and Cloudflare Images.
+- **SmugMug ingest** — albums are imported from SmugMug over OAuth 1.0a (`npm run ingest:album`), then enriched and indexed.
+- **Album ZIP downloads** — a dedicated Cloudflare Worker (`cloudflare-worker/album-zip`) streams multi-photo ZIPs.
+- **Dynamic share cards** — per-route Open Graph images rendered at the edge with `@cf-wasm/og` (charcoal + gold, hero photo + wordmark).
+- **Performance-first** — SvelteKit SSR, comprehensive Postgres indexing, lazy-loaded images, and in-memory caching for expensive queries; Lighthouse target >90.
+- **Accessible & responsive** — mobile-first Tailwind, dark mode, WCAG 2.1 AA components, with automated axe audits in the E2E suite.
 
-- **Search & Discovery**
-  - Autocomplete search across photos
-  - Filter by sport type, category, emotion, and action intensity
-  - Sort by date, quality score, or random
-  - Favorites system with localStorage persistence
+## Tech stack
 
-- **Performance Optimized**
-  - Server-side rendering with SvelteKit
-  - Optimized database queries with comprehensive indexing
-  - Lazy-loaded images with Supabase transforms
-  - In-memory caching for expensive queries
-  - Target Lighthouse score >90
+- **Frontend** — SvelteKit 2 (SSR) · Svelte 5 (runes) · Tailwind CSS 4 · Lucide
+- **Data** — Supabase (Postgres + Storage) · `@tanstack/svelte-query`
+- **AI & imaging** — Google Gemini (`@ai-sdk/google`) · `exif-reader` · `sharp` · Cloudflare Images
+- **Platform** — Cloudflare Pages (`@sveltejs/adapter-cloudflare`) · Cloudflare Workers · R2
+- **Tooling** — TypeScript (strict) · Vite · Playwright (E2E + accessibility)
 
-- **Responsive Design**
-  - Mobile-first approach with Tailwind CSS
-  - Smooth animations with svelte-motion
-  - Accessible components (WCAG 2.1 AA compliant)
-  - Dark mode support
-
-## Tech Stack
-
-### Frontend
-- **[SvelteKit 2.x](https://kit.svelte.dev/)** - Meta-framework with SSR
-- **[Svelte 5](https://svelte.dev/)** - UI framework with runes API
-- **[Tailwind CSS 4](https://tailwindcss.com/)** - Utility-first styling
-- **[svelte-motion](https://github.com/mattjennings/svelte-motion)** - Animation library
-- **[Lucide Svelte](https://lucide.dev/)** - Icon library
-
-### Backend & Data
-- **[Supabase](https://supabase.com/)** - PostgreSQL database and storage
-- **[@tanstack/svelte-query](https://tanstack.com/query/latest)** - Client-side data fetching
-- **Vercel** - Deployment platform (nodejs20.x)
-
-### Development
-- **TypeScript** - Strict mode, type-safe
-- **Vite 7** - Build tool and dev server
-- **Playwright** - E2E testing with accessibility audits
-
-## Project Structure
+## Project structure
 
 ```
-gallery/
-├── src/
-│   ├── lib/
-│   │   ├── components/     # UI components
-│   │   │   ├── filters/    # Filter controls
-│   │   │   ├── gallery/    # Gallery components
-│   │   │   ├── layout/     # Header, Footer
-│   │   │   └── ui/         # Reusable UI primitives
-│   │   ├── stores/         # Svelte stores
-│   │   ├── supabase/       # Database clients
-│   │   ├── motion-tokens.ts # Animation presets
-│   │   └── utils.ts        # Utilities
-│   ├── routes/             # SvelteKit routes
-│   │   ├── albums/         # Album pages
-│   │   ├── collections/    # Collection pages
-│   │   ├── explore/        # Main gallery
-│   │   ├── favorites/      # Favorites page
-│   │   ├── photo/[id]/     # Photo detail
-│   │   └── timeline/       # Timeline view
-│   └── types/              # TypeScript definitions
-├── database/               # SQL scripts and migrations
-├── docs/                   # Technical documentation
-├── scripts/                # Utility scripts
-└── tests/                  # E2E tests
+src/
+├── lib/
+│   ├── components/     # UI: filters/, gallery/, layout/, ui/
+│   ├── stores/         # Svelte 5 class-based stores (runes)
+│   ├── supabase/       # server (service_role) + client (anon) split
+│   ├── server/         # edge helpers, incl. OG card rendering
+│   └── motion-tokens.ts
+├── routes/             # albums/ collections/ explore/ favorites/ photo/[id]/ timeline/
+└── types/
+cloudflare-worker/album-zip/   # companion Worker for ZIP downloads
+database/                      # SQL scripts and indexes
+supabase/migrations/           # timestamped migrations
+scripts/                       # ingest, taxonomy, utilities
+docs/                          # technical documentation
 ```
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- **Node.js** 20.x or higher
-- **pnpm** (recommended) or npm
-- **Supabase account** ([sign up free](https://supabase.com))
+- Node.js 20+
+- npm
+- A Supabase project ([free tier](https://supabase.com))
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/gallery.git
-   cd gallery
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-
-   Edit `.env` and add your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key-here
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
-   ```
-
-   Get credentials from: [Supabase Dashboard > Settings > API](https://app.supabase.com/project/_/settings/api)
-
-4. **Set up database**
-
-   Run the SQL scripts in your Supabase SQL editor:
-   ```bash
-   # In Supabase Dashboard > SQL Editor
-   # 1. Create the photo_metadata table (check database/ folder)
-   # 2. Run database/performance-indexes.sql for optimized queries
-   ```
-
-5. **Start development server**
-   ```bash
-   pnpm dev
-   ```
-
-   Open [http://localhost:5173](http://localhost:5173)
-
-## Development
-
-### Available Scripts
+### Setup
 
 ```bash
-# Development server with hot reload
-pnpm dev
-
-# Type checking (recommended before commits)
-pnpm check
-
-# Type checking in watch mode
-pnpm check:watch
-
-# Production build
-pnpm build
-
-# Preview production build locally
-pnpm preview
-
-# Run E2E tests
-pnpm test
-
-# Run tests with UI
-pnpm test:ui
-
-# Debug tests
-pnpm test:debug
+git clone https://github.com/nino-chavez/nino-chavez-photography.git
+cd nino-chavez-photography
+npm install
+cp .env.example .env.local     # then fill in your Supabase keys
+npm run dev                     # http://localhost:5173
 ```
 
-### Key Commands
-
-```bash
-# Type check
-pnpm check
-
-# Build and preview
-pnpm build && pnpm preview
-
-# Run all tests
-pnpm test
-```
-
-## Database Schema
-
-The project uses a single primary table `photo_metadata` with comprehensive indexing for performance.
-
-**Key Columns:**
-- `photo_id` (Primary Key)
-- `image_key`, `ImageUrl`, `ThumbnailUrl`, `OriginalUrl`
-- `sport_type`, `photo_category`, `emotion`, `action_intensity`
-- `quality_score`, `portfolio_worthy`, `sharpness`
-- `upload_date`, `photo_date`, `enriched_at`
-
-**Performance Indexes:**
-- Sport/category filtering (10x faster)
-- Quality score sorting (8x faster)
-- Composite indexes for common filter combinations
-
-See `database/performance-indexes.sql` for full schema.
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. **Connect your repository** to Vercel
-
-2. **Configure environment variables** in Vercel project settings:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-
-3. **Deploy**
-   ```bash
-   git push origin main
-   ```
-
-Vercel will automatically build and deploy on push.
-
-### Other Platforms
-
-The project uses `@sveltejs/adapter-vercel` by default. For other platforms:
-
-1. Install appropriate adapter:
-   ```bash
-   pnpm add -D @sveltejs/adapter-node  # Node server
-   pnpm add -D @sveltejs/adapter-static # Static hosting
-   ```
-
-2. Update `svelte.config.js`:
-   ```javascript
-   import adapter from '@sveltejs/adapter-node';
-   ```
-
-See [SvelteKit adapters docs](https://kit.svelte.dev/docs/adapters) for details.
-
-## Configuration
-
-### Environment Variables
+Environment variables live in `.env.local` locally and in the Cloudflare Pages dashboard in production. See `.env.example` for the full list; the essentials:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key (browser-safe) |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | Service role key for server-side ops |
-| `VITE_BASE_PATH` | No | Base path for reverse proxy deployment |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | Service-role key for server load functions (bypasses RLS) |
+| `VITE_BASE_PATH` | No | Base path for reverse-proxy deployment |
 
-### Performance Tuning
+## Scripts
 
-The project includes several performance optimizations:
+| Command | What it does |
+|---------|--------------|
+| `npm run dev` | Vite dev server |
+| `npm run check` | `svelte-check` + taxonomy check — run before commits |
+| `npm run build` | Production build (output `.svelte-kit/cloudflare`) |
+| `npm run preview` | Preview the production build locally |
+| `npm test` | Playwright E2E (includes axe accessibility audits) |
+| `npm run ingest:album` | Import and enrich a SmugMug album |
+| `npm run worker:deploy` | Deploy the `album-zip` Worker |
 
-- **Layout caching:** Sport/category distributions cached for 5 minutes
-- **Database indexes:** Comprehensive covering indexes for common queries
-- **Image optimization:** Supabase transforms for WebP/AVIF
-- **Code splitting:** Route-based automatic code splitting
+## Database
 
-See `src/routes/+layout.server.ts` for caching configuration.
+A single primary table, `photo_metadata`, with comprehensive indexing for filter and sort performance.
 
-## Coding Standards
+- **Identity / URLs** — `photo_id` (PK), `image_key`, `ImageUrl`, `ThumbnailUrl`, `OriginalUrl`
+- **AI-derived facets** — `sport_type`, `photo_category`, `emotion`, `action_intensity`, `quality_score`, `portfolio_worthy`, `sharpness`
+- **Dates** — `upload_date`, `photo_date`, `enriched_at`
 
-This project follows strict coding standards for consistency and quality:
+Migrations live in `supabase/migrations/`; see `database/performance-indexes.sql` for the covering indexes.
 
-- **TypeScript:** Strict mode, explicit types, no `any`
-- **Svelte 5:** Runes API (`$state`, `$derived`, `$effect`, `$props`)
-- **Event Handling:** Proper propagation patterns for nested elements
-- **Accessibility:** WCAG 2.1 AA compliance, semantic HTML
+> Unprocessed photos have `sharpness = null` — always exclude them in queries.
 
-See full documentation:
-- [CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)
-- [EVENT_HANDLING.md](./docs/EVENT_HANDLING.md)
-- [COMPONENT_PATTERNS.md](./docs/COMPONENT_PATTERNS.md)
+## Deployment
 
-## Testing
+Deployed to **Cloudflare Pages** via `@sveltejs/adapter-cloudflare` (build output `.svelte-kit/cloudflare`); no GitHub Actions. The `album-zip` companion Worker deploys separately with `npm run worker:deploy`, and production environment variables are set in the Cloudflare Pages dashboard.
 
-### E2E Tests with Playwright
+See **[DEPLOY.md](./DEPLOY.md)** for the canonical deploy procedure, Supabase migration steps, and preflight checks.
 
-```bash
-# Run all tests
-pnpm test
+## Performance targets
 
-# Run with UI
-pnpm test:ui
+- Lighthouse > 90
+- First Contentful Paint < 1.5s · Largest Contentful Paint < 2.5s · Time to Interactive < 3.5s
 
-# Debug mode
-pnpm test:debug
+## Coding standards & docs
 
-# View test report
-pnpm test:report
-```
+Strict TypeScript (no `any`), Svelte 5 runes (`$state`/`$derived`/`$effect`/`$props`), and WCAG 2.1 AA. Project references:
 
-### Accessibility Testing
+- [docs/CODING_STANDARDS.md](./docs/CODING_STANDARDS.md) · [docs/EVENT_HANDLING.md](./docs/EVENT_HANDLING.md) · [docs/COMPONENT_PATTERNS.md](./docs/COMPONENT_PATTERNS.md)
+- [CLAUDE.md](./CLAUDE.md) · [AGENTS.md](./AGENTS.md) · [DEPLOY.md](./DEPLOY.md)
 
-Tests include automated accessibility audits using @axe-core/playwright.
+## Architecture notes
 
-## Contributing
-
-This is a personal portfolio project, but contributions are welcome!
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Run type checks (`pnpm check`)
-4. Commit your changes (`git commit -m 'Add amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
-
-Please ensure:
-- Type checks pass (`pnpm check`)
-- Code follows project standards (see `docs/CODING_STANDARDS.md`)
-- E2E tests pass (`pnpm test`)
-
-## Documentation
-
-- **[CLAUDE.md](./CLAUDE.md)** - AI development instructions
-- **[AGENTS.md](./AGENTS.md)** - Agent-specific guidance
-- **[docs/](./docs/)** - Technical documentation
-- **[.agent-os/guides/](./.agent-os/guides/)** - Integration guides
-
-## Performance Targets
-
-- **Lighthouse Score:** >90
-- **First Contentful Paint:** <1.5s
-- **Largest Contentful Paint:** <2.5s
-- **Time to Interactive:** <3.5s
-
-## Architecture Decisions
-
-### Why SvelteKit?
-
-Migrated from Next.js/React for:
-- Simpler mental model and less boilerplate
-- Better performance (smaller bundle, faster hydration)
-- True reactivity with runes API
-- Excellent TypeScript integration
-
-### Why Supabase?
-
-- PostgreSQL with comprehensive tooling
-- Built-in storage with image transforms
-- Real-time subscriptions (future feature)
-- Easy RLS policies for multi-tenant (future)
-
-### Why Tailwind CSS?
-
-- Rapid development with utility classes
-- Excellent responsive design utilities
-- Tree-shaking for minimal CSS output
-- Consistent design system
+- **SvelteKit over Next.js/React** — smaller bundles, faster hydration, runes reactivity, strong TypeScript integration. React remains only for edge OG-card rendering via Satori.
+- **Supabase** — Postgres with first-class tooling, storage with image transforms, and headroom for RLS and realtime.
+- **Cloudflare** — Pages, Workers, R2, and Images keep delivery, ZIP streaming, and edge OG generation on one platform.
 
 ## License
 
-This project is private and proprietary. All rights reserved.
+Private and proprietary. All rights reserved.
 
 ## Contact
 
-**Nino Chavez**
-- Website: [photography.ninochavez.co](https://photography.ninochavez.co)
-- GitHub: [@nino-chavez](https://github.com/nino-chavez)
-
----
-
-**Built with ❤️ using SvelteKit**
+**Nino Chavez** — [photography.ninochavez.co](https://photography.ninochavez.co) · [@nino-chavez](https://github.com/nino-chavez)
