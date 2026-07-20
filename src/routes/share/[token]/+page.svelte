@@ -99,4 +99,5 @@
 	photos={data.photos}
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
+	viewSource="direct"
 />

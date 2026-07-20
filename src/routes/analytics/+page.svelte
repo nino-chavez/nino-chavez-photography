@@ -8,6 +8,19 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Album Reach now carries every album with 30-day activity (no server-side
+	// top-N), so a text filter replaces the old "hope it's in the top 20" cutoff.
+	let albumSearch = $state('');
+	const filteredAlbumReach = $derived(
+		albumSearch.trim()
+			? data.albumReach.filter((album) =>
+					(album.album_name ?? album.album_key)
+						.toLowerCase()
+						.includes(albumSearch.trim().toLowerCase())
+				)
+			: data.albumReach
+	);
+
 	// Format number with commas
 	function formatNumber(num: number): string {
 		return num.toLocaleString();
@@ -116,9 +129,13 @@
 
 		<!-- Popular Photos Grid -->
 		<div style="animation: fade-in 0.3s ease-out 0.5s both" class="mb-8">
-			<Typography variant="h2" class="text-2xl mb-4 flex items-center gap-2">
+			<Typography variant="h2" class="text-2xl mb-1 flex items-center gap-2">
 				<TrendingUp class="w-6 h-6 text-gold-500" />
 				Most Popular Photos
+			</Typography>
+			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">
+				Ranked by recency-weighted engagement (downloads/favorites/shares outweigh views), not raw view
+				count — a brand-new download can outrank an older photo with more views.
 			</Typography>
 
 			{#if data.popularPhotos.length > 0}
@@ -210,18 +227,33 @@
 			style="animation: fade-in 0.3s ease-out 0.7s both"
 			class="bg-charcoal-900/50 border border-charcoal-700/50 rounded-lg p-6 mt-8"
 		>
-			<Typography variant="h3" class="text-xl mb-1 flex items-center gap-2">
-				<Users class="w-5 h-5 text-gold-500" />
-				Album Reach — Last 30 Days
-			</Typography>
+			<div class="flex items-center justify-between gap-4 mb-1 flex-wrap">
+				<Typography variant="h3" class="text-xl flex items-center gap-2">
+					<Users class="w-5 h-5 text-gold-500" />
+					Album Reach — Last 30 Days
+				</Typography>
+				{#if data.albumReach.length > 0}
+					<input
+						type="search"
+						bind:value={albumSearch}
+						placeholder="Filter albums..."
+						class="bg-charcoal-800/50 border border-charcoal-700 rounded-lg px-3 py-1.5 text-sm text-charcoal-200 placeholder:text-charcoal-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50"
+						aria-label="Filter albums by name"
+					/>
+				{/if}
+			</div>
 			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">
 				After you shared each album, who came and what they did.
+				{#if data.albumReach.length > 0}
+					Showing {formatNumber(filteredAlbumReach.length)} of {formatNumber(data.albumReach.length)}
+					{data.albumReach.length === 1 ? 'album' : 'albums'} with activity.
+				{/if}
 			</Typography>
 
-			{#if data.albumReach.length > 0}
-				<div class="overflow-x-auto">
+			{#if filteredAlbumReach.length > 0}
+				<div class="overflow-x-auto max-h-[32rem] overflow-y-auto">
 					<table class="w-full text-sm border-collapse">
-						<thead>
+						<thead class="sticky top-0 bg-charcoal-900">
 							<tr class="border-b border-charcoal-800">
 								<th class="text-left py-3 px-4 text-charcoal-400 font-medium">Album</th>
 								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Visitors</th>
@@ -233,7 +265,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-charcoal-800">
-							{#each data.albumReach as album}
+							{#each filteredAlbumReach as album}
 								<tr>
 									<td class="py-3 px-4 text-charcoal-200">
 										{#if album.album_name}
@@ -259,6 +291,12 @@
 							{/each}
 						</tbody>
 					</table>
+				</div>
+			{:else if data.albumReach.length > 0}
+				<div class="text-center py-12 bg-charcoal-900/30 rounded-lg">
+					<Typography variant="body" class="text-charcoal-500">
+						No albums match "{albumSearch}".
+					</Typography>
 				</div>
 			{:else}
 				<div class="text-center py-12 bg-charcoal-900/30 rounded-lg">

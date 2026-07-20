@@ -393,6 +393,7 @@
 	loadingMore={loadingMore}
 	totalCount={searchQuery.trim() ? undefined : data.totalCount}
 	indexOffset={0}
+	viewSource="album"
 />
 
 <!-- Video Player -->

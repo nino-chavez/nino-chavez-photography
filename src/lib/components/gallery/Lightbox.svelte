@@ -16,6 +16,7 @@
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
 	import { generatePhotoTitle, generatePhotoCaption, generateMetadataSummary } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { trackEngagement } from '$lib/analytics/client';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -31,6 +32,9 @@
 		loadingMore?: boolean;
 		totalCount?: number;
 		indexOffset?: number;
+		// Where this lightbox is opened from — carried onto the 'view' engagement
+		// event so album-reach/popularity attribution reflects the real context.
+		viewSource?: 'explore' | 'collection' | 'album' | 'direct' | 'search' | 'timeline' | 'favorites';
 	}
 
 	let {
@@ -44,7 +48,8 @@
 		onLoadMore,
 		loadingMore = false,
 		totalCount,
-		indexOffset = 0
+		indexOffset = 0,
+		viewSource = 'direct'
 	}: Props = $props();
 
 	let zoomLevel = $state(1);
@@ -353,6 +358,18 @@
 		// Reading image_key to track photo changes
 		const _key = photo.image_key;
 		imageLoading = true;
+	});
+
+	// Record a view for whatever photo is on screen while the lightbox is open.
+	// This is the only "the visitor actually looked at this photo" signal for
+	// every route that opens photos in-place instead of navigating to
+	// /photo/[id] (album grids, explore, timeline, favorites, collections,
+	// share links) — without it, downloading/favoriting/sharing a photo here
+	// could happen with zero recorded views, which is exactly what fed the
+	// "0 views · 1 dl" readout on the analytics dashboard.
+	$effect(() => {
+		if (!open || !photo) return;
+		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
 	});
 
 	function handleImageLoad() {

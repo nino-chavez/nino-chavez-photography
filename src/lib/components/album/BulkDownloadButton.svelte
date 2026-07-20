@@ -2,6 +2,7 @@
 	import { Download, X } from 'lucide-svelte';
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
+	import { trackEngagement } from '$lib/analytics/client';
 	import type { CFVariant } from '$lib/utils/cloudflare-images';
 
 	interface Props {
@@ -20,6 +21,14 @@
 
 	function slugify(text: string): string {
 		return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+	}
+
+	// Bulk zip downloads previously recorded no engagement signal at all — every
+	// per-photo download in an album's ZIP was invisible to the popularity engine
+	// and to Album Reach. Album-scoped (photo_id is inherently ambiguous for a
+	// whole-album archive); the per-day dedup index still caps repeat clicks.
+	function trackBulkDownload(): void {
+		trackEngagement('download', { albumKey, source: 'bulk-zip' });
 	}
 
 	function triggerBrowserDownload(blob: Blob, filename: string): void {
@@ -53,6 +62,7 @@
 			if (signal.aborted) return false;
 
 			triggerBrowserDownload(blob, `${slugify(albumName)}.zip`);
+			trackBulkDownload();
 			return true;
 		} catch {
 			return false;
@@ -139,6 +149,7 @@
 			if (abortController?.signal.aborted) return;
 
 			triggerBrowserDownload(blob, `${slugify(albumName)}.zip`);
+			trackBulkDownload();
 		} catch (err) {
 			if ((err as Error).name !== 'AbortError') {
 				console.error('[BulkDownload] Error:', err);

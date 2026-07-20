@@ -213,4 +213,5 @@
 	photos={favoritePhotos}
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
+	viewSource="favorites"
 />

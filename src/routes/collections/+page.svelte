@@ -144,4 +144,4 @@
 </style>
 
 <!-- Photo Detail Modal -->
-<PhotoDetailModal bind:open={modalOpen} photo={selectedPhoto} />
+<PhotoDetailModal bind:open={modalOpen} photo={selectedPhoto} viewSource="collection" />

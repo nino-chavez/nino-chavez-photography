@@ -23,15 +23,19 @@
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { trackEngagement } from '$lib/analytics/client';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
 		open?: boolean;
 		photo: Photo | null;
 		onclose?: () => void;
+		// Where this modal is opened from — carried onto the 'view' engagement
+		// event so album-reach/popularity attribution reflects the real context.
+		viewSource?: 'explore' | 'collection' | 'album' | 'direct' | 'search' | 'timeline' | 'favorites';
 	}
 
-	let { open = $bindable(false), photo, onclose }: Props = $props();
+	let { open = $bindable(false), photo, onclose, viewSource = 'direct' }: Props = $props();
 
 	// Get current photo URL for sharing
 	const photoUrl = $derived(
@@ -115,7 +119,6 @@
 	}
 
 	$effect(() => {
-		console.log('[PhotoDetailModal $effect] open:', open, 'photo:', photo?.image_key);
 		if (open) {
 			document.body.style.overflow = 'hidden';
 		} else {
@@ -125,6 +128,14 @@
 		return () => {
 			document.body.style.overflow = '';
 		};
+	});
+
+	// Record a view for whatever photo this modal is showing — see Lightbox.svelte
+	// for why this is the only "the visitor looked at this" signal on routes that
+	// never navigate to /photo/[id].
+	$effect(() => {
+		if (!open || !photo) return;
+		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
 	});
 </script>
 

@@ -2,11 +2,15 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { computeSessionHash } from '$lib/analytics/session';
+import { isBotUserAgent } from '$lib/analytics/bot-detection';
+import { recordBotFiltered } from '$lib/analytics/tracker';
 
-// Client-triggered signals only. Views are tracked server-side (page load), so
-// they are intentionally NOT acceptable here — that keeps view-count integrity
-// off the public endpoint.
-const VALID_EVENTS = new Set(['favorite', 'download', 'share']);
+// 'view' included: the standalone /photo/[id] page load is not the only place a
+// photo is actually viewed — the lightbox/detail-modal opened from an album grid
+// never navigates there, so it must self-report. The per-day dedup index
+// (session_hash, photo_id, event_type, event_day) already caps this at one
+// view/visitor/photo/day, so it can't be inflated by re-opening the same photo.
+const VALID_EVENTS = new Set(['view', 'favorite', 'download', 'share']);
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	let body: { event_type?: string; photo_id?: string; album_key?: string; source?: string };
@@ -19,6 +23,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	const { event_type, photo_id, album_key, source } = body ?? {};
 	if (!event_type || !VALID_EVENTS.has(event_type)) throw error(400, 'invalid event_type');
 	if (!photo_id && !album_key) throw error(400, 'photo_id or album_key required');
+
+	// Same crawler gate as every other engagement write path (tracker.ts) — this
+	// endpoint previously had none, so bot hits on download/favorite/share landed
+	// straight in engagement_events uncounted and unfiltered.
+	if (isBotUserAgent(request.headers.get('user-agent'))) {
+		await recordBotFiltered();
+		return json({ ok: true });
+	}
 
 	const sessionHash = await computeSessionHash(
 		getClientAddress(),

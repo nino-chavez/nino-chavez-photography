@@ -1,15 +1,16 @@
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
 
-export type EngagementType = 'favorite' | 'download' | 'share';
+export type EngagementType = 'view' | 'favorite' | 'download' | 'share';
 
 /**
  * Fire-and-forget engagement ping from the client to /api/engagement.
  *
  * Never throws and never awaits the response — analytics must never block or
  * break UX. `keepalive` lets the request survive a navigation (important for
- * share/download, which often navigate away). Views are tracked server-side
- * (see $lib/analytics/tracker), so this covers client-triggered signals only.
+ * share/download, which often navigate away). 'view' covers photos seen inside
+ * a client-side lightbox/modal, which never hits the server-rendered
+ * /photo/[id] page that $lib/analytics/tracker's trackPhotoView instruments.
  */
 export function trackEngagement(
 	eventType: EngagementType,

@@ -118,6 +118,12 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	// 20260709120000_analytics_reach_views.sql) and resolves names off
 	// albums_summary. Degrades to an empty array if the view read fails (e.g.
 	// the migration hasn't landed yet) — this dashboard must never 500.
+	//
+	// No silent top-N here: a `.limit(20)` ordered by unique_visitors used to
+	// mean a freshly-published album with real (but small) traffic just fell
+	// off the cutoff below every established gallery — indistinguishable from
+	// "isn't tracked yet" in the UI. Every album with an event in the last 30
+	// days is fetched; the page renders it as a searchable table instead.
 	let albumReach: Array<{
 		album_key: string;
 		album_name: string | null;
@@ -133,8 +139,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		const { data: reachRows, error: reachError } = await createSupabaseAdminClient()
 			.from('album_engagement_30d')
 			.select('album_key, unique_visitors, views, favorites, downloads, shares, last_event')
-			.order('unique_visitors', { ascending: false })
-			.limit(20);
+			.order('unique_visitors', { ascending: false });
 		if (reachError) throw reachError;
 
 		const albumKeys = (reachRows || []).map((row) => row.album_key);

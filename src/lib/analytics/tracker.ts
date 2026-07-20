@@ -50,9 +50,11 @@ export function keepTrackingAlive(platform: App.Platform | undefined, promise: P
 /**
  * Bump the daily bot-filtered-event counter (service-role, fire-and-forget).
  * Visibility into gate volume without storing any per-request IP/UA — see
- * 20260713150000_bot_filtered_events.sql.
+ * 20260713150000_bot_filtered_events.sql. Exported so every write path that
+ * gates on isBotUserAgent (page-load tracking here, and the client-triggered
+ * /api/engagement endpoint) reports to the same counter.
  */
-async function recordBotFiltered(): Promise<void> {
+export async function recordBotFiltered(): Promise<void> {
 	try {
 		const { error } = await createSupabaseAdminClient().rpc('increment_bot_filtered_count');
 		if (error) console.error('[Analytics] Failed to record bot-filtered event:', error.message);

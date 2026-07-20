@@ -195,6 +195,7 @@
       photos={data.photos}
       currentIndex={selectedPhotoIndex}
       onNavigate={handleLightboxNavigate}
+      viewSource="timeline"
     />
 
     <!-- Bottom Navigation -->

@@ -821,6 +821,7 @@
     photos={allTimelinePhotos}
     currentIndex={selectedPhotoIndex}
     onNavigate={handleLightboxNavigate}
+    viewSource="timeline"
   />
 
 </div>

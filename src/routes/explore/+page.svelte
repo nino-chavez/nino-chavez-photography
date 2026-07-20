@@ -683,6 +683,7 @@
 	photos={displayPhotos}
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
+	viewSource="explore"
 />
 
 <!-- Visual Data Legend (explains hover badge system) -->

@@ -131,6 +131,7 @@
 	photos={data.photos}
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
+	viewSource="collection"
 />
 
 <style>
