@@ -23,6 +23,7 @@ import { readFileSync, readdirSync, writeFileSync, existsSync } from 'fs';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
+import { fixThumbnail } from './lib/video-thumbnail';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -120,6 +121,13 @@ async function main() {
 			process.stdout.write(`• ${file} — uploading… `);
 			const uid = await directUpload(join(DIR!, file), file);
 			const { thumbnail, duration } = await pollReady(uid);
+			// Stream's default (t≈0) thumbnail lands on the fade-in-from-black every
+			// flickday reel opens with — re-pick a real frame before it's ever shown.
+			try {
+				await fixThumbnail(uid, duration, SUBDOMAIN!, CF_ACCOUNT_ID!, CF_STREAM_API_TOKEN!);
+			} catch (e) {
+				console.warn(`\n  ⚠️  thumbnail pick failed for ${uid}, keeping Stream default: ${(e as Error).message}`);
+			}
 			const download_url = await enableDownload(uid);
 			const { error } = await supabase.from('video_metadata').insert({
 				cf_stream_id: uid, cf_stream_thumbnail: thumbnail,

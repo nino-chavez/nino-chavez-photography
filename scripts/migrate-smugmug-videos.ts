@@ -31,6 +31,9 @@ config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import OAuth from 'oauth-1.0a';
 import crypto from 'crypto';
+import { fixThumbnail } from './lib/video-thumbnail';
+
+const CF_STREAM_SUBDOMAIN = process.env.VITE_CF_STREAM_SUBDOMAIN || 'mztsxz382jswgq00';
 
 // =============================================================================
 // Configuration
@@ -295,6 +298,14 @@ async function migrateAlbum(albumKey: string): Promise<MigrationResult[]> {
 			console.log(`    Waiting for processing...`);
 			const streamInfo = await pollStreamReady(cfStreamId);
 			console.log(`    Ready! Duration: ${streamInfo.duration}s`);
+
+			// Stream's default (t≈0) thumbnail can land on a black fade frame —
+			// re-pick a real one before it's ever shown. Same fix as ingest-video-local.ts.
+			try {
+				await fixThumbnail(cfStreamId, streamInfo.duration, CF_STREAM_SUBDOMAIN, CF_ACCOUNT_ID!, CF_STREAM_API_TOKEN!);
+			} catch (e) {
+				console.warn(`    ⚠️  thumbnail pick failed for ${cfStreamId}, keeping Stream default: ${(e as Error).message}`);
+			}
 
 			// Insert into Supabase
 			const { error: insertError } = await supabase.from('video_metadata').insert({
