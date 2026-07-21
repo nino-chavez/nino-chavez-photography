@@ -19,7 +19,12 @@
 
 import { PHOTO_CATEGORIES, PLAY_TYPES_BY_SPORT, type Sport } from './taxonomy';
 import { normJersey, normColor } from '$lib/identity/sightings';
-import { assertCaptionContract } from './caption-contract';
+import {
+	assertCaptionContract,
+	buildCaptionCorrectionMessage,
+	inspectCaption,
+	MAX_CAPTION_CORRECTIONS
+} from './caption-contract';
 
 export const INGEST_MODEL = 'google/gemini-2.5-flash-lite';
 /** Stamped into `photo_metadata.extraction_version` so future prompt/model changes re-process only stale rows. */
@@ -233,7 +238,8 @@ export interface ExtractOptions extends ExtractContext {
 /**
  * Extract structured metadata from one image buffer. Throws `RETRY:<status>` on 429/5xx so a
  * caller's backoff loop can retry; throws a plain Error on a hard failure (bad key, unparseable
- * response, empty caption).
+ * response, empty caption, or a caption still violating the visible-facts contract after
+ * MAX_CAPTION_CORRECTIONS conversational correction rounds).
  */
 export async function extractOne(
 	imageBuffer: Buffer,
@@ -244,42 +250,52 @@ export async function extractOne(
 
 	const dataUrl = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
 	const prompt = buildIngestPrompt({ albumSport: opts.albumSport, albumName: opts.albumName });
-
-	const res = await fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${apiKey}`,
-			'Content-Type': 'application/json',
-			'HTTP-Referer': 'https://photography.ninochavez.co',
-			'X-Title': 'photography ingest-album',
-		},
-		body: JSON.stringify({
-			model,
-			messages: [
-				{
-					role: 'user',
-					content: [
-						{ type: 'text', text: prompt },
-						{ type: 'image_url', image_url: { url: dataUrl } },
-					],
-				},
+	const messages: Array<{ role: string; content: unknown }> = [
+		{
+			role: 'user',
+			content: [
+				{ type: 'text', text: prompt },
+				{ type: 'image_url', image_url: { url: dataUrl } },
 			],
-			temperature: 0,
-			max_tokens: 2048,
-			usage: { include: true },
-		}),
-	});
+		},
+	];
+	let cost: number | null = null;
 
-	if (res.status === 429 || res.status >= 500) throw new Error(`RETRY:${res.status}`);
-	if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 160)}`);
+	for (let corrections = 0; ; corrections++) {
+		const res = await fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				'Content-Type': 'application/json',
+				'HTTP-Referer': 'https://photography.ninochavez.co',
+				'X-Title': 'photography ingest-album',
+			},
+			body: JSON.stringify({
+				model,
+				messages,
+				temperature: 0,
+				max_tokens: 2048,
+				usage: { include: true },
+			}),
+		});
 
-	const j: any = await res.json();
-	const text: string = j.choices?.[0]?.message?.content ?? '';
-	const parsed = parseWithRepair(text);
-	const extraction = validateExtraction(parsed ?? {}, opts);
-	if (!extraction.caption) extraction.caption = extractCaptionLenient(text);
-	if (!extraction.caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
-	assertCaptionContract(extraction.caption);
+		if (res.status === 429 || res.status >= 500) throw new Error(`RETRY:${res.status}`);
+		if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 160)}`);
 
-	return { extraction, cost: j.usage?.cost ?? null, rawText: text };
+		const j: any = await res.json();
+		if (j.usage?.cost != null) cost = (cost ?? 0) + j.usage.cost;
+		const text: string = j.choices?.[0]?.message?.content ?? '';
+		const parsed = parseWithRepair(text);
+		const extraction = validateExtraction(parsed ?? {}, opts);
+		if (!extraction.caption) extraction.caption = extractCaptionLenient(text);
+		if (!extraction.caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
+
+		const issues = inspectCaption(extraction.caption);
+		if (!issues.length) return { extraction, cost, rawText: text };
+		// issues are non-empty here, so this always throws — the canonical contract error.
+		if (corrections >= MAX_CAPTION_CORRECTIONS) assertCaptionContract(extraction.caption);
+
+		messages.push({ role: 'assistant', content: text });
+		messages.push({ role: 'user', content: buildCaptionCorrectionMessage(issues) });
+	}
 }

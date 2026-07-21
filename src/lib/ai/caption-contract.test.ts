@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertCaptionContract, captionWordCount, inspectCaption } from './caption-contract';
+import {
+	assertCaptionContract,
+	buildCaptionCorrectionMessage,
+	captionWordCount,
+	inspectCaption
+} from './caption-contract';
 
 test('accepts a short visible-facts caption', () => {
 	const caption = 'A player in a red jersey, number 12, dives near the sideline while two teammates watch.';
@@ -19,4 +24,19 @@ test('rejects inferred relationship, emotion, outcome, and aesthetic claims', ()
 test('rejects captions over 30 words', () => {
 	const caption = Array.from({ length: 31 }, (_, index) => `word${index + 1}`).join(' ');
 	assert.equal(inspectCaption(caption)[0]?.code, 'too-long');
+});
+
+test('correction message names the flagged words and their rules', () => {
+	const message = buildCaptionCorrectionMessage(inspectCaption('A happy family celebrates.'));
+	assert.match(message, /"family"/);
+	assert.match(message, /"happy"/);
+	assert.match(message, /relationship/);
+	assert.match(message, /ONLY JSON/);
+});
+
+test('correction message gives a compression instruction for too-long captions', () => {
+	const caption = Array.from({ length: 31 }, (_, index) => `word${index + 1}`).join(' ');
+	const message = buildCaptionCorrectionMessage(inspectCaption(caption));
+	assert.match(message, /30 words or fewer/);
+	assert.doesNotMatch(message, /flagged words/);
 });

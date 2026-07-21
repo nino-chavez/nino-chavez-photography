@@ -13,7 +13,7 @@
     "reader:check": "node tools/lib/encounter-audit.mjs --root=. --strict",
     "reader:check:gallery": "node tools/lib/encounter-audit.mjs --root=. --surface=\"gallery interface\" --strict",
     "reader:check:captions": "node tools/lib/encounter-audit.mjs --root=. --surface=\"AI search captions\" --strict",
-		"caption:contract:test": "tsx --test src/lib/ai/caption-contract.test.ts",
+		"caption:contract:test": "tsx --test src/lib/ai/caption-contract.test.ts src/lib/ai/ingest-extraction.test.ts",
 		"caption:claims:audit": "tsx scripts/audit-caption-claims.ts",
 		"taxonomy:gen": "tsx scripts/taxonomy-gen.ts",
 		"taxonomy:check": "tsx scripts/taxonomy-check.ts",

@@ -71,3 +71,36 @@ export function assertCaptionContract(caption: string): void {
 	if (!issues.length) return;
 	throw new Error(`caption contract: ${issues.map((issue) => `${issue.code}${issue.match ? ` (${JSON.stringify(issue.match)})` : ''}`).join(', ')}`);
 }
+
+/** Contract-violating captions get this many conversational correction retries before failing. */
+export const MAX_CAPTION_CORRECTIONS = 2;
+
+/**
+ * Build the follow-up user message for a self-correction retry. At temperature 0 a violating
+ * caption reproduces identically on a plain retry, so the fix must be conversational: show the
+ * model its own words and the specific rule they broke, then ask for the same JSON with a
+ * rewritten caption.
+ */
+export function buildCaptionCorrectionMessage(issues: CaptionIssue[]): string {
+	const details = issues
+		.map(
+			(issue) =>
+				`- ${issue.code}${issue.match ? ` — your caption used ${JSON.stringify(issue.match)}` : ''}: ${issue.message}`
+		)
+		.join('\n');
+	const instructions = [
+		'Describe only what is visible in the frame: people by appearance (e.g. "a man and two children" — never their relationship), visible actions and expressions, clothing, printed text, the scene.',
+		issues.some((issue) => issue.match)
+			? 'Do not use the flagged words or synonyms that make the same claim.'
+			: '',
+		issues.some((issue) => issue.code === 'too-long')
+			? 'Cut it to 30 words or fewer: keep jersey numbers, colors, and the main action; drop secondary scene detail.'
+			: ''
+	]
+		.filter(Boolean)
+		.join(' ');
+	return `Your caption broke the visible-facts rule:
+${details}
+
+Return the SAME JSON object again with a corrected "caption" (max 30 words). ${instructions} Keep every other field unchanged. NO markdown. ONLY JSON.`;
+}

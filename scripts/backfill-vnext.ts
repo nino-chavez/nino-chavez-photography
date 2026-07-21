@@ -2,7 +2,8 @@
 /**
  * Backfill v-next Phase 1 — re-enrich (caption + players) + caption-embed existing
  * photo_metadata rows. Resumable (checkpoint file), idempotent (skips done rows),
- * throttled (worker pool + 429 backoff).
+ * throttled (worker pool + 429 backoff), contract-checked (visible-facts caption
+ * contract with conversational self-correction, max MAX_CAPTION_CORRECTIONS rounds).
  *
  * Image source : Cloudflare Images delivery URL (cf_image_id → 'large' / 1600px variant).
  * Enrichment   : OpenRouter google/gemini-2.5-flash-lite via buildCombinedPrompt()
@@ -31,7 +32,12 @@ config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { buildCaptionPrompt } from '../src/lib/ai/enrichment-prompts';
-import { assertCaptionContract, inspectCaption } from '../src/lib/ai/caption-contract';
+import {
+	assertCaptionContract,
+	buildCaptionCorrectionMessage,
+	inspectCaption,
+	MAX_CAPTION_CORRECTIONS
+} from '../src/lib/ai/caption-contract';
 import { embedText } from '../src/lib/ai/embeddings';
 import { cfImageUrl } from '../src/lib/utils/cloudflare-images';
 
@@ -152,40 +158,57 @@ async function processRow(row: Row): Promise<{ caption: string; players: number;
 	// Slim caption+players prompt — ~52% cheaper than the full combined prompt at equal
 	// quality, because the backfill discards bucket1/bucket2 anyway (measured 2026-06-08).
 	const prompt = buildCaptionPrompt({ albumName: row.album_name || undefined });
+	const messages: Array<{ role: string; content: unknown }> = [
+		{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: dataUrl } }] }
+	];
+	let caption = '';
+	let players: any[] = [];
+	let cost: number | null = null;
 
-	const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-			'Content-Type': 'application/json',
-			'HTTP-Referer': 'https://photography.ninochavez.co',
-			'X-Title': 'photography backfill-vnext'
-		},
-		body: JSON.stringify({
-			model: MODEL,
-			messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: dataUrl } }] }],
-			temperature: 0,
-			// caption is the LAST field in the JSON, so it's the first casualty of truncation —
-			// give enough headroom that a verbose bucket1/bucket2 never cuts it off.
-			max_tokens: 3072,
-			usage: { include: true }
-		})
-	});
-	if (res.status === 429 || res.status >= 500) throw new Error(`RETRY:${res.status}`);
-	if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 140)}`);
+	for (let corrections = 0; ; corrections++) {
+		const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+				'Content-Type': 'application/json',
+				'HTTP-Referer': 'https://photography.ninochavez.co',
+				'X-Title': 'photography backfill-vnext'
+			},
+			body: JSON.stringify({
+				model: MODEL,
+				messages,
+				temperature: 0,
+				// caption is the LAST field in the JSON, so it's the first casualty of truncation —
+				// give enough headroom that a verbose bucket1/bucket2 never cuts it off.
+				max_tokens: 3072,
+				usage: { include: true }
+			})
+		});
+		if (res.status === 429 || res.status >= 500) throw new Error(`RETRY:${res.status}`);
+		if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 140)}`);
 
-	const j: any = await res.json();
-	const text = j.choices?.[0]?.message?.content ?? '';
-	const parsed = parseModelJson(text);
-	let caption = (parsed?.caption ?? '').toString().trim();
-	if (!caption) caption = extractCaptionLenient(text); // recover captions with unescaped inner quotes
-	if (!caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
-	assertCaptionContract(caption);
-	const players = Array.isArray(parsed?.players) ? parsed.players : [];
+		const j: any = await res.json();
+		if (j.usage?.cost != null) cost = (cost ?? 0) + j.usage.cost;
+		const text = j.choices?.[0]?.message?.content ?? '';
+		const parsed = parseModelJson(text);
+		caption = (parsed?.caption ?? '').toString().trim();
+		if (!caption) caption = extractCaptionLenient(text); // recover captions with unescaped inner quotes
+		if (!caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
+		players = Array.isArray(parsed?.players) ? parsed.players : [];
+
+		const issues = inspectCaption(caption);
+		if (!issues.length) break;
+		// issues are non-empty here, so this always throws — the canonical contract error.
+		if (corrections >= MAX_CAPTION_CORRECTIONS) assertCaptionContract(caption);
+
+		// At temperature 0 a plain retry reproduces the same violation; correct conversationally.
+		messages.push({ role: 'assistant', content: text });
+		messages.push({ role: 'user', content: buildCaptionCorrectionMessage(issues) });
+	}
+
 	const teamColors = Array.from(
 		new Set(players.map((p: any) => p?.team_color).filter((c: any) => typeof c === 'string' && c.trim()))
 	).slice(0, 8);
-	const cost = j.usage?.cost ?? null;
 
 	const embedding = await embedText(caption, OPENROUTER_API_KEY);
 	if (!embedding) throw new Error('embed failed (null vector)');
