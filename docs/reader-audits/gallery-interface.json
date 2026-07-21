@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "surface": "gallery interface",
+  "reviewedAt": "2026-07-21T19:25:48.307Z",
+  "reviewedBy": "Codex browser audit",
+  "method": "local browser walkthrough",
+  "sourceDigest": "sha256:5f2a15e21e86434f0216d2f619a8a187460dbec70620f6ecba511190c39f4ce1",
+  "sourceFiles": 130,
+  "scope": [
+    "home",
+    "album",
+    "search",
+    "photo detail"
+  ]
+}

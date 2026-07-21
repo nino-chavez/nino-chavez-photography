@@ -19,6 +19,7 @@
 
 import { PHOTO_CATEGORIES, PLAY_TYPES_BY_SPORT, type Sport } from './taxonomy';
 import { normJersey, normColor } from '$lib/identity/sightings';
+import { assertCaptionContract } from './caption-contract';
 
 export const INGEST_MODEL = 'google/gemini-2.5-flash-lite';
 /** Stamped into `photo_metadata.extraction_version` so future prompt/model changes re-process only stale rows. */
@@ -82,7 +83,7 @@ ${sportLine}
 
 Return ONLY a JSON object with EXACTLY these keys:
 
-"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon.
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
 "photo_category": one of ["${PHOTO_CATEGORIES.join('", "')}"].
 ${playLine}
 "sharpness": number 0-10 (technical focus quality; 0=blurry, 10=tack-sharp).
@@ -278,6 +279,7 @@ export async function extractOne(
 	const extraction = validateExtraction(parsed ?? {}, opts);
 	if (!extraction.caption) extraction.caption = extractCaptionLenient(text);
 	if (!extraction.caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
+	assertCaptionContract(extraction.caption);
 
 	return { extraction, cost: j.usage?.cost ?? null, rawText: text };
 }

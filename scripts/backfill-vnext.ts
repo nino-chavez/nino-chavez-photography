@@ -31,6 +31,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { buildCaptionPrompt } from '../src/lib/ai/enrichment-prompts';
+import { assertCaptionContract, inspectCaption } from '../src/lib/ai/caption-contract';
 import { embedText } from '../src/lib/ai/embeddings';
 import { cfImageUrl } from '../src/lib/utils/cloudflare-images';
 
@@ -51,6 +52,7 @@ const LIMIT = parseInt(flagValue('limit') || '0', 10) || 0;
 const CONCURRENCY = Math.max(1, parseInt(flagValue('concurrency') || '6', 10));
 const DRY = process.argv.includes('--dry-run');
 const OVERWRITE = process.argv.includes('--overwrite');
+const CLAIMS_ONLY = process.argv.includes('--claims-only');
 const MODEL = 'google/gemini-2.5-flash-lite';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -62,7 +64,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) { console.error('❌ Supabase creds required
 if (!ALBUM_KEY && !ALL) { console.error('❌ Pass --album-key <KEY> (e.g. TRoiyO) or --all'); process.exit(1); }
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-const SCOPE = ALL ? 'all' : ALBUM_KEY!;
+const SCOPE = `${ALL ? 'all' : ALBUM_KEY!}${CLAIMS_ONLY ? '-claims' : ''}`;
 
 // ---------------------------------------------------------------------------
 // Checkpoint
@@ -122,7 +124,7 @@ async function fetchRows(): Promise<Row[]> {
 		// never set without a successful embedding), so `caption IS NULL` == "not yet done".
 		// This makes the run resumable even if the checkpoint file is lost, and skips the
 		// already-captioned TRoiyO test rows automatically on a --all run.
-		if (!OVERWRITE) q = q.is('caption', null);
+		if (!OVERWRITE && !CLAIMS_ONLY) q = q.is('caption', null);
 		const { data, error } = await q;
 		if (error) { console.error('❌ fetch error:', error.message); process.exit(1); }
 		if (!data || data.length === 0) break;
@@ -131,7 +133,11 @@ async function fetchRows(): Promise<Row[]> {
 		if (LIMIT && rows.length >= LIMIT) break;
 	}
 	// Skip checkpointed rows; honor --limit on the remaining work.
-	const pending = rows.filter((r) => OVERWRITE || !done.has(r.image_key));
+	const pending = rows.filter((r) => {
+		if (done.has(r.image_key) && !OVERWRITE) return false;
+		if (CLAIMS_ONLY) return !!r.caption && inspectCaption(r.caption).length > 0;
+		return true;
+	});
 	return LIMIT ? pending.slice(0, LIMIT) : pending;
 }
 
@@ -174,6 +180,7 @@ async function processRow(row: Row): Promise<{ caption: string; players: number;
 	let caption = (parsed?.caption ?? '').toString().trim();
 	if (!caption) caption = extractCaptionLenient(text); // recover captions with unescaped inner quotes
 	if (!caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
+	assertCaptionContract(caption);
 	const players = Array.isArray(parsed?.players) ? parsed.players : [];
 	const teamColors = Array.from(
 		new Set(players.map((p: any) => p?.team_color).filter((c: any) => typeof c === 'string' && c.trim()))
@@ -226,6 +233,7 @@ async function processWithRetry(row: Row): Promise<{ caption: string; players: n
 // ---------------------------------------------------------------------------
 async function main() {
 	console.log('\n🔁 Backfill v-next (Phase 1: caption + players + caption-embed)\n');
+	if (CLAIMS_ONLY) console.log('   Scope: stored captions that violate the visible-facts caption contract\n');
 	console.log(`   Scope: ${ALL ? 'ALL albums' : `album ${ALBUM_KEY}`}`);
 	console.log(`   Model: ${MODEL} (OpenRouter) · embed: text-embedding-3-large@768`);
 	console.log(`   Concurrency: ${CONCURRENCY}${LIMIT ? ` · limit ${LIMIT}` : ''}${DRY ? ' · DRY RUN' : ''}${OVERWRITE ? ' · OVERWRITE' : ''}`);

@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "project": "Nino Chavez Gallery",
+  "defaults": {
+    "reader": "a player, parent, client, or visitor looking through an event gallery",
+    "job": "find the right photos and understand what can be viewed, selected, or downloaded",
+    "assumedKnowledge": [
+      "ordinary photography and volleyball terms"
+    ],
+    "plainness": "lay",
+    "precisionLocks": [
+      "album and event names",
+      "download and licensing terms",
+      "privacy and access rules"
+    ]
+  },
+  "surfaces": [
+    {
+      "name": "gallery interface",
+      "renderedRoots": [],
+      "sourceRoots": [
+        "src/routes",
+        "src/lib/components"
+      ],
+      "manualReview": {
+        "evidencePath": "docs/reader-audits/gallery-interface.json"
+      },
+      "allowTerms": [
+        "EXIF",
+        "AI"
+      ],
+      "denyTerms": [
+        {
+          "term": "embedding similarity",
+          "reason": "the search implementation is not part of the visitor's task",
+          "replacement": "similar photos"
+        },
+        {
+          "term": "enrichment pipeline",
+          "reason": "internal processing language does not explain the visible result",
+          "replacement": "photo details"
+        }
+      ]
+    },
+    {
+      "name": "AI search captions",
+      "renderedRoots": [],
+      "sourceRoots": [
+        "src/lib/ai/enrichment-prompts.ts",
+        "src/lib/ai/ingest-extraction.ts",
+        "src/lib/ai/caption-contract.ts",
+        "scripts/backfill-vnext.ts",
+        "scripts/ingest-album.ts"
+      ],
+      "manualReview": {
+        "evidencePath": "docs/reader-audits/ai-search-captions.json"
+      },
+      "reader": "a person searching a gallery by what is visibly happening in a photo",
+      "job": "recognize the photo from one factual sentence",
+      "assumedKnowledge": [
+        "common volleyball actions"
+      ],
+      "plainness": "lay",
+      "precisionLocks": [
+        "visible jersey numbers",
+        "visible team colors",
+        "visible action and scene",
+        "never guess a person's identity",
+        "never infer relationships, emotions, or outcomes",
+        "never present uncertain detection as fact"
+      ],
+      "allowTerms": [],
+      "denyTerms": [
+        {
+          "term": "cinematic",
+          "reason": "aesthetic judgment makes search captions less factual"
+        },
+        {
+          "term": "stunning",
+          "reason": "promotional judgment makes search captions less factual"
+        },
+        {
+          "term": "beautifully",
+          "reason": "aesthetic judgment makes search captions less factual"
+        },
+        {
+          "term": "friends",
+          "reason": "a photo alone does not establish a relationship between the people shown",
+          "replacement": "people"
+        }
+      ],
+      "maxWordsPerText": 30
+    }
+  ]
+}

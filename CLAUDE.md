@@ -20,6 +20,10 @@ These cannot be inferred from code -- follow them strictly:
 - **Event handling:** Use `event.stopPropagation()` for nested interactive elements. Svelte 5 syntax: `onclick={handler}` not `on:click={handler}`.
 - **Temp files:** Output reports/audits/logs to `.temp/` (git-ignored), never to `src/` or project root.
 
+## Reader-facing text and generated captions
+
+Read [`reader-contract.json`](reader-contract.json) before changing interface copy or AI enrichment prompts. Gallery copy should help a visitor find and act on a photo without exposing the search implementation. Search captions are factual retrieval metadata: one short sentence about visible numbers, colors, action, and scene; never aesthetic filler, guessed identity, or uncertain detection stated as fact. Verify interface copy in the built page and generated captions as actual model output.
+
 ## Off-Limits (Explicit Approval Required)
 
 - `.env*` files

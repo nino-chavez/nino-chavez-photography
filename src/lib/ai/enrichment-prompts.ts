@@ -314,7 +314,7 @@ AND ALSO:
 ${BUCKET2_PROMPT}
 
 ADDITIONALLY return two more top-level JSON keys alongside bucket1 and bucket2, for people-finding and natural-language search:
-"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon. Example: "A player in a red jersey, number 12, dives to dig the ball near the sideline as two teammates watch."
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence. Example: "A player in a red jersey, number 12, dives to dig the ball near the sideline as two teammates watch."
 "players": an array (max 8) of objects, one per clearly visible player: {"jersey_number": integer or null, "team_color": string or null, "action": string or null}.
 
 Return ONLY JSON combining both buckets PLUS caption and players (sport_type FIRST):
@@ -375,7 +375,7 @@ export function buildCaptionPrompt(context?: EnrichmentContext): string {
 	return `This is a VOLLEYBALL sports photo from a volleyball photography portfolio${albumName ? ` (album: "${albumName}")` : ''}. Assume volleyball unless another sport is unmistakable.
 
 Return ONLY JSON with exactly two top-level keys, for people-finding and natural-language search:
-"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action (spike, block, dig, set, serve, pass, celebration, etc.), and the scene. Plain language, no aesthetic jargon.
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action (spike, block, dig, set, serve, pass, celebration, etc.), and the scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
 "players": an array (max 8) of objects, one per clearly visible player: {"jersey_number": integer or null, "team_color": string or null, "action": string or null}.
 
 NO markdown. ONLY JSON: {"caption":"...","players":[...]}`;
