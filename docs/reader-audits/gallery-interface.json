@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-21T19:25:48.307Z",
-  "reviewedBy": "Codex browser audit",
-  "method": "local browser walkthrough",
-  "sourceDigest": "sha256:5f2a15e21e86434f0216d2f619a8a187460dbec70620f6ecba511190c39f4ce1",
+  "reviewedAt": "2026-07-21T21:12:44.485Z",
+  "reviewedBy": "Codex production browser audit",
+  "method": "production browser walkthrough after Cloudflare receipt-staleness failure",
+  "sourceDigest": "sha256:644cce2a95edaa1d4c043d4fd9993c9c097f0dd9542023b6601aa4eae23c8169",
   "sourceFiles": 130,
   "scope": [
     "home",
