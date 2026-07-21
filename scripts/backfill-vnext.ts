@@ -16,7 +16,7 @@
  * reclassification (which would also disturb the quality_score sort).
  *
  * Resumability: a checkpoint file (.temp/backfill-vnext-<scope>.checkpoint.json) records the
- * image_keys fully processed (caption AND embedding written). Re-running skips them. A row
+ * album_key:image_key pairs fully processed (caption AND embedding written). Re-running skips them. A row
  * whose enrichment succeeded but embedding failed is NOT marked done, so it retries next run.
  *
  * Usage:
@@ -84,6 +84,7 @@ if (existsSync(CK_PATH) && !OVERWRITE) {
 	try { ck = JSON.parse(readFileSync(CK_PATH, 'utf-8')); } catch { /* fresh */ }
 }
 const done = new Set(ck.done);
+const checkpointKey = (row: Pick<Row, 'album_key' | 'image_key'>) => `${row.album_key}:${row.image_key}`;
 function saveCheckpoint() {
 	ck.done = [...done];
 	ck.updatedAt = new Date().toISOString();
@@ -140,7 +141,7 @@ async function fetchRows(): Promise<Row[]> {
 	}
 	// Skip checkpointed rows; honor --limit on the remaining work.
 	const pending = rows.filter((r) => {
-		if (done.has(r.image_key) && !OVERWRITE) return false;
+		if (done.has(checkpointKey(r)) && !OVERWRITE) return false;
 		if (CLAIMS_ONLY) return !!r.caption && inspectCaption(r.caption).length > 0;
 		return true;
 	});
@@ -276,11 +277,11 @@ async function main() {
 				const r = await processWithRetry(row);
 				ok++;
 				if (r.cost) totalCost += r.cost;
-				if (!DRY) { done.add(row.image_key); delete ck.failed[row.image_key]; }
+				if (!DRY) { done.add(checkpointKey(row)); delete ck.failed[checkpointKey(row)]; }
 				if (ok <= 8 || ok % 25 === 0) console.log(`   ✅ ${row.image_key}: "${r.caption.slice(0, 70)}" (players ${r.players})`);
 			} catch (e: any) {
 				fail++;
-				ck.failed[row.image_key] = String(e?.message || e);
+				ck.failed[checkpointKey(row)] = String(e?.message || e);
 				console.error(`   ❌ ${row.image_key}: ${String(e?.message || e).slice(0, 120)}`);
 			}
 			const processed = ok + fail;

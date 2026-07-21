@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "surface": "AI search captions",
+  "reviewedAt": "2026-07-21T20:47:37.418Z",
+  "reviewedBy": "Claude production backfill + Codex read-only verification",
+  "method": "full production corpus audit and repaired-row embedding verification",
+  "sourceDigest": "sha256:4c97a155490f8457a30e2f15a111b079e0a3ca44c8f00b8768e4bb20916e6224",
+  "sourceFiles": 5,
+  "scope": [
+    "21,775 stored captions",
+    "445 repaired captions",
+    "caption contract",
+    "768-dimensional embeddings"
+  ]
+}

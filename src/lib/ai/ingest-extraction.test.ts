@@ -47,6 +47,9 @@ test('extractOne corrects a contract-violating caption conversationally', async 
 	assert.equal(calls.length, 2);
 	// The retry must carry the model's own bad answer plus the correction message.
 	assert.equal(calls[1].messages.length, 3);
+	assert.equal(calls[1].messages[0].role, 'user');
+	assert.ok(Array.isArray(calls[1].messages[0].content));
+	assert.equal(calls[1].messages[0].content[1].type, 'image_url');
 	assert.equal(calls[1].messages[1].role, 'assistant');
 	assert.match(calls[1].messages[2].content, /visible-facts/);
 	assert.match(calls[1].messages[2].content, /"family"/);
