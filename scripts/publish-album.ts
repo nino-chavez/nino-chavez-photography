@@ -7,12 +7,14 @@
  * flip that was previously a hand-typed REST PATCH (jpo, 2026-07-19).
  *
  *   visibility='public'   → album appears on ninochavez.co/photography
- *   gallery_scope='lpo'   → album appears on letspepper.com/gallery
+ *   gallery_scope='lpo'   → album ALSO appears on letspepper.com/gallery (opt-in;
+ *                           only for Let's Pepper series events)
  *
  * Required env (.env.local): VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
  * Usage:
- *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 [--scope lpo] [--dry-run]
+ *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 [--dry-run]
+ *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --scope lpo   # Let's Pepper events only
  *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --unpublish
  */
 import { config } from 'dotenv';
@@ -31,7 +33,14 @@ const arg = (k: string, d?: string) => {
 	return i >= 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : d;
 };
 const ALBUM_KEY = arg('album-key');
-const SCOPE = arg('scope', 'lpo');
+/**
+ * gallery_scope is OPT-IN. It defaults to null so publishing means "public on
+ * ninochavez.co" and nothing more; cross-posting an album to letspepper.com is a
+ * separate editorial decision that has to be typed (`--scope lpo`). The old default
+ * of 'lpo' silently put every published album — including events with no connection
+ * to the Let's Pepper series — onto letspepper.com/gallery.
+ */
+const SCOPE = arg('scope', undefined) ?? null;
 const DRY = process.argv.includes('--dry-run');
 const UNPUBLISH = process.argv.includes('--unpublish');
 
@@ -70,7 +79,9 @@ async function main() {
 	console.log(`after:  ${JSON.stringify(after)}`);
 	console.log(UNPUBLISH
 		? 'unpublished — hidden from both sites'
-		: 'published — ninochavez.co (public) + letspepper.com (scope)');
+		: SCOPE
+			? `published — ninochavez.co (public) + letspepper.com (gallery_scope=${SCOPE})`
+			: 'published — ninochavez.co (public); no gallery_scope, so it does NOT appear on letspepper.com');
 }
 
 main();
