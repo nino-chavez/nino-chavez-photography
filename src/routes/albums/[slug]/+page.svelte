@@ -224,7 +224,7 @@
 				<div class="flex items-center gap-2 min-w-0 flex-1">
 					<Typography variant="h1" class="text-xl lg:text-2xl truncate">{data.albumName}</Typography>
 					<Typography variant="caption" class="text-charcoal-400 text-xs whitespace-nowrap">
-						{data.totalCount.toLocaleString()}{#if hasVideos}{' '}&middot; {data.videos.length} video{data.videos.length !== 1 ? 's' : ''}{/if}
+						{data.totalCount.toLocaleString()} {data.totalCount === 1 ? 'photo' : 'photos'}{#if hasVideos}{' '}&middot; {data.videos.length} video{data.videos.length !== 1 ? 's' : ''}{/if}
 					</Typography>
 				</div>
 
