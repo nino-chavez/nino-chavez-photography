@@ -21,6 +21,32 @@ test('rejects inferred relationship, emotion, outcome, and aesthetic claims', ()
 	);
 });
 
+test('rejects swimwear garment names but keeps ordinary athletic wear', () => {
+	assert.deepEqual(
+		inspectCaption('A woman in a brown bikini digs a volleyball on a sandy court.').map((issue) => issue.code),
+		['swimwear-term']
+	);
+	assert.deepEqual(inspectCaption('A player in brown digs a volleyball on a sandy court.'), []);
+	assert.deepEqual(
+		inspectCaption('A player in a black top and red shorts serves on the sand.'),
+		[]
+	);
+	// A sports bra is standard kit on an indoor or grass court, not swimwear.
+	assert.deepEqual(
+		inspectCaption('A player in a blue sports bra and shorts prepares to serve on a grass court.'),
+		[]
+	);
+});
+
+test('correction message tells the model to keep the color and drop the garment', () => {
+	const message = buildCaptionCorrectionMessage(
+		inspectCaption('A woman in a brown bikini digs a volleyball on a sandy court.')
+	);
+	assert.match(message, /"bikini"/);
+	assert.match(message, /Keep the color/);
+	assert.match(message, /a player in navy/);
+});
+
 test('rejects captions over 30 words', () => {
 	const caption = Array.from({ length: 31 }, (_, index) => `word${index + 1}`).join(' ');
 	assert.equal(inspectCaption(caption)[0]?.code, 'too-long');

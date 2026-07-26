@@ -67,7 +67,9 @@
         "visible action and scene",
         "never guess a person's identity",
         "never infer relationships, emotions, or outcomes",
-        "never present uncertain detection as fact"
+        "never present uncertain detection as fact",
+        "never state a count the frame does not support",
+        "name a person by the color of what they wear, never by naming swimwear"
       ],
       "allowTerms": [],
       "denyTerms": [
@@ -87,6 +89,16 @@
           "term": "friends",
           "reason": "a photo alone does not establish a relationship between the people shown",
           "replacement": "people"
+        },
+        {
+          "term": "bikini",
+          "reason": "the color is what helps a visitor find their own photo; naming the swimwear describes the person's body instead",
+          "replacement": "a player in <color>"
+        },
+        {
+          "term": "swimsuit",
+          "reason": "the color is what helps a visitor find their own photo; naming the swimwear describes the person's body instead",
+          "replacement": "a player in <color>"
         }
       ],
       "maxWordsPerText": 30

@@ -89,6 +89,8 @@ ${sportLine}
 Return ONLY a JSON object with EXACTLY these keys:
 
 "caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
+  Name a person by the COLOR of what they wear, never by naming swimwear: write "a player in brown" or "a player in a black top", never "bikini", "swimsuit", "bathing suit", "briefs", or any description of a person's body. Ordinary athletic wear (jersey, shirt, top, shorts, trunks) may be named normally.
+  Only state a number you can actually count in the frame — "two players", "three balls". If you are not certain how many, describe without a number rather than guessing one.
 "photo_category": one of ["${PHOTO_CATEGORIES.join('", "')}"].
 ${playLine}
 "sharpness": number 0-10 (technical focus quality; 0=blurry, 10=tack-sharp).

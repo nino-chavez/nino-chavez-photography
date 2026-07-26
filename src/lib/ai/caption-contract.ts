@@ -5,6 +5,12 @@
  * people, clothing, text, actions, and scene details; they must not turn a
  * single frame into claims about identity, relationships, emotions, outcomes,
  * or aesthetic merit.
+ *
+ * Clothing is a retrieval signal — at an indoor match the jersey number and
+ * color are how a visitor finds themselves, and at a beach or pool event the
+ * color of what someone wears carries that same job. COLOR is what the caption
+ * needs; naming the swimwear garment adds nothing findable and turns a public
+ * caption about an identifiable person into a description of their body.
  */
 
 export type CaptionIssueCode =
@@ -13,7 +19,8 @@ export type CaptionIssueCode =
 	| 'relationship-claim'
 	| 'emotion-claim'
 	| 'outcome-claim'
-	| 'aesthetic-claim';
+	| 'aesthetic-claim'
+	| 'swimwear-term';
 
 export interface CaptionIssue {
 	code: CaptionIssueCode;
@@ -41,6 +48,14 @@ const CLAIM_RULES: Array<{ code: CaptionIssueCode; message: string; pattern: Reg
 		code: 'aesthetic-claim',
 		message: 'search captions should describe visible facts, not market the image',
 		pattern: /\b(?:cinematic|stunning|beautiful|beautifully|dramatic(?:ally)?|breathtaking|gorgeous)\b/i
+	},
+	{
+		code: 'swimwear-term',
+		// Ordinary athletic wear stays allowed — including a SPORTS bra, which is standard kit
+		// on an indoor or grass court and names itself the same way a jersey does. Only the
+		// garments whose naming describes the body rather than helping anyone find a photo.
+		message: 'identify a person by the color of what they wear, not by naming swimwear',
+		pattern: /\b(?:bikinis?|swimsuits?|swim\s?wear|bathing\s+suits?|speedos?|thongs?|lingerie|underwear|(?<!sports\s)bras?|briefs)\b/i
 	}
 ];
 
@@ -95,6 +110,9 @@ export function buildCaptionCorrectionMessage(issues: CaptionIssue[]): string {
 			: '',
 		issues.some((issue) => issue.code === 'too-long')
 			? 'Cut it to 30 words or fewer: keep jersey numbers, colors, and the main action; drop secondary scene detail.'
+			: '',
+		issues.some((issue) => issue.code === 'swimwear-term')
+			? 'Keep the color — it is how someone finds their own photo — but drop the garment: write "a player in navy" or "a player in a red top", never the swimwear itself.'
 			: ''
 	]
 		.filter(Boolean)
