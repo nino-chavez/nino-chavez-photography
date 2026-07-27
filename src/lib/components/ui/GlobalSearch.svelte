@@ -92,7 +92,10 @@
 			<span class="hidden sm:inline text-sm text-charcoal-400 group-hover:text-gold-500 transition-colors">
 				Search
 			</span>
-			<kbd class="hidden md:inline-flex items-center px-1.5 py-0.5 text-xs bg-charcoal-700 text-charcoal-300 rounded border border-charcoal-600">
+			<!-- charcoal-200, not -300: charcoal-300 on charcoal-700 is 4.20:1, just under AA.
+			     Lightening the label rather than darkening the chip keeps the key-cap read —
+			     the chip has to stay lighter than the charcoal-900/50 button around it. -->
+			<kbd class="hidden md:inline-flex items-center px-1.5 py-0.5 text-xs bg-charcoal-700 text-charcoal-200 rounded border border-charcoal-600">
 				⌘K
 			</kbd>
 		</button>
