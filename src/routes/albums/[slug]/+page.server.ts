@@ -90,8 +90,23 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 
 	const baseUrl = 'https://photography.ninochavez.co';
 	const canonicalUrl = `${baseUrl}/albums/${correctSlug}`;
-	const sport = album?.primary_sport || 'sports';
-	const ogDescription = `${albumName} — ${totalCount} professional ${sport} photos by Nino Chavez`;
+	const sport = album?.primary_sport || videos[0]?.sport_type || 'sports';
+	// Same rule as the on-page header and the OG card: a zero count is omitted, never
+	// printed. A video-only album previously unfurled as "… — 0 professional sports
+	// photos by Nino Chavez", which is both wrong and the first thing a share shows.
+	// The sport qualifies the first segment only — "119 professional volleyball photos and
+	// 82 videos", not "…volleyball photos and 82 volleyball videos".
+	const contents: string[] = [];
+	if (totalCount > 0) {
+		contents.push(`${totalCount} professional ${sport} photo${totalCount === 1 ? '' : 's'}`);
+	}
+	if (videos.length > 0) {
+		const qualifier = contents.length ? '' : `professional ${sport} `;
+		contents.push(`${videos.length} ${qualifier}video${videos.length === 1 ? '' : 's'}`);
+	}
+	const ogDescription = contents.length
+		? `${albumName} — ${contents.join(' and ')} by Nino Chavez`
+		: `${albumName} — sports photography by Nino Chavez`;
 
 	// Branded OG card rendered by /albums/[slug]/og.png. Built from the request
 	// origin (+ base path) so it unfurls on whichever host served the page
