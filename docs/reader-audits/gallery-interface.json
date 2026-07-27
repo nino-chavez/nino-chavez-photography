@@ -1,16 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-27T19:43:34.762Z",
-  "reviewedBy": "Claude Opus 5 + browse-tool walkthrough (local dev, real Supabase data)",
-  "method": "re-walked the album share metadata after the og:description change — og:title, og:description and og:image checked on photo-only, video-only and mixed albums; on-page copy unchanged by this commit and re-confirmed unchanged",
-  "sourceDigest": "sha256:fb000bc44a19ecda9c5d2b8d357876ddfd1a485d46a297618f98d64dfd0fd11d",
+  "reviewedAt": "2026-07-27T20:42:14.319Z",
+  "reviewedBy": "Claude Opus 5 + browse-tool computed-style inspection (local dev, real Supabase data)",
+  "method": "adjudicated image-hover-transform against DESIGN.md's stated thesis; converted the lifting-tile device to the contained cover scale on AlbumCard and ai/PhotoGrid; verified computed transitionProperty/duration on the albums grid and screenshotted the grid at rest. No copy changed.",
+  "sourceDigest": "sha256:1ebbd59ac269b5075e78d62ec7877eb92e733109bb9c66ce7ce6f843cf46908a",
   "sourceFiles": 130,
   "scope": [
-    "album detail (photo-only)",
-    "album detail (video-only)",
-    "album detail (photos+videos)",
-    "album share metadata",
-    "album og.png card"
+    "albums index",
+    "album card hover",
+    "collections card hover",
+    "AI photo grid hover"
   ]
 }
