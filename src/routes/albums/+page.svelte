@@ -131,6 +131,9 @@
 			<div class="flex items-center justify-between gap-4">
 				<div class="flex items-center gap-2">
 					<Typography variant="h1" class="text-xl lg:text-2xl">Albums</Typography>
+					<!-- Bare count on purpose: the h1 beside it is the unit. "Albums 249 albums"
+					     was tried and reads worse. The album *detail* header needs its units
+					     ("119 photos · 82 videos") because its title is an event name. -->
 					<Typography variant="caption" class="text-charcoal-400 text-xs">
 						{data.totalAlbums.toLocaleString()}
 					</Typography>

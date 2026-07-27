@@ -44,6 +44,21 @@
 	let hasVideos = $derived(data.videos.length > 0);
 	let hasPhotos = $derived(data.photos.length > 0);
 
+	// Header count. A segment is omitted entirely when its count is zero, rather than
+	// rendered as "0 photos" — the video-only albums have no photos at all, and telling
+	// a visitor there are none of a thing they never asked about is noise. This matches
+	// what the album list already does for the same albums ("94 videos", no photo count).
+	let countLabel = $derived.by(() => {
+		const parts = [];
+		if (data.totalCount > 0) {
+			parts.push(`${data.totalCount.toLocaleString()} ${data.totalCount === 1 ? 'photo' : 'photos'}`);
+		}
+		if (data.videos.length > 0) {
+			parts.push(`${data.videos.length} video${data.videos.length === 1 ? '' : 's'}`);
+		}
+		return parts.join(' · ');
+	});
+
 	// Section nav: with many videos the photos sit far down the page, so offer a
 	// jump bar + a collapsible videos section to reach photos in one click.
 	let videosCollapsed = $state(false);
@@ -224,7 +239,7 @@
 				<div class="flex items-center gap-2 min-w-0 flex-1">
 					<Typography variant="h1" class="text-xl lg:text-2xl truncate">{data.albumName}</Typography>
 					<Typography variant="caption" class="text-charcoal-400 text-xs whitespace-nowrap">
-						{data.totalCount.toLocaleString()} {data.totalCount === 1 ? 'photo' : 'photos'}{#if hasVideos}{' '}&middot; {data.videos.length} video{data.videos.length !== 1 ? 's' : ''}{/if}
+						{countLabel}
 					</Typography>
 				</div>
 
