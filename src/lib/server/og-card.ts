@@ -232,6 +232,8 @@ export interface AlbumCardData {
 	albumName: string;
 	photoDataUri: string | null;
 	photoCount: number;
+	/** Omitted or 0 renders no video segment. Some albums are videos only. */
+	videoCount?: number;
 	sport?: string | null;
 }
 
@@ -240,7 +242,13 @@ export interface AlbumCardData {
  * scrim, a gold accent bar, the album name, photo-count meta, and the wordmark —
  * matching the chosen "photo + branded overlay" treatment.
  */
-export function buildAlbumCard({ albumName, photoDataUri, photoCount, sport }: AlbumCardData) {
+export function buildAlbumCard({
+	albumName,
+	photoDataUri,
+	photoCount,
+	videoCount = 0,
+	sport
+}: AlbumCardData) {
 	const children: React.ReactNode[] = [];
 
 	if (photoDataUri) {
@@ -276,7 +284,15 @@ export function buildAlbumCard({ albumName, photoDataUri, photoCount, sport }: A
 	// Title length → size ramp so long event names stay on the card.
 	const nameSize = albumName.length > 42 ? 48 : albumName.length > 26 ? 60 : 72;
 
-	const metaParts = [`${photoCount.toLocaleString('en-US')} photo${photoCount === 1 ? '' : 's'}`];
+	// A zero count is omitted rather than printed. A video-only album card read
+	// "0 photos", which is the same defect the album header carried.
+	const metaParts: string[] = [];
+	if (photoCount > 0) {
+		metaParts.push(`${photoCount.toLocaleString('en-US')} photo${photoCount === 1 ? '' : 's'}`);
+	}
+	if (videoCount > 0) {
+		metaParts.push(`${videoCount.toLocaleString('en-US')} video${videoCount === 1 ? '' : 's'}`);
+	}
 	if (sport) metaParts.push(sport);
 
 	children.push(

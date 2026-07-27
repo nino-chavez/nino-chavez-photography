@@ -68,7 +68,19 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 	}
 
 	const album = albumData.data;
-	const albumName = album?.album_name || albumKey;
+	// `albums_summary` is defined WHERE sharpness IS NOT NULL, so a video-only album has no
+	// row in it at all and `albumData.data` is null — the page still exists (ADR 0001 decides
+	// existence from base-table photos OR videos), but the name has nowhere to come from and
+	// used to fall through to `albumKey`. That rendered the h1, the <title>, the OG
+	// description and the OG alt text as an opaque suffix like "p4J2jk" on two live albums.
+	// The videos already carry the name — `fetchAlbumVideos` selects `album_name` — so no
+	// extra query is needed; the album list resolves the same albums the same way, from
+	// `videos_summary`. Skip that function's 'Unknown Album' sentinel, which is its own
+	// display fallback and not a real name.
+	const videoAlbumName = videos.find(
+		(v) => v.album_name && v.album_name !== 'Unknown Album'
+	)?.album_name;
+	const albumName = album?.album_name || videoAlbumName || albumKey;
 
 	// If URL is using old format (just the key), redirect to new slug format
 	const correctSlug = createAlbumSlug(albumName, albumKey);

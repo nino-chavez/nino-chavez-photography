@@ -1,15 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-21T21:12:44.485Z",
-  "reviewedBy": "Codex production browser audit",
-  "method": "production browser walkthrough after Cloudflare receipt-staleness failure",
-  "sourceDigest": "sha256:644cce2a95edaa1d4c043d4fd9993c9c097f0dd9542023b6601aa4eae23c8169",
+  "reviewedAt": "2026-07-27T18:10:50.448Z",
+  "reviewedBy": "Claude Opus 5 + browse-tool walkthrough (local dev, real Supabase data)",
+  "method": "browser walkthrough of album detail across photo-only, video-only and mixed albums, plus the albums index and home; og.png fetched per album",
+  "sourceDigest": "sha256:321b0aa90ca907d799155b9e8f880793ac7bf7c2598328594986e25dee1b1ae6",
   "sourceFiles": 130,
   "scope": [
     "home",
-    "album",
-    "search",
-    "photo detail"
+    "albums index",
+    "album detail (photo-only)",
+    "album detail (video-only)",
+    "album detail (photos+videos)",
+    "album og.png card"
   ]
 }
