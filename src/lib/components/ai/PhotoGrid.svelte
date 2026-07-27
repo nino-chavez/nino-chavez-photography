@@ -33,7 +33,7 @@
 				href={`${base}/photo/${photo.image_key}`}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="group relative aspect-square bg-black/20 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all hover:scale-105 animate-grid-item-in"
+				class="group relative aspect-square bg-black/20 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-colors duration-200 animate-grid-item-in"
 				style="animation-delay: {i * 50}ms"
 				title={getPhotoLabel(photo)}
 			>
@@ -43,7 +43,7 @@
 						alt={getPhotoLabel(photo)}
 						width="200"
 						height="200"
-						class="w-full h-full object-cover"
+						class="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
 						loading="lazy"
 						decoding="async"
 					/>

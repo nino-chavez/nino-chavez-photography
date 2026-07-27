@@ -138,7 +138,7 @@
 	href={albumUrl}
 	data-sveltekit-preload="hover"
 	style="animation: fade-scale-in 0.3s ease-out {index * 0.05}s both"
-	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 hover:scale-105 hover:-translate-y-1 transition-transform duration-200 transition-colors cursor-pointer outline-none block"
+	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 cursor-pointer outline-none block"
 	aria-label={`Album: ${album.albumName}, ${contentLabel}`}
 	onclick={handleClick}
 >
@@ -168,7 +168,8 @@
 			loading={priority ? 'eager' : 'lazy'}
 			decoding={priority ? 'sync' : 'async'}
 			fetchpriority={priority ? 'high' : 'auto'}
-			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {imageLoaded || priority
+			class="absolute inset-0 w-full h-full object-cover transition-[opacity,transform] duration-200 ease-out group-hover:scale-105 {imageLoaded ||
+			priority
 				? 'opacity-100'
 				: 'opacity-0'}"
 			onload={handleImageLoad}
