@@ -1,15 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-27T20:42:14.319Z",
-  "reviewedBy": "Claude Opus 5 + browse-tool computed-style inspection (local dev, real Supabase data)",
-  "method": "adjudicated image-hover-transform against DESIGN.md's stated thesis; converted the lifting-tile device to the contained cover scale on AlbumCard and ai/PhotoGrid; verified computed transitionProperty/duration on the albums grid and screenshotted the grid at rest. No copy changed.",
-  "sourceDigest": "sha256:1ebbd59ac269b5075e78d62ec7877eb92e733109bb9c66ce7ce6f843cf46908a",
+  "reviewedAt": "2026-07-27T21:21:34.038Z",
+  "reviewedBy": "Claude Opus 5 + pixel measurement of the rendered page (text-hidden screenshot) and gradient arithmetic",
+  "method": "measured every low-contrast finding against the composited page rather than the scanner's number: screenshotted the hero, hid the copy, re-screenshotted and sampled the true backdrop, then confirmed against a pure-white-frame calculation. Fixed the one real failure (the header search chip). No copy changed.",
+  "sourceDigest": "sha256:b26b53935542138d6e3c6a805ea3dac9e3f075ec1fae71c5312a49b8a3ea24b6",
   "sourceFiles": 130,
   "scope": [
+    "home hero copy over rotating frames",
+    "header search button and shortcut chip",
     "albums index",
-    "album card hover",
-    "collections card hover",
-    "AI photo grid hover"
+    "album detail"
   ]
 }
