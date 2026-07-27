@@ -76,6 +76,16 @@ colors:
     warning: { bg: "#f59e0b20", text: "#fbbf24", border: "#f59e0b40" }
 
 typography:
+  # impeccable's reader walks the top level of `typography:` for a role object with a
+  # string `fontFamily`, so the nested `fonts:` block below is invisible to it and every
+  # font on the page parsed as undeclared — which does not relax the check, it makes the
+  # check vacuous. These two role entries are the shape it reads. Keep them in step with
+  # `fonts:` below, which stays because it carries the weights and self-hosting notes.
+  body:
+    fontFamily: '"Inter Variable", system-ui, -apple-system, sans-serif'
+  display:
+    fontFamily: 'Montserrat, system-ui, sans-serif'
+
   fonts:
     body:
       family: "Inter Variable"
