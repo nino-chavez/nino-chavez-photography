@@ -16,7 +16,19 @@ import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
+// Stringified nulls are not image keys — they are a caller that interpolated a
+// missing value into a URL template. The share-URL builders that produced them are
+// fixed (see $lib/utils/share-url's photoShareUrl), but Facebook's scraper has
+// /photo/null cached and re-requests it: 334 hits over 7 days, half of which timed
+// out at the edge (167x 404, 167x 504) because each one still paid for a Supabase
+// round trip first. Reject before touching the database.
+const NON_KEYS = new Set(['null', 'undefined', 'NaN']);
+
 export const load: PageServerLoad = async ({ params, url, request, getClientAddress, platform }) => {
+	if (!params.id || NON_KEYS.has(params.id)) {
+		throw error(404, `Photo not found: ${params.id}`);
+	}
+
 	// Fetch by image_key. NOTE: image_key is NOT unique — camera DSC numbers reset per card, so the
 	// same image_key recurs across albums. Using .single() here 404s on any collision. Fetch the
 	// candidates and prefer one from a LISTED album, so an unlisted/duplicate album never shadows the

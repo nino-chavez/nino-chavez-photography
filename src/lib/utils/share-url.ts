@@ -30,3 +30,19 @@ export function withSrc(url: string, src: string): string {
 		return url;
 	}
 }
+
+/**
+ * Absolute share URL for a photo, or `null` when the item has no `image_key` to
+ * address it by (videos, and any row where the column is empty).
+ *
+ * Two call sites used to interpolate `image_key` straight into a template. When it
+ * was null they emitted `/photo/null` — a real, shareable link to nothing. Facebook
+ * cached one: over 7 days its scraper requested `/photography/photo/null` 334 times,
+ * half of them timing out at the edge (167x 404, 167x 504). Returning null here
+ * makes "this item can't be shared" a value the caller has to handle, instead of a
+ * string that looks like a URL.
+ */
+export function photoShareUrl(imageKey: string | null | undefined): string | null {
+	if (!imageKey) return null;
+	return `${FALLBACK_BASE}/photo/${encodeURIComponent(imageKey)}`;
+}
