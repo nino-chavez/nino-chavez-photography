@@ -11,6 +11,7 @@
 	import { trackEngagement } from '$lib/analytics/client';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
+	import { SITE_URL } from '$lib/site-url';
 
 	let { data }: { data: PageData } = $props();
 
@@ -80,7 +81,7 @@
 	}
 
 	// Generate enhanced Schema.org structured data for AEO
-	const baseUrl = 'https://photography.ninochavez.co';
+	const baseUrl = SITE_URL;
 
 	let schemaData = $derived.by(() => {
 	const imageUrl = data.photo.image_url || '';

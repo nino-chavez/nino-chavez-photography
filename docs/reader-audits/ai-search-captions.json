@@ -1,16 +1,9 @@
 {
   "version": 1,
   "surface": "AI search captions",
-  "reviewedAt": "2026-07-26T21:37:47.180Z",
-  "reviewedBy": "Claude Code — big-dig ingest session",
-  "method": "visual spot-check of stored captions against their source frames, plus contract enforcement and library-wide claims audit",
-  "sourceDigest": "sha256:3cdd30c315eeabe100732d74b111b9f1f903ca7a250e9733519cfe6735ac85f7",
-  "sourceFiles": 5,
-  "scope": [
-    "267 Chicago Big Dig captions re-extracted under the revised contract",
-    "12 captions verified against the full-resolution frames",
-    "1 verified miscount corrected and re-embedded (1BlKk4-DSC07162)",
-    "72 pre-existing swimwear-term captions repaired across 9 albums via backfill-vnext --claims-only",
-    "22,042 stored captions scanned clean by audit-caption-claims"
-  ]
+  "reviewedAt": "2026-07-28T22:44:00.104Z",
+  "reviewedBy": "Claude Opus 5 — confirmed the caption path is untouched by the site-URL sweep",
+  "method": "Checked the diff against the actual files rather than reasoning about intent. The change to all three AI sources (embeddings.ts, ingest-extraction.ts, query-planner.ts) is exactly one added import plus one header value each: 'HTTP-Referer' moves from the hardcoded photography.ninochavez.co to SITE_URL. That header is OpenRouter attribution — it identifies the calling app on their dashboard and is never seen by the model. No prompt text, no response schema, no parsing, no model or dimension changed, so generated caption output cannot differ. The caption contract itself (factual retrieval metadata: visible numbers, colors, action, scene; no aesthetic filler, no guessed identity) is unchanged and no caption was regenerated as part of this work.",
+  "sourceDigest": "sha256:9591bc3f5b36a2e2d1ca4590a1d63a8a818eaa2d3c63712e1466dd90e4b1b1f9",
+  "sourceFiles": 5
 }

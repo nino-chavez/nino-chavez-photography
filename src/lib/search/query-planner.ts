@@ -29,6 +29,7 @@ import {
 	isSport,
 	type Sport,
 } from '$lib/ai/taxonomy';
+import { SITE_URL } from '$lib/site-url';
 
 const PLANNER_MODEL = 'google/gemini-2.5-flash-lite';
 
@@ -137,7 +138,7 @@ export async function planQuery(query: string, opts: PlanOptions): Promise<Query
 				headers: {
 					Authorization: `Bearer ${apiKey}`,
 					'Content-Type': 'application/json',
-					'HTTP-Referer': 'https://photography.ninochavez.co',
+					'HTTP-Referer': SITE_URL,
 					'X-Title': 'photography query-planner',
 				},
 				body,

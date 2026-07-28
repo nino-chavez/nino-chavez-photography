@@ -54,8 +54,8 @@
 					Overview
 				</Typography>
 				<Typography variant="body" class="text-charcoal-300 leading-relaxed">
-					Nino Chavez Photography operates photography.ninochavez.co. This privacy policy explains what
-					data we collect, how we use it, and your rights regarding it.
+					Nino Chavez Photography operates this gallery at ninochavez.co/photography. This privacy
+					policy explains what data we collect, how we use it, and your rights regarding it.
 				</Typography>
 			</div>
 

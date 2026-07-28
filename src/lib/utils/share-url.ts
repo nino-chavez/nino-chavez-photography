@@ -7,10 +7,14 @@
  * and homepage loaders), which logs it as a view engagement event.
  */
 
-// Every current caller (ShareMenu, SocialShareButtons) builds an absolute URL
-// (`https://photography.ninochavez.co/...` or `data.seo.canonical`), but a relative
-// path is handled too via this fallback base in case a future caller passes one.
-const FALLBACK_BASE = 'https://photography.ninochavez.co';
+import { SITE_URL } from '$lib/site-url';
+
+// Callers that already hold an absolute URL (ShareMenu, SocialShareButtons, or
+// `data.seo.canonical`) pass it through untouched; this base only resolves a
+// relative path. It was the old `photography.ninochavez.co` subdomain until
+// 2026-07-28, which meant every "copy link" and every social share handed out a
+// URL that 301-redirects before it resolves. See $lib/site-url.
+const FALLBACK_BASE = SITE_URL;
 
 /**
  * Append (or overwrite) the `src` query param on a URL headed out of the app.
@@ -18,8 +22,8 @@ const FALLBACK_BASE = 'https://photography.ninochavez.co';
  * unchanged if it can't be parsed as a URL — attribution must never break sharing.
  *
  * @example
- * withSrc('https://photography.ninochavez.co/photo/i-AbCdEf', 'share-x')
- * // => 'https://photography.ninochavez.co/photo/i-AbCdEf?src=share-x'
+ * withSrc('https://ninochavez.co/photography/photo/DSC06067', 'share-x')
+ * // => 'https://ninochavez.co/photography/photo/DSC06067?src=share-x'
  */
 export function withSrc(url: string, src: string): string {
 	try {

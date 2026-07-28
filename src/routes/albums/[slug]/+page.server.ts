@@ -6,6 +6,7 @@ import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { computeSessionHash } from '$lib/analytics/session';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
+import { SITE_URL } from '$lib/site-url';
 
 // Channel value on an inbound ?src= param — see $lib/utils/share-url for the values
 // the app hands out (share-copy, share-web, share-x, share-fb, share-pin) plus the
@@ -88,7 +89,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 		throw redirect(301, `${base}/albums/${correctSlug}`);
 	}
 
-	const baseUrl = 'https://photography.ninochavez.co';
+	const baseUrl = SITE_URL;
 	const canonicalUrl = `${baseUrl}/albums/${correctSlug}`;
 	const sport = album?.primary_sport || videos[0]?.sport_type || 'sports';
 	// Same rule as the on-page header and the OG card: a zero count is omitted, never

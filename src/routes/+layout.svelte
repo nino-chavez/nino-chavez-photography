@@ -7,6 +7,7 @@
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import ChatWidget from '$lib/components/ai/ChatWidget.svelte';
+	import { SITE_ORIGIN } from '$lib/site-url';
 
 	let { children } = $props();
 
@@ -39,7 +40,6 @@
 	const siteTitle = 'Nino Chavez Photography';
 	const siteDescription =
 		'MOTION. EMOTION. Frame by Frame. Professional action sports photography capturing the intensity, emotion, and dynamic energy of volleyball, basketball, softball, and more.';
-	const siteUrl = 'https://photography.ninochavez.co';
 	const defaultKeywords =
 		'sports photography, volleyball photography, action sports, basketball photography, softball photography, professional photography, Nino Chavez, motion photography, emotion photography';
 	const twitterHandle = '@flickday.media';
@@ -86,8 +86,12 @@
 		return siteDescription;
 	});
 
-	// Canonical URL
-	const canonicalUrl = $derived(`${siteUrl}${$page.url.pathname}`);
+	// Canonical URL. SITE_ORIGIN, not SITE_URL: `$page.url.pathname` already carries
+	// the `/photography` base (svelte.config.js sets paths.base), so composing it with
+	// the base-inclusive SITE_URL yields /photography/photography/... — verified in the
+	// built page, not assumed. Leaf loads that build their own canonical from SITE_URL
+	// are correct, because they append a bare route like `/photo/${key}`.
+	const canonicalUrl = $derived(`${SITE_ORIGIN}${$page.url.pathname}`);
 
 	// Resolved SEO values: page override (data.seo) → site default.
 	const resolvedTitle = $derived(seo?.title ?? pageTitle);

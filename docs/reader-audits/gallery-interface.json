@@ -1,12 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-28T19:59:48.101Z",
-  "reviewedBy": "Claude Opus 5 — proved the related rail was identical on every volleyball photo, then fixed the tiering",
-  "method": "Measured against production data rather than read from code. Before: two photos from different albums (rbxw3h, 1BlKk4) returned byte-identical 'related' lists, all twelve from a third album, under a heading reading 'More from this Album & Sport' — because the .or() third branch subsumed the second and a global ORDER BY upload_date drowned the album branch, with sport_type=volleyball matching 15,330 of 21,743 rows. After: rbxw3h, 1BlKk4 and pHqw25 each return twelve distinct photos drawn only from their own album, with the current photo excluded by photo_id. 260 of 262 albums hold twelve or more photos so tier one fills the rail in a single query; the two that do not (5 and 7 photos) fall through to sport+category then sport. Also removed the 'Visually Similar Photos' carousel: PHOTO_COLUMNS excludes the embedding by design, so its guard short-circuited on every request and the section had never rendered for any visitor — no visible change, and the match_photos RPC and embeddings remain in use by search.",
-  "sourceDigest": "sha256:274a5ed090667b1d3b4e8465c376a638d428fdd2ea450498db72bea7aa243f9e",
-  "sourceFiles": 130,
-  "scope": [
-    "related photos rail"
-  ]
+  "reviewedAt": "2026-07-28T22:43:51.888Z",
+  "reviewedBy": "Claude Opus 5 — swept the stale subdomain out of every canonical, share link and policy line",
+  "method": "Verified in the built page via preview, not read from source. Before: every page declared <link rel=canonical> and og:url on https://photography.ninochavez.co — a host apps/router 301-redirects — while the sitemap listed https://ninochavez.co/photography, so a crawler got two different answers to 'where does this page live' from the same page. photoShareUrl built every copy-link and social share on that same redirecting host. After: canonical, og:url and share links all resolve to https://ninochavez.co/photography/... An intermediate version of this change doubled the base path (https://ninochavez.co/photography/photography/privacy) because $page.url.pathname already carries paths.base; caught by reading the rendered tag rather than trusting the edit, and fixed by composing the layout fallback from SITE_ORIGIN. Confirmed across /, /privacy, /about, /albums, /favorites and /photo/DSC06067 — all six now emit a single, non-redirecting canonical. Reader-facing copy changed in one place: the privacy overview said 'operates photography.ninochavez.co', a domain that no longer serves the gallery; it now reads 'operates this gallery at ninochavez.co/photography', verified in the rendered page.",
+  "sourceDigest": "sha256:1d3895f07506ede70c1bf137429eafb7cbd565ee71ad54e7b36b964c70257b12",
+  "sourceFiles": 130
 }
