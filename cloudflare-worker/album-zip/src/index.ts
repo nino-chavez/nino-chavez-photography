@@ -7,16 +7,29 @@ const MAX_PHOTOS = 300;
 const SIGNATURE_MAX_AGE_S = 300; // 5 minutes
 
 /**
- * Verify HMAC-SHA256 signature on the request URL.
- * Signature covers: albumKey + ":" + quality + ":" + timestamp
+ * Signature verification for the download URL minted by /api/zip-url.
+ *
+ * The signed payload is `albumKey:quality:timestamp`.
+ *
+ * WHY A DEDICATED SECRET
+ *
+ * This used to sign with SUPABASE_SERVICE_ROLE_KEY, because that key was already present on
+ * both sides. HMAC-SHA256 does not reveal its key, so nothing was leaking — but /api/zip-url is
+ * unauthenticated, which made it an open oracle computing a function of the database
+ * credential over attacker-chosen input, on demand and without limit. The construction holds
+ * that up fine; the objection is that it puts the database key on an adversarial surface for
+ * no benefit, so any later slip in this code path escalates to full database access instead of
+ * to "someone can mint zip links". It also welded the two together: rotating the Supabase key
+ * silently broke every album download, which in practice meant never rotating it.
+ *
+ * `quality` is part of the signed payload but selects nothing — buildZip serves the `large`
+ * variant unconditionally, which is the same variant the gallery's own srcset hands every
+ * visitor. It stays in the payload because the payload is a contract between two independently
+ * deployed services; /api/zip-url rejects any other value so the field cannot carry junk.
  */
-async function verifySignature(
-	secret: string,
-	albumKey: string,
-	quality: string,
-	ts: string,
-	sig: string
-): Promise<boolean> {
+const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
+
+async function signPayload(secret: string, payload: string): Promise<string> {
 	const encoder = new TextEncoder();
 	const key = await crypto.subtle.importKey(
 		'raw',
@@ -25,12 +38,38 @@ async function verifySignature(
 		false,
 		['sign']
 	);
-	const data = encoder.encode(`${albumKey}:${quality}:${ts}`);
-	const signature = await crypto.subtle.sign('HMAC', key, data);
-	const expected = Array.from(new Uint8Array(signature))
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('');
-	return expected === sig;
+	const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+	return Array.from(new Uint8Array(signature), (b) => HEX[b]).join('');
+}
+
+/**
+ * Constant-time string comparison. `a === b` short-circuits on the first differing byte, which
+ * leaks how much of a guessed signature was correct. Not a practical attack against a 5-minute
+ * window over the public internet, but comparing secrets in variable time is the kind of thing
+ * that is free to get right and awkward to explain later.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+	if (a.length !== b.length) return false;
+	let diff = 0;
+	for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+	return diff === 0;
+}
+
+/**
+ * Verify against the current signing secret, then the previous one.
+ *
+ * The second slot is permanent, not a migration leftover. The signer and the verifier are
+ * separately deployed — a Pages build and a Worker deploy — so with a single slot every
+ * rotation has a window where one side signs with a key the other does not accept, and any
+ * download attempted in that window fails. Accepting the outgoing secret makes rotation
+ * ordinary: set the new one on both sides, then drop the old one whenever convenient.
+ */
+async function verifySignature(env: Env, payload: string, sig: string): Promise<boolean> {
+	for (const secret of [env.ZIP_SIGNING_SECRET, env.ZIP_SIGNING_SECRET_PREVIOUS]) {
+		if (!secret) continue;
+		if (timingSafeEqual(await signPayload(secret, payload), sig)) return true;
+	}
+	return false;
 }
 
 function corsHeaders(origin: string): Record<string, string> {
@@ -98,8 +137,17 @@ export default {
 			});
 		}
 
-		// Use SUPABASE_SERVICE_ROLE_KEY as shared HMAC secret (available on both Vercel and Worker)
-		const valid = await verifySignature(env.SUPABASE_SERVICE_ROLE_KEY, albumKey, quality, ts, sig);
+		if (!env.ZIP_SIGNING_SECRET) {
+			// Fail closed and say why. Serving without verification would turn this into an open
+			// bulk-download endpoint for every album on the account.
+			console.error('[album-zip] ZIP_SIGNING_SECRET is not set — refusing to verify.');
+			return new Response('Server misconfigured', {
+				status: 503,
+				headers: corsHeaders(allowedOrigin)
+			});
+		}
+
+		const valid = await verifySignature(env, `${albumKey}:${quality}:${ts}`, sig);
 		if (!valid) {
 			return new Response('Invalid signature', {
 				status: 403,

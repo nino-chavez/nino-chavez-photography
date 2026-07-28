@@ -26,6 +26,13 @@ CF_ACCOUNT_HASH = "wg34HB28-JkySWVm5fW4kA"
 ALLOWED_ORIGIN = "https://ninochavez.co"
 
 # Secrets (set via `wrangler secret put`):
-# SUPABASE_URL
-# SUPABASE_SERVICE_ROLE_KEY
-# (SUPABASE_SERVICE_ROLE_KEY doubles as HMAC signing secret)
+#   SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY   — reads photo_metadata past RLS, nothing else
+#   ZIP_SIGNING_SECRET          — HMAC secret for the download URL
+#   ZIP_SIGNING_SECRET_PREVIOUS — optional, only set while rotating the above
+#
+# ZIP_SIGNING_SECRET was split out of SUPABASE_SERVICE_ROLE_KEY on 2026-07-28. The two had
+# been the same value; /api/zip-url is unauthenticated, so that made it an open oracle over
+# the database credential, and it meant the Supabase key could never be rotated without
+# breaking every album download. Both live in 1Password under
+# `Cloudflare photography` (fields: zip_signing_secret, and the Supabase item for the other).
