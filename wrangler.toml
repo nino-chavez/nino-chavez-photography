@@ -2,9 +2,24 @@ name = "nino-chavez-photography"
 compatibility_date = "2024-03-20"
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
-# Bindings and variables configuration can go here.
-# For example:
-# [vars]
-# PUBLIC_SUPABASE_URL = "your_supabase_url"
-
 compatibility_flags = ["nodejs_compat"]
+
+# Non-secret variables belong HERE, not in the dashboard.
+#
+# Once a Pages project has a Wrangler config, that file is the source of truth and the same
+# fields become read-only in the dashboard. A plain-text variable set through the dashboard or
+# the API is reconciled away on the next deploy. Secrets are exempt — Wrangler never deletes
+# them — which is why the nine `secret_text` values (SUPABASE_SERVICE_ROLE_KEY, the CF Images
+# and Stream tokens, OPENROUTER_API_KEY, the VITE_* pair, NODE_VERSION) survive out there and
+# are deliberately not duplicated here.
+#
+# Learned the hard way on 2026-07-28: ADMIN_EMAILS was set via the API, confirmed present, and
+# then silently vanished across two consecutive deploys before anyone would have noticed. That
+# is the same failure shape as the bug it was fixing — a security control disappearing without
+# a sound. In this file its absence is a diff.
+[vars]
+# Who may reach /admin/*, /analytics and /api/admin/* — all of which run with service_role.
+# Comma-separated. NOT a secret: it is an authorization list, not a credential, and it is far
+# more valuable reviewable in git than hidden in a dashboard. See src/lib/server/admin-auth.ts;
+# an empty or missing value denies everyone, on purpose.
+ADMIN_EMAILS = "admin@ninochavez.co"
