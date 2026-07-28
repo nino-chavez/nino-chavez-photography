@@ -27,16 +27,19 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	}
 
 	// image_key is NOT unique; see resolvePhotoByImageKey for the collision rule, which the tag
-	// route beside this one now shares.
-	const photoData = await resolvePhotoByImageKey<PhotoMetadataRow>(
+	// route beside this one now shares. `canonicalSegment` is the identifier that addresses THIS
+	// photo and no other — the raw params.id does not, when two albums share a DSC number.
+	const resolved = await resolvePhotoByImageKey<PhotoMetadataRow>(
 		params.id,
 		PHOTO_DETAIL_COLUMNS,
 		url.searchParams.get('a')
 	);
 
-	if (!photoData) {
+	if (!resolved) {
 		throw error(404, `Photo not found: ${params.id}`);
 	}
+
+	const { row: photoData, canonicalSegment } = resolved;
 
 	// Transform flat Supabase data to nested Photo type (two-bucket model)
 	// NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
@@ -98,7 +101,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	// Build canonical URL
 	const baseUrl = SITE_URL;
-	const canonicalUrl = `${baseUrl}/photo/${params.id}`;
+	// Built from canonicalSegment, not params.id. Two photos can share an image_key, and if both
+	// their pages declared `/photo/DSC05553` as canonical, search engines would fold them back
+	// into one entry and the second photo would stay unindexed — which is the state this fixed.
+	const canonicalUrl = `${baseUrl}/photo/${canonicalSegment}`;
 
 	// Run the secondary queries concurrently rather than in sequence — it is the difference
 	// between one round trip and two, which matters most for visitors far from the database.

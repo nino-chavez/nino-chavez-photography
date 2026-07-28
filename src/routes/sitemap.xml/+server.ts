@@ -13,6 +13,7 @@
 import { supabaseServer } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { createAlbumSlug } from '$lib/utils';
+import { photoAddresses } from '$lib/supabase/photo-address';
 import type { RequestHandler } from './$types';
 import { SITE_URL } from '$lib/site-url';
 
@@ -32,7 +33,9 @@ export const GET: RequestHandler = async () => {
 		// Excludes unprocessed photos (sharpness null) per project rule; unlisted albums are excluded
 		// at the DB layer (photo_metadata RLS) since this reads via the anon supabaseServer.
 		type SitemapRow = {
+			photo_id: string;
 			image_key: string;
+			cf_image_id: string | null;
 			photo_date: string | null;
 			enriched_at: string | null;
 			sport_type: string | null;
@@ -44,7 +47,7 @@ export const GET: RequestHandler = async () => {
 		for (let offset = 0; ; offset += PAGE) {
 			const { data, error: photosError } = await supabaseServer
 				.from(PHOTOS_READ)
-				.select('image_key, photo_date, enriched_at, sport_type, album_key, album_name')
+				.select('photo_id, image_key, cf_image_id, photo_date, enriched_at, sport_type, album_key, album_name')
 				.not('sharpness', 'is', null)
 				.order('photo_id', { ascending: true })
 				.range(offset, offset + PAGE - 1);
@@ -57,6 +60,8 @@ export const GET: RequestHandler = async () => {
 			photos.push(...(data as SitemapRow[]));
 			if (data.length < PAGE) break;
 		}
+
+		const addresses = photoAddresses(photos);
 
 		// Unique albums (dedupe in code — Supabase has no DISTINCT on select)
 		const uniqueAlbums = Array.from(
@@ -115,12 +120,23 @@ export const GET: RequestHandler = async () => {
 			}),
 
 			// Individual photo URLs (THE MONEY MAKER - 20K+ URLs!)
-			...(photos?.map((photo) => ({
-				loc: `${baseUrl}/photo/${photo.image_key}`,
-				lastmod: photo.photo_date || photo.enriched_at || undefined,
+			//
+			// Addressed via photoAddresses, NOT image_key. image_key is the camera frame name and
+			// DSC numbers reset per card, so 113 keys name two photos each. Emitting image_key
+			// blindly listed those 113 URLs twice — telling search engines the same page existed
+			// twice while the second photo had no URL at all and could never be indexed. The
+			// helper hands the contested ones their unique cf_image_id and leaves the other
+			// 20,542 on the image_key URLs that are already indexed.
+			...photos.map((photo) => ({
+				loc: `${baseUrl}/photo/${addresses.get(photo.photo_id) ?? photo.image_key}`,
+				// Date only. <lastmod> must be W3C Datetime, which requires a timezone designator
+				// on any form carrying a time — `2026-01-29T18:48:49.846521` has none and is
+				// invalid, which described every row here. YYYY-MM-DD is a complete W3C form,
+				// needs no timezone, and is the granularity Google's own example uses.
+				lastmod: (photo.photo_date || photo.enriched_at || '').slice(0, 10) || undefined,
 				priority: 0.7, // All photos are portfolio-worthy in Schema v2
 				changefreq: 'monthly' as const
-			})) || [])
+			}))
 		];
 
 		// Generate XML
