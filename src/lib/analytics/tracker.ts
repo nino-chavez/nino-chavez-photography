@@ -10,15 +10,6 @@ import { matviewClient } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { isBotUserAgent } from '$lib/analytics/bot-detection';
 
-export interface PhotoViewEvent {
-	photo_id: string;
-	view_source: 'explore' | 'collection' | 'album' | 'direct' | 'search' | 'timeline' | 'favorites';
-	referrer?: string; // collection slug, album key, or search query
-	album_key?: string; // enables album-level popularity roll-up
-	session_hash?: string; // per-visitor dedup (one view per visitor/photo/day)
-	userAgent: string; // gates the write below — crawler traffic never reaches engagement_events
-}
-
 export interface SearchQueryEvent {
 	query_text: string;
 	filters_used?: Record<string, any>;
@@ -64,34 +55,6 @@ export async function recordBotFiltered(): Promise<void> {
 }
 
 /**
- * Track a photo view (server-side only)
- */
-export async function trackPhotoView(event: PhotoViewEvent): Promise<void> {
-	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
-	try {
-		// Views feed the popularity engine (engagement_events). Service-role write
-		// (RLS denies anon). The per-day dedup index makes a repeat view from the
-		// same visitor a no-op (23505) — intended, so refresh/re-renders don't
-		// inflate counts. Server-side only.
-		const { error: dbError } = await createSupabaseAdminClient()
-			.from('engagement_events')
-			.insert({
-				event_type: 'view',
-				photo_id: event.photo_id,
-				album_key: event.album_key ?? null,
-				source: event.view_source,
-				session_hash: event.session_hash ?? null,
-			});
-		if (dbError && dbError.code !== '23505') {
-			console.error('[Analytics] Failed to track photo view:', dbError.message);
-		}
-	} catch (error) {
-		// Fail silently - analytics should never break the app
-		console.error('[Analytics] Failed to track photo view:', error);
-	}
-}
-
-/**
  * Track a page arrival that carries a valid ?src= attribution param (server-side only).
  *
  * Logged as a 'view' engagement event with photo_id null, so it never competes with
@@ -131,7 +94,7 @@ export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 		// rather than throws on a failed insert, so the bare `await` below used to
 		// swallow every write failure. That made "no one searched" and "search
 		// tracking is broken" indistinguishable from the dashboard — the panels sat
-		// on July 12 data with no way to tell which. Matches trackPhotoView/trackArrival.
+		// on July 12 data with no way to tell which. Matches trackArrival.
 		const { error: dbError } = await createSupabaseAdminClient().from('search_queries').insert({
 			query_text: event.query_text,
 			filters_used: event.filters_used || null,
