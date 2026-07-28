@@ -109,10 +109,15 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 		? `${albumName} — ${contents.join(' and ')} by Nino Chavez`
 		: `${albumName} — sports photography by Nino Chavez`;
 
-	// Branded OG card rendered by /albums/[slug]/og.png. Built from the request
-	// origin (+ base path) so it unfurls on whichever host served the page
-	// (apex /photography and the photography.* subdomain both serve this app).
-	const ogImage = `${url.origin}${base}/albums/${correctSlug}/og.png`;
+	// Branded OG card rendered by /albums/[slug]/og.png.
+	// Absolute on SITE_URL, NOT `url.origin`. The router refetches from
+	// nino-chavez-photography.pages.dev, so inside this app `url.origin` IS the Pages
+	// origin — which published every album's share card as
+	// https://nino-chavez-photography.pages.dev/... It resolved, so nothing looked
+	// broken, but it advertised the internal origin to every crawler and routed them
+	// around the edge. The "unfurls on whichever host served the page" rationale was
+	// written when the photography.* subdomain still served this app; it now 301s.
+	const ogImage = `${SITE_URL}/albums/${correctSlug}/og.png`;
 
 	// "Popular in this album" — top engaged photos from this album (may be empty).
 	const popularInAlbum = await getTopPhotos(supabaseServer, {

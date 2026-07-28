@@ -7,7 +7,7 @@
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import ChatWidget from '$lib/components/ai/ChatWidget.svelte';
-	import { SITE_ORIGIN } from '$lib/site-url';
+	import { SITE_ORIGIN, SITE_URL } from '$lib/site-url';
 
 	let { children } = $props();
 
@@ -99,9 +99,10 @@
 	const resolvedCanonical = $derived(seo?.canonical ?? canonicalUrl);
 	const resolvedKeywords = $derived(seo?.keywords ?? defaultKeywords);
 	const resolvedOgType = $derived(seo?.ogType ?? 'website');
-	// Default share card is the branded /og.png endpoint, origin-relative so it
-	// unfurls on whichever host served the page (apex + base, or subdomain).
-	const resolvedOgImage = $derived(seo?.ogImage ?? `${$page.url.origin}${base}/og.png`);
+	// Default share card is the branded /og.png endpoint, absolute on SITE_URL. It was
+	// built from $page.url.origin, which inside this app is the pages.dev origin the
+	// router refetches from — so the default card was advertised on the internal host.
+	const resolvedOgImage = $derived(seo?.ogImage ?? `${SITE_URL}/og.png`);
 	const resolvedOgImageAlt = $derived(seo?.ogImageAlt ?? siteTitle);
 	// Dimensions are only truthful for our generated 1200×630 cards (default +
 	// albums). Pages that override with a raw image (photos) omit them.

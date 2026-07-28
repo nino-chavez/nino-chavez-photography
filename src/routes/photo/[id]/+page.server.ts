@@ -102,7 +102,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// photo produced no image or a postage stamp. Origin-relative like the album card,
 	// so it unfurls on whichever host served the page, and keyed by canonicalSegment so
 	// the two photos behind a shared image_key get their own cards.
-	const ogImage = `${url.origin}${base}/photo/${canonicalSegment}/og.png`;
+	const ogImage = `${SITE_URL}/photo/${canonicalSegment}/og.png`;
 
 	// Build canonical URL
 	const baseUrl = SITE_URL;
