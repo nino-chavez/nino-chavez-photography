@@ -228,6 +228,164 @@ export function buildSiteCard(heroDataUri: string | null) {
 	);
 }
 
+export interface PhotoCardData {
+	/** Usually the album name — the same string the photo page uses as its title. */
+	title: string;
+	photoDataUri: string | null;
+	/** Rendered under the title as "SPORT · CATEGORY · DATE"; empty parts are dropped. */
+	sport?: string | null;
+	category?: string | null;
+	/** ISO date; only the YYYY-MM-DD portion is used. */
+	photoDate?: string | null;
+}
+
+/**
+ * Single-photo card. A split layout, NOT the album card's full-bleed cover.
+ *
+ * WHY THE PHOTO IS CONTAINED RATHER THAN CROPPED
+ *
+ * 16,140 of the 19,767 photos in this gallery are portrait — 82%. Cover-cropping
+ * a 2:3 action shot into a 1.91:1 card keeps a horizontal band through the middle,
+ * which is where a volleyball player's torso is and where their arms and the ball
+ * are not. The album card can crop because its subject is an event, not a frame;
+ * a photo card whose whole purpose is that one photo cannot.
+ *
+ * So the photo sits in a left panel at its own aspect ratio and the branding moves
+ * beside it. A landscape photo letterboxes in the same panel and still reads.
+ *
+ * The card exists at all because the photo page previously advertised the raw
+ * `thumbnail` variant — 150×224 — as its og:image. That is under Facebook's
+ * documented 200×200 minimum, so a shared photo unfurled with no image or a
+ * postage stamp, on a page whose entire subject is a photograph.
+ */
+export function buildPhotoCard({ title, photoDataUri, sport, category, photoDate }: PhotoCardData) {
+	const PANEL_WIDTH = 620;
+
+	const metaParts = [sport, category, photoDate?.slice(0, 10)].filter(Boolean) as string[];
+	// Long event names wrap into the narrower text column, so the ramp starts smaller
+	// than the album card's.
+	const titleSize = title.length > 46 ? 34 : title.length > 28 ? 42 : 52;
+
+	const photoPanel = h(
+		'div',
+		{
+			key: 'panel',
+			style: {
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				width: `${PANEL_WIDTH}px`,
+				height: `${OG_HEIGHT}px`,
+				background: CHARCOAL_950,
+				overflow: 'hidden'
+			}
+		},
+		photoDataUri
+			? h('img', {
+					key: 'photo',
+					src: photoDataUri,
+					style: {
+						maxWidth: `${PANEL_WIDTH}px`,
+						maxHeight: `${OG_HEIGHT}px`,
+						objectFit: 'contain'
+					}
+				})
+			: // No decodable image: say which photo this is rather than showing an
+				// anonymous brand tile. See fetchImageDataUri for when that happens.
+				h(
+					'div',
+					{
+						key: 'placeholder',
+						style: {
+							display: 'flex',
+							fontSize: '26px',
+							fontWeight: 600,
+							letterSpacing: '0.08em',
+							textTransform: 'uppercase',
+							color: GOLD_500,
+							padding: '0 48px',
+							textAlign: 'center'
+						}
+					},
+					title
+				)
+	);
+
+	const textPanel = h(
+		'div',
+		{
+			key: 'text',
+			style: {
+				display: 'flex',
+				flexDirection: 'column',
+				justifyContent: 'center',
+				width: `${OG_WIDTH - PANEL_WIDTH}px`,
+				height: `${OG_HEIGHT}px`,
+				padding: '0 56px'
+			}
+		},
+		h('div', {
+			key: 'bar',
+			style: { display: 'flex', width: '64px', height: '8px', borderRadius: '4px', background: GOLD_500 }
+		}),
+		h(
+			'div',
+			{
+				key: 'title',
+				style: {
+					display: 'flex',
+					marginTop: '28px',
+					fontSize: `${titleSize}px`,
+					fontWeight: 800,
+					lineHeight: '1.05',
+					letterSpacing: '0.01em',
+					textTransform: 'uppercase',
+					color: WHITE
+				}
+			},
+			title
+		),
+		...(metaParts.length
+			? [
+					h(
+						'div',
+						{
+							key: 'meta',
+							style: {
+								display: 'flex',
+								marginTop: '20px',
+								fontSize: '20px',
+								fontWeight: 500,
+								letterSpacing: '0.06em',
+								textTransform: 'uppercase',
+								color: '#c0c2c8'
+							}
+						},
+						metaParts.join('  ·  ')
+					)
+				]
+			: []),
+		h('div', { key: 'wm', style: { display: 'flex', marginTop: '36px' } }, wordmark(GOLD_500, 18))
+	);
+
+	return h(
+		'div',
+		{
+			style: {
+				display: 'flex',
+				flexDirection: 'row',
+				width: `${OG_WIDTH}px`,
+				height: `${OG_HEIGHT}px`,
+				background: `linear-gradient(135deg, ${CHARCOAL_950} 0%, ${CHARCOAL_900} 60%, ${CHARCOAL_950} 100%)`,
+				fontFamily: 'sans-serif',
+				overflow: 'hidden'
+			}
+		},
+		photoPanel,
+		textPanel
+	);
+}
+
 export interface AlbumCardData {
 	albumName: string;
 	photoDataUri: string | null;
