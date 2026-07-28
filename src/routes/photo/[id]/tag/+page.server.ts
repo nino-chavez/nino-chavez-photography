@@ -20,15 +20,17 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// unique — camera DSC numbers reset per card — so every collision 404'd here while the detail
 	// route beside it resolved the same URL correctly. Router telemetry is what surfaced it: a
 	// crawler walking the gallery got 200 on /photo/:key and 404 on /photo/:key/tag.
-	const photoData = await resolvePhotoByImageKey<PhotoMetadataRow>(
+	const resolved = await resolvePhotoByImageKey<PhotoMetadataRow>(
 		params.id,
 		PHOTO_COLUMNS,
 		url.searchParams.get('a')
 	);
 
-	if (!photoData) {
+	if (!resolved) {
 		throw error(404, 'Photo not found');
 	}
+
+	const photoData = resolved.row;
 
 	// Transform to Photo type (includes CF Images support)
 	const photo = transformPhotoRow(photoData);
