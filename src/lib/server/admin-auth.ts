@@ -1,23 +1,39 @@
 /**
  * Admin authorization (defense-in-depth over authentication).
  *
- * The gallery uses a single-user admin model: admin surfaces (/admin/*, /analytics, /api/admin/*)
- * only confirm a valid Supabase session, relying on signup being DISABLED in the Supabase dashboard
- * so "any authenticated user" == the operator. That assumption is unenforced in code — if signup is
- * ever enabled, any registered user reaches admin endpoints (which run with service_role).
+ * Admin surfaces — /admin/*, /analytics, /api/admin/* — confirm a valid Supabase session AND
+ * check this allowlist. Both are required: authentication says who you are, this says whether
+ * you are the operator. Everything behind it runs with service_role.
  *
- * `ADMIN_EMAILS` closes that gap: a comma-separated allowlist of admin emails. When set, only those
- * emails pass `isAllowedAdmin`. When UNSET, behavior is unchanged (any authenticated user passes) so
- * a missing env var can never lock the operator out — set ADMIN_EMAILS in the Cloudflare Pages env
- * to activate the allowlist.
+ * FAILS CLOSED. An unset `ADMIN_EMAILS` means nobody is an admin, not everybody.
+ *
+ * This function used to return `true` when `ADMIN_EMAILS` was unset, on the stated assumption
+ * that Supabase signup was disabled, so "any authenticated user" == the operator. Both halves
+ * of that assumption were checked on 2026-07-28 and both were false: the project reported
+ * `disable_signup: false`, and `ADMIN_EMAILS` was not set on the Pages project. A freshly
+ * self-registered account loaded /admin/albums, /admin/tags and /analytics in full.
+ *
+ * The failure direction is the whole point. A lockout is loud — the operator notices in seconds
+ * and sets the variable. An open admin surface is silent, and stayed silent. Denying on missing
+ * configuration is the only version of this check that cannot fail unnoticed.
  */
 import { env } from '$env/dynamic/private';
+import { isAllowedAdminEmail } from './admin-allowlist';
+
+export { isAllowedAdminEmail };
 
 export function isAllowedAdmin(email: string | null | undefined): boolean {
-	const allow = (env.ADMIN_EMAILS ?? '')
-		.split(',')
-		.map((e) => e.trim().toLowerCase())
-		.filter(Boolean);
-	if (allow.length === 0) return true; // not configured → preserve legacy single-user behavior
-	return !!email && allow.includes(email.toLowerCase());
+	const raw = env.ADMIN_EMAILS;
+
+	if (!raw?.trim()) {
+		// Say it out loud. An operator locked out by a missing variable should find the reason in
+		// the logs immediately rather than debugging a 403 with no explanation.
+		console.error(
+			'[admin-auth] ADMIN_EMAILS is not set — denying all admin access. ' +
+				'Set it in the Cloudflare Pages environment and redeploy.'
+		);
+		return false;
+	}
+
+	return isAllowedAdminEmail(email, raw);
 }

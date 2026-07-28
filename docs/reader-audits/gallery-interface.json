@@ -1,13 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-28T12:48:24.971Z",
-  "reviewedBy": "Claude Opus 5 — verified the prefetch defect against production before changing the tracking path",
-  "method": "Proved empirically that the /photo/[id] server load records a view on prefetch: one GET of /photo/<key>/__data.json added exactly one engagement_events row. Moved view reporting to the page component via the existing /api/engagement client path, so it fires on render rather than on hover. Also corrected photo.id on this route from image_key to photo_id, matching transformPhotoRow — DownloadButton passes photo.id, so download events from this page had been writing image_keys into engagement_events.photo_id. Removed the now-dead trackPhotoView. No reader-facing copy changed.",
-  "sourceDigest": "sha256:915271030677c2e6e5a621aada362daa16196a24ece2687e023f84a226959ac1",
+  "reviewedAt": "2026-07-28T16:23:07.517Z",
+  "reviewedBy": "Claude Opus 5 — proved the admin bypass against production before and after the fix",
+  "method": "Verified the exposure empirically rather than from code: created a confirmed Supabase account that was on no allowlist, signed in through the real login form, and loaded /admin/tags, /admin/albums and /analytics — all 200, full content, cache-busted and reproduced directly against the pages.dev origin with the router removed. Root cause was isAllowedAdmin returning true when ADMIN_EMAILS is unset, combined with disable_signup=false on the Supabase project. Made the check fail closed and confirmed the visitor-facing gallery is untouched: signed out, reloaded /photography anonymously, and saw the same 8 albums, the FIND YOUR PHOTOS heading and unchanged search copy. /analytics still 302s to /login for anonymous visitors. No reader-facing text changed in this pass.",
+  "sourceDigest": "sha256:0253df6c906d05869a5a7f88c0dfce970d10debc48d2e9243ddd0ec238ff069e",
   "sourceFiles": 130,
   "scope": [
-    "photo detail route view tracking",
-    "engagement identifier consistency"
+    "admin authorization gate"
   ]
 }
