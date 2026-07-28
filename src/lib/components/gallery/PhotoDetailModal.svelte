@@ -24,6 +24,7 @@
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { trackEngagement } from '$lib/analytics/client';
+	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -37,10 +38,12 @@
 
 	let { open = $bindable(false), photo, onclose, viewSource = 'direct' }: Props = $props();
 
-	// Get current photo URL for sharing
-	const photoUrl = $derived(
-		photo ? `${typeof window !== 'undefined' ? window.location.origin : 'https://photography.ninochavez.co'}/photo/${photo.image_key}` : ''
-	);
+	// Canonical share URL, or null when the item has no image_key to address it by.
+	// This built `window.location.origin + '/photo/<key>'`, which had two faults: it
+	// dropped the `/photography` base path the app is actually mounted under, and a
+	// null image_key produced a literal `/photo/null` — which the Facebook share
+	// button below then handed to Facebook's scraper for good.
+	const photoUrl = $derived(photoShareUrl(photo?.image_key));
 
 	let qualityScore = $derived(photo ? getPhotoQualityScore(photo) : 0);
 	let metadata = $derived(photo?.metadata);
@@ -216,8 +219,10 @@
 											<FavoriteButton {photo} variant="default" class="flex-1" />
 										</div>
 
-										<!-- Social Sharing -->
-										<SocialShareButtons photo={photo} url={photoUrl} />
+										<!-- Social Sharing — hidden when the item has no addressable URL -->
+										{#if photoUrl}
+											<SocialShareButtons photo={photo} url={photoUrl} />
+										{/if}
 									</div>
 
 									<!-- AI Insights Toggle -->

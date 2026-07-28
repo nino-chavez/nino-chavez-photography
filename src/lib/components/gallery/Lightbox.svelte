@@ -17,6 +17,7 @@
 	import { generatePhotoTitle, generatePhotoCaption, generateMetadataSummary } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { trackEngagement } from '$lib/analytics/client';
+	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -126,13 +127,16 @@
 		photo?.image_key ? `${base}/explore?similar_to=${photo.image_key}` : null
 	);
 
-	// Share target for ShareMenu
+	// Share target for ShareMenu. An item with no image_key has no shareable URL —
+	// photoShareUrl returns null and the toolbar's `{#if shareTarget}` hides the
+	// control, rather than handing out a link to /photo/null.
 	const shareTarget = $derived.by(() => {
 		if (!photo) return null;
-		const baseUrl = 'https://photography.ninochavez.co';
+		const url = photoShareUrl(photo.image_key);
+		if (!url) return null;
 		return {
 			title: generatePhotoTitle(photo),
-			url: `${baseUrl}/photo/${photo.image_key}`,
+			url,
 			imageUrl: hasCFImage(photo.cf_image_id)
 				? cfImageUrl(photo.cf_image_id, 'public')
 				: photo.original_url || photo.image_url

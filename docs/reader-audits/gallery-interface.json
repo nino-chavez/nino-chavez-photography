@@ -1,13 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-28T08:39:11.211Z",
-  "reviewedBy": "Claude Opus 5 — verified the changed copy in the built server output, not the source",
-  "method": "Analytics dashboard copy changed (admin-gated route). Grepped the built chunk (.svelte-kit/output/server/entries/pages/analytics/_page.svelte.js) to confirm the shipped strings: the bot card now reads 'N blocked on arrival · N views left out of the counts below, from sessions that read whole albums end to end', Total Views carries 'from N visitors', and Album Reach gained 'Most visitors' / 'Most recent' sort buttons. Plain language, no implementation vocabulary; no visitor-facing gallery copy changed.",
-  "sourceDigest": "sha256:77e84af04039dea299201aded6225e44baf2dd7a99f59afde30d769654fcc8a0",
+  "reviewedAt": "2026-07-28T12:38:34.374Z",
+  "reviewedBy": "Claude Opus 5 — traced the defect in Cloudflare request logs, then verified the guards in the built output",
+  "method": "Share-URL defect: Cloudflare zone analytics attributed all 334 weekly /photography/photo/null requests to Facebook's scraper (167x 404, 167x 504). Traced to two builders interpolating a possibly-null image_key, one of which feeds the Facebook share button. Replaced with photoShareUrl() returning null, guarded both call sites so share controls hide rather than emitting a dead link, and added a pre-query 404 in /photo/[id] for null/undefined/NaN. No reader-facing copy changed — the only visible difference is that share controls no longer appear for an item that cannot be addressed by URL.",
+  "sourceDigest": "sha256:d06b65fc69ce3642475194dbbe955118537940ee183ee67d4c4d87f1f7ca9cfa",
   "sourceFiles": 130,
   "scope": [
-    "analytics dashboard stat cards",
-    "album reach sort controls"
+    "lightbox share menu",
+    "photo detail modal social sharing",
+    "photo detail route 404 path"
   ]
 }
