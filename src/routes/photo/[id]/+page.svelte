@@ -8,12 +8,26 @@
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
+	import { trackEngagement } from '$lib/analytics/client';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 
 	let { data }: { data: PageData } = $props();
 
 	let showModal = $state(true);
+
+	// Record the view here rather than in the server load. The load also runs on
+	// prefetch (data-sveltekit-preload-data="hover"), so tracking there banked a view
+	// for every photo a cursor passed over in an album grid. This effect runs only
+	// when the page actually renders. Deduped per visitor/photo/day server-side, so a
+	// re-visit or a re-render costs nothing.
+	$effect(() => {
+		trackEngagement('view', {
+			photoId: data.photo.id,
+			albumKey: data.photo.album_key,
+			source: data.viewSource
+		});
+	});
 
 	// Optimize image URL via CF Images
 	const optimizedImageUrl = $derived.by(() => {

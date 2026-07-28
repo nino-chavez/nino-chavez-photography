@@ -1,14 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-28T12:38:34.374Z",
-  "reviewedBy": "Claude Opus 5 — traced the defect in Cloudflare request logs, then verified the guards in the built output",
-  "method": "Share-URL defect: Cloudflare zone analytics attributed all 334 weekly /photography/photo/null requests to Facebook's scraper (167x 404, 167x 504). Traced to two builders interpolating a possibly-null image_key, one of which feeds the Facebook share button. Replaced with photoShareUrl() returning null, guarded both call sites so share controls hide rather than emitting a dead link, and added a pre-query 404 in /photo/[id] for null/undefined/NaN. No reader-facing copy changed — the only visible difference is that share controls no longer appear for an item that cannot be addressed by URL.",
-  "sourceDigest": "sha256:d06b65fc69ce3642475194dbbe955118537940ee183ee67d4c4d87f1f7ca9cfa",
+  "reviewedAt": "2026-07-28T12:48:24.971Z",
+  "reviewedBy": "Claude Opus 5 — verified the prefetch defect against production before changing the tracking path",
+  "method": "Proved empirically that the /photo/[id] server load records a view on prefetch: one GET of /photo/<key>/__data.json added exactly one engagement_events row. Moved view reporting to the page component via the existing /api/engagement client path, so it fires on render rather than on hover. Also corrected photo.id on this route from image_key to photo_id, matching transformPhotoRow — DownloadButton passes photo.id, so download events from this page had been writing image_keys into engagement_events.photo_id. Removed the now-dead trackPhotoView. No reader-facing copy changed.",
+  "sourceDigest": "sha256:915271030677c2e6e5a621aada362daa16196a24ece2687e023f84a226959ac1",
   "sourceFiles": 130,
   "scope": [
-    "lightbox share menu",
-    "photo detail modal social sharing",
-    "photo detail route 404 path"
+    "photo detail route view tracking",
+    "engagement identifier consistency"
   ]
 }

@@ -8,9 +8,11 @@ export type EngagementType = 'view' | 'favorite' | 'download' | 'share';
  *
  * Never throws and never awaits the response — analytics must never block or
  * break UX. `keepalive` lets the request survive a navigation (important for
- * share/download, which often navigate away). 'view' covers photos seen inside
- * a client-side lightbox/modal, which never hits the server-rendered
- * /photo/[id] page that $lib/analytics/tracker's trackPhotoView instruments.
+ * share/download, which often navigate away). 'view' is reported from the client
+ * everywhere a photo is actually displayed — the lightbox and detail modal, and
+ * the /photo/[id] page itself. That page's server load cannot report it: the load
+ * also runs on hover-prefetch, which would bank a view for every photo a cursor
+ * passed over.
  */
 export function trackEngagement(
 	eventType: EngagementType,

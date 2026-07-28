@@ -9,8 +9,6 @@ import { error } from '@sveltejs/kit';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
 import { PHOTO_DETAIL_COLUMNS } from '$lib/supabase/columns';
-import { trackPhotoView, keepTrackingAlive } from '$lib/analytics/tracker';
-import { computeSessionHash } from '$lib/analytics/session';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
@@ -24,7 +22,7 @@ import { cfImageUrl } from '$lib/utils/cloudflare-images';
 // round trip first. Reject before touching the database.
 const NON_KEYS = new Set(['null', 'undefined', 'NaN']);
 
-export const load: PageServerLoad = async ({ params, url, request, getClientAddress, platform }) => {
+export const load: PageServerLoad = async ({ params, url }) => {
 	if (!params.id || NON_KEYS.has(params.id)) {
 		throw error(404, `Photo not found: ${params.id}`);
 	}
@@ -72,10 +70,16 @@ export const load: PageServerLoad = async ({ params, url, request, getClientAddr
 	// NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
 	// color_temperature, emotion, action_intensity) were removed (cutover prep) ahead of their
 	// schema DROP. The numeric quality sub-scores below STAY.
+	// `id` is the photo_id, matching transformPhotoRow. It used to be the image_key
+	// here alone, which meant every engagement event this page reported (DownloadButton
+	// passes photo.id) wrote an image_key into engagement_events.photo_id while the rest
+	// of the app wrote a real photo_id — two identifier spaces in one column, and the
+	// photo_popularity join silently dropped the odd ones out.
 	const cfId = photoData.cf_image_id || '';
 	const photo: Photo = {
-		id: photoData.image_key,
+		id: photoData.photo_id,
 		image_key: photoData.image_key,
+		album_key: photoData.album_key || undefined,
 		cf_image_id: cfId || undefined,
 		image_url: cfImageUrl(cfId, 'large'),
 		thumbnail_url: cfImageUrl(cfId, 'thumbnail'),
@@ -159,31 +163,22 @@ export const load: PageServerLoad = async ({ params, url, request, getClientAddr
 		}
 	}
 
-	// Track view → popularity engine. Non-blocking; deduped per visitor/photo/day
-	// via the hashed session. album_key enables the album-level roll-up.
-	// keepTrackingAlive: without waitUntil the Workers runtime cancels this
-	// promise when the response completes, silently dropping the view.
-	const userAgent = request.headers.get('user-agent') ?? '';
-	keepTrackingAlive(
-		platform,
-		computeSessionHash(getClientAddress(), userAgent).then(
-			(sessionHash) =>
-				trackPhotoView({
-					photo_id: photoData.photo_id,
-					view_source: viewSource,
-					referrer: referrer || undefined,
-					album_key: photoData.album_key ?? undefined,
-					session_hash: sessionHash,
-					userAgent,
-				})
-		)
-	);
-
+	// The view is NOT recorded here. This load function runs on prefetch: the app sets
+	// data-sveltekit-preload-data="hover" globally, so sweeping a cursor across an album
+	// grid fetches every photo's __data.json and used to bank a view for each one — a
+	// photo nobody opened. Verified against production: a single GET of
+	// /photo/<key>/__data.json added exactly one engagement_events row.
+	//
+	// The page component reports the view instead (see +page.svelte), through the same
+	// /api/engagement path the lightbox and detail modal already use. That fires only
+	// when the page actually renders, which also means a crawler that doesn't execute
+	// JavaScript stops being counted at the source rather than filtered out later.
 	return {
 		photo,
 		relatedPhotos,
 		similarPhotos,
 		approvedTags: tags || [],
+		viewSource,
 		seo: {
 			title: `${photo.title} | Nino Chavez Photography`,
 			description: seoDescription,
