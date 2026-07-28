@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-28T17:04:09.835Z",
-  "reviewedBy": "Claude Opus 5 — split the ZIP signing key off the database credential, verified both halves live",
-  "method": "Exercised the album download end to end through a real browser against production, not from code reading. Before the change: the deployed app minted a URL and the newly deployed worker returned 200 application/zip, proving the outgoing secret still validates so no download breaks during rollout. After: a signature minted independently with node crypto (against the worker's WebCrypto) also returned 200 application/zip, a tampered signature returned 403 Invalid signature, and a stale timestamp returned 403 Signature expired. The bulk download button's only caller sends quality=large, which is the sole value the worker builds and the same variant the gallery srcset already serves, so the new allowlist rejects nothing a visitor can send. No reader-facing copy changed.",
-  "sourceDigest": "sha256:71ce69b032e27c72fe3081cfd84d82e1af27a7dad90ea61bb9fbdb2ebf3ccc39",
+  "reviewedAt": "2026-07-28T19:59:48.101Z",
+  "reviewedBy": "Claude Opus 5 — proved the related rail was identical on every volleyball photo, then fixed the tiering",
+  "method": "Measured against production data rather than read from code. Before: two photos from different albums (rbxw3h, 1BlKk4) returned byte-identical 'related' lists, all twelve from a third album, under a heading reading 'More from this Album & Sport' — because the .or() third branch subsumed the second and a global ORDER BY upload_date drowned the album branch, with sport_type=volleyball matching 15,330 of 21,743 rows. After: rbxw3h, 1BlKk4 and pHqw25 each return twelve distinct photos drawn only from their own album, with the current photo excluded by photo_id. 260 of 262 albums hold twelve or more photos so tier one fills the rail in a single query; the two that do not (5 and 7 photos) fall through to sport+category then sport. Also removed the 'Visually Similar Photos' carousel: PHOTO_COLUMNS excludes the embedding by design, so its guard short-circuited on every request and the section had never rendered for any visitor — no visible change, and the match_photos RPC and embeddings remain in use by search.",
+  "sourceDigest": "sha256:274a5ed090667b1d3b4e8465c376a638d428fdd2ea450498db72bea7aa243f9e",
   "sourceFiles": 130,
   "scope": [
-    "album bulk download path"
+    "related photos rail"
   ]
 }

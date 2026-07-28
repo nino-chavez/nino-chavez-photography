@@ -6,65 +6,36 @@
  */
 
 import { error } from '@sveltejs/kit';
-import { PHOTOS_READ } from '$lib/supabase/columns';
+import { PHOTOS_READ, PHOTO_DETAIL_COLUMNS } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
-import { PHOTO_DETAIL_COLUMNS } from '$lib/supabase/columns';
+import { NON_KEYS, resolvePhotoByImageKey } from '$lib/supabase/resolve-photo-by-key';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 
-// Stringified nulls are not image keys — they are a caller that interpolated a
-// missing value into a URL template. The share-URL builders that produced them are
-// fixed (see $lib/utils/share-url's photoShareUrl), but Facebook's scraper has
-// /photo/null cached and re-requests it: 334 hits over 7 days, half of which timed
-// out at the edge (167x 404, 167x 504) because each one still paid for a Supabase
-// round trip first. Reject before touching the database.
-const NON_KEYS = new Set(['null', 'undefined', 'NaN']);
-
 export const load: PageServerLoad = async ({ params, url }) => {
+	// Stringified nulls are not image keys — they are a caller that interpolated a missing value
+	// into a URL template. The share-URL builders that produced them are fixed (see
+	// $lib/utils/share-url's photoShareUrl), but Facebook's scraper has /photo/null cached and
+	// re-requests it: 334 hits over 7 days, half of which timed out at the edge (167x 404,
+	// 167x 504) because each one still paid for a Supabase round trip first. Reject before
+	// touching the database.
 	if (!params.id || NON_KEYS.has(params.id)) {
 		throw error(404, `Photo not found: ${params.id}`);
 	}
 
-	// Fetch by image_key. NOTE: image_key is NOT unique — camera DSC numbers reset per card, so the
-	// same image_key recurs across albums. Using .single() here 404s on any collision. Fetch the
-	// candidates and prefer one from a LISTED album, so an unlisted/duplicate album never shadows the
-	// real one (this is what was 404'ing every photo after a duplicate album was ingested).
-	const { data: candidates, error: photoError } = await supabaseServer
-		.from(PHOTOS_READ)
-		.select(PHOTO_DETAIL_COLUMNS)
-		.eq('image_key', params.id)
-		.limit(5);
+	// image_key is NOT unique; see resolvePhotoByImageKey for the collision rule, which the tag
+	// route beside this one now shares.
+	const photoData = await resolvePhotoByImageKey<PhotoMetadataRow>(
+		params.id,
+		PHOTO_DETAIL_COLUMNS,
+		url.searchParams.get('a')
+	);
 
-	if (photoError || !candidates || candidates.length === 0) {
+	if (!photoData) {
 		throw error(404, `Photo not found: ${params.id}`);
 	}
-
-	// Disambiguate a non-unique image_key:
-	//  1. exact album from the link context (?a=) — the photo the user actually clicked (P2);
-	//  2. else prefer a LISTED album, so an unlisted/duplicate never shadows the real one.
-	const albumHint = url.searchParams.get('a');
-	let rawData = candidates[0];
-	if (candidates.length > 1) {
-		const exact = albumHint
-			? candidates.find((c) => (c as { album_key: string }).album_key === albumHint)
-			: undefined;
-		if (exact) {
-			rawData = exact;
-		} else {
-			const albumKeys = [...new Set(candidates.map((c) => (c as { album_key: string }).album_key))];
-			const { data: unlisted } = await supabaseServer
-				.from('album_settings')
-				.select('album_key')
-				.eq('visibility', 'unlisted')
-				.in('album_key', albumKeys);
-			const unlistedSet = new Set((unlisted ?? []).map((a) => a.album_key));
-			rawData = candidates.find((c) => !unlistedSet.has((c as { album_key: string }).album_key)) ?? candidates[0];
-		}
-	}
-
-	const photoData = rawData as unknown as PhotoMetadataRow;
 
 	// Transform flat Supabase data to nested Photo type (two-bucket model)
 	// NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
@@ -128,11 +99,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const baseUrl = 'https://photography.ninochavez.co';
 	const canonicalUrl = `${baseUrl}/photo/${params.id}`;
 
-	// PERFORMANCE: Parallelize secondary queries (related, similar, tags)
-	// This reduces TTFB by running queries concurrently instead of sequentially
-	const [relatedPhotos, similarPhotos, tagsResult] = await Promise.all([
-		fetchRelatedPhotos(photo, photoData.album_key || ''),
-		fetchSimilarPhotos(photoData),
+	// Run the secondary queries concurrently rather than in sequence — it is the difference
+	// between one round trip and two, which matters most for visitors far from the database.
+	const [relatedPhotos, tagsResult] = await Promise.all([
+		fetchRelatedPhotos(photo, photoData.photo_id, photoData.album_key || ''),
 		supabaseServer
 			.from('user_tags')
 			.select('*')
@@ -176,7 +146,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	return {
 		photo,
 		relatedPhotos,
-		similarPhotos,
 		approvedTags: tags || [],
 		viewSource,
 		seo: {
@@ -222,75 +191,78 @@ function generatePhotoDescription(photo: Photo): string {
  * Fetch related photos based on sport, category, album, and similarity
  * (NEW - Week 2: Related Photos Carousel)
  */
-async function fetchRelatedPhotos(currentPhoto: Photo, albumKey: string): Promise<Photo[]> {
+const RELATED_LIMIT = 12;
+
+/**
+ * Photos to show under "More from this Album & Sport".
+ *
+ * WHAT WAS WRONG
+ *
+ * This was one query with `.or(album_key.eq.X, and(sport.eq.Y, category.eq.Z), sport.eq.Y)`
+ * ordered globally by upload_date. Two problems compounded:
+ *
+ *   1. the third branch subsumes the second — `sport = Y` already contains
+ *      `sport = Y AND category = Z` — so the tiering expressed nothing; and
+ *   2. `sport_type = 'volleyball'` matches 15,330 of 21,743 photos, so after a global
+ *      ORDER BY upload_date DESC LIMIT 12 the album branch was drowned entirely.
+ *
+ * The result was that every volleyball photo — 70% of the gallery — showed the SAME twelve
+ * photos: the newest twelve overall. Verified 2026-07-28: two photos from different albums
+ * returned byte-identical rails, neither containing anything from its own album, under a
+ * heading promising "More from this Album".
+ *
+ * WHAT IT DOES NOW
+ *
+ * The tiers the original comment described, actually applied in order. Same album first,
+ * because that is the context the visitor is already in; then same sport and category; then
+ * same sport. 260 of 262 albums hold twelve or more photos, so tier one fills the rail on its
+ * own and this stays a single query — the same round-trip cost as the broken version.
+ */
+async function fetchRelatedPhotos(
+	currentPhoto: Photo,
+	currentPhotoId: string,
+	albumKey: string
+): Promise<Photo[]> {
 	const sportType = currentPhoto.metadata.sport_type;
 	const photoCategory = currentPhoto.metadata.photo_category;
 
-	// Strategy: Fetch photos prioritizing:
-	// 1. Same album (most relevant context)
-	// 2. Same sport + category
-	// 3. Same sport only
-	// Sort by newest and limit to 12
+	const collected = new Map<string, Photo>();
 
-	const { data, error } = await supabaseServer
-		.from(PHOTOS_READ)
-		.select(PHOTO_COLUMNS)
-		.neq('image_key', currentPhoto.image_key) // Exclude current photo
-		.not('sharpness', 'is', null) // Only enriched photos
-		.or(`album_key.eq.${albumKey},and(sport_type.eq.${sportType},photo_category.eq.${photoCategory}),sport_type.eq.${sportType}`)
-		.order('upload_date', { ascending: false })
-		.limit(12);
+	// Exclude by photo_id, not image_key. image_key is not unique, so excluding by it also drops
+	// every unrelated photo that happens to share a DSC number with this one.
+	const tier = async (apply: (q: ReturnType<typeof baseQuery>) => ReturnType<typeof baseQuery>) => {
+		if (collected.size >= RELATED_LIMIT) return;
 
-	if (error) {
-		console.error('[Photo Detail] Error fetching related photos:', error);
-		return [];
+		const { data, error } = await apply(baseQuery())
+			.order('upload_date', { ascending: false })
+			.limit(RELATED_LIMIT);
+
+		if (error) {
+			console.error('[Photo Detail] Error fetching related photos:', error);
+			return;
+		}
+
+		for (const row of data ?? []) {
+			const photo = transformPhotoRow(row);
+			if (photo.id === currentPhotoId || collected.has(photo.id)) continue;
+			if (collected.size < RELATED_LIMIT) collected.set(photo.id, photo);
+		}
+	};
+
+	function baseQuery() {
+		return supabaseServer
+			.from(PHOTOS_READ)
+			.select(PHOTO_COLUMNS)
+			.neq('photo_id', currentPhotoId)
+			.not('sharpness', 'is', null); // Only enriched photos
 	}
 
-	// Transform to Photo type using shared transform (includes CF Images support)
-	return (data || []).map(transformPhotoRow);
+	if (albumKey) await tier((q) => q.eq('album_key', albumKey));
+	if (sportType && photoCategory) {
+		await tier((q) => q.eq('sport_type', sportType).eq('photo_category', photoCategory));
+	}
+	if (sportType) await tier((q) => q.eq('sport_type', sportType));
+
+	return [...collected.values()];
 }
 
-/**
- * Fetch similar photos using vector embeddings
- * (Initiative 3.2: Similarity-Powered Exploration)
- */
-async function fetchSimilarPhotos(currentPhoto: PhotoMetadataRow): Promise<Photo[]> {
-	// Check if current photo has an embedding
-	if (!currentPhoto.embedding) {
-		// Embedding not yet generated for this photo — skip similarity search silently
-		return [];
-	}
-
-	// Call match_photos() database function
-	const { data, error } = await supabaseServer.rpc('match_photos', {
-		query_embedding: currentPhoto.embedding,
-		match_threshold: 0.7, // 70% similarity minimum
-		match_count: 12 // Return up to 12 similar photos
-	});
-
-	if (error) {
-		console.error('[Photo Detail] Error fetching similar photos:', error);
-		return [];
-	}
-
-	if (!data || data.length === 0) {
-		return [];
-	}
-
-	// Fetch full photo data for the similar photos
-	const imageKeys = data.map((result: any) => result.image_key);
-
-	const { data: photos, error: photosError } = await supabaseServer
-		.from(PHOTOS_READ)
-		.select(PHOTO_COLUMNS)
-		.in('image_key', imageKeys)
-		.not('sharpness', 'is', null); // Only enriched photos
-
-	if (photosError || !photos) {
-		console.error('[Photo Detail] Error fetching similar photo details:', photosError);
-		return [];
-	}
-
-	// Transform to Photo type using shared transform (includes CF Images support)
-	return photos.map(transformPhotoRow);
-}
