@@ -13,19 +13,15 @@
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '@supabase/supabase-js';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
+import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-// Helper to get admin client (checks key at runtime, not build time)
-function getAdminClient() {
-	if (!SUPABASE_SERVICE_KEY) {
-		throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
-	}
-	return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
+// This route used to build its own service_role client from `process.env`, which is empty on
+// this runtime — the Pages project runs `nodejs_compat` at compatibility date 2024-03-20, before
+// Cloudflare populated `process.env` from bindings. The key read as undefined, so every request
+// threw before reaching the endpoint's own logic and the route answered 500 to everyone,
+// including an unauthenticated one that should have been a plain 401. `createSupabaseAdminClient`
+// reads through `$env/dynamic/private`, which is how the rest of the app gets the same key.
 
 // ============================================
 // Admin Auth Middleware (Supabase Auth)
@@ -41,7 +37,7 @@ async function verifyAdmin(request: Request): Promise<string> {
 	const token = authHeader.replace('Bearer ', '');
 
 	// Verify token with Supabase
-	const adminClient = getAdminClient();
+	const adminClient = createSupabaseAdminClient();
 	const {
 		data: { user },
 		error: authError
@@ -69,7 +65,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		await verifyAdmin(request);
 
 		// Get admin client
-		const adminClient = getAdminClient();
+		const adminClient = createSupabaseAdminClient();
 
 		// Get filter params
 		const status = url.searchParams.get('status') || 'pending';
@@ -143,7 +139,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const adminUser = await verifyAdmin(request);
 
 		// Get admin client
-		const adminClient = getAdminClient();
+		const adminClient = createSupabaseAdminClient();
 
 		// Get tag ID from request body
 		const { tagId } = await request.json();
@@ -213,7 +209,7 @@ export const DELETE: RequestHandler = async ({ request }) => {
 		await verifyAdmin(request);
 
 		// Get admin client
-		const adminClient = getAdminClient();
+		const adminClient = createSupabaseAdminClient();
 
 		// Get tag ID from request body
 		const { tagId } = await request.json();
