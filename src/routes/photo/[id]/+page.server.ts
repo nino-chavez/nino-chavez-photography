@@ -14,6 +14,7 @@ import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { SITE_URL } from '$lib/site-url';
+import { base } from '$app/paths';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	// Stringified nulls are not image keys — they are a caller that interpolated a missing value
@@ -96,8 +97,12 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// Generate SEO-optimized description
 	const seoDescription = generatePhotoDescription(photo);
 
-	// Use thumbnail for OG image (faster loading, still high quality)
-	const ogImage = photo.thumbnail_url || photo.image_url;
+	// A generated 1200×630 card, not the raw photo. This used to be the `thumbnail`
+	// variant — 150×224, under Facebook's documented 200×200 minimum — so sharing a
+	// photo produced no image or a postage stamp. Origin-relative like the album card,
+	// so it unfurls on whichever host served the page, and keyed by canonicalSegment so
+	// the two photos behind a shared image_key get their own cards.
+	const ogImage = `${url.origin}${base}/photo/${canonicalSegment}/og.png`;
 
 	// Build canonical URL
 	const baseUrl = SITE_URL;
@@ -158,8 +163,13 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		seo: {
 			title: `${photo.title} | Nino Chavez Photography`,
 			description: seoDescription,
-			ogImage: ogImage,
+			ogImage,
 			ogImageAlt: photo.title,
+			// The layout only emits dimension tags when supplied, and they are what tells
+			// LinkedIn and Facebook to lay out the large card before the image finishes
+			// downloading. Truthful here because we render the card ourselves.
+			ogImageWidth: 1200,
+			ogImageHeight: 630,
 			ogType: 'article' as const,
 			canonical: canonicalUrl,
 			keywords: photo.keywords.join(', ')
