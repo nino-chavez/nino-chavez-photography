@@ -1,0 +1,12 @@
+{
+  // Tests run under node (`tsx --test`), not in the Workers runtime, so they need node's types.
+  // Those types are deliberately NOT in tsconfig.json: this worker has no `nodejs_compat` flag,
+  // so node globals do not exist at runtime, and typechecking runtime code against them would
+  // make unavailable APIs look available.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": []
+}

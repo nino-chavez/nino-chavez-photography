@@ -5,13 +5,17 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "tail": "wrangler tail"
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "tsx --test src/manifest.test.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250214.0",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.2",
     "wrangler": "^4.5.1"
   }

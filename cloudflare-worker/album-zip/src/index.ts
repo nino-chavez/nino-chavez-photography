@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { fetchAlbumPhotos } from './supabase';
+import { fetchAlbumManifest, ManifestUnavailable } from './manifest';
 import { computeContentHash, cacheKey } from './hash';
 import { buildZip } from './zip-builder';
 
@@ -157,11 +157,20 @@ export default {
 
 		try {
 			// 2. Fetch photo list from Supabase
-			const photos = await fetchAlbumPhotos(
-				env.SUPABASE_URL,
-				env.SUPABASE_SERVICE_ROLE_KEY,
-				albumKey
-			);
+			let photos;
+			try {
+				photos = await fetchAlbumManifest(env.PHOTOGRAPHY_ORIGIN, albumKey);
+			} catch (err) {
+				// 502, not 404. "Album not found or empty" is a claim about the album, and saying it
+				// when the upstream simply did not answer sends someone looking for a missing album
+				// instead of a broken dependency.
+				console.error('[album-zip] manifest unavailable:', err);
+				const status = err instanceof ManifestUnavailable ? 502 : 500;
+				return new Response('Album manifest unavailable', {
+					status,
+					headers: corsHeaders(allowedOrigin)
+				});
+			}
 
 			if (photos.length === 0) {
 				return new Response('Album not found or empty', {

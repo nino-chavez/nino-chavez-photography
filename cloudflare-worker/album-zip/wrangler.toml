@@ -23,16 +23,23 @@ simple = { limit = 20, period = 60 }
 
 [vars]
 CF_ACCOUNT_HASH = "wg34HB28-JkySWVm5fW4kA"
+# Inbound CORS: the browser origin allowed to call this worker.
 ALLOWED_ORIGIN = "https://ninochavez.co"
+# Outbound: where the album manifest comes from. The Pages origin rather than ninochavez.co,
+# because the zone's bot protection correctly refuses non-browser clients including this one.
+# apps/router targets the same origin for the same reason.
+PHOTOGRAPHY_ORIGIN = "https://nino-chavez-photography.pages.dev"
 
 # Secrets (set via `wrangler secret put`):
-#   SUPABASE_URL
-#   SUPABASE_SERVICE_ROLE_KEY   — reads photo_metadata past RLS, nothing else
 #   ZIP_SIGNING_SECRET          — HMAC secret for the download URL
 #   ZIP_SIGNING_SECRET_PREVIOUS — optional, only set while rotating the above
 #
-# ZIP_SIGNING_SECRET was split out of SUPABASE_SERVICE_ROLE_KEY on 2026-07-28. The two had
-# been the same value; /api/zip-url is unauthenticated, so that made it an open oracle over
-# the database credential, and it meant the Supabase key could never be rotated without
-# breaking every album download. Both live in 1Password under
-# `Cloudflare photography` (fields: zip_signing_secret, and the Supabase item for the other).
+# That is the complete list, and it is meant to stay that way: this worker holds NO database
+# credential. It used to carry SUPABASE_SERVICE_ROLE_KEY — the key that bypasses every RLS
+# policy — purely to answer "which photos are in this album", which the gallery app already
+# answers at /api/album-photos. Asking the app instead removed the credential and collapsed a
+# second, drifting implementation of that query. See src/manifest.ts.
+#
+# ZIP_SIGNING_SECRET was itself split out of SUPABASE_SERVICE_ROLE_KEY on 2026-07-28, because
+# /api/zip-url is unauthenticated and that made it an open oracle over the database credential.
+# It lives in 1Password under `Cloudflare photography`, field `zip_signing_secret`.
