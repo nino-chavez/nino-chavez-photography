@@ -11,15 +11,25 @@
 	// Album Reach now carries every album with 30-day activity (no server-side
 	// top-N), so a text filter replaces the old "hope it's in the top 20" cutoff.
 	let albumSearch = $state('');
-	const filteredAlbumReach = $derived(
-		albumSearch.trim()
+
+	// Visitor volume alone buries the album you just shared: with 249 albums in a
+	// scroll box, a fresh gallery with real-but-small traffic ranks below every
+	// established one — the same "looks untracked" failure the server-side top-N
+	// was removed to fix. The panel's own question ("after you shared each album,
+	// who came") is a recency question, so recency is an orderable axis.
+	let albumSort = $state<'visitors' | 'recent'>('visitors');
+
+	const filteredAlbumReach = $derived.by(() => {
+		const needle = albumSearch.trim().toLowerCase();
+		const rows = needle
 			? data.albumReach.filter((album) =>
-					(album.album_name ?? album.album_key)
-						.toLowerCase()
-						.includes(albumSearch.trim().toLowerCase())
+					(album.album_name ?? album.album_key).toLowerCase().includes(needle)
 				)
-			: data.albumReach
-	);
+			: data.albumReach;
+		return albumSort === 'recent'
+			? [...rows].sort((a, b) => b.last_event.localeCompare(a.last_event))
+			: rows;
+	});
 
 	// Format number with commas
 	function formatNumber(num: number): string {
@@ -66,6 +76,10 @@
 					<Typography variant="h2" class="text-3xl text-gold-500">
 						{formatNumber(data.stats.totalViews)}
 					</Typography>
+					<Typography variant="caption" class="text-xs text-charcoal-500 mt-1 block">
+						from {formatNumber(data.stats.totalVisitors)}
+						{data.stats.totalVisitors === 1 ? 'visitor' : 'visitors'}
+					</Typography>
 				</div>
 
 			<div style="animation: fade-scale-in 0.3s ease-out 0.2s both" class="bg-charcoal-900/50 border border-charcoal-700/50 rounded-lg p-6">
@@ -100,7 +114,12 @@
 						</Typography>
 					</div>
 					<Typography variant="h2" class="text-3xl text-gold-500">
-						{formatNumber(data.stats.botFilteredCount)}
+						{formatNumber(data.stats.botFilteredCount + data.stats.automatedViews)}
+					</Typography>
+					<Typography variant="caption" class="text-xs text-charcoal-500 mt-1 block">
+						{formatNumber(data.stats.botFilteredCount)} blocked on arrival ·
+						{formatNumber(data.stats.automatedViews)} views left out of the counts below,
+						from sessions that read whole albums end to end.
 					</Typography>
 				</div>
 		</div>
@@ -233,13 +252,38 @@
 					Album Reach — Last 30 Days
 				</Typography>
 				{#if data.albumReach.length > 0}
-					<input
-						type="search"
-						bind:value={albumSearch}
-						placeholder="Filter albums..."
-						class="bg-charcoal-800/50 border border-charcoal-700 rounded-lg px-3 py-1.5 text-sm text-charcoal-200 placeholder:text-charcoal-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50"
-						aria-label="Filter albums by name"
-					/>
+					<div class="flex items-center gap-2">
+						<div class="flex rounded-lg border border-charcoal-700 overflow-hidden" role="group" aria-label="Sort albums">
+							<button
+								type="button"
+								onclick={() => (albumSort = 'visitors')}
+								aria-pressed={albumSort === 'visitors'}
+								class="px-3 py-1.5 text-sm transition-colors {albumSort === 'visitors'
+									? 'bg-gold-500/20 text-gold-300'
+									: 'bg-charcoal-800/50 text-charcoal-400 hover:text-charcoal-200'}"
+							>
+								Most visitors
+							</button>
+							<button
+								type="button"
+								onclick={() => (albumSort = 'recent')}
+								aria-pressed={albumSort === 'recent'}
+								class="px-3 py-1.5 text-sm border-l border-charcoal-700 transition-colors {albumSort ===
+								'recent'
+									? 'bg-gold-500/20 text-gold-300'
+									: 'bg-charcoal-800/50 text-charcoal-400 hover:text-charcoal-200'}"
+							>
+								Most recent
+							</button>
+						</div>
+						<input
+							type="search"
+							bind:value={albumSearch}
+							placeholder="Filter albums..."
+							class="bg-charcoal-800/50 border border-charcoal-700 rounded-lg px-3 py-1.5 text-sm text-charcoal-200 placeholder:text-charcoal-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50"
+							aria-label="Filter albums by name"
+						/>
+					</div>
 				{/if}
 			</div>
 			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">

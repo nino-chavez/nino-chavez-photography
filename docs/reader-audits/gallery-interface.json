@@ -1,15 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-27T21:21:34.038Z",
-  "reviewedBy": "Claude Opus 5 + pixel measurement of the rendered page (text-hidden screenshot) and gradient arithmetic",
-  "method": "measured every low-contrast finding against the composited page rather than the scanner's number: screenshotted the hero, hid the copy, re-screenshotted and sampled the true backdrop, then confirmed against a pure-white-frame calculation. Fixed the one real failure (the header search chip). No copy changed.",
-  "sourceDigest": "sha256:b26b53935542138d6e3c6a805ea3dac9e3f075ec1fae71c5312a49b8a3ea24b6",
+  "reviewedAt": "2026-07-28T08:39:11.211Z",
+  "reviewedBy": "Claude Opus 5 — verified the changed copy in the built server output, not the source",
+  "method": "Analytics dashboard copy changed (admin-gated route). Grepped the built chunk (.svelte-kit/output/server/entries/pages/analytics/_page.svelte.js) to confirm the shipped strings: the bot card now reads 'N blocked on arrival · N views left out of the counts below, from sessions that read whole albums end to end', Total Views carries 'from N visitors', and Album Reach gained 'Most visitors' / 'Most recent' sort buttons. Plain language, no implementation vocabulary; no visitor-facing gallery copy changed.",
+  "sourceDigest": "sha256:77e84af04039dea299201aded6225e44baf2dd7a99f59afde30d769654fcc8a0",
   "sourceFiles": 130,
   "scope": [
-    "home hero copy over rotating frames",
-    "header search button and shortcut chip",
-    "albums index",
-    "album detail"
+    "analytics dashboard stat cards",
+    "album reach sort controls"
   ]
 }

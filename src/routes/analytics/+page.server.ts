@@ -83,35 +83,38 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	// reached engagement_events (see 20260713150000_bot_filtered_events.sql).
 	const botFilteredCount = await getBotFilteredCount(30);
 
-	// Get view source distribution
-	const { data: viewSourceData } = await createSupabaseAdminClient()
-		.from('engagement_events')
-		.select('source')
-		.eq('event_type', 'view')
-		.gte('created_at', SINCE_30D());
+	// View sources + headline totals, aggregated in Postgres.
+	//
+	// This used to select raw `source` rows and reduce them in TypeScript. PostgREST
+	// caps a response at db-max-rows=1000, so the panel described an arbitrary 1000
+	// of 42,726 events: it rendered direct=995 / ig-flickday=4 / ig-nino=1 when the
+	// truth was direct=42,227 / album=462 / ig-flickday=17 / ig-nino=11 / timeline=6,
+	// with `album` missing outright — the PR #74 ?src= channels were unmeasurable.
+	// Both views also exclude crawler sessions; see the migration
+	// 20260728090000_analytics_exclude_automated_sessions.sql for the evidence.
+	const { data: viewSourceRows } = await createSupabaseAdminClient()
+		.from('view_source_30d')
+		.select('source, views');
 
-	const viewSourceCounts = (viewSourceData || []).reduce(
-		(acc, { source }) => {
-			const key = source || 'direct';
-			acc[key] = (acc[key] || 0) + 1;
+	const viewSourceCounts = (viewSourceRows || []).reduce(
+		(acc, { source, views }) => {
+			acc[source] = Number(views);
 			return acc;
 		},
 		{} as Record<string, number>
 	);
 
-	// Get total stats
-	const { count: totalViews } = await createSupabaseAdminClient()
-		.from('engagement_events')
-		.select('*', { count: 'exact', head: true })
-		.eq('event_type', 'view')
-		.gte('created_at', SINCE_30D());
+	const { data: totals } = await createSupabaseAdminClient()
+		.from('engagement_totals_30d')
+		.select('views, visitors, automated_views')
+		.maybeSingle();
 
 	// search_queries is RLS-hidden from anon (count silently reads 0) — use the
 	// admin client like every other engagement read on this dashboard.
 	const { count: totalSearches } = await createSupabaseAdminClient()
 		.from('search_queries')
 		.select('*', { count: 'exact', head: true })
-		.gte('searched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+		.gte('searched_at', SINCE_30D());
 
 	// Album reach: unique visitors + event breakdown per album, last 30 days.
 	// Reads album_engagement_30d (view, service-role — see migration
@@ -188,7 +191,9 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		albumReach,
 		zeroResultSearches,
 		stats: {
-			totalViews: totalViews || 0,
+			totalViews: Number(totals?.views ?? 0),
+			totalVisitors: Number(totals?.visitors ?? 0),
+			automatedViews: Number(totals?.automated_views ?? 0),
 			totalSearches: totalSearches || 0,
 			viewSourceCounts,
 			botFilteredCount,

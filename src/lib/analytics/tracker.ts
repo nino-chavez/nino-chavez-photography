@@ -127,13 +127,21 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
 export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
-		await createSupabaseAdminClient().from('search_queries').insert({
+		// The error must be read off the result, not caught: supabase-js resolves
+		// rather than throws on a failed insert, so the bare `await` below used to
+		// swallow every write failure. That made "no one searched" and "search
+		// tracking is broken" indistinguishable from the dashboard — the panels sat
+		// on July 12 data with no way to tell which. Matches trackPhotoView/trackArrival.
+		const { error: dbError } = await createSupabaseAdminClient().from('search_queries').insert({
 			query_text: event.query_text,
 			filters_used: event.filters_used || null,
 			results_count: event.results_count,
 		});
+		if (dbError) {
+			console.error('[Analytics] Failed to track search query:', dbError.message);
+		}
 	} catch (error) {
-		// Fail silently
+		// Fail silently - analytics should never break the app
 		console.error('[Analytics] Failed to track search query:', error);
 	}
 }
