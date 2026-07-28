@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-28T16:23:07.517Z",
-  "reviewedBy": "Claude Opus 5 — proved the admin bypass against production before and after the fix",
-  "method": "Verified the exposure empirically rather than from code: created a confirmed Supabase account that was on no allowlist, signed in through the real login form, and loaded /admin/tags, /admin/albums and /analytics — all 200, full content, cache-busted and reproduced directly against the pages.dev origin with the router removed. Root cause was isAllowedAdmin returning true when ADMIN_EMAILS is unset, combined with disable_signup=false on the Supabase project. Made the check fail closed and confirmed the visitor-facing gallery is untouched: signed out, reloaded /photography anonymously, and saw the same 8 albums, the FIND YOUR PHOTOS heading and unchanged search copy. /analytics still 302s to /login for anonymous visitors. No reader-facing text changed in this pass.",
-  "sourceDigest": "sha256:0253df6c906d05869a5a7f88c0dfce970d10debc48d2e9243ddd0ec238ff069e",
+  "reviewedAt": "2026-07-28T17:04:09.835Z",
+  "reviewedBy": "Claude Opus 5 — split the ZIP signing key off the database credential, verified both halves live",
+  "method": "Exercised the album download end to end through a real browser against production, not from code reading. Before the change: the deployed app minted a URL and the newly deployed worker returned 200 application/zip, proving the outgoing secret still validates so no download breaks during rollout. After: a signature minted independently with node crypto (against the worker's WebCrypto) also returned 200 application/zip, a tampered signature returned 403 Invalid signature, and a stale timestamp returned 403 Signature expired. The bulk download button's only caller sends quality=large, which is the sole value the worker builds and the same variant the gallery srcset already serves, so the new allowlist rejects nothing a visitor can send. No reader-facing copy changed.",
+  "sourceDigest": "sha256:71ce69b032e27c72fe3081cfd84d82e1af27a7dad90ea61bb9fbdb2ebf3ccc39",
   "sourceFiles": 130,
   "scope": [
-    "admin authorization gate"
+    "album bulk download path"
   ]
 }
