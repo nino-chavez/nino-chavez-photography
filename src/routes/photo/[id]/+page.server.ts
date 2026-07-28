@@ -13,6 +13,7 @@ import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { SITE_URL } from '$lib/site-url';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	// Stringified nulls are not image keys — they are a caller that interpolated a missing value
@@ -96,7 +97,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const ogImage = photo.thumbnail_url || photo.image_url;
 
 	// Build canonical URL
-	const baseUrl = 'https://photography.ninochavez.co';
+	const baseUrl = SITE_URL;
 	const canonicalUrl = `${baseUrl}/photo/${params.id}`;
 
 	// Run the secondary queries concurrently rather than in sequence — it is the difference

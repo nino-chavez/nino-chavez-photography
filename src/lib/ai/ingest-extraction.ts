@@ -19,6 +19,7 @@
 
 import { PHOTO_CATEGORIES, PLAY_TYPES_BY_SPORT, type Sport } from './taxonomy';
 import { normJersey, normColor } from '$lib/identity/sightings';
+import { SITE_URL } from '$lib/site-url';
 import {
 	assertCaptionContract,
 	buildCaptionCorrectionMessage,
@@ -269,7 +270,7 @@ export async function extractOne(
 			headers: {
 				Authorization: `Bearer ${apiKey}`,
 				'Content-Type': 'application/json',
-				'HTTP-Referer': 'https://photography.ninochavez.co',
+				'HTTP-Referer': SITE_URL,
 				'X-Title': 'photography ingest-album',
 			},
 			body: JSON.stringify({

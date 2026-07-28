@@ -6,6 +6,7 @@
  */
 
 import type { PageServerLoad } from './$types';
+import { SITE_URL } from '$lib/site-url';
 
 export const load: PageServerLoad = async () => {
 	return {
@@ -13,7 +14,7 @@ export const load: PageServerLoad = async () => {
 			title: 'My Favorites | Nino Chavez Photography',
 			description: 'View and manage your favorite action sports photos. Save, organize, and export your personal collection of memorable moments.',
 			keywords: 'favorites, saved photos, bookmarks, photo collection, action sports photography',
-			canonical: 'https://photography.ninochavez.co/favorites'
+			canonical: `${SITE_URL}/favorites`
 		}
 	};
 };

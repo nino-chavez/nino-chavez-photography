@@ -14,6 +14,7 @@ import { supabaseServer } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { createAlbumSlug } from '$lib/utils';
 import type { RequestHandler } from './$types';
+import { SITE_URL } from '$lib/site-url';
 
 interface SitemapUrl {
 	loc: string;
@@ -23,7 +24,7 @@ interface SitemapUrl {
 }
 
 export const GET: RequestHandler = async () => {
-	const baseUrl = 'https://ninochavez.co/photography';
+	const baseUrl = SITE_URL;
 
 	try {
 		// Page through the full table — a plain .select() silently caps at Supabase's 1000-row default,

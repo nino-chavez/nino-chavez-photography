@@ -17,6 +17,8 @@
  * gemini-embedding-001 write vs embedding-001 query mismatch.)
  */
 
+import { SITE_URL } from '$lib/site-url';
+
 export const EMBEDDING_MODEL = 'openai/text-embedding-3-large';
 export const EMBEDDING_DIMS = 768;
 
@@ -36,7 +38,7 @@ export async function embedText(text: string, apiKey: string | undefined | null)
 			headers: {
 				Authorization: `Bearer ${apiKey}`,
 				'Content-Type': 'application/json',
-				'HTTP-Referer': 'https://photography.ninochavez.co',
+				'HTTP-Referer': SITE_URL,
 				'X-Title': 'photography embeddings'
 			},
 			body: JSON.stringify({ model: EMBEDDING_MODEL, input, dimensions: EMBEDDING_DIMS })

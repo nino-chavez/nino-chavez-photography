@@ -18,6 +18,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import OptimizedImage from '$lib/components/ui/OptimizedImage.svelte';
+	import { SITE_URL } from '$lib/site-url';
 
 	interface Props {
 		data: {
@@ -39,7 +40,7 @@
 			name: 'Nino Chavez',
 			jobTitle: 'Sports Photographer',
 			description: pageDescription,
-			url: 'https://photography.ninochavez.co/about',
+			url: `${SITE_URL}/about`,
 			sameAs: ['https://www.instagram.com/nino.chavez.photo'],
 			knowsAbout: ['Sports Photography', 'Volleyball Photography', 'Action Sports']
 		}
