@@ -62,6 +62,21 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		totalCount,
 		currentPage: page,
 		pageSize,
-		shareToken: token
+		// `data.seo` supplies the description only. The TITLE stays in the page's own
+		// <svelte:head> deliberately: the layout feeds `seo.title` straight into `og:title`, so
+		// routing it through here would put a private album's name — "<Family> Portraits" — into
+		// the preview card every chat app builds when a client pastes their link. The <title>
+		// serves the person who already holds the token (tab, bookmark, history); og:title
+		// serves everyone else in the thread. They should not be the same string here.
+		//
+		// The description had no such nuance and was simply wrong: with no `seo` at all, every
+		// private gallery inherited the site default — "MOTION. EMOTION. Frame by Frame …
+		// volleyball, basketball, softball" — as the description of a family portrait session.
+		//
+		// No `canonical`: the layout suppresses all three URL tags on this route. See
+		// canPublishRouteUrl in $lib/routes.
+		seo: {
+			description: 'A private album shared by Nino Chavez Photography.'
+		}
 	};
 };

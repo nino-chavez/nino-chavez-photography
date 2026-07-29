@@ -93,11 +93,20 @@
 	</div>
 </div>
 
+<!--
+	This page paginates server-side, so `data.photos` is one page (48) of a larger album. Without
+	`totalCount`/`indexOffset` the lightbox counts within that slice — a client on page 2 of a
+	100-photo album opened the first thumbnail and read "1 / 48", the same numbers as page 1.
+	`hasMore` is deliberately left false: there is no client-side append here (that is the
+	/albums/[slug] flow), so the lightbox stops at the page boundary and the pager moves on.
+-->
 <Lightbox
 	bind:open={lightboxOpen}
 	photo={data.photos[selectedPhotoIndex] || null}
 	photos={data.photos}
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
+	totalCount={data.totalCount}
+	indexOffset={(data.currentPage - 1) * data.pageSize}
 	viewSource="direct"
 />
