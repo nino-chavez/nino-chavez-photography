@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T21:39:51.401Z",
+  "reviewedAt": "2026-07-29T21:53:43.480Z",
   "reviewedBy": "claude-opus-5 (session 64a8fb16)",
-  "method": "ai.txt sport-share walk on the wrangler build: shares now divide by all 20,655 public photos instead of the 19,847 that have a sport, so volleyball reads 74% (was 77%) and matches the figure this number was corrected to once before; every sport carries its count, sub-1% sports print '<1%' with their count instead of a bare name with no figure, and a new line states the 808 photos with no sport recorded so the list not summing to 100% is explained rather than looking like an error. Counts cross-checked against Postgres with the unlisted-album exclusion applied: 20,655 public processed, 15,330 volleyball, 808 no sport, and the 12 listed counts sum to 19,847. ai.txt needed a cache-buster to observe (max-age=3600, s-maxage=3600) and a genuinely restarted dev server. No visitor-facing gallery copy changed.",
-  "sourceDigest": "sha256:2705dab72baebee5a9cfd7ee01d89ca1b15a91ac2acca81a5f076d7df121860b",
+  "method": "unlisted-album gate fail-closed walk. Fault-injected a failing getAlbumSettings read (bogus column in the select) on the wrangler build and confirmed the gate now fails CLOSED: private album page 503 (it answered 200 in production during the incident this fixes), private og.png 404, public album page 503, /share/<token> 404. Reverted the injection and re-confirmed the baseline: private album 404, private og.png 404, share 200 with photos, public album 200. Also verified all 13 unlisted albums answer 404 on their canonical URLs after the emergency GRANT rollback. No visitor-facing copy changed; the only new reader-visible string is the 503 message 'This album is temporarily unavailable.'",
+  "sourceDigest": "sha256:120ba81ff2c515d9346b4d44db6114cd61b1543bc6ad118ee19bc6addab8dc2b",
   "sourceFiles": 128
 }

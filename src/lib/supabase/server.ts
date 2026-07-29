@@ -1712,9 +1712,29 @@ const ALBUM_SETTINGS_PUBLIC_SELECT = 'album_key, visibility, gallery_scope, crea
 export type AlbumSettingsPublicRow = Omit<AlbumSettingsRow, 'share_token'>;
 
 /**
- * Get album settings by album key. Anon client — the gallery's own gate reads this.
+ * The answer to "may this album be shown?", with "I could not find out" as a distinct case.
+ *
+ * `settings: null` means the album has NO settings row, which legitimately means public — 242 of
+ * 262 albums have no row. `ok: false` means the read FAILED and visibility is unknown.
  */
-export async function getAlbumSettings(albumKey: string): Promise<AlbumSettingsPublicRow | null> {
+export type AlbumSettingsResult =
+  | { ok: true; settings: AlbumSettingsPublicRow | null }
+  | { ok: false };
+
+/**
+ * Get album settings by album key. Anon client — the gallery's own privacy gate reads this.
+ *
+ * This used to return `AlbumSettingsPublicRow | null` and return null on error, which the two
+ * callers' gate (`settings?.visibility === 'unlisted'`) read as PUBLIC. So any failure of this
+ * one query published every private album, and the failure is caught, so nothing surfaced but a
+ * console line.
+ *
+ * That is not hypothetical. Applying the `share_token` column revoke while one Cloudflare isolate
+ * still ran the previous `.select('*')` did exactly this in production: the private album page
+ * answered 200 and its OG card answered 200 with the client's cover photo, for about two minutes,
+ * until the grant was restored. A gate whose error path is "allow" is not a gate.
+ */
+export async function getAlbumSettings(albumKey: string): Promise<AlbumSettingsResult> {
   const { data, error } = await supabaseServer
     .from('album_settings')
     .select(ALBUM_SETTINGS_PUBLIC_SELECT)
@@ -1723,10 +1743,10 @@ export async function getAlbumSettings(albumKey: string): Promise<AlbumSettingsP
 
   if (error) {
     console.error('[getAlbumSettings] Error:', error);
-    return null;
+    return { ok: false };
   }
 
-  return data as AlbumSettingsPublicRow | null;
+  return { ok: true, settings: data as AlbumSettingsPublicRow | null };
 }
 
 /**

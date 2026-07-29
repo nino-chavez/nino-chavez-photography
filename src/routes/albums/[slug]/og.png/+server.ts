@@ -46,9 +46,16 @@ export const GET: RequestHandler = async ({ params }) => {
 	// links here, and a 200 would still confirm the album exists.
 	//
 	// Absence of a settings row means public: 242 of 262 albums have no row at all, and
-	// only 'public' and 'unlisted' are in use. Keep this predicate identical to the
+	// only 'public' and 'unlisted' are in use. A FAILED read is a third case and fails
+	// closed — it used to arrive as the same null this predicate reads as public, which
+	// published this card for private albums in production for ~2 minutes. 404 here rather
+	// than the page's 503: this endpoint's whole answer is an image, and a broken card is
+	// the same non-answer as a missing one. Keep the unlisted predicate identical to the
 	// page's so the two cannot drift apart.
-	if (albumSettings?.visibility === 'unlisted') {
+	if (!albumSettings.ok) {
+		throw error(404, 'Album not found');
+	}
+	if (albumSettings.settings?.visibility === 'unlisted') {
 		throw error(404, 'Album not found');
 	}
 
