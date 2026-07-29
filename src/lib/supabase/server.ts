@@ -18,6 +18,7 @@ import type { AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { monthWindow, addMonths, monthName } from '$lib/utils/month-window';
 import { embedText } from '$lib/ai/embeddings';
+import { videoOnlyRows } from '$lib/albums/listing';
 import { planQuery, type QueryPlan } from '$lib/search/query-planner';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
 import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
@@ -214,6 +215,56 @@ export function excludeUnlisted<T>(query: T, keys: string[]): T {
   if (!keys.length) return query;
   // @ts-expect-error supabase PostgrestFilterBuilder is chainable but not generically typed here
   return query.not('album_key', 'in', `(${keys.join(',')})`);
+}
+
+/** What the gallery publicly contains. Every surface that states a total reads this one. */
+export interface GalleryTotals {
+  /** Public albums — photo-bearing plus video-only. */
+  albums: number;
+  /** Clips in public albums, mixed or video-only. */
+  videos: number;
+  /** Public albums holding any video. */
+  videoAlbums: number;
+  /** Public albums holding ONLY video. */
+  videoOnlyAlbums: number;
+}
+
+/**
+ * The public album and video totals, computed once.
+ *
+ * Three surfaces state these numbers — /api/ai/stats, ai.txt, and the generated FAQ — and each
+ * had its own count over albums_summary alone. That view has no row for an album holding only
+ * videos, so all three answered 249 for a gallery with 251 public albums, and none of them had
+ * a video figure at all for 481 clips. Two surfaces being fixed while the third kept the old
+ * head count is how /faq would have ended up contradicting /api/ai/stats.
+ *
+ * Both views are matviews: anon is REVOKE'd, so these read through service_role and RLS does
+ * not apply. The unlisted gate is therefore explicit, and the photo key set is filtered before
+ * videoOnlyRows sees it so an unlisted album cannot be counted twice or read as video-only.
+ */
+export async function getPublicGalleryTotals(): Promise<GalleryTotals> {
+  const [{ data: albumKeyRows }, { data: videoAlbumRows }, unlistedKeys] = await Promise.all([
+    matviewClient().from('albums_summary').select('album_key'),
+    matviewClient().from('videos_summary').select('album_key, video_count'),
+    getUnlistedAlbumKeys()
+  ]);
+  const unlisted = new Set(unlistedKeys);
+  const photoAlbumKeys = new Set(
+    ((albumKeyRows ?? []) as { album_key: string }[])
+      .map((r) => r.album_key)
+      .filter((k) => !unlisted.has(k))
+  );
+  const videoRows = (
+    (videoAlbumRows ?? []) as { album_key: string; video_count: number | string | null }[]
+  ).filter((v) => !unlisted.has(v.album_key));
+
+  const videoOnly = videoOnlyRows(videoRows, photoAlbumKeys, unlisted);
+  return {
+    albums: photoAlbumKeys.size + videoOnly.length,
+    videos: videoRows.reduce((sum, v) => sum + (Number(v.video_count) || 0), 0),
+    videoAlbums: videoRows.length,
+    videoOnlyAlbums: videoOnly.length
+  };
 }
 
 export async function fetchPhotos(

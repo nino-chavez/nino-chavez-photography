@@ -17,13 +17,7 @@
  *      ever offered them. The real filters are sport, category, play type, and year.
  */
 
-import {
-	supabaseServer,
-	matviewClient,
-	excludeUnlisted,
-	getUnlistedAlbumKeys,
-	resolveBaseFacets
-} from '$lib/supabase/server';
+import { supabaseServer, getPublicGalleryTotals, resolveBaseFacets } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { ENRICHMENT_FIELDS, humanizeTerm, listPhrase, topFacetNames } from './faq-copy';
 
@@ -63,19 +57,18 @@ async function photoDateRange(): Promise<{ earliest: string | null; latest: stri
  * Generate all FAQs from live gallery statistics.
  */
 export async function generateFAQs(): Promise<FAQ[]> {
-	const [{ count: totalPhotos }, { count: totalAlbums }, facets, dates] = await Promise.all([
+	const [{ count: totalPhotos }, totals, facets, dates] = await Promise.all([
 		supabaseServer
 			.from(PHOTOS_READ)
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null),
-		// albums_summary is a matview (anon REVOKE'd → service_role), which bypasses RLS. Public
-		// endpoint, so the unlisted client albums have to be excluded by hand.
-		getUnlistedAlbumKeys().then((unlisted) =>
-			excludeUnlisted(
-				matviewClient().from('albums_summary').select('*', { count: 'exact', head: true }),
-				unlisted
-			)
-		),
+		// The album total was a head count over albums_summary, excluding unlisted albums by hand
+		// because that matview reads through service_role. It answered 249 for a gallery with 251
+		// public albums: two hold only videos and have no row in that view. /api/ai/stats and
+		// ai.txt made the same count, so fixing them without this would have left /faq publishing
+		// a different number than the endpoint it sits beside. One source now — see
+		// getPublicGalleryTotals, which keeps the unlisted gate.
+		getPublicGalleryTotals(),
 		resolveBaseFacets(),
 		photoDateRange()
 	]);
@@ -161,7 +154,20 @@ export async function generateFAQs(): Promise<FAQ[]> {
 	// Album Questions
 	faqs.push({
 		question: 'How many albums are there?',
-		answer: `The gallery contains ${totalAlbums?.toLocaleString() || '250+'} public albums, each organized by event, team, or theme. Albums make it easy to browse related photos together.`,
+		// The fallback string is gone: `getPublicGalleryTotals` returns a number, and "250+" was
+		// a guess that would have survived a broken read as a plausible-looking answer.
+		answer: `The gallery contains ${totals.albums.toLocaleString()} public albums, each organized by event, team, or theme. Albums make it easy to browse related photos together.`,
+		category: 'album'
+	});
+
+	// Nothing here mentioned video. The FAQ answered "how many albums", "how are they
+	// organized" and "can I browse by album" for a gallery that also holds 481 clips, two of
+	// whose albums hold nothing else — so an engine reading only this concluded photos only.
+	// The search caveat is part of the fact, not a hedge: every video row's description is null
+	// and both search paths read photo_metadata.
+	faqs.push({
+		question: 'Does the gallery include video?',
+		answer: `Yes. ${totals.videos.toLocaleString()} video clips across ${totals.videoAlbums} albums, ${totals.videoOnlyAlbums} of which hold video only. Clips play and download from their album page, but they are not in the search index and carry no per-clip metadata, so search results are photos only.`,
 		category: 'album'
 	});
 
