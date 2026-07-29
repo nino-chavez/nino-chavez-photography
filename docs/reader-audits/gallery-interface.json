@@ -1,15 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T02:49:14.928Z",
+  "reviewedAt": "2026-07-29T02:52:49.659Z",
   "reviewedBy": "Claude (session 64a8fb16)",
-  "method": "Walked /about and a photo page in the built preview at :4173. Verified reader-visible copy is unchanged: the diff touches only JSON-LD blocks and imports on both pages. Confirmed rendered Person markup now matches the visible identity — @nino.chavez.photo, the same handle in the footer, the About link, and the branded-image watermark.",
-  "sourceDigest": "sha256:4ddc01009a17c0e05b69ca20ee0ebeb94d797a9096c55a8bfdafae0d75a20c52",
+  "method": "Follow-up to the identity change: added a photographer field to the DEFAULT /api/ai/photos JSON shape, which carried no attribution while the jsonld branch did. Verified the rendered envelope in the built preview. No reader-facing interface copy touched — the diff is one field on an API response plus its comment.",
+  "sourceDigest": "sha256:60ef99f4ff29c0d41823bf4956c8d30e8f4bb4d35965b82b2a9e4447d62d6e67",
   "sourceFiles": 131,
   "scope": [
-    "src/routes/about/+page.svelte",
-    "src/routes/photo/[id]/+page.svelte",
-    "src/routes/api/ai/photos/+server.ts",
-    "src/lib/aeo/person.ts"
+    "src/routes/api/ai/photos/+server.ts"
   ]
 }
