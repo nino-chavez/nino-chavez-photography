@@ -1,15 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T01:17:34.445Z",
+  "reviewedAt": "2026-07-29T01:24:45.071Z",
   "reviewedBy": "Claude (session 64a8fb16)",
-  "method": "Walked /api/ai/search and /api/ai/photos in the production build at localhost:4173: confirmed football/tennis/golf/pickleball/bowling/cross-country now resolve to their own sports (558/409/271/52/100/99) instead of soccer or the whole gallery, jersey queries work, both JSON and JSON-LD render, and collided image_keys publish cf_image_id URLs matching the sitemap (verified /photo/DSC06918 and /photo/1BlKk4-DSC06918 are different photos).",
-  "sourceDigest": "sha256:e25405dc3eafe4f562ae109ec743a542bbb1e67a5dc0a325336b5c3c1802ef4d",
+  "method": "Verified in the production build at localhost:4173 that /api/ai/photos and /api/ai/albums now publish slug-form album URLs matching the sitemap, and that both resolve 200 without a redirect.",
+  "sourceDigest": "sha256:af88f3e1267557364d8e85f590ede2fd814f3dfacc8cde3d243a72049de908cd",
   "sourceFiles": 131,
   "scope": [
-    "src/routes/api/ai/search",
     "src/routes/api/ai/photos",
-    "src/lib/supabase/photo-address-server.ts",
-    "src/routes/ai.txt"
+    "src/routes/api/ai/albums",
+    "src/lib/supabase/photo-address-server.ts"
   ]
 }

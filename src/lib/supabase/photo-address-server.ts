@@ -25,6 +25,11 @@ export interface PhotoIdentityRow extends PhotoIdentity {
  * Read through the anon client, the same one the sitemap uses, so both surfaces publish the
  * same address for the same photo. Returns the input rows unchanged if the lookup fails —
  * callers get page-local addressing rather than no addressing.
+ *
+ * Deliberately unbounded: this is the one query in the file that MUST NOT truncate, since a
+ * missing peer row reads as "key is unique" and reintroduces the wrong-photo URL. It is safe
+ * because callers cap their page at 100 photos and collisions are pairs — ~200 rows against
+ * PostgREST's 1000-row default. If a caller ever raises that cap past ~400, page this query.
  */
 export async function photoIdentityPeers(
 	rows: ReadonlyArray<PhotoIdentityRow>

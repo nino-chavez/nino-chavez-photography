@@ -12,6 +12,7 @@ import { supabaseServer } from '$lib/supabase/server';
 import { getPhotoCount } from '$lib/supabase/server';
 import { photoSelect } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { createAlbumSlug } from '$lib/utils';
 import { photoAddresses } from '$lib/supabase/photo-address';
 import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
 import { SITE_URL } from '$lib/site-url';
@@ -131,7 +132,8 @@ export const GET: RequestHandler = async ({ url }) => {
 					? {
 							key: row.album_key,
 							name: row.album_name || 'Unknown Album',
-							url: `${SITE_URL}/albums/${row.album_key}`
+							// Slug form, matching the sitemap and the site's own links; a bare key 301s.
+							url: `${SITE_URL}/albums/${createAlbumSlug(row.album_name || row.album_key, row.album_key)}`
 						}
 					: null
 			})),
