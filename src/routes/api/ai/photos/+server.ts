@@ -138,6 +138,13 @@ export const GET: RequestHandler = async ({ url }) => {
 						}
 					: null
 			})),
+			// Every photo in this response has the same author, so attribution sits
+			// on the envelope rather than repeating on each of up to `limit` rows.
+			// The ?format=jsonld branch carries it per-Photograph because that is
+			// where the schema.org shape requires it. Without this, the DEFAULT
+			// response — the one a consumer gets by not passing a format — credited
+			// nobody, while the same photo's page and its watermark both do.
+			photographer: personSchema(),
 			total,
 			limit,
 			offset
