@@ -1,15 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T04:51:22.061Z",
+  "reviewedAt": "2026-07-29T05:07:10.634Z",
   "reviewedBy": "Claude (session 64a8fb16)",
-  "method": "Walked the sitemap surface: fetched the generated sitemap from the built preview and probed all 54 non-photo URLs (200 each). Confirmed the 12 sport landing-page URLs are gone and /timeline, /privacy and 46 month archives are present. Reader-facing copy untouched — the only page-template edits are three noindex meta tags on internal demo routes (/hero-demo, /style-guide, /timeline-variants).",
-  "sourceDigest": "sha256:971401c8b8b1dd4f2ebe9d559b8537b127179034bd34d9f86d1f9c3120d4705c",
+  "method": "Chat photo-result fix. No reader-facing gallery copy changed — the chat is behind a kill switch and renders nothing in production (verified: POST /api/chat returns 'Chat is temporarily unavailable' on the live origin and in the normal build, and ChatWidget is absent from the rendered homepage). Verified the mapping with 10 unit tests under tsx --test rather than through the UI, since the Gemini key needed to drive the tool call is not valid locally.",
+  "sourceDigest": "sha256:0ccddc31e85f612e5b2e2c53e5b1e4dbbad150b429c1e7df45cbf225deaf84d1",
   "sourceFiles": 131,
   "scope": [
-    "src/routes/sitemap.xml/+server.ts",
-    "src/routes/hero-demo/+page.svelte",
-    "src/routes/style-guide/+page.svelte",
-    "src/routes/timeline-variants/+page.svelte"
+    "src/routes/api/chat/+server.ts",
+    "src/lib/ai/chat-photo-result.ts",
+    "src/lib/components/ai/PhotoGrid.svelte",
+    "src/lib/components/ai/ChatWidget.svelte"
   ]
 }

@@ -5,6 +5,13 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { embedText } from '$lib/ai/embeddings';
+import { photoAddresses } from '$lib/supabase/photo-address';
+import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
+import {
+	shapeChatPhotos,
+	type ChatPhotoRow,
+	type ChatPhotoResult
+} from '$lib/ai/chat-photo-result';
 import type { RequestHandler } from './$types';
 import { checkRateLimit, getClientIdentifier } from './rate-limit';
 
@@ -18,6 +25,25 @@ function getSupabaseClient() {
 	const supabaseUrl = env.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 	const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 	return createClient(supabaseUrl, supabaseKey);
+}
+
+/**
+ * The columns every search branch reads. One constant because all three branches must return
+ * the SAME shape — `shapeChatPhotos` depends on every one of these being present, and this is
+ * a superset of what `photoIdentityPeers` takes so rows pass straight through.
+ */
+const CHAT_PHOTO_COLUMNS =
+	'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, play_type, photo_category, caption';
+
+/**
+ * Resolve the addresses these rows should be linked by, then shape them for the grid.
+ * The mapping itself is pure and tested in `$lib/ai/chat-photo-result`; this adds the one
+ * query it needs — peers matter because a contested key's twin may not be in this page.
+ */
+async function shapePhotos(rows: ChatPhotoRow[]): Promise<ChatPhotoResult[]> {
+	if (rows.length === 0) return [];
+	const peers = await photoIdentityPeers(rows);
+	return shapeChatPhotos(rows, photoAddresses(peers));
 }
 
 // Unlisted (private client) album_keys — this is a PUBLIC, unauthenticated endpoint, so every search
@@ -235,15 +261,16 @@ export const POST: RequestHandler = async ({ request }) => {
 										const orderedKeys: string[] = data.map((d: { image_key: string }) => d.image_key);
 										let hq = supabase
 											.from(PHOTOS_READ)
-											.select('image_key, cf_image_id, sport_type, play_type, photo_category, caption')
+											.select(CHAT_PHOTO_COLUMNS)
 											.in('image_key', orderedKeys)
 											.not('sharpness', 'is', null);
 										if (unlisted.length) hq = hq.not('album_key', 'in', `(${unlisted.join(',')})`);
 										const { data: rows } = await hq;
 										const rank = new Map(orderedKeys.map((k, i) => [k, i]));
-										const photos = (rows ?? [])
+										const ranked = ((rows ?? []) as ChatPhotoRow[])
 											.sort((a, b) => (rank.get(a.image_key) ?? 0) - (rank.get(b.image_key) ?? 0))
 											.slice(0, 12);
+										const photos = await shapePhotos(ranked);
 										console.log(`Semantic caption search "${query}" → ${photos.length} photos (unlisted excluded).`);
 										return { photos };
 									}
@@ -273,7 +300,7 @@ export const POST: RequestHandler = async ({ request }) => {
 							// Structured path: filterable enum fields, ranked by the weighted quality blend.
 							let dbQuery = supabase
 								.from(PHOTOS_READ)
-								.select('image_key, cf_image_id, sport_type, play_type, photo_category, caption')
+								.select(CHAT_PHOTO_COLUMNS)
 								.not('sharpness', 'is', null)
 								.order('quality_score', { ascending: false, nullsFirst: false })
 								.limit(12);
@@ -297,8 +324,9 @@ export const POST: RequestHandler = async ({ request }) => {
 								return { photos: [], error: 'Failed to fetch photos.' };
 							}
 
-							console.log(`Found ${data?.length || 0} photos.`);
-							return { photos: data || [] };
+							const photos = await shapePhotos((data ?? []) as ChatPhotoRow[]);
+							console.log(`Found ${photos.length} photos.`);
+							return { photos };
 						} catch (err) {
 							console.error('Error executing searchPhotos tool:', err);
 							return { photos: [], error: 'Internal error in search tool' };
