@@ -97,6 +97,9 @@
 	<meta name="description" content={data.seo.description} />
 	<meta name="keywords" content={data.seo.keywords} />
 	<link rel="canonical" href={data.seo.canonical} />
+	<!-- Per-visitor page: nothing here is the same for two people, so there is
+	     nothing to index. Follow is kept so the gallery links still carry. -->
+	<meta name="robots" content="noindex, follow" />
 </svelte:head>
 
 <div class="p-8" style="animation: fade-slide-up 0.3s ease-out forwards">
