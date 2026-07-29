@@ -11,16 +11,12 @@ import type { PageServerLoad } from './$types';
 import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
+import { isValidSrcParam } from '$lib/analytics/share';
 import { computeSessionHash } from '$lib/analytics/session';
 
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 let cache: { recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>; timestamp: number } | null =
   null;
-
-// Channel value on an inbound ?src= param — see $lib/utils/share-url for the values
-// the app hands out (share-copy, share-web, share-x, share-fb, share-pin) plus the
-// operator-side-only reserved values (ig-bio, qr) documented alongside it.
-const SRC_PARAM_PATTERN = /^[a-z0-9_-]{1,32}$/;
 
 export const load: PageServerLoad = async ({ setHeaders, url, request, getClientAddress, platform }) => {
   setHeaders({ 'cache-control': 's-maxage=300, stale-while-revalidate=600' });
@@ -33,7 +29,7 @@ export const load: PageServerLoad = async ({ setHeaders, url, request, getClient
   // repeat visitors hitting the same evergreen link (bio link, QR code) within the cache
   // window will undercount. Not fixed here (out of scope — don't change caching behavior).
   const src = url.searchParams.get('src');
-  if (src && SRC_PARAM_PATTERN.test(src)) {
+  if (isValidSrcParam(src)) {
     const userAgent = request.headers.get('user-agent') ?? '';
     keepTrackingAlive(
       platform,

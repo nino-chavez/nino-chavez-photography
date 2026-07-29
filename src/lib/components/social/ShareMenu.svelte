@@ -11,8 +11,8 @@
 	} from 'lucide-svelte';
 	import { downloadBrandedImage } from '$lib/utils/branded-image';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
-	import { trackEngagement } from '$lib/analytics/client';
-	import { withSrc } from '$lib/utils/share-url';
+	import { trackEngagement, recordShare } from '$lib/analytics/client';
+	import { shareUrl } from '$lib/analytics/share';
 
 	interface ShareTarget {
 		/** Title for the shared content */
@@ -36,8 +36,11 @@
 
 	let { target, variant = 'toolbar', photoId, albumKey }: Props = $props();
 
-	// Popularity signals (fire-and-forget; no-op if neither id is provided).
-	const trackShare = () => trackEngagement('share', { photoId, albumKey, source: 'share' });
+	// Popularity signals (fire-and-forget; no-op if neither id is provided). The share
+	// event's `source` is the channel — the same string the outbound URL carries — so
+	// outbound shares and inbound arrivals can be joined. It used to be a flat 'share'
+	// for all five channels, which made "which channel actually works" unanswerable.
+	const subject = $derived({ photoId, albumKey });
 	const trackDownload = () => trackEngagement('download', { photoId, albumKey, source: 'share' });
 
 	let menuOpen = $state(false);
@@ -51,10 +54,11 @@
 		`${target.title} — Sports photography by Nino Chavez`
 	);
 
+	// Keyed by ShareChannel so a handler records exactly the channel it opens.
 	const shareUrls = $derived({
-		twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withSrc(target.url, 'share-x'))}`,
-		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withSrc(target.url, 'share-fb'))}`,
-		pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(withSrc(target.url, 'share-pin'))}&media=${encodeURIComponent(target.imageUrl)}&description=${encodeURIComponent(shareText)}`
+		x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl(target.url, 'x'))}`,
+		fb: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(target.url, 'fb'))}`,
+		pin: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl(target.url, 'pin'))}&media=${encodeURIComponent(target.imageUrl)}&description=${encodeURIComponent(shareText)}`
 	});
 
 	function toggleMenu(event: MouseEvent) {
@@ -80,9 +84,9 @@
 			await navigator.share({
 				title: target.title,
 				text: shareText,
-				url: withSrc(target.url, 'share-web')
+				url: shareUrl(target.url, 'web')
 			});
-			trackShare();
+			recordShare(subject, 'web');
 		} catch (err) {
 			// User cancelled or not supported — ignore
 			if ((err as DOMException).name !== 'AbortError') {
@@ -95,19 +99,19 @@
 	async function handleCopyLink(event: MouseEvent) {
 		event.stopPropagation();
 		try {
-			await navigator.clipboard.writeText(withSrc(target.url, 'share-copy'));
+			await navigator.clipboard.writeText(shareUrl(target.url, 'copy'));
 			copySuccess = true;
-			trackShare();
+			recordShare(subject, 'copy');
 			setTimeout(() => { copySuccess = false; }, 2000);
 		} catch (err) {
 			console.error('Failed to copy:', err);
 		}
 	}
 
-	function handlePlatformShare(platform: 'twitter' | 'facebook' | 'pinterest', event: MouseEvent) {
+	function handlePlatformShare(channel: 'x' | 'fb' | 'pin', event: MouseEvent) {
 		event.stopPropagation();
-		window.open(shareUrls[platform], '_blank', 'width=600,height=400');
-		trackShare();
+		window.open(shareUrls[channel], '_blank', 'width=600,height=400');
+		recordShare(subject, channel);
 		closeMenu();
 	}
 
@@ -230,7 +234,7 @@
 
 				<!-- Platform Links -->
 				<button
-					onclick={(e) => handlePlatformShare('twitter', e)}
+					onclick={(e) => handlePlatformShare('x', e)}
 					class="share-menu-item"
 					role="menuitem"
 				>
@@ -239,7 +243,7 @@
 				</button>
 
 				<button
-					onclick={(e) => handlePlatformShare('facebook', e)}
+					onclick={(e) => handlePlatformShare('fb', e)}
 					class="share-menu-item"
 					role="menuitem"
 				>
@@ -248,7 +252,7 @@
 				</button>
 
 				<button
-					onclick={(e) => handlePlatformShare('pinterest', e)}
+					onclick={(e) => handlePlatformShare('pin', e)}
 					class="share-menu-item"
 					role="menuitem"
 				>

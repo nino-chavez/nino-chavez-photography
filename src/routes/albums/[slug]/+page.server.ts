@@ -3,15 +3,11 @@ import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer, matvie
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import { getTopPhotos } from '$lib/analytics/popularity';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
+import { isValidSrcParam } from '$lib/analytics/share';
 import { computeSessionHash } from '$lib/analytics/session';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { SITE_URL } from '$lib/site-url';
-
-// Channel value on an inbound ?src= param — see $lib/utils/share-url for the values
-// the app hands out (share-copy, share-web, share-x, share-fb, share-pin) plus the
-// operator-side-only reserved values (ig-bio, qr) documented alongside it.
-const SRC_PARAM_PATTERN = /^[a-z0-9_-]{1,32}$/;
 
 export const load: PageServerLoad = async ({ params, url, setHeaders, request, getClientAddress, platform }) => {
 	// Always fresh: album content changes (new/re-tagged photos & videos, settings)
@@ -131,7 +127,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 	// navigation inserts nothing. Non-blocking, mirrors the photo page's fire-and-forget
 	// view tracking — never awaited, never allowed to affect the response.
 	const src = url.searchParams.get('src');
-	if (src && SRC_PARAM_PATTERN.test(src)) {
+	if (isValidSrcParam(src)) {
 		const userAgent = request.headers.get('user-agent') ?? '';
 		keepTrackingAlive(
 			platform,

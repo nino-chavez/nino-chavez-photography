@@ -1,15 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T05:07:10.634Z",
-  "reviewedBy": "Claude (session 64a8fb16)",
-  "method": "Chat photo-result fix. No reader-facing gallery copy changed — the chat is behind a kill switch and renders nothing in production (verified: POST /api/chat returns 'Chat is temporarily unavailable' on the live origin and in the normal build, and ChatWidget is absent from the rendered homepage). Verified the mapping with 10 unit tests under tsx --test rather than through the UI, since the Gemini key needed to drive the tool call is not valid locally.",
-  "sourceDigest": "sha256:0ccddc31e85f612e5b2e2c53e5b1e4dbbad150b429c1e7df45cbf225deaf84d1",
+  "reviewedAt": "2026-07-29T09:24:36.423Z",
+  "reviewedBy": "Claude Opus 5 (session 64a8fb16)",
+  "method": "Walked the rendered photo page and an album page on a dev server. The only reader-visible change is what the Copy link button puts on the clipboard: it now appends ?src=share-copy, matching what every other copy-link in the app already did. Button labels, aria-labels and toast copy are unchanged (verified in the served HTML: aria-label='Copy link to this photo', visible 'Copy link', album 'Share'). Also verified the inbound half against the real database — one arrival with ?src=share-copy and a browser user-agent wrote the expected engagement_events row (event_type view, source share-copy); a curl user-agent was correctly bot-filtered.",
+  "sourceDigest": "sha256:8366181c551a8008efa73a02a55ad888c2dcea109d025c0710cac38da33f8ec3",
   "sourceFiles": 131,
   "scope": [
-    "src/routes/api/chat/+server.ts",
-    "src/lib/ai/chat-photo-result.ts",
-    "src/lib/components/ai/PhotoGrid.svelte",
-    "src/lib/components/ai/ChatWidget.svelte"
+    "src/routes/photo/[id]/+page.svelte",
+    "src/lib/components/social/ShareMenu.svelte",
+    "src/lib/components/social/SocialShareButtons.svelte"
   ]
 }
