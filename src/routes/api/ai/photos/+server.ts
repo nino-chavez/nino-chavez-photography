@@ -16,7 +16,8 @@ import { createAlbumSlug } from '$lib/utils';
 import { photoAddresses } from '$lib/supabase/photo-address';
 import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
 import { SITE_URL } from '$lib/site-url';
-import { parsePagination } from '$lib/api/pagination';
+import { parsePagination, validateFilter } from '$lib/api/pagination';
+import { SPORTS, PHOTO_CATEGORIES, ALL_PLAY_TYPES } from '$lib/ai/taxonomy';
 import { personSchema } from '$lib/aeo/person';
 import type { PhotoMetadataRow } from '$types/database';
 
@@ -27,9 +28,18 @@ export const GET: RequestHandler = async ({ url }) => {
 		const page = parsePagination(url.searchParams, { defaultLimit: 50, maxLimit: 100 });
 		if (!page.ok) return json({ error: page.error }, { status: 400 });
 		const { limit, offset } = page.value;
-		const sport = url.searchParams.get('sport') || undefined;
-		const category = url.searchParams.get('category') || undefined;
-		const playType = url.searchParams.get('play_type') || undefined;
+		// Unknown filter values used to reach the database and come back as an empty page, so
+		// `?sport=quidditch` and `?sport=Volleyball` were both indistinguishable from an honest
+		// "we have none of those". Now they name the vocabulary instead.
+		const sportParam = validateFilter(url.searchParams.get('sport'), 'sport', SPORTS);
+		if (!sportParam.ok) return json({ error: sportParam.error }, { status: 400 });
+		const categoryParam = validateFilter(url.searchParams.get('category'), 'category', PHOTO_CATEGORIES);
+		if (!categoryParam.ok) return json({ error: categoryParam.error }, { status: 400 });
+		const playTypeParam = validateFilter(url.searchParams.get('play_type'), 'play_type', ALL_PLAY_TYPES);
+		if (!playTypeParam.ok) return json({ error: playTypeParam.error }, { status: 400 });
+		const sport = sportParam.value;
+		const category = categoryParam.value;
+		const playType = playTypeParam.value;
 		const format = url.searchParams.get('format') || 'json';
 
 		// Build query

@@ -9,7 +9,8 @@ import type { RequestHandler } from './$types';
 import { excludeUnlisted, getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
 import { createAlbumSlug } from '$lib/utils';
 import { SITE_URL } from '$lib/site-url';
-import { parsePagination } from '$lib/api/pagination';
+import { parsePagination, validateFilter, parseYear, yearBounds } from '$lib/api/pagination';
+import { SPORTS } from '$lib/ai/taxonomy';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -17,8 +18,15 @@ export const GET: RequestHandler = async ({ url }) => {
 		const page = parsePagination(url.searchParams, { defaultLimit: 50, maxLimit: 100 });
 		if (!page.ok) return json({ error: page.error }, { status: 400 });
 		const { limit, offset } = page.value;
-		const sport = url.searchParams.get('sport') || undefined;
-		const year = url.searchParams.get('year') ? parseInt(url.searchParams.get('year')!) : undefined;
+		const sportParam = validateFilter(url.searchParams.get('sport'), 'sport', SPORTS);
+		if (!sportParam.ok) return json({ error: sportParam.error }, { status: 400 });
+		const sport = sportParam.value;
+
+		// `parseInt('abc')` is NaN, NaN is falsy, so `?year=abc` silently dropped the filter
+		// and returned the whole catalogue as though the caller had asked for it.
+		const yearParam = parseYear(url.searchParams.get('year'));
+		if (!yearParam.ok) return json({ error: yearParam.error }, { status: 400 });
+		const year = yearParam.value;
 
 		// Build query using materialized view (anon REVOKE'd → read via service_role)
 		let query = matviewClient()
@@ -42,6 +50,21 @@ export const GET: RequestHandler = async ({ url }) => {
 			query = query.contains('sports', [sport]);
 		}
 
+		// Year overlap, in the QUERY. This used to be a JS filter applied to the page that
+		// came back (see below), which meant the year was applied AFTER pagination: 45 albums
+		// cover 2024, but `?year=2024` returned 16 at limit=50, 20 at limit=100 and 11 at
+		// offset=100 — the answer depended on the page size, `total` always reported the
+		// unfiltered 249, and no request could return all 45.
+		//
+		// The old comment said this had to be post-query "since we don't have year in view".
+		// The view has no year column, but it has both date bounds, and an album overlaps a
+		// year exactly when earliest <= Dec 31 AND latest >= Jan 1. Albums with no dates are
+		// excluded, as they were before — a null date cannot overlap anything.
+		if (year !== undefined) {
+			const { start, end } = yearBounds(year);
+			query = query.lte('earliest_photo_date', end).gte('latest_photo_date', start);
+		}
+
 		// Apply sorting (by photo count, then date)
 		query = query
 			.order('photo_count', { ascending: false })
@@ -59,17 +82,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		const total = count || 0;
 
-		// Filter by year if specified (post-query since we don't have year in view)
-		let albums = (albumsData || []) as any[];
-
-		if (year) {
-			// Filter albums where date range includes the year
-			albums = albums.filter((album) => {
-				const earliest = album.earliest_photo_date ? new Date(album.earliest_photo_date).getFullYear() : null;
-				const latest = album.latest_photo_date ? new Date(album.latest_photo_date).getFullYear() : null;
-				return earliest && latest && year >= earliest && year <= latest;
-			});
-		}
+		// The year filter is in the query above, so `count` now reflects it and every page is
+		// a real page of the filtered set.
+		const albums = (albumsData || []) as any[];
 
 		return json({
 			albums: albums.map((album) => ({

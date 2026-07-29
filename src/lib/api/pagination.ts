@@ -64,3 +64,54 @@ export function parsePagination(params: URLSearchParams, spec: PaginationSpec): 
 
 	return { ok: true, value: { limit: Math.min(limit.value, spec.maxLimit), offset: offset.value } };
 }
+
+/**
+ * Validates a filter value against a controlled vocabulary.
+ *
+ * An unknown value used to reach the database as-is and come back as an empty page, so
+ * `?sport=quidditch` and `?sport=Volleyball` both answered `{"photos": [], "total": 0}` —
+ * identical to an honest "we have no photos of that". A crawler cannot tell a typo from a
+ * gap in the catalogue, and the capitalised one is the mistake a caller is most likely to
+ * actually make.
+ *
+ * Deliberately NOT case-normalised. Accepting `Volleyball` would give the API two spellings
+ * for one value; the error names the allowed set instead, which teaches the caller the right
+ * one. `null`/absent is not a filter and always passes.
+ */
+export function validateFilter(
+	raw: string | null,
+	name: string,
+	vocabulary: readonly string[]
+): { ok: true; value: string | undefined } | { ok: false; error: string } {
+	if (raw === null || raw === '') return { ok: true, value: undefined };
+	if (!vocabulary.includes(raw)) {
+		return {
+			ok: false,
+			error: `Invalid ${name}: ${JSON.stringify(raw)} is not one of ${vocabulary.join(', ')}`
+		};
+	}
+	return { ok: true, value: raw };
+}
+
+/**
+ * A four-digit year. Unlike limit/offset there is no clamping and no catalogue range check:
+ * a year we hold no photos for is an honest empty result, not a caller error.
+ */
+export function parseYear(
+	raw: string | null,
+	name = 'year'
+): { ok: true; value: number | undefined } | { ok: false; error: string } {
+	if (raw === null || raw === '') return { ok: true, value: undefined };
+	if (!/^\d{4}$/.test(raw.trim())) {
+		return { ok: false, error: `Invalid ${name}: expected a four-digit year, got ${JSON.stringify(raw)}` };
+	}
+	return { ok: true, value: Number(raw.trim()) };
+}
+
+/**
+ * Inclusive timestamp bounds for a calendar year, for date-range overlap filters.
+ * An album overlaps the year when `earliest <= yearEnd AND latest >= yearStart`.
+ */
+export function yearBounds(year: number): { start: string; end: string } {
+	return { start: `${year}-01-01T00:00:00`, end: `${year}-12-31T23:59:59.999` };
+}
