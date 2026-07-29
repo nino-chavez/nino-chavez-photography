@@ -150,7 +150,21 @@
 
 	<!-- Additional Meta Tags -->
 	<meta name="author" content="Nino Chavez" />
-	<meta name="robots" content="index, follow" />
+	<!--
+		NO `<meta name="robots">` HERE, DELIBERATELY.
+
+		This layout wraps every route, so an unconditional `index, follow` shipped
+		on the four pages that ask NOT to be indexed too — `/share/<token>`,
+		`/style-guide`, `/hero-demo`, `/timeline-variants` each emitted their own
+		`noindex` and the layout's tag landed beside it. Two contradictory
+		directives in one head. Google resolves that by taking the most
+		restrictive, so it happened to behave; nothing else is documented to, and
+		`/share/<token>` is a private link that was relying on it.
+
+		Absence is the fix, not an override mechanism: no robots tag already means
+		`index, follow` to every crawler, so the tag asserted nothing its absence
+		does not. A page that wants out says so on its own, once.
+	-->
 	<meta name="theme-color" content="#D4AF37" />
 
 	<!-- Google Search Console Verification -->

@@ -25,6 +25,13 @@
 	);
 </script>
 
+<svelte:head>
+	<!-- Had no head block at all, so it inherited the gallery's title and was
+	     indexable. A sign-in form is neither. -->
+	<title>Sign In - Nino Chavez Photography</title>
+	<meta name="robots" content="noindex, follow" />
+</svelte:head>
+
 <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
 	<div class="max-w-md w-full space-y-8">
 		<div>
