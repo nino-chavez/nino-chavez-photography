@@ -7,7 +7,8 @@
 import { json } from '@sveltejs/kit';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
-import { excludeUnlisted, getUnlistedAlbumKeys, supabaseServer, matviewClient } from '$lib/supabase/server';
+import { getUnlistedAlbumKeys, supabaseServer, matviewClient } from '$lib/supabase/server';
+import { videoOnlyRows } from '$lib/albums/listing';
 import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
 import { ENRICHMENT_FIELDS } from '$lib/aeo/faq-copy';
 
@@ -19,13 +20,34 @@ export const GET: RequestHandler = async () => {
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null);
 
-		// Get total album count (albums_summary is a matview — anon REVOKE'd → service_role).
-		// Excluding unlisted albums, because service_role bypasses RLS and this is a public
-		// endpoint: the count otherwise included 13 private client sessions.
-		const { count: totalAlbums } = await excludeUnlisted(
-			matviewClient().from('albums_summary').select('*', { count: 'exact', head: true }),
-			await getUnlistedAlbumKeys()
+		// Album and video totals. albums_summary and videos_summary are matviews — anon is
+		// REVOKE'd, so both read through service_role and RLS does not apply. Unlisted albums
+		// are excluded explicitly because of that: the album count otherwise included 13
+		// private client sessions.
+		//
+		// The album count was a head count over albums_summary alone, so it answered 249 while
+		// the gallery has 251 public albums — two of them hold only videos and have no row in
+		// that view. And there was no video figure at all: an answer engine asking what this
+		// gallery contains was told 20,655 photos and nothing about 481 clips. Reading the keys
+		// instead of counting them is what makes the video-only ones countable; it is 262 rows.
+		const [{ data: albumKeyRows }, { data: videoAlbumRows }, unlistedKeys] = await Promise.all([
+			matviewClient().from('albums_summary').select('album_key'),
+			matviewClient().from('videos_summary').select('album_key, video_count'),
+			getUnlistedAlbumKeys()
+		]);
+		const unlisted = new Set(unlistedKeys);
+		const photoAlbumKeys = new Set(
+			((albumKeyRows ?? []) as { album_key: string }[])
+				.map((r) => r.album_key)
+				.filter((k) => !unlisted.has(k))
 		);
+		const videoRows = (videoAlbumRows ?? []) as { album_key: string; video_count: number | string | null }[];
+		const videoOnly = videoOnlyRows(videoRows, photoAlbumKeys, unlisted);
+		const totalAlbums = photoAlbumKeys.size + videoOnly.length;
+		// Every clip in a public album, mixed or video-only — not just the video-only ones.
+		const totalVideos = videoRows
+			.filter((v) => !unlisted.has(v.album_key))
+			.reduce((sum, v) => sum + (Number(v.video_count) || 0), 0);
 
 		// Get sport distribution
 		const sportDistribution = await getSportDistribution();
@@ -59,7 +81,8 @@ export const GET: RequestHandler = async () => {
 
 		return json({
 			total_photos: totalPhotos || 0,
-			total_albums: totalAlbums || 0,
+			total_videos: totalVideos,
+			total_albums: totalAlbums,
 			sports: sports,
 			categories: categories,
 			date_range: {

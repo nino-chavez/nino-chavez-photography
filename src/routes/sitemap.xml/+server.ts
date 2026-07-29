@@ -37,6 +37,7 @@ import { supabaseServer, matviewClient, getUnlistedAlbumKeys } from '$lib/supaba
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { createAlbumSlug } from '$lib/utils';
 import { COLLECTIONS, COLLECTION_CRITERIA_SELECT, collectionMatches } from '$lib/collections';
+import { videoOnlyRows } from '$lib/albums/listing';
 import { photoAddresses } from '$lib/supabase/photo-address';
 import type { RequestHandler } from './$types';
 import { SITE_URL } from '$lib/site-url';
@@ -106,14 +107,9 @@ export const GET: RequestHandler = async () => {
 
 		// Albums that hold only videos. They have no row in the scan above, so deriving albums
 		// from photos alone can never reach them — the same shape as the collections omission,
-		// one table over. Same video-only rule as $lib/albums/listing (a videos_summary key with
-		// no photo album key), because /albums linking a page this omits is the failure.
-		//
-		// videos_summary is a matview: anon is REVOKE'd, so it reads through service_role and RLS
-		// does not apply. The unlisted gate has to be explicit here — and it is not redundant with
-		// `photoAlbumKeys`, which is built from an RLS-gated anon scan and therefore does NOT
-		// contain an unlisted album's key. Without the filter, an unlisted album that gained a
-		// video would read as video-only and be published.
+		// one table over. videos_summary is a matview (anon REVOKE'd → service_role, RLS does not
+		// apply), so videoOnlyRows gets the unlisted keys explicitly; see its own comment for why
+		// that is not redundant with `photoAlbumKeys`.
 		const [{ data: videoAlbumRows, error: videoAlbumsError }, unlistedKeys] = await Promise.all([
 			matviewClient().from('videos_summary').select('album_key, album_name'),
 			getUnlistedAlbumKeys()
@@ -122,9 +118,11 @@ export const GET: RequestHandler = async () => {
 			console.error('Error fetching video albums for sitemap:', videoAlbumsError);
 			return new Response('Error generating sitemap', { status: 500 });
 		}
-		const unlisted = new Set(unlistedKeys);
-		const videoOnlyAlbums = ((videoAlbumRows ?? []) as { album_key: string; album_name: string | null }[])
-			.filter((v) => !photoAlbumKeys.has(v.album_key) && !unlisted.has(v.album_key));
+		const videoOnlyAlbums = videoOnlyRows(
+			(videoAlbumRows ?? []) as { album_key: string; album_name: string | null }[],
+			photoAlbumKeys,
+			new Set(unlistedKeys)
+		);
 
 		// Curated collections that actually hold photos. `/collections` renders only
 		// those with a non-zero count, so listing an empty one would advertise a page

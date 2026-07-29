@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	buildAlbumListing,
 	listingFacets,
+	videoOnlyRows,
 	type AlbumSummaryRow,
 	type VideoSummaryRow
 } from './listing';
@@ -181,4 +182,33 @@ test('facets skip the unknown sport and undated albums', () => {
 	const { sports, years } = listingFacets(rows);
 	assert.deepEqual(sports, ['volleyball']);
 	assert.deepEqual(years, ['2026']);
+});
+
+// videoOnlyRows is the rule three surfaces read now — the listing, the sitemap, and the
+// AI album/stats endpoints. Each of them lost two public albums by open-coding it.
+
+/** The keys a caller derives from a photo scan: the four albums that hold both. */
+const PHOTO_KEYS = new Set(PHOTO_ROWS.map((r) => r.album_key));
+
+test('videoOnlyRows: a video album that also has photos is not video-only', () => {
+	const rows = videoOnlyRows(VIDEO_ROWS, PHOTO_KEYS, NONE);
+	assert.deepEqual(rows.map((r) => r.album_key), ['p4J2jk', 'QwhCK5']);
+});
+
+test('videoOnlyRows: an unlisted video-only album is excluded', () => {
+	const rows = videoOnlyRows(VIDEO_ROWS, PHOTO_KEYS, new Set(['p4J2jk']));
+	assert.deepEqual(rows.map((r) => r.album_key), ['QwhCK5']);
+});
+
+test('videoOnlyRows: unlisted is not redundant with the photo-key set', () => {
+	// The caller's photo keys come from an RLS-gated anon read, so an unlisted album's key is
+	// absent from them even though the album HAS photos. Without the unlisted set it would
+	// read as video-only and get published.
+	const unlistedWithPhotos = video('secret', 'Private Client Session', 3, '2026-05-01');
+	const rows = videoOnlyRows([...VIDEO_ROWS, unlistedWithPhotos], PHOTO_KEYS, new Set(['secret']));
+	assert.equal(rows.some((r) => r.album_key === 'secret'), false);
+});
+
+test('videoOnlyRows: no video albums yields an empty list, not the photo set', () => {
+	assert.deepEqual(videoOnlyRows([], PHOTO_KEYS, NONE), []);
 });

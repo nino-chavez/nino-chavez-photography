@@ -127,6 +127,26 @@ function toVideoOnlyCard(row: VideoSummaryRow): AlbumCard {
 const latestOf = (a: AlbumCard): string => a.dateRange.latest || '';
 
 /**
+ * The video albums that hold no photos — the ones a photo-derived query can never reach.
+ *
+ * Exported because open-coding this is how surfaces silently lose two public albums. The
+ * sitemap derived its album list from the photo scan and listed 249 of the 251 albums
+ * `/albums` links; the same shape had already been found for `/collections` and for twelve
+ * `[sport]` routes that never existed.
+ *
+ * `unlistedKeys` is not redundant with `photoAlbumKeys`. Callers building the photo key set
+ * from an RLS-gated anon read do NOT have an unlisted album's key in it, so an unlisted album
+ * that gained a video would read as video-only and be published.
+ */
+export function videoOnlyRows<T extends { album_key: string }>(
+	videoRows: T[],
+	photoAlbumKeys: Set<string>,
+	unlistedKeys: Set<string>
+): T[] {
+	return videoRows.filter((v) => !photoAlbumKeys.has(v.album_key) && !unlistedKeys.has(v.album_key));
+}
+
+/**
  * The complete, ordered browse list. The caller paginates the result — never the input.
  *
  * Filters are applied ONCE, to the merged list. They used to run twice — in Postgres for photo
@@ -145,9 +165,7 @@ export function buildAlbumListing(input: ListingInput): AlbumCard[] {
 
 	const merged: AlbumCard[] = [
 		...photoRows.filter((r) => !unlistedKeys.has(r.album_key)).map((r) => toPhotoCard(r, videoCounts)),
-		...videoRows
-			.filter((v) => !photoAlbumKeys.has(v.album_key) && !unlistedKeys.has(v.album_key))
-			.map(toVideoOnlyCard)
+		...videoOnlyRows(videoRows, photoAlbumKeys, unlistedKeys).map(toVideoOnlyCard)
 	];
 
 	const qLower = q.toLowerCase();
