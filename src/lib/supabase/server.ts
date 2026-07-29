@@ -85,11 +85,15 @@ export function transformPhotoRow(row: any): Photo {
     // Same trap as video_metadata.title (#131). Anything a person or a crawler reads must come
     // from `caption` — which is present on all 21,743 processed photos — or be composed with
     // photoPageTitle/photoAltText ($lib/seo/photo-title). Printing this field shipped
-    // alt="DSC05553" and aria-label="DSC05553. volleyball photo. candid" on every gallery card,
-    // and /api/top-photos still publishes it as `title`. Note the /photo/[id] loader sets `title`
-    // to the ALBUM NAME instead, so the field's meaning depends on which loader built the row;
-    // check the source before you render it.
+    // alt="DSC05553" and aria-label="DSC05553. volleyball photo. candid" on every gallery card
+    // (#140). Note the /photo/[id] loader sets `title` to the ALBUM NAME instead, so the field's
+    // meaning depends on which loader built the row; check the source before you render it.
+    //
+    // It stays because the in-album search box matches on it (albums/[slug]/+page.svelte) — typing
+    // a DSC number is a real way to find a frame you already know. `album_name` beside it is what
+    // a reader-facing title should be composed from.
     title: row.image_key,
+    album_name: row.album_name || undefined,
     caption: row.caption || '',
     keywords: [],
     created_at: row.photo_date || row.enriched_at || row.upload_date,

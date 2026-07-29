@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T22:36:37.063Z",
+  "reviewedAt": "2026-07-29T22:53:28.170Z",
   "reviewedBy": "Claude (Nino's session)",
-  "method": "Compared rendered alt/aria-label attributes on /albums/lewis-vs-pepperdine-winter-2026-pHqw25 between production and the new build in wrangler pages dev. Before: 60 photo-card links announced 'DSC06067. volleyball photo. action. set' and 4 img alt were bare camera filenames. After: 0 filename alt, 0 filename aria-label, alt is the caption ('A Lewis Flyers volleyball player in a white and red uniform sets the ball during a game.'), and the 60 decorative blur-layer imgs still carry alt=\"\" with aria-hidden. No other interface copy changed.",
-  "sourceDigest": "sha256:1a525ae8f1c6e027c4a0869595d22e940035129bdebd64d5bf13161028f2a865",
+  "method": "API-only change (/api/ai/search, /api/top-photos, transformPhotoRow gains album_name). Verified the JSON title composition against production: search 38 -> 48 distinct titles of 50, top-photos 'DSC07313' -> '<album> — <caption fragment>'. Then diffed rendered visible text local-vs-production on /albums, an album page, and /explore — identical on all three (222/162/107 lines, diff clean), so no interface copy moved.",
+  "sourceDigest": "sha256:b700c67c3ce66c2fc9d642ddda03acfbccbeaf99e8242b42b3d9752aa5f34692",
   "sourceFiles": 128
 }

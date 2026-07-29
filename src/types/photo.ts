@@ -94,7 +94,16 @@ export interface Photo {
   image_url: string;
   thumbnail_url?: string; // Thumbnail URL for blur placeholders
   original_url?: string; // Full-resolution URL
+  /**
+   * ⚠️ NOT reader text, and its meaning depends on which loader built the row: `transformPhotoRow`
+   * sets it to `image_key` (the camera filename, e.g. "DSC05553"), while the /photo/[id] loader
+   * sets it to the album name. Printing it shipped alt="DSC05553" across the whole gallery (#140).
+   * Compose reader-facing titles from `album_name` + `caption` via photoPageTitle
+   * ($lib/seo/photo-title) instead.
+   */
   title: string;
+  /** Album display name. Reader-safe, unlike `title`. */
+  album_name?: string;
   caption: string;
   keywords: string[];
   created_at: string; // Actual photo date (photo_date from DB, prioritized for sorting)
