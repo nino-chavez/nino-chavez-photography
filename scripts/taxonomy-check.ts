@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 /**
  * Drift guard (CI). Re-renders the taxonomy artifacts from src/lib/ai/taxonomy.ts and asserts
- * the committed files match. Fails (exit 1) if anyone edited a generated file by hand or forgot
- * to run taxonomy-gen.ts after changing the source. This is what keeps the SQL enums, the JSON
- * schema, and the TS source from drifting — the bug class that let 'portrait' into sport_type.
+ * the committed FILES match. Fails (exit 1) if anyone edited a generated file by hand or forgot
+ * to run taxonomy-gen.ts after changing the source.
+ *
+ * SCOPE, precisely: this proves the rendered SQL and JSON on disk agree with the TS source. It
+ * proves nothing about the database. The enums in taxonomy-enums.sql are CREATEd and then used
+ * by no column — `photo_category` is varchar, `play_type` is text — so this file has been
+ * passing green while play_type accumulated 40 values outside the vocabulary.
+ *
+ * `npm run taxonomy:audit` is the check that reads the live data. Green here does not imply
+ * green there.
  */
 import { readFileSync } from 'fs';
 import { renderSql, renderJsonSchema } from '../src/lib/ai/taxonomy';
