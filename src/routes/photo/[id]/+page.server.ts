@@ -14,9 +14,17 @@ import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { SITE_URL } from '$lib/site-url';
-import { base } from '$app/paths';
+import { isValidSrcParam } from '$lib/analytics/share';
+import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
+import { computeSessionHash } from '$lib/analytics/session';
 
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async ({
+	params,
+	url,
+	request,
+	getClientAddress,
+	platform
+}) => {
 	// Stringified nulls are not image keys — they are a caller that interpolated a missing value
 	// into a URL template. The share-URL builders that produced them are fixed (see
 	// $lib/utils/share-url's photoShareUrl), but Facebook's scraper has /photo/null cached and
@@ -123,6 +131,27 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	]);
 
 	const tags = tagsResult.data;
+
+	// Arrival attribution → popularity engine. This route is the destination of every
+	// photo share link the app mints, and it was the one route that never read `?src=`:
+	// the homepage and albums/[slug] both did, so a shared ALBUM was attributed and a
+	// shared PHOTO was not. Every share arrival landed as 'direct', which is why no
+	// `share-*` source had ever appeared in engagement_events.
+	//
+	// Safe to do in the loader here, unlike the per-photo view below: this load runs on
+	// hover-prefetch, but internal links never carry `?src=` — only a link that came
+	// from outside does. No cache headers on this route either, so unlike the homepage
+	// (s-maxage=300) a repeat arrival is not swallowed by an edge hit.
+	const src = url.searchParams.get('src');
+	if (isValidSrcParam(src)) {
+		const userAgent = request.headers.get('user-agent') ?? '';
+		keepTrackingAlive(
+			platform,
+			computeSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
+				trackArrival({ albumKey: photo.album_key, src, sessionHash, userAgent })
+			)
+		);
+	}
 
 	// Track photo view (NEW - Analytics)
 	// Determine view source from referrer

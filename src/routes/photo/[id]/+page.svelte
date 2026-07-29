@@ -8,7 +8,8 @@
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, recordShare } from '$lib/analytics/client';
+	import { shareUrl } from '$lib/analytics/share';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 	import { SITE_URL } from '$lib/site-url';
@@ -62,16 +63,27 @@
 		goto(`${base}/photo/${photo.image_key}`);
 	}
 
-	// Copy-link: prefer the canonical URL computed for SEO/OG; fall back to a
-	// runtime-built URL if it is ever absent.
+	// Copy-link. Two things this used to get wrong, both silent:
+	//
+	// 1. It copied the bare canonical, with no `?src=` channel, so a visit arriving
+	//    from a link copied here was indistinguishable from someone typing the URL.
+	//    Every other share surface attributes; this one — the page a shared photo
+	//    link actually lands on — did not.
+	// 2. It recorded no engagement event, so the copy never reached
+	//    `photo_popularity`, where 'share' carries the heaviest weight of any signal.
+	//
+	// The fallback that used to sit here was worse than useless: it built
+	// `/photo/${image_key}`, and image_key is NOT unique (113 collisions across the
+	// library) — which is exactly why the loader addresses this page by
+	// `canonicalSegment` instead. It could only ever fire if `data.seo.canonical`
+	// were absent, and the loader always sets it, so it was dead code that would
+	// have handed out a link to the wrong photo. Gone.
 	let linkCopied = $state(false);
 
 	async function copyPhotoLink() {
-		const url =
-			data.seo.canonical ||
-			`${typeof window !== 'undefined' ? window.location.origin : ''}${base}/photo/${data.photo.image_key}`;
 		try {
-			await navigator.clipboard.writeText(url);
+			await navigator.clipboard.writeText(shareUrl(data.seo.canonical, 'copy'));
+			recordShare({ photoId: data.photo.id, albumKey: data.photo.album_key }, 'copy');
 			linkCopied = true;
 			toast.success('Link copied to clipboard.');
 			setTimeout(() => (linkCopied = false), 2000);

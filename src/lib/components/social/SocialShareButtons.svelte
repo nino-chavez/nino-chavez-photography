@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Share2, Twitter, Facebook, Linkedin, Mail, Check, Copy } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
-	import { withSrc } from '$lib/utils/share-url';
+	import { shareUrl } from '$lib/analytics/share';
+	import { recordShare } from '$lib/analytics/client';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -12,6 +13,13 @@
 
 	let { photo, url, compact = false }: Props = $props();
 
+	// Popularity attribution. This component sits in the photo modal opened from the
+	// gallery grid — the app's busiest share surface — and recorded nothing at all
+	// until 2026-07-29: it built attributed URLs for all five channels and never
+	// fired the matching engagement event, so `share` (the highest-weighted signal
+	// in the popularity ranking) had zero rows in production, ever.
+	const subject = $derived({ photoId: photo.id, albumKey: photo.album_key });
+
 	let copySuccess = $state(false);
 
 	// Generate share text optimized for each platform
@@ -19,17 +27,21 @@
 		`${photo.title} - Professional ${photo.metadata.sport_type || 'sports'} photography by Nino Chavez`
 	);
 
+	// Keyed by ShareChannel so the window-opening handler below can record the same
+	// channel it opens, rather than taking a separate platform name that could drift.
 	const shareUrls = $derived({
-		twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withSrc(url, 'share-x'))}`,
-		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withSrc(url, 'share-fb'))}`,
-		linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(withSrc(url, 'share-linkedin'))}`,
-		pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(withSrc(url, 'share-pin'))}&media=${encodeURIComponent(photo.image_url)}&description=${encodeURIComponent(shareText)}`,
-		email: `mailto:?subject=${encodeURIComponent(photo.title)}&body=${encodeURIComponent(`Check out this photo: ${shareText}\n\n${withSrc(url, 'share-email')}`)}`
+		x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl(url, 'x'))}`,
+		fb: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(url, 'fb'))}`,
+		linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl(url, 'linkedin'))}`,
+		// No Pinterest entry: this component renders no Pinterest button. The URL was
+		// built and never used. ShareMenu has the button, and the 'pin' channel with it.
+		email: `mailto:?subject=${encodeURIComponent(photo.title)}&body=${encodeURIComponent(`Check out this photo: ${shareText}\n\n${shareUrl(url, 'email')}`)}`
 	});
 
 	async function copyLink() {
 		try {
-			await navigator.clipboard.writeText(withSrc(url, 'share-copy'));
+			await navigator.clipboard.writeText(shareUrl(url, 'copy'));
+			recordShare(subject, 'copy');
 			copySuccess = true;
 			setTimeout(() => {
 				copySuccess = false;
@@ -39,11 +51,9 @@
 		}
 	}
 
-	function handleShare(platform: string) {
-		const shareUrl = shareUrls[platform as keyof typeof shareUrls];
-		if (shareUrl) {
-			window.open(shareUrl, '_blank', 'width=600,height=400');
-		}
+	function handleShare(channel: 'x' | 'fb' | 'linkedin') {
+		window.open(shareUrls[channel], '_blank', 'width=600,height=400');
+		recordShare(subject, channel);
 	}
 </script>
 
@@ -58,7 +68,7 @@
 	<div class="flex flex-wrap gap-2">
 		<!-- Twitter/X -->
 		<button
-			onclick={() => handleShare('twitter')}
+			onclick={() => handleShare('x')}
 			class="p-2.5 rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-[#1DA1F2]/50 hover:bg-[#1DA1F2]/10 hover:scale-105 active:scale-95 transition-transform transition-colors group"
 			aria-label="Share on Twitter"
 			title="Share on Twitter"
@@ -68,7 +78,7 @@
 
 		<!-- Facebook -->
 		<button
-			onclick={() => handleShare('facebook')}
+			onclick={() => handleShare('fb')}
 			class="p-2.5 rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-[#1877F2]/50 hover:bg-[#1877F2]/10 hover:scale-105 active:scale-95 transition-transform transition-colors group"
 			aria-label="Share on Facebook"
 			title="Share on Facebook"
@@ -87,8 +97,12 @@
 		</button>
 
 		<!-- Email -->
+		<!-- An anchor, not a button: the mailto: URL has to be on `href` for the mail
+		     client to open, so this is the one channel where the URL is built at render
+		     time and the event has to be recorded separately on click. -->
 		<a
 			href={shareUrls.email}
+			onclick={() => recordShare(subject, 'email')}
 			class="p-2.5 rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-gold-500/50 hover:bg-gold-500/10 hover:scale-105 active:scale-95 transition-transform transition-colors group"
 			aria-label="Share via Email"
 			title="Share via Email"

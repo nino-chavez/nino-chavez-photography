@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
+import { SHARE_SRC, type ShareChannel, type ShareSubject } from '$lib/analytics/share';
 
 export type EngagementType = 'view' | 'favorite' | 'download' | 'share';
 
@@ -35,4 +36,26 @@ export function trackEngagement(
 	} catch {
 		/* analytics never breaks the app */
 	}
+}
+
+/**
+ * Record a completed share, tagged with the same channel value the outbound URL
+ * carries (see `./share` for why the two must match).
+ *
+ * Call on SUCCESS, not on intent. A dismissed native share sheet or a failed
+ * clipboard write is not a share, and 'share' is the highest-weighted event in
+ * `engagement_weights` — counting intent would inflate the popularity ranking
+ * with actions nobody completed.
+ *
+ * Every share surface in the app calls this: ShareMenu (lightbox toolbar, album
+ * header), SocialShareButtons (the photo modal), and the /photo/[id] copy-link.
+ * Two of those three recorded nothing before 2026-07-29, which is why the table
+ * had no 'share' rows at all.
+ */
+export function recordShare(subject: ShareSubject, channel: ShareChannel): void {
+	trackEngagement('share', {
+		photoId: subject.photoId,
+		albumKey: subject.albumKey,
+		source: SHARE_SRC[channel]
+	});
 }
