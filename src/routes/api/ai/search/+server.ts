@@ -1,22 +1,36 @@
 /**
- * AI-Friendly Search API
+ * AI-Friendly Search API — /api/ai/search?q=
  *
- * Provides semantic photo search for AI crawlers and answer engines.
- * Supports natural language queries with relevance scoring.
+ * ai.txt advertises this to answer engines as semantic photo search. It was not. It matched the
+ * query as a SUBSTRING against ~20 hardcoded words, and the gaps were published as confident
+ * answers:
  *
- * NOTE: the vanity CATEGORICAL aesthetic match (action_intensity) was removed (cutover prep) —
- * that column is being DROPPED at the schema cutover. The numeric quality signal
- * (emotional_impact) used for ranking/boosting is a DIFFERENT column and STAYS.
+ *   ?q=football     → 772 SOCCER photos, stated as `match_reasons: ["sport: soccer"]`, because
+ *                     the map contained `football: 'soccer'`. The 558 real football photos were
+ *                     unreachable through this endpoint.
+ *   ?q=tennis       → all 20,655 photos, "general match". Same for golf, pickleball, bowling,
+ *                     cross country and warmup — six of the twelve sports were simply absent
+ *                     from the map, so the query was dropped and the whole gallery returned as
+ *                     if it had matched.
+ *
+ * It now calls searchPhotos(), the same search /explore uses: the NLP parser (which reads one
+ * keyword table, so a new sport cannot go missing here and be present there), then team/album
+ * name lookup, then the LLM planner, then pgvector. Verified against production: football → 558,
+ * tennis → 409, golf → 271, pickleball → 52, bowling → 100, all resolved structurally with no
+ * planner call.
+ *
+ * `relevance_score` and `match_reasons` are gone. The score was invented (0.5 + 0.2 per matched
+ * facet + 0.1 for quality) and handed to answer engines as if it meant something. The honest
+ * signals are which search path answered and how the query was read; both are reported.
  */
 
 import { json } from '@sveltejs/kit';
-import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
-import { supabaseServer, PHOTO_COLUMNS } from '$lib/supabase/server';
+import { searchPhotos } from '$lib/supabase/server';
+import { photoAddresses } from '$lib/supabase/photo-address';
+import { photoIdentityPeers, type PhotoIdentityRow } from '$lib/supabase/photo-address-server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
-import type { PhotoMetadataRow } from '$types/database';
-
-const BASE_URL = 'https://ninochavez.co/photography';
+import { SITE_URL } from '$lib/site-url';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -28,163 +42,46 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: 'Missing required parameter: q' }, { status: 400 });
 		}
 
-		// Normalize query to lowercase for matching
-		const normalizedQuery = query.toLowerCase().trim();
+		const { photos, totalCount, searchMode, parsedDescription } = await searchPhotos(
+			query,
+			{},
+			{ limit }
+		);
 
-		// Build base query
-		let dbQuery = supabaseServer
-			.from(PHOTOS_READ)
-			.select(PHOTO_COLUMNS)
-			.not('sharpness', 'is', null); // Only enriched photos
+		// image_key is NOT unique — 113 are shared — so a /photo/<image_key> URL can resolve to a
+		// different photo. Same fix as the sitemap and the photo page (#98).
+		const identities: PhotoIdentityRow[] = photos.map((photo) => ({
+			photo_id: photo.id,
+			image_key: photo.image_key,
+			cf_image_id: photo.cf_image_id ?? null,
+			album_key: photo.album_key ?? null,
+			album_name: null
+		}));
+		const peers = await photoIdentityPeers(identities);
+		const addresses = photoAddresses(peers);
+		const albumNames = new Map(peers.map((row) => [row.photo_id, row.album_name]));
 
-		// Semantic matching: Parse query and build filters
-		// Look for sport keywords
-		const sportKeywords: Record<string, string> = {
-			volleyball: 'volleyball',
-			volley: 'volleyball',
-			basketball: 'basketball',
-			basket: 'basketball',
-			soccer: 'soccer',
-			football: 'soccer',
-			track: 'track',
-			running: 'track',
-			baseball: 'baseball',
-			softball: 'softball'
-		};
-
-		// Look for category keywords
-		const categoryKeywords: Record<string, string> = {
-			action: 'action',
-			celebration: 'celebration',
-			candid: 'candid',
-			portrait: 'portrait'
-		};
-
-		// Look for play type keywords
-		const playTypeKeywords: Record<string, string> = {
-			spike: 'attack',
-			attack: 'attack',
-			block: 'block',
-			dig: 'dig',
-			set: 'set',
-			serve: 'serve'
-		};
-
-		// Detect filters from query
-		let detectedSport: string | undefined;
-		let detectedCategory: string | undefined;
-		let detectedPlayType: string | undefined;
-
-		for (const [keyword, sport] of Object.entries(sportKeywords)) {
-			if (normalizedQuery.includes(keyword)) {
-				detectedSport = sport;
-				break;
-			}
-		}
-
-		for (const [keyword, category] of Object.entries(categoryKeywords)) {
-			if (normalizedQuery.includes(keyword)) {
-				detectedCategory = category;
-				break;
-			}
-		}
-
-		for (const [keyword, playType] of Object.entries(playTypeKeywords)) {
-			if (normalizedQuery.includes(keyword)) {
-				detectedPlayType = playType;
-				break;
-			}
-		}
-
-		// Apply detected filters
-		if (detectedSport) {
-			dbQuery = dbQuery.eq('sport_type', detectedSport);
-		}
-		if (detectedCategory) {
-			dbQuery = dbQuery.eq('photo_category', detectedCategory);
-		}
-		if (detectedPlayType) {
-			dbQuery = dbQuery.eq('play_type', detectedPlayType);
-		}
-
-		// Sort by relevance (emotional_impact for quality, then upload_date)
-		dbQuery = dbQuery
-			.order('emotional_impact', { ascending: false })
-			.order('upload_date', { ascending: false })
-			.limit(limit);
-
-		const { data: rows, error } = await dbQuery;
-
-		if (error) {
-			console.error('[API] Error searching photos:', error);
-			return json({ error: 'Failed to search photos' }, { status: 500 });
-		}
-
-		const photos = (rows || []) as PhotoMetadataRow[];
-
-		// Calculate relevance scores and match reasons
-		const results = photos.map((row) => {
-			const matchReasons: string[] = [];
-			let relevanceScore = 0.5; // Base score
-
-			if (detectedSport && row.sport_type === detectedSport) {
-				matchReasons.push(`sport: ${row.sport_type}`);
-				relevanceScore += 0.2;
-			}
-			if (detectedCategory && row.photo_category === detectedCategory) {
-				matchReasons.push(`category: ${row.photo_category}`);
-				relevanceScore += 0.2;
-			}
-			if (detectedPlayType && row.play_type === detectedPlayType) {
-				matchReasons.push(`play_type: ${row.play_type}`);
-				relevanceScore += 0.2;
-			}
-
-			// Boost score based on quality
-			if (row.emotional_impact && row.emotional_impact > 7) {
-				relevanceScore += 0.1;
-			}
-
-			// Cap at 1.0
-			relevanceScore = Math.min(relevanceScore, 1.0);
-
+		const results = photos.map((photo) => {
+			const segment = addresses.get(photo.id) ?? photo.image_key;
 			return {
-				id: row.image_key,
-				url: `${BASE_URL}/photo/${row.image_key}`,
-				title: row.album_name || 'Untitled Photo',
-				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
-				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
-				relevance_score: Math.round(relevanceScore * 100) / 100,
-				match_reasons: matchReasons.length > 0 ? matchReasons : ['general match']
+				id: segment,
+				url: `${SITE_URL}/photo/${segment}`,
+				title: albumNames.get(photo.id) || 'Untitled Photo',
+				description: photo.caption || undefined,
+				image_url: photo.cf_image_id ? cfImageUrl(photo.cf_image_id, 'large') : '',
+				thumbnail_url: photo.cf_image_id ? cfImageUrl(photo.cf_image_id, 'thumbnail') : '',
+				sport_type: photo.metadata?.sport_type ?? null,
+				photo_category: photo.metadata?.photo_category ?? null,
+				play_type: photo.metadata?.play_type ?? null
 			};
 		});
 
-		// Get total count for matching filters
-		let countQuery = supabaseServer
-			.from(PHOTOS_READ)
-			.select('*', { count: 'exact', head: true })
-			.not('sharpness', 'is', null);
-
-		if (detectedSport) {
-			countQuery = countQuery.eq('sport_type', detectedSport);
-		}
-		if (detectedCategory) {
-			countQuery = countQuery.eq('photo_category', detectedCategory);
-		}
-		if (detectedPlayType) {
-			countQuery = countQuery.eq('play_type', detectedPlayType);
-		}
-
-		const { count } = await countQuery;
-		const totalResults = count || 0;
-
 		if (format === 'jsonld') {
-			// Return JSON-LD format
 			return json({
 				'@context': 'https://schema.org',
 				'@type': 'SearchResultsPage',
-				query: query,
-				totalResults: totalResults,
+				query,
+				totalResults: totalCount,
 				numberOfItems: results.length,
 				itemListElement: results.map((result, index) => ({
 					'@type': 'ListItem',
@@ -193,23 +90,22 @@ export const GET: RequestHandler = async ({ url }) => {
 						'@type': 'Photograph',
 						'@id': result.url,
 						name: result.title,
+						description: result.description,
 						image: result.image_url
-					},
-					relevanceScore: result.relevance_score,
-					matchReasons: result.match_reasons
+					}
 				}))
-			}, {
-				headers: {
-					'Content-Type': 'application/ld+json'
-				}
 			});
 		}
 
 		return json({
-			query: query,
-			results: results,
-			total_results: totalResults,
-			limit: limit
+			query,
+			// 'structured' = the query resolved to a sport/category/play/team/jersey filter.
+			// 'semantic'   = it fell through to embedding similarity.
+			search_mode: searchMode,
+			interpreted_as: parsedDescription,
+			total_results: totalCount,
+			limit,
+			results
 		});
 	} catch (error) {
 		console.error('[API] Error searching photos:', error);

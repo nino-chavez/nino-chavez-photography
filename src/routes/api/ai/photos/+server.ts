@@ -12,9 +12,10 @@ import { supabaseServer } from '$lib/supabase/server';
 import { getPhotoCount } from '$lib/supabase/server';
 import { photoSelect } from '$lib/supabase/columns';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { photoAddresses } from '$lib/supabase/photo-address';
+import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
+import { SITE_URL } from '$lib/site-url';
 import type { PhotoMetadataRow } from '$types/database';
-
-const BASE_URL = 'https://ninochavez.co/photography';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -66,6 +67,24 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		const photos = (rows || []) as unknown as PhotoMetadataRow[];
 
+		// image_key is NOT unique — 113 are shared across albums — so `/photo/<image_key>` can
+		// resolve to a different photo than the one described here. Verified: /photo/DSC05563
+		// serves a Lewis vs Pepperdine frame while the Bell Pepper Open frame with the same key
+		// is only reachable at its cf_image_id. Same fix as the sitemap and photo page (#98);
+		// the peer lookup is what makes the sharing count global rather than page-local.
+		const addresses = photoAddresses(
+			await photoIdentityPeers(
+				photos.map((row) => ({
+					photo_id: row.photo_id,
+					image_key: row.image_key,
+					cf_image_id: row.cf_image_id ?? null,
+					album_key: row.album_key ?? null,
+					album_name: row.album_name ?? null
+				}))
+			)
+		);
+		const addressOf = (row: PhotoMetadataRow) => addresses.get(row.photo_id) ?? row.image_key;
+
 		// Format response based on format parameter
 		if (format === 'jsonld') {
 			// Return JSON-LD Schema.org format
@@ -78,7 +97,7 @@ export const GET: RequestHandler = async ({ url }) => {
 					itemListElement: photos.map((row, index) => ({
 						'@type': 'ListItem',
 						position: offset + index + 1,
-						item: createPhotographSchema(row)
+						item: createPhotographSchema(row, addressOf(row))
 					}))
 				}
 			};
@@ -93,8 +112,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		// Return standard JSON format
 		return json({
 			photos: photos.map((row) => ({
-				id: row.image_key,
-				url: `${BASE_URL}/photo/${row.image_key}`,
+				id: addressOf(row),
+				url: `${SITE_URL}/photo/${addressOf(row)}`,
 				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
 				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
 				title: row.album_name || 'Untitled Photo',
@@ -112,7 +131,7 @@ export const GET: RequestHandler = async ({ url }) => {
 					? {
 							key: row.album_key,
 							name: row.album_name || 'Unknown Album',
-							url: `${BASE_URL}/albums/${row.album_key}`
+							url: `${SITE_URL}/albums/${row.album_key}`
 						}
 					: null
 			})),
@@ -129,14 +148,14 @@ export const GET: RequestHandler = async ({ url }) => {
 /**
  * Create Schema.org Photograph object for a photo
  */
-function createPhotographSchema(row: PhotoMetadataRow) {
+function createPhotographSchema(row: PhotoMetadataRow, segment: string) {
 	const imageUrl = row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '';
 	const thumbnailUrl = row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '';
 
 	return {
 		'@type': 'Photograph',
-		'@id': `${BASE_URL}/photo/${row.image_key}`,
-		url: `${BASE_URL}/photo/${row.image_key}`,
+		'@id': `${SITE_URL}/photo/${segment}`,
+		url: `${SITE_URL}/photo/${segment}`,
 		image: {
 			'@type': 'ImageObject',
 			contentUrl: imageUrl,
@@ -150,7 +169,7 @@ function createPhotographSchema(row: PhotoMetadataRow) {
 		creator: {
 			'@type': 'Person',
 			name: 'Nino Chavez',
-			url: `${BASE_URL}/about`
+			url: `${SITE_URL}/about`
 		},
 		dateCreated: row.photo_date || row.enriched_at || row.upload_date,
 		keywords: [
