@@ -15,6 +15,11 @@
  * `/photos/<year>/<month>` archives, which TimelineV2 links directly and which
  * render real galleries with real titles ("August 2022 • 753 Photos").
  *
+ * The same omission survived that pass one level down: `/collections` was listed
+ * but not the four galleries it links, so every curated collection was reachable
+ * only by crawling the hub. A hub page in the sitemap is not coverage of what it
+ * links.
+ *
  * The month archives are derived from the same single scan that already
  * produces albums and photos — no extra query. That is the pattern to follow
  * for anything added here: derive it from the scan, or prove the route serves
@@ -24,6 +29,7 @@
 import { supabaseServer } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { createAlbumSlug } from '$lib/utils';
+import { COLLECTIONS, COLLECTION_CRITERIA_SELECT, collectionMatches } from '$lib/collections';
 import { photoAddresses } from '$lib/supabase/photo-address';
 import type { RequestHandler } from './$types';
 import { SITE_URL } from '$lib/site-url';
@@ -54,13 +60,20 @@ export const GET: RequestHandler = async () => {
 			sport_type: string | null;
 			album_key: string | null;
 			album_name: string | null;
+			// Curation criteria, read only by collectionMatches below. Carried on the
+			// existing scan rather than costing four more `count: 'exact'` queries.
+			quality_score: number | null;
+			photo_category: string | null;
+			play_type: string | null;
 		};
 		const PAGE = 1000;
 		const photos: SitemapRow[] = [];
 		for (let offset = 0; ; offset += PAGE) {
 			const { data, error: photosError } = await supabaseServer
 				.from(PHOTOS_READ)
-				.select('photo_id, image_key, cf_image_id, photo_date, enriched_at, sport_type, album_key, album_name')
+				.select(
+					`photo_id, image_key, cf_image_id, photo_date, enriched_at, sport_type, album_key, album_name, ${COLLECTION_CRITERIA_SELECT}`
+				)
 				.not('sharpness', 'is', null)
 				.order('photo_id', { ascending: true })
 				.range(offset, offset + PAGE - 1);
@@ -81,6 +94,15 @@ export const GET: RequestHandler = async () => {
 			new Map(
 				photos.filter((p) => p.album_key).map((p) => [p.album_key, p])
 			).values()
+		);
+
+		// Curated collections that actually hold photos. `/collections` renders only
+		// those with a non-zero count, so listing an empty one would advertise a page
+		// its own index refuses to link. Membership is decided from the scan above via
+		// the shared criteria in $lib/collections — no extra query, and no second copy
+		// of the rules to drift.
+		const activeCollections = COLLECTIONS.filter((collection) =>
+			photos.some((photo) => collectionMatches(photo, collection.slug))
 		);
 
 		// Month archives — /photos/<year>/<month>, one per month that has photos.
@@ -151,6 +173,15 @@ export const GET: RequestHandler = async () => {
 					changefreq: ym === currentMonth ? 'weekly' : 'yearly'
 				};
 			}),
+
+			// Curated collection detail pages. `/collections` was listed here from the
+			// start; the four galleries it links were not, so the collections themselves
+			// were reachable only by crawling one hub page.
+			...activeCollections.map((collection): SitemapUrl => ({
+				loc: `${baseUrl}/collections/${collection.slug}`,
+				priority: 0.7,
+				changefreq: 'weekly' as const
+			})),
 
 			// Album detail pages (using SEO-friendly slugs). album_key is non-null here (filtered above).
 			...uniqueAlbums.map((album) => {

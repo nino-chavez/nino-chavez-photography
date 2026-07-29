@@ -10,11 +10,30 @@
  * (`photo_category` / `play_type`). The deprecated aesthetic facets are intentionally not used.
  */
 
+/**
+ * A collection's curation criteria, expressed as DATA rather than as query calls.
+ *
+ * Two consumers need the same rule in two different shapes: the page loaders need
+ * PostgREST filters, and the sitemap needs to decide membership for rows already
+ * in memory (it will not run a fifth query per collection). Writing the rule twice
+ * is how the criteria drift, so it is written once here and both shapes are derived
+ * from it — `applyCollectionFilter` for the query, `collectionMatches` for a row.
+ */
+export interface CollectionCriteria {
+	/** Keeper-score floor, inclusive. */
+	minQualityScore: number;
+	/** Exact `photo_category` match, when the collection is category-scoped. */
+	photoCategory?: string;
+	/** Any-of `play_type` match, when the collection is play-scoped. */
+	playTypes?: string[];
+}
+
 export interface CollectionDef {
 	slug: string;
 	title: string;
 	narrative: string;
 	description: string;
+	criteria: CollectionCriteria;
 }
 
 export const COLLECTIONS: CollectionDef[] = [
@@ -23,30 +42,55 @@ export const COLLECTIONS: CollectionDef[] = [
 		title: 'Portfolio Excellence',
 		narrative: 'The absolute best: top-tier keeper score',
 		description:
-			'The top tier of the catalog—photos with an overall quality score of 9/10 or higher. These represent the pinnacle of sports photography craft.'
+			'The top tier of the catalog—photos with an overall quality score of 9/10 or higher. These represent the pinnacle of sports photography craft.',
+		// Top tier: overall keeper score 9/10+
+		criteria: { minQualityScore: 9 }
 	},
 	{
 		slug: 'victory-celebrations',
 		title: 'Victory Celebrations',
 		narrative: 'Pure joy and shared triumph',
 		description:
-			'The moments after victory—unfiltered emotion, team unity, and the sweet taste of success. These photos capture the human side of sports: the joy, the relief, the celebration.'
+			'The moments after victory—unfiltered emotion, team unity, and the sweet taste of success. These photos capture the human side of sports: the joy, the relief, the celebration.',
+		// Celebration moments above the keeper floor (7/10)
+		criteria: { minQualityScore: 7, photoCategory: 'celebration' }
 	},
 	{
 		slug: 'aerial-artistry',
 		title: 'Aerial Artistry',
 		narrative: 'Defying gravity with grace and power',
 		description:
-			'Athletes suspended in air, captured at the peak of their flight. These photos showcase the beauty of vertical movement—attacks, blocks, and spikes—frozen in time.'
+			'Athletes suspended in air, captured at the peak of their flight. These photos showcase the beauty of vertical movement—attacks, blocks, and spikes—frozen in time.',
+		// Aerial plays above the keeper floor (7/10)
+		criteria: { minQualityScore: 7, playTypes: ['attack', 'block', 'spike'] }
 	},
 	{
 		slug: 'defensive-masterclass',
 		title: 'Defensive Masterclass',
 		narrative: 'The art of reading, reacting, and rescuing',
 		description:
-			'Digs, blocks, and defensive saves that change momentum. These photos celebrate the unsung heroes—defenders who turn impossible plays into highlights through anticipation and athleticism.'
+			'Digs, blocks, and defensive saves that change momentum. These photos celebrate the unsung heroes—defenders who turn impossible plays into highlights through anticipation and athleticism.',
+		// Defensive plays above the keeper floor (7/10)
+		criteria: { minQualityScore: 7, playTypes: ['dig', 'block'] }
 	}
 ];
+
+/**
+ * The columns `collectionMatches` reads, as a PostgREST select fragment.
+ *
+ * A string const, not an array: Supabase infers the row type from the select
+ * STRING LITERAL, so a runtime `.join()` collapses the result to
+ * `GenericStringError[]`. Interpolating this const into a template literal keeps
+ * inference intact while still naming the dependency in one place.
+ */
+export const COLLECTION_CRITERIA_SELECT = 'quality_score, photo_category, play_type';
+
+export interface CollectionCandidate {
+	quality_score: number | null;
+	photo_category: string | null;
+	play_type: string | null;
+	sharpness?: number | null;
+}
 
 export function getCollection(slug: string): CollectionDef | undefined {
 	return COLLECTIONS.find((c) => c.slug === slug);
@@ -55,34 +99,36 @@ export function getCollection(slug: string): CollectionDef | undefined {
 /**
  * Apply a collection's curation criteria (filters + ordering) to a Supabase photo query.
  * `query` is a PostgREST filter builder; the same builder is returned for chaining `.range()` /
- * `.limit()`. This is the ONE place the criteria live — both server loaders call it.
+ * `.limit()`. Derived from `criteria` — see the note on `CollectionCriteria`.
+ *
+ * An unknown slug returns the sharpness filter alone, matching the previous behaviour.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyCollectionFilter(query: any, slug: string): any {
-	const q = query.not('sharpness', 'is', null);
-	switch (slug) {
-		case 'portfolio-excellence':
-			// Top tier: overall keeper score 9/10+
-			return q.gte('quality_score', 9).order('quality_score', { ascending: false });
-		case 'victory-celebrations':
-			// Celebration moments above the keeper floor (7/10)
-			return q
-				.eq('photo_category', 'celebration')
-				.gte('quality_score', 7)
-				.order('quality_score', { ascending: false });
-		case 'aerial-artistry':
-			// Aerial plays (attack/block/spike) above the keeper floor (7/10)
-			return q
-				.in('play_type', ['attack', 'block', 'spike'])
-				.gte('quality_score', 7)
-				.order('quality_score', { ascending: false });
-		case 'defensive-masterclass':
-			// Defensive plays (dig/block) above the keeper floor (7/10)
-			return q
-				.in('play_type', ['dig', 'block'])
-				.gte('quality_score', 7)
-				.order('quality_score', { ascending: false });
-		default:
-			return q;
-	}
+	let q = query.not('sharpness', 'is', null);
+	const criteria = getCollection(slug)?.criteria;
+	if (!criteria) return q;
+
+	if (criteria.photoCategory) q = q.eq('photo_category', criteria.photoCategory);
+	if (criteria.playTypes) q = q.in('play_type', criteria.playTypes);
+	return q
+		.gte('quality_score', criteria.minQualityScore)
+		.order('quality_score', { ascending: false });
+}
+
+/**
+ * Does an already-fetched row belong to `slug`? The in-memory twin of
+ * `applyCollectionFilter`, for callers that have the rows and must not spend a query.
+ *
+ * `sharpness` is only checked when present: a caller that already excluded unprocessed
+ * photos in its own query need not carry the column.
+ */
+export function collectionMatches(photo: CollectionCandidate, slug: string): boolean {
+	const criteria = getCollection(slug)?.criteria;
+	if (!criteria) return false;
+	if (photo.sharpness === null) return false;
+	if (photo.quality_score === null || photo.quality_score < criteria.minQualityScore) return false;
+	if (criteria.photoCategory && photo.photo_category !== criteria.photoCategory) return false;
+	if (criteria.playTypes && !criteria.playTypes.includes(photo.play_type ?? '')) return false;
+	return true;
 }
