@@ -1,15 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T14:29:52.998Z",
+  "reviewedAt": "2026-07-29T14:57:53.049Z",
   "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build walked: /api/ai/{photos,albums,search} probed with valid, non-numeric, negative, zero and oversized limit/offset; error copy read; search paginated across three non-overlapping pages",
-  "sourceDigest": "sha256:e40726d44be27c34dc9cdf0750f0ed43d62aa0f54d04c6c61c6a3d5376c46a10",
+  "method": "preview build walked: /api/ai/{photos,albums} filter params probed with valid, unknown, wrong-case and malformed values; 400 copy read; year=2024 reconciled to 41 public albums (45 minus 4 unlisted) across three page sizes",
+  "sourceDigest": "sha256:13cbd4cb46111e60c1f045c382027040c4bf8f7b2b2a077ed39bf4fca1f48aff",
   "sourceFiles": 131,
   "scope": [
-    "api/ai/photos",
-    "api/ai/albums",
-    "api/ai/search",
-    "pagination errors"
+    "api/ai/albums year filter",
+    "api/ai/photos filters",
+    "filter error copy"
   ]
 }
