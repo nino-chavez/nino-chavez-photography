@@ -61,6 +61,17 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- sport_type: constrained by the pre-existing `valid_sport_type`, which is already the
+-- correct `IS NULL OR IN (...)` shape. Deliberately not re-rendered here.
+
+-- Nullable: photo_category IS NULL means the extractor returned nothing usable.
+ALTER TABLE photo_metadata DROP CONSTRAINT IF EXISTS valid_photo_category;
+ALTER TABLE photo_metadata ADD CONSTRAINT valid_photo_category CHECK (
+  photo_category IS NULL OR photo_category IN (
+    'action', 'celebration', 'candid', 'portrait', 'warmup', 'ceremony'
+  )
+) NOT VALID;
+
 -- Nullable: play_type IS NULL means "not a play" (a candid, a celebration, a portrait).
 ALTER TABLE photo_metadata DROP CONSTRAINT IF EXISTS valid_play_type;
 ALTER TABLE photo_metadata ADD CONSTRAINT valid_play_type CHECK (

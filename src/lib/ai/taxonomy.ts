@@ -10,11 +10,11 @@
  * varchar; `play_type` is text. Until 2026-07-29 this header claimed the Postgres
  * enums/CHECKs were all generated from here, and that sentence is why nobody looked.
  *
- * What IS generated and applied, as of 2026-07-29, are two CHECK constraints on
- * photo_metadata — `valid_play_type` from ALL_PLAY_TYPES and `valid_play_for_sport` from
- * PLAY_TYPES_BY_SPORT (renderers below, migrations 20260729140000 / 20260729150000).
- * With `valid_sport_type` that is three enforced columns. `photo_category` still has NO
- * constraint and still holds one out-of-vocabulary value.
+ * What IS generated and applied, as of 2026-07-30, are three CHECK constraints on
+ * photo_metadata — `valid_play_type` from ALL_PLAY_TYPES, `valid_play_for_sport` from
+ * PLAY_TYPES_BY_SPORT, and `valid_photo_category` from PHOTO_CATEGORIES (renderers below;
+ * migrations 20260729140000 / 20260729150000 / 20260730000000). With the pre-existing
+ * `valid_sport_type`, every enrichment column this file governs is now enforced in storage.
  *
  * So: generation covers the write path and, now, part of the storage layer.
  * `npm run taxonomy:audit` (scripts/taxonomy-audit.ts) is what checks the live database
@@ -115,7 +115,52 @@ export function renderSql(): string {
 		const lits = vals.map((v) => `'${v}'`).join(', ');
 		return `DO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '${name}_enum') THEN\n    CREATE TYPE ${name}_enum AS ENUM (${lits});\n  END IF;\nEND $$;`;
 	});
-	return header + blocks.join('\n\n') + '\n\n' + renderPlayTypeCheck() + '\n' + renderPlayForSportCheck();
+	return header + blocks.join('\n\n') + '\n\n'
+		+ renderSportTypeNote()
+		+ renderPhotoCategoryCheck() + '\n'
+		+ renderPlayTypeCheck() + '\n'
+		+ renderPlayForSportCheck();
+}
+
+/**
+ * `sport_type` is the one enrichment column whose CHECK predates this file and is already
+ * correct (`sport_type IS NULL OR sport_type IN (...)`, verified against pg_constraint). It is
+ * NOT re-rendered here — regenerating it would mean dropping and re-adding a working constraint
+ * on 20K rows for no gain. The note exists so the absence reads as deliberate rather than as
+ * the fourth column somebody forgot.
+ */
+function renderSportTypeNote(): string {
+	return '-- sport_type: constrained by the pre-existing `valid_sport_type`, which is already the\n'
+		+ '-- correct `IS NULL OR IN (...)` shape. Deliberately not re-rendered here.\n\n';
+}
+
+/**
+ * The `valid_photo_category` CHECK, rendered from PHOTO_CATEGORIES.
+ *
+ * `photo_category` had no constraint of any kind — not an inert one, none — while `sport_type`
+ * and `play_type` both had one. Nothing rejected a bad value and nothing reported one either,
+ * so the column drifted in silence: a single row held `celebr`, a `celebration` truncated to
+ * the column's width by some earlier writer, and it survived from 2026-06-08 into the category
+ * facet on /explore, the badge on its own photo card, and `/api/ai/stats` — which answer
+ * engines republish verbatim.
+ *
+ * One row is the whole point. A vocabulary with no enforcement does not fail loudly at scale;
+ * it produces exactly this — a value too small to notice sitting on a public surface.
+ *
+ * Same shape rule as the others: `col IS NULL OR col IN (...)`, never `= ANY (ARRAY[…, NULL])`.
+ * Nullable because a photo may legitimately have no category (the ingest writes null when the
+ * model returns a value outside the vocabulary).
+ */
+export function renderPhotoCategoryCheck(): string {
+	const lits = PHOTO_CATEGORIES.map((v) => `'${v}'`).join(', ');
+	return (
+		'-- Nullable: photo_category IS NULL means the extractor returned nothing usable.\n' +
+		'ALTER TABLE photo_metadata DROP CONSTRAINT IF EXISTS valid_photo_category;\n' +
+		'ALTER TABLE photo_metadata ADD CONSTRAINT valid_photo_category CHECK (\n' +
+		'  photo_category IS NULL OR photo_category IN (\n' +
+		`    ${lits}\n` +
+		'  )\n) NOT VALID;\n'
+	);
 }
 
 /**

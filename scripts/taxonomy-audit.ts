@@ -14,20 +14,24 @@
  *   2. PAIRS   — every play_type belongs to its row's sport (PLAY_TYPES_BY_SPORT).
  *   3. GUARDS  — no CHECK constraint contains NULL inside an `ANY(ARRAY[...])`.
  *
- * Check 2 is the one that generalizes, and it is why check 1 was needed at all.
+ * Check 3 is the one that generalizes, and it is why check 1 was needed at all.
  * `x = ANY(ARRAY['a','b',NULL])` evaluates to NULL when x matches nothing, and a CHECK
  * passes on NULL — only FALSE rejects. So one stray NULL in the list makes a constraint
- * accept every value while still reporting `convalidated: true`. `valid_play_type` is
- * written that way and has never rejected anything; `valid_sport_type`, written
- * `sport_type IS NULL OR sport_type IN (...)`, works. The data shows it exactly:
- * sport_type has zero out-of-vocabulary values, play_type has forty.
+ * accept every value while still reporting `convalidated: true`. That is how the original
+ * `valid_play_type` spent its whole life rejecting nothing, while `valid_sport_type` —
+ * written `sport_type IS NULL OR sport_type IN (...)` — worked. The data showed it exactly:
+ * on 2026-07-29 sport_type had zero out-of-vocabulary values and play_type had forty.
+ *
+ * A column with no constraint at all is the quieter version of the same failure, and this
+ * audit is the only thing that reports it. `photo_category` was in that state until
+ * 2026-07-30, holding one truncated value (`celebr`) that had reached three public surfaces.
+ * All four governed columns are now enforced in storage.
  *
  * NOT WIRED INTO `npm run build` OR `npm run check`, deliberately: it needs live
- * service-role credentials that a build environment has no business holding, and it
- * fails today on a backlog that is a product decision, not a code fix. A gate that
- * always fails gets ignored, then deleted. Run it by hand: `npm run taxonomy:audit`.
+ * service-role credentials that a build environment has no business holding. Run it by
+ * hand after any enrichment backfill: `npm run taxonomy:audit`.
  *
- * Exits 1 on any finding so it can gate a cleanup once the backlog is resolved.
+ * Exits 1 on any finding.
  */
 
 import { createClient } from '@supabase/supabase-js';
