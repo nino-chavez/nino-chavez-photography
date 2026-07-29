@@ -19,6 +19,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
+import { monthWindow, monthName } from '$lib/utils/month-window';
 
 // Browser-safe environment variables (VITE_ prefix = exposed to browser)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -146,14 +147,16 @@ export async function fetchPhotosByPeriod(options: {
   // Exact count per month with a date-range head request (untruncated).
   const periodsWithCounts = await Promise.all(
     Array.from(monthSet.values()).map(async ({ year, month }) => {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 1);
+      // Timezone-naive bounds — see monthWindow. Built with `new Date(y, m, 1)` these
+      // shifted by the runtime's UTC offset, and in a BROWSER that offset is the visitor's:
+      // the same month would hold different photos depending on where the reader sat.
+      const { start, endExclusive } = monthWindow(year, month);
 
       const { count } = await supabase
         .from(PHOTOS_READ)
         .select('photo_id', { count: 'exact', head: true })
-        .gte('upload_date', startDate.toISOString())
-        .lt('upload_date', endDate.toISOString())
+        .gte('upload_date', start)
+        .lt('upload_date', endExclusive)
         .not('sharpness', 'is', null);
 
       return { year, month, photoCount: count || 0 };
@@ -168,7 +171,7 @@ export async function fetchPhotosByPeriod(options: {
     .map((p) => ({
       year: p.year,
       month: p.month,
-      monthName: new Date(p.year, p.month - 1).toLocaleString('default', { month: 'long' }),
+      monthName: monthName(p.month),
       photoCount: p.photoCount
     }));
 
@@ -179,14 +182,13 @@ export async function fetchPhotosByPeriod(options: {
   // Fetch the top featured photos for each page period.
   return Promise.all(
     sortedPeriods.map(async (period) => {
-      const startDate = new Date(period.year, period.month - 1, 1);
-      const endDate = new Date(period.year, period.month, 1);
+      const { start, endExclusive } = monthWindow(period.year, period.month);
 
       const { data: photos } = await supabase
         .from(PHOTOS_READ)
         .select(PHOTO_COLUMNS)
-        .gte('upload_date', startDate.toISOString())
-        .lt('upload_date', endDate.toISOString())
+        .gte('upload_date', start)
+        .lt('upload_date', endExclusive)
         .not('sharpness', 'is', null)
         .order('quality_score', { ascending: false, nullsFirst: false }) // best work first (weighted blend)
         .limit(6); // Top 6 photos per period

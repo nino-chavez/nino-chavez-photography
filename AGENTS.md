@@ -36,7 +36,7 @@ deprecated/legacy path still live, REMOVE it per the ledger — never revive it.
 - `src/routes/+layout.server.ts`: Root data loading with caching
 - `src/routes/explore/+page.server.ts`: Main gallery with filtering
 - `src/lib/supabase/server.ts`: Server-side Supabase client
-- `src/lib/supabase/client.ts`: Browser Supabase client
+- `src/lib/supabase/client.ts`: Browser Supabase client (no importers today)
 
 ### Key Directories
 - `src/lib/components/gallery/`: PhotoGrid, PhotoCard, Lightbox
@@ -61,8 +61,9 @@ npm test                         # Playwright E2E tests
 - `svelte.config.js` - Build config (explicit approval)
 
 ## Stack Notes
-- Use `$lib/supabase/server` in +page.server.ts (service_role key)
-- Use `$lib/supabase/client` in components (anon key)
+- Use `$lib/supabase/server` in +page.server.ts — ANON key, RLS-gated (NOT service_role)
+- `matviewClient()` / `createSupabaseAdminClient()` are the service_role clients; they bypass RLS, so apply `excludeUnlisted()` by hand
+- `$lib/supabase/client` is the browser anon client and currently has no importers
 - NO self-fetch pattern - use server load functions directly
 - Filter out `sharpness = null` for unprocessed photos
 - MOTION tokens from `$lib/motion-tokens.ts` for animations

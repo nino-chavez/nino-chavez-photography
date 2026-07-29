@@ -81,14 +81,28 @@ export const load: PageServerLoad = async ({ url }) => {
 
 ## Server vs Browser Clients
 
-| Context | Client | Import Path | Key |
-|---------|--------|-------------|-----|
-| **+page.svelte** | Browser | `$lib/supabase/client` | VITE_SUPABASE_ANON_KEY |
-| **+page.server.ts** | Server | `$lib/supabase/server` | SUPABASE_SERVICE_ROLE_KEY |
-| **+server.ts (API)** | Server | `$lib/supabase/server` | SUPABASE_SERVICE_ROLE_KEY |
-| **scripts/** | Server | `$lib/supabase/server` | SUPABASE_SERVICE_ROLE_KEY |
+| Context | Client | Import Path | Key | RLS |
+|---------|--------|-------------|-----|-----|
+| **+page.svelte** | Browser | `$lib/supabase/client` | `VITE_SUPABASE_ANON_KEY` | enforced |
+| **+page.server.ts** | Server | `supabaseServer` from `$lib/supabase/server` | `VITE_SUPABASE_ANON_KEY` | **enforced** |
+| **+server.ts (API)** | Server | `supabaseServer` from `$lib/supabase/server` | `VITE_SUPABASE_ANON_KEY` | **enforced** |
+| **materialized views** | Server | `matviewClient()` from `$lib/supabase/server` | `SUPABASE_SERVICE_ROLE_KEY` | **bypassed** |
+| **privileged writes** | Server | `createSupabaseAdminClient()` from `$lib/supabase/server-ssr` | `SUPABASE_SERVICE_ROLE_KEY` | **bypassed** |
+| **scripts/** | Node | `createClient` directly | `SUPABASE_SERVICE_ROLE_KEY` | **bypassed** |
 
-**Critical Rule:** NEVER use browser client in server files, NEVER use service role key in browser.
+**Corrected 2026-07-30.** This table used to say `supabaseServer` carried the service_role key.
+It does not, and has not since PR #61 — it is the anon key, RLS-gated like any visitor, and the
+declaration in `server.ts` says so in a comment: *"anon key — RLS-gated. NOT a service_role
+client."* Being wrong in that direction is the dangerous one: it invites an author to assume RLS
+is already bypassed (so a query "must" be fine) or that a privacy gate is redundant.
+
+**Critical Rules:**
+- NEVER use the browser client in server files; NEVER put the service role key in the browser.
+- Anything read through `matviewClient()` or `createSupabaseAdminClient()` bypasses RLS, so the
+  unlisted-album gate must be applied BY HAND — `excludeUnlisted(query, await getUnlistedAlbumKeys())`.
+  Three public endpoints leaked 13 private client albums this way before PR #101.
+- `$lib/supabase/client` currently has **no importers**; every Supabase read in this app is
+  server-side. Before adding a browser read, check that a server load function isn't the seam.
 
 ---
 

@@ -10,6 +10,7 @@
 
 import { error } from '@sveltejs/kit';
 import { fetchPhotosByYearMonth, getAdjacentMonth } from '$lib/supabase/server';
+import { monthName } from '$lib/utils/month-window';
 import type { PageServerLoad } from './$types';
 
 const PHOTOS_PER_PAGE = 48;
@@ -51,8 +52,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
       getAdjacentMonth(year, month, 'next')
     ]);
 
-    // Format month name
-    const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+    // Fixed English name, not `toLocaleString('default')` — that reads the runtime's locale,
+    // so the label on a reader-facing page was a property of the host's ICU configuration.
+    const monthLabel = monthName(month);
 
     console.log(`[Month Detail Server] Loaded ${photos.length}/${totalCount} photos (page ${page}/${totalPages})`, {
       prevMonth: prevMonth ? `${prevMonth.year}-${prevMonth.month}` : null,
@@ -65,13 +67,13 @@ export const load: PageServerLoad = async ({ params, url }) => {
       // These 46 month pages are in the sitemap, and every one of them was serving the
       // generic site description because of exactly that.
       seo: {
-        title: `${monthName} ${year} • ${totalCount} Photos | Nino Chavez Gallery`,
-        description: `View all ${totalCount} photos from ${monthName} ${year} in Nino Chavez's sports photography gallery.`
+        title: `${monthLabel} ${year} • ${totalCount} Photos | Nino Chavez Gallery`,
+        description: `View all ${totalCount} photos from ${monthLabel} ${year} in Nino Chavez's sports photography gallery.`
       },
       photos,
       year,
       month,
-      monthName,
+      monthName: monthLabel,
       prevMonth,
       nextMonth,
       sortBy,
