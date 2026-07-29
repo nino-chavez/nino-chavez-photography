@@ -186,7 +186,7 @@ async function distinctColumnValues(
 // their direct share link (gated in albums/[slug]). Single-album views (a query filtered
 // by albumKey) are NOT gated here — the caller is already scoped to one album.
 let _unlistedCache: { keys: string[]; at: number } | null = null;
-async function getUnlistedAlbumKeys(): Promise<string[]> {
+export async function getUnlistedAlbumKeys(): Promise<string[]> {
   if (_unlistedCache && Date.now() - _unlistedCache.at < 60_000) return _unlistedCache.keys;
   const { data, error } = await supabaseServer
     .from('album_settings')
@@ -200,8 +200,16 @@ async function getUnlistedAlbumKeys(): Promise<string[]> {
   _unlistedCache = { keys, at: Date.now() };
   return keys;
 }
-/** Append a NOT-IN exclusion for unlisted album_keys to a photo_metadata query. No-op when empty. */
-function excludeUnlisted<T>(query: T, keys: string[]): T {
+/**
+ * Append a NOT-IN exclusion for unlisted album_keys. No-op when empty.
+ *
+ * Works on any query over a table with an `album_key` column — photo_metadata and the
+ * `albums_summary` matview both qualify. Exported alongside getUnlistedAlbumKeys because
+ * the public /api/ai/* endpoints read albums_summary through matviewClient(), which is
+ * service_role and therefore bypasses RLS: they need the gate applied explicitly, and
+ * they need THIS one rather than a private re-implementation.
+ */
+export function excludeUnlisted<T>(query: T, keys: string[]): T {
   if (!keys.length) return query;
   // @ts-expect-error supabase PostgrestFilterBuilder is chainable but not generically typed here
   return query.not('album_key', 'in', `(${keys.join(',')})`);

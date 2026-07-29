@@ -7,7 +7,7 @@
 import { json } from '@sveltejs/kit';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
-import { supabaseServer, matviewClient } from '$lib/supabase/server';
+import { excludeUnlisted, getUnlistedAlbumKeys, supabaseServer, matviewClient } from '$lib/supabase/server';
 import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
 
 export const GET: RequestHandler = async () => {
@@ -18,10 +18,13 @@ export const GET: RequestHandler = async () => {
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null);
 
-		// Get total album count (albums_summary is a matview — anon REVOKE'd → service_role)
-		const { count: totalAlbums } = await matviewClient()
-			.from('albums_summary')
-			.select('*', { count: 'exact', head: true });
+		// Get total album count (albums_summary is a matview — anon REVOKE'd → service_role).
+		// Excluding unlisted albums, because service_role bypasses RLS and this is a public
+		// endpoint: the count otherwise included 13 private client sessions.
+		const { count: totalAlbums } = await excludeUnlisted(
+			matviewClient().from('albums_summary').select('*', { count: 'exact', head: true }),
+			await getUnlistedAlbumKeys()
+		);
 
 		// Get sport distribution
 		const sportDistribution = await getSportDistribution();
