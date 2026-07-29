@@ -1,14 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T16:57:44.409Z",
+  "reviewedAt": "2026-07-29T17:08:23.574Z",
   "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build: a filtered search recorded {sport, division} instead of a 100-key album dump, verified in prod DB. Analytics panel copy reviewed in source and its filter-rendering covered by 7 tests — the page itself is admin-gated and could NOT be walked in a browser",
-  "sourceDigest": "sha256:ae68b86f042325afb348dd45cc4857e32a7f1db64099a97326095a3cd36f999e",
-  "sourceFiles": 131,
+  "method": "preview build walked: /photo/<id>/tag and /api/tags now 404; photo page 200 with the Tag Players button gone; TagDisplay (read side, direct user_tags query) untouched; /api/admin/tags still 401-gated",
+  "sourceDigest": "sha256:fdc4354b935659e8eb4c47e25d9e9d641b48653e4f0d8935faa8961d1b745db2",
+  "sourceFiles": 127,
   "scope": [
-    "explore search logging",
-    "analytics recent searches panel",
-    "zero-result caption"
+    "tag route removal",
+    "photo page actions",
+    "admin tag review"
   ]
 }

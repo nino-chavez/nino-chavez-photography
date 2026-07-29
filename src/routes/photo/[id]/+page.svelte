@@ -263,20 +263,6 @@
 							Copy link
 						{/if}
 					</button>
-					<a
-						href="{base}/photo/{data.photo.image_key}/tag"
-						class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-							/>
-						</svg>
-						Tag Players
-					</a>
 				</div>
 			</div>
 
