@@ -81,6 +81,14 @@ export function transformPhotoRow(row: any): Photo {
     image_url: imageUrl,
     thumbnail_url: thumbnailUrl,
     original_url: originalUrl,
+    // ⚠️ `title` IS THE CAMERA FILENAME (a duplicate of `image_key` beside it), NOT reader text.
+    // Same trap as video_metadata.title (#131). Anything a person or a crawler reads must come
+    // from `caption` — which is present on all 21,743 processed photos — or be composed with
+    // photoPageTitle/photoAltText ($lib/seo/photo-title). Printing this field shipped
+    // alt="DSC05553" and aria-label="DSC05553. volleyball photo. candid" on every gallery card,
+    // and /api/top-photos still publishes it as `title`. Note the /photo/[id] loader sets `title`
+    // to the ALBUM NAME instead, so the field's meaning depends on which loader built the row;
+    // check the source before you render it.
     title: row.image_key,
     caption: row.caption || '',
     keywords: [],

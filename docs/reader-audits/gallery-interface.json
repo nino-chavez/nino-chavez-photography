@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T22:18:56.740Z",
+  "reviewedAt": "2026-07-29T22:36:37.063Z",
   "reviewedBy": "Claude (Nino's session)",
-  "method": "API-only change (/api/album-photos, /api/zip-url): confirmed the diff adds no reader-visible strings, then rendered /albums and /albums/raiders-open-rdrsVB against the production build in wrangler pages dev and confirmed the interface copy is byte-for-byte unchanged.",
-  "sourceDigest": "sha256:b0ad5303d68d53816d5ba9bd52ad8d1345e66a4c7017f0344da9f52d6a7f0e78",
+  "method": "Compared rendered alt/aria-label attributes on /albums/lewis-vs-pepperdine-winter-2026-pHqw25 between production and the new build in wrangler pages dev. Before: 60 photo-card links announced 'DSC06067. volleyball photo. action. set' and 4 img alt were bare camera filenames. After: 0 filename alt, 0 filename aria-label, alt is the caption ('A Lewis Flyers volleyball player in a white and red uniform sets the ball during a game.'), and the 60 decorative blur-layer imgs still carry alt=\"\" with aria-hidden. No other interface copy changed.",
+  "sourceDigest": "sha256:1a525ae8f1c6e027c4a0869595d22e940035129bdebd64d5bf13161028f2a865",
   "sourceFiles": 128
 }

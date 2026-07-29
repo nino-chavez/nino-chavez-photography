@@ -119,35 +119,48 @@ export function sortPhotosByDate(photos: Photo[]): Photo[] {
 // REMOVED: filterPhotosByQuality - User-facing quality filtering against two-bucket model
 
 /**
- * Generate accessible alt text for a photo
+ * Generate accessible alt text for a photo.
  *
- * Combines metadata attributes into descriptive alt text for screen readers.
+ * LEADS WITH THE CAPTION. It used to lead with `photo.title`, and for every photo that comes
+ * through `transformPhotoRow` that field is `image_key` — the camera filename. So every photo
+ * card in the gallery was announced as "DSC05553. volleyball photo. candid", verified on the
+ * live album pages: the filename first, then three generic terms shared with thousands of other
+ * frames, and the one field written to describe what is visible left unused.
  *
- * The vanity CATEGORICAL aesthetic attributes (emotion, lighting, time_of_day,
- * action_intensity) were removed (cutover prep) — those columns are being DROPPED
- * at the schema cutover. Alt text now uses the durable concrete attributes.
+ * This is the same defect #120 fixed on the photo page (alt was the album name, so 363 frames
+ * announced the event and never the picture) and #131 fixed for video (title was the source
+ * filename). The grid cards were missed because they read `photo.title` rather than the column.
+ *
+ * Captions are present on all 21,743 processed photos (0 null, 0 empty — checked 2026-07-29) and
+ * are written as factual retrieval metadata: visible numbers, colours, action, scene. That is
+ * what alt text is for. The metadata terms still follow, because sport and play type are what
+ * someone searching within a page scans for and the caption does not always name them.
+ *
+ * The `includeTitle` parameter is now `includeCaption` in effect but keeps its name and default:
+ * its one caller passes nothing.
  *
  * @param photo - Photo object
- * @param includeTitle - Whether to prepend photo title
+ * @param includeTitle - Whether to prepend the caption
  * @returns Alt text string
  *
  * @example
  * generatePhotoAltText(photo)
- * // => "Sunset Spike. volleyball photo. action. attack."
+ * // => "A player in a black top spikes past two blockers. volleyball photo. action. spike"
  */
 export function generatePhotoAltText(photo: Photo, includeTitle: boolean = true): string {
   const { metadata } = photo;
+  const caption = (photo.caption ?? '').trim().replace(/\s+/g, ' ').replace(/\.$/, '');
 
-  // Handle undefined metadata
+  // Handle undefined metadata. NOT `photo.title` — that is the filename; see above.
   if (!metadata) {
-    return photo.title || 'Sports photo';
+    return caption || 'Sports photo';
   }
 
   const parts: string[] = [];
 
-  // Include title if available and requested
-  if (includeTitle && photo.title) {
-    parts.push(photo.title);
+  // Include the caption if available and requested
+  if (includeTitle && caption) {
+    parts.push(caption);
   }
 
   // Sport type
@@ -188,8 +201,11 @@ export function generatePhotoAltText(photo: Photo, includeTitle: boolean = true)
 export function generatePhotoTitle(photo: Photo): string {
   const { metadata } = photo;
 
+  // NOT `photo.title` — that is `image_key`, the camera filename. This branch is unreachable for
+  // gallery photos (transformPhotoRow always sets metadata), but it printed `DSC05553` if it ever
+  // fired, which is the whole reason generatePhotoAltText was wrong for years.
   if (!metadata) {
-    return photo.title || 'Sports Photo';
+    return (photo.caption ?? '').trim() || 'Sports Photo';
   }
 
   const parts: string[] = [];
