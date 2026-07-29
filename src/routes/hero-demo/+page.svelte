@@ -50,6 +50,12 @@
 <svelte:head>
 	<title>Premium Hero Demo - Nino Chavez Gallery</title>
 	<meta name="description" content="Demonstration of the PremiumHero component with full-screen hero sections" />
+	<!-- Component demo, not a visitor surface. Nothing links here and it is not in
+	     the sitemap, but the route is public and the domain's robots.txt allows
+	     everything — so without this it is indexable the moment anyone shares the
+	     URL. Left crawlable on purpose: a Disallow would stop the crawler reading
+	     this tag, and could not de-index a URL already in. -->
+	<meta name="robots" content="noindex, follow" />
 </svelte:head>
 
 <!-- Navigation Header -->

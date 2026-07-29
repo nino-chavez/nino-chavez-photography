@@ -187,6 +187,9 @@ Status: ${ratio <= 0.40 ? '✅ PASS' : '❌ FAIL'}
 
 <svelte:head>
 	<title>Style Guide - Nino Chavez Gallery</title>
+	<!-- Internal design-system reference. See /hero-demo for why noindex and not
+	     a robots.txt Disallow. -->
+	<meta name="robots" content="noindex, follow" />
 </svelte:head>
 
 <!-- Minimal Page Header -->
