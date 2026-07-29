@@ -1,13 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T09:55:13.421Z",
-  "reviewedBy": "Claude Opus 5 (session 64a8fb16)",
-  "method": "Walked the rendered /photography/albums browse page on a dev server against production data. Album cards for mixed photo+video albums now read '363 photos · 134 videos' where they read '363 photos' — verified in the served aria-label for all four affected albums (Raiders Open, Jalapeno Open, Bell Pepper June, KRUSH), and compared against the live pre-fix build which still shows '363 photos'. Video-only albums are unchanged ('94 videos', '14 videos') and photo-only albums are unchanged ('100 photos'). No copy strings were edited; AlbumCard's existing sentence assembly simply receives a real number instead of a hardcoded 0.",
-  "sourceDigest": "sha256:f82bf4ef24d51e85d2f8d18bda1effee2f23b8c92a767e3c1cbbdfb772d9d632",
+  "reviewedAt": "2026-07-29T12:39:42.761Z",
+  "reviewedBy": "Nino Chavez (via Claude Code)",
+  "method": "preview build walked against prod DB: /collections index + all four detail galleries, photo counts compared to production",
+  "sourceDigest": "sha256:923f4056c0fc63dfab4c6fe6a6d9f52dcbb6d46d47736b0b933b6f9470032848",
   "sourceFiles": 131,
   "scope": [
-    "src/routes/albums/+page.server.ts",
-    "src/lib/components/gallery/AlbumCard.svelte"
+    "collections index",
+    "collections detail",
+    "sitemap.xml"
   ]
 }
