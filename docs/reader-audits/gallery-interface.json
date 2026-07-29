@@ -1,14 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T14:57:53.049Z",
+  "reviewedAt": "2026-07-29T15:32:13.977Z",
   "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build walked: /api/ai/{photos,albums} filter params probed with valid, unknown, wrong-case and malformed values; 400 copy read; year=2024 reconciled to 41 public albums (45 minus 4 unlisted) across three page sizes",
-  "sourceDigest": "sha256:13cbd4cb46111e60c1f045c382027040c4bf8f7b2b2a077ed39bf4fca1f48aff",
+  "method": "preview build walked: photo <title> across 4 frames in one album and 3 across albums (all distinct, 66-78 chars, album name leads and is never truncated per the precisionLock); image alt now the caption not the event; h1 unchanged; schema.org name vs description separated; /api/ai/photos title field matched",
+  "sourceDigest": "sha256:efe3cd450d805e9613779a7db845f5c6205ba1016c3ffeeb66798044547c2c0b",
   "sourceFiles": 131,
   "scope": [
-    "api/ai/albums year filter",
-    "api/ai/photos filters",
-    "filter error copy"
+    "photo page title",
+    "photo image alt",
+    "photo schema.org",
+    "api/ai/photos title"
   ]
 }
