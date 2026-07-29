@@ -23,9 +23,26 @@ const GOLD_500 = '#eab308';
 const GOLD_400 = '#facc15';
 const WHITE = '#ffffff';
 
-// Crawlers refetch unfurl images; the WASM render is not free.
-export const OG_CACHE_CONTROL =
-	'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
+/**
+ * Crawlers refetch unfurl images and the WASM render is not free — but these responses
+ * encode an authorization decision, so the edge TTL is a bound on how long a revoked
+ * album stays visible, not just a performance knob.
+ *
+ * This was `s-maxage=86400`. When the unlisted gate was added to the album card, two
+ * already-cached private albums kept serving their cover photo, and could not be evicted:
+ * the router reaches the app via a subrequest to nino-chavez-photography.pages.dev, and
+ * Cloudflare caches under the SUBREQUEST hostname, which is a zone we do not own and
+ * therefore cannot purge. A day is far too long to wait for a privacy change to take hold
+ * when there is no override.
+ *
+ * Ten minutes bounds that. Cards are fetched by a handful of crawlers per album, Facebook
+ * and LinkedIn cache them again on their side, and a re-render is one Satori pass — so the
+ * saving from a longer TTL was small and the exposure it bought was not.
+ *
+ * `stale-while-revalidate` is dropped because it never applied: per Cloudflare's cache
+ * docs, `s-maxage` disables it.
+ */
+export const OG_CACHE_CONTROL = 'public, max-age=300, s-maxage=600';
 
 /**
  * Fetch a Cloudflare Images photo as a base64 JPEG data URI for embedding in the
