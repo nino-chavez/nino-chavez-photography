@@ -139,6 +139,9 @@
 
 <svelte:head>
   <title>Timeline Navigation Variants • UX Comparison</title>
+  <!-- A design-decision artifact: four navigation patterns side by side, one of
+       which shipped. See /hero-demo for why noindex and not a robots.txt Disallow. -->
+  <meta name="robots" content="noindex, follow" />
 </svelte:head>
 
 <div class="min-h-screen bg-charcoal-950">

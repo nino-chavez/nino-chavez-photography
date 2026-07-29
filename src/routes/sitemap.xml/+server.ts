@@ -1,13 +1,24 @@
 /**
  * Sitemap.xml Generator
  *
- * Generates XML sitemap with all routes for SEO:
- * - Static pages (home, explore, collections, albums)
- * - Sport-specific landing pages
- * - Individual photo URLs (20K+)
- * - Album detail pages
+ * EVERY URL IN HERE MUST RESOLVE, AND EVERY PUBLIC PAGE MUST BE IN HERE.
  *
- * Submit to Google Search Console after deployment
+ * Both halves were broken. It emitted one landing page per distinct sport —
+ * `/volleyball`, `/basketball`, twelve of them — under a comment reading
+ * "(future routes)". They were never built. There is no `[sport]` route in this
+ * app, so all twelve had been handing Google a 404 for as long as the sitemap
+ * has existed. A planned route is not a URL; it goes in the sitemap the day it
+ * serves a 200.
+ *
+ * In the other direction it omitted pages this app links in its own chrome:
+ * `/timeline` (header nav AND footer), `/privacy` (footer), and all 46
+ * `/photos/<year>/<month>` archives, which TimelineV2 links directly and which
+ * render real galleries with real titles ("August 2022 • 753 Photos").
+ *
+ * The month archives are derived from the same single scan that already
+ * produces albums and photos — no extra query. That is the pattern to follow
+ * for anything added here: derive it from the scan, or prove the route serves
+ * a 200 first.
  */
 
 import { supabaseServer } from '$lib/supabase/server';
@@ -20,12 +31,14 @@ import { SITE_URL } from '$lib/site-url';
 interface SitemapUrl {
 	loc: string;
 	priority: number;
-	changefreq: 'daily' | 'weekly' | 'monthly';
+	changefreq: 'daily' | 'weekly' | 'monthly' | 'yearly';
 	lastmod?: string;
 }
 
 export const GET: RequestHandler = async () => {
 	const baseUrl = SITE_URL;
+	// Only the month currently being shot can still gain photos.
+	const currentMonth = new Date().toISOString().slice(0, 7);
 
 	try {
 		// Page through the full table — a plain .select() silently caps at Supabase's 1000-row default,
@@ -70,8 +83,16 @@ export const GET: RequestHandler = async () => {
 			).values()
 		);
 
-		// Unique sports for landing pages
-		const uniqueSports = Array.from(new Set(photos.map((p) => p.sport_type).filter(Boolean)));
+		// Month archives — /photos/<year>/<month>, one per month that has photos.
+		// Derived from the same scan rather than a second query. Zero-padded to
+		// match the links TimelineV2 builds and the route's own examples.
+		const monthArchives = Array.from(
+			new Set(
+				photos
+					.map((p) => (p.photo_date || '').slice(0, 7))
+					.filter((ym) => /^\d{4}-\d{2}$/.test(ym))
+			)
+		).sort();
 
 		// Build URL list
 		const urls: SitemapUrl[] = [
@@ -107,13 +128,29 @@ export const GET: RequestHandler = async () => {
 				priority: 0.6,
 				changefreq: 'monthly' as const
 			},
-
-			// Sport-specific landing pages (future routes)
-			...uniqueSports.map((sport) => ({
-				loc: `${baseUrl}/${sport}`,
-				priority: sport === 'volleyball' ? 0.9 : 0.7,
+			{
+				// In the header nav and the footer, and absent from here until now.
+				loc: `${baseUrl}/timeline`,
+				priority: 0.7,
 				changefreq: 'weekly' as const
-			})),
+			},
+			{
+				loc: `${baseUrl}/privacy`,
+				priority: 0.3,
+				changefreq: 'yearly' as const
+			},
+
+			// Month archives, linked from the timeline. Only the current month can
+			// still gain photos; the rest are closed and change only if a back
+			// catalogue is re-ingested.
+			...monthArchives.map((ym): SitemapUrl => {
+				const [year, month] = ym.split('-');
+				return {
+					loc: `${baseUrl}/photos/${year}/${month}`,
+					priority: 0.5,
+					changefreq: ym === currentMonth ? 'weekly' : 'yearly'
+				};
+			}),
 
 			// Album detail pages (using SEO-friendly slugs). album_key is non-null here (filtered above).
 			...uniqueAlbums.map((album) => {
