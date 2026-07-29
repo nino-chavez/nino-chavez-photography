@@ -77,7 +77,8 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	}
 
 	// Get recent search queries
-	const recentSearches = await getTopSearchQueries(20);
+	// 10, not 20 — the panel rendered `.slice(0, 10)`, so half of every fetch was discarded.
+	const recentSearches = await getTopSearchQueries(10);
 
 	// Bot-filtered events: crawler hits the isbot gate suppressed before they
 	// reached engagement_events (see 20260713150000_bot_filtered_events.sql).

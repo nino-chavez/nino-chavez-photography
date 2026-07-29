@@ -5,6 +5,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import type { PageData } from './$types';
+	import { describeFilters } from '$lib/analytics/describe-filters';
 
 	let { data }: { data: PageData } = $props();
 
@@ -45,6 +46,7 @@
 			minute: '2-digit',
 		});
 	}
+
 </script>
 
 <svelte:head>
@@ -225,7 +227,7 @@
 				</Typography>
 
 				<div class="space-y-3">
-					{#each data.recentSearches.slice(0, 10) as search}
+					{#each data.recentSearches as search}
 						<div class="flex items-center justify-between py-2 border-b border-charcoal-800/50">
 							<div class="flex-1">
 								<Typography variant="body" class="text-sm">
@@ -234,6 +236,17 @@
 								<Typography variant="caption" class="text-xs text-charcoal-500">
 									{search.results_count} results • {formatDate(search.searched_at)}
 								</Typography>
+								<!--
+									`filters_used` was written and fetched but never shown, so "beach"
+									narrowed to volleyball read the same as a bare "beach". It also used to
+									hold the resolved album-key list rather than the visitor's choice, which
+									is why showing it was never worth doing.
+								-->
+								{#if describeFilters(search.filters_used)}
+									<Typography variant="caption" class="text-xs text-charcoal-400 block mt-0.5">
+										filtered by {describeFilters(search.filters_used)}
+									</Typography>
+								{/if}
 							</div>
 						</div>
 					{/each}
@@ -358,10 +371,11 @@
 		>
 			<Typography variant="h3" class="text-xl mb-1 flex items-center gap-2">
 				<SearchX class="w-5 h-5 text-gold-500" />
-				Zero-Result Searches — Last 30 Days
+				Zero-Result Gallery Searches — Last 30 Days
 			</Typography>
 			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">
-				Searches that returned nothing — content or tagging gaps.
+				Searches from the gallery search bar that returned nothing — content or tagging gaps.
+				Questions asked through the chat assistant are not counted.
 			</Typography>
 
 			{#if data.zeroResultSearches.length > 0}
