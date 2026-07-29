@@ -101,6 +101,12 @@ export const GET: RequestHandler = async () => {
 				priority: 0.7,
 				changefreq: 'monthly' as const
 			},
+			{
+				// Publishes FAQPage structured data, which is inert on a page nothing links to.
+				loc: `${baseUrl}/faq`,
+				priority: 0.6,
+				changefreq: 'monthly' as const
+			},
 
 			// Sport-specific landing pages (future routes)
 			...uniqueSports.map((sport) => ({

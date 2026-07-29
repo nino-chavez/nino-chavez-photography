@@ -26,7 +26,8 @@
     "worker:dev": "cd cloudflare-worker/album-zip && wrangler dev",
     "worker:deploy": "cd cloudflare-worker/album-zip && wrangler deploy",
     "worker:tail": "cd cloudflare-worker/album-zip && wrangler tail",
-    "photo:address:test": "tsx --test src/lib/supabase/photo-address.test.ts"
+    "photo:address:test": "tsx --test src/lib/supabase/photo-address.test.ts",
+    "faq:copy:test": "tsx --test src/lib/aeo/faq-copy.test.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",

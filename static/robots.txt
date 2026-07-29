@@ -1,6 +1,15 @@
-# allow crawling everything by default
+# robots.txt for the Nino Chavez photography gallery.
+#
+# Crawlers read robots.txt only from the host root, so the policy that actually governs this
+# gallery is https://ninochavez.co/robots.txt — it allows /photography/ and lists this sitemap.
+# This file is served at /photography/robots.txt and is informational. A SvelteKit route once
+# generated a competing version here; static assets win, so it never shipped and was removed.
+
 User-agent: *
 Disallow:
 
-# AI.txt file for answer engines
-# See /ai.txt for API endpoints and structured data information
+Sitemap: https://ninochavez.co/photography/sitemap.xml
+
+# Orientation for answer engines — endpoints, structured data, and what the gallery holds.
+# Absolute, because a root-relative /ai.txt resolves to a different site on this domain.
+# https://ninochavez.co/photography/ai.txt
