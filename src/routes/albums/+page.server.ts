@@ -106,11 +106,22 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 
 	// Map materialized view results to expected format, filtering out unlisted albums
 	const photoAlbumKeys = new Set((albumsData || []).map((a) => a.album_key));
+
+	// Videos per album. `videos_summary` is fetched above for the video-ONLY merge at the
+	// bottom of this function; a MIXED album needs the same number, and this was a literal
+	// 0 — so an album card said "363 photos" for an album holding 363 photos and 134 videos.
+	// Four albums were hiding 373 videos that way, one of them (Jalapeño Open) with more
+	// videos than photos. The album's own page and its OG card both counted correctly, so
+	// the browse card was the only surface that lied, and only by omission.
+	const videoCounts = new Map<string, number>(
+		(videoAlbumsData || []).map((v) => [v.album_key, parseInt(v.video_count) || 0])
+	);
+
 	const albums = (albumsData || []).filter((album) => !unlistedKeys.has(album.album_key)).map((album) => ({
 		albumKey: album.album_key,
 		albumName: album.album_name || 'Unknown Album',
 		photoCount: parseInt(album.photo_count) || 0,
-		videoCount: 0,
+		videoCount: videoCounts.get(album.album_key) ?? 0,
 		coverImageUrl: album.cover_image_url,
 		coverCfImageId: (album as any).cover_cf_image_id as string | null ?? null,
 		sports: album.sports || [],

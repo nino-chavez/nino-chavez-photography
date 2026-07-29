@@ -1,14 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T09:24:36.423Z",
+  "reviewedAt": "2026-07-29T09:55:13.421Z",
   "reviewedBy": "Claude Opus 5 (session 64a8fb16)",
-  "method": "Walked the rendered photo page and an album page on a dev server. The only reader-visible change is what the Copy link button puts on the clipboard: it now appends ?src=share-copy, matching what every other copy-link in the app already did. Button labels, aria-labels and toast copy are unchanged (verified in the served HTML: aria-label='Copy link to this photo', visible 'Copy link', album 'Share'). Also verified the inbound half against the real database — one arrival with ?src=share-copy and a browser user-agent wrote the expected engagement_events row (event_type view, source share-copy); a curl user-agent was correctly bot-filtered.",
-  "sourceDigest": "sha256:8366181c551a8008efa73a02a55ad888c2dcea109d025c0710cac38da33f8ec3",
+  "method": "Walked the rendered /photography/albums browse page on a dev server against production data. Album cards for mixed photo+video albums now read '363 photos · 134 videos' where they read '363 photos' — verified in the served aria-label for all four affected albums (Raiders Open, Jalapeno Open, Bell Pepper June, KRUSH), and compared against the live pre-fix build which still shows '363 photos'. Video-only albums are unchanged ('94 videos', '14 videos') and photo-only albums are unchanged ('100 photos'). No copy strings were edited; AlbumCard's existing sentence assembly simply receives a real number instead of a hardcoded 0.",
+  "sourceDigest": "sha256:f82bf4ef24d51e85d2f8d18bda1effee2f23b8c92a767e3c1cbbdfb772d9d632",
   "sourceFiles": 131,
   "scope": [
-    "src/routes/photo/[id]/+page.svelte",
-    "src/lib/components/social/ShareMenu.svelte",
-    "src/lib/components/social/SocialShareButtons.svelte"
+    "src/routes/albums/+page.server.ts",
+    "src/lib/components/gallery/AlbumCard.svelte"
   ]
 }

@@ -145,6 +145,33 @@ async function main() {
 		}
 	}
 	console.log(`\nMap written to ${OUT} (${Object.keys(map).length} entries)`);
+
+	// Ingest is the write event, so it owns the refresh — same rule the photo path
+	// follows at the end of scripts/ingest-album.ts for albums_summary.
+	//
+	// This call was missing from the day this script was written. The only caller of
+	// refresh_videos_summary was scripts/migrate-smugmug-videos.ts, the one-off SmugMug
+	// import — so `videos_summary` was last refreshed on 2026-06-15 and three albums
+	// ingested since (291 of 481 videos) had no row in it at all.
+	//
+	// That went unnoticed because the matview's only consumer is VIDEO-ONLY album
+	// discovery on /albums, and both video-only albums predate the drift. The next
+	// video-only album ingested would simply not have appeared in the album list —
+	// reachable by direct URL, invisible to anyone browsing.
+	//
+	// Plain REFRESH, not CONCURRENTLY (see 20260305000000_fix_security_lint.sql): it
+	// takes an exclusive lock, which is fine on a view that groups a few hundred rows
+	// into a handful of albums, and CONCURRENTLY would require adding a unique index.
+	if (!DRY) {
+		const { error } = await supabase.rpc('refresh_videos_summary');
+		if (error) {
+			// LOUD, mirroring ingest-album.ts: a silent miss leaves the album unlisted.
+			console.error(`❌ refresh_videos_summary FAILED: ${error.message}`);
+			console.error('   → Re-run the refresh (service_role) before relying on the albums listing.');
+		} else {
+			console.log('🔄 videos_summary refreshed');
+		}
+	}
 }
 
 main();
