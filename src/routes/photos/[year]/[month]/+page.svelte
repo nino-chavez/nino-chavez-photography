@@ -84,13 +84,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>{data.monthName} {data.year} • {data.photoCount} Photos | Nino Chavez Gallery</title>
-  <meta
-    name="description"
-    content="View all {data.photoCount} photos from {data.monthName} {data.year} in Nino Chavez's sports photography gallery."
-  />
-</svelte:head>
 
 <div class="min-h-screen bg-charcoal-950">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

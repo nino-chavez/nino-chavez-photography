@@ -380,8 +380,6 @@
 
 <!-- Preload first images for faster LCP -->
 <svelte:head>
-	<title>Explore Gallery | Nino Chavez Photography</title>
-	<meta name="description" content="Browse {data.totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more." />
 
 	<!-- Preload first image with responsive srcset for LCP optimization -->
 	{#if data.photos[0]}

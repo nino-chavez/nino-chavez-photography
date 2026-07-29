@@ -12,14 +12,8 @@
 	import { base } from '$app/paths';
 	import Typography from '$lib/components/ui/Typography.svelte';
 
-	const pageTitle = 'Privacy Policy - Nino Chavez Photography';
-	const pageDescription = 'Privacy policy for ninochavez.co/photography. Learn how we collect and protect athlete data.';
 </script>
 
-<svelte:head>
-	<title>{pageTitle}</title>
-	<meta name="description" content={pageDescription} />
-</svelte:head>
 
 <!-- Hero Section -->
 <section class="py-16 lg:py-24 bg-gradient-to-b from-charcoal-950 to-charcoal-900">

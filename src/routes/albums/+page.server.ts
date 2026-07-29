@@ -175,6 +175,9 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const totalPages = Math.ceil(totalAlbums / limit);
 
 	return {
+		// Head tags belong to the loader, never to +page.svelte — the layout is the single
+		// emitter, and a page that also emits them ships a duplicate that renders SECOND.
+		seo: albumsSeo(totalAlbums),
 		albums,
 		totalAlbums,
 		totalPhotos: albums.reduce((sum, album) => sum + album.photoCount, 0),
@@ -189,6 +192,20 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		availableYears
 	};
 };
+
+/**
+ * The albums page's head copy. Both the primary load and the legacy fallback return it, so the
+ * page cannot describe itself differently depending on which path served it.
+ *
+ * The count is loader-derived. The unreachable layout version hardcoded "all 253 photo albums"
+ * and the real number is 249 — a string that had never rendered, so nobody had ever checked it.
+ */
+function albumsSeo(totalAlbums: number) {
+	return {
+		title: 'Albums | Nino Chavez Photography',
+		description: `Browse ${totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches.`
+	};
+}
 
 // Legacy fallback method - Browse Mode: No filters
 async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number, offset: number) {
@@ -283,6 +300,7 @@ async function loadAlbumsLegacy(page: number, sortBy: SortOption, limit: number,
 	const paginatedAlbums = albums.slice(offset, offset + limit);
 
 	return {
+		seo: albumsSeo(totalAlbums),
 		albums: paginatedAlbums,
 		totalAlbums,
 		totalPhotos: albumData?.length || 0,

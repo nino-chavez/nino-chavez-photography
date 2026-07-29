@@ -14,6 +14,19 @@ import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { isValidSrcParam } from '$lib/analytics/share';
 import { computeSessionHash } from '$lib/analytics/session';
 
+
+/**
+ * Head tags come from here, never from `+page.svelte`. The root layout is the single emitter
+ * of <title>, description, canonical and og/twitter (its own comment has said so for the og
+ * tags); a page that also emits them ships duplicates, and the layout's generic pair renders
+ * FIRST, so the specific one is the copy crawlers ignore. Enforced by scripts/check-head-tags.mjs.
+ */
+const HOME_SEO = {
+  title: 'Nino Chavez — Volleyball Event Photography',
+  description:
+    'Find your photos from volleyball events — club, high school, and college tournaments and matches. Browse and search galleries by event, team, or jersey number.'
+};
+
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 let cache: { recentAlbums: Awaited<ReturnType<typeof fetchRecentAlbums>>; timestamp: number } | null =
   null;
@@ -44,10 +57,10 @@ export const load: PageServerLoad = async ({ setHeaders, url, request, getClient
     if (!cache || now - cache.timestamp > CACHE_DURATION_MS) {
       cache = { recentAlbums: await fetchRecentAlbums(), timestamp: now };
     }
-    return { recentAlbums: cache.recentAlbums };
+    return { recentAlbums: cache.recentAlbums, seo: HOME_SEO };
   } catch (err) {
     console.error('[Homepage] Critical error in load function:', err);
-    return { recentAlbums: [] };
+    return { recentAlbums: [], seo: HOME_SEO };
   }
 };
 

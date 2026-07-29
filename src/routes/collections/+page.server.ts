@@ -35,6 +35,13 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 	const activeCollections = collectionsWithPhotos.filter((c) => c.photoCount > 0);
 
 	return {
+		// Head tags belong to the loader, never to +page.svelte — the layout is the single
+		// emitter, and a page that also emits them ships a duplicate that renders SECOND.
+		seo: {
+			title: 'Curated Collections — Nino Chavez Photography',
+			description:
+				'Explore curated photography collections showcasing the best moments, emotions, and stories from volleyball tournaments and events.'
+		},
 		collections: activeCollections,
 		stats: {
 			totalCollections: activeCollections.length,

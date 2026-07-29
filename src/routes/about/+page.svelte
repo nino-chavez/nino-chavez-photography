@@ -23,25 +23,23 @@
 	interface Props {
 		data: {
 			featuredPhoto: import('$types/photo').Photo | null;
+			/** Emitted by the root layout; also the ProfilePage schema's description below. */
+			seo: { title: string; description: string };
 		};
 	}
 
 	let { data }: Props = $props();
 
-	const pageTitle = 'About - Nino Chavez Photography';
-	const pageDescription =
-		'Nino Chavez is a sports photographer who started courtside at his kid\'s volleyball games and never left. Thousands of matches later, every frame still matters.';
-
+	// One description, from the loader — it is both the meta description (emitted by the
+	// layout) and the ProfilePage schema's, so the two cannot drift apart.
 	let schemaData = $derived.by(() => ({
 		'@context': 'https://schema.org',
 		'@type': 'ProfilePage',
-		mainEntity: personSchema({ description: pageDescription })
+		mainEntity: personSchema({ description: data.seo.description })
 	}));
 </script>
 
 <svelte:head>
-	<title>{pageTitle}</title>
-	<meta name="description" content={pageDescription} />
 	{@html `<script type="application/ld+json">${JSON.stringify(schemaData)}</script>`}
 </svelte:head>
 

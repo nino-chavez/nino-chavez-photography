@@ -45,6 +45,13 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders }) => {
     const { sports, categories } = layoutData;
 
     return {
+      // Head tags belong to the loader, never to +page.svelte — the layout is the single
+      // emitter, and a page that also emits them ships a duplicate that renders SECOND.
+      seo: {
+        title: 'Photo Timeline | Nino Chavez',
+        description:
+          "Explore Nino Chavez's photography journey through the years - from youth sports to professional championships."
+      },
       periods,
       allPeriods,
       currentPage: page,

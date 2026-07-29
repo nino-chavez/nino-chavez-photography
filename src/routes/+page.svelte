@@ -70,8 +70,6 @@
 <svelte:window onkeydown={onLightboxKey} />
 
 <svelte:head>
-	<title>Nino Chavez — Volleyball Event Photography</title>
-	<meta name="description" content="Find your photos from volleyball events — club, high school, and college tournaments and matches. Browse and search galleries by event, team, or jersey number." />
 
 	<!-- Preload the flickday lead frame for instant LCP -->
 	<link rel="preload" as="image" href="{base}/images/hero/flickday/fd-12-mobile.webp" fetchpriority="high" media="(max-width: 1023px)" />

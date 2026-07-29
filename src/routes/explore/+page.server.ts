@@ -169,6 +169,12 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
   }
 
   return {
+    // Head tags belong to the loader, never to +page.svelte — the layout is the single
+    // emitter, and a page that also emits them ships a duplicate that renders SECOND.
+    seo: {
+      title: 'Explore Gallery | Nino Chavez Photography',
+      description: `Browse ${totalCount.toLocaleString()} professional volleyball action photos. Filter by sport, category, play type, and more.`
+    },
     photos,
     totalCount,
     currentPage: page,

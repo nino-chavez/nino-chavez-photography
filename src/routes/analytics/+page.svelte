@@ -51,7 +51,6 @@
 
 <svelte:head>
 	<title>Analytics Dashboard</title>
-	<meta name="description" content="Gallery analytics and popular photos" />
 </svelte:head>
 
 <div style="animation: fade-slide-up 0.3s ease-out forwards" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

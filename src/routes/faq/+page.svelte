@@ -53,13 +53,6 @@
 	});
 </script>
 
-<svelte:head>
-	<title>FAQ | Nino Chavez Photography</title>
-	<meta
-		name="description"
-		content="Frequently asked questions about the Nino Chavez Photography gallery, including information about photos, albums, search features, and AI enrichment."
-	/>
-</svelte:head>
 
 <div class="container mx-auto px-4 py-16 max-w-4xl">
 	<header class="mb-12 text-center">
