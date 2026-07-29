@@ -17,6 +17,7 @@ import { photoAddresses } from '$lib/supabase/photo-address';
 import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
 import { SITE_URL } from '$lib/site-url';
 import { parsePagination, validateFilter } from '$lib/api/pagination';
+import { photoPageTitle } from '$lib/seo/photo-title';
 import { SPORTS, PHOTO_CATEGORIES, ALL_PLAY_TYPES } from '$lib/ai/taxonomy';
 import { personSchema } from '$lib/aeo/person';
 import type { PhotoMetadataRow } from '$types/database';
@@ -131,7 +132,10 @@ export const GET: RequestHandler = async ({ url }) => {
 				url: `${SITE_URL}/photo/${addressOf(row)}`,
 				image_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'large') : '',
 				thumbnail_url: row.cf_image_id ? cfImageUrl(row.cf_image_id, 'thumbnail') : '',
-				title: row.album_name || 'Untitled Photo',
+				// Was the album name, so 100 consecutive photos in one response carried an
+				// identical `title` while `album.name` repeated it a second time. Same
+				// composition the photo page's <title> uses.
+				title: photoPageTitle(row.album_name, row.caption),
 				description: generateDescription(row),
 				// NOTE: the vanity CATEGORICAL aesthetic fields (action_intensity, composition,
 				// time_of_day, lighting, ...) were removed (cutover prep) — those columns are

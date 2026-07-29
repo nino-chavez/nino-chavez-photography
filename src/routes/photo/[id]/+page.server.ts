@@ -14,6 +14,7 @@ import type { Photo } from '$types/photo';
 import type { PhotoMetadataRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { SITE_URL } from '$lib/site-url';
+import { photoPageTitle, photoAltText } from '$lib/seo/photo-title';
 import { isValidSrcParam } from '$lib/analytics/share';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { computeSessionHash } from '$lib/analytics/session';
@@ -190,10 +191,16 @@ export const load: PageServerLoad = async ({
 		approvedTags: tags || [],
 		viewSource,
 		seo: {
-			title: `${photo.title} | Nino Chavez Photography`,
+			// `photo.title` is the ALBUM name and stays that way — it is the page's <h1>, where
+			// the event is the right heading. The <title> needs to distinguish one frame from
+			// the next 362 in the same album, so it composes album + caption. The
+			// "| Nino Chavez Photography" suffix is gone: og:site_name already carries the
+			// brand (verified on the rendered page) and it was spending 26 characters here.
+			title: photoPageTitle(photo.title, photo.caption),
 			description: seoDescription,
 			ogImage,
-			ogImageAlt: photo.title,
+			// Was the album name, which described the event rather than the picture.
+			ogImageAlt: photoAltText(photo.title, photo.caption),
 			// The layout only emits dimension tags when supplied, and they are what tells
 			// LinkedIn and Facebook to lay out the large card before the image finishes
 			// downloading. Truthful here because we render the card ourselves.

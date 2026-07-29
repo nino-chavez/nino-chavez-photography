@@ -14,6 +14,7 @@
 	import type { Photo } from '$types/photo';
 	import { SITE_URL } from '$lib/site-url';
 	import { personSchema } from '$lib/aeo/person';
+	import { photoPageTitle, photoAltText } from '$lib/seo/photo-title';
 
 	let { data }: { data: PageData } = $props();
 
@@ -107,7 +108,10 @@
 		'@context': 'https://schema.org',
 		'@type': 'Photograph',
 		'@id': data.seo.canonical,
-		name: data.photo.title,
+		// Was the album name, so every Photograph in an album published the same schema.org
+		// `name` while `description` carried the only per-photo text. `name` and `description`
+		// have different jobs; give `name` the composed title the <title> tag uses.
+		name: photoPageTitle(data.photo.title, data.photo.caption),
 		description: data.photo.caption || data.seo.description,
 		url: data.seo.canonical,
 		dateCreated: data.photo.created_at,
@@ -185,7 +189,7 @@
 						src={optimizedImageUrl}
 						srcset={imageSrcSet}
 						sizes="(max-width: 768px) 100vw, 896px"
-						alt={data.photo.title}
+						alt={photoAltText(data.photo.title, data.photo.caption)}
 						class="absolute inset-0 w-full h-full object-cover"
 						loading="eager"
 						decoding="async"
