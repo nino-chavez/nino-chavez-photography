@@ -50,7 +50,7 @@ shot by Nino Chavez. Photos are searchable by what is visibly happening in them.
 # resolve to a different site on this domain.
 ${SITE_URL}/api/ai/photos - Photos with metadata (JSON)
 ${SITE_URL}/api/ai/albums - Public albums with metadata (JSON)
-${SITE_URL}/api/ai/search?q={query} - Semantic photo search
+${SITE_URL}/api/ai/search?q={query} - Photo search: sport/play/team/jersey filters, semantic fallback
 ${SITE_URL}/api/ai/stats - Gallery statistics
 ${SITE_URL}/api/ai/faq - Auto-generated FAQ content
 
