@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { isValidAlbumKey } from '$lib/albums/album-key';
 import type { RequestHandler } from './$types';
 
 const ZIP_WORKER_URL = 'https://zip.ninochavez.co';
@@ -14,20 +15,6 @@ const ZIP_WORKER_URL = 'https://zip.ninochavez.co';
  * else keeps the field from carrying arbitrary attacker-chosen text into a signature.
  */
 const ALLOWED_QUALITIES = new Set(['large']);
-
-/**
- * Album keys are SmugMug-derived — all 262 in the database are exactly six alphanumeric
- * characters. This bound is looser than that so a future ingest with a different key format is
- * not silently broken, and tight enough to exclude what matters: path separators, the `:` that
- * delimits the signed payload, and unbounded length.
- *
- * This was missing entirely. The note above about `quality` — that rejecting other values
- * "keeps the field from carrying arbitrary attacker-chosen text into a signature" — applied
- * word for word to the field beside it, which was signing `../../etc/passwd`,
- * `A:large:9999999999` and a 500-character string on request. The verifying worker applies the
- * identical pattern (cloudflare-worker/album-zip/src/request-guards.ts).
- */
-const ALBUM_KEY_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
 
 /**
  * Mint an HMAC-signed URL for the album ZIP worker.
@@ -61,7 +48,10 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'Missing albumKey or quality parameter' }, { status: 400 });
 	}
 
-	if (!ALBUM_KEY_PATTERN.test(albumKey)) {
+	// Shape-checked in $lib/albums/album-key, which /api/album-photos now shares. The rationale
+	// this comment used to carry lives there; the two endpoints take the same field from the same
+	// callers and only one of them was checking it.
+	if (!isValidAlbumKey(albumKey)) {
 		return json({ error: 'Invalid albumKey' }, { status: 400 });
 	}
 
