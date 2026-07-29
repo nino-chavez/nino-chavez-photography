@@ -20,13 +20,20 @@
  * only by crawling the hub. A hub page in the sitemap is not coverage of what it
  * links.
  *
+ * And it survived once more, one TABLE over. Albums were derived from the photo
+ * scan, so an album holding only videos could not appear: `/albums` linked 251
+ * albums, this listed 249, and the two missing were the video-only ones
+ * (p4J2jk, QwhCK5 — 108 public clips). Measured by diffing every internal link
+ * on the hub pages against the emitted <loc> set; those two were the only real
+ * gaps in 280 linked paths.
+ *
  * The month archives are derived from the same single scan that already
  * produces albums and photos — no extra query. That is the pattern to follow
  * for anything added here: derive it from the scan, or prove the route serves
  * a 200 first.
  */
 
-import { supabaseServer } from '$lib/supabase/server';
+import { supabaseServer, matviewClient, getUnlistedAlbumKeys } from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { createAlbumSlug } from '$lib/utils';
 import { COLLECTIONS, COLLECTION_CRITERIA_SELECT, collectionMatches } from '$lib/collections';
@@ -95,6 +102,29 @@ export const GET: RequestHandler = async () => {
 				photos.filter((p) => p.album_key).map((p) => [p.album_key, p])
 			).values()
 		);
+		const photoAlbumKeys = new Set(uniqueAlbums.map((a) => a.album_key as string));
+
+		// Albums that hold only videos. They have no row in the scan above, so deriving albums
+		// from photos alone can never reach them — the same shape as the collections omission,
+		// one table over. Same video-only rule as $lib/albums/listing (a videos_summary key with
+		// no photo album key), because /albums linking a page this omits is the failure.
+		//
+		// videos_summary is a matview: anon is REVOKE'd, so it reads through service_role and RLS
+		// does not apply. The unlisted gate has to be explicit here — and it is not redundant with
+		// `photoAlbumKeys`, which is built from an RLS-gated anon scan and therefore does NOT
+		// contain an unlisted album's key. Without the filter, an unlisted album that gained a
+		// video would read as video-only and be published.
+		const [{ data: videoAlbumRows, error: videoAlbumsError }, unlistedKeys] = await Promise.all([
+			matviewClient().from('videos_summary').select('album_key, album_name'),
+			getUnlistedAlbumKeys()
+		]);
+		if (videoAlbumsError) {
+			console.error('Error fetching video albums for sitemap:', videoAlbumsError);
+			return new Response('Error generating sitemap', { status: 500 });
+		}
+		const unlisted = new Set(unlistedKeys);
+		const videoOnlyAlbums = ((videoAlbumRows ?? []) as { album_key: string; album_name: string | null }[])
+			.filter((v) => !photoAlbumKeys.has(v.album_key) && !unlisted.has(v.album_key));
 
 		// Curated collections that actually hold photos. `/collections` renders only
 		// those with a non-zero count, so listing an empty one would advertise a page
@@ -192,6 +222,14 @@ export const GET: RequestHandler = async () => {
 					changefreq: 'monthly' as const
 				};
 			}),
+
+			// Video-only album pages. Same URL shape and the same slug helper as above — the
+			// route is one route, it just had no photos to be derived from.
+			...videoOnlyAlbums.map((album): SitemapUrl => ({
+				loc: `${baseUrl}/albums/${createAlbumSlug(album.album_name || album.album_key, album.album_key)}`,
+				priority: 0.6,
+				changefreq: 'monthly' as const
+			})),
 
 			// Individual photo URLs (THE MONEY MAKER - 20K+ URLs!)
 			//
