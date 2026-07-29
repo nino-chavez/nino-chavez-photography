@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T19:23:32.335Z",
+  "reviewedAt": "2026-07-29T19:46:37.371Z",
   "reviewedBy": "Claude Opus 5 (agent session)",
-  "method": "Served the production build under wrangler pages dev and read the head of /share/<token> and /albums: the share page emits zero canonical/og:url/twitter:url tags and zero occurrences of the token, keeps 'noindex, nofollow' and its album-name title, and now describes itself to a client as 'A private album shared by Nino Chavez Photography.' instead of inheriting the site's volleyball marketing copy; /albums still emits one of each URL tag with its #126 description intact",
-  "sourceDigest": "sha256:0efa2609b4b85fd27f7c1f40279f82688c5a376c3a1d3e71892720325db392d8",
+  "method": "Served the production build under wrangler pages dev and walked both album shapes in a real browser. Video-only album (94 clips): cards now read 'Clip 1..94' instead of source filenames like lpo-bell-pepper(65)-4.MP4, thumbnails are alt='' with the accessible name on the button ('Play Clip 3, 0:09'), and the dead 'Search photos…' box and 'Download All' button (whose menu said 'Download 0 photos' and did nothing) are gone. Mixed album (363 photos + 134 videos) still shows both search boxes and Download All, with 134 clip labels and zero filenames. Opened the player: heading 'Bell Pepper Open - Video Highlights - Jul 19, 2025 · Clip 3 of 94', download attribute 'bell-pepper-open-video-highlights-jul-19-2025-03.mp4'. Checked the download route's content-disposition for a clean name, an old .mp4 name and no name at all",
+  "sourceDigest": "sha256:fdb7bb83039d4fe7d1f77df728a2677a965a76197e483783f88c83b83b11606a",
   "sourceFiles": 128
 }

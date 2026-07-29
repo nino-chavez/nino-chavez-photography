@@ -20,8 +20,15 @@ export const GET: RequestHandler = async ({ params, url, fetch }) => {
 	const upstream = await fetch(src, { redirect: 'follow' });
 	if (!upstream.ok || !upstream.body) throw error(404, 'Video not available for download');
 
+	// `?name=` is the base name; this route owns the extension. It used to append `.mp4`
+	// unconditionally, and the player passed `video.title` — which IS the source filename and
+	// already ended in `.mp4` — so every download in the gallery's history saved as
+	// `C2154.mp4.mp4` (confirmed on the live content-disposition header). The caller now sends a
+	// clean name (see clipDownloadName), and stripping a trailing video extension here means an
+	// old cached link, or any future caller that gets it wrong, cannot reproduce it.
 	const rawName = url.searchParams.get('name') || streamId;
-	const filename = `${rawName.replace(/[^\w.\- ]+/g, '_').slice(0, 80)}.mp4`;
+	const baseName = rawName.replace(/[^\w.\- ]+/g, '_').replace(/\.(mp4|mov|m4v)$/i, '').slice(0, 80);
+	const filename = `${baseName || streamId}.mp4`;
 
 	return new Response(upstream.body, {
 		headers: {

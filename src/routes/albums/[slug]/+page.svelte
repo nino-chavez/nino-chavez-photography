@@ -42,6 +42,16 @@
 	let activeVideoIndex = $state(0);
 
 	let hasVideos = $derived(data.videos.length > 0);
+	// Gates the photo-only affordances in the header, not just the grid. Two live albums hold
+	// only video, and both offered a "Search photos…" box that filtered an empty set and a
+	// "Download All" button whose menu read "Download 0 photos" and, when clicked, did nothing
+	// at all — the worker returns "empty" and the client-side fallback returns on a zero-length
+	// manifest, so the spinner flashed and stopped. Same rule the count label and the share card
+	// already follow: a segment with nothing behind it is omitted, not rendered as zero.
+	//
+	// Keyed on the photos actually read from the base table, not `totalCount`, which comes from
+	// `albums_summary` and can lead it — offering a download of photos that no query returns is
+	// the failure this guard exists to prevent.
 	let hasPhotos = $derived(data.photos.length > 0);
 
 	// Header count. A segment is omitted entirely when its count is zero, rather than
@@ -253,19 +263,21 @@
 					>
 						← Back
 					</button>
-					<div class="flex-1 max-w-md">
-						<input
-							type="search"
-							placeholder="Search photos..."
-							bind:value={searchQuery}
-							class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
+					{#if hasPhotos}
+						<div class="flex-1 max-w-md">
+							<input
+								type="search"
+								placeholder="Search photos..."
+								bind:value={searchQuery}
+								class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
+							/>
+						</div>
+						<BulkDownloadButton
+							albumKey={data.albumKey}
+							albumName={data.albumName}
+							photoCount={data.totalCount}
 						/>
-					</div>
-					<BulkDownloadButton
-						albumKey={data.albumKey}
-						albumName={data.albumName}
-						photoCount={data.totalCount}
-					/>
+					{/if}
 					{#if albumShareTarget.imageUrl}
 						<ShareMenu target={albumShareTarget} variant="inline" albumKey={data.albumKey} />
 					{/if}
@@ -273,14 +285,16 @@
 			</div>
 
 			<!-- Mobile search -->
-			<div class="md:hidden mt-3">
-				<input
-					type="search"
-					placeholder="Search photos..."
-					bind:value={searchQuery}
-					class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
-				/>
-			</div>
+			{#if hasPhotos}
+				<div class="md:hidden mt-3">
+					<input
+						type="search"
+						placeholder="Search photos..."
+						bind:value={searchQuery}
+						class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 
