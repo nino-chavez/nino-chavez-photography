@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T19:46:37.371Z",
-  "reviewedBy": "Claude Opus 5 (agent session)",
-  "method": "Served the production build under wrangler pages dev and walked both album shapes in a real browser. Video-only album (94 clips): cards now read 'Clip 1..94' instead of source filenames like lpo-bell-pepper(65)-4.MP4, thumbnails are alt='' with the accessible name on the button ('Play Clip 3, 0:09'), and the dead 'Search photos…' box and 'Download All' button (whose menu said 'Download 0 photos' and did nothing) are gone. Mixed album (363 photos + 134 videos) still shows both search boxes and Download All, with 134 clip labels and zero filenames. Opened the player: heading 'Bell Pepper Open - Video Highlights - Jul 19, 2025 · Clip 3 of 94', download attribute 'bell-pepper-open-video-highlights-jul-19-2025-03.mp4'. Checked the download route's content-disposition for a clean name, an old .mp4 name and no name at all",
-  "sourceDigest": "sha256:fdb7bb83039d4fe7d1f77df728a2677a965a76197e483783f88c83b83b11606a",
+  "reviewedAt": "2026-07-29T20:11:30.048Z",
+  "reviewedBy": "claude-opus-5 (session 64a8fb16)",
+  "method": "sitemap.xml coverage diff: crawled all 11 /albums pages + 7 hub pages for internal links (280 paths) and diffed against the emitted <loc> set — 0 real gaps after the fix (was 2: the video-only albums); forward-checked 459 emitted URLs on the wrangler build (458 x 200, 1 x 308 for the base-path root, which matches the homepage's own canonical); confirmed 0 of 13 unlisted album keys appear anywhere in the sitemap. No reader-facing interface copy changed in this edit.",
+  "sourceDigest": "sha256:a42874af16dc292b2eb52d4d35f045474d2e06a6678c46a57b3fe3048a2a8bb4",
   "sourceFiles": 128
 }
