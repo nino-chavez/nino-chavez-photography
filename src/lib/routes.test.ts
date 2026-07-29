@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chatEnabledForRoute } from './routes';
+import { canPublishRouteUrl, chatEnabledForRoute } from './routes';
 
 test('mounts on its five routes', () => {
 	for (const r of ['/', '/explore', '/collections', '/albums', '/timeline']) {
@@ -31,4 +31,27 @@ test('a based pathname is not a route id and must not match', () => {
 test('a null route id (no route matched) is safe', () => {
 	assert.equal(chatEnabledForRoute(null), false);
 	assert.equal(chatEnabledForRoute(undefined), false);
+});
+
+test('the share route never publishes its own URL — the token is the secret', () => {
+	// Production emitted, on a private client album:
+	//   <link rel="canonical" href="https://ninochavez.co/photography/share/<uuid>">
+	//   <meta property="og:url" content="…same…">
+	//   <meta property="twitter:url" content="…same…">
+	// beside that same page's `<meta name="robots" content="noindex, nofollow">`.
+	assert.equal(canPublishRouteUrl('/share/[token]'), false);
+});
+
+test('every other route still publishes its URL', () => {
+	// The suppression must stay surgical: canonical is a live SEO asset everywhere else, and
+	// silently dropping it sitewide would be a worse regression than the leak it fixes.
+	for (const r of ['/', '/albums', '/albums/[slug]', '/photo/[id]', '/photos/[year]/[month]', '/faq']) {
+		assert.equal(canPublishRouteUrl(r), true, `${r} should publish a canonical URL`);
+	}
+});
+
+test('a null route id suppresses rather than publishes', () => {
+	// The catch-all 404 has no canonical address. Fail closed.
+	assert.equal(canPublishRouteUrl(null), false);
+	assert.equal(canPublishRouteUrl(undefined), false);
 });

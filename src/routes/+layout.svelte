@@ -9,7 +9,7 @@
 	import ChatWidget from '$lib/components/ai/ChatWidget.svelte';
 	import { SITE_ORIGIN, SITE_URL } from '$lib/site-url';
 	import { canonicalUrl as buildCanonical } from '$lib/seo/canonical';
-	import { chatEnabledForRoute } from '$lib/routes';
+	import { canPublishRouteUrl, chatEnabledForRoute } from '$lib/routes';
 
 	let { children } = $props();
 
@@ -90,6 +90,11 @@
 	const resolvedTitle = $derived(seo?.title ?? pageTitle);
 	const resolvedDescription = $derived(seo?.description ?? pageDescription);
 	const resolvedCanonical = $derived(seo?.canonical ?? pageCanonical);
+	// ...and whether the page's own URL may be published at all. `/share/<token>` carries the
+	// private-album capability in its path, and this layout was emitting that path as the
+	// canonical URL, og:url and twitter:url of a page whose next tag is `noindex, nofollow`.
+	// See canPublishRouteUrl.
+	const publishUrl = $derived(canPublishRouteUrl($page.route.id));
 	const resolvedKeywords = $derived(seo?.keywords ?? defaultKeywords);
 	const resolvedOgType = $derived(seo?.ogType ?? 'website');
 	// Default share card is the branded /og.png endpoint, absolute on SITE_URL. It was
@@ -109,7 +114,9 @@
 	<meta name="title" content={resolvedTitle} />
 	<meta name="description" content={resolvedDescription} />
 	<meta name="keywords" content={resolvedKeywords} />
-	<link rel="canonical" href={resolvedCanonical} />
+	{#if publishUrl}
+		<link rel="canonical" href={resolvedCanonical} />
+	{/if}
 
 	<!-- PERFORMANCE: View Transitions API for smooth page transitions -->
 	<meta name="view-transition" content="same-origin" />
@@ -118,9 +125,15 @@
 		Open Graph / Twitter — emitted ONCE here for every page. Leaf pages provide
 		overrides via `data.seo` (see PageSeo above); they must not emit their own
 		og/twitter tags or crawlers see duplicates.
+
+		The three URL tags (canonical, og:url, twitter:url) are the exception to
+		"every page": they are gated on `publishUrl`, because a route whose path is
+		a secret must not have that path published as its public address.
 	-->
 	<meta property="og:type" content={resolvedOgType} />
-	<meta property="og:url" content={resolvedCanonical} />
+	{#if publishUrl}
+		<meta property="og:url" content={resolvedCanonical} />
+	{/if}
 	<meta property="og:title" content={resolvedTitle} />
 	<meta property="og:description" content={resolvedDescription} />
 	<meta property="og:image" content={resolvedOgImage} />
@@ -133,7 +146,9 @@
 
 	<!-- Twitter -->
 	<meta property="twitter:card" content="summary_large_image" />
-	<meta property="twitter:url" content={resolvedCanonical} />
+	{#if publishUrl}
+		<meta property="twitter:url" content={resolvedCanonical} />
+	{/if}
 	<meta property="twitter:title" content={resolvedTitle} />
 	<meta property="twitter:description" content={resolvedDescription} />
 	<meta property="twitter:image" content={resolvedOgImage} />

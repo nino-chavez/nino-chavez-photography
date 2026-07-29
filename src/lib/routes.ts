@@ -28,3 +28,39 @@ export function chatEnabledForRoute(routeId: string | null | undefined): boolean
 	if (routeId === '/') return true;
 	return CHAT_ROUTES.some((r) => r !== '/' && (routeId === r || routeId.startsWith(r + '/')));
 }
+
+/**
+ * Routes whose URL is itself the secret.
+ *
+ * `/share/[token]` is the private-album flow: the token in the path IS the access capability —
+ * present it and the server reads the album with service_role. Nothing else authorises the
+ * request.
+ */
+const SECRET_URL_ROUTES = ['/share/[token]'];
+
+/**
+ * May the layout publish this page's own URL — `<link rel="canonical">`, `og:url`, `twitter:url`?
+ *
+ * False for the routes above. All three tags are instructions to treat that exact URL as the
+ * page's public address: canonical tells a crawler which address to index the content under, and
+ * og:url / twitter:url are what every unfurling service (Slack, Discord, iMessage) reads off the
+ * page and stores in its own link record. On `/share/<token>` the address they were publishing
+ * was the token.
+ *
+ * That also contradicted the page beside it. `/share/[token]` emits
+ * `<meta name="robots" content="noindex, nofollow">`, so the head asked not to be indexed and
+ * declared a canonical URL in the same breath. Suppressing the tag is the fix rather than
+ * rewriting it: there is no other URL this page could honestly claim, and a canonical pointing
+ * somewhere else would be a different lie.
+ *
+ * Keyed on the route id, not the pathname — see the module comment. The rest of the head
+ * (title, description, the branded default og:image) is unaffected; unfurls fall back to the
+ * URL the service already fetched, so nothing is lost from the preview.
+ *
+ * A null route id (no route matched — the catch-all 404) also suppresses. Failing closed is
+ * both the safe direction and the right answer: an unmatched URL has no canonical address.
+ */
+export function canPublishRouteUrl(routeId: string | null | undefined): boolean {
+	if (!routeId) return false;
+	return !SECRET_URL_ROUTES.includes(routeId);
+}
