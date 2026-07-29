@@ -32,6 +32,7 @@ import { photoIdentityPeers, type PhotoIdentityRow } from '$lib/supabase/photo-a
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { SITE_URL } from '$lib/site-url';
 import { parsePagination } from '$lib/api/pagination';
+import { photoPageTitle } from '$lib/seo/photo-title';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -73,7 +74,13 @@ export const GET: RequestHandler = async ({ url }) => {
 			return {
 				id: segment,
 				url: `${SITE_URL}/photo/${segment}`,
-				title: albumNames.get(photo.id) || 'Untitled Photo',
+				// `<album> — <caption fragment>`, the same composition the photo page's <title> and
+				// /api/ai/photos both use. This was the bare album name, so a search for a sport
+				// returned page after page of results sharing one title — 50 results carried 38
+				// distinct titles, and "ACC at St. Francis - Oct 19" appeared three times in a row.
+				// That is the #120 defect on the surface an answer engine actually reads for a query,
+				// and the caption it needs was already in `description` on the line below.
+				title: photoPageTitle(albumNames.get(photo.id) ?? null, photo.caption ?? null),
 				description: photo.caption || undefined,
 				image_url: photo.cf_image_id ? cfImageUrl(photo.cf_image_id, 'large') : '',
 				thumbnail_url: photo.cf_image_id ? cfImageUrl(photo.cf_image_id, 'thumbnail') : '',

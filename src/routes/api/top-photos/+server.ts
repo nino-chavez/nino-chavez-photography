@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabase/server';
 import { getTopPhotos, type PopularityMetric } from '$lib/analytics/popularity';
+import { photoPageTitle } from '$lib/seo/photo-title';
 
 // GET /api/top-photos?metric=trending|all_time&limit=10[&albumKey=...]
 //
@@ -29,8 +30,14 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
 			id: p.id,
 			image_key: p.image_key,
 			album_key: p.album_key ?? null,
+			album_name: p.album_name ?? null,
 			cf_image_id: p.cf_image_id ?? null,
-			title: p.title,
+			// `title` was `Photo.title`, which transformPhotoRow sets to `image_key` — so this feed
+			// published `"title": "DSC07313"` to the social drip's carousel, a camera filename where
+			// a caption belonged, duplicating the `image_key` field two lines up. Composed the same
+			// way as the photo page's <title> and /api/ai/photos. `album_name` is exposed alongside
+			// so a consumer can name the event without re-splitting this string.
+			title: photoPageTitle(p.album_name ?? null, p.caption ?? null),
 			caption: p.caption
 		}))
 	});
