@@ -1,8 +1,20 @@
 /**
  * CANONICAL TAXONOMY — the single source of truth for every controlled vocabulary in the
- * extraction pipeline. The Postgres enums/CHECKs, the AI structured-output JSON schema, and
- * the prompt enum lists are ALL generated from this file (scripts/taxonomy-gen.ts), and
- * scripts/taxonomy-check.ts fails CI if any generated artifact drifts from these arrays.
+ * extraction pipeline. The AI structured-output JSON schema and the prompt enum lists are
+ * generated from this file (scripts/taxonomy-gen.ts), and scripts/taxonomy-check.ts fails CI
+ * if a generated artifact drifts from these arrays.
+ *
+ * ⚠️ THE DATABASE IS NOT AMONG THEM, despite what this header said until 2026-07-29.
+ * taxonomy-gen.ts renders `database/generated/taxonomy-enums.sql`, which CREATEs
+ * `photo_category_enum`, `play_type_enum` and the rest — and no column uses any of them.
+ * `photo_category` is varchar, `play_type` is text. The only CHECK constraints on
+ * photo_metadata are `valid_sport_type` (correct, and sport_type is 100% clean) and
+ * `valid_play_type` (untracked by any migration, and inert — see below).
+ *
+ * So generation covers the write path, not the storage layer. `npm run taxonomy:audit`
+ * (scripts/taxonomy-audit.ts) is what checks the live database against these arrays;
+ * taxonomy-check.ts only proves the generated FILES match. Do not read a green
+ * taxonomy-check as evidence that the data conforms.
  *
  * WHY this exists (north-star slice 0): the prior system hand-maintained enum lists in three
  * places that drifted — the vision prompt listed 9 sports while the data accumulated 13
