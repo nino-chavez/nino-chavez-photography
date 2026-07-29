@@ -1695,12 +1695,29 @@ export async function searchPhotos(
 // ============================================================
 
 /**
- * Get album settings by album key
+ * The columns of `album_settings` that are safe for a caller to hold.
+ *
+ * `share_token` is a CAPABILITY: whoever has it can view a private album. Both readers below
+ * used `.select('*')`, so every album-page load and every OG-card render pulled the token into
+ * application memory to answer a question about `visibility`, and no caller of either function
+ * has ever read it (the album page and og.png read `visibility`; the share page reads
+ * `album_key`). A secret that no consumer wants should not be on the wire.
+ *
+ * This narrowing is also the prerequisite for revoking anon's SELECT on the column: `*` expands
+ * server-side, so a REVOKE landing before this change makes both queries fail outright — and
+ * `getAlbumSettings` returning null is what the unlisted 404 gate treats as "public", so the
+ * order is load-bearing, not tidiness.
  */
-export async function getAlbumSettings(albumKey: string): Promise<AlbumSettingsRow | null> {
+const ALBUM_SETTINGS_PUBLIC_SELECT = 'album_key, visibility, gallery_scope, created_at, updated_at';
+export type AlbumSettingsPublicRow = Omit<AlbumSettingsRow, 'share_token'>;
+
+/**
+ * Get album settings by album key. Anon client — the gallery's own gate reads this.
+ */
+export async function getAlbumSettings(albumKey: string): Promise<AlbumSettingsPublicRow | null> {
   const { data, error } = await supabaseServer
     .from('album_settings')
-    .select('*')
+    .select(ALBUM_SETTINGS_PUBLIC_SELECT)
     .eq('album_key', albumKey)
     .maybeSingle();
 
@@ -1709,16 +1726,23 @@ export async function getAlbumSettings(albumKey: string): Promise<AlbumSettingsR
     return null;
   }
 
-  return data as AlbumSettingsRow | null;
+  return data as AlbumSettingsPublicRow | null;
 }
 
 /**
- * Look up an album by its share token (for /share/[token] route)
+ * Look up an album by its share token (for /share/[token] route).
+ *
+ * Service_role, unlike every other read on this table. Postgres requires SELECT on any column a
+ * query REFERENCES, not just the ones it returns, so once anon loses `share_token` this filter
+ * cannot run as anon at all. Resolving a capability token is a privileged lookup; running it as
+ * the same role that serves public browse traffic was the thing that made the column readable in
+ * the first place. It still returns the narrowed row — the caller needs `album_key`, and handing
+ * back the token it just used would be a pointless second copy.
  */
-export async function getAlbumByShareToken(shareToken: string): Promise<AlbumSettingsRow | null> {
-  const { data, error } = await supabaseServer
+export async function getAlbumByShareToken(shareToken: string): Promise<AlbumSettingsPublicRow | null> {
+  const { data, error } = await createSupabaseAdminClient()
     .from('album_settings')
-    .select('*')
+    .select(ALBUM_SETTINGS_PUBLIC_SELECT)
     .eq('share_token', shareToken)
     .maybeSingle();
 
@@ -1727,7 +1751,7 @@ export async function getAlbumByShareToken(shareToken: string): Promise<AlbumSet
     return null;
   }
 
-  return data as AlbumSettingsRow | null;
+  return data as AlbumSettingsPublicRow | null;
 }
 
 /**
