@@ -59,7 +59,8 @@
 	<section class="relative" aria-label={title}>
 		<!-- Header: title + optional toggle + scroll controls -->
 		<div class="flex items-center justify-between mb-4 gap-4 flex-wrap">
-			<Typography variant="h3" class="text-2xl">{title}</Typography>
+			<!-- element="h2": a section directly under the page h1. Styling unchanged. -->
+			<Typography variant="h3" element="h2" class="text-2xl">{title}</Typography>
 
 			<div class="flex items-center gap-3">
 				{#if hasToggle}

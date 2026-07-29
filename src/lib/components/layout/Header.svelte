@@ -67,13 +67,27 @@
 					>
 						<Camera class="w-6 h-6 text-gold-500" />
 					</div>
+					<!--
+						`element="span"` keeps the h3 styling and drops the heading semantics.
+						This wordmark is a logo, not a section heading, and it was emitting TWO
+						h3 elements above the h1 on every page in the app — so a screen-reader
+						user navigating by heading hit "Nino Chavez Photography" and "NCP"
+						before reaching what the page is actually about. The link's accessible
+						name comes from aria-label="Go to homepage" on the anchor, not from
+						these being headings.
+					-->
 					<Typography
 						variant="h3"
+						element="span"
 						class="hidden sm:block group-hover:text-gold-500 transition-colors"
 					>
 						Nino Chavez Photography
 					</Typography>
-					<Typography variant="h3" class="sm:hidden group-hover:text-gold-500 transition-colors">
+					<Typography
+						variant="h3"
+						element="span"
+						class="sm:hidden group-hover:text-gold-500 transition-colors"
+					>
 						NCP
 					</Typography>
 				</a>

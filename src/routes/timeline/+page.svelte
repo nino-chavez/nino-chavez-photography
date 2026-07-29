@@ -139,6 +139,12 @@
 </svelte:head>
 
 <div class="min-h-screen bg-charcoal-950">
+  <!--
+    No h1 existed: the page renders straight into TimelineV2, which starts at h2. sr-only
+    because there is no visual heading in the design, and the text matches the <title>.
+  -->
+  <h1 class="sr-only">Photo Timeline</h1>
+
   <TimelineV2
     timelineData={timelineData}
     hasMore={hasMore}
