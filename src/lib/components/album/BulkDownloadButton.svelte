@@ -2,6 +2,7 @@
 	import { Download, X } from 'lucide-svelte';
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
+	import { slugify } from '$lib/utils';
 	import { trackEngagement } from '$lib/analytics/client';
 	import type { CFVariant } from '$lib/utils/cloudflare-images';
 
@@ -19,9 +20,10 @@
 	let progress = $state({ current: 0, total: 0 });
 	let abortController: AbortController | null = null;
 
-	function slugify(text: string): string {
-		return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
-	}
+	// `slugify` comes from $lib/utils rather than a local copy. The copy that lived here skipped
+	// the trim and the leading/trailing-hyphen strip, so an album name with an edge space
+	// produced `-bell-pepper-.zip`. The two download paths — this ZIP and a single video clip —
+	// now name their files the same way.
 
 	// Bulk zip downloads previously recorded no engagement signal at all — every
 	// per-photo download in an album's ZIP was invisible to the popularity engine

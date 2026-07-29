@@ -3,10 +3,15 @@
 
   Shows a video thumbnail with play icon overlay and duration badge.
   Pure CSS transitions for performance (matches PhotoCard pattern).
+
+  The label is the clip's position, not `video.title` — that column holds the source filename,
+  and this card used to render it, so 94 of these read "lpo-bell-pepper(65)-4.MP4". See
+  $lib/video/video-label.
 -->
 
 <script lang="ts">
 	import type { Video } from '$types/photo';
+	import { clipAriaLabel, clipLabel, formatDuration } from '$lib/video/video-label';
 
 	interface Props {
 		video: Video;
@@ -15,13 +20,6 @@
 	}
 
 	let { video, index = 0, onclick }: Props = $props();
-
-	function formatDuration(seconds: number | null): string {
-		if (!seconds) return '';
-		const m = Math.floor(seconds / 60);
-		const s = seconds % 60;
-		return `${m}:${s.toString().padStart(2, '0')}`;
-	}
 
 	function handleClick(event: MouseEvent) {
 		event.preventDefault();
@@ -34,13 +32,18 @@
 	type="button"
 	class="video-card group relative aspect-video bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 transition-all cursor-pointer outline-none block w-full"
 	onclick={handleClick}
-	aria-label={video.title || `Video ${index + 1}`}
+	aria-label={clipAriaLabel(index, video.duration_seconds)}
 >
 	<!-- Thumbnail -->
 	{#if video.cf_stream_thumbnail}
+		<!--
+			Decorative: the button around it already carries the accessible name. Labelling both
+			makes a screen reader announce the clip twice, and the old value here was the source
+			filename anyway.
+		-->
 		<img
 			src={video.cf_stream_thumbnail}
-			alt={video.title || 'Video thumbnail'}
+			alt=""
 			class="absolute inset-0 w-full h-full object-cover object-center"
 			loading="lazy"
 		/>
@@ -62,9 +65,7 @@
 	<!-- Bottom gradient + info -->
 	<div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3 pt-8">
 		<div class="flex items-end justify-between">
-			{#if video.title}
-				<span class="text-xs text-white/90 truncate mr-2">{video.title}</span>
-			{/if}
+			<span class="text-xs text-white/90 truncate mr-2">{clipLabel(index)}</span>
 			{#if video.duration_seconds}
 				<span class="text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded shrink-0 font-medium tabular-nums">
 					{formatDuration(video.duration_seconds)}

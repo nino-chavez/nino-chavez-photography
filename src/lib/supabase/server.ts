@@ -1711,7 +1711,13 @@ export async function fetchAlbumVideos(albumKey: string): Promise<Video[]> {
     .from('video_metadata')
     .select('video_id, cf_stream_id, cf_stream_thumbnail, album_key, album_name, title, description, duration_seconds, sport_type, video_category, video_date')
     .eq('album_key', albumKey)
-    .order('upload_date', { ascending: false });
+    // `video_id` breaks ties the way `image_key` does for photos. Videos are labelled by their
+    // position in this list ("Clip 12" — see $lib/video/video-label), so an unstable order would
+    // rename clips between page loads and make the label useless for the thing it is for:
+    // a client asking for one by name. Every upload_date is distinct today; that is not a
+    // guarantee, and two clips ingested in the same second would be one.
+    .order('upload_date', { ascending: false })
+    .order('video_id', { ascending: true });
 
   if (error) {
     console.error('[fetchAlbumVideos] Error:', error);

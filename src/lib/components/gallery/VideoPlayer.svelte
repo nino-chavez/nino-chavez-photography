@@ -10,6 +10,7 @@
 	import type { Video } from '$types/photo';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
+	import { clipDownloadName, clipLabel } from '$lib/video/video-label';
 
 	interface Props {
 		videos: Video[];
@@ -24,6 +25,13 @@
 
 	let video = $derived(videos[index]);
 	let count = $derived(videos.length);
+	// `video.title` is the source filename (see $lib/video/video-label) and this modal rendered
+	// it in five places: the heading, the dialog's accessible name, the iframe title, the
+	// download filename and the mobile share sheet. All five now use the clip's position and
+	// its album.
+	let label = $derived(clipLabel(index));
+	let albumLabel = $derived(video?.album_name && video.album_name !== 'Unknown Album' ? video.album_name : '');
+	let downloadName = $derived(clipDownloadName(video?.album_name, index));
 
 	// Autoplay/binge mode (persisted). When on, each clip plays muted and we
 	// auto-advance when it ends.
@@ -40,8 +48,10 @@
 		`https://customer-${CF_STREAM_SUBDOMAIN}.cloudflarestream.com/${video?.cf_stream_id}/iframe` +
 			(autoplayNext ? '?autoplay=true&muted=true' : '')
 	);
+	// No extension: the route appends `.mp4`. Passing `video.title` here — which already ended
+	// in `.mp4` — is why every download landed as `C2154.mp4.mp4`.
 	let downloadUrl = $derived(
-		`${base}/api/video/${video?.cf_stream_id}/download?name=${encodeURIComponent(video?.title || 'video')}`
+		`${base}/api/video/${video?.cf_stream_id}/download?name=${encodeURIComponent(downloadName)}`
 	);
 
 	function next() { if (count) index = (index + 1) % count; }
@@ -106,8 +116,11 @@
 			const res = await fetch(downloadUrl);
 			if (!res.ok) throw new Error('fetch failed');
 			const blob = await res.blob();
-			const file = new File([blob], `${(video.title || 'video').replace(/[^\w.\- ]+/g, '_')}.mp4`, { type: 'video/mp4' });
-			if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: video.title || 'Bell Pepper Open' });
+			const file = new File([blob], `${downloadName}.mp4`, { type: 'video/mp4' });
+			// The share sheet's title was hardcoded to 'Bell Pepper Open' whenever the filename
+			// was missing — one album's name offered as the fallback for all six.
+			if (navigator.canShare?.({ files: [file] }))
+				await navigator.share({ files: [file], title: albumLabel ? `${albumLabel} — ${label}` : label });
 			else window.open(downloadUrl, '_blank');
 		} catch (err) {
 			if ((err as Error)?.name !== 'AbortError') window.open(downloadUrl, '_blank');
@@ -123,7 +136,7 @@
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm"
 		onclick={handleBackdropClick}
 		role="dialog"
-		aria-label={video.title || 'Video player'}
+		aria-label={albumLabel ? `${albumLabel}, ${label} of ${count}` : `${label} of ${count}`}
 		aria-modal="true"
 	>
 		<!-- Top controls -->
@@ -159,7 +172,7 @@
 			<!-- Download -->
 			<a
 				href={downloadUrl}
-				download={`${video.title || 'video'}`}
+				download={`${downloadName}.mp4`}
 				onclick={(e) => e.stopPropagation()}
 				class="w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
 				aria-label="Download video"
@@ -208,14 +221,14 @@
 					class="absolute inset-0 w-full h-full"
 					allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
 					allowfullscreen
-					title={video.title || 'Video'}
+					title={albumLabel ? `${albumLabel} — ${label}` : label}
 				></iframe>
 			</div>
 		{/key}
 
 		<!-- Title + position -->
 		<p class="absolute bottom-5 left-0 right-0 text-center text-sm text-white/80">
-			{video.title || ''}{#if count > 1}<span class="text-white/50"> · {index + 1} / {count}</span>{/if}
+			{albumLabel}{#if albumLabel && count > 1}<span class="text-white/50"> · </span>{/if}{#if count > 1}<span class="text-white/50">{label} of {count}</span>{/if}
 		</p>
 	</div>
 {/if}
