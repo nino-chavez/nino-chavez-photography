@@ -1,14 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T17:08:23.574Z",
-  "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build walked: /photo/<id>/tag and /api/tags now 404; photo page 200 with the Tag Players button gone; TagDisplay (read side, direct user_tags query) untouched; /api/admin/tags still 401-gated",
-  "sourceDigest": "sha256:fdc4354b935659e8eb4c47e25d9e9d641b48653e4f0d8935faa8961d1b745db2",
-  "sourceFiles": 127,
+  "reviewedAt": "2026-07-29T17:51:55.923Z",
+  "reviewedBy": "Claude Opus 5 (agent session)",
+  "method": "Fetched 15 routes from the dev server and counted head tags; read every description that changed against reader-contract.json's gallery-interface rules",
+  "sourceDigest": "sha256:81f1b6d3352dccb4724118d9f4b8b12da054406abc07d07f3a1166e8bb934b2d",
+  "sourceFiles": 128,
   "scope": [
-    "tag route removal",
-    "photo page actions",
-    "admin tag review"
+    "head tags: title, description, canonical on /, /explore, /albums, /collections, /timeline, /favorites, /about, /faq, /privacy, /photos/[year]/[month], /collections/[slug]"
   ]
 }

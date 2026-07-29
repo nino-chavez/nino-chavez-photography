@@ -60,6 +60,14 @@ export const load: PageServerLoad = async ({ params, url }) => {
     });
 
     return {
+      // Head tags belong to the loader, never to +page.svelte — the layout is the single
+      // emitter, and a page that also emits them ships a duplicate that renders SECOND.
+      // These 46 month pages are in the sitemap, and every one of them was serving the
+      // generic site description because of exactly that.
+      seo: {
+        title: `${monthName} ${year} • ${totalCount} Photos | Nino Chavez Gallery`,
+        description: `View all ${totalCount} photos from ${monthName} ${year} in Nino Chavez's sports photography gallery.`
+      },
       photos,
       year,
       month,

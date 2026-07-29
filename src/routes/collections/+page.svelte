@@ -31,8 +31,6 @@
 </script>
 
 <svelte:head>
-	<title>Curated Collections — Nino Chavez Photography</title>
-	<meta name="description" content="Explore curated photography collections showcasing the best moments, emotions, and stories from volleyball tournaments and events." />
 
 	<!-- Preload first 3 collection cover images for LCP optimization -->
 	{#each data.collections.slice(0, 3) as collection, i}

@@ -8,6 +8,8 @@
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import ChatWidget from '$lib/components/ai/ChatWidget.svelte';
 	import { SITE_ORIGIN, SITE_URL } from '$lib/site-url';
+	import { canonicalUrl as buildCanonical } from '$lib/seo/canonical';
+	import { chatEnabledForRoute } from '$lib/routes';
 
 	let { children } = $props();
 
@@ -31,10 +33,9 @@
 
 	// PERFORMANCE: Only load ChatWidget on pages where AI search is useful
 	// Reduces ~50-100KB JS on single photo pages, album pages, etc.
-	const chatEnabledRoutes = ['/', '/explore', '/collections', '/albums', '/timeline'];
-	let showChat = $derived(chatEnabled && chatEnabledRoutes.some(route =>
-		$page.url.pathname === route || $page.url.pathname.startsWith(route + '/')
-	));
+	// Keyed on route.id, NOT url.pathname — the latter carries the /photography base, so the
+	// old comparison against bare paths was false on every page. See route-meta.ts.
+	let showChat = $derived(chatEnabled && chatEnabledForRoute($page.route.id));
 
 	// SEO metadata
 	const siteTitle = 'Nino Chavez Photography';
@@ -61,42 +62,34 @@
 	};
 	const seo = $derived(($page.data?.seo ?? undefined) as PageSeo | undefined);
 
-	// Derive page-specific title
-	const pageTitle = $derived.by(() => {
-		const path = $page.url.pathname;
-		if (path === '/') return siteTitle;
-		if (path === '/explore') return `Search Photos | ${siteTitle}`;
-		if (path === '/timeline') return `Timeline | ${siteTitle}`;
-		if (path === '/collections') return `Collections | ${siteTitle}`;
-		if (path === '/albums') return `Albums | ${siteTitle}`;
-		if (path === '/favorites') return `Favorites | ${siteTitle}`;
-		return siteTitle;
-	});
+	// Title fallback for any route that does not set `data.seo.title`. There is deliberately
+	// no per-route title map here: every route that used to have one sets its own title in its
+	// load function, and `seo?.title ?? …` means a map would be unreachable. The old version
+	// carried six such branches, all of them dead AND all of them keyed on a path that could
+	// never match (see below).
+	const pageTitle = $derived(siteTitle);
 
-	// Derive page-specific description
-	const pageDescription = $derived.by(() => {
-		const path = $page.url.pathname;
-		if (path === '/explore')
-			return 'Search and filter through 19,000+ professional action sports photos. Find the perfect shot with advanced search and filtering.';
-		if (path === '/timeline') return 'Explore photos chronologically by upload date.';
-		if (path === '/collections')
-			return 'Curated collections showcasing portfolio-worthy shots and emotion-driven moments.';
-		if (path === '/albums') return 'Browse all 253 photo albums organized by event and date.';
-		if (path === '/favorites') return 'Your favorited photos - create your own collection.';
-		return siteDescription;
-	});
+	// Page description fallback. There is deliberately no per-route map here either: every
+	// page supplies `data.seo.description` from its load function, the same way /photo/[id]
+	// and /albums/[slug] already did. The old inline map compared `$page.url.pathname`
+	// against bare paths like '/explore' — but that pathname carries the /photography base,
+	// so no branch ever matched and the map was dead the whole time. `scripts/check-head-tags.mjs`
+	// keeps pages from emitting their own <meta name="description"> instead.
+	const pageDescription = $derived(siteDescription);
 
 	// Canonical URL. SITE_ORIGIN, not SITE_URL: `$page.url.pathname` already carries
 	// the `/photography` base (svelte.config.js sets paths.base), so composing it with
 	// the base-inclusive SITE_URL yields /photography/photography/... — verified in the
 	// built page, not assumed. Leaf loads that build their own canonical from SITE_URL
 	// are correct, because they append a bare route like `/photo/${key}`.
-	const canonicalUrl = $derived(`${SITE_ORIGIN}${$page.url.pathname}`);
+	//
+	// The trailing-slash strip is load-bearing on exactly one route — see canonical.ts.
+	const pageCanonical = $derived(buildCanonical(SITE_ORIGIN, $page.url.pathname));
 
 	// Resolved SEO values: page override (data.seo) → site default.
 	const resolvedTitle = $derived(seo?.title ?? pageTitle);
 	const resolvedDescription = $derived(seo?.description ?? pageDescription);
-	const resolvedCanonical = $derived(seo?.canonical ?? canonicalUrl);
+	const resolvedCanonical = $derived(seo?.canonical ?? pageCanonical);
 	const resolvedKeywords = $derived(seo?.keywords ?? defaultKeywords);
 	const resolvedOgType = $derived(seo?.ogType ?? 'website');
 	// Default share card is the branded /og.png endpoint, absolute on SITE_URL. It was

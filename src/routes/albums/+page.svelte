@@ -99,8 +99,6 @@
 
 <!-- Preload album cover images for faster LCP -->
 <svelte:head>
-	<title>Albums | Nino Chavez Photography</title>
-	<meta name="description" content="Browse {data.totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches." />
 
 	<!-- Preload first album cover for LCP — must match what AlbumCard actually loads:
 	     cfImageUrl(id, 'medium') for CF covers, else the raw cover URL. The old block emitted

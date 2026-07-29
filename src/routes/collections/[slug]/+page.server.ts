@@ -35,6 +35,12 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	const totalCount = count || 0;
 
 	return {
+		// Head tags belong to the loader, never to +page.svelte — the layout is the single
+		// emitter, and a page that also emits them ships a duplicate that renders SECOND.
+		seo: {
+			title: `${collectionDef.title} - Collections`,
+			description: collectionDef.description
+		},
 		collection: {
 			...collectionDef,
 			photoCount: totalCount

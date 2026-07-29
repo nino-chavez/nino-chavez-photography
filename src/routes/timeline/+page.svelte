@@ -119,8 +119,6 @@
 </script>
 
 <svelte:head>
-  <title>Photo Timeline | Nino Chavez</title>
-  <meta name="description" content="Explore Nino Chavez's photography journey through the years - from youth sports to professional championships." />
 
   <!-- Preload featured photos from first periods for LCP optimization -->
   {#each data.periods.slice(0, 2) as period}

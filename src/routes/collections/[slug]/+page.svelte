@@ -42,10 +42,6 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{data.collection.title} - Collections</title>
-	<meta name="description" content={data.collection.description} />
-</svelte:head>
 
 <!-- Page Header -->
 <div class="collection-header-animate bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
