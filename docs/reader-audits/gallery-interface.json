@@ -1,9 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T00:21:19.912Z",
-  "reviewedBy": "Claude Opus 5 — closed three public surfaces that exposed private client albums",
-  "method": "Verified against production before the fix and in a preview build after, not reasoned from code. THE LEAKS: (1) /albums/<key>/og.png had no visibility check and read album metadata through matviewClient(), which is service_role and bypasses RLS — so while /albums/CN9SCh correctly 404'd, /albums/CN9SCh/og.png returned 200 with a 1.1 MB 1200x630 card carrying that album's real cover photo and name. Confirmed on two albums against production. (2) /api/ai/albums — a public API whose own docstring says it serves AI crawlers and answer engines — returned all 262 albums including all 13 unlisted ones, with client names and album keys. My first check of this reported 0 exposed because it read a field named album_key that the response does not have; the response field is 'key', and re-running correctly showed 13 of 13. (3) /api/ai/stats counted the same 13 in total_albums. These are family portraits, senior sessions, graduations and a marriage proposal. AFTER, in a preview build: the four unlisted album cards tested return 404 while three public ones still render 900 KB-1.1 MB photo cards, so the gate is not simply 404ing everything; /api/ai/albums returns 249 albums (262 minus 13) with 0 unlisted across all three pages; total_albums reads 249. The album page's own behaviour is unchanged (404 unlisted, 301 to the canonical slug for public). The gate on the card route is the page's predicate verbatim, and absence of an album_settings row means public — 242 of 262 albums have no row, and only 'public' and 'unlisted' are in use. The photo card path needed no change: anon cannot read photo_metadata rows from unlisted albums (PostgREST count returns 0), which is what already gates /photo/<key>/og.png.",
-  "sourceDigest": "sha256:f948956510272078160edc680da3f00e38c5186b84ecb928dcf5ab28eb7c125d",
-  "sourceFiles": 131
+  "reviewedAt": "2026-07-29T00:53:27.434Z",
+  "reviewedBy": "Claude (session 64a8fb16)",
+  "method": "Walked the answer-engine surface in the production build at localhost:4173: read every answer from /api/ai/faq and the rendered /faq page, checked each claim against the app (filter components offer sport/category/play-type/year only; /explore is reachable but the visitor-facing entry is the search box), and verified /ai.txt, /robots.txt, /api/ai/stats and the sitemap.",
+  "sourceDigest": "sha256:c73d0f6dfe9dd7328b7ded0d5ce0f93ed454ec54e1325e18d5e5ac949c6d07e2",
+  "sourceFiles": 131,
+  "scope": [
+    "src/routes/faq",
+    "src/lib/aeo/faq-generator.ts",
+    "src/lib/aeo/faq-copy.ts",
+    "src/routes/ai.txt",
+    "src/routes/api/ai/stats",
+    "static/robots.txt"
+  ]
 }

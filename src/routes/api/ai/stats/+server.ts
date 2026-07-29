@@ -9,6 +9,7 @@ import { PHOTOS_READ } from '$lib/supabase/columns';
 import type { RequestHandler } from './$types';
 import { excludeUnlisted, getUnlistedAlbumKeys, supabaseServer, matviewClient } from '$lib/supabase/server';
 import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
+import { ENRICHMENT_FIELDS } from '$lib/aeo/faq-copy';
 
 export const GET: RequestHandler = async () => {
 	try {
@@ -40,27 +41,21 @@ export const GET: RequestHandler = async () => {
 			categories[category.name] = category.count;
 		});
 
-		// Get date range
-		const { data: dateRange } = await supabaseServer
-			.from(PHOTOS_READ)
-			.select('photo_date, upload_date')
-			.not('sharpness', 'is', null)
-			.order('upload_date', { ascending: true })
-			.limit(1);
+		// Get date range. Order and read the SAME column: the previous version ordered by
+		// upload_date and then read photo_date off that row, which answers "when was the
+		// first-uploaded photo taken?" — a different question that only happened to agree.
+		const dateBound = async (ascending: boolean) => {
+			const { data } = await supabaseServer
+				.from(PHOTOS_READ)
+				.select('photo_date')
+				.not('sharpness', 'is', null)
+				.not('photo_date', 'is', null)
+				.order('photo_date', { ascending })
+				.limit(1);
+			return data?.[0]?.photo_date ?? null;
+		};
 
-		const { data: latestDate } = await supabaseServer
-			.from(PHOTOS_READ)
-			.select('photo_date, upload_date')
-			.not('sharpness', 'is', null)
-			.order('upload_date', { ascending: false })
-			.limit(1);
-
-		const earliest = dateRange && dateRange.length > 0
-			? (dateRange[0].photo_date || dateRange[0].upload_date)
-			: null;
-		const latest = latestDate && latestDate.length > 0
-			? (latestDate[0].photo_date || latestDate[0].upload_date)
-			: null;
+		const [earliest, latest] = await Promise.all([dateBound(true), dateBound(false)]);
 
 		return json({
 			total_photos: totalPhotos || 0,
@@ -72,7 +67,12 @@ export const GET: RequestHandler = async () => {
 				latest: latest || null
 			},
 			ai_enriched: true,
-			enrichment_dimensions: 12
+			// Was a hardcoded 12, which counted six categorical columns (composition, time_of_day,
+			// lighting, color_temperature, emotion, action_intensity) that have been removed from
+			// the read path ahead of their schema DROP. Derived from the one list the FAQ prose
+			// also reads, so the two answers cannot disagree again.
+			enrichment_fields: ENRICHMENT_FIELDS,
+			enrichment_dimensions: ENRICHMENT_FIELDS.length
 		});
 	} catch (error) {
 		console.error('[API] Error fetching stats:', error);

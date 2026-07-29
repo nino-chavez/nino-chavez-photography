@@ -903,6 +903,27 @@ export async function getBaseFacets(): Promise<BaseFacets | null> {
   };
 }
 
+/** Reproduce the matview payload from the live functions when the matview read fails. */
+async function liveBaseFacets(): Promise<BaseFacets> {
+  const [sports, categories, filterCounts] = await Promise.all([
+    getSportDistribution(),
+    getCategoryDistribution(),
+    getFilterCounts()
+  ]);
+  return { sports, categories, filterCounts };
+}
+
+/**
+ * The base facets, matview-first with a live fallback — the ONLY way a caller should ask for
+ * them. Callers that hand-rolled their own distribution queries drifted: the FAQ generator read
+ * play_type with a bare `.select()`, which PostgREST answers with a partial, unordered page, so
+ * it published two values out of the 62 that exist and named a 1-photo value first. The matview
+ * already excludes unlisted albums, so privacy semantics match either branch.
+ */
+export async function resolveBaseFacets(): Promise<BaseFacets> {
+  return (await getBaseFacets()) ?? (await liveBaseFacets());
+}
+
 export async function fetchPhotosByPeriod(options: {
   page?: number;
   limit?: number;

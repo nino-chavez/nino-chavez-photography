@@ -1,13 +1,31 @@
 /**
- * FAQ Generator for AEO
+ * FAQ generator — the answers published at /faq (as Schema.org FAQPage) and /api/ai/faq.
  *
- * Generates FAQ content from gallery statistics and metadata.
- * Used by FAQ page and FAQ API endpoint.
+ * These are read by answer engines and republished verbatim, so every sentence has to be true of
+ * the gallery as it exists today. Three classes of untruth had accumulated:
+ *
+ *   1. Counts read from partial scans. `.select('play_type')` with no ordering returns whatever
+ *      page PostgREST feels like; the answer to "what play types are available?" was "action,
+ *      attack" — naming a value with ONE photo out of 20,655 first and omitting every play type
+ *      the question itself promises. Facets now come from resolveBaseFacets(), the same source
+ *      the gallery's own filter bar uses.
+ *   2. A privacy gap. The album count read albums_summary through service_role, which bypasses
+ *      RLS, so it included 13 unlisted client albums. Same fix as /api/ai/stats (#101).
+ *   3. Features that no longer exist. The old answers advertised filtering by action intensity,
+ *      lighting, time of day and composition style; those six categorical columns were removed
+ *      from the read path ahead of their schema DROP (see PHOTO_COLUMNS) and no filter UI has
+ *      ever offered them. The real filters are sport, category, play type, and year.
  */
 
-import { supabaseServer, matviewClient } from '$lib/supabase/server';
+import {
+	supabaseServer,
+	matviewClient,
+	excludeUnlisted,
+	getUnlistedAlbumKeys,
+	resolveBaseFacets
+} from '$lib/supabase/server';
 import { PHOTOS_READ } from '$lib/supabase/columns';
-import { getSportDistribution, getCategoryDistribution } from '$lib/supabase/server';
+import { ENRICHMENT_FIELDS, humanizeTerm, listPhrase, topFacetNames } from './faq-copy';
 
 export interface FAQ {
 	question: string;
@@ -15,60 +33,67 @@ export interface FAQ {
 	category: 'general' | 'photo-specific' | 'search' | 'album' | 'technical';
 }
 
+/** How many play types to name. Enough to be useful, few enough to read as a sentence. */
+const PLAY_TYPES_NAMED = 8;
+
 /**
- * Generate all FAQs from gallery statistics
+ * The earliest and latest date a photo was TAKEN.
+ *
+ * Ordered and read on the same column. The previous version ordered by upload_date and then read
+ * photo_date off that row, which answers "when was the first-uploaded photo taken?" — a different
+ * question that only happened to give the same year.
+ */
+async function photoDateRange(): Promise<{ earliest: string | null; latest: string | null }> {
+	const bound = async (ascending: boolean) => {
+		const { data } = await supabaseServer
+			.from(PHOTOS_READ)
+			.select('photo_date')
+			.not('sharpness', 'is', null)
+			.not('photo_date', 'is', null)
+			.order('photo_date', { ascending })
+			.limit(1);
+		return data?.[0]?.photo_date ?? null;
+	};
+
+	const [earliest, latest] = await Promise.all([bound(true), bound(false)]);
+	return { earliest, latest };
+}
+
+/**
+ * Generate all FAQs from live gallery statistics.
  */
 export async function generateFAQs(): Promise<FAQ[]> {
-	// Get statistics
-	const { count: totalPhotos } = await supabaseServer
-		.from(PHOTOS_READ)
-		.select('*', { count: 'exact', head: true })
-		.not('sharpness', 'is', null);
+	const [{ count: totalPhotos }, { count: totalAlbums }, facets, dates] = await Promise.all([
+		supabaseServer
+			.from(PHOTOS_READ)
+			.select('*', { count: 'exact', head: true })
+			.not('sharpness', 'is', null),
+		// albums_summary is a matview (anon REVOKE'd → service_role), which bypasses RLS. Public
+		// endpoint, so the unlisted client albums have to be excluded by hand.
+		getUnlistedAlbumKeys().then((unlisted) =>
+			excludeUnlisted(
+				matviewClient().from('albums_summary').select('*', { count: 'exact', head: true }),
+				unlisted
+			)
+		),
+		resolveBaseFacets(),
+		photoDateRange()
+	]);
 
-	const { count: totalAlbums } = await matviewClient()
-		.from('albums_summary')
-		.select('*', { count: 'exact', head: true });
+	const sportDistribution = facets.sports;
+	const categoryDistribution = facets.categories;
 
-	const sportDistribution = await getSportDistribution();
-	const categoryDistribution = await getCategoryDistribution();
+	const earliestYear = dates.earliest ? new Date(dates.earliest).getFullYear() : null;
+	const latestYear = dates.latest ? new Date(dates.latest).getFullYear() : null;
 
-	// Get play types count
-	const { data: playTypesData } = await supabaseServer
-		.from(PHOTOS_READ)
-		.select('play_type')
-		.not('sharpness', 'is', null)
-		.not('play_type', 'is', null);
-
-	const playTypes = new Set((playTypesData || []).map((row: any) => row.play_type).filter(Boolean));
-
-	// Get date range
-	const { data: dateRange } = await supabaseServer
-		.from(PHOTOS_READ)
-		.select('photo_date, upload_date')
-		.not('sharpness', 'is', null)
-		.order('upload_date', { ascending: true })
-		.limit(1);
-
-	const { data: latestDate } = await supabaseServer
-		.from(PHOTOS_READ)
-		.select('photo_date, upload_date')
-		.not('sharpness', 'is', null)
-		.order('upload_date', { ascending: false })
-		.limit(1);
-
-	const earliestYear = dateRange && dateRange.length > 0
-		? new Date(dateRange[0].photo_date || dateRange[0].upload_date).getFullYear()
-		: null;
-	const latestYear = latestDate && latestDate.length > 0
-		? new Date(latestDate[0].photo_date || latestDate[0].upload_date).getFullYear()
-		: null;
-
-	const sportsList = sportDistribution.map((s) => s.name).join(', ');
-	const primarySport = sportDistribution.length > 0 ? sportDistribution[0].name : 'volleyball';
+	const sportsList = listPhrase(sportDistribution.map((s) => humanizeTerm(s.name)));
+	const primarySport = sportDistribution.length > 0 ? humanizeTerm(sportDistribution[0].name) : 'volleyball';
 	const primarySportCount = sportDistribution.length > 0 ? sportDistribution[0].count : 0;
 
 	const actionCount = categoryDistribution.find((c) => c.name === 'action')?.count || 0;
 	const celebrationCount = categoryDistribution.find((c) => c.name === 'celebration')?.count || 0;
+
+	const playTypes = topFacetNames(facets.filterCounts.playTypes, PLAY_TYPES_NAMED);
 
 	const faqs: FAQ[] = [];
 
@@ -88,7 +113,7 @@ export async function generateFAQs(): Promise<FAQ[]> {
 	if (earliestYear && latestYear) {
 		faqs.push({
 			question: 'What time period does the gallery cover?',
-			answer: `The gallery covers photos from ${earliestYear} to ${latestYear}, capturing ${latestYear - earliestYear + 1} years of sports photography.`,
+			answer: `The gallery covers photos taken from ${earliestYear} to ${latestYear}, capturing ${latestYear - earliestYear + 1} years of sports photography.`,
 			category: 'general'
 		});
 	}
@@ -106,11 +131,10 @@ export async function generateFAQs(): Promise<FAQ[]> {
 		category: 'photo-specific'
 	});
 
-	if (playTypes.size > 0) {
-		const playTypesList = Array.from(playTypes).map((pt) => pt.replace('_', ' ')).join(', ');
+	if (playTypes.length > 0) {
 		faqs.push({
 			question: 'What play types are available? (spikes, blocks, digs, etc.)',
-			answer: `The gallery includes photos of various play types including ${playTypesList}. Each photo is tagged with its specific play type for easy searching.`,
+			answer: `The most photographed plays are ${listPhrase(playTypes)}. Action photos are tagged with the play they show, so you can filter for one directly.`,
 			category: 'photo-specific'
 		});
 	}
@@ -118,26 +142,26 @@ export async function generateFAQs(): Promise<FAQ[]> {
 	// Search/Discovery Questions
 	faqs.push({
 		question: 'How do I search for specific photos?',
-		answer: 'You can search for photos using the search bar on the explore page, or use filters to narrow down by sport, category, play type, action intensity, lighting, and more. All photos are AI-enriched with detailed metadata for precise searching.',
+		answer: 'Use the search box at the top of any page — or press Command-K — and describe what you are looking for: a team name, a jersey number, or what is happening in the photo. Every photo carries a written description of the visible action, so plain descriptions work.',
 		category: 'search'
 	});
 
 	faqs.push({
 		question: 'Can I filter by sport, category, or play type?',
-		answer: 'Yes! The gallery supports filtering by sport type, photo category (action, celebration, candid, portrait), play type (spike, block, dig, set, serve), action intensity (low, medium, high, peak), lighting conditions, time of day, and composition style.',
+		answer: 'Yes. You can narrow the gallery by sport, by photo category (action, celebration, candid, portrait, warmup, ceremony), by the play a photo shows, and by year. Filters combine, and each one shows how many photos it would leave.',
 		category: 'search'
 	});
 
 	faqs.push({
 		question: 'Are photos AI-enriched with metadata?',
-		answer: 'Yes, all photos in the gallery are AI-enriched with 12 semantic dimensions including sport type, photo category, play type, action intensity, composition, lighting, time of day, and more. This enables powerful search and discovery features.',
+		answer: `Yes. Each photo is described by an AI pass that records ${listPhrase([...ENRICHMENT_FIELDS])}. That description is what search reads.`,
 		category: 'search'
 	});
 
 	// Album Questions
 	faqs.push({
 		question: 'How many albums are there?',
-		answer: `The gallery contains ${totalAlbums?.toLocaleString() || '250+'} albums, each organized by event, team, or theme. Albums make it easy to browse related photos together.`,
+		answer: `The gallery contains ${totalAlbums?.toLocaleString() || '250+'} public albums, each organized by event, team, or theme. Albums make it easy to browse related photos together.`,
 		category: 'album'
 	});
 
@@ -149,20 +173,14 @@ export async function generateFAQs(): Promise<FAQ[]> {
 
 	faqs.push({
 		question: 'Can I browse by album?',
-		answer: 'Yes! Visit the Albums page to see all available albums. Each album shows a cover photo, photo count, date range, and primary sport. Click on any album to view all photos within it.',
+		answer: 'Yes. Visit the Albums page to see all available albums. Each album shows a cover photo, photo count, date range, and primary sport. Click on any album to view all photos within it.',
 		category: 'album'
 	});
 
 	// Technical Questions
 	faqs.push({
 		question: 'What metadata is available for each photo?',
-		answer: 'Each photo includes sport type, photo category, play type, action intensity, composition style, lighting conditions, time of day, color temperature, and technical quality scores (sharpness, composition, exposure, emotional impact).',
-		category: 'technical'
-	});
-
-	faqs.push({
-		question: 'What AI enrichment dimensions are used?',
-		answer: 'Photos are enriched with 12 semantic dimensions: sport type, photo category, play type, action intensity, composition, time of day, lighting, color temperature, emotion, sharpness, composition score, exposure accuracy, and emotional impact.',
+		answer: `Each photo carries ${listPhrase([...ENRICHMENT_FIELDS])}, plus the date it was taken and the album it belongs to.`,
 		category: 'technical'
 	});
 
@@ -174,4 +192,3 @@ export async function generateFAQs(): Promise<FAQ[]> {
 
 	return faqs;
 }
-
