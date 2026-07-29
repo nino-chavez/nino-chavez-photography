@@ -30,14 +30,30 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 		getPublicGalleryTotals()
 	]);
 
-	const total = facets.sports.reduce((sum, s) => sum + s.count, 0);
+	// Shares are of the WHOLE gallery, and each carries its count.
+	//
+	// They used to divide by the sum of the sport counts, which is not the gallery: 808 public
+	// photos have no sport recorded, so the sum is 19,847 of 20,655. That published volleyball at
+	// 77% when its share of the gallery is 74% — and, worse, made the list add up to 100%, which
+	// asserts every photo has a sport. This same number has been wrong twice before (a
+	// hand-written 70%, then a 77% nobody checked the denominator of), so the count goes beside
+	// the share: a count has no denominator to get wrong.
+	//
+	// Sub-1% sports used to print as a bare name with no figure at all, which is the least useful
+	// form for the only reader this file has. With a count present there is nothing to suppress.
 	const sportsLine =
 		facets.sports
 			.map((s) => {
-				const share = total > 0 ? Math.round((s.count / total) * 100) : 0;
-				return share >= 1 ? `${humanizeTerm(s.name)} (${share}%)` : humanizeTerm(s.name);
+				const share = totalPhotos ? Math.round((s.count / totalPhotos) * 100) : 0;
+				// `0%` beside a count of 100 reads as a broken figure rather than a small one.
+				const shareLabel = share === 0 && s.count > 0 ? '<1%' : `${share}%`;
+				return `${humanizeTerm(s.name)} (${s.count.toLocaleString()}, ${shareLabel})`;
 			})
 			.join(', ') || 'volleyball';
+	// The remainder is a fact about the collection, not a rounding artifact: an engine summing the
+	// shares above lands near 96%, and this says why rather than leaving it to look like an error.
+	const sportedTotal = facets.sports.reduce((sum, s) => sum + s.count, 0);
+	const noSportCount = Math.max(0, (totalPhotos ?? 0) - sportedTotal);
 
 	const text = `# ai.txt for Nino Chavez Photography Gallery
 # Generated from live gallery data on every request.
@@ -66,7 +82,7 @@ Schema.org markup is embedded in the pages:
 # Gallery
 - Total photos: ${(totalPhotos ?? 0).toLocaleString()}
 - Total video clips: ${video.videos.toLocaleString()} (in ${video.videoAlbums} albums; not searchable, no per-clip metadata)
-- Sports: ${sportsLine}
+- Sports (count and share of all photos): ${sportsLine}${noSportCount ? `\n- Photos with no sport recorded: ${noSportCount.toLocaleString()} — the shares above do not total 100%` : ''}
 - Coverage: ${years.earliest ?? 'unknown'}-${years.latest ?? 'present'}
 - Per photo: ${ENRICHMENT_FIELDS.join(', ')}
 
