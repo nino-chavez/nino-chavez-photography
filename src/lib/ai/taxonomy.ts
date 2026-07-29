@@ -4,17 +4,22 @@
  * generated from this file (scripts/taxonomy-gen.ts), and scripts/taxonomy-check.ts fails CI
  * if a generated artifact drifts from these arrays.
  *
- * ⚠️ THE DATABASE IS NOT AMONG THEM, despite what this header said until 2026-07-29.
- * taxonomy-gen.ts renders `database/generated/taxonomy-enums.sql`, which CREATEs
- * `photo_category_enum`, `play_type_enum` and the rest — and no column uses any of them.
- * `photo_category` is varchar, `play_type` is text. The only CHECK constraints on
- * photo_metadata are `valid_sport_type` (correct, and sport_type is 100% clean) and
- * `valid_play_type` (untracked by any migration, and inert — see below).
+ * ⚠️ THE ENUM TYPES ARE STILL DECORATIVE. taxonomy-gen.ts renders
+ * `database/generated/taxonomy-enums.sql`, which CREATEs `photo_category_enum`,
+ * `play_type_enum` and the rest — and NO COLUMN USES ANY OF THEM. `photo_category` is
+ * varchar; `play_type` is text. Until 2026-07-29 this header claimed the Postgres
+ * enums/CHECKs were all generated from here, and that sentence is why nobody looked.
  *
- * So generation covers the write path, not the storage layer. `npm run taxonomy:audit`
- * (scripts/taxonomy-audit.ts) is what checks the live database against these arrays;
- * taxonomy-check.ts only proves the generated FILES match. Do not read a green
- * taxonomy-check as evidence that the data conforms.
+ * What IS generated and applied, as of 2026-07-29, are two CHECK constraints on
+ * photo_metadata — `valid_play_type` from ALL_PLAY_TYPES and `valid_play_for_sport` from
+ * PLAY_TYPES_BY_SPORT (renderers below, migrations 20260729140000 / 20260729150000).
+ * With `valid_sport_type` that is three enforced columns. `photo_category` still has NO
+ * constraint and still holds one out-of-vocabulary value.
+ *
+ * So: generation covers the write path and, now, part of the storage layer.
+ * `npm run taxonomy:audit` (scripts/taxonomy-audit.ts) is what checks the live database
+ * against these arrays; taxonomy-check.ts only proves the generated FILES match. A green
+ * taxonomy-check is still not evidence that the data conforms.
  *
  * WHY this exists (north-star slice 0): the prior system hand-maintained enum lists in three
  * places that drifted — the vision prompt listed 9 sports while the data accumulated 13
@@ -110,7 +115,64 @@ export function renderSql(): string {
 		const lits = vals.map((v) => `'${v}'`).join(', ');
 		return `DO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '${name}_enum') THEN\n    CREATE TYPE ${name}_enum AS ENUM (${lits});\n  END IF;\nEND $$;`;
 	});
-	return header + blocks.join('\n\n') + '\n';
+	return header + blocks.join('\n\n') + '\n\n' + renderPlayTypeCheck() + '\n' + renderPlayForSportCheck();
+}
+
+/**
+ * The `valid_play_type` CHECK, rendered from ALL_PLAY_TYPES so the constraint text is
+ * derived from this file rather than typed into the database by hand — which is exactly
+ * how the previous one came to allow nine volleyball-only values and omit `spike`.
+ *
+ * ⚠️ The shape is `col IS NULL OR col IN (...)`, NOT `col = ANY (ARRAY[..., NULL])`.
+ * The old constraint used the latter: a value matching nothing compares against the NULL
+ * and yields NULL, and a CHECK passes on NULL — only FALSE rejects. It accepted every
+ * string for its whole life while reporting convalidated: true. Never put NULL inside the
+ * value list; express nullability with an explicit `IS NULL` disjunct, the way
+ * `valid_sport_type` already does.
+ */
+export function renderPlayTypeCheck(): string {
+	const lits = ALL_PLAY_TYPES.map((v) => `'${v}'`);
+	const wrapped: string[] = [];
+	for (let i = 0; i < lits.length; i += 6) wrapped.push('    ' + lits.slice(i, i + 6).join(', '));
+	return (
+		'-- Nullable: play_type IS NULL means "not a play" (a candid, a celebration, a portrait).\n' +
+		'ALTER TABLE photo_metadata DROP CONSTRAINT IF EXISTS valid_play_type;\n' +
+		'ALTER TABLE photo_metadata ADD CONSTRAINT valid_play_type CHECK (\n' +
+		'  play_type IS NULL OR play_type IN (\n' +
+		wrapped.join(',\n') +
+		'\n  )\n) NOT VALID;\n'
+	);
+}
+
+/**
+ * The `valid_play_for_sport` CHECK, rendered from PLAY_TYPES_BY_SPORT.
+ *
+ * The flat vocabulary alone cannot say that `spike` is meaningless on a basketball photo.
+ * This file already promised the map "additionally validates that a given play belongs to
+ * the photo's sport" — until now nothing enforced it, and 227 rows carried a volleyball
+ * play on another sport (basketball/dig, soccer/dig, baseball/serve).
+ *
+ * ⚠️ Note the explicit `sport_type IS NOT NULL` guard. Without it, a row with a play and no
+ * sport makes every disjunct NULL, the whole predicate NULL, and the CHECK passes — the same
+ * trap that made the old valid_play_type inert. A play with no sport must be rejected, not
+ * silently admitted. `other` has an empty play list and is therefore rejected the same way.
+ */
+export function renderPlayForSportCheck(): string {
+	const arms = Object.entries(PLAY_TYPES_BY_SPORT)
+		.filter(([, plays]) => plays.length > 0)
+		.map(([sport, plays]) => {
+			const lits = plays.map((p) => `'${p}'`).join(', ');
+			return `    (sport_type = '${sport}' AND play_type IN (${lits}))`;
+		});
+	return (
+		'-- A play must belong to the photo\'s sport. `sport_type IS NOT NULL` is load-bearing:\n' +
+		'-- without it a play on a sportless row makes the predicate NULL, which a CHECK accepts.\n' +
+		'ALTER TABLE photo_metadata DROP CONSTRAINT IF EXISTS valid_play_for_sport;\n' +
+		'ALTER TABLE photo_metadata ADD CONSTRAINT valid_play_for_sport CHECK (\n' +
+		'  play_type IS NULL OR (sport_type IS NOT NULL AND (\n' +
+		arms.join(' OR\n') +
+		'\n  ))\n) NOT VALID;\n'
+	);
 }
 
 /** JSON-schema $defs (one enum per taxonomy field) for the extraction structured output. */

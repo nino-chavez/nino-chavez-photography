@@ -11,7 +11,8 @@
  * Two independent checks, both read-only:
  *
  *   1. VALUES  — every distinct value in each enrichment column is in its vocabulary.
- *   2. GUARDS  — no CHECK constraint contains NULL inside an `ANY(ARRAY[...])`.
+ *   2. PAIRS   — every play_type belongs to its row's sport (PLAY_TYPES_BY_SPORT).
+ *   3. GUARDS  — no CHECK constraint contains NULL inside an `ANY(ARRAY[...])`.
  *
  * Check 2 is the one that generalizes, and it is why check 1 was needed at all.
  * `x = ANY(ARRAY['a','b',NULL])` evaluates to NULL when x matches nothing, and a CHECK
@@ -30,7 +31,12 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { SPORTS, PHOTO_CATEGORIES, ALL_PLAY_TYPES } from '../src/lib/ai/taxonomy';
+import {
+	SPORTS,
+	PHOTO_CATEGORIES,
+	ALL_PLAY_TYPES,
+	PLAY_TYPES_BY_SPORT
+} from '../src/lib/ai/taxonomy';
 
 const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -85,7 +91,35 @@ for (const { column, vocabulary } of COLUMNS) {
 	if (rows.length > 12) console.log(`          … and ${rows.length - 12} more`);
 }
 
-// --- 2. guards ---------------------------------------------------------------
+// --- 2. pairs ----------------------------------------------------------------
+// The flat vocabulary cannot say `spike` is meaningless on a basketball photo. This is
+// the half of the rule taxonomy.ts always described and nothing enforced until
+// `valid_play_for_sport`. A play on a row with NO sport counts as a violation too.
+{
+	const arms = Object.entries(PLAY_TYPES_BY_SPORT)
+		.filter(([, plays]) => plays.length > 0)
+		.map(([sport, plays]) => `(sport_type = '${sport}' AND play_type IN (${sqlList(plays)}))`);
+	const rows = await query<{ sport: string; play_type: string; n: number }>(
+		`select coalesce(sport_type, '(no sport)') as sport, play_type, count(*)::int as n
+		 from photo_metadata
+		 where play_type is not null and not (sport_type is not null and (${arms.join(' or ')}))
+		 group by 1, 2 order by 3 desc`
+	);
+	console.log('');
+	if (rows.length === 0) {
+		console.log('  ok    pairs: every play_type belongs to its row\'s sport');
+	} else {
+		findings += rows.length;
+		const total = rows.reduce((sum, r) => sum + r.n, 0);
+		console.log(`  FAIL  pairs: ${rows.length} sport/play combination(s) impossible, ${total} row(s)`);
+		for (const r of rows.slice(0, 12)) {
+			console.log(`          ${r.n.toString().padStart(6)}  ${r.sport} / ${r.play_type}`);
+		}
+		if (rows.length > 12) console.log(`          … and ${rows.length - 12} more`);
+	}
+}
+
+// --- 3. guards ---------------------------------------------------------------
 // A CHECK is inert when its predicate can only be TRUE or NULL. The reachable way to
 // write that by accident is a NULL literal inside the ANY(ARRAY[...]) it compares to.
 const constraints = await query<{ conname: string; def: string; table: string }>(

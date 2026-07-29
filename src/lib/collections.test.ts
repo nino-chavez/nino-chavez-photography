@@ -25,7 +25,10 @@ const EXPECTED: Record<
 > = {
 	'portfolio-excellence': { minQuality: 9 },
 	'victory-celebrations': { minQuality: 7, category: 'celebration' },
-	'aerial-artistry': { minQuality: 7, playTypes: ['attack', 'block', 'spike'] },
+	// `attack` was in this list until 2026-07-29. It was never a canonical play type, and
+	// migration 20260729140000 rewrote every row carrying it to `spike` — so the expectation
+	// changes here deliberately, unlike the others which are still the pre-refactor values.
+	'aerial-artistry': { minQuality: 7, playTypes: ['block', 'spike'] },
 	'defensive-masterclass': { minQuality: 7, playTypes: ['dig', 'block'] }
 };
 
