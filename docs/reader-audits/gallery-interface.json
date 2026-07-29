@@ -1,17 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T16:03:33.212Z",
+  "reviewedAt": "2026-07-29T16:24:14.414Z",
   "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build walked: heading outline surveyed on 10 routes (every page now exactly one h1, zero skipped levels); logo link still announces 'Go to homepage'; h3 styling preserved on the h2s; sr-only h1 copy matches each page's existing <title>",
-  "sourceDigest": "sha256:fbcd95c918f37be0de530b8e6181bc5537626a59494fdbaec7f06e0d08f2a1af",
+  "method": "preview build walked: /api/zip-url probed with a real album key, a well-formed-but-absent key, path traversal, a payload-delimiter injection, a 500-char string and an empty key; error copy read; worker guards unit-tested (10 cases)",
+  "sourceDigest": "sha256:4b1206d24376ce316c7ef82f41dd268d48f7b90e15e5bdfc110c6e4db1866995",
   "sourceFiles": 131,
   "scope": [
-    "header wordmark",
-    "explore h1",
-    "timeline h1",
-    "album card",
-    "collection card",
-    "section rails"
+    "api/zip-url validation",
+    "zip worker request guards"
   ]
 }

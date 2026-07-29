@@ -16,6 +16,20 @@ const ZIP_WORKER_URL = 'https://zip.ninochavez.co';
 const ALLOWED_QUALITIES = new Set(['large']);
 
 /**
+ * Album keys are SmugMug-derived — all 262 in the database are exactly six alphanumeric
+ * characters. This bound is looser than that so a future ingest with a different key format is
+ * not silently broken, and tight enough to exclude what matters: path separators, the `:` that
+ * delimits the signed payload, and unbounded length.
+ *
+ * This was missing entirely. The note above about `quality` — that rejecting other values
+ * "keeps the field from carrying arbitrary attacker-chosen text into a signature" — applied
+ * word for word to the field beside it, which was signing `../../etc/passwd`,
+ * `A:large:9999999999` and a 500-character string on request. The verifying worker applies the
+ * identical pattern (cloudflare-worker/album-zip/src/request-guards.ts).
+ */
+const ALBUM_KEY_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
+
+/**
  * Mint an HMAC-signed URL for the album ZIP worker.
  *
  * GET /api/zip-url?albumKey=...&quality=large  ->  { url: "https://zip.ninochavez.co/zip/..." }
@@ -45,6 +59,10 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	if (!albumKey || !quality) {
 		return json({ error: 'Missing albumKey or quality parameter' }, { status: 400 });
+	}
+
+	if (!ALBUM_KEY_PATTERN.test(albumKey)) {
+		return json({ error: 'Invalid albumKey' }, { status: 400 });
 	}
 
 	if (!ALLOWED_QUALITIES.has(quality)) {
