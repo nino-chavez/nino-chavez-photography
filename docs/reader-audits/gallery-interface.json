@@ -1,13 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T16:24:14.414Z",
+  "reviewedAt": "2026-07-29T16:57:44.409Z",
   "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build walked: /api/zip-url probed with a real album key, a well-formed-but-absent key, path traversal, a payload-delimiter injection, a 500-char string and an empty key; error copy read; worker guards unit-tested (10 cases)",
-  "sourceDigest": "sha256:4b1206d24376ce316c7ef82f41dd268d48f7b90e15e5bdfc110c6e4db1866995",
+  "method": "preview build: a filtered search recorded {sport, division} instead of a 100-key album dump, verified in prod DB. Analytics panel copy reviewed in source and its filter-rendering covered by 7 tests — the page itself is admin-gated and could NOT be walked in a browser",
+  "sourceDigest": "sha256:ae68b86f042325afb348dd45cc4857e32a7f1db64099a97326095a3cd36f999e",
   "sourceFiles": 131,
   "scope": [
-    "api/zip-url validation",
-    "zip worker request guards"
+    "explore search logging",
+    "analytics recent searches panel",
+    "zero-result caption"
   ]
 }

@@ -55,6 +55,30 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
   // Check if any filters are active
   const hasActiveFilters = !!(sportFilter || categoryFilter || playTypeFilter || jerseyFilter || divisionFilter || levelFilter);
 
+  /**
+   * What the VISITOR selected, for `search_queries.filters_used`.
+   *
+   * Not `filterOptions` — that is the internal argument to searchPhotos, and its `albumKeys`
+   * is the resolved facet expansion. Logging it stored a dump of every album matching the
+   * division/level facet: 11 rows averaging 611 bytes, one at 1,035, each a list of ~100
+   * album keys. It also LOST the thing worth recording, because `division` and `level` are
+   * consumed into that list and never appear — so the one column meant to answer "what was
+   * this person filtering by" could not answer it for the two filters that need resolving.
+   *
+   * Undefined keys are dropped so a row carries only what was actually chosen. The jersey
+   * branch above already logged this shape; this makes the two agree.
+   */
+  const visitorFilters = Object.fromEntries(
+    Object.entries({
+      sport: sportFilter,
+      category: categoryFilter,
+      playType: playTypeFilter,
+      jersey: jerseyFilter,
+      division: divisionFilter,
+      level: levelFilter
+    }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+
   // PERFORMANCE: Stream filter counts — don't block FCP on expensive aggregation query
   // When filters are active, getFilterCounts can take 2-4s. By not awaiting,
   // SvelteKit streams the result and photos render immediately.
@@ -129,7 +153,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
     if (offset === 0) {
       keepTrackingAlive(platform, trackSearchQuery({
         query_text: searchQuery,
-        filters_used: hasActiveFilters ? filterOptions : undefined,
+        filters_used: hasActiveFilters ? visitorFilters : undefined,
         results_count: totalCount,
         userAgent,
       }));
