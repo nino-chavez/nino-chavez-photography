@@ -1,12 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T18:47:07.606Z",
+  "reviewedAt": "2026-07-29T19:23:32.335Z",
   "reviewedBy": "Claude Opus 5 (agent session)",
-  "method": "Scraped all 11 album-listing pages under each sort order from the dev server and compared card counts, per-album photo/video counts, ordering and filtered totals against direct SQL",
-  "sourceDigest": "sha256:25f6bc63c5e5af59d23bf41272bbf3bab7e70a4bea519a798da768502d876f20",
-  "sourceFiles": 128,
-  "scope": [
-    "albums listing: card counts, duplicate detection, sort orders, discovery filters (q/sport/year), album total in the meta description"
-  ]
+  "method": "Served the production build under wrangler pages dev and read the head of /share/<token> and /albums: the share page emits zero canonical/og:url/twitter:url tags and zero occurrences of the token, keeps 'noindex, nofollow' and its album-name title, and now describes itself to a client as 'A private album shared by Nino Chavez Photography.' instead of inheriting the site's volleyball marketing copy; /albums still emits one of each URL tag with its #126 description intact",
+  "sourceDigest": "sha256:0efa2609b4b85fd27f7c1f40279f82688c5a376c3a1d3e71892720325db392d8",
+  "sourceFiles": 128
 }
