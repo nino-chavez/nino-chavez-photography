@@ -3,10 +3,18 @@
 
 	interface Photo {
 		image_key: string;
+		/** Built by the chat endpoint from cf_image_id. Null only when the row has no image. */
 		thumbnail_url: string | null;
+		/**
+		 * App-relative, e.g. `/photo/DSC05553`. Built server-side because `image_key` is not
+		 * unique — 113 of them name two photos — so the addressing rule lives with the query
+		 * that knows the peers, not here.
+		 */
+		url: string;
 		sport_type?: string;
 		play_type?: string;
 		photo_category?: string;
+		caption?: string;
 	}
 
 	interface Props {
@@ -30,7 +38,7 @@
 	<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
 		{#each photos as photo, i}
 			<a
-				href={`${base}/photo/${photo.image_key}`}
+				href={`${base}${photo.url}`}
 				target="_blank"
 				rel="noopener noreferrer"
 				class="group relative aspect-square bg-black/20 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-colors duration-200 animate-grid-item-in"

@@ -12,12 +12,17 @@
 		toolInvocations?: Array<{
 			toolName: string;
 			result?: {
+				// Shaped by shapePhotos() in /api/chat — thumbnail_url and url are built
+				// server-side. This used to declare thumbnail_url as a required string while
+				// no query selected it, so the type asserted exactly the field that was missing.
 				photos?: Array<{
 					image_key: string;
-					thumbnail_url: string;
-					sport_type: string;
-					play_type: string;
-					photo_category: string;
+					thumbnail_url: string | null;
+					url: string;
+					sport_type?: string;
+					play_type?: string;
+					photo_category?: string;
+					caption?: string;
 				}>;
 			};
 		}>;
