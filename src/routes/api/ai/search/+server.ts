@@ -31,21 +31,28 @@ import { photoAddresses } from '$lib/supabase/photo-address';
 import { photoIdentityPeers, type PhotoIdentityRow } from '$lib/supabase/photo-address-server';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { SITE_URL } from '$lib/site-url';
+import { parsePagination } from '$lib/api/pagination';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const query = url.searchParams.get('q');
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
+		const page = parsePagination(url.searchParams, { defaultLimit: 20, maxLimit: 50 });
+		if (!page.ok) return json({ error: page.error }, { status: 400 });
+		const { limit, offset } = page.value;
 		const format = url.searchParams.get('format') || 'json';
 
 		if (!query) {
 			return json({ error: 'Missing required parameter: q' }, { status: 400 });
 		}
 
+		// `offset` was parsed and then dropped, so this endpoint reported `total_results`
+		// in the thousands while serving only ever the first page — an agent could see
+		// results 1-20 of 15,330 and had no way to ask for the rest. searchPhotos has
+		// supported offset all along.
 		const { photos, totalCount, searchMode, parsedDescription } = await searchPhotos(
 			query,
 			{},
-			{ limit }
+			{ limit, offset }
 		);
 
 		// image_key is NOT unique — 113 are shared — so a /photo/<image_key> URL can resolve to a
@@ -105,6 +112,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			interpreted_as: parsedDescription,
 			total_results: totalCount,
 			limit,
+			offset,
 			results
 		});
 	} catch (error) {

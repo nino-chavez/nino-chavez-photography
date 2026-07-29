@@ -9,12 +9,14 @@ import type { RequestHandler } from './$types';
 import { excludeUnlisted, getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
 import { createAlbumSlug } from '$lib/utils';
 import { SITE_URL } from '$lib/site-url';
+import { parsePagination } from '$lib/api/pagination';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
 		// Parse query parameters
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
-		const offset = parseInt(url.searchParams.get('offset') || '0');
+		const page = parsePagination(url.searchParams, { defaultLimit: 50, maxLimit: 100 });
+		if (!page.ok) return json({ error: page.error }, { status: 400 });
+		const { limit, offset } = page.value;
 		const sport = url.searchParams.get('sport') || undefined;
 		const year = url.searchParams.get('year') ? parseInt(url.searchParams.get('year')!) : undefined;
 

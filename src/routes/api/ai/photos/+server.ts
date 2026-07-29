@@ -16,14 +16,17 @@ import { createAlbumSlug } from '$lib/utils';
 import { photoAddresses } from '$lib/supabase/photo-address';
 import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
 import { SITE_URL } from '$lib/site-url';
+import { parsePagination } from '$lib/api/pagination';
 import { personSchema } from '$lib/aeo/person';
 import type { PhotoMetadataRow } from '$types/database';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		// Parse query parameters
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
-		const offset = parseInt(url.searchParams.get('offset') || '0');
+		// Parse query parameters. `limit`/`offset` are validated rather than parseInt'd —
+		// see $lib/api/pagination for the two failure modes that reached production.
+		const page = parsePagination(url.searchParams, { defaultLimit: 50, maxLimit: 100 });
+		if (!page.ok) return json({ error: page.error }, { status: 400 });
+		const { limit, offset } = page.value;
 		const sport = url.searchParams.get('sport') || undefined;
 		const category = url.searchParams.get('category') || undefined;
 		const playType = url.searchParams.get('play_type') || undefined;
