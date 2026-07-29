@@ -2,9 +2,9 @@ import type { Env } from './types';
 import { fetchAlbumManifest, ManifestUnavailable } from './manifest';
 import { computeContentHash, cacheKey } from './hash';
 import { buildZip } from './zip-builder';
+import { isValidAlbumKey, isFreshTimestamp } from './request-guards';
 
 const MAX_PHOTOS = 300;
-const SIGNATURE_MAX_AGE_S = 300; // 5 minutes
 
 /**
  * Signature verification for the download URL minted by /api/zip-url.
@@ -102,6 +102,15 @@ export default {
 		}
 
 		const albumKey = decodeURIComponent(zipMatch[1]);
+		// Shape-check before rate limiting, signature work or the upstream fetch. Not access
+		// control — the signature is that — but the payload delimiter is ':' and this value
+		// reaches the manifest URL, so junk should not get that far.
+		if (!isValidAlbumKey(albumKey)) {
+			return new Response('Invalid album key', {
+				status: 400,
+				headers: corsHeaders(allowedOrigin)
+			});
+		}
 		const quality = url.searchParams.get('quality');
 		const ts = url.searchParams.get('ts');
 		const sig = url.searchParams.get('sig');
@@ -128,9 +137,10 @@ export default {
 			});
 		}
 
-		const now = Math.floor(Date.now() / 1000);
-		const tsNum = parseInt(ts, 10);
-		if (isNaN(tsNum) || now - tsNum > SIGNATURE_MAX_AGE_S) {
+		// Bounded in BOTH directions — see isFreshTimestamp. The previous check was
+		// `now - tsNum > SIGNATURE_MAX_AGE_S`, which is never true for a timestamp in the
+		// future, so a signature dated next year would have been accepted indefinitely.
+		if (!isFreshTimestamp(ts, Math.floor(Date.now() / 1000))) {
 			return new Response('Signature expired', {
 				status: 403,
 				headers: corsHeaders(allowedOrigin)

@@ -7,7 +7,7 @@
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "tsx --test src/manifest.test.ts"
+    "test": "tsx --test src/manifest.test.ts src/request-guards.test.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2"
