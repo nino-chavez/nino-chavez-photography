@@ -2,15 +2,30 @@
  * AI-Friendly Albums API
  *
  * Provides public API for AI crawlers and answer engines to access album data.
+ *
+ * It answered with 249 albums while `/albums` linked 251, and reported every album's video
+ * count as absent rather than zero. Both came from the same cause: albums were read from
+ * `albums_summary` alone, so an album holding only videos had no row to be found in and a
+ * mixed album's 134 clips were simply not part of the answer.
+ *
+ * The list is now the same one the browse page builds — buildAlbumListing over the WHOLE set —
+ * and this route filters and pages the result. Paginating in Postgres and merging afterwards is
+ * what put six albums on all eleven pages of `/albums`; a merged list can only be paged as one
+ * list. The filters here stay in JS for the same reason.
  */
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { excludeUnlisted, getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
+import { getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
 import { createAlbumSlug } from '$lib/utils';
 import { SITE_URL } from '$lib/site-url';
 import { parsePagination, validateFilter, parseYear, yearBounds } from '$lib/api/pagination';
 import { SPORTS } from '$lib/ai/taxonomy';
+import {
+	buildAlbumListing,
+	type AlbumSummaryRow,
+	type VideoSummaryRow
+} from '$lib/albums/listing';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -28,81 +43,80 @@ export const GET: RequestHandler = async ({ url }) => {
 		if (!yearParam.ok) return json({ error: yearParam.error }, { status: 400 });
 		const year = yearParam.value;
 
-		// Build query using materialized view (anon REVOKE'd → read via service_role)
-		let query = matviewClient()
-			.from('albums_summary')
-			.select('*', { count: 'exact' });
-
+		// albums_summary and videos_summary are materialized views — anon is REVOKE'd, so both
+		// read through service_role and RLS does not apply.
+		//
 		// Unlisted albums are private client work — family portraits, senior sessions, a
-		// marriage proposal. This endpoint reads albums_summary through matviewClient(),
-		// which is service_role and bypasses RLS, and it had no gate: all 13 unlisted
-		// albums were served here with their client names and album keys (verified against
-		// production 2026-07-29). The keys are what address every album-scoped endpoint, so
-		// this was also the discovery step for anything else keyed by album.
-		//
-		// The gate's own contract already covered this surface — see getUnlistedAlbumKeys:
-		// "must not surface in PUBLIC DISCOVERY". A public API for AI crawlers is public
-		// discovery; it was simply never wired up.
-		query = excludeUnlisted(query, await getUnlistedAlbumKeys());
+		// marriage proposal. This endpoint had no gate: all 13 were served here with their
+		// client names and album keys (verified against production 2026-07-29). The keys are
+		// what address every album-scoped endpoint, so this was also the discovery step for
+		// anything else keyed by album. The gate's own contract already covered this surface —
+		// see getUnlistedAlbumKeys: "must not surface in PUBLIC DISCOVERY". buildAlbumListing
+		// applies it to both halves of the merge.
+		const [{ data: photoRows, error }, { data: videoRows, error: videoError }, unlistedKeys] =
+			await Promise.all([
+				matviewClient().from('albums_summary').select('*'),
+				matviewClient().from('videos_summary').select('*'),
+				getUnlistedAlbumKeys()
+			]);
 
-		// Apply filters
-		if (sport) {
-			query = query.contains('sports', [sport]);
-		}
-
-		// Year overlap, in the QUERY. This used to be a JS filter applied to the page that
-		// came back (see below), which meant the year was applied AFTER pagination: 45 albums
-		// cover 2024, but `?year=2024` returned 16 at limit=50, 20 at limit=100 and 11 at
-		// offset=100 — the answer depended on the page size, `total` always reported the
-		// unfiltered 249, and no request could return all 45.
-		//
-		// The old comment said this had to be post-query "since we don't have year in view".
-		// The view has no year column, but it has both date bounds, and an album overlaps a
-		// year exactly when earliest <= Dec 31 AND latest >= Jan 1. Albums with no dates are
-		// excluded, as they were before — a null date cannot overlap anything.
-		if (year !== undefined) {
-			const { start, end } = yearBounds(year);
-			query = query.lte('earliest_photo_date', end).gte('latest_photo_date', start);
-		}
-
-		// Apply sorting (by photo count, then date)
-		query = query
-			.order('photo_count', { ascending: false })
-			.order('latest_photo_date', { ascending: false, nullsFirst: false });
-
-		// Apply pagination
-		query = query.range(offset, offset + limit - 1);
-
-		const { data: albumsData, error, count } = await query;
-
-		if (error) {
-			console.error('[API] Error fetching albums:', error);
+		if (error || videoError) {
+			console.error('[API] Error fetching albums:', error ?? videoError);
 			return json({ error: 'Failed to fetch albums' }, { status: 500 });
 		}
 
-		const total = count || 0;
+		// Sorted photo_count desc, then latest date desc — the ordering this route already
+		// published, expressed as the listing's 'count' sort.
+		const listing = buildAlbumListing({
+			photoRows: (photoRows ?? []) as AlbumSummaryRow[],
+			videoRows: (videoRows ?? []) as VideoSummaryRow[],
+			unlistedKeys: new Set(unlistedKeys),
+			sortBy: 'count'
+		});
 
-		// The year filter is in the query above, so `count` now reflects it and every page is
-		// a real page of the filtered set.
-		const albums = (albumsData || []) as any[];
+		// `sport` matches the album's whole sport array, not just its primary — an album can
+		// hold two sports and a caller asking for the smaller one still means it. That is why
+		// the listing's own sport filter (primary only) is deliberately not used here.
+		//
+		// Year is an OVERLAP test, also deliberately not the listing's (which compares only the
+		// album's latest year): an album shot across a New Year covers both. It used to be a JS
+		// filter applied to the page that came back, i.e. AFTER pagination — 45 albums overlap
+		// 2024, but `?year=2024` returned 16 at limit=50, 20 at limit=100 and 11 at offset=100,
+		// `total` always reported the unfiltered 249, and no request could return all of them.
+		// (41 of those 45 are public; the other four are unlisted client work, which is the gate
+		// above doing its job — not a regression against that older measurement.)
+		// Albums with no dates are excluded, as they always were: a null date overlaps nothing.
+		const bounds = year !== undefined ? yearBounds(year) : null;
+		const filtered = listing.filter((album) => {
+			if (sport && !album.sports.includes(sport)) return false;
+			if (bounds) {
+				const { earliest, latest } = album.dateRange;
+				if (!earliest || !latest) return false;
+				if (!(earliest <= bounds.end && latest >= bounds.start)) return false;
+			}
+			return true;
+		});
 
 		return json({
-			albums: albums.map((album) => ({
-				key: album.album_key,
-				name: album.album_name || 'Unknown Album',
+			albums: filtered.slice(offset, offset + limit).map((album) => ({
+				key: album.albumKey,
+				name: album.albumName,
 				// The slug form the sitemap and the site's own links use. A bare key 301s, so
 				// publishing it hands every crawler an extra hop and a second address for one
 				// album — the inconsistency #105 removed for photos.
-				url: `${SITE_URL}/albums/${createAlbumSlug(album.album_name || album.album_key, album.album_key)}`,
-				photo_count: parseInt(album.photo_count) || 0,
-				sport: album.primary_sport || 'unknown',
+				url: `${SITE_URL}/albums/${createAlbumSlug(album.albumName, album.albumKey)}`,
+				photo_count: album.photoCount,
+				// Absent until now, so a caller reading this endpoint could not tell that four
+				// albums hold 373 clips alongside their photos, or that two hold nothing else.
+				video_count: album.videoCount,
+				sport: album.primarySport,
 				date_range: {
-					start: album.earliest_photo_date || null,
-					end: album.latest_photo_date || null
+					start: album.dateRange.earliest,
+					end: album.dateRange.latest
 				},
-				cover_image: album.cover_image_url || null
+				cover_image: album.coverImageUrl
 			})),
-			total,
+			total: filtered.length,
 			limit,
 			offset
 		});

@@ -13,20 +13,22 @@
  */
 
 import { SITE_URL } from '$lib/site-url';
-import { resolveBaseFacets } from '$lib/supabase/server';
+import { resolveBaseFacets, getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
 import { supabaseServer } from '$lib/supabase/server';
+import { videoOnlyRows } from '$lib/albums/listing';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { ENRICHMENT_FIELDS, humanizeTerm } from '$lib/aeo/faq-copy';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ setHeaders }) => {
-	const [facets, { count: totalPhotos }, years] = await Promise.all([
+	const [facets, { count: totalPhotos }, years, video] = await Promise.all([
 		resolveBaseFacets(),
 		supabaseServer
 			.from(PHOTOS_READ)
 			.select('*', { count: 'exact', head: true })
 			.not('sharpness', 'is', null),
-		photoYearRange()
+		photoYearRange(),
+		videoTotals()
 	]);
 
 	const total = facets.sports.reduce((sum, s) => sum + s.count, 0);
@@ -44,6 +46,8 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 # About
 A photography portfolio of live sports action — mostly high school and collegiate volleyball,
 shot by Nino Chavez. Photos are searchable by what is visibly happening in them.
+The gallery also holds ${video.total.toLocaleString()} video clips across ${video.albums} albums, ${video.videoOnly} of which hold video only.
+Clips are browsable on their album pages but are NOT in the search index and carry no captions.
 
 # APIs
 # Absolute URLs: this gallery lives under the /photography path, so root-relative paths
@@ -62,6 +66,7 @@ Schema.org markup is embedded in the pages:
 
 # Gallery
 - Total photos: ${(totalPhotos ?? 0).toLocaleString()}
+- Total video clips: ${video.total.toLocaleString()} (in ${video.albums} albums; not searchable, no per-clip metadata)
 - Sports: ${sportsLine}
 - Coverage: ${years.earliest ?? 'unknown'}-${years.latest ?? 'present'}
 - Per photo: ${ENRICHMENT_FIELDS.join(', ')}
@@ -80,6 +85,38 @@ For licensing inquiries: ${SITE_URL}/about
 	setHeaders({ 'cache-control': 'public, max-age=3600, s-maxage=3600' });
 	return new Response(text, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
 };
+
+/**
+ * Public video totals: clips, albums holding any, and albums holding only video.
+ *
+ * This file described a photo-only gallery. It listed the photo total, the sports, the
+ * coverage years and the nine per-photo enrichment fields, and said nothing about 481 clips
+ * in 6 albums — two of which hold nothing else, so an engine reading only this had no way to
+ * learn they exist. The "not searchable" note is part of the fact: `/api/ai/search` and the
+ * gallery search both cover photo_metadata, and every video row's description is null.
+ *
+ * videos_summary is a matview (anon REVOKE'd → service_role, RLS does not apply), so the
+ * unlisted gate is explicit. No unlisted album holds video today; that is not a guarantee.
+ */
+async function videoTotals(): Promise<{ total: number; albums: number; videoOnly: number }> {
+	const [{ data: videoRows }, { data: albumKeyRows }, unlistedKeys] = await Promise.all([
+		matviewClient().from('videos_summary').select('album_key, video_count'),
+		matviewClient().from('albums_summary').select('album_key'),
+		getUnlistedAlbumKeys()
+	]);
+	const unlisted = new Set(unlistedKeys);
+	const rows = ((videoRows ?? []) as { album_key: string; video_count: number | string | null }[]).filter(
+		(v) => !unlisted.has(v.album_key)
+	);
+	const photoAlbumKeys = new Set(
+		((albumKeyRows ?? []) as { album_key: string }[]).map((r) => r.album_key).filter((k) => !unlisted.has(k))
+	);
+	return {
+		total: rows.reduce((sum, v) => sum + (Number(v.video_count) || 0), 0),
+		albums: rows.length,
+		videoOnly: videoOnlyRows(rows, photoAlbumKeys, unlisted).length
+	};
+}
 
 /** First and last year a photo was taken. Ordered and read on the same column. */
 async function photoYearRange(): Promise<{ earliest: number | null; latest: number | null }> {
