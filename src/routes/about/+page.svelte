@@ -18,7 +18,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import OptimizedImage from '$lib/components/ui/OptimizedImage.svelte';
-	import { SITE_URL } from '$lib/site-url';
+	import { personSchema } from '$lib/aeo/person';
 
 	interface Props {
 		data: {
@@ -35,15 +35,7 @@
 	let schemaData = $derived.by(() => ({
 		'@context': 'https://schema.org',
 		'@type': 'ProfilePage',
-		mainEntity: {
-			'@type': 'Person',
-			name: 'Nino Chavez',
-			jobTitle: 'Sports Photographer',
-			description: pageDescription,
-			url: `${SITE_URL}/about`,
-			sameAs: ['https://www.instagram.com/nino.chavez.photo'],
-			knowsAbout: ['Sports Photography', 'Volleyball Photography', 'Action Sports']
-		}
+		mainEntity: personSchema({ description: pageDescription })
 	}));
 </script>
 

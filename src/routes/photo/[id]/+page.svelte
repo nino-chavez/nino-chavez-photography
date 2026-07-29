@@ -12,6 +12,7 @@
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
 	import { SITE_URL } from '$lib/site-url';
+	import { personSchema } from '$lib/aeo/person';
 
 	let { data }: { data: PageData } = $props();
 
@@ -112,22 +113,9 @@
 			...(imageWidth && imageHeight ? { aspectRatio: `${imageWidth}/${imageHeight}` } : {})
 		},
 		// Enhanced Person (photographer) with complete profile
-		creator: {
-			'@type': 'Person',
-			name: 'Nino Chavez',
-			jobTitle: 'Professional Sports Photographer',
-			url: `${baseUrl}/about`,
-			sameAs: [
-				'https://www.instagram.com/ninochavez',
-				'https://twitter.com/ninochavez'
-			],
-			knowsAbout: [
-				'Sports Photography',
-				'Action Photography',
-				'Event Photography',
-				data.photo.metadata.sport_type
-			].filter(Boolean)
-		},
+		creator: personSchema({
+			knowsAbout: ['Action Photography', data.photo.metadata.sport_type]
+		}),
 		// Additional metadata
 		sport: data.photo.metadata.sport_type,
 		category: data.photo.metadata.photo_category,

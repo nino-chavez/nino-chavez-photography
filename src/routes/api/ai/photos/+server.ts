@@ -16,6 +16,7 @@ import { createAlbumSlug } from '$lib/utils';
 import { photoAddresses } from '$lib/supabase/photo-address';
 import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
 import { SITE_URL } from '$lib/site-url';
+import { personSchema } from '$lib/aeo/person';
 import type { PhotoMetadataRow } from '$types/database';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -168,11 +169,7 @@ function createPhotographSchema(row: PhotoMetadataRow, segment: string) {
 		},
 		name: row.album_name || 'Untitled Photo',
 		description: generateDescription(row),
-		creator: {
-			'@type': 'Person',
-			name: 'Nino Chavez',
-			url: `${SITE_URL}/about`
-		},
+		creator: personSchema({ knowsAbout: [row.sport_type] }),
 		dateCreated: row.photo_date || row.enriched_at || row.upload_date,
 		keywords: [
 			row.sport_type,

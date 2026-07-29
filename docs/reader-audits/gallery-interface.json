@@ -1,14 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T01:24:45.071Z",
+  "reviewedAt": "2026-07-29T02:49:14.928Z",
   "reviewedBy": "Claude (session 64a8fb16)",
-  "method": "Verified in the production build at localhost:4173 that /api/ai/photos and /api/ai/albums now publish slug-form album URLs matching the sitemap, and that both resolve 200 without a redirect.",
-  "sourceDigest": "sha256:af88f3e1267557364d8e85f590ede2fd814f3dfacc8cde3d243a72049de908cd",
+  "method": "Walked /about and a photo page in the built preview at :4173. Verified reader-visible copy is unchanged: the diff touches only JSON-LD blocks and imports on both pages. Confirmed rendered Person markup now matches the visible identity — @nino.chavez.photo, the same handle in the footer, the About link, and the branded-image watermark.",
+  "sourceDigest": "sha256:4ddc01009a17c0e05b69ca20ee0ebeb94d797a9096c55a8bfdafae0d75a20c52",
   "sourceFiles": 131,
   "scope": [
-    "src/routes/api/ai/photos",
-    "src/routes/api/ai/albums",
-    "src/lib/supabase/photo-address-server.ts"
+    "src/routes/about/+page.svelte",
+    "src/routes/photo/[id]/+page.svelte",
+    "src/routes/api/ai/photos/+server.ts",
+    "src/lib/aeo/person.ts"
   ]
 }
