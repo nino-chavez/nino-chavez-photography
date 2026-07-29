@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T21:53:43.480Z",
-  "reviewedBy": "claude-opus-5 (session 64a8fb16)",
-  "method": "unlisted-album gate fail-closed walk. Fault-injected a failing getAlbumSettings read (bogus column in the select) on the wrangler build and confirmed the gate now fails CLOSED: private album page 503 (it answered 200 in production during the incident this fixes), private og.png 404, public album page 503, /share/<token> 404. Reverted the injection and re-confirmed the baseline: private album 404, private og.png 404, share 200 with photos, public album 200. Also verified all 13 unlisted albums answer 404 on their canonical URLs after the emergency GRANT rollback. No visitor-facing copy changed; the only new reader-visible string is the 503 message 'This album is temporarily unavailable.'",
-  "sourceDigest": "sha256:120ba81ff2c515d9346b4d44db6114cd61b1543bc6ad118ee19bc6addab8dc2b",
+  "reviewedAt": "2026-07-29T22:18:56.740Z",
+  "reviewedBy": "Claude (Nino's session)",
+  "method": "API-only change (/api/album-photos, /api/zip-url): confirmed the diff adds no reader-visible strings, then rendered /albums and /albums/raiders-open-rdrsVB against the production build in wrangler pages dev and confirmed the interface copy is byte-for-byte unchanged.",
+  "sourceDigest": "sha256:b0ad5303d68d53816d5ba9bd52ad8d1345e66a4c7017f0344da9f52d6a7f0e78",
   "sourceFiles": 128
 }
