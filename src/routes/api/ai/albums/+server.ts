@@ -6,7 +6,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { matviewClient } from '$lib/supabase/server';
+import { excludeUnlisted, getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
 
 const BASE_URL = 'https://ninochavez.co/photography';
 
@@ -22,6 +22,18 @@ export const GET: RequestHandler = async ({ url }) => {
 		let query = matviewClient()
 			.from('albums_summary')
 			.select('*', { count: 'exact' });
+
+		// Unlisted albums are private client work — family portraits, senior sessions, a
+		// marriage proposal. This endpoint reads albums_summary through matviewClient(),
+		// which is service_role and bypasses RLS, and it had no gate: all 13 unlisted
+		// albums were served here with their client names and album keys (verified against
+		// production 2026-07-29). The keys are what address every album-scoped endpoint, so
+		// this was also the discovery step for anything else keyed by album.
+		//
+		// The gate's own contract already covered this surface — see getUnlistedAlbumKeys:
+		// "must not surface in PUBLIC DISCOVERY". A public API for AI crawlers is public
+		// discovery; it was simply never wired up.
+		query = excludeUnlisted(query, await getUnlistedAlbumKeys());
 
 		// Apply filters
 		if (sport) {

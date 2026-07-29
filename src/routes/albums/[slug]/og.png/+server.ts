@@ -9,7 +9,7 @@
 
 import { error } from '@sveltejs/kit';
 import { ImageResponse } from '@cf-wasm/og';
-import { fetchAlbumVideos, getPhotoCount, matviewClient } from '$lib/supabase/server';
+import { fetchAlbumVideos, getAlbumSettings, getPhotoCount, matviewClient } from '$lib/supabase/server';
 import { extractAlbumKey } from '$lib/utils';
 import { hasCFImage } from '$lib/utils/cloudflare-images';
 import { buildAlbumCard, fetchImageDataUri, OG_WIDTH, OG_HEIGHT, OG_CACHE_CONTROL } from '$lib/server/og-card';
@@ -18,18 +18,39 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ params }) => {
 	const albumKey = extractAlbumKey(params.slug);
 
-	// album metadata + processed-photo count in parallel. Use getPhotoCount (NOT
-	// albums_summary.photo_count) so the card matches the album page and its
+	// album metadata + processed-photo count + visibility in parallel. Use getPhotoCount
+	// (NOT albums_summary.photo_count) so the card matches the album page and its
 	// og:description — the view's count includes unprocessed null-sharpness rows.
-	const [{ data: album }, photoCount, videos] = await Promise.all([
+	const [{ data: album }, photoCount, videos, albumSettings] = await Promise.all([
 		matviewClient()
 			.from('albums_summary')
 			.select('album_name, cover_cf_image_id, primary_sport')
 			.eq('album_key', albumKey)
 			.single(),
 		getPhotoCount({ albumKey }),
-		fetchAlbumVideos(albumKey)
+		fetchAlbumVideos(albumKey),
+		getAlbumSettings(albumKey)
 	]);
+
+	// The SAME gate the album page applies, in the same form and with the same status.
+	//
+	// It was missing here, and this endpoint reads album metadata through matviewClient()
+	// — service_role, which bypasses RLS. So while /albums/<key> correctly 404'd for an
+	// unlisted album, /albums/<key>/og.png returned a 1200×630 card carrying that album's
+	// real cover photo and name. Verified against production on 2026-07-29: two unlisted
+	// client sessions answered 404 on the page and 200 with a ~1.1 MB photo card here.
+	// Unlisted albums are private client work — portraits, graduations — and the share
+	// route already declines to put their cover or name into an unfurl.
+	//
+	// 404 rather than the generic card, because the page 404s so nothing legitimately
+	// links here, and a 200 would still confirm the album exists.
+	//
+	// Absence of a settings row means public: 242 of 262 albums have no row at all, and
+	// only 'public' and 'unlisted' are in use. Keep this predicate identical to the
+	// page's so the two cannot drift apart.
+	if (albumSettings?.visibility === 'unlisted') {
+		throw error(404, 'Album not found');
+	}
 
 	// `albums_summary` only contains albums with processed photos, so a video-only album
 	// has no row and this endpoint used to 404 — which meant the album page advertised an
