@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T21:25:20.250Z",
+  "reviewedAt": "2026-07-29T21:32:15.289Z",
   "reviewedBy": "claude-opus-5 (session 64a8fb16)",
-  "method": "answer-engine video-truth walk on the wrangler build: /api/ai/albums total 249->251 with 251 distinct keys across three pages and no duplicate, both video-only albums present with photo_count 0 and their real video_count, video_count added to every entry (rdrsVB 134, TRoiyO 82, z6uqiQ 41); /api/ai/stats total_albums 249->251 and total_videos 481 added; ai.txt now states the 481 clips / 6 albums / 2 video-only and that clips are NOT searchable and carry no captions; filters and 400 guards re-checked (sport=volleyball 185, basketball 17, year=2025 55, year=2024 41 which matches the 41 public of 45 overlapping rows in Postgres; limit=-5, year=abc, sport=quidditch all still 400); 0 of 13 unlisted album keys appear in sitemap.xml, ai.txt, stats or any albums page. No visitor-facing interface copy changed.",
-  "sourceDigest": "sha256:cff58875b8f74ea3de679bed2b462df348a1695e2b9544e8c7d1a623410107bd",
+  "method": "cross-surface totals walk on the wrangler build: /api/ai/stats, /api/ai/albums, /api/ai/faq and the rendered /faq page all state 251 public albums (was 249 on every one of them), and stats/ai.txt/faq all state 481 clips in 6 albums, 2 video-only; new FAQ entry 'Does the gallery include video?' renders on the page and appears in its FAQPage JSON-LD; the /faq page needed a cache-buster to observe (s-maxage=3600). Cross-checked ?year=2025 -> 55 against the same overlap predicate in Postgres over albums_summary UNION the video-only rows -> 55, which exercises the video date path (both video-only albums are 2025) and closes the +00:00-vs-.999 string-comparison question. 0 of 13 unlisted keys in any of the four surfaces. No visitor-facing gallery copy changed apart from the new FAQ answer.",
+  "sourceDigest": "sha256:564b5d2ac35af549a3b715c0f7594d6d6f0cae865d07ca0b7d007193e5616fe6",
   "sourceFiles": 128
 }
