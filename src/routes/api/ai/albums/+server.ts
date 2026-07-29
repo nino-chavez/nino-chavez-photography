@@ -7,8 +7,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { excludeUnlisted, getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
-
-const BASE_URL = 'https://ninochavez.co/photography';
+import { createAlbumSlug } from '$lib/utils';
+import { SITE_URL } from '$lib/site-url';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -73,7 +73,10 @@ export const GET: RequestHandler = async ({ url }) => {
 			albums: albums.map((album) => ({
 				key: album.album_key,
 				name: album.album_name || 'Unknown Album',
-				url: `${BASE_URL}/albums/${album.album_key}`,
+				// The slug form the sitemap and the site's own links use. A bare key 301s, so
+				// publishing it hands every crawler an extra hop and a second address for one
+				// album — the inconsistency #105 removed for photos.
+				url: `${SITE_URL}/albums/${createAlbumSlug(album.album_name || album.album_key, album.album_key)}`,
 				photo_count: parseInt(album.photo_count) || 0,
 				sport: album.primary_sport || 'unknown',
 				date_range: {
