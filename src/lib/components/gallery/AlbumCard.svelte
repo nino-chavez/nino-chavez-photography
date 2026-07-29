@@ -196,7 +196,9 @@
 
 		<!-- Bottom Info -->
 		<div>
-			<Typography variant="h3" class="text-xl font-semibold text-white mb-2 line-clamp-2">
+			<!-- element="h2": album cards are the items under the page h1; h3 skipped a level.
+			     The h3 styling is the design, only the semantics were wrong. -->
+			<Typography variant="h3" element="h2" class="text-xl font-semibold text-white mb-2 line-clamp-2">
 				{album.albumName}
 			</Typography>
 			<div class="flex items-center justify-between gap-2">

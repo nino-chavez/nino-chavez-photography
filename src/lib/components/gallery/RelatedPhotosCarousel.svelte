@@ -56,7 +56,8 @@
 	<div class="relative">
 		<!-- Header -->
 		<div class="flex items-center justify-between mb-4">
-			<Typography variant="h3" class="text-2xl">{title}</Typography>
+			<!-- element="h2": a section directly under the page h1. Styling unchanged. -->
+			<Typography variant="h3" element="h2" class="text-2xl">{title}</Typography>
 			<div class="flex items-center gap-2">
 				<button
 					onclick={scrollLeft}

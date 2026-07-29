@@ -1,15 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T15:32:13.977Z",
+  "reviewedAt": "2026-07-29T16:03:33.212Z",
   "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build walked: photo <title> across 4 frames in one album and 3 across albums (all distinct, 66-78 chars, album name leads and is never truncated per the precisionLock); image alt now the caption not the event; h1 unchanged; schema.org name vs description separated; /api/ai/photos title field matched",
-  "sourceDigest": "sha256:efe3cd450d805e9613779a7db845f5c6205ba1016c3ffeeb66798044547c2c0b",
+  "method": "preview build walked: heading outline surveyed on 10 routes (every page now exactly one h1, zero skipped levels); logo link still announces 'Go to homepage'; h3 styling preserved on the h2s; sr-only h1 copy matches each page's existing <title>",
+  "sourceDigest": "sha256:fbcd95c918f37be0de530b8e6181bc5537626a59494fdbaec7f06e0d08f2a1af",
   "sourceFiles": 131,
   "scope": [
-    "photo page title",
-    "photo image alt",
-    "photo schema.org",
-    "api/ai/photos title"
+    "header wordmark",
+    "explore h1",
+    "timeline h1",
+    "album card",
+    "collection card",
+    "section rails"
   ]
 }

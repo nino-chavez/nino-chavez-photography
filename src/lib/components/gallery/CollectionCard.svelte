@@ -98,8 +98,11 @@
 		</div>
 
 		<!-- Title -->
+		<!-- element="h2": collection cards are the items under the page h1; h3 skipped a
+		     level. The h3 styling is the design, only the semantics were wrong. -->
 		<Typography
 			variant="h3"
+			element="h2"
 			class="text-xl font-bold text-white mb-2 group-hover:text-gold-400 transition-colors duration-150 line-clamp-2"
 		>
 			{collection.title}

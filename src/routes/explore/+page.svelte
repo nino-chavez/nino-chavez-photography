@@ -403,6 +403,14 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
+<!--
+	The page had no h1 at all — it renders straight into the filter bar, so there is no visual
+	heading slot. sr-only is the established pattern here (Header, Loading, several routes) and
+	the text matches the <title>. /explore is priority 0.9 in the sitemap; a page this central
+	should announce what it is.
+-->
+<h1 class="sr-only">Explore Gallery</h1>
+
 <!-- Minimal Sticky Header -->
 <div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
 	<!-- Loading progress bar -->
