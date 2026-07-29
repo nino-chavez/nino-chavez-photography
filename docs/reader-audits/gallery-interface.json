@@ -1,15 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T12:42:09.276Z",
+  "reviewedAt": "2026-07-29T14:29:52.998Z",
   "reviewedBy": "Nino Chavez (via Claude Code)",
-  "method": "preview build walked: robots directives counted on 11 routes (public pages now emit none, opt-out pages exactly one); login title verified in rendered head",
-  "sourceDigest": "sha256:da6a4d84b26e59b151ccb2a9dc8a3039f9716510a83d543d266a6371da85a7d9",
+  "method": "preview build walked: /api/ai/{photos,albums,search} probed with valid, non-numeric, negative, zero and oversized limit/offset; error copy read; search paginated across three non-overlapping pages",
+  "sourceDigest": "sha256:e40726d44be27c34dc9cdf0750f0ed43d62aa0f54d04c6c61c6a3d5376c46a10",
   "sourceFiles": 131,
   "scope": [
-    "robots meta",
-    "login",
-    "favorites",
-    "accessibility settings"
+    "api/ai/photos",
+    "api/ai/albums",
+    "api/ai/search",
+    "pagination errors"
   ]
 }
