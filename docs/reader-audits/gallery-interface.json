@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T18:21:04.969Z",
+  "reviewedAt": "2026-07-29T18:47:07.606Z",
   "reviewedBy": "Claude Opus 5 (agent session)",
-  "method": "Loaded /photos/2025/10, /photos/2022/08, /photos/2026/01 and /timeline from the dev server on a UTC-5 host and compared every rendered month label and photo count against direct SQL against the same rows",
-  "sourceDigest": "sha256:90eea7b585eb546fcc8c55d3cb5a9e653f909f530abef5a48feef37f916e6d1d",
+  "method": "Scraped all 11 album-listing pages under each sort order from the dev server and compared card counts, per-album photo/video counts, ordering and filtered totals against direct SQL",
+  "sourceDigest": "sha256:25f6bc63c5e5af59d23bf41272bbf3bab7e70a4bea519a798da768502d876f20",
   "sourceFiles": 128,
   "scope": [
-    "month archive titles and descriptions, timeline period labels and counts, prev/next month navigation"
+    "albums listing: card counts, duplicate detection, sort orders, discovery filters (q/sport/year), album total in the meta description"
   ]
 }
