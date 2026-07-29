@@ -12,7 +12,10 @@
 
 These cannot be inferred from code -- follow them strictly:
 
-- **Supabase client split:** Use `$lib/supabase/server` in `+page.server.ts` (service_role key). Use `$lib/supabase/client` in components (anon key). Never mix them.
+- **Supabase clients — three, and only one is privileged.** `supabaseServer` (`$lib/supabase/server`) is the gallery read client and uses the **ANON key**, not service_role: it is RLS-gated like any visitor, and its own comment says so. This file claimed service_role until 2026-07-30, which is the dangerous direction to be wrong in — an agent trusting it would assume RLS was already bypassed.
+  - `supabaseServer` — anon, RLS-gated. Server load functions and API routes.
+  - `matviewClient()` / `createSupabaseAdminClient()` — **service_role**, bypasses RLS. Required for materialized views (anon is REVOKE'd) and privileged writes. Anything read through these MUST apply `excludeUnlisted()` by hand.
+  - `$lib/supabase/client` — browser anon client. Currently imported by **nothing**; every Supabase read in this app is server-side. Check before adding a browser read that a server load function isn't the right seam.
 - **No self-fetch:** Use server load functions directly -- never `fetch('/api/...')` from server files.
 - **Filter null sharpness:** Always exclude `sharpness = null` rows (unprocessed photos).
 - **MOTION tokens:** Use `$lib/motion-tokens.ts` presets for all svelte-motion animations, not inline values.

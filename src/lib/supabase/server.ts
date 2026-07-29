@@ -16,6 +16,7 @@ import { env as privateEnv } from '$env/dynamic/private';
 import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import { monthWindow, addMonths, monthName } from '$lib/utils/month-window';
 import { embedText } from '$lib/ai/embeddings';
 import { planQuery, type QueryPlan } from '$lib/search/query-planner';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
@@ -967,14 +968,13 @@ export async function fetchPhotosByPeriod(options: {
   // Exact count per month with the active filters (date-range head request — untruncated).
   const periodsWithCounts = await Promise.all(
     Array.from(monthSet.values()).map(async ({ year, month }) => {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 1);
+      const { start, endExclusive } = monthWindow(year, month);
 
       let countQuery = supabaseServer
         .from(PHOTOS_READ)
         .select('photo_id', { count: 'exact', head: true })
-        .gte('upload_date', startDate.toISOString())
-        .lt('upload_date', endDate.toISOString())
+        .gte('upload_date', start)
+        .lt('upload_date', endExclusive)
         .not('sharpness', 'is', null);
 
       countQuery = excludeUnlisted(countQuery, unlisted);
@@ -995,7 +995,7 @@ export async function fetchPhotosByPeriod(options: {
     .map((p) => ({
       year: p.year,
       month: p.month,
-      monthName: new Date(p.year, p.month - 1).toLocaleString('default', { month: 'long' }),
+      monthName: monthName(p.month),
       photoCount: p.photoCount
     }));
 
@@ -1006,14 +1006,13 @@ export async function fetchPhotosByPeriod(options: {
   // Fetch the top featured photos for each page period.
   return Promise.all(
     sortedPeriods.map(async (period) => {
-      const startDate = new Date(period.year, period.month - 1, 1);
-      const endDate = new Date(period.year, period.month, 1);
+      const { start, endExclusive } = monthWindow(period.year, period.month);
 
       let photoQuery = supabaseServer
         .from(PHOTOS_READ)
         .select(PHOTO_COLUMNS)
-        .gte('upload_date', startDate.toISOString())
-        .lt('upload_date', endDate.toISOString())
+        .gte('upload_date', start)
+        .lt('upload_date', endExclusive)
         .not('sharpness', 'is', null);
 
       photoQuery = excludeUnlisted(photoQuery, unlisted);
@@ -1084,7 +1083,7 @@ export async function fetchAllPeriods(options?: {
     .map((period) => ({
       year: period.year,
       month: period.month,
-      monthName: new Date(period.year, period.month - 1).toLocaleString('default', { month: 'long' }),
+      monthName: monthName(period.month),
       photoCount: period.count
     }));
 }
@@ -1104,13 +1103,14 @@ export async function fetchPhotosByYearMonth(
   const { sortBy = 'newest', limit, offset = 0 } = options;
 
   try {
-    // Calculate date range for the month
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
+    // Half-open, timezone-naive window — see monthWindow. The previous version built these
+    // with `new Date(year, month - 1, 1)` and `.toISOString()`, which shifted the window by
+    // the host's UTC offset and cost this page 59 of October 2025's 272 photos off-UTC.
+    const { start, endExclusive } = monthWindow(year, month);
 
     console.log(`[fetchPhotosByYearMonth] Fetching photos for ${year}-${month}`, {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
+      start,
+      endExclusive,
       sortBy,
       limit,
       offset
@@ -1120,8 +1120,8 @@ export async function fetchPhotosByYearMonth(
       .from(PHOTOS_READ)
       .select(PHOTO_COLUMNS, limit ? { count: 'exact' } : {})
       .not('sharpness', 'is', null)
-      .gte('upload_date', startDate.toISOString())
-      .lte('upload_date', endDate.toISOString());
+      .gte('upload_date', start)
+      .lt('upload_date', endExclusive);
 
     query = excludeUnlisted(query, await getUnlistedAlbumKeys()); // privacy: month detail excludes private albums
 
@@ -1169,28 +1169,23 @@ export async function getAdjacentMonth(
   direction: 'prev' | 'next'
 ): Promise<{ year: number; month: number; monthName: string; photoCount: number } | null> {
   try {
-    const date = new Date(year, month - 1, 1);
+    const { year: adjYear, month: adjMonth } = addMonths(year, month, direction === 'prev' ? -1 : 1);
+    const { start, endExclusive } = monthWindow(adjYear, adjMonth);
 
-    // Calculate adjacent month
-    if (direction === 'prev') {
-      date.setMonth(date.getMonth() - 1);
-    } else {
-      date.setMonth(date.getMonth() + 1);
-    }
-
-    const adjYear = date.getFullYear();
-    const adjMonth = date.getMonth() + 1;
-
-    // Check if photos exist in that month
-    const startDate = new Date(adjYear, adjMonth - 1, 1);
-    const endDate = new Date(adjYear, adjMonth, 0, 23, 59, 59);
-
-    const { count, error } = await supabaseServer
+    // Does that month have photos a visitor can actually see? The unlisted exclusion was
+    // missing here while fetchPhotosByYearMonth (the page this links to) applies it — so a
+    // month holding only private client work advertised a prev/next link to a page that then
+    // 404s on an empty result. The two counts have to be asking the same question.
+    let countQuery = supabaseServer
       .from(PHOTOS_READ)
       .select('photo_id', { count: 'exact', head: true })
       .not('sharpness', 'is', null)
-      .gte('upload_date', startDate.toISOString())
-      .lte('upload_date', endDate.toISOString());
+      .gte('upload_date', start)
+      .lt('upload_date', endExclusive);
+
+    countQuery = excludeUnlisted(countQuery, await getUnlistedAlbumKeys());
+
+    const { count, error } = await countQuery;
 
     if (error) {
       console.error('[getAdjacentMonth] Query failed:', error);
@@ -1204,7 +1199,7 @@ export async function getAdjacentMonth(
     return {
       year: adjYear,
       month: adjMonth,
-      monthName: date.toLocaleString('default', { month: 'long' }),
+      monthName: monthName(adjMonth),
       photoCount: count
     };
   } catch (error) {
