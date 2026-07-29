@@ -51,8 +51,17 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 
 	const totalCount = albumData.data?.photo_count ?? 0;
 
-	// Block direct access to unlisted albums (must use share link)
-	if (albumSettings?.visibility === 'unlisted') {
+	// Block direct access to unlisted albums (must use share link).
+	//
+	// The unknown case comes FIRST and fails closed. `getAlbumSettings` used to fold a failed read
+	// into the same null this predicate reads as "public", so one broken query published every
+	// private album — measured in production for ~2 minutes while a column grant and a partially
+	// rolled-out deploy disagreed. 503 rather than 404 because the album may be perfectly public
+	// and we simply cannot tell; a 404 would tell a client their real album is gone.
+	if (!albumSettings.ok) {
+		throw error(503, 'This album is temporarily unavailable.');
+	}
+	if (albumSettings.settings?.visibility === 'unlisted') {
 		throw error(404, 'Album not found');
 	}
 
