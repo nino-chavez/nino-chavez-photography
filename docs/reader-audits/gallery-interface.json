@@ -1,9 +1,9 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T21:32:15.289Z",
+  "reviewedAt": "2026-07-29T21:39:51.401Z",
   "reviewedBy": "claude-opus-5 (session 64a8fb16)",
-  "method": "cross-surface totals walk on the wrangler build: /api/ai/stats, /api/ai/albums, /api/ai/faq and the rendered /faq page all state 251 public albums (was 249 on every one of them), and stats/ai.txt/faq all state 481 clips in 6 albums, 2 video-only; new FAQ entry 'Does the gallery include video?' renders on the page and appears in its FAQPage JSON-LD; the /faq page needed a cache-buster to observe (s-maxage=3600). Cross-checked ?year=2025 -> 55 against the same overlap predicate in Postgres over albums_summary UNION the video-only rows -> 55, which exercises the video date path (both video-only albums are 2025) and closes the +00:00-vs-.999 string-comparison question. 0 of 13 unlisted keys in any of the four surfaces. No visitor-facing gallery copy changed apart from the new FAQ answer.",
-  "sourceDigest": "sha256:564b5d2ac35af549a3b715c0f7594d6d6f0cae865d07ca0b7d007193e5616fe6",
+  "method": "ai.txt sport-share walk on the wrangler build: shares now divide by all 20,655 public photos instead of the 19,847 that have a sport, so volleyball reads 74% (was 77%) and matches the figure this number was corrected to once before; every sport carries its count, sub-1% sports print '<1%' with their count instead of a bare name with no figure, and a new line states the 808 photos with no sport recorded so the list not summing to 100% is explained rather than looking like an error. Counts cross-checked against Postgres with the unlisted-album exclusion applied: 20,655 public processed, 15,330 volleyball, 808 no sport, and the 12 listed counts sum to 19,847. ai.txt needed a cache-buster to observe (max-age=3600, s-maxage=3600) and a genuinely restarted dev server. No visitor-facing gallery copy changed.",
+  "sourceDigest": "sha256:2705dab72baebee5a9cfd7ee01d89ca1b15a91ac2acca81a5f076d7df121860b",
   "sourceFiles": 128
 }
