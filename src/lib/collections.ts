@@ -61,8 +61,11 @@ export const COLLECTIONS: CollectionDef[] = [
 		narrative: 'Defying gravity with grace and power',
 		description:
 			'Athletes suspended in air, captured at the peak of their flight. These photos showcase the beauty of vertical movement—attacks, blocks, and spikes—frozen in time.',
-		// Aerial plays above the keeper floor (7/10)
-		criteria: { minQualityScore: 7, playTypes: ['attack', 'block', 'spike'] }
+		// Aerial plays above the keeper floor (7/10). `attack` was here until 2026-07-29 and
+		// is now a dead value: it was never in the taxonomy, and migration 20260729140000
+		// rewrote all 3,534 of those rows to `spike`. Leaving it would be the same drift
+		// this file exists to prevent.
+		criteria: { minQualityScore: 7, playTypes: ['block', 'spike'] }
 	},
 	{
 		slug: 'defensive-masterclass',

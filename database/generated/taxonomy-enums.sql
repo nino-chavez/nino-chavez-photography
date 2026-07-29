@@ -60,3 +60,38 @@ DO $$ BEGIN
     CREATE TYPE play_type_enum AS ENUM ('approach', 'backhand', 'block', 'catch', 'chip', 'delivery', 'dig', 'dink', 'discus', 'dribble', 'drive', 'dunk', 'finish', 'forehand', 'header', 'high_jump', 'hill_climb', 'hit', 'hurdle', 'javelin', 'jump_shot', 'kick', 'layup', 'long_jump', 'pack_running', 'pass', 'pitch', 'pole_vault', 'putt', 'rebound', 'relay', 'release', 'run', 'running', 'save', 'serve', 'set', 'shot_put', 'slide', 'smash', 'spike', 'sprint', 'start', 'swing', 'tackle', 'throw', 'volley');
   END IF;
 END $$;
+
+-- Nullable: play_type IS NULL means "not a play" (a candid, a celebration, a portrait).
+ALTER TABLE photo_metadata DROP CONSTRAINT IF EXISTS valid_play_type;
+ALTER TABLE photo_metadata ADD CONSTRAINT valid_play_type CHECK (
+  play_type IS NULL OR play_type IN (
+    'approach', 'backhand', 'block', 'catch', 'chip', 'delivery',
+    'dig', 'dink', 'discus', 'dribble', 'drive', 'dunk',
+    'finish', 'forehand', 'header', 'high_jump', 'hill_climb', 'hit',
+    'hurdle', 'javelin', 'jump_shot', 'kick', 'layup', 'long_jump',
+    'pack_running', 'pass', 'pitch', 'pole_vault', 'putt', 'rebound',
+    'relay', 'release', 'run', 'running', 'save', 'serve',
+    'set', 'shot_put', 'slide', 'smash', 'spike', 'sprint',
+    'start', 'swing', 'tackle', 'throw', 'volley'
+  )
+) NOT VALID;
+
+-- A play must belong to the photo's sport. `sport_type IS NOT NULL` is load-bearing:
+-- without it a play on a sportless row makes the predicate NULL, which a CHECK accepts.
+ALTER TABLE photo_metadata DROP CONSTRAINT IF EXISTS valid_play_for_sport;
+ALTER TABLE photo_metadata ADD CONSTRAINT valid_play_for_sport CHECK (
+  play_type IS NULL OR (sport_type IS NOT NULL AND (
+    (sport_type = 'volleyball' AND play_type IN ('spike', 'block', 'dig', 'set', 'serve', 'pass')) OR
+    (sport_type = 'basketball' AND play_type IN ('dunk', 'layup', 'jump_shot', 'rebound', 'block', 'pass', 'dribble')) OR
+    (sport_type = 'soccer' AND play_type IN ('kick', 'header', 'tackle', 'save', 'dribble', 'pass')) OR
+    (sport_type = 'softball' AND play_type IN ('pitch', 'hit', 'catch', 'throw', 'slide', 'run')) OR
+    (sport_type = 'baseball' AND play_type IN ('pitch', 'hit', 'catch', 'throw', 'slide', 'run')) OR
+    (sport_type = 'football' AND play_type IN ('throw', 'catch', 'run', 'tackle', 'block', 'kick')) OR
+    (sport_type = 'track' AND play_type IN ('sprint', 'hurdle', 'relay', 'long_jump', 'high_jump', 'pole_vault', 'shot_put', 'discus', 'javelin')) OR
+    (sport_type = 'cross_country' AND play_type IN ('running', 'start', 'finish', 'pack_running', 'hill_climb')) OR
+    (sport_type = 'golf' AND play_type IN ('swing', 'putt', 'chip', 'drive')) OR
+    (sport_type = 'tennis' AND play_type IN ('serve', 'forehand', 'backhand', 'volley', 'smash')) OR
+    (sport_type = 'bowling' AND play_type IN ('delivery', 'release', 'approach')) OR
+    (sport_type = 'pickleball' AND play_type IN ('serve', 'dink', 'volley', 'smash', 'drive'))
+  ))
+) NOT VALID;
