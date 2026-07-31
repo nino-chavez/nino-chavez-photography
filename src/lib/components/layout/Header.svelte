@@ -37,6 +37,14 @@
 		{ label: 'Favorites', path: `${base}/favorites`, icon: Heart, badge: () => favorites.count },
 	];
 
+	const practiceLinks = [
+		{ href: '/work', label: 'Work' },
+		{ href: '/demos', label: 'Demos' },
+		{ href: '/learn', label: 'Learn' },
+		{ href: '/blog', label: 'Writing' },
+		{ href: '/about', label: 'About' },
+	] as const;
+
 	// Derived from page store
 	let currentPath = $derived($page.url.pathname);
 
@@ -50,8 +58,35 @@
 
 <!-- PERFORMANCE: CSS animation instead of svelte-motion (loads on every page) -->
 <div class="header-animate">
+	<div class="open-practice-shell">
+		<div class="open-practice-shell__inner">
+			<a class="open-practice-shell__identity" href="/" aria-label="Nino Chavez, home">
+				Nino Chavez
+			</a>
+			<nav class="open-practice-shell__desktop" aria-label="Nino Chavez site">
+				{#each practiceLinks as item}
+					<a href={item.href} aria-current={item.href === '/work' ? 'location' : undefined}>
+						{item.label}
+					</a>
+				{/each}
+			</nav>
+			<a class="open-practice-shell__search" href="/search">Search site</a>
+			<details class="open-practice-shell__mobile">
+				<summary>Site menu</summary>
+				<nav aria-label="Nino Chavez site">
+					{#each practiceLinks as item}
+						<a href={item.href} aria-current={item.href === '/work' ? 'location' : undefined}>
+							{item.label}
+						</a>
+					{/each}
+					<a href="/search">Search site</a>
+				</nav>
+			</details>
+		</div>
+	</div>
+
 	<header
-		class="sticky top-0 z-50 w-full border-b border-charcoal-800 bg-charcoal-950/95 backdrop-blur-lg"
+		class="gallery-header sticky z-50 w-full border-b border-charcoal-800 bg-charcoal-950/95 backdrop-blur-lg"
 	>
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex items-center justify-between h-16">
@@ -172,6 +207,86 @@
 </div>
 
 <style>
+	.open-practice-shell {
+		--practice-shell-height: 64px;
+		position: sticky;
+		top: 0;
+		z-index: 60;
+		height: var(--practice-shell-height);
+		border-bottom: 1px solid rgb(241 234 223 / 0.22);
+		background: #091426;
+		color: #f1eadf;
+	}
+
+	.open-practice-shell__inner {
+		display: grid;
+		width: min(1320px, calc(100% - 48px));
+		height: 100%;
+		margin: 0 auto;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: 24px;
+	}
+
+	.open-practice-shell a {
+		color: inherit;
+		font-size: 0.875rem;
+		font-weight: 650;
+		text-decoration: none;
+	}
+
+	.open-practice-shell__identity {
+		justify-self: start;
+	}
+
+	.open-practice-shell__desktop {
+		display: flex;
+		align-self: stretch;
+		align-items: center;
+		gap: 34px;
+	}
+
+	.open-practice-shell__desktop a {
+		display: inline-flex;
+		height: 100%;
+		align-items: center;
+		border-bottom: 3px solid transparent;
+		color: rgb(241 234 223 / 0.62);
+	}
+
+	.open-practice-shell__desktop a:hover,
+	.open-practice-shell__desktop a:focus-visible,
+	.open-practice-shell__desktop a[aria-current] {
+		color: #f1eadf;
+	}
+
+	.open-practice-shell__desktop a[aria-current] {
+		border-bottom-color: #d07a4e;
+	}
+
+	.open-practice-shell__search {
+		justify-self: end;
+		color: rgb(241 234 223 / 0.62) !important;
+	}
+
+	.open-practice-shell__search:hover,
+	.open-practice-shell__search:focus-visible {
+		color: #f1eadf !important;
+	}
+
+	.open-practice-shell :global(:focus-visible) {
+		outline: 3px solid #d07a4e;
+		outline-offset: 3px;
+	}
+
+	.open-practice-shell__mobile {
+		display: none;
+	}
+
+	.gallery-header {
+		top: 64px;
+	}
+
 	/* PERFORMANCE: CSS animation instead of svelte-motion */
 	@keyframes header-slide-in {
 		from {
@@ -204,6 +319,70 @@
 		}
 		.nav-item-hover:hover {
 			transform: none;
+		}
+	}
+
+	@media (max-width: 767px) {
+		.open-practice-shell {
+			--practice-shell-height: 56px;
+		}
+
+		.open-practice-shell__inner {
+			width: calc(100% - 32px);
+			grid-template-columns: 1fr auto;
+		}
+
+		.open-practice-shell__desktop,
+		.open-practice-shell__search {
+			display: none;
+		}
+
+		.open-practice-shell__mobile {
+			position: relative;
+			display: block;
+			justify-self: end;
+		}
+
+		.open-practice-shell__mobile summary {
+			min-height: 44px;
+			padding: 10px 12px;
+			border: 1px solid rgb(241 234 223 / 0.34);
+			border-radius: 2px;
+			cursor: pointer;
+			font-size: 0.82rem;
+			font-weight: 700;
+			list-style: none;
+		}
+
+		.open-practice-shell__mobile summary::-webkit-details-marker {
+			display: none;
+		}
+
+		.open-practice-shell__mobile nav {
+			position: absolute;
+			top: calc(100% + 6px);
+			right: 0;
+			display: grid;
+			width: min(270px, calc(100vw - 32px));
+			padding: 8px;
+			border: 1px solid rgb(241 234 223 / 0.34);
+			background: #091426;
+			box-shadow: 0 20px 44px rgb(0 0 0 / 0.42);
+		}
+
+		.open-practice-shell__mobile nav a {
+			min-height: 44px;
+			padding: 10px 12px;
+			border-left: 3px solid transparent;
+		}
+
+		.open-practice-shell__mobile nav a[aria-current] {
+			border-left-color: #d07a4e;
+			background: rgb(64 81 237 / 0.16);
+		}
+
+		.gallery-header {
+			top: 56px;
 		}
 	}
 </style>

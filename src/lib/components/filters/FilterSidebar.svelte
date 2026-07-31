@@ -34,6 +34,7 @@
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, X, Trophy, Award, Zap, Activity, Sparkles } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
+	import { formatCategory, formatSport } from '$lib/utils/format-metadata';
 	import type { FilterCounts } from '$lib/supabase/server';
 
 	interface Sport {
@@ -235,8 +236,8 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 							/>
 							<IconComponent class="w-3.5 h-3.5 {selectedSport === sport.name ? 'text-gold-400' : 'text-charcoal-500'}" />
-							<span class="flex-1 text-sm capitalize {selectedSport === sport.name ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">
-								{sport.name}
+							<span class="flex-1 text-sm {selectedSport === sport.name ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">
+								{formatSport(sport.name)}
 							</span>
 							<span class="text-xs text-charcoal-400">{sport.displayCount.toLocaleString()}</span>
 						</label>
@@ -292,8 +293,8 @@
 								class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
 							/>
 							<IconComponent class="w-3.5 h-3.5 {selectedCategory === category.name ? 'text-gold-400' : 'text-charcoal-500'}" />
-							<span class="flex-1 text-sm capitalize {selectedCategory === category.name ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">
-								{category.name}
+							<span class="flex-1 text-sm {selectedCategory === category.name ? 'text-gold-400 font-medium' : 'text-charcoal-300'}">
+								{formatCategory(category.name)}
 							</span>
 							<span class="text-xs text-charcoal-400">{category.displayCount.toLocaleString()}</span>
 						</label>

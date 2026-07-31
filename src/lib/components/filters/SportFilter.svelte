@@ -20,6 +20,7 @@
 	import { ChevronDown, Sparkles, Volleyball, User, Trophy } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import FilterPill from '$lib/components/ui/FilterPill.svelte';
+	import { formatSport } from '$lib/utils/format-metadata';
 
 	interface Sport {
 		name: string;
@@ -111,7 +112,7 @@
 		aria-label={isExpanded ? 'Collapse sport filters' : 'Expand sport filters'}
 	>
 		<Trophy class="w-3 h-3" />
-		<span>{selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : 'Sport'}</span>
+		<span>{selectedSport ? formatSport(selectedSport) : 'Sport'}</span>
 		{#if selectedSport}
 			<span class="px-1.5 py-0.5 rounded-full bg-gold-500/30 text-gold-200 text-xs font-medium">1</span>
 		{/if}
@@ -151,10 +152,10 @@
 					{@const pillState = selectedSport === sport.name ? 'active' : sport.displayCount === 0 ? 'disabled' : 'available'}
 
 					<FilterPill
-						label={sport.name.charAt(0).toUpperCase() + sport.name.slice(1)}
+						label={formatSport(sport.name)}
 						count={sport.displayCount}
 						state={pillState}
-						description="{sport.name.charAt(0).toUpperCase() + sport.name.slice(1)} photos"
+						description="{formatSport(sport.name)} photos"
 						icon={pillIcon}
 						size="sm"
 						onclick={() => handleSportClick(sport.name)}
