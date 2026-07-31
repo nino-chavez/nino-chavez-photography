@@ -1,14 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-31T13:42:03.423Z",
+  "reviewedAt": "2026-07-31T16:36:55.608Z",
   "reviewedBy": "Codex (Nino's session)",
-  "method": "Reviewed the production gallery after the unified-shell cutover at 1440x1000 and 390x844. Verified Albums and Explore load real data and 24 images, Privacy renders, both navigation layers remain usable, the mobile pager fits its viewport, and all three routes have no broken media, application error, or horizontal overflow.",
-  "sourceDigest": "sha256:a435170bd810c167c3e5d638f3ec78a1a1b2089a136558a386bf6920f3911f35",
+  "method": "Reviewed the rebuilt gallery against real data at 1440x1000 and 390x844 after the taxonomy-label correction. Verified Explore loads 24 real images with no broken media or document overflow; desktop sidebar, mobile Primary filters, and photo-card metadata expose reader-facing labels with no raw underscore values, including Cross Country. The broader production route walk covered Albums, Timeline, Collections, and Favorites.",
+  "sourceDigest": "sha256:2eec33efee82d36f670131f080031924d4ca1ff91ab6f0da66ce41668190bd5e",
   "sourceFiles": 128,
   "scope": [
-    "/photography/albums desktop and mobile",
     "/photography/explore desktop and mobile",
-    "/photography/privacy desktop and mobile"
+    "/photography/albums production",
+    "/photography/timeline production",
+    "/photography/collections production",
+    "/photography/favorites production"
   ]
 }

@@ -3,6 +3,7 @@
 	import { ChevronDown, Sparkles, Zap, PartyPopper, Camera, UserCircle, Activity, Award } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import FilterPill from '$lib/components/ui/FilterPill.svelte';
+	import { formatCategory } from '$lib/utils/format-metadata';
 
 	interface Category {
 		name: string;
@@ -100,7 +101,7 @@
 		aria-label={isExpanded ? 'Collapse category filters' : 'Expand category filters'}
 	>
 		<Award class="w-3 h-3" />
-		<span>{selectedCategory ? selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1) : 'Category'}</span>
+		<span>{selectedCategory ? formatCategory(selectedCategory) : 'Category'}</span>
 		{#if selectedCategory}
 			<span class="px-1.5 py-0.5 rounded-full bg-gold-500/30 text-gold-200 text-xs font-medium">1</span>
 		{/if}
@@ -140,7 +141,7 @@
 					{@const pillState = selectedCategory === category.name ? 'active' : category.displayCount === 0 ? 'disabled' : 'available'}
 
 					<FilterPill
-						label={category.name.charAt(0).toUpperCase() + category.name.slice(1)}
+						label={formatCategory(category.name)}
 						count={category.displayCount}
 						state={pillState}
 						description={categoryDescriptions[category.name.toLowerCase()] || category.name}

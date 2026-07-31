@@ -22,6 +22,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import OptimizedImage from '$lib/components/ui/OptimizedImage.svelte';
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
+	import { formatCategory, formatSport } from '$lib/utils/format-metadata';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -111,14 +112,14 @@
 			<!-- Sport Type -->
 			{#if photo.metadata?.sport_type}
 				<span class="text-xs px-2 py-1 rounded-md bg-gold-500 text-white font-semibold shadow-sm">
-					{photo.metadata.sport_type}
+					{formatSport(photo.metadata.sport_type)}
 				</span>
 			{/if}
 
 			<!-- Category -->
 			{#if photo.metadata?.photo_category}
 				<span class="text-xs px-2 py-1 rounded-md bg-charcoal-700 text-white shadow-sm">
-					{photo.metadata.photo_category}
+					{formatCategory(photo.metadata.photo_category)}
 				</span>
 			{/if}
 		</div>

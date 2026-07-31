@@ -31,6 +31,7 @@
 	import { ChevronDown, Trophy, Award, Zap, Activity, Filter } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import FilterPill from '$lib/components/ui/FilterPill.svelte';
+	import { formatCategory, formatSport } from '$lib/utils/format-metadata';
 
 	interface Sport {
 		name: string;
@@ -252,10 +253,10 @@
 							{@const pillState = selectedSport === sport.name ? 'active' : sport.displayCount === 0 ? 'disabled' : 'available'}
 
 							<FilterPill
-								label={sport.name.charAt(0).toUpperCase() + sport.name.slice(1)}
+								label={formatSport(sport.name)}
 								count={sport.displayCount}
 								state={pillState}
-								description="{sport.name.charAt(0).toUpperCase() + sport.name.slice(1)} photos"
+								description="{formatSport(sport.name)} photos"
 								icon={pillIcon}
 								size="sm"
 								onclick={() => handleSportClick(sport.name)}
@@ -291,10 +292,10 @@
 							{@const pillState = selectedCategory === category.name ? 'active' : category.displayCount === 0 ? 'disabled' : 'available'}
 
 							<FilterPill
-								label={category.name.charAt(0).toUpperCase() + category.name.slice(1)}
+								label={formatCategory(category.name)}
 								count={category.displayCount}
 								state={pillState}
-								description="{category.name.charAt(0).toUpperCase() + category.name.slice(1)} photos"
+								description="{formatCategory(category.name)} photos"
 								icon={pillIcon}
 								size="sm"
 								onclick={() => handleCategoryClick(category.name)}
