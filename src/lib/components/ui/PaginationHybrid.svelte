@@ -96,7 +96,7 @@
 <div class={cn('space-y-4', className)}>
 	<!-- Numbered Pagination -->
 	<nav
-		class="flex items-center justify-center gap-2 sm:gap-2"
+		class="flex items-center justify-center gap-2"
 		aria-label="Photo gallery pagination"
 	>
 		<!-- Previous Button -->
@@ -118,7 +118,7 @@
 			<button
 				onclick={(e) => handlePageClick(1, e)}
 				onkeydown={(e) => handleKeyDown(e, 1)}
-				class="flex items-center px-3 py-2.5 text-sm rounded-lg border border-charcoal-700 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-300 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 min-h-[44px] min-w-[44px] justify-center"
+				class="hidden sm:flex items-center px-3 py-2.5 text-sm rounded-lg border border-charcoal-700 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-300 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 min-h-[44px] min-w-[44px] justify-center"
 				aria-label="Go to first page"
 				type="button"
 			>
@@ -128,10 +128,14 @@
 
 		<!-- Start Ellipsis -->
 		{#if showStartEllipsis}
-			<span class="px-2 sm:px-3 py-2 text-sm text-charcoal-400 select-none" aria-hidden="true">
+			<span class="hidden sm:inline px-3 py-2 text-sm text-charcoal-400 select-none" aria-hidden="true">
 				…
 			</span>
 		{/if}
+
+		<span class="sm:hidden min-h-[44px] px-3 py-2.5 text-sm text-charcoal-300 flex items-center" aria-live="polite">
+			Page {currentPage.toLocaleString()} of {totalPages.toLocaleString()}
+		</span>
 
 		<!-- Page Numbers -->
 		{#each visiblePages as page}
@@ -139,7 +143,7 @@
 			<button
 				onclick={(e) => handlePageClick(page, e)}
 				onkeydown={(e) => handleKeyDown(e, page)}
-				class="min-w-[44px] min-h-[44px] px-3 py-2.5 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 flex items-center justify-center {isCurrentPage
+				class="hidden sm:flex min-w-[44px] min-h-[44px] px-3 py-2.5 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 items-center justify-center {isCurrentPage
 					? 'border-gold-500 bg-gold-500 text-charcoal-950 font-medium'
 					: 'border-charcoal-700 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-300 hover:text-white'}"
 				aria-label="Go to page {page}"
@@ -152,7 +156,7 @@
 
 		<!-- End Ellipsis -->
 		{#if showEndEllipsis}
-			<span class="px-2 sm:px-3 py-2 text-sm text-charcoal-400 select-none" aria-hidden="true">
+			<span class="hidden sm:inline px-3 py-2 text-sm text-charcoal-400 select-none" aria-hidden="true">
 				…
 			</span>
 		{/if}
@@ -162,7 +166,7 @@
 			<button
 				onclick={(e) => handlePageClick(totalPages, e)}
 				onkeydown={(e) => handleKeyDown(e, totalPages)}
-				class="flex items-center px-3 py-2.5 text-sm rounded-lg border border-charcoal-700 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-300 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 min-h-[44px] min-w-[44px] justify-center"
+				class="hidden sm:flex items-center px-3 py-2.5 text-sm rounded-lg border border-charcoal-700 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-300 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 min-h-[44px] min-w-[44px] justify-center"
 				aria-label="Go to last page"
 				type="button"
 			>

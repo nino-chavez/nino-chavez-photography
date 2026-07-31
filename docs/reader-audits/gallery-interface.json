@@ -1,9 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-29T22:53:28.170Z",
-  "reviewedBy": "Claude (Nino's session)",
-  "method": "API-only change (/api/ai/search, /api/top-photos, transformPhotoRow gains album_name). Verified the JSON title composition against production: search 38 -> 48 distinct titles of 50, top-photos 'DSC07313' -> '<album> — <caption fragment>'. Then diffed rendered visible text local-vs-production on /albums, an album page, and /explore — identical on all three (222/162/107 lines, diff clean), so no interface copy moved.",
-  "sourceDigest": "sha256:b700c67c3ce66c2fc9d642ddda03acfbccbeaf99e8242b42b3d9752aa5f34692",
-  "sourceFiles": 128
+  "reviewedAt": "2026-07-31T13:42:03.423Z",
+  "reviewedBy": "Codex (Nino's session)",
+  "method": "Reviewed the production gallery after the unified-shell cutover at 1440x1000 and 390x844. Verified Albums and Explore load real data and 24 images, Privacy renders, both navigation layers remain usable, the mobile pager fits its viewport, and all three routes have no broken media, application error, or horizontal overflow.",
+  "sourceDigest": "sha256:a435170bd810c167c3e5d638f3ec78a1a1b2089a136558a386bf6920f3911f35",
+  "sourceFiles": 128,
+  "scope": [
+    "/photography/albums desktop and mobile",
+    "/photography/explore desktop and mobile",
+    "/photography/privacy desktop and mobile"
+  ]
 }
