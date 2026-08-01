@@ -168,11 +168,6 @@ export const GET: RequestHandler = async () => {
 				changefreq: 'weekly' as const
 			},
 			{
-				loc: `${baseUrl}/about`,
-				priority: 0.7,
-				changefreq: 'monthly' as const
-			},
-			{
 				// Publishes FAQPage structured data, which is inert on a page nothing links to.
 				loc: `${baseUrl}/faq`,
 				priority: 0.6,
@@ -183,11 +178,6 @@ export const GET: RequestHandler = async () => {
 				loc: `${baseUrl}/timeline`,
 				priority: 0.7,
 				changefreq: 'weekly' as const
-			},
-			{
-				loc: `${baseUrl}/privacy`,
-				priority: 0.3,
-				changefreq: 'yearly' as const
 			},
 
 			// Month archives, linked from the timeline. Only the current month can

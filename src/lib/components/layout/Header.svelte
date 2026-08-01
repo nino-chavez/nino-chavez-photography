@@ -41,6 +41,7 @@
 		{ href: '/demos', label: 'Demos' },
 		{ href: '/learn', label: 'Learn' },
 		{ href: '/blog', label: 'Writing' },
+		{ href: '/photography', label: 'Photography' },
 		{ href: '/about', label: 'About' },
 	] as const;
 
@@ -64,17 +65,17 @@
 			</a>
 			<nav class="open-practice-shell__desktop" aria-label="Nino Chavez site">
 				{#each practiceLinks as item}
-					<a href={item.href} aria-current={item.href === '/work' ? 'location' : undefined}>
+					<a href={item.href} aria-current={item.href === '/photography' ? 'location' : undefined}>
 						{item.label}
 					</a>
 				{/each}
 			</nav>
 			<a class="open-practice-shell__search" href="/search">Search site</a>
 			<details class="open-practice-shell__mobile">
-				<summary>Site menu</summary>
+				<summary>Menu</summary>
 				<nav aria-label="Nino Chavez site">
 					{#each practiceLinks as item}
-						<a href={item.href} aria-current={item.href === '/work' ? 'location' : undefined}>
+						<a href={item.href} aria-current={item.href === '/photography' ? 'location' : undefined}>
 							{item.label}
 						</a>
 					{/each}
@@ -341,7 +342,7 @@
 		}
 	}
 
-	@media (max-width: 767px) {
+	@media (max-width: 920px) {
 		.open-practice-shell {
 			--practice-shell-height: 56px;
 		}

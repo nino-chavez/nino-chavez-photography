@@ -44,11 +44,11 @@
 		['Demos', '/demos'],
 		['Learn', '/learn'],
 		['Writing', '/blog'],
+		['Photography', '/photography'],
 		['About', '/about'],
 	] as const;
 
 	const practiceSecondary = [
-		['Photography', '/photography'],
 		['Now', '/now'],
 		['Links', '/links'],
 		['Privacy', '/privacy'],
@@ -127,13 +127,13 @@
 						Favorites
 					</a>
 					<a
-						href="{base}/about"
+						href="/photography#story"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 					>
-						About
+						Story
 					</a>
 					<a
-						href="{base}/privacy"
+						href="/privacy"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 					>
 						Privacy
