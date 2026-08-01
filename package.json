@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "npm run check:head && vite build && npm run reader:check:gallery",
+    "build": "npm run check:head && npm run navigation:contract:test && vite build && npm run reader:check:gallery",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsx scripts/taxonomy-check.ts",
@@ -35,7 +35,8 @@
     "pagination:test": "tsx --test src/lib/api/pagination.test.ts",
     "phototitle:test": "tsx --test src/lib/seo/photo-title.test.ts",
     "filters:test": "tsx --test src/lib/analytics/describe-filters.test.ts",
-    "check:head": "node scripts/check-head-tags.mjs"
+    "check:head": "node scripts/check-head-tags.mjs",
+    "navigation:contract:test": "tsx --test src/lib/navigation-contract.test.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
