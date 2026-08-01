@@ -1,16 +1,19 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-07-31T16:36:55.608Z",
-  "reviewedBy": "Codex (Nino's session)",
-  "method": "Reviewed the rebuilt gallery against real data at 1440x1000 and 390x844 after the taxonomy-label correction. Verified Explore loads 24 real images with no broken media or document overflow; desktop sidebar, mobile Primary filters, and photo-card metadata expose reader-facing labels with no raw underscore values, including Cross Country. The broader production route walk covered Albums, Timeline, Collections, and Favorites.",
-  "sourceDigest": "sha256:2eec33efee82d36f670131f080031924d4ca1ff91ab6f0da66ce41668190bd5e",
+  "reviewedAt": "2026-08-01T01:26:52.873Z",
+  "reviewedBy": "Codex",
+  "method": "Retained the 31 July rendered gallery review across Explore, Albums, Timeline, Collections, and Favorites, then reviewed the changed shared-header and photography-section navigation against the approved direct-entry and social-sharing contract. Nino Chavez remains the global identity; Photography is a quieter section label; album controls remain distinct and keyboard reachable; mobile navigation appears in one place; full Nino Chavez Photography attribution remains in page titles and Open Graph metadata.",
+  "sourceDigest": "sha256:669133424fbe884d930c1b829adb2acad78e13bd8e5356bd9810fd6aab381768",
   "sourceFiles": 128,
   "scope": [
     "/photography/explore desktop and mobile",
-    "/photography/albums production",
-    "/photography/timeline production",
-    "/photography/collections production",
-    "/photography/favorites production"
+    "/photography/albums direct and social entry",
+    "/photography/timeline",
+    "/photography/collections",
+    "/photography/favorites",
+    "desktop and tablet section navigation",
+    "mobile section navigation",
+    "social title and Open Graph attribution"
   ]
 }

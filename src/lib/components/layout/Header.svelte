@@ -15,8 +15,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { Camera, Grid, Sparkles, Folder, Heart, Calendar } from 'lucide-svelte';
-	import Typography from '$lib/components/ui/Typography.svelte';
+	import { Grid, Folder, Heart, Calendar } from 'lucide-svelte';
 	import GlobalSearch from '$lib/components/ui/GlobalSearch.svelte';
 	import { cn } from '$lib/utils';
 	import { favorites } from '$lib/stores/favorites.svelte';
@@ -24,7 +23,7 @@
 	interface NavItem {
 		label: string;
 		path: string;
-		icon: typeof Camera;
+		icon: typeof Folder;
 		badge?: () => number; // Optional badge count function
 	}
 
@@ -85,86 +84,35 @@
 		</div>
 	</div>
 
-	<header
-		class="gallery-header sticky z-50 w-full border-b border-charcoal-800 bg-charcoal-950/95 backdrop-blur-lg"
-	>
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="flex items-center justify-between h-16">
-				<!-- Logo/Brand -->
-				<a
-					href="{base}/"
-					class="flex items-center gap-3 cursor-pointer group"
-					aria-label="Go to homepage"
-				>
-					<div
-						class="p-2 rounded-lg bg-gold-500/10 group-hover:bg-gold-500/20 transition-colors"
-						aria-hidden="true"
-					>
-						<Camera class="w-6 h-6 text-gold-500" />
-					</div>
-					<!--
-						`element="span"` keeps the h3 styling and drops the heading semantics.
-						This wordmark is a logo, not a section heading, and it was emitting TWO
-						h3 elements above the h1 on every page in the app — so a screen-reader
-						user navigating by heading hit "Nino Chavez Photography" and "NCP"
-						before reaching what the page is actually about. The link's accessible
-						name comes from aria-label="Go to homepage" on the anchor, not from
-						these being headings.
-					-->
-					<Typography
-						variant="h3"
-						element="span"
-						class="hidden sm:block group-hover:text-gold-500 transition-colors"
-					>
-						Nino Chavez Photography
-					</Typography>
-					<Typography
-						variant="h3"
-						element="span"
-						class="sm:hidden group-hover:text-gold-500 transition-colors"
-					>
-						NCP
-					</Typography>
-				</a>
+	<header class="gallery-subnav sticky z-50 w-full">
+		<div class="gallery-subnav__inner">
+			<a class="gallery-subnav__section" href="{base}/" aria-label="Photography home">
+				<span aria-hidden="true"></span>
+				<strong>Photography</strong>
+			</a>
 
-				<!-- Navigation -->
-				<nav class="flex items-center gap-1" aria-label="Main navigation">
-					{#each navItems as item}
-						{@const active = isActive(item.path)}
-						{@const Icon = item.icon}
-						{@const badgeCount = item.badge?.() || 0}
-						<a
-							href={item.path}
-							data-sveltekit-preload="tap"
-							class={cn(
-								'nav-item-hover relative flex items-center gap-2 px-3 py-3 sm:px-4 sm:py-2 rounded-lg text-sm font-medium transition-all min-h-[44px]',
-								active
-									? 'bg-gold-500/10 text-gold-500'
-									: 'text-charcoal-300 hover:text-white hover:bg-charcoal-800'
-							)}
-							aria-current={active ? 'page' : undefined}
-						>
-							<Icon class="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
-							<span class="hidden sm:inline">{item.label}</span>
-							<span class="sr-only sm:hidden">{item.label}</span>
+			<nav class="gallery-subnav__routes" aria-label="Photography navigation">
+				{#each navItems as item}
+					{@const active = isActive(item.path)}
+					{@const badgeCount = item.badge?.() || 0}
+					<a
+						href={item.path}
+						data-sveltekit-preload="tap"
+						class:active
+						aria-current={active ? 'page' : undefined}
+					>
+						{item.label}
+						{#if badgeCount > 0}
+							<span class="gallery-subnav__badge" aria-label="{badgeCount} favorites">
+								{badgeCount > 99 ? '99+' : badgeCount}
+							</span>
+						{/if}
+					</a>
+				{/each}
+			</nav>
 
-							<!-- Badge Count (NEW - Week 3 Bonus) -->
-							{#if badgeCount > 0}
-								<span
-									class="absolute -top-1 -right-1 flex items-center justify-center min-w-5 h-5 px-1 text-xs font-bold rounded-full bg-red-500 text-white"
-									aria-label="{badgeCount} favorites"
-								>
-									{badgeCount > 99 ? '99+' : badgeCount}
-								</span>
-							{/if}
-						</a>
-					{/each}
-				</nav>
-
-				<!-- Global Search -->
-				<div class="max-w-md ml-4">
-					<GlobalSearch />
-				</div>
+			<div class="gallery-subnav__search">
+				<GlobalSearch />
 			</div>
 		</div>
 	</header>
@@ -283,8 +231,90 @@
 		display: none;
 	}
 
-	.gallery-header {
+	.gallery-subnav {
 		top: 64px;
+		height: 50px;
+		border-bottom: 1px solid rgb(255 255 255 / 0.08);
+		background: rgb(17 17 20 / 0.96);
+		backdrop-filter: blur(16px);
+	}
+
+	.gallery-subnav__inner {
+		display: grid;
+		width: min(1280px, calc(100% - 48px));
+		height: 100%;
+		margin: 0 auto;
+		grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr);
+		align-items: center;
+		gap: 16px;
+	}
+
+	.gallery-subnav__section {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		justify-self: start;
+		gap: 10px;
+		color: #f5f2ec;
+		font-size: 0.85rem;
+		letter-spacing: 0.01em;
+		text-decoration: none;
+	}
+
+	.gallery-subnav__section > span {
+		display: block;
+		width: 2px;
+		height: 18px;
+		background: #d4af37;
+	}
+
+	.gallery-subnav__routes {
+		display: flex;
+		height: 100%;
+		align-items: stretch;
+		gap: 22px;
+	}
+
+	.gallery-subnav__routes > a {
+		position: relative;
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		border-bottom: 2px solid transparent;
+		color: rgb(255 255 255 / 0.58);
+		font-size: 0.8rem;
+		font-weight: 620;
+		text-decoration: none;
+		transition: border-color 160ms ease, color 160ms ease;
+	}
+
+	.gallery-subnav__routes > a:hover,
+	.gallery-subnav__routes > a:focus-visible {
+		color: #fff;
+	}
+
+	.gallery-subnav__routes > a.active {
+		border-bottom-color: #d4af37;
+		color: #d4af37;
+	}
+
+	.gallery-subnav__badge {
+		display: inline-flex;
+		min-width: 17px;
+		height: 17px;
+		margin-left: 5px;
+		padding: 0 4px;
+		align-items: center;
+		justify-content: center;
+		border-radius: 999px;
+		background: #b91c1c;
+		color: #fff;
+		font-size: 0.62rem;
+		font-weight: 750;
+	}
+
+	.gallery-subnav__search {
+		justify-self: end;
 	}
 
 	/* PERFORMANCE: CSS animation instead of svelte-motion */
@@ -303,22 +333,11 @@
 		animation: header-slide-in 0.3s ease-out forwards;
 	}
 
-	/* Nav item hover effect (replaces Motion whileHover) */
-	.nav-item-hover {
-		transition: transform 0.15s ease-out, background-color 0.2s, color 0.2s;
-	}
-
-	.nav-item-hover:hover {
-		transform: scale(1.05);
-	}
 
 	/* Reduce motion for accessibility */
 	@media (prefers-reduced-motion: reduce) {
 		.header-animate {
 			animation: none;
-		}
-		.nav-item-hover:hover {
-			transform: none;
 		}
 	}
 
@@ -380,9 +399,23 @@
 			border-left-color: #d07a4e;
 			background: rgb(64 81 237 / 0.16);
 		}
+	}
 
-		.gallery-header {
+	@media (max-width: 639px) {
+
+		.gallery-subnav {
 			top: 56px;
+			height: 48px;
+		}
+
+		.gallery-subnav__inner {
+			width: calc(100% - 32px);
+			grid-template-columns: 1fr auto;
+			gap: 16px;
+		}
+
+		.gallery-subnav__routes {
+			display: none;
 		}
 	}
 </style>
