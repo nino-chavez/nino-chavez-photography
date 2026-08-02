@@ -36,8 +36,8 @@
 		class="favorite-btn-icon p-2 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center {isFavorited
 			? 'bg-red-500/90'
 			: 'bg-white/10 hover:bg-white/20'} backdrop-blur-sm transition-colors {className}"
-		aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-		title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+		aria-label={isFavorited ? 'Remove saved photo' : 'Save photo'}
+		title={isFavorited ? 'Remove saved photo' : 'Save photo'}
 	>
 		<Heart
 			class="w-5 h-5 {isFavorited ? 'text-white fill-white' : 'text-white'}"
@@ -50,8 +50,8 @@
 		class="favorite-btn p-2.5 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center {isFavorited
 			? 'bg-red-500 hover:bg-red-600'
 			: 'bg-charcoal-900 border border-charcoal-800 hover:border-red-500/50 hover:bg-red-500/10'} transition-colors group {className}"
-		aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-		title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+		aria-label={isFavorited ? 'Remove saved photo' : 'Save photo'}
+		title={isFavorited ? 'Remove saved photo' : 'Save photo'}
 	>
 		<Heart
 			class="w-4 h-4 {isFavorited ? 'text-white fill-white' : 'text-charcoal-300 group-hover:text-red-500'}"
@@ -64,12 +64,12 @@
 		class="favorite-btn flex items-center gap-2 px-4 py-2.5 rounded-lg {isFavorited
 			? 'bg-red-500 hover:bg-red-600 text-white'
 			: 'bg-charcoal-900 border border-charcoal-800 hover:border-red-500/50 hover:bg-red-500/10 text-charcoal-300 hover:text-red-500'} font-medium transition-colors {className}"
-		aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+		aria-label={isFavorited ? 'Remove saved photo' : 'Save photo'}
 	>
 		<Heart
 			class="w-5 h-5 {isFavorited ? 'fill-white' : ''}"
 		/>
-		<span>{isFavorited ? 'Favorited' : 'Add to Favorites'}</span>
+		<span>{isFavorited ? 'Saved' : 'Save photo'}</span>
 	</button>
 {/if}
 

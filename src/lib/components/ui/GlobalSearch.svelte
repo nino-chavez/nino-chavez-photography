@@ -85,12 +85,12 @@
 		<button
 			onclick={toggleSearch}
 			class="flex items-center gap-2 px-3 py-2 rounded-lg bg-charcoal-900/50 border border-charcoal-800 hover:border-gold-500/50 transition-all hover:scale-105 group"
-			aria-label="Search photos (⌘K)"
-			title="Search photos (⌘K)"
+			aria-label="Find photos (⌘K)"
+			title="Find photos (⌘K)"
 		>
 			<Search class="w-4 h-4 text-charcoal-400 group-hover:text-gold-500 transition-colors" />
 			<span class="hidden sm:inline text-sm text-charcoal-400 group-hover:text-gold-500 transition-colors">
-				Search
+				Find photos
 			</span>
 			<!-- charcoal-200, not -300: charcoal-300 on charcoal-700 is 4.20:1, just under AA.
 			     Lightening the label rather than darkening the chip keeps the key-cap read —
@@ -112,7 +112,7 @@
 				bind:this={inputElement}
 				bind:value={searchQuery}
 				type="search"
-				placeholder="Search photos..."
+				placeholder="Event, team, or jersey number"
 				onkeydown={handleInputKeyDown}
 				class="flex-1 bg-transparent border-none outline-none text-white placeholder-charcoal-400 text-sm"
 				autocomplete="off"

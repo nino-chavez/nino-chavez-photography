@@ -30,15 +30,15 @@
 	// IA: Albums (event discovery) is the primary job and leads the nav. Search is the GlobalSearch
 	// box (right side), which is the entry to /explore results — so "Explore" is no longer a nav item.
 	const navItems: NavItem[] = [
-		{ label: 'Albums', path: `${base}/albums`, icon: Folder },
-		{ label: 'Timeline', path: `${base}/timeline`, icon: Calendar },
+		{ label: 'Events', path: `${base}/albums`, icon: Folder },
+		{ label: 'By date', path: `${base}/timeline`, icon: Calendar },
 		{ label: 'Collections', path: `${base}/collections`, icon: Grid },
-		{ label: 'Favorites', path: `${base}/favorites`, icon: Heart, badge: () => favorites.count },
+		{ label: 'Saved', path: `${base}/favorites`, icon: Heart, badge: () => favorites.count },
 	];
 
 	const practiceLinks = [
 		{ href: '/work', label: 'Work' },
-		{ href: '/demos', label: 'Demos' },
+		{ href: '/demos', label: 'How I work' },
 		{ href: '/learn', label: 'Learn' },
 		{ href: '/blog', label: 'Writing' },
 		{ href: '/photography', label: 'Photography' },
@@ -60,26 +60,34 @@
 <div class="header-animate">
 	<div class="open-practice-shell">
 		<div class="open-practice-shell__inner">
-			<a class="open-practice-shell__identity" href="/" aria-label="Nino Chavez, home">
+			<a class="open-practice-shell__identity" href="/" data-sveltekit-reload aria-label="Nino Chavez, home">
 				Nino Chavez
 			</a>
 			<nav class="open-practice-shell__desktop" aria-label="Nino Chavez site">
 				{#each practiceLinks as item}
-					<a href={item.href} aria-current={item.href === '/photography' ? 'location' : undefined}>
+					<a
+						href={item.href}
+						data-sveltekit-reload
+						aria-current={item.href === '/photography' ? 'location' : undefined}
+					>
 						{item.label}
 					</a>
 				{/each}
 			</nav>
-			<a class="open-practice-shell__search" href="/search">Search site</a>
+			<a class="open-practice-shell__search" href="/search" data-sveltekit-reload>Search site</a>
 			<details class="open-practice-shell__mobile">
 				<summary>Menu</summary>
 				<nav aria-label="Nino Chavez site">
 					{#each practiceLinks as item}
-						<a href={item.href} aria-current={item.href === '/photography' ? 'location' : undefined}>
+						<a
+							href={item.href}
+							data-sveltekit-reload
+							aria-current={item.href === '/photography' ? 'location' : undefined}
+						>
 							{item.label}
 						</a>
 					{/each}
-					<a href="/search">Search site</a>
+					<a href="/search" data-sveltekit-reload>Search site</a>
 				</nav>
 			</details>
 		</div>
@@ -87,7 +95,12 @@
 
 	<header class="gallery-subnav sticky z-50 w-full">
 		<div class="gallery-subnav__inner">
-			<a class="gallery-subnav__section" href="{base}/" aria-label="Photography home">
+			<a
+				class="gallery-subnav__section"
+				href="{base}/"
+				data-sveltekit-reload
+				aria-label="Photography home"
+			>
 				<span aria-hidden="true"></span>
 				<strong>Photography</strong>
 			</a>
@@ -104,7 +117,7 @@
 					>
 						{item.label}
 						{#if badgeCount > 0}
-							<span class="gallery-subnav__badge" aria-label="{badgeCount} favorites">
+							<span class="gallery-subnav__badge" aria-label="{badgeCount} saved photos">
 								{badgeCount > 99 ? '99+' : badgeCount}
 							</span>
 						{/if}
@@ -142,7 +155,7 @@
 						{#if badgeCount > 0}
 							<span
 								class="absolute -top-1 -right-2 min-w-4 h-4 px-1 text-[10px] font-bold rounded-full bg-red-500 text-white flex items-center justify-center"
-								aria-label="{badgeCount} favorites"
+								aria-label="{badgeCount} saved photos"
 							>
 								{badgeCount > 99 ? '99+' : badgeCount}
 							</span>

@@ -9,7 +9,7 @@
 
   Usage:
   <Breadcrumb items={[
-    { label: 'Albums', href: '/albums' },
+    { label: 'Events', href: '/albums' },
     { label: 'Event Name', href: '/albums/event-key' },
     { label: 'Photo' }
   ]} />

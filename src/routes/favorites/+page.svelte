@@ -42,7 +42,7 @@
 	function handleClearAll(event?: MouseEvent) {
 		event?.stopPropagation();
 		const confirmed = confirm(
-			`Are you sure you want to remove all ${favoriteCount} favorite photos? This action cannot be undone.`
+			`Remove all ${favoriteCount} saved photos from this browser? This action cannot be undone.`
 		);
 
 		if (confirmed) {
@@ -57,7 +57,7 @@
 		const url = window.URL.createObjectURL(blob);
 		const link = document.createElement('a');
 		link.href = url;
-		link.download = `favorites-${new Date().toISOString().split('T')[0]}.json`;
+		link.download = `saved-photos-${new Date().toISOString().split('T')[0]}.json`;
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
@@ -81,7 +81,7 @@
 			try {
 				const json = e.target?.result as string;
 				const count = favorites.importFavorites(json);
-				toast.success(`Successfully imported ${count} favorites!`);
+				toast.success(`Imported ${count} saved photos.`);
 				showImportDialog = false;
 				importError = null;
 			} catch (error) {
@@ -108,9 +108,9 @@
 						<Heart class="w-8 h-8 text-red-500 fill-red-500" />
 					</div>
 					<div class="flex-1">
-						<Typography variant="h1" class="text-4xl">My Favorites</Typography>
+						<Typography variant="h1" class="text-4xl">Your saved photos</Typography>
 						<Typography variant="body" class="text-charcoal-300 mt-1">
-							{favoriteCount} {favoriteCount === 1 ? 'photo' : 'photos'} saved
+							{favoriteCount} {favoriteCount === 1 ? 'photo' : 'photos'} saved in this browser
 						</Typography>
 					</div>
 				</div>
@@ -124,7 +124,7 @@
 						<!-- Export -->
 						<Button variant="secondary" onclick={handleExport}>
 							<Download class="w-4 h-4 mr-2" />
-							Export Favorites
+							Export saved photos
 						</Button>
 
 						<!-- Import -->
@@ -134,13 +134,13 @@
 								accept=".json"
 								onchange={handleImport}
 								class="hidden"
-								aria-label="Import favorites"
+								aria-label="Import saved photos"
 							/>
 							<div
 								class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-gold-500/50 hover:bg-charcoal-800 text-white font-medium transition-colors cursor-pointer"
 							>
 								<Upload class="w-4 h-4" />
-								Import Favorites
+								Import saved photos
 							</div>
 						</label>
 
@@ -155,7 +155,7 @@
 					{#if showExportSuccess}
 						<div class="mt-4 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg" style="animation: fade-slide-down 0.3s ease-out forwards">
 							<Typography variant="body" class="text-green-500">
-								Favorites exported successfully!
+								Saved photos exported successfully.
 							</Typography>
 						</div>
 					{/if}
@@ -191,10 +191,10 @@
 				<div style="animation: fade-in 0.3s ease-out forwards">
 						<Card padding="lg" class="text-center py-16">
 							<Heart class="w-24 h-24 text-charcoal-600 mx-auto mb-6" aria-hidden="true" />
-							<Typography variant="h2" class="text-2xl mb-3">No favorites yet</Typography>
+							<Typography variant="h2" class="text-2xl mb-3">No saved photos yet</Typography>
 							<Typography variant="body" class="text-charcoal-400 mb-8 max-w-md mx-auto">
-								Start building your collection by clicking the heart icon on any photo while exploring
-								the gallery.
+								Use the heart on any photo to save it in this browser. Saved photos do not sync
+								between browsers or devices.
 							</Typography>
 							<Button variant="primary" onclick={() => (window.location.href = `${base}/explore`)}>
 								Explore Photos

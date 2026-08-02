@@ -128,7 +128,7 @@
 			<!-- Single Row: Title + Count + Search (Explore Page Pattern) -->
 			<div class="flex items-center justify-between gap-4">
 				<div class="flex items-center gap-2">
-					<Typography variant="h1" class="text-xl lg:text-2xl">Albums</Typography>
+					<Typography variant="h1" class="text-xl lg:text-2xl">Events</Typography>
 					<!-- Bare count on purpose: the h1 beside it is the unit. "Albums 249 albums"
 					     was tried and reads worse. The album *detail* header needs its units
 					     ("119 photos · 82 videos") because its title is an event name. -->
@@ -144,7 +144,7 @@
 						value={data.sortBy}
 						onchange={(e) => changeSortOrder(e.currentTarget.value as any)}
 						class="px-3 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white"
-						aria-label="Sort albums"
+						aria-label="Sort events"
 					>
 						<option value="count">Most Photos</option>
 						<option value="name">Name (A-Z)</option>
@@ -236,7 +236,7 @@
 		{#if hasActiveFilters}
 			<div class="mb-4">
 				<Typography variant="caption" class="text-charcoal-400 text-xs">
-					{data.totalAlbums.toLocaleString()} {data.totalAlbums === 1 ? 'album' : 'albums'}{data.query ? ` matching “${data.query}”` : ''}{data.selectedSport ? ` · ${data.selectedSport}` : ''}{data.selectedYear ? ` · ${data.selectedYear}` : ''}
+					{data.totalAlbums.toLocaleString()} event {data.totalAlbums === 1 ? 'gallery' : 'galleries'}{data.query ? ` matching “${data.query}”` : ''}{data.selectedSport ? ` · ${data.selectedSport}` : ''}{data.selectedYear ? ` · ${data.selectedYear}` : ''}
 				</Typography>
 			</div>
 		{/if}
@@ -310,7 +310,7 @@
 				<!-- Page Info & Keyboard Hint -->
 				<div class="mt-4 text-center">
 					<Typography variant="caption" class="text-charcoal-400 text-xs">
-						Page {data.currentPage} of {data.totalPages} • {data.totalAlbums.toLocaleString()} total albums
+						Page {data.currentPage} of {data.totalPages} • {data.totalAlbums.toLocaleString()} total events
 					</Typography>
 					<Typography variant="caption" class="text-charcoal-400 text-xs mt-1 block">
 						Use ← → arrow keys to navigate

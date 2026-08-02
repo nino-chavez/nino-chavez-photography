@@ -18,14 +18,18 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getUnlistedAlbumKeys, matviewClient } from '$lib/supabase/server';
 import { createAlbumSlug } from '$lib/utils';
+import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { SITE_URL } from '$lib/site-url';
 import { parsePagination, validateFilter, parseYear, yearBounds } from '$lib/api/pagination';
 import { SPORTS } from '$lib/ai/taxonomy';
 import {
 	buildAlbumListing,
+	type AlbumSortOption,
 	type AlbumSummaryRow,
 	type VideoSummaryRow
 } from '$lib/albums/listing';
+
+const PUBLIC_SORTS = new Set<AlbumSortOption>(['count', 'date', 'name']);
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -33,6 +37,11 @@ export const GET: RequestHandler = async ({ url }) => {
 		const page = parsePagination(url.searchParams, { defaultLimit: 50, maxLimit: 100 });
 		if (!page.ok) return json({ error: page.error }, { status: 400 });
 		const { limit, offset } = page.value;
+		const requestedSort = url.searchParams.get('sort') ?? 'count';
+		if (!PUBLIC_SORTS.has(requestedSort as AlbumSortOption)) {
+			return json({ error: 'Invalid sort. Use count, date, or name.' }, { status: 400 });
+		}
+		const sortBy = requestedSort as AlbumSortOption;
 		const sportParam = validateFilter(url.searchParams.get('sport'), 'sport', SPORTS);
 		if (!sportParam.ok) return json({ error: sportParam.error }, { status: 400 });
 		const sport = sportParam.value;
@@ -71,7 +80,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			photoRows: (photoRows ?? []) as AlbumSummaryRow[],
 			videoRows: (videoRows ?? []) as VideoSummaryRow[],
 			unlistedKeys: new Set(unlistedKeys),
-			sortBy: 'count'
+			sortBy
 		});
 
 		// `sport` matches the album's whole sport array, not just its primary — an album can
@@ -114,7 +123,9 @@ export const GET: RequestHandler = async ({ url }) => {
 					start: album.dateRange.earliest,
 					end: album.dateRange.latest
 				},
-				cover_image: album.coverImageUrl
+				cover_image: album.coverCfImageId
+					? cfImageUrl(album.coverCfImageId, 'medium')
+					: album.coverImageUrl
 			})),
 			total: filtered.length,
 			limit,
@@ -125,4 +136,3 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'Failed to fetch albums' }, { status: 500 });
 	}
 };
-

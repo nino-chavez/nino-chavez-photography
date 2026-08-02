@@ -16,7 +16,7 @@ const BASE_PATH = '/photography';
 test.describe('Favorites', () => {
 	// Clear favorites before each test
 	test.beforeEach(async ({ page }) => {
-		await page.goto(BASE_PATH);
+		await page.goto(`${BASE_PATH}/explore`);
 		// Clear localStorage favorites
 		await page.evaluate(() => {
 			localStorage.removeItem('gallery-favorites');
@@ -32,7 +32,7 @@ test.describe('Favorites', () => {
 		});
 
 		// Find and click heart icon on first photo
-		const heartButton = page.locator('[aria-label*="favorite"], button').filter({
+		const heartButton = page.locator('[aria-label="Save photo"]').filter({
 			has: page.locator('svg'),
 		});
 
@@ -63,7 +63,7 @@ test.describe('Favorites', () => {
 		});
 
 		// Add photo to favorites
-		const heartButton = page.locator('[aria-label*="favorite"], button').filter({
+		const heartButton = page.locator('[aria-label="Save photo"]').filter({
 			has: page.locator('svg'),
 		});
 
@@ -72,7 +72,7 @@ test.describe('Favorites', () => {
 			await page.waitForTimeout(300);
 
 			// Check header badge
-			const badge = page.locator('[aria-label*="favorite"]').locator('span');
+			const badge = page.locator('[aria-label*="saved photos"]');
 			if ((await badge.count()) > 0) {
 				await expect(badge.first()).toBeVisible();
 			}
@@ -88,7 +88,7 @@ test.describe('Favorites', () => {
 		});
 
 		// Add photo to favorites
-		const heartButton = page.locator('[aria-label*="favorite"], button').filter({
+		const heartButton = page.locator('[aria-label="Save photo"]').filter({
 			has: page.locator('svg'),
 		});
 
@@ -118,7 +118,7 @@ test.describe('Favorites', () => {
 		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
-		const heartButton = page.locator('[aria-label*="favorite"], button').filter({
+		const heartButton = page.locator('[aria-label="Save photo"]').filter({
 			has: page.locator('svg'),
 		});
 
@@ -135,7 +135,7 @@ test.describe('Favorites', () => {
 			await page.goto(`${BASE_PATH}/favorites`);
 
 			// Verify empty state or no photos
-			const emptyState = page.getByText(/no favorites/i).or(page.getByText(/start adding/i));
+			const emptyState = page.getByText(/no saved photos/i);
 			await expect(emptyState).toBeVisible({ timeout: 5000 });
 		}
 	});
@@ -144,10 +144,7 @@ test.describe('Favorites', () => {
 		await page.goto(`${BASE_PATH}/favorites`);
 
 		// Verify empty state message
-		const emptyState = page
-			.getByText(/no favorites/i)
-			.or(page.getByText(/start adding/i))
-			.or(page.getByText(/haven't favorited/i));
+		const emptyState = page.getByText(/no saved photos/i);
 
 		await expect(emptyState.first()).toBeVisible();
 	});
@@ -159,7 +156,7 @@ test.describe('Favorites', () => {
 		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
-		const heartButton = page.locator('[aria-label*="favorite"], button').filter({
+		const heartButton = page.locator('[aria-label="Save photo"]').filter({
 			has: page.locator('svg'),
 		});
 
@@ -184,7 +181,7 @@ test.describe('Favorites', () => {
 				const download = await downloadPromise;
 
 				// Verify download
-				expect(download.suggestedFilename()).toMatch(/favorites.*\.json/);
+				expect(download.suggestedFilename()).toMatch(/saved-photos.*\.json/);
 			}
 		}
 	});
@@ -196,7 +193,7 @@ test.describe('Favorites', () => {
 		await page.waitForSelector('a[href*="/photo/"], [data-testid="photo-card"]', {
 			timeout: 10000,
 		});
-		const heartButtons = page.locator('[aria-label*="favorite"], button').filter({
+		const heartButtons = page.locator('[aria-label="Save photo"]').filter({
 			has: page.locator('svg'),
 		});
 
@@ -220,9 +217,7 @@ test.describe('Favorites', () => {
 				await page.waitForTimeout(500);
 
 				// Verify empty state
-				const emptyState = page
-					.getByText(/no favorites/i)
-					.or(page.getByText(/start adding/i));
+				const emptyState = page.getByText(/no saved photos/i);
 				await expect(emptyState.first()).toBeVisible();
 			}
 		}
