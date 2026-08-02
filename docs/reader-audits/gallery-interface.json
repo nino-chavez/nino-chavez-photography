@@ -1,18 +1,19 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-08-01T16:20:33.789Z",
+  "reviewedAt": "2026-08-02T02:08:11.787Z",
   "reviewedBy": "Codex",
-  "method": "Reviewed the rebuilt, data-backed gallery at /photography/albums as a direct social entry at 390, 920, and 921 pixels. The six-link Nino Chavez header changes from one Menu control to desktop navigation after 920 pixels without overflow; Photography owns the active global state; Albums, Timeline, Collections, and Favorites remain a distinct subordinate section row; search and album controls remain reachable; page and Open Graph titles retain Nino Chavez Photography attribution.",
-  "sourceDigest": "sha256:7036034653a79f17eb83fa9b17f67720c46680053363c55e9675d8fd12f97cf4",
+  "method": "Reviewed /photography/albums at 390, 920, 921, and 1280 pixels after the redesign boundary reconciliation. The global header switches from Menu to desktop navigation without overflow; labels match website-nc; Events, By date, Collections, and Saved remain subordinate photography navigation; Find photos remains distinct from Search site; event cards and controls remain readable. Confirmed the specialist root returns a permanent redirect to the website-nc photography landing while preserving query parameters.",
+  "sourceDigest": "sha256:674557ff01fceed0022021a458efe53e1c948080dbf68eadb5b7373479f8db7d",
   "sourceFiles": 128,
   "scope": [
-    "/photography/albums direct and social entry at 390px",
+    "/photography root handoff to website-nc",
+    "/photography/albums at 390px",
     "/photography/albums at 920px global-menu boundary",
     "/photography/albums at 921px desktop-navigation boundary",
-    "Photography global active state",
-    "subordinate photography section navigation",
-    "search and album controls",
-    "social title and Open Graph attribution"
+    "/photography/albums at 1280px",
+    "global navigation label parity",
+    "subordinate photography navigation",
+    "event cards and search controls"
   ]
 }

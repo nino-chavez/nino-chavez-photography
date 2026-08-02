@@ -76,7 +76,7 @@ function createFavoritesStore() {
 		addFavorite(photo: Photo) {
 			// Check limit
 			if (state.photoIds.size >= MAX_FAVORITES && !state.photoIds.has(photo.image_key)) {
-				throw new Error(`Maximum ${MAX_FAVORITES} favorites reached`);
+				throw new Error(`You can save up to ${MAX_FAVORITES} photos in this browser`);
 			}
 
 			state.photoIds.add(photo.image_key);
@@ -104,24 +104,24 @@ function createFavoritesStore() {
 
 			if (isFav) {
 				this.removeFavorite(photo.image_key);
-				toast.info('Removed from favorites', { duration: 2000 });
+				toast.info('Removed from saved photos', { duration: 2000 });
 				return false;
 			} else {
 				try {
 					this.addFavorite(photo);
 					const count = state.photoIds.size;
-					toast.success(`❤️ Added to favorites! (${count} total)`, {
+					toast.success(`Photo saved in this browser (${count} total)`, {
 						duration: 3000
 					});
 					return true;
 				} catch (error) {
 					// Handle max favorites error
-					if (error instanceof Error && error.message.includes('Maximum')) {
-						toast.error(`Maximum ${MAX_FAVORITES} favorites reached`, {
+					if (error instanceof Error && error.message.includes('save up to')) {
+						toast.error(`You can save up to ${MAX_FAVORITES} photos in this browser`, {
 							duration: 4000
 						});
 					} else {
-						toast.error('Failed to add to favorites', { duration: 3000 });
+						toast.error('Could not save this photo', { duration: 3000 });
 					}
 					return false;
 				}

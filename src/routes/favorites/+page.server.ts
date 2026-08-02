@@ -11,7 +11,7 @@ import { SITE_URL } from '$lib/site-url';
 export const load: PageServerLoad = async () => {
 	return {
 		seo: {
-			title: 'My Favorites | Nino Chavez Photography',
+			title: 'Your Saved Photos | Nino Chavez Photography',
 			description: 'View and manage your favorite action sports photos. Save, organize, and export your personal collection of memorable moments.',
 			keywords: 'favorites, saved photos, bookmarks, photo collection, action sports photography',
 			canonical: `${SITE_URL}/favorites`

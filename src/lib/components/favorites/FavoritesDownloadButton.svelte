@@ -42,7 +42,7 @@
 
 		const entries = downloadable;
 		if (entries.length === 0) {
-			toast.error('No downloadable photos in favorites.');
+			toast.error('No downloadable saved photos.');
 			return;
 		}
 
@@ -99,7 +99,7 @@
 			const blob = await downloadZip(fileEntries()).blob();
 			if (abortController?.signal.aborted) return;
 
-			triggerBrowserDownload(blob, `favorites-${todayStamp()}.zip`);
+			triggerBrowserDownload(blob, `saved-photos-${todayStamp()}.zip`);
 			toast.success(`Downloaded ${entries.length} ${entries.length === 1 ? 'photo' : 'photos'}.`);
 
 			// Each downloaded photo is a strong popularity signal (weight 6).
@@ -154,7 +154,7 @@
 	<button
 		onclick={startDownload}
 		class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gold-500 hover:bg-gold-400 text-charcoal-950 font-medium transition-colors"
-		aria-label="Download all favorites as ZIP"
+		aria-label="Download all saved photos as ZIP"
 	>
 		<Download class="w-4 h-4" />
 		Download all (ZIP)

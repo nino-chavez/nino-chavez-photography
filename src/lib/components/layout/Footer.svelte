@@ -41,7 +41,7 @@
 
 	const practicePrimary = [
 		['Work', '/work'],
-		['Demos', '/demos'],
+		['How I work', '/demos'],
 		['Learn', '/learn'],
 		['Writing', '/blog'],
 		['Photography', '/photography'],
@@ -64,13 +64,13 @@
 
 		<nav aria-label="Site navigation">
 			{#each practicePrimary as item}
-				<a href={item[1]}>{item[0]}</a>
+				<a href={item[1]} data-sveltekit-reload>{item[0]}</a>
 			{/each}
 		</nav>
 
 		<nav aria-label="More pages">
 			{#each practiceSecondary as item}
-				<a href={item[1]}>{item[0]}</a>
+				<a href={item[1]} data-sveltekit-reload>{item[0]}</a>
 			{/each}
 		</nav>
 
@@ -106,13 +106,13 @@
 						href="{base}/explore"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 					>
-						Gallery
+						Find photos
 					</a>
 					<a
 						href="{base}/timeline"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 					>
-						Timeline
+						By date
 					</a>
 					<a
 						href="{base}/collections"
@@ -124,10 +124,11 @@
 						href="{base}/favorites"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 					>
-						Favorites
+						Saved photos
 					</a>
 					<a
 						href="/photography#story"
+						data-sveltekit-reload
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
 					>
 						Story

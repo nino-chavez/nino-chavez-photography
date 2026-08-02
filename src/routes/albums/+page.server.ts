@@ -128,7 +128,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
  */
 function albumsSeo(totalAlbums: number) {
 	return {
-		title: 'Albums | Nino Chavez Photography',
-		description: `Browse ${totalAlbums} volleyball photography albums. View complete event coverage from tournaments and matches.`
+		title: 'Events | Nino Chavez Photography',
+		description: `Browse ${totalAlbums} volleyball event galleries with complete coverage from tournaments and matches.`
 	};
 }
