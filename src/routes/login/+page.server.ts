@@ -7,10 +7,26 @@ import { base } from '$app/paths';
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
+import { SITE_URL } from '$lib/site-url';
 
-/** Build the auth callback URL from the current request origin */
-function getCallbackUrl(requestUrl: URL, next?: string): string {
-	const callback = `${requestUrl.origin}${base}/auth/callback`;
+/**
+ * Build the auth callback URL from the gallery's public address, NOT `url.origin`.
+ *
+ * The router refetches this app from nino-chavez-photography.pages.dev, so inside
+ * here `url.origin` IS the Pages origin — the same trap already annotated in
+ * `albums/[slug]/+page.server.ts` and `+layout.svelte`. This is the one place it
+ * was still live, and it broke sign-in outright rather than cosmetically.
+ *
+ * Supabase ignores a `redirectTo` that is not on the project's Redirect URLs
+ * allowlist and silently falls back to the Site URL — no error, on either side.
+ * So every magic link carried the unlisted pages.dev callback, got swapped for
+ * the Site URL, and landed on the gallery home page holding a `?code=` that no
+ * route exchanges. The visitor sees the landing page and stays signed out.
+ *
+ * `SITE_URL` already ends in the `/photography` base path — see $lib/site-url.
+ */
+function getCallbackUrl(next?: string): string {
+	const callback = `${SITE_URL}/auth/callback`;
 	return next ? `${callback}?next=${encodeURIComponent(next)}` : callback;
 }
 
@@ -49,7 +65,7 @@ export const actions = {
 		throw redirect(303, `${base}/admin/tags`);
 	},
 
-	magicLink: async ({ request, cookies, url }) => {
+	magicLink: async ({ request, cookies }) => {
 		const data = await request.formData();
 		const email = data.get('email')?.toString();
 
@@ -60,7 +76,7 @@ export const actions = {
 		const supabase = createSupabaseServerClient(cookies);
 		const { error: authError } = await supabase.auth.signInWithOtp({
 			email,
-			options: { emailRedirectTo: getCallbackUrl(url) }
+			options: { emailRedirectTo: getCallbackUrl() }
 		});
 
 		if (authError) {
@@ -71,7 +87,7 @@ export const actions = {
 		return { success: true, action: 'magicLink' };
 	},
 
-	forgotPassword: async ({ request, cookies, url }) => {
+	forgotPassword: async ({ request, cookies }) => {
 		const data = await request.formData();
 		const email = data.get('email')?.toString();
 
@@ -81,7 +97,7 @@ export const actions = {
 
 		const supabase = createSupabaseServerClient(cookies);
 		const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-			redirectTo: getCallbackUrl(url, '/reset-password')
+			redirectTo: getCallbackUrl('/reset-password')
 		});
 
 		if (authError) {
