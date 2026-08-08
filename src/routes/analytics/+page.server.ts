@@ -4,13 +4,10 @@
  * Displays popular photos, search analytics, and view statistics
  */
 
-import { base } from '$app/paths';
-import { redirect, error } from '@sveltejs/kit';
-import { getPopularPhotos, getTopSearchQueries, getBotFilteredCount } from '$lib/analytics/tracker';
+import { getPopularPhotos, getBotFilteredCount } from '$lib/analytics/tracker';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, matviewClient } from '$lib/supabase/server';
-import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
-import { isAllowedAdmin } from '$lib/server/admin-auth';
+import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
 
@@ -18,18 +15,23 @@ import type { PageServerLoad } from './$types';
 // engagement_events is RLS-locked from anon (writes are service-role only).
 const SINCE_30D = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-export const load: PageServerLoad = async ({ cookies }) => {
-	// Internal dashboard — gate behind auth (reads RLS-locked engagement data via service_role).
-	const supabase = createSupabaseServerClient(cookies);
-	const {
-		data: { user }
-	} = await supabase.auth.getUser();
-	if (!user) {
-		throw redirect(302, `${base}/login`);
-	}
-	if (!isAllowedAdmin(user.email)) {
-		throw error(403, 'Admin access required');
-	}
+export const load: PageServerLoad = async () => {
+	// PUBLIC PAGE. This used to be gated behind a Supabase session plus the ADMIN_EMAILS
+	// allowlist. It is now open, deliberately — the numbers here are this gallery's own
+	// traffic, and there is no reason a visitor cannot see them.
+	//
+	// WHAT MAY NOT COME BACK. The gate is gone, so nothing stops these panels reaching
+	// anyone; the privacy line moved from "who can load the page" to "what the page reads".
+	// Visitor-typed search text — `search_queries.query_text` and the
+	// `zero_result_searches_30d` view — is therefore NOT read here anymore. Gallery search
+	// on a volleyball archive carries team names, event names and jersey numbers, which is
+	// to say children's names typed by their parents, and the privacy page tells visitors
+	// those records exist so the operator can find content gaps. Publishing them verbatim
+	// contradicts that sentence. `search_queries` is still counted, never quoted: a total
+	// is not a transcript.
+	//
+	// Anything added to this loader gets the same test. Aggregates are fine; free text a
+	// visitor typed is not, no matter which table it now lives in.
 
 	// Get popular photos with full metadata
 	const popularPhotoIds = await getPopularPhotos(20);
@@ -75,10 +77,6 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			];
 		});
 	}
-
-	// Get recent search queries
-	// 10, not 20 — the panel rendered `.slice(0, 10)`, so half of every fetch was discarded.
-	const recentSearches = await getTopSearchQueries(10);
 
 	// Bot-filtered events: crawler hits the isbot gate suppressed before they
 	// reached engagement_events (see 20260713150000_bot_filtered_events.sql).
@@ -171,26 +169,9 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		console.error('[Analytics] Failed to load album reach:', err);
 	}
 
-	// Zero-result searches: the demand signal for missing content/tagging, last 30 days.
-	let zeroResultSearches: Array<{ query_text: string; searches: number; last_searched: string }> = [];
-
-	try {
-		const { data, error: zeroError } = await createSupabaseAdminClient()
-			.from('zero_result_searches_30d')
-			.select('query_text, searches, last_searched')
-			.order('searches', { ascending: false })
-			.limit(20);
-		if (zeroError) throw zeroError;
-		zeroResultSearches = data || [];
-	} catch (err) {
-		console.error('[Analytics] Failed to load zero-result searches:', err);
-	}
-
 	return {
 		popularPhotos,
-		recentSearches,
 		albumReach,
-		zeroResultSearches,
 		stats: {
 			totalViews: Number(totals?.views ?? 0),
 			totalVisitors: Number(totals?.visitors ?? 0),

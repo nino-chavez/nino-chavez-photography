@@ -1,9 +1,13 @@
 /**
  * Admin authorization (defense-in-depth over authentication).
  *
- * Admin surfaces — /admin/*, /analytics, /api/admin/* — confirm a valid Supabase session AND
- * check this allowlist. Both are required: authentication says who you are, this says whether
- * you are the operator. Everything behind it runs with service_role.
+ * Admin surfaces — /admin/*, /api/admin/* — confirm a valid Supabase session AND check this
+ * allowlist. Both are required: authentication says who you are, this says whether you are the
+ * operator. Everything behind it runs with service_role.
+ *
+ * `/analytics` was on that list and no longer is: it is a public page as of this commit. Its
+ * loader keeps the same obligation by other means — it reads aggregates only, never text a
+ * visitor typed. See `routes/analytics/+page.server.ts` for what may not go back in.
  *
  * FAILS CLOSED. An unset `ADMIN_EMAILS` means nobody is an admin, not everybody.
  *
