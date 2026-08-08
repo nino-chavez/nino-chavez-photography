@@ -1,19 +1,18 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-08-02T02:08:11.787Z",
-  "reviewedBy": "Codex",
-  "method": "Reviewed /photography/albums at 390, 920, 921, and 1280 pixels after the redesign boundary reconciliation. The global header switches from Menu to desktop navigation without overflow; labels match website-nc; Events, By date, Collections, and Saved remain subordinate photography navigation; Find photos remains distinct from Search site; event cards and controls remain readable. Confirmed the specialist root returns a permanent redirect to the website-nc photography landing while preserving query parameters.",
-  "sourceDigest": "sha256:674557ff01fceed0022021a458efe53e1c948080dbf68eadb5b7373479f8db7d",
+  "reviewedAt": "2026-08-08T01:58:02.797Z",
+  "reviewedBy": "Claude Opus 5",
+  "method": "Walked /photography/analytics at 390, 920 and 1280 pixels against the local dev server after removing the page's authentication gate and its two visitor-search panels. The page returns 200 with no redirect to /login. Recent Searches and Zero-Result Gallery Searches no longer render, and no visitor-typed text appears anywhere on the page. Total Views, Total Searches, Popular Photos, Bot Traffic Filtered, View Sources, Most Popular Photos and Album Reach all render with live data. Document scrollWidth equals clientWidth at all three widths, so nothing overflows horizontally and the stat grid reflows 4-up to 1-up cleanly. The only console errors are the Cloudflare RUM beacon failing CORS against localhost, which is a dev-server artifact rather than a page defect. The photography subnav row renders clipped under the global header at 390; /photography/albums, which this change does not touch, clips identically, so it is pre-existing and left alone here.",
+  "sourceDigest": "sha256:874dab1b23d7c881773f653f52fd4e7a02e660055ef7d73b8c3f412fab6da51f",
   "sourceFiles": 128,
   "scope": [
-    "/photography root handoff to website-nc",
-    "/photography/albums at 390px",
-    "/photography/albums at 920px global-menu boundary",
-    "/photography/albums at 921px desktop-navigation boundary",
-    "/photography/albums at 1280px",
-    "global navigation label parity",
-    "subordinate photography navigation",
-    "event cards and search controls"
+    "/photography/analytics at 390px",
+    "/photography/analytics at 920px global-menu boundary",
+    "/photography/analytics at 1280px",
+    "public access with no session",
+    "absence of visitor-typed search text",
+    "stat grid and Album Reach table reflow",
+    "/photography/albums at 390px as unchanged comparison"
   ]
 }
