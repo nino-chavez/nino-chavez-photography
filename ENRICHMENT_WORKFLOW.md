@@ -17,14 +17,34 @@ It is **reprocess-in-place / idempotent**: re-running an album updates rows, nev
 
 ## Prerequisites
 
-**Environment** (`.env.local`):
+**Supabase environment** (`.env.local`):
 
 ```
 VITE_SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
-OPENROUTER_API_KEY=...        # vision + embeddings (the only live AI gateway)
-CF_ACCOUNT_ID=...
-CF_IMAGES_API_TOKEN=...
+```
+
+**Runtime tokens come from 1Password.** These are the owned field mappings; do not assume the
+generic `credential` field for the Cloudflare bundle, and do not fall back to a stale token in
+`.env.local`:
+
+| Environment variable | 1Password reference |
+|---|---|
+| `OPENROUTER_API_KEY` | `op://Developer Secrets/OpenRouter photography/credential` |
+| `CF_ACCOUNT_ID` | `op://Developer Secrets/Cloudflare photography/account_id` |
+| `CF_IMAGES_API_TOKEN` | `op://Developer Secrets/Cloudflare photography/images_api_token` |
+
+Inject them for the process that runs the album:
+
+```bash
+CF_ACCOUNT_ID="$(op read 'op://Developer Secrets/Cloudflare photography/account_id')" \
+CF_IMAGES_API_TOKEN="$(op read 'op://Developer Secrets/Cloudflare photography/images_api_token')" \
+OPENROUTER_API_KEY="$(op read 'op://Developer Secrets/OpenRouter photography/credential')" \
+npm run ingest:album -- \
+  --dir /path/to/album \
+  --album-name "HS Girls VB - Team A vs Team B - 08-25-2026" \
+  --sport volleyball \
+  --unlisted
 ```
 
 **The `albums` row must exist first.** Sport is album-authoritative — a new album needs an `albums` row with its `sport` (operator-curated) before ingest, or its photos get `sport_type=NULL`. Seed via `database/seed/album-sports.json` + `load-album-sports.ts`. The runner fails loudly if the album row is missing.
@@ -32,6 +52,9 @@ CF_IMAGES_API_TOKEN=...
 ## Quick start
 
 ```bash
+CF_ACCOUNT_ID="$(op read 'op://Developer Secrets/Cloudflare photography/account_id')" \
+CF_IMAGES_API_TOKEN="$(op read 'op://Developer Secrets/Cloudflare photography/images_api_token')" \
+OPENROUTER_API_KEY="$(op read 'op://Developer Secrets/OpenRouter photography/credential')" \
 npm run ingest:album -- \
   --dir /path/to/album \
   --album-key xSqPJB \

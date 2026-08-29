@@ -74,6 +74,13 @@ npm test                         # Playwright E2E tests
 - `.agent-os/implementation/ALBUM_NORMALIZATION_WORKFLOW.md` - Naming standard format
 - `.agent-os/implementation/ENRICHMENT_PIPELINE_INTEGRATION.md` - Naming integration
 
+### Album ingest secrets
+- Read runtime tokens from 1Password before ingest; do not trust a cached `.env.local` token over the vault.
+- `OPENROUTER_API_KEY` → `op://Developer Secrets/OpenRouter photography/credential`
+- `CF_ACCOUNT_ID` → `op://Developer Secrets/Cloudflare photography/account_id`
+- `CF_IMAGES_API_TOKEN` → `op://Developer Secrets/Cloudflare photography/images_api_token`
+- If an item read fails, inspect field labels first. Do not assume every item uses `credential`.
+
 ## Database
 - Primary table: `photo_metadata` (~20K rows)
 - Key columns: photo_id, sport_type, quality_score, cf_image_id
