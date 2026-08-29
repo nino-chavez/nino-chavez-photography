@@ -70,15 +70,16 @@
 					<div class="flex items-center gap-3 mb-2">
 						<Eye class="w-6 h-6 text-gold-500" />
 						<Typography variant="label" class="text-sm text-charcoal-400 uppercase">
-							Total Views
+							Photo Opens
 						</Typography>
 					</div>
 					<Typography variant="h2" class="text-3xl text-gold-500">
-						{formatNumber(data.stats.totalViews)}
+						{formatNumber(data.stats.totalPhotoOpens)}
 					</Typography>
 					<Typography variant="caption" class="text-xs text-charcoal-500 mt-1 block">
-						from {formatNumber(data.stats.totalVisitors)}
-						{data.stats.totalVisitors === 1 ? 'visitor' : 'visitors'}
+						from about {formatNumber(data.stats.totalEngagedVisitors)} engaged
+						{data.stats.totalEngagedVisitors === 1 ? 'visitor' : 'visitors'} ·
+						{formatNumber(data.stats.totalAlbumOpens)} album opens
 					</Typography>
 				</div>
 
@@ -114,25 +115,25 @@
 						</Typography>
 					</div>
 					<Typography variant="h2" class="text-3xl text-gold-500">
-						{formatNumber(data.stats.botFilteredCount + data.stats.automatedViews)}
+						{formatNumber(data.stats.botFilteredCount + data.stats.automatedPhotoOpens)}
 					</Typography>
 					<Typography variant="caption" class="text-xs text-charcoal-500 mt-1 block">
 						{formatNumber(data.stats.botFilteredCount)} blocked on arrival ·
-						{formatNumber(data.stats.automatedViews)} views left out of the counts below,
+						{formatNumber(data.stats.automatedPhotoOpens)} photo opens left out of the counts below,
 						from sessions that read whole albums end to end.
 					</Typography>
 				</div>
 		</div>
 
-		<!-- View Source Distribution -->
-		{#if Object.keys(data.stats.viewSourceCounts).length > 0}
+		<!-- Photo Open Source Distribution -->
+		{#if Object.keys(data.stats.photoOpenSourceCounts).length > 0}
 			<div
 				style="animation: fade-in 0.3s ease-out 0.4s both"
 				class="bg-charcoal-900/50 border border-charcoal-700/50 rounded-lg p-6 mb-8"
 			>
-				<Typography variant="h3" class="text-xl mb-4">View Sources</Typography>
+				<Typography variant="h3" class="text-xl mb-4">Photo Open Sources</Typography>
 				<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-					{#each Object.entries(data.stats.viewSourceCounts) as [source, count]}
+					{#each Object.entries(data.stats.photoOpenSourceCounts) as [source, count]}
 						<div class="bg-charcoal-800/30 rounded-lg p-4">
 							<Typography variant="caption" class="text-xs text-charcoal-400 uppercase">
 								{source}
@@ -153,8 +154,8 @@
 				Most Popular Photos
 			</Typography>
 			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">
-				Ranked by recency-weighted engagement (downloads/favorites/shares outweigh views), not raw view
-				count — a brand-new download can outrank an older photo with more views.
+				Ranked by recency-weighted engagement (downloads/favorites/shares outweigh photo opens), not raw
+				open count — a brand-new download can outrank an older photo with more opens.
 			</Typography>
 
 			{#if data.popularPhotos.length > 0}
@@ -193,7 +194,7 @@
 									class="absolute top-2 right-2 bg-charcoal-950/90 backdrop-blur-sm px-2 py-1 rounded-full border border-gold-500/30"
 								>
 									<Typography variant="caption" class="text-xs text-gold-400 font-medium">
-										{formatNumber(photo.view_count)} views{photo.download_count
+										{formatNumber(photo.view_count)} opens{photo.download_count
 											? ` · ${formatNumber(photo.download_count)} dl`
 											: ''}{photo.favorite_count
 											? ` · ${formatNumber(photo.favorite_count)} fav`
@@ -207,7 +208,7 @@
 			{:else}
 				<div class="text-center py-12 bg-charcoal-900/30 rounded-lg">
 					<Typography variant="body" class="text-charcoal-500">
-						No view data yet. Start exploring photos to see analytics!
+						No photo-open data yet. Start exploring photos to see analytics!
 					</Typography>
 				</div>
 			{/if}
@@ -234,7 +235,7 @@
 									? 'bg-gold-500/20 text-gold-300'
 									: 'bg-charcoal-800/50 text-charcoal-400 hover:text-charcoal-200'}"
 							>
-								Most visitors
+								Most engaged
 							</button>
 							<button
 								type="button"
@@ -259,7 +260,8 @@
 				{/if}
 			</div>
 			<Typography variant="caption" class="text-xs text-charcoal-500 mb-4 block">
-				After you shared each album, who came and what they did.
+				Engaged visitors are an estimate based on a privacy-preserving browser and network fingerprint.
+				Album opens are separate from individual photo opens and are tracked from Aug 29, 2026.
 				{#if data.albumReach.length > 0}
 					Showing {formatNumber(filteredAlbumReach.length)} of {formatNumber(data.albumReach.length)}
 					{data.albumReach.length === 1 ? 'album' : 'albums'} with activity.
@@ -272,8 +274,9 @@
 						<thead class="sticky top-0 bg-charcoal-900">
 							<tr class="border-b border-charcoal-800">
 								<th class="text-left py-3 px-4 text-charcoal-400 font-medium">Album</th>
-								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Visitors</th>
-								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Views</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Engaged visitors</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Album opens</th>
+								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Photo opens</th>
 								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Downloads</th>
 								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Favorites</th>
 								<th class="text-right py-3 px-4 text-charcoal-400 font-medium">Shares</th>
@@ -296,9 +299,10 @@
 										{/if}
 									</td>
 									<td class="text-right py-3 px-4 text-gold-500 font-medium">
-										{formatNumber(album.unique_visitors)}
+										{formatNumber(album.engaged_visitors)}
 									</td>
-									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.views)}</td>
+									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.album_opens)}</td>
+									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.photo_opens)}</td>
 									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.downloads)}</td>
 									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.favorites)}</td>
 									<td class="text-right py-3 px-4 text-charcoal-300">{formatNumber(album.shares)}</td>

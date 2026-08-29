@@ -91,11 +91,11 @@ export const load: PageServerLoad = async () => {
 	// with `album` missing outright — the PR #74 ?src= channels were unmeasurable.
 	// Both views also exclude crawler sessions; see the migration
 	// 20260728090000_analytics_exclude_automated_sessions.sql for the evidence.
-	const { data: viewSourceRows } = await createSupabaseAdminClient()
+	const { data: photoOpenSourceRows } = await createSupabaseAdminClient()
 		.from('view_source_30d')
 		.select('source, views');
 
-	const viewSourceCounts = (viewSourceRows || []).reduce(
+	const photoOpenSourceCounts = (photoOpenSourceRows || []).reduce(
 		(acc, { source, views }) => {
 			acc[source] = Number(views);
 			return acc;
@@ -105,7 +105,7 @@ export const load: PageServerLoad = async () => {
 
 	const { data: totals } = await createSupabaseAdminClient()
 		.from('engagement_totals_30d')
-		.select('views, visitors, automated_views')
+		.select('photo_opens, engaged_visitors, album_opens, automated_photo_opens')
 		.maybeSingle();
 
 	// search_queries is RLS-hidden from anon (count silently reads 0) — use the
@@ -115,13 +115,14 @@ export const load: PageServerLoad = async () => {
 		.select('*', { count: 'exact', head: true })
 		.gte('searched_at', SINCE_30D());
 
-	// Album reach: unique visitors + event breakdown per album, last 30 days.
-	// Reads album_engagement_30d (view, service-role — see migration
-	// 20260709120000_analytics_reach_views.sql) and resolves names off
+	// Album reach: estimated engaged visitors, album opens, photo opens, and
+	// completed actions per album over the last 30 days. Reads the service-role
+	// album_engagement_30d view (latest contract: migration
+	// 20260829100043_separate_album_and_photo_opens.sql) and resolves names off
 	// albums_summary. Degrades to an empty array if the view read fails (e.g.
 	// the migration hasn't landed yet) — this dashboard must never 500.
 	//
-	// No silent top-N here: a `.limit(20)` ordered by unique_visitors used to
+	// No silent top-N here: a `.limit(20)` ordered by visitor count used to
 	// mean a freshly-published album with real (but small) traffic just fell
 	// off the cutoff below every established gallery — indistinguishable from
 	// "isn't tracked yet" in the UI. Every album with an event in the last 30
@@ -129,8 +130,9 @@ export const load: PageServerLoad = async () => {
 	let albumReach: Array<{
 		album_key: string;
 		album_name: string | null;
-		unique_visitors: number;
-		views: number;
+		engaged_visitors: number;
+		album_opens: number;
+		photo_opens: number;
 		favorites: number;
 		downloads: number;
 		shares: number;
@@ -140,8 +142,8 @@ export const load: PageServerLoad = async () => {
 	try {
 		const { data: reachRows, error: reachError } = await createSupabaseAdminClient()
 			.from('album_engagement_30d')
-			.select('album_key, unique_visitors, views, favorites, downloads, shares, last_event')
-			.order('unique_visitors', { ascending: false });
+			.select('album_key, engaged_visitors, album_opens, photo_opens, favorites, downloads, shares, last_event')
+			.order('engaged_visitors', { ascending: false });
 		if (reachError) throw reachError;
 
 		const albumKeys = (reachRows || []).map((row) => row.album_key);
@@ -173,11 +175,12 @@ export const load: PageServerLoad = async () => {
 		popularPhotos,
 		albumReach,
 		stats: {
-			totalViews: Number(totals?.views ?? 0),
-			totalVisitors: Number(totals?.visitors ?? 0),
-			automatedViews: Number(totals?.automated_views ?? 0),
+			totalPhotoOpens: Number(totals?.photo_opens ?? 0),
+			totalEngagedVisitors: Number(totals?.engaged_visitors ?? 0),
+			totalAlbumOpens: Number(totals?.album_opens ?? 0),
+			automatedPhotoOpens: Number(totals?.automated_photo_opens ?? 0),
 			totalSearches: totalSearches || 0,
-			viewSourceCounts,
+			photoOpenSourceCounts,
 			botFilteredCount,
 		},
 	};

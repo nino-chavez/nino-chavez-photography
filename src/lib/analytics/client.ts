@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { SHARE_SRC, type ShareChannel, type ShareSubject } from '$lib/analytics/share';
 
-export type EngagementType = 'view' | 'favorite' | 'download' | 'share';
+export type EngagementType = 'view' | 'favorite' | 'download' | 'share' | 'album_open';
 
 /**
  * Fire-and-forget engagement ping from the client to /api/engagement.

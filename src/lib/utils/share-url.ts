@@ -3,8 +3,8 @@
  *
  * Appends a `?src=<channel>` query param to outbound share URLs so Cloudflare Web
  * Analytics stops bucketing every share click as "direct" traffic. The value is
- * read back on arrival by $lib/analytics/tracker's trackArrival (see the albums/[slug]
- * and homepage loaders), which logs it as a view engagement event.
+ * read back on arrival by $lib/analytics/tracker (see the albums/[slug], photo/[id],
+ * and homepage loaders), which preserves the channel alongside the arrival event.
  */
 
 import { SITE_URL } from '$lib/site-url';

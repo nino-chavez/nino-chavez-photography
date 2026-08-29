@@ -5,12 +5,11 @@ import { computeSessionHash } from '$lib/analytics/session';
 import { isBotUserAgent } from '$lib/analytics/bot-detection';
 import { recordBotFiltered } from '$lib/analytics/tracker';
 
-// 'view' included: the standalone /photo/[id] page load is not the only place a
-// photo is actually viewed — the lightbox/detail-modal opened from an album grid
-// never navigates there, so it must self-report. The per-day dedup index
-// (session_hash, photo_id, event_type, event_day) already caps this at one
-// view/visitor/photo/day, so it can't be inflated by re-opening the same photo.
-const VALID_EVENTS = new Set(['view', 'favorite', 'download', 'share']);
+// `view` is a displayed photo; `album_open` is a rendered album page. Both are
+// client-reported so the global hover-prefetch cannot bank activity before a
+// visitor navigates. The per-photo and album-level indexes cap each event to one
+// visitor/target/day, so re-renders and repeat opens cannot inflate the totals.
+const VALID_EVENTS = new Set(['view', 'favorite', 'download', 'share', 'album_open']);
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	let body: { event_type?: string; photo_id?: string; album_key?: string; source?: string };

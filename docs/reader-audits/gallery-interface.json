@@ -1,18 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-08-08T01:58:02.797Z",
-  "reviewedBy": "Claude Opus 5",
-  "method": "Walked /photography/analytics at 390, 920 and 1280 pixels against the local dev server after removing the page's authentication gate and its two visitor-search panels. The page returns 200 with no redirect to /login. Recent Searches and Zero-Result Gallery Searches no longer render, and no visitor-typed text appears anywhere on the page. Total Views, Total Searches, Popular Photos, Bot Traffic Filtered, View Sources, Most Popular Photos and Album Reach all render with live data. Document scrollWidth equals clientWidth at all three widths, so nothing overflows horizontally and the stat grid reflows 4-up to 1-up cleanly. The only console errors are the Cloudflare RUM beacon failing CORS against localhost, which is a dev-server artifact rather than a page defect. The photography subnav row renders clipped under the global header at 390; /photography/albums, which this change does not touch, clips identically, so it is pre-existing and left alone here.",
-  "sourceDigest": "sha256:874dab1b23d7c881773f653f52fd4e7a02e660055ef7d73b8c3f412fab6da51f",
+  "reviewedAt": "2026-08-29T10:09:56.558Z",
+  "reviewedBy": "Codex",
+  "method": "Walked /photography/analytics against the local dev server at 390, 920, and 1280 pixels after separating album opens from photo opens. Verified the Photo Opens headline, Photo Open Sources panel, popular-photo open badges, and Album Reach labels with live aggregate data. The table shows engaged visitors, album opens, photo opens, downloads, favorites, shares, and last activity as separate units. At 1280 and 920 pixels the table fits its container; at 390 pixels it scrolls inside its own container while document scrollWidth equals clientWidth. The stat cards reflow to one column at 390 pixels.",
+  "sourceDigest": "sha256:4500905ecc4573ff8bb5ddaea10894dd55e61f136b71b6473d8d33d153d7849d",
   "sourceFiles": 128,
   "scope": [
     "/photography/analytics at 390px",
-    "/photography/analytics at 920px global-menu boundary",
+    "/photography/analytics at 920px",
     "/photography/analytics at 1280px",
-    "public access with no session",
-    "absence of visitor-typed search text",
-    "stat grid and Album Reach table reflow",
-    "/photography/albums at 390px as unchanged comparison"
+    "photo-open headline and source labels",
+    "Album Reach metric split and table overflow",
+    "live aggregate values after migration"
   ]
 }

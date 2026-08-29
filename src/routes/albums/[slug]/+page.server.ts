@@ -133,15 +133,15 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 
 	// Arrival attribution → popularity engine. Only fires when the incoming link carried
 	// a valid ?src= channel (share links minted by $lib/utils/share-url); normal
-	// navigation inserts nothing. Non-blocking, mirrors the photo page's fire-and-forget
-	// view tracking — never awaited, never allowed to affect the response.
+	// navigation inserts nothing. The rendered page reports the separate album_open
+	// event client-side, where the global hover-prefetch cannot create a false visit.
 	const src = url.searchParams.get('src');
 	if (isValidSrcParam(src)) {
 		const userAgent = request.headers.get('user-agent') ?? '';
 		keepTrackingAlive(
 			platform,
-			computeSessionHash(getClientAddress(), userAgent).then(
-				(sessionHash) => trackArrival({ albumKey, src, sessionHash, userAgent })
+			computeSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
+				trackArrival({ albumKey, src, sessionHash, userAgent })
 			)
 		);
 	}

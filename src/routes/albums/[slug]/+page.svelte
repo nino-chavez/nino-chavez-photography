@@ -14,11 +14,19 @@
 	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { trackEngagement } from '$lib/analytics/client';
 	import type { PageData } from './$types';
 	import type { Photo, Video } from '$types/photo';
 
 	// Svelte 5 Runes: $props to receive server data
 	let { data }: { data: PageData } = $props();
+
+	// Report only after the album page actually renders. The server load also runs
+	// on global hover-prefetch, which would turn a cursor passing over an album link
+	// into an album open. The API dedups re-renders per visitor/album/day.
+	$effect(() => {
+		trackEngagement('album_open', { albumKey: data.albumKey });
+	});
 
 	// Lightbox state (same pattern as explore page)
 	let lightboxOpen = $state(false);
