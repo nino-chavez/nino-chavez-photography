@@ -360,6 +360,15 @@
 
 	// Keyboard navigation for gallery pages (arrow keys)
 	function handleKeydown(event: KeyboardEvent) {
+		// The lightbox has its own ArrowLeft/ArrowRight handler (photo-to-photo) and never calls
+		// stopPropagation, so with no guard here BOTH handlers fired on every press while the
+		// lightbox was open — this one paging the underlying server-rendered grid to the next/
+		// previous page via `goto()`, which then closed the lightbox (the `$navigating` effect
+		// above). Confirmed live: pressing ArrowRight inside the lightbox navigated the URL to
+		// `?page=2` and dropped back to the grid mid-browse. Page-level pagination is not this
+		// keydown's job while a photo is open full-screen.
+		if (lightboxOpen) return;
+
 		// Only handle if not in an input field
 		const target = event.target as HTMLElement;
 		if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
