@@ -11,6 +11,7 @@
 		Sparkles
 	} from 'lucide-svelte';
 	import { swipe, type SwipeEvent, isTouchDevice } from '$lib/utils/gestures';
+	import { canGoNext as computeCanGoNext, canGoPrev as computeCanGoPrev, isValidIndex, shouldPrefetchNextPage, resolveLoadMoreOutcome } from '$lib/gallery/lightbox-nav';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
@@ -27,7 +28,14 @@
 		currentIndex?: number;
 		onClose?: () => void;
 		onNavigate?: (index: number) => void;
-		// Cross-page navigation (optional — defaults preserve single-page behavior)
+		// Cross-page navigation (optional — defaults preserve single-page behavior).
+		// `onLoadMore` should append to the SAME array passed as `photos` (mutate the caller's
+		// state, e.g. `loadedPhotos = [...loadedPhotos, ...next]`) and may be called more than
+		// once concurrently-in-spirit — this component calls it both to prefetch ahead of the
+		// boundary and, as a fallback, at the boundary itself, and treats "did `photos.length`
+		// grow" as the only signal of success (see lightbox-nav.ts's resolveLoadMoreOutcome).
+		// It should not throw for an expected empty/end-of-data result — return normally and
+		// simply don't grow `photos`; a thrown error is caught and treated the same way.
 		hasMore?: boolean;
 		onLoadMore?: () => Promise<void>;
 		loadingMore?: boolean;
@@ -111,10 +119,50 @@
 
 	// Navigation availability. `hasMore` extends "next" past the loaded list:
 	// at the boundary, advancing triggers onLoadMore to append the next page.
-	const canGoNext = $derived(
-		photos.length > 0 && (currentIndex < photos.length - 1 || hasMore)
-	);
-	const canGoPrev = $derived(photos.length > 0 && currentIndex > 0);
+	const canGoNext = $derived(computeCanGoNext(currentIndex, photos.length, hasMore));
+	const canGoPrev = $derived(computeCanGoPrev(currentIndex));
+
+	// `loadingMore` goes true for the background prefetch too (see below), which starts several
+	// photos before the boundary — an ordinary in-list Next during that window must stay instant
+	// and clickable. Only show the "loading" affordance on Next when it is actually the thing the
+	// click is waiting on: standing at the last loaded photo with a fetch in flight.
+	const waitingOnLoadMore = $derived(loadingMore && currentIndex >= photos.length - 1);
+
+	// A page fetch plus a cold CDN image fetch can take seconds, and doing both serially only
+	// after the visitor clicks Next at the boundary is what made crossing feel like a hang.
+	// Start fetching the next page a few photos early — hasMore/loadingMore make this
+	// idempotent — so by the time the visitor reaches the last loaded photo the data is
+	// already there and the adjacent-image preload effect below has had time to warm it.
+	const PREFETCH_LOOKAHEAD = 5;
+	$effect(() => {
+		if (!open || !onLoadMore) return;
+		if (shouldPrefetchNextPage(currentIndex, photos.length, hasMore, PREFETCH_LOOKAHEAD)) {
+			void triggerLoadMore();
+		}
+	});
+
+	// Dedups the prefetch and the boundary fallback onto the SAME in-flight call, so a visitor
+	// who reaches the boundary before the prefetch resolves waits for it rather than the two
+	// racing (or the boundary attempt bailing out on the parent's own re-entrancy guard and
+	// reading as a failure). `onLoadMore` itself decides success by whether `photos` grew.
+	let pendingLoadMore: Promise<void> | null = null;
+	function triggerLoadMore(): Promise<void> {
+		if (!onLoadMore) return Promise.resolve();
+		if (!pendingLoadMore) {
+			pendingLoadMore = onLoadMore()
+				.catch((err) => {
+					console.error('[Lightbox] onLoadMore failed', err);
+				})
+				.finally(() => {
+					pendingLoadMore = null;
+				});
+		}
+		return pendingLoadMore;
+	}
+
+	// Set when a boundary-crossing load resolved without producing a next photo (an error, or
+	// an empty page). Cleared on the next successful navigation or retry attempt.
+	let loadMoreFailed = $state(false);
 
 	// Detect touch device
 	$effect(() => {
@@ -157,29 +205,58 @@
 		open = false;
 		zoomLevel = 1;
 		imagePosition = { x: 0, y: 0 };
+		loadMoreFailed = false;
 		onClose?.();
 	}
 
-	// Advance to the next photo. At the boundary of the loaded list, if more
-	// pages are available, load the next page first, then advance into it.
+	// The only path that may call onNavigate — never with an index the parent hasn't loaded.
+	// Without this guard, a load-more call that resolved to nothing still let `goNext` advance
+	// into an index past the end of `photos`, which made `photo` undefined and the whole
+	// lightbox vanish while `open` stayed true (see lightbox-nav.ts).
+	function navigateTo(index: number) {
+		if (!isValidIndex(index, photos.length)) return;
+		onNavigate?.(index);
+	}
+
+	// Advance to the next photo. At the boundary of the loaded list, if more pages are
+	// available, load the next page first, then advance into it — unless the prefetch effect
+	// above already did, in which case this is just an ordinary in-list navigation.
 	async function goNext() {
 		if (currentIndex < photos.length - 1) {
 			zoomLevel = 1;
 			imagePosition = { x: 0, y: 0 };
 			navDirection = 'right';
 			imageLoading = true;
-			onNavigate?.(currentIndex + 1);
+			navigateTo(currentIndex + 1);
 			return;
 		}
 
-		// At the last loaded photo — fetch + append the next page, then advance.
-		if (hasMore && onLoadMore && !loadingMore) {
+		// At the last loaded photo — fetch + append the next page, then advance. If the
+		// prefetch effect above already started this fetch, triggerLoadMore reuses it.
+		if (hasMore && onLoadMore) {
+			loadMoreFailed = false;
 			zoomLevel = 1;
 			imagePosition = { x: 0, y: 0 };
 			navDirection = 'right';
-			await onLoadMore();
-			imageLoading = true;
-			onNavigate?.(currentIndex + 1);
+
+			const startIndex = currentIndex;
+			const loadedCountBefore = photos.length;
+			await triggerLoadMore();
+
+			const outcome = resolveLoadMoreOutcome({
+				startIndex,
+				currentIndexNow: currentIndex,
+				loadedCountBefore,
+				loadedCountAfter: photos.length
+			});
+			if (outcome.type === 'advance') {
+				imageLoading = true;
+				navigateTo(outcome.index);
+			} else if (outcome.type === 'failed') {
+				// Stay on the current photo — never leave the visitor on a blank lightbox.
+				loadMoreFailed = true;
+			}
+			// 'stale': the visitor already moved on (e.g. pressed Prev) — do nothing.
 		}
 	}
 
@@ -190,6 +267,11 @@
 		}
 	}
 
+	function retryLoadMore() {
+		loadMoreFailed = false;
+		void goNext();
+	}
+
 	function handlePrev(event?: MouseEvent) {
 		event?.stopPropagation();
 		if (canGoPrev) {
@@ -197,7 +279,8 @@
 			imagePosition = { x: 0, y: 0 };
 			navDirection = 'left';
 			imageLoading = true;
-			onNavigate?.(currentIndex - 1);
+			loadMoreFailed = false;
+			navigateTo(currentIndex - 1);
 		}
 	}
 
@@ -362,6 +445,7 @@
 		// Reading image_key to track photo changes
 		const _key = photo.image_key;
 		imageLoading = true;
+		loadMoreFailed = false;
 	});
 
 	// Record a view for whatever photo is on screen while the lightbox is open.
@@ -541,18 +625,34 @@
 					{#if canGoNext}
 						<button
 							onclick={handleNext}
-							disabled={loadingMore}
-							class="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-wait {loadingMore ? 'animate-pulse' : ''}"
-							aria-label={loadingMore ? 'Loading more photos' : 'Next photo'}
+							disabled={waitingOnLoadMore}
+							class="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-wait {waitingOnLoadMore ? 'animate-pulse' : ''}"
+							aria-label={waitingOnLoadMore ? 'Loading more photos' : 'Next photo'}
 							title="Next (→)"
 						>
-							{#if loadingMore}
+							{#if waitingOnLoadMore}
 								<div class="w-7 h-7 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
 							{:else}
 								<ChevronRight class="w-8 h-8 text-white" />
 							{/if}
 						</button>
 					{/if}
+				{/if}
+
+				<!-- Load-more failure — stay on the current photo, offer a retry, never vanish. -->
+				{#if loadMoreFailed}
+					<div
+						class="absolute bottom-24 md:bottom-28 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-2 rounded-full bg-charcoal-900/95 border border-charcoal-700 backdrop-blur-sm text-sm text-white/90"
+						role="status"
+					>
+						<span>Couldn't load more photos.</span>
+						<button
+							onclick={retryLoadMore}
+							class="text-gold-400 hover:text-gold-300 font-medium focus:outline-none focus:ring-2 focus:ring-gold-500 rounded"
+						>
+							Retry
+						</button>
+					</div>
 				{/if}
 
 				<!-- Bottom Info/Metadata Bar - Desktop only -->
