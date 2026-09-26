@@ -7,14 +7,130 @@
  * - Normalization scripts (fixes existing albums)
  * - CLI utilities (standalone name generation)
  *
- * Format: [Event/Teams] - [Date]
- * Character limit: 35-45 characters
- * See: .agent-os/CANONICAL_NAMING_STRATEGY.md
+ * Format (the standard since 2026-09-26, set by Nino): [Level Division Sport] - [Event or matchup] - [MM-DD-YYYY]
+ *   "HS Girls VB - JCA at ACC - 09-22-2026"
+ *   The prefix comes from the album's known facts (albums.level / division / sport) and is
+ *   omitted when none is known; the middle is the event or matchup as the operator writes it
+ *   ("JCA at ACC", "Bump Bash #5"); the date is the capture date, "MM-DD-YYYY to MM-DD-YYYY"
+ *   for a multi-day album. It replaced "[Event/Teams] - [Date]" ("Team vs Team - May 30"), which
+ *   dropped the year and the level and never matched how albums were actually being named.
+ * Character limit: 35-45 characters is a scanning target, not a rule the standard enforces.
+ * See: .agent-os/CANONICAL_NAMING_STRATEGY.md (historical)
  */
 
 // UX-aware character limits
 export const MAX_LENGTH_IDEAL = 35; // Optimal for scanning (1 line)
 export const MAX_LENGTH_HARD = 45; // Absolute maximum (2 lines mobile)
+
+// ---------------------------------------------------------------------------
+// The naming standard: prefix, date, compose, check
+// ---------------------------------------------------------------------------
+
+/** albums.level vocabulary -> the label a name carries. */
+export const LEVEL_LABELS: Record<string, string> = {
+	high_school: 'HS',
+	middle_school: 'MS',
+	college: 'College',
+	club: 'Club',
+};
+
+/** albums.division vocabulary -> the label a name carries. */
+export const DIVISION_LABELS: Record<string, string> = {
+	girls: 'Girls',
+	boys: 'Boys',
+	womens: "Women's",
+	mens: "Men's",
+	coed: 'Coed',
+};
+
+/** Sport label in a name: volleyball is "VB" (the house abbreviation); others are title-cased. */
+export function sportLabel(sport: string | null | undefined): string {
+	if (!sport || sport === 'other') return '';
+	if (sport === 'volleyball') return 'VB';
+	return sport
+		.split('_')
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+		.join(' ');
+}
+
+export interface AlbumNameFacts {
+	level?: string | null;
+	division?: string | null;
+	sport?: string | null;
+	/** Earliest capture date, YYYY-MM-DD (or any string starting with it). */
+	earliestDate?: string | null;
+	/** Latest capture date, YYYY-MM-DD; equal to or absent for a single-day album. */
+	latestDate?: string | null;
+}
+
+/**
+ * "HS Girls VB" from the known facts. '' unless a level or division is known: the sport label
+ * belongs to that team descriptor, and a bare "VB - Bump Bash #5 - 08-22-2026" reads worse than
+ * the event name on its own.
+ */
+export function albumNamePrefix(facts: AlbumNameFacts): string {
+	const level = facts.level ? LEVEL_LABELS[facts.level] ?? '' : '';
+	const division = facts.division ? DIVISION_LABELS[facts.division] ?? '' : '';
+	if (!level && !division) return '';
+	return [level, division, sportLabel(facts.sport)].filter(Boolean).join(' ');
+}
+
+const mdy = (isoDate: string): string => {
+	const [y, m, d] = isoDate.slice(0, 10).split('-');
+	return `${m}-${d}-${y}`;
+};
+
+/** "09-22-2026", or "09-20-2026 to 09-22-2026" for a multi-day album; '' without a date. */
+export function formatAlbumDate(earliest?: string | null, latest?: string | null): string {
+	const first = earliest || latest;
+	if (!first) return '';
+	const last = latest || earliest!;
+	return first.slice(0, 10) === last.slice(0, 10) ? mdy(first) : `${mdy(first)} to ${mdy(last)}`;
+}
+
+/** Joins the three segments, skipping any that are empty. */
+export function composeAlbumName(facts: AlbumNameFacts, middle: string): string {
+	return [albumNamePrefix(facts), middle.trim(), formatAlbumDate(facts.earliestDate, facts.latestDate)]
+		.filter(Boolean)
+		.join(' - ');
+}
+
+export interface AlbumNameCheck {
+	ok: boolean;
+	issues: string[];
+	/** The standard name built from the facts, keeping the operator's middle segment. */
+	suggestion: string;
+}
+
+/**
+ * Check an operator-typed name against the standard. Only the parts the facts decide are
+ * checked — the prefix and the date. The middle (event or matchup) is the operator's to write,
+ * so it is kept as typed: team names like "JCA at ACC" cannot be derived from
+ * "Joliet Catholic Academy, Aurora Central Catholic", and comparing whole names against a
+ * generated one is what made the previous drift warning fire on every album.
+ */
+export function checkAlbumName(name: string, facts: AlbumNameFacts): AlbumNameCheck {
+	const segments = name.split(/\s+[-–—]\s+/).map((s) => s.trim()).filter(Boolean);
+	const prefix = albumNamePrefix(facts);
+	const date = formatAlbumDate(facts.earliestDate, facts.latestDate);
+	const issues: string[] = [];
+
+	let rest = [...segments];
+	if (prefix) {
+		if (rest[0] === prefix) rest = rest.slice(1);
+		else issues.push(`starts with "${segments[0] ?? ''}", expected the prefix "${prefix}"`);
+	}
+	if (date) {
+		if (rest[rest.length - 1] === date) rest = rest.slice(0, -1);
+		else issues.push(`ends with "${segments[segments.length - 1] ?? ''}", expected the capture date "${date}"`);
+	}
+	// When a segment was missing or wrong, keep whatever is left that isn't a date or a prefix.
+	const looksLikeDate = (s: string) => /\d{1,4}[-/]\d{1,2}([-/]\d{2,4})?/.test(s) || /^[A-Z][a-z]{2} \d{1,2}(, \d{4})?$/.test(s);
+	const middle = rest.filter((s) => s !== prefix && !looksLikeDate(s)).join(' - ');
+	if (!middle) issues.push('has no event or matchup segment');
+
+	return { ok: issues.length === 0, issues, suggestion: composeAlbumName(facts, middle) };
+}
 
 /**
  * Album Data for canonical name generation
@@ -40,6 +156,11 @@ export interface AlbumData {
 		caption?: string; // Photo caption (may contain team/event info)
 	}>;
 
+	// Known album facts (albums.level / albums.division) for the name's prefix; sport comes from
+	// enrichment.sportType.
+	level?: string | null;
+	division?: string | null;
+
 	// AI-enriched metadata (if available)
 	enrichment?: {
 		sportType?: string;
@@ -59,6 +180,8 @@ export interface AlbumNameInput {
 	latestPhotoDate?: string; // ISO date string
 	teams?: { home: string; away: string }; // For matchups
 	eventName?: string; // For tournaments/events
+	level?: string | null; // albums.level, for the name's prefix
+	division?: string | null; // albums.division, for the name's prefix
 }
 
 /**
@@ -112,7 +235,7 @@ export function generateCanonicalNameFromAlbum(
 		confidence = 'high';
 	} else if (album.enrichment?.eventName) {
 		// AI-enriched event name
-		const cleanEvent = cleanEventName(album.enrichment.eventName, album.enrichment.sportType);
+		const cleanEvent = cleanEventName(album.enrichment.eventName);
 		parts.push(cleanEvent);
 		confidence = 'high';
 	} else {
@@ -148,6 +271,11 @@ export function generateCanonicalNameFromAlbum(
 		}
 	}
 
+	// Standard prefix ("HS Girls VB") from the known facts; cleanTeamName/cleanEventName strip any
+	// level or sport words the event text carried, so the prefix is the only place they appear.
+	const prefix = albumNamePrefix({ level: album.level, division: album.division, sport: album.enrichment?.sportType });
+	if (prefix) parts.unshift(prefix);
+
 	let proposed = parts.join(' - ');
 
 	// 3. Apply smart truncation if needed
@@ -161,8 +289,8 @@ export function generateCanonicalNameFromAlbum(
 		length: truncatedName.length,
 		truncated,
 		components: {
-			event: parts[0] || '',
-			date: parts[1] || '',
+			event: parts[prefix ? 1 : 0] || '',
+			date: parts[prefix ? 2 : 1] || '',
 		},
 		metadata: {
 			isMatchup,
@@ -420,7 +548,7 @@ export function generateCanonicalName(input: AlbumNameInput): CanonicalNameResul
 		isMatchup = true;
 	} else if (input.eventName) {
 		// Event format: "Event Name"
-		const cleanEvent = cleanEventName(input.eventName, input.sportType);
+		const cleanEvent = cleanEventName(input.eventName);
 		parts.push(cleanEvent);
 	} else if (input.currentName) {
 		// Parse from existing name
@@ -445,6 +573,11 @@ export function generateCanonicalName(input: AlbumNameInput): CanonicalNameResul
 		}
 	}
 
+	// Standard prefix ("HS Girls VB") from the known facts; cleanTeamName/cleanEventName strip any
+	// level or sport words the event text carried, so the prefix is the only place they appear.
+	const prefix = albumNamePrefix({ level: input.level, division: input.division, sport: input.sportType });
+	if (prefix) parts.unshift(prefix);
+
 	let proposed = parts.join(' - ');
 
 	// 3. Apply smart truncation if needed
@@ -455,8 +588,8 @@ export function generateCanonicalName(input: AlbumNameInput): CanonicalNameResul
 		length: truncatedName.length,
 		truncated,
 		components: {
-			event: parts[0] || '',
-			date: parts[1] || '',
+			event: parts[prefix ? 1 : 0] || '',
+			date: parts[prefix ? 2 : 1] || '',
 		},
 		metadata: {
 			isMatchup,
@@ -481,7 +614,7 @@ function cleanTeamName(team: string): string {
 /**
  * Clean event name by removing redundant words and sport prefixes
  */
-function cleanEventName(event: string, sport?: string): string {
+function cleanEventName(event: string): string {
 	let cleaned = event
 		.trim()
 		.replace(/^\d{4}\s*[-–]?\s*/, '') // Remove leading year
@@ -507,10 +640,11 @@ function cleanEventName(event: string, sport?: string): string {
 }
 
 /**
- * Format date for canonical album names
- * Single-day: "May 30"
- * Multi-day: "May 2024"
- * Year-only precision (date inferred from a bare year, month/day unknown): "2024"
+ * Format date for canonical album names — the standard's date segment (formatAlbumDate):
+ * Single-day: "05-30-2024"
+ * Multi-day: "05-30-2024 to 06-01-2024"
+ * Year-only precision (date inferred from a bare year, month/day unknown): "2024" rather than a
+ * fabricated "01-01-2024".
  */
 function formatCanonicalDate(
 	earliest: string | undefined,
@@ -518,43 +652,8 @@ function formatCanonicalDate(
 	precision: 'day' | 'year' = 'day'
 ): string {
 	if (!latest) return '';
-
-	// Parse as UTC to avoid timezone shifts
-	const [year, month, day] = latest.split('-').map(Number);
-	const date = new Date(Date.UTC(year, month - 1, day));
-
-	const yearNum = date.getUTCFullYear();
-
-	// Year-only signal: we know the year but not the month/day. Render just the
-	// year rather than fabricating a precise "Jan 1".
-	if (precision === 'year') {
-		return `${yearNum}`;
-	}
-
-	const monthNames = [
-		'Jan',
-		'Feb',
-		'Mar',
-		'Apr',
-		'May',
-		'Jun',
-		'Jul',
-		'Aug',
-		'Sep',
-		'Oct',
-		'Nov',
-		'Dec',
-	];
-	const monthName = monthNames[date.getUTCMonth()];
-	const dayNum = date.getUTCDate();
-
-	// Single day event
-	if (earliest === latest) {
-		return `${monthName} ${dayNum}`;
-	}
-
-	// Multi-day event
-	return `${monthName} ${yearNum}`;
+	if (precision === 'year') return latest.slice(0, 4);
+	return formatAlbumDate(earliest, latest);
 }
 
 /**
@@ -665,28 +764,3 @@ export function validateCanonicalName(name: string): {
 	};
 }
 
-/**
- * Generate canonical name from album data (LEGACY WRAPPER)
- *
- * @deprecated Use generateCanonicalNameFromAlbum() with full AlbumData instead
- */
-export function fromAlbumData(albumData: {
-	name: string;
-	keywords?: string[];
-	earliestDate?: string;
-	latestDate?: string;
-}): CanonicalNameResult {
-	// Extract sport from keywords if available
-	const sportKeywords = ['volleyball', 'basketball', 'soccer', 'football'];
-	const sport = albumData.keywords?.find((k) =>
-		sportKeywords.includes(k.toLowerCase())
-	);
-
-	// Use legacy method for backward compatibility
-	return generateCanonicalName({
-		currentName: albumData.name,
-		sportType: sport,
-		earliestPhotoDate: albumData.earliestDate,
-		latestPhotoDate: albumData.latestDate,
-	});
-}

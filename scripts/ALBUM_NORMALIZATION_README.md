@@ -12,10 +12,11 @@ This workflow normalizes album names in Supabase using consistent canonical nami
 - AI-enriched team/event data
 - Existing name parsing (fallback)
 
-**Format:** `[Event/Teams] - [Date]`
-- Single day: `Team A vs Team B - May 30`
-- Multi-day: `Tournament Name - May 2024`
-- Character limit: 35-45 chars (optimal for mobile scanning)
+**Format (standard since 2026-09-26):** `[Level Division Sport] - [Event or matchup] - [MM-DD-YYYY]`
+- Single day: `HS Girls VB - JCA at ACC - 09-22-2026`
+- Multi-day: `Club VB - AAU Nationals - 07-10-2026 to 07-12-2026`
+- No level or division known: no prefix (`Bump Bash #5 - 08-22-2026`)
+- The previous format (`Team A vs Team B - May 30`, `Tournament Name - May 2024`) is retired; it dropped the year and the level.
 
 ## Infrastructure
 

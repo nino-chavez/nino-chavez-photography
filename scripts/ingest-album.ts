@@ -63,7 +63,7 @@ import { computeSharpness } from '../src/lib/ai/sharpness';
 import { extractOne, EXTRACTION_VERSION, INGEST_MODEL } from '../src/lib/ai/ingest-extraction';
 import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
-import { generateCanonicalNameFromAlbum } from '../src/lib/utils/canonical-album-naming';
+import { checkAlbumName } from '../src/lib/utils/canonical-album-naming';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -280,7 +280,6 @@ async function resolveAlbum(): Promise<{ sport: Sport | null; albumName: string 
 	// Album missing → bootstrap it. Sport must be KNOWN: explicit --sport wins, else it's detected
 	// from the album name (operator convention: "the sport is in the name"). NEVER guessed/defaulted.
 	const name = ALBUM_NAME_ARG || folderBase;
-	warnIfNameDrifts(name);
 	let sport: Sport | null;
 	if (SPORT_ARG !== undefined) {
 		sport = parseSportArg();
@@ -358,28 +357,29 @@ function detectSportFromName(name: string): Sport | null {
 }
 
 /**
- * Warn — never block — when a NEW album's name drifts from what `canonical-album-naming.ts`
- * would generate. This is a print, not an enforcement: the module's own format
- * ("Team vs Team - May 30", level prefix stripped, no year on a single-day event) DISAGREES
- * with the naming convention actually used for recent real albums, e.g.
- * "HS Girls VB - JCA at ACC - 09-22-2026" (level prefix kept, "at" not "vs", full
- * MM-DD-YYYY date). That conflict is unresolved on the module side — see
- * ENRICHMENT_WORKFLOW.md — so this only surfaces the module's suggestion for the operator to
- * judge; it never renames anything.
+ * Check the album name against the naming standard ("HS Girls VB - JCA at ACC - 09-22-2026",
+ * src/lib/utils/canonical-album-naming.ts) once the capture dates are known: the prefix must match
+ * albums.level/division/sport and the last segment the capture date. Prints the issues and the
+ * standard name; never renames and never fails the run.
  */
-function warnIfNameDrifts(name: string): void {
-	if (!name) return;
-	let result;
-	try {
-		result = generateCanonicalNameFromAlbum({ albumKey: ALBUM_KEY!, name });
-	} catch {
-		return; // never let a naming-suggestion helper block ingest
+async function reportAlbumNameCheck(): Promise<void> {
+	const { data: album } = await sb
+		.from('albums')
+		.select('album_name, level, division, sport')
+		.eq('album_key', ALBUM_KEY!)
+		.maybeSingle();
+	if (!album?.album_name) return;
+	const range = async (ascending: boolean) =>
+		(await sb.from('photo_metadata').select('photo_date').eq('album_key', ALBUM_KEY!)
+			.not('photo_date', 'is', null).order('photo_date', { ascending }).limit(1).maybeSingle()).data?.photo_date as string | undefined;
+	const [earliestDate, latestDate] = await Promise.all([range(true), range(false)]);
+	const check = checkAlbumName(album.album_name, { ...album, earliestDate, latestDate });
+	if (check.ok) {
+		console.log(`   🏷  Album name matches the naming standard`);
+		return;
 	}
-	// Drift bands per scripts/ALBUM_NORMALIZATION_README.md: <10 is minor/no-op noise.
-	if (result.name && result.name !== name && (result.driftScore ?? 0) >= 10) {
-		console.warn(`   ⚠️  Album name "${name}" drifts from canonical-album-naming.ts's suggestion (drift ${result.driftScore}): "${result.name}"`);
-		console.warn(`      → NOT enforced — that module's format conflicts with recent naming practice (see ENRICHMENT_WORKFLOW.md). Review, don't auto-apply.`);
-	}
+	console.warn(`   ⚠️  Album name "${album.album_name}" ${check.issues.join('; ')}`);
+	console.warn(`      → standard name: "${check.suggestion}" (not applied; rename the album to adopt it)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -919,6 +919,8 @@ async function main() {
 			if (eErr) console.warn(`   ⚠️  event_date update failed (non-fatal): ${eErr.message}`);
 			else console.log(`   📅 event_date: ${eventDate} (min capture date; fill-if-null)`);
 		}
+
+		await reportAlbumNameCheck();
 
 		const { error: rErr } = await sb.rpc('refresh_albums_summary');
 		if (rErr) {

@@ -40,6 +40,7 @@
     "filters:test": "tsx --test src/lib/analytics/describe-filters.test.ts",
     "identity:test": "tsx --test src/lib/identity/sightings.test.ts",
     "planner:test": "tsx --test src/lib/search/query-planner.test.ts",
+    "naming:test": "tsx --test src/lib/utils/canonical-album-naming.test.ts",
     "embeddings:test": "tsx --test src/lib/ai/embeddings.test.ts src/lib/ai/sharpness.test.ts",
     "backfill-colors:test": "tsx --test scripts/backfill-sighting-colors.test.ts",
     "check:head": "node scripts/check-head-tags.mjs",
