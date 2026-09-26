@@ -73,8 +73,11 @@ for (const [slug, expected] of Object.entries(EXPECTED)) {
 			calls.find((c) => c[0] === 'in'),
 			expected.playTypes ? ['in', 'play_type', expected.playTypes] : undefined
 		);
-		// Ordering is part of the contract — the gallery is ranked, not arbitrary.
-		assert.deepEqual(calls.at(-1), ['order', 'quality_score', { ascending: false }]);
+		// Ordering is part of the contract — the gallery is ranked, not arbitrary. The
+		// photo_id tiebreaker after it is what makes tie order (there is no minQuality+1
+		// score, so ties are common) stable across two separate page fetches.
+		assert.deepEqual(calls.at(-2), ['order', 'quality_score', { ascending: false }]);
+		assert.deepEqual(calls.at(-1), ['order', 'photo_id', { ascending: true }]);
 	});
 
 	test(`collectionMatches agrees with the documented query for ${slug}`, () => {

@@ -17,10 +17,32 @@
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
 
+	// The visible grid + Pagination stay bound to exactly one server page (`data.photos`) —
+	// same reasoning as the share page: a numbered pager and a growing grid don't mix (the
+	// per-card `animation-delay: index * 50ms` above would replay on every appended card, and
+	// the pager's page count would stop matching what's on screen). Only the lightbox gets its
+	// own growing list, seeded from this page, so Next can walk past the page boundary.
+	//
+	// Reseeded on every `data` change (an $effect, not a one-time `untrack`): handlePageChange
+	// below navigates with `goto()` — no full reload — so this component instance stays alive
+	// across a page change and a one-time seed would keep the lightbox showing the PREVIOUS
+	// page's photos after clicking to page 2.
+	let loadedPhotos = $state<Photo[]>([]);
+	let nextPage = $state(1);
+	let loadingMore = $state(false);
+	$effect(() => {
+		loadedPhotos = data.photos;
+		nextPage = data.currentPage + 1;
+		loadingMore = false;
+	});
+
+	const precedingCount = $derived((data.currentPage - 1) * data.pageSize);
+	const hasMore = $derived(precedingCount + loadedPhotos.length < data.totalCount);
+
 	function handlePhotoClick(photo: Photo) {
 		// `id`, not `image_key` — a collection spans every album, and image_key values repeat
 		// across different albums' camera rolls (confirmed: 120 values collide table-wide).
-		const index = data.photos.findIndex((p) => p.id === photo.id);
+		const index = loadedPhotos.findIndex((p) => p.id === photo.id);
 
 		if (index !== -1) {
 			selectedPhotoIndex = index;
@@ -30,6 +52,31 @@
 
 	function handleLightboxNavigate(newIndex: number) {
 		selectedPhotoIndex = newIndex;
+	}
+
+	async function fetchPage(pageNum: number): Promise<Photo[]> {
+		const res = await fetch(
+			`${base}/api/collection-photos?slug=${encodeURIComponent(data.collection.slug)}&page=${pageNum}`
+		);
+		if (!res.ok) return [];
+		const { photos } = (await res.json()) as { photos: Photo[] };
+		return photos ?? [];
+	}
+
+	async function loadMore(): Promise<void> {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+		try {
+			const photos = await fetchPage(nextPage);
+			if (photos.length > 0) {
+				loadedPhotos = [...loadedPhotos, ...photos];
+				nextPage += 1;
+			}
+		} catch (err) {
+			console.error('[collections] loadMore failed', err);
+		} finally {
+			loadingMore = false;
+		}
 	}
 
 	// Determine if this is Portfolio Excellence for special styling
@@ -121,13 +168,18 @@
 	{/if}
 </div>
 
-<!-- Lightbox -->
+<!-- Lightbox — its own growing list past the SSR page; grid/pager above are untouched. -->
 <Lightbox
 	bind:open={lightboxOpen}
-	photo={data.photos[selectedPhotoIndex] || null}
-	photos={data.photos}
+	photo={loadedPhotos[selectedPhotoIndex] || null}
+	photos={loadedPhotos}
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
+	hasMore={hasMore}
+	onLoadMore={loadMore}
+	loadingMore={loadingMore}
+	totalCount={data.totalCount}
+	indexOffset={precedingCount}
 	viewSource="collection"
 />
 

@@ -1215,14 +1215,21 @@ export async function fetchPhotosByYearMonth(
 
     query = excludeUnlisted(query, await getUnlistedAlbumKeys()); // privacy: month detail excludes private albums
 
-    // Apply sorting
+    // Apply sorting. Every branch ends in `photo_id` (unique) as the final tiebreaker: none
+    // of upload_date/quality_score are unique on their own, so without it, page N and page
+    // N+1 of the SAME ORDER BY are not guaranteed to agree on tie order between separate
+    // queries — a lightbox walking pages could see a duplicate or a skipped photo right at
+    // the boundary a page split falls on.
     if (sortBy === 'newest') {
-      query = query.order('upload_date', { ascending: false });
+      query = query.order('upload_date', { ascending: false }).order('photo_id', { ascending: true });
     } else if (sortBy === 'oldest') {
-      query = query.order('upload_date', { ascending: true });
+      query = query.order('upload_date', { ascending: true }).order('photo_id', { ascending: true });
     } else if (sortBy === 'quality') {
       // Weighted quality blend via the generated quality_score column (see fetchPhotos).
-      query = query.order('quality_score', { ascending: false, nullsFirst: false }).order('upload_date', { ascending: false });
+      query = query
+        .order('quality_score', { ascending: false, nullsFirst: false })
+        .order('upload_date', { ascending: false })
+        .order('photo_id', { ascending: true });
     }
 
     // Apply pagination when limit is provided

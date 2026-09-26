@@ -11,9 +11,10 @@
 import { error } from '@sveltejs/kit';
 import { fetchPhotosByYearMonth, getAdjacentMonth } from '$lib/supabase/server';
 import { monthName } from '$lib/utils/month-window';
+import { MONTH_PHOTOS_PAGE_SIZE } from '$lib/photos/month-pagination';
 import type { PageServerLoad } from './$types';
 
-const PHOTOS_PER_PAGE = 48;
+const PHOTOS_PER_PAGE = MONTH_PHOTOS_PAGE_SIZE;
 
 export const load: PageServerLoad = async ({ params, url }) => {
   // Parse and validate year/month params

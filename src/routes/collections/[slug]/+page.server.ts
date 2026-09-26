@@ -8,7 +8,7 @@
 import { error } from '@sveltejs/kit';
 import { PHOTOS_READ } from '$lib/supabase/columns';
 import { supabaseServer, transformPhotoRow, PHOTO_COLUMNS } from '$lib/supabase/server';
-import { getCollection, applyCollectionFilter } from '$lib/collections';
+import { getCollection, applyCollectionFilter, COLLECTION_PHOTOS_PAGE_SIZE } from '$lib/collections';
 import type { PageServerLoad } from './$types';
 import type { Photo } from '$types/photo';
 
@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	}
 
 	const page = parseInt(url.searchParams.get('page') || '1');
-	const pageSize = 24;
+	const pageSize = COLLECTION_PHOTOS_PAGE_SIZE;
 	const offset = (page - 1) * pageSize;
 
 	const query = applyCollectionFilter(

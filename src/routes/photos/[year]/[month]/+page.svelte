@@ -45,11 +45,31 @@
   let lightboxOpen = $state(false);
   let selectedPhotoIndex = $state(0);
 
+  // The grid + Pagination stay bound to exactly one server page (`data.photos`) — same
+  // reasoning as the share/collections pages: a numbered pager and a growing grid don't mix.
+  // Only the lightbox gets its own growing list, seeded from this page.
+  //
+  // Unlike album/share/collections (seeded ONCE via `untrack`), this page reacts to `data`
+  // itself: Prev/Next month and the sort dropdown navigate client-side (`goto`, no full
+  // reload) while staying on the SAME `+page.svelte` instance, so a one-time seed would keep
+  // showing the previous month's (or previous sort's) photos in the lightbox after navigating.
+  let loadedPhotos = $state<Photo[]>([]);
+  let nextPage = $state(1);
+  let loadingMore = $state(false);
+  $effect(() => {
+    loadedPhotos = data.photos;
+    nextPage = data.currentPage + 1;
+    loadingMore = false;
+  });
+
+  const precedingCount = $derived((data.currentPage - 1) * data.pageSize);
+  const hasMore = $derived(precedingCount + loadedPhotos.length < data.photoCount);
+
   // Handle photo click - open lightbox instead of navigating
   // `id`, not `image_key` — a month spans every album, and image_key values repeat across
   // different albums' camera rolls (confirmed: 120 values collide table-wide).
   function handlePhotoClick(photo: Photo) {
-    const index = data.photos.findIndex((p) => p.id === photo.id);
+    const index = loadedPhotos.findIndex((p) => p.id === photo.id);
     if (index !== -1) {
       selectedPhotoIndex = index;
       lightboxOpen = true;
@@ -59,6 +79,31 @@
   // Handle lightbox navigation
   function handleLightboxNavigate(newIndex: number) {
     selectedPhotoIndex = newIndex;
+  }
+
+  async function fetchPage(pageNum: number): Promise<Photo[]> {
+    const res = await fetch(
+      `${base}/api/month-photos?year=${data.year}&month=${data.month}&sort=${data.sortBy}&page=${pageNum}`
+    );
+    if (!res.ok) return [];
+    const { photos } = (await res.json()) as { photos: Photo[] };
+    return photos ?? [];
+  }
+
+  async function loadMore(): Promise<void> {
+    if (loadingMore || !hasMore) return;
+    loadingMore = true;
+    try {
+      const photos = await fetchPage(nextPage);
+      if (photos.length > 0) {
+        loadedPhotos = [...loadedPhotos, ...photos];
+        nextPage += 1;
+      }
+    } catch (err) {
+      console.error('[month] loadMore failed', err);
+    } finally {
+      loadingMore = false;
+    }
   }
 
   // Handle month navigation
@@ -183,13 +228,19 @@
       />
     </div>
 
-    <!-- Lightbox - consistent with other pages -->
+    <!-- Lightbox - consistent with other pages. Its own growing list past the SSR page;
+         the grid/pager above are untouched. -->
     <Lightbox
       bind:open={lightboxOpen}
-      photo={data.photos[selectedPhotoIndex] || null}
-      photos={data.photos}
+      photo={loadedPhotos[selectedPhotoIndex] || null}
+      photos={loadedPhotos}
       currentIndex={selectedPhotoIndex}
       onNavigate={handleLightboxNavigate}
+      hasMore={hasMore}
+      onLoadMore={loadMore}
+      loadingMore={loadingMore}
+      totalCount={data.photoCount}
+      indexOffset={precedingCount}
       viewSource="timeline"
     />
 

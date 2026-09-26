@@ -88,6 +88,13 @@ export const COLLECTIONS: CollectionDef[] = [
  */
 export const COLLECTION_CRITERIA_SELECT = 'quality_score, photo_category, play_type';
 
+/**
+ * Page size shared by the collection detail page's SSR load and its page-mode API
+ * (/api/collection-photos), the same way ALBUM_PHOTO_PAGE_SIZE is shared across the album
+ * page/API/share trio — so a lightbox's page-N continuation fetch lines up with page N-1.
+ */
+export const COLLECTION_PHOTOS_PAGE_SIZE = 24;
+
 export interface CollectionCandidate {
 	quality_score: number | null;
 	photo_category: string | null;
@@ -116,7 +123,14 @@ export function applyCollectionFilter(query: any, slug: string): any {
 	if (criteria.playTypes) q = q.in('play_type', criteria.playTypes);
 	return q
 		.gte('quality_score', criteria.minQualityScore)
-		.order('quality_score', { ascending: false });
+		.order('quality_score', { ascending: false })
+		// Tiebreaker. Many photos share the same quality_score (a 0-10 scale over a large
+		// catalog), and without a unique column after it, Postgres does not guarantee the
+		// same order for ties across two separate queries — so page N and page N+1 of this
+		// same ORDER BY could return a duplicate or skip a row, and the index page's
+		// `.limit(1)` cover-photo pick could change on every reload for no visible reason.
+		// `photo_id` is unique, so this makes tie order stable across calls.
+		.order('photo_id', { ascending: true });
 }
 
 /**
