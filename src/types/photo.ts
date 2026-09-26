@@ -107,6 +107,14 @@ export interface Photo {
   caption: string;
   keywords: string[];
   created_at: string; // Actual photo date (photo_date from DB, prioritized for sorting)
+  /** Raw `photo_date` from the DB (ISO), independent of `created_at`'s enriched_at/upload_date
+   * fallback chain — added for consumers (the social picker) that need the actual capture date
+   * without inheriting created_at's fallback semantics. created_at's own behavior is unchanged. */
+  photo_date?: string;
+  /** Width/height ratio, straight from `photo_metadata.aspect_ratio` — added for the social
+   * picker, which needs it without loading full EXIF (`exif.aspect_ratio` stays as-is for pages
+   * that already load the detail/EXIF block). */
+  aspect_ratio?: number;
   metadata: PhotoMetadata;
 
   // EXIF and image metadata

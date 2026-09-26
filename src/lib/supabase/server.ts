@@ -97,6 +97,11 @@ export function transformPhotoRow(row: any): Photo {
     caption: row.caption || '',
     keywords: [],
     created_at: row.photo_date || row.enriched_at || row.upload_date,
+    // PHOTO_COLUMNS already selects both of these; they were being fetched and dropped on the
+    // floor (#photo-api-gap, found by the social picker) — created_at's fallback chain above is
+    // unchanged, these are the raw values alongside it.
+    photo_date: row.photo_date || undefined,
+    aspect_ratio: row.aspect_ratio ?? undefined,
     metadata: {
       album_key: row.album_key, // carried for album-scoped photo links (image_key is not unique)
       play_type: (row.play_type || null) as Photo['metadata']['play_type'],

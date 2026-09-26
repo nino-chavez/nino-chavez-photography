@@ -59,9 +59,16 @@ export interface PhotoMetadataRow {
 
 	// Caption + semantic search (Phase 1 — vision-extraction v-next)
 	caption: string | null;
-	// 768-dim vector. Phase 1: caption-derived (OpenRouter text-embedding-3-large).
-	// Pre-Phase-1 rows hold enum-string-derived vectors until backfilled.
+	// 768-dim vector. Caption-derived (OpenRouter text-embedding-3-large). No longer the primary
+	// search-ranking signal as of blueprint/decisions/0006 — see `image_embedding` below.
 	embedding: number[] | null;
+	// 768-dim IMAGE vector (google/gemini-embedding-2) — the primary semantic-search ranking
+	// signal as of 0006. NULL until backfilled (scripts/backfill-image-embeddings.ts) or ingested
+	// after that cutover.
+	image_embedding: number[] | null;
+	// Deterministic variance-of-Laplacian sharpness (src/lib/ai/sharpness.ts) — a companion to
+	// the model-scored `sharpness` below, not a replacement for it.
+	sharpness_measured: number | null;
 
 	// Quality scores (Bucket 2)
 	sharpness: number | null;

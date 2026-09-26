@@ -10,8 +10,9 @@ New-album processing is a **single command** that writes directly to the databas
 
 0. **Content-hash gate.** sha256 the file bytes; refuse — loudly, before uploading anything — if that hash already exists under a different `photo_id` ("same shoot exported to a second folder"). Backed by `photo_metadata.content_hash` + a partial `UNIQUE` index (see **Migrations** below).
 1. **Upload** to Cloudflare Images with the album-scoped id `${albumKey}-${imageKey}` (a 5409 "already exists" is an error, never an alias).
-2. **Extract** via the single structured, sport-aware prompt (`src/lib/ai/ingest-extraction.ts` `extractOne`) — caption, `play_type`, `photo_category`, numeric quality sub-scores, and `players[]` for sightings. It **never** emits sport.
-3. **Embed** the caption via `embedText` (OpenRouter `text-embedding-3-large` @768) — the same seam the query path uses.
+2. **Extract** via the single structured, sport-aware prompt (`src/lib/ai/ingest-extraction.ts` `extractOne`) — caption, `play_type`, `photo_category`, numeric quality sub-scores, and `players[]` for sightings. It **never** emits sport. As of [ADR 0006](blueprint/decisions/0006-vision-prompt-v2-and-image-vector-search.md) (2026-09-25), the caption instruction names every legible on-court jersey number (prompt v2) — see that ADR for the coverage-vs-precision tradeoff this measurably costs `players[]` sightings.
+3. **Embed** the caption via `embedText` (OpenRouter `text-embedding-3-large` @768) — written for the `caption` column, but no longer the search-ranking seam (see step 3b).
+3b. **Embed the image** via `embedImage` (OpenRouter `google/gemini-embedding-2` @768 — `src/lib/ai/embeddings.ts`) + compute deterministic sharpness (`computeSharpness`, `src/lib/ai/sharpness.ts`). `image_embedding` is the primary semantic-search ranking vector as of ADR 0006; `sharpness_measured` is a deterministic companion to the model-scored `sharpness` column, not a replacement.
 4. **Write** `photo_metadata` directly (UPSERT) + `photo_jersey_sightings`. A reprocessed photo's sightings are **replaced** — its prior `source='players_new'` rows are deleted, then the fresh set is inserted — so a re-run converges instead of leaving stale sightings beside new ones. It **never** writes the deprecated `players` JSONB column and **never** sets `sport_type` (the `enforce_album_sport` trigger mirrors it from `albums.sport`).
 
 It is **reprocess-in-place / idempotent**: re-running an album updates rows, never duplicates. The run summary reports sightings **stored** (post-dedup), not sightings sent — those can differ when two players in a photo shred to the same `dedup_key`.
@@ -83,6 +84,20 @@ Additive-only. Apply `supabase/migrations/20260925210000_photo_metadata_content_
 does not fall back if the column is missing, so running ingest against an un-migrated database
 fails on the first photo.
 
+**Same situation, same fix, for image vectors** (ADR 0006): apply
+`supabase/migrations/20260925230000_photo_metadata_image_embedding.sql` **before** running this
+version of ingest — it adds `photo_metadata.image_embedding` (`vector(768)`) and
+`sharpness_measured` (nullable). Ingest writes both unconditionally; running it against an
+un-migrated database fails on the first photo, same as `content_hash` above.
+
+`supabase/migrations/20260925240000_match_photos_image_embedding.sql` (the RPC change that makes
+`match_photos`/`match_photos_hybrid` rank on `image_embedding` instead of the caption-text
+`embedding`) is a SEPARATE, later step — it must ship in the same deploy as the app-side
+query-embedder switch (`embedSearchQuery` in `src/lib/supabase/server.ts`, and the chat tool in
+`src/routes/api/chat/+server.ts`), and only after `scripts/backfill-image-embeddings.ts` has
+caught up existing rows. See ADR 0006's "Deployment sequencing" for the full apply order and why
+the RPC migration is merge-gated where the column migration is not.
+
 ## Verify
 
 `npm run verify:album -- --album-key <KEY> [--dir /path/to/album]` (`scripts/verify-album.ts`) is
@@ -118,6 +133,16 @@ anyone runs `--apply`. Run `--apply` before `photo_metadata.players` is ever dro
 (`.agent-os/specs/vision-extraction-identity-vnext/DEPRECATED.md` row 5) — that column is the
 only recovery source and the drop is irreversible for this purpose.
 
+## Backfilling image vectors (existing rows)
+
+New ingests write `image_embedding`/`sharpness_measured` directly (see **Overview** step 3b). The
+~20K rows ingested before ADR 0006 need `npm run backfill:image-embeddings` (`scripts/backfill-image-embeddings.ts`):
+resumable checkpoint, bounded concurrency + 429 backoff, `--dry-run` (reports the row count and a
+projected cost with ZERO OpenRouter calls), `--limit`, `--album-key`, and a hard `--max-cost`
+(default $5) that stops the run once the running total (the API's own reported `usage.cost`, not
+an estimate) reaches it. `--dry-run` degrades gracefully if the column migration hasn't landed yet
+— see the script's own header comment.
+
 ## Known gaps (not fixed here — orchestrator's call)
 
 - **The SQL `norm_color()` function** (migration `20260609000000`, used by `find_photos_by_jersey`
@@ -132,3 +157,8 @@ only recovery source and the drop is irreversible for this purpose.
   collides with anything (the partial unique index excludes NULLs by design). A duplicate of an
   already-ingested, not-yet-reprocessed shoot will slip through until that original row is
   reprocessed (which backfills its hash).
+- **`scripts/verify-album.ts` (and the `publish-album.ts` gate that reuses it) check `embedding`
+  presence but not `image_embedding`.** A row missing its image vector (not yet backfilled, or a
+  transient `embedImage` failure at ingest that left the row in `checkpoint.failed`) does not fail
+  album verification or block publish today. Not fixed in this pass — ADR 0006 names it explicitly
+  as a follow-up rather than silently leaving it undocumented.

@@ -21,7 +21,7 @@ The pre-rebuild system was built as an **editorial/aesthetic catalog** and asked
 Load-bearing values are pinned **once** in NORTH-STAR §0 LOCKED CONTRACTS (the single source of truth that prevents contract drift across drafts). The ones the #10 ingest depends on:
 
 - **Sport authority** = `albums.sport` (enum, NULL = non-sport). **No per-photo sport column exists** — the corruption-class field is deleted, not deprecated; the vision JSON schema has no `sport` key.
-- **Caption embedding** = `vector(768)`, `openai/text-embedding-3-large`@768 via OpenRouter; one `embedText()` for write AND query.
+- **Caption embedding** = `vector(768)`, `openai/text-embedding-3-large`@768 via OpenRouter; one `embedText()` for write AND query. **Superseded for the SEARCH-ranking role** by [ADR 0006](0006-vision-prompt-v2-and-image-vector-search.md) (2026-09-25): semantic search now ranks on a separate `image_embedding` vector (`google/gemini-embedding-2`@768); `embedText`/`embedding` stay written for the `caption` column but are no longer the query-ranking seam. The vision-model lock immediately below is UNCHANGED by 0006.
 - **`extraction_version`** = `text`, `'<version>:<model>'`.
 - **`jersey_number`** = `text` everywhere (`'00' ≠ '0'`, `'7A'` is real).
 - **`cf_image_id`** = `'<album_key>-<image_key>'` (hyphen) + `UNIQUE(content_hash)`; 5409 = error.
@@ -38,3 +38,5 @@ Load-bearing values are pinned **once** in NORTH-STAR §0 LOCKED CONTRACTS (the 
 - `.agent-os/specs/vision-extraction-identity-vnext/NORTH-STAR-REDESIGN.md` §0 (locked contracts), §1 (root insight), §2 (principles), §9 (anti-patterns)
 - `blueprint/research/current-state/vision-extraction-intent-audit-2026-06-08.md` (the diagnose)
 - `blueprint/prescription.yml` (P2, P3, P6, P7)
+- [ADR 0006](0006-vision-prompt-v2-and-image-vector-search.md) — supersedes this ADR's embedder
+  lock for the search-ranking role (2026-09-25); the vision-model lock above is unchanged by it.

@@ -4,10 +4,16 @@
  *
  * For each local image in a directory this: uploads to Cloudflare Images (album-scoped id),
  * runs the sport-aware structured extraction (caption + category + play_type + quality
- * sub-scores + players[]), embeds the caption, UPSERTs photo_metadata, and writes
- * photo_jersey_sightings. It NEVER writes EXIF, never shells out to exiftool, never writes
+ * sub-scores + players[]), embeds the caption AND the image (two independent vector spaces —
+ * see src/lib/ai/embeddings.ts), computes deterministic sharpness, UPSERTs photo_metadata, and
+ * writes photo_jersey_sightings. It NEVER writes EXIF, never shells out to exiftool, never writes
  * the deprecated `players`/vanity columns, and never sets sport_type (the enforce_album_sport
  * trigger mirrors it from albums.sport).
+ *
+ * Image vectors (`image_embedding`) are the primary search-ranking signal as of
+ * blueprint/decisions/0006 — see that ADR before assuming `embedding` (caption-text, still
+ * written) drives search. `sharpness_measured` is a deterministic companion to the model-scored
+ * `sharpness` column, not a replacement for it.
  *
  * Replaces the legacy 3-script chain (enrich-local-photos -> sync-local-to-supabase -> upload).
  *
@@ -51,7 +57,9 @@ import { createHash } from 'crypto';
 import sharp from 'sharp';
 import exifReader from 'exif-reader';
 
-import { embedText } from '../src/lib/ai/embeddings';
+import { embedText, embedImage } from '../src/lib/ai/embeddings';
+import { resizeForEmbedding } from '../src/lib/ai/image-resize';
+import { computeSharpness } from '../src/lib/ai/sharpness';
 import { extractOne, EXTRACTION_VERSION, INGEST_MODEL } from '../src/lib/ai/ingest-extraction';
 import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
@@ -635,9 +643,27 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	// 3. Extract (sport-aware) — retry on 429/5xx.
 	const ex = await extractWithRetry(fileBuffer, album);
 
-	// 4. Embed the caption (same seam as query).
+	// 4. Embed the caption (caption-text space; still written, no longer the primary search
+	// ranking signal — see blueprint/decisions/0006).
 	const embedding = await embedText(ex.extraction.caption, OPENROUTER_API_KEY);
 	if (!embedding) throw new Error('embed failed (null vector)');
+
+	// 4b. Embed the IMAGE (image space — the primary search-ranking vector as of 0006) +
+	// deterministic sharpness. Same fatal-on-failure contract as the caption embed above: a
+	// failed image embed leaves the checkpoint's `failed` entry for this image, safe to retry.
+	const resizedForEmbed = await resizeForEmbedding(fileBuffer);
+	const imgResult = await embedImageWithRetry(resizedForEmbed);
+	if (!imgResult) throw new Error('image embed failed (null vector)');
+	if (imgResult.cost) ex.cost = (ex.cost ?? 0) + imgResult.cost;
+	// Deterministic — a computation, not a network call — so a failure here (corrupt/unreadable
+	// image) is non-fatal: leave sharpness_measured null rather than failing the whole photo over
+	// a metric that's secondary to the extraction + both embeddings.
+	let sharpnessMeasured: number | null = null;
+	try {
+		sharpnessMeasured = await computeSharpness(fileBuffer);
+	} catch (e) {
+		console.warn(`   ⚠️  computeSharpness failed for ${job.file} (non-fatal): ${(e as Error).message}`);
+	}
 
 	if (DRY) {
 		return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: 0, cost: ex.cost, reprocessed: !!prior };
@@ -667,6 +693,8 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		exposure_accuracy: ex.extraction.exposure_accuracy,
 		emotional_impact: ex.extraction.emotional_impact,
 		embedding,
+		image_embedding: imgResult.vector,
+		sharpness_measured: sharpnessMeasured,
 		width,
 		height,
 		aspect_ratio: aspect,
@@ -740,6 +768,25 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: storedCount ?? 0, cost: ex.cost, reprocessed: !!prior };
 }
 
+/** Same bounded-retry-on-429/5xx convention as extractWithRetry below — embedImage throws
+ * `RETRY:<status>` for exactly this case. */
+async function embedImageWithRetry(resizedJpegBuffer: Buffer) {
+	let attempt = 0;
+	for (;;) {
+		try {
+			return await embedImage(resizedJpegBuffer, OPENROUTER_API_KEY!);
+		} catch (e: any) {
+			const msg = String(e?.message || e);
+			if (msg.startsWith('RETRY:') && attempt < 5) {
+				attempt++;
+				await sleep(Math.min(2000 * 2 ** (attempt - 1), 30000));
+				continue;
+			}
+			throw e;
+		}
+	}
+}
+
 async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; albumName: string }) {
 	let attempt = 0;
 	for (;;) {
@@ -769,7 +816,7 @@ async function main() {
 	console.log('\n📥 Ingest album (#10 unified, direct-to-DB, no EXIF round-trip)\n');
 	console.log(`   Dir: ${DIR}`);
 	console.log(`   Album: ${ALBUM_KEY}${ALBUM_NAME_ARG ? ` "${ALBUM_NAME_ARG}"` : ''}`);
-	console.log(`   Model: ${MODEL} · embed: text-embedding-3-large@768 · ${EXTRACTION_VERSION}`);
+	console.log(`   Model: ${MODEL} · caption embed: text-embedding-3-large@768 · image embed: gemini-embedding-2@768 · ${EXTRACTION_VERSION}`);
 	console.log(`   Concurrency: ${CONCURRENCY}${LIMIT ? ` · limit ${LIMIT}` : ''}${DRY ? ' · DRY RUN' : ''}${OVERWRITE ? ' · OVERWRITE' : ''}`);
 	console.log(`   Checkpoint: ${CK_PATH} (${done.size} already done)\n`);
 

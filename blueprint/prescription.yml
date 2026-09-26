@@ -66,9 +66,9 @@ preserved_patterns:
     where: "albums.sport + trigger; database/seed/album-sports.json."
     evidence: "NORTH-STAR §0/§2.2/§9; convergence-ledger.md #1/#2 (HIGH regression risk)."
   - id: P3
-    pattern: "One embedText() seam (OpenRouter text-embedding-3-large@768) for write AND query."
+    pattern: "One embedder seam PER VECTOR SPACE (embeddings.ts): embedText (caption-text, still written) + embedImage/embedImageQuery (image space, google/gemini-embedding-2@768 — the primary search-ranking signal as of ADR 0006, 2026-09-25). Write and query for a given space always call that space's own function."
     where: "embeddings.ts."
-    evidence: "NORTH-STAR §0 (text embedding)/§9; memory [[photography-live-credentials]]."
+    evidence: "NORTH-STAR §0 (text embedding)/§9; memory [[photography-live-credentials]]; blueprint/decisions/0006 (recall@10 0.82 vs 0.64, 40-query eval)."
   - id: P4
     pattern: "Worker-pool ingest engine: bounded concurrency, 429 backoff, resumable checkpoint, lenient-caption parse."
     where: "backfill-vnext.ts."

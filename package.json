@@ -24,6 +24,7 @@
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
     "ingest:album": "tsx scripts/ingest-album.ts",
+    "backfill:image-embeddings": "tsx scripts/backfill-image-embeddings.ts",
     "verify:album": "tsx scripts/verify-album.ts",
     "publish:album": "tsx scripts/publish-album.ts",
     "worker:dev": "cd cloudflare-worker/album-zip && wrangler dev",
@@ -38,6 +39,7 @@
     "phototitle:test": "tsx --test src/lib/seo/photo-title.test.ts",
     "filters:test": "tsx --test src/lib/analytics/describe-filters.test.ts",
     "identity:test": "tsx --test src/lib/identity/sightings.test.ts",
+    "embeddings:test": "tsx --test src/lib/ai/embeddings.test.ts src/lib/ai/sharpness.test.ts",
     "backfill-colors:test": "tsx --test scripts/backfill-sighting-colors.test.ts",
     "check:head": "node scripts/check-head-tags.mjs",
     "navigation:contract:test": "tsx --test src/lib/navigation-contract.test.ts"

@@ -15,6 +15,16 @@
  *
  * Model: OpenRouter `google/gemini-2.5-flash-lite` — the benchmark-proven choice (do NOT
  * "upgrade"; see scripts/backfill-vnext.ts). Embedding is a separate seam (embeddings.ts).
+ *
+ * PROMPT v2 (2026-09-25, blueprint/decisions/0006): the caption instruction's first sentence is
+ * copied VERBATIM from the evaluation's winning arm (.claude/worktrees/agent-a9ac18f4737ef6552's
+ * scripts/eval/lib/v2-extraction.ts `buildV2Prompt` — "Name the jersey number AND color of EVERY
+ * on-court player whose number you can actually read..."), not reworded. Evaluated on 65 held-out
+ * photos: caption ground-truth number-coverage 0.32 -> 0.80, at a real but bounded cost to
+ * players[] sightings precision (0.775 -> 0.724; recall 0.917 unchanged) since a model primed to
+ * assert more numbers also asserts a few more wrong ones. The players[] schema/instructions below
+ * are UNCHANGED — only the caption line moved, matching the eval's isolation test exactly. See
+ * the ADR for the full evidence table and what would reverse this.
  */
 
 import { PHOTO_CATEGORIES, PLAY_TYPES_BY_SPORT, type Sport } from './taxonomy';
@@ -29,7 +39,7 @@ import {
 
 export const INGEST_MODEL = 'google/gemini-2.5-flash-lite';
 /** Stamped into `photo_metadata.extraction_version` so future prompt/model changes re-process only stale rows. */
-export const EXTRACTION_VERSION = `ingest-v2:${INGEST_MODEL}`; // v2: + visible_text (garment/signage text)
+export const EXTRACTION_VERSION = `ingest-v3:${INGEST_MODEL}`; // v3: caption instruction names every legible on-court jersey number (prompt v2 eval, blueprint/decisions/0006)
 
 /** Only "action" photos carry a play_type; everything else is null by rule. */
 const ACTION_CATEGORY = 'action';
@@ -89,7 +99,7 @@ ${sportLine}
 
 Return ONLY a JSON object with EXACTLY these keys:
 
-"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Include any visible jersey number(s), jersey/team colors, the action, and the scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
+"caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Name the jersey number AND color of EVERY on-court player whose number you can actually read (not just the primary subject) — this is the single most important instruction, because a caption missing a readable number is a photo nobody can find by searching for that number. Include the action and scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
   Name a person by the COLOR of what they wear, never by naming swimwear: write "a player in brown" or "a player in a black top", never "bikini", "swimsuit", "bathing suit", "briefs", or any description of a person's body. Ordinary athletic wear (jersey, shirt, top, shorts, trunks) may be named normally.
   Only state a number you can actually count in the frame — "two players", "three balls". If you are not certain how many, describe without a number rather than guessing one.
 "photo_category": one of ["${PHOTO_CATEGORIES.join('", "')}"].
