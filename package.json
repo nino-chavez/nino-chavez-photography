@@ -35,6 +35,8 @@
     "pagination:test": "tsx --test src/lib/api/pagination.test.ts",
     "phototitle:test": "tsx --test src/lib/seo/photo-title.test.ts",
     "filters:test": "tsx --test src/lib/analytics/describe-filters.test.ts",
+    "identity:test": "tsx --test src/lib/identity/sightings.test.ts",
+    "backfill-colors:test": "tsx --test scripts/backfill-sighting-colors.test.ts",
     "check:head": "node scripts/check-head-tags.mjs",
     "navigation:contract:test": "tsx --test src/lib/navigation-contract.test.ts"
   },

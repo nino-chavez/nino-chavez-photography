@@ -26,11 +26,40 @@ export function normJersey(v: unknown): string | null {
 	return JERSEY_RE.test(s) ? s : null;
 }
 
-/** First color word, lowercased (e.g. "Navy Blue" -> "navy"), or null. */
+/**
+ * Spelling/synonym aliases folded during color normalization. Keep this small and
+ * conservative — it corrects known spelling variants, never merges genuinely different
+ * colors (e.g. "navy" and "blue" stay distinct).
+ */
+const COLOR_WORD_ALIASES: Record<string, string> = {
+	grey: 'gray',
+};
+
+/**
+ * Canonical color string: lowercase, whitespace-collapsed, trailing punctuation stripped,
+ * per-word spelling aliases applied (COLOR_WORD_ALIASES) — but the FULL string is kept,
+ * modifiers included (e.g. "Light Blue" -> "light blue", "Dark Green." -> "dark green").
+ *
+ * Until 2026-09 this kept only the first word ("light blue" -> "light"), which is why
+ * 2,471 of 49,673 live photo_jersey_sightings rows carry team_color IN ('light','dark',
+ * 'neon') — a bare modifier with no color, useless for search/display. Those existing rows
+ * are NOT touched by this function; see scripts/backfill-sighting-colors.ts.
+ *
+ * team_color is part of `dedupKey()`, so changing what this returns for previously-seen
+ * input changes the dedup_key a reprocess computes for the same sighting. That's fine here
+ * because ingest now REPLACES a photo's sightings on reprocess (delete-then-insert) instead
+ * of relying on upsert-dedup to converge — see scripts/ingest-album.ts.
+ */
 export function normColor(c: unknown): string | null {
 	if (typeof c !== 'string') return null;
-	const s = c.trim().toLowerCase().split(' ')[0];
-	return s || null;
+	const cleaned = c
+		.trim()
+		.toLowerCase()
+		.replace(/\s+/g, ' ')
+		.replace(/[.,;:]+$/, '');
+	if (!cleaned) return null;
+	const words = cleaned.split(' ').map((w) => COLOR_WORD_ALIASES[w] ?? w);
+	return words.join(' ') || null;
 }
 
 export const clamp01 = (n: unknown): number | null =>
