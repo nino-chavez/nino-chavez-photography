@@ -36,6 +36,8 @@ import { resolve } from 'path';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
+import { realpathSync } from 'fs';
+import { fileURLToPath } from 'url';
 import { normColor, normJersey, dedupKey, type Sighting } from '../src/lib/identity/sightings';
 
 const DRY = process.argv.includes('--dry-run');
@@ -313,7 +315,7 @@ async function main() {
 // ---------------------------------------------------------------------------
 const isMain = (() => {
 	try {
-		return import.meta.url === `file://${resolve(process.argv[1] ?? '')}`;
+		return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1] ?? '');
 	} catch {
 		return false;
 	}

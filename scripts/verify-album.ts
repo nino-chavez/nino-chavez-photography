@@ -27,7 +27,8 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { readdir } from 'fs/promises';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, realpathSync } from 'fs';
+import { fileURLToPath } from 'url';
 
 export interface VerifyIssue {
 	code: string;
@@ -185,6 +186,11 @@ export async function verifyAlbum(sb: SupabaseClient, albumKey: string, opts: { 
 		} catch (e) {
 			issues.push({ code: 'checkpoint_unreadable', message: `${ckPath}: ${(e as Error).message}` });
 		}
+	} else {
+		// Not a failure — a checkpoint only exists in the CWD an ingest run wrote it from (e.g. the
+		// main checkout, not necessarily wherever verify-album runs), and a fully-completed run may
+		// have none. Say so rather than silently passing without having checked anything.
+		notes.push({ code: 'checkpoint_absent', message: `no checkpoint at ${ckPath} in this working directory — skipped (not checked, not a pass)` });
 	}
 
 	// --- sightings exist ------------------------------------------------------------------------
@@ -208,10 +214,13 @@ export async function verifyAlbum(sb: SupabaseClient, albumKey: string, opts: { 
 
 // ---------------------------------------------------------------------------
 // CLI wrapper — only runs when this file is executed directly, not imported.
+// realpath on BOTH sides: a plain URL/argv string compare silently reads false (CLI does
+// nothing, exits 0 — a false PASS for a gate script) across a symlinked path, e.g. macOS
+// /var -> /private/var, or when node resolves argv[1] differently than import.meta.url does.
 // ---------------------------------------------------------------------------
 const isMain = (() => {
 	try {
-		return import.meta.url === `file://${resolve(process.argv[1] ?? '')}`;
+		return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1] ?? '');
 	} catch {
 		return false;
 	}
