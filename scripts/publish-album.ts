@@ -40,12 +40,16 @@
  *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --no-announce   # publish without the social post
  */
 import { config } from 'dotenv';
-import { resolve, join } from 'path';
+import { resolve, join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import { homedir } from 'os';
 import { execFileSync } from 'child_process';
 
-config({ path: resolve(process.cwd(), '.env.local') });
+// Paths resolve from this file, not the shell's working directory, so the script runs the same
+// from any folder (it was being run from ~ and failing to find .env.local).
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+config({ path: join(REPO_ROOT, '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { verifyAlbum } from './verify-album';
 

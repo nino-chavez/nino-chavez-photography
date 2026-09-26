@@ -23,13 +23,16 @@
  *   npx tsx scripts/verify-album.ts --album-key xSqPJB [--dir /path/to/album]
  */
 import { config } from 'dotenv';
-import { resolve, join } from 'path';
-config({ path: resolve(process.cwd(), '.env.local') });
+import { resolve, join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+// Paths resolve from this file, not the shell's working directory, so the script runs the same
+// from any folder (it was being run from ~ and failing to find .env.local).
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+config({ path: join(REPO_ROOT, '.env.local') });
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { readdir } from 'fs/promises';
 import { existsSync, readFileSync, realpathSync } from 'fs';
-import { fileURLToPath } from 'url';
 
 export interface VerifyIssue {
 	code: string;
@@ -181,7 +184,7 @@ export async function verifyAlbum(sb: SupabaseClient, albumKey: string, opts: { 
 	}
 
 	// --- checkpoint has no recorded failures ----------------------------------------------------
-	const ckPath = join('.temp', `ingest-${albumKey}.checkpoint.json`);
+	const ckPath = join(REPO_ROOT, '.temp', `ingest-${albumKey}.checkpoint.json`);
 	if (existsSync(ckPath)) {
 		try {
 			const ck = JSON.parse(readFileSync(ckPath, 'utf-8')) as { failed?: Record<string, string> };

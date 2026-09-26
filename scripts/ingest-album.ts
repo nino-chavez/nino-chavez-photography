@@ -47,8 +47,12 @@
  *   SUPABASE_SERVICE_ROLE_KEY).
  */
 import { config } from 'dotenv';
-import { resolve, join } from 'path';
-config({ path: resolve(process.cwd(), '.env.local') });
+import { resolve, join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+// Paths resolve from this file, not the shell's working directory, so the script runs the same
+// from any folder (it was being run from ~ and failing to find .env.local).
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+config({ path: join(REPO_ROOT, '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
 import { readdir } from 'fs/promises';
@@ -228,7 +232,7 @@ async function deleteFromCF(imageId: string): Promise<{ ok: boolean; message?: s
 // ---------------------------------------------------------------------------
 // Checkpoint
 // ---------------------------------------------------------------------------
-const CK_DIR = '.temp';
+const CK_DIR = join(REPO_ROOT, '.temp');
 if (!existsSync(CK_DIR)) mkdirSync(CK_DIR, { recursive: true });
 const CK_PATH = join(CK_DIR, `ingest-${ALBUM_KEY}.checkpoint.json`);
 interface Checkpoint { done: string[]; failed: Record<string, string>; updatedAt: string; }
