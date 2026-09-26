@@ -10,7 +10,8 @@
  *
  * Checks:
  *   - row count equals the file count in --dir (when --dir is given)
- *   - every row has: caption, embedding, cf_image_id, extraction_version, all 4 quality
+ *   - every row has: caption, embedding, image_embedding (the search vector since ADR 0006),
+ *     sharpness_measured, cf_image_id, extraction_version, all 4 quality
  *     sub-scores (sharpness/composition_score/exposure_accuracy/emotional_impact), and
  *     play_type when photo_category is "action" (never required otherwise — see taxonomy.ts)
  *   - every row's sport_type equals albums.sport (the album-authoritative mirror, ADR 0002)
@@ -55,6 +56,8 @@ interface PhotoRow {
 	file_name: string | null;
 	caption: string | null;
 	embedding: unknown;
+	image_embedding: unknown;
+	sharpness_measured: number | null;
 	photo_category: string | null;
 	play_type: string | null;
 	cf_image_id: string | null;
@@ -90,7 +93,7 @@ export async function verifyAlbum(sb: SupabaseClient, albumKey: string, opts: { 
 			const { data, error } = await sb
 				.from('photo_metadata')
 				.select(
-					'photo_id, image_key, file_name, caption, embedding, photo_category, play_type, cf_image_id, extraction_version, sport_type, sharpness, composition_score, exposure_accuracy, emotional_impact'
+					'photo_id, image_key, file_name, caption, embedding, image_embedding, sharpness_measured, photo_category, play_type, cf_image_id, extraction_version, sport_type, sharpness, composition_score, exposure_accuracy, emotional_impact'
 				)
 				.eq('album_key', albumKey)
 				.order('photo_id', { ascending: true })
@@ -124,6 +127,8 @@ export async function verifyAlbum(sb: SupabaseClient, albumKey: string, opts: { 
 	const missingEmbedding: string[] = [];
 	const missingPlayType: string[] = [];
 	const missingCfImageId: string[] = [];
+	const missingImageEmbedding: string[] = [];
+	const missingSharpnessMeasured: string[] = [];
 	const missingExtractionVersion: string[] = [];
 	const missingQuality: string[] = [];
 	const sportMismatch: string[] = [];
@@ -132,6 +137,8 @@ export async function verifyAlbum(sb: SupabaseClient, albumKey: string, opts: { 
 	for (const r of rows) {
 		if (!r.caption || !r.caption.trim()) missingCaption.push(r.photo_id);
 		if (r.embedding == null) missingEmbedding.push(r.photo_id);
+		if (r.image_embedding == null) missingImageEmbedding.push(r.photo_id);
+		if (r.sharpness_measured == null) missingSharpnessMeasured.push(r.photo_id);
 		if (r.photo_category === 'action') {
 			actionRows++;
 			if (!r.play_type) missingPlayType.push(r.photo_id);
@@ -151,6 +158,8 @@ export async function verifyAlbum(sb: SupabaseClient, albumKey: string, opts: { 
 	};
 	report('missing_caption', missingCaption, 'missing a caption');
 	report('missing_embedding', missingEmbedding, 'missing an embedding');
+	report('missing_image_embedding', missingImageEmbedding, 'missing an image_embedding (the semantic-search vector, ADR 0006)');
+	report('missing_sharpness_measured', missingSharpnessMeasured, 'missing sharpness_measured');
 	report('missing_cf_image_id', missingCfImageId, 'missing cf_image_id');
 	report('missing_extraction_version', missingExtractionVersion, 'missing extraction_version');
 	report('missing_quality_subscores', missingQuality, 'missing one or more quality sub-scores');

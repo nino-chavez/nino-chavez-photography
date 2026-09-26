@@ -157,8 +157,3 @@ an estimate) reaches it. `--dry-run` degrades gracefully if the column migration
   collides with anything (the partial unique index excludes NULLs by design). A duplicate of an
   already-ingested, not-yet-reprocessed shoot will slip through until that original row is
   reprocessed (which backfills its hash).
-- **`scripts/verify-album.ts` (and the `publish-album.ts` gate that reuses it) check `embedding`
-  presence but not `image_embedding`.** A row missing its image vector (not yet backfilled, or a
-  transient `embedImage` failure at ingest that left the row in `checkpoint.failed`) does not fail
-  album verification or block publish today. Not fixed in this pass — ADR 0006 names it explicitly
-  as a follow-up rather than silently leaving it undocumented.

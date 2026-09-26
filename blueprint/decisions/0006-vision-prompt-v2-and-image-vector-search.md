@@ -167,8 +167,9 @@ what ADR 0004's merge-gating rule exists to prevent. Apply order:
 - Does not touch `quality_score` (generated) or the model-scored `sharpness` column.
   `sharpness_measured` (deterministic, `src/lib/ai/sharpness.ts`) is a companion signal, not a
   replacement.
-- Does not update `scripts/verify-album.ts` / the publish gate, which check `embedding` presence
-  but not `image_embedding`. Flagged as a follow-up, not fixed in this cycle.
+- `scripts/verify-album.ts` (and the `publish-album.ts` gate that reuses it) require
+  `image_embedding` and `sharpness_measured` on every row, alongside the caption `embedding`, so
+  an album missing its search vector cannot publish.
 
 ## Caveats (read before treating this as more certain than it is)
 
