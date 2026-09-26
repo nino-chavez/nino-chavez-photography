@@ -1,17 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-26T01:48:40.089Z",
+  "reviewedAt": "2026-09-26T10:16:01.184Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Walked /photography/albums/Re7kho at 390 and 1280 pixels and /photography/share/<token> at 920 pixels against the local dev server after changing single-album photo order from upload_date+image_key to capture time (photo_date) then image_key. The grid now reads in shutter order (01..13 then 056..064 then 14.., matching EXIF DateTimeOriginal) instead of the text sort of exported filenames. Page 2 from /api/album-photos continues contiguously from page 1 (073 then 074) and the download manifest lists the same order. Document scrollWidth equals clientWidth at all three widths. Layout, Popular in this album strip, header and subnav are unchanged; only row order moved.",
-  "sourceDigest": "sha256:974ad5990d1f9d5d5d748aff3dec27c2213b7075afafa38891829e01568f8081",
+  "method": "Walked /photography/explore at 390 and 1280 pixels and /photography/albums/Re7kho at 390 pixels on the dev server from the search-cutover branch (ADR 0006). The only change inside this surface's source roots is src/routes/api/chat/+server.ts, which swaps the query embedder from embedText to embedImageQuery and rewrites its comments; no component, layout or copy changed. Pages render with their grids (24 and 60 images), filters and header intact, and document scrollWidth equals clientWidth at every width. Semantic search results were not judged here: the new query path only returns meaningful results once migration 20260925240000 is applied, so result quality is verified against the live site immediately after cutover, not on this walk.",
+  "sourceDigest": "sha256:19941049b12084b6a3b3ed1be62128f7eec86b3bfc9587d61fa4766c3fc04adc",
   "sourceFiles": 128,
   "scope": [
+    "/photography/explore at 390px",
+    "/photography/explore at 1280px",
     "/photography/albums/Re7kho at 390px",
-    "/photography/albums/Re7kho at 1280px",
-    "/photography/share/<token> at 920px",
-    "album photo order by capture time",
-    "load-more page contiguity",
-    "download manifest order"
+    "chat route embedder swap (no rendered change)",
+    "search result quality deferred to live post-cutover check"
   ]
 }
