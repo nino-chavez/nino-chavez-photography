@@ -109,7 +109,9 @@ export function buildCaptionCorrectionMessage(issues: CaptionIssue[]): string {
 			? 'Do not use the flagged words or synonyms that make the same claim.'
 			: '',
 		issues.some((issue) => issue.code === 'too-long')
-			? 'Cut it to 30 words or fewer: keep jersey numbers, colors, and the main action; drop secondary scene detail.'
+			? // Aim below the limit: told only "30 or fewer", a caption at 31 words came back verbatim
+				// at temperature 0 and burned a correction round (acc-v-jca-102, 2026-09-26).
+				'Rewrite it in 25 words or fewer; returning the same caption will be rejected again. Keep every jersey number and color and the main action; drop secondary scene detail and repeated words such as "jersey number" (write "#9").'
 			: '',
 		issues.some((issue) => issue.code === 'swimwear-term')
 			? 'Keep the color — it is how someone finds their own photo — but drop the garment: write "a player in navy" or "a player in a red top", never the swimwear itself.'

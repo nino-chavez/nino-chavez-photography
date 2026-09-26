@@ -63,6 +63,9 @@ test('correction message names the flagged words and their rules', () => {
 test('correction message gives a compression instruction for too-long captions', () => {
 	const caption = Array.from({ length: 31 }, (_, index) => `word${index + 1}`).join(' ');
 	const message = buildCaptionCorrectionMessage(inspectCaption(caption));
-	assert.match(message, /30 words or fewer/);
+	// Targets below the 30-word limit and forbids an unchanged resubmission: told only "30 or
+	// fewer", a 31-word caption came back verbatim at temperature 0.
+	assert.match(message, /25 words or fewer/);
+	assert.match(message, /same caption will be rejected again/);
 	assert.doesNotMatch(message, /flagged words/);
 });
