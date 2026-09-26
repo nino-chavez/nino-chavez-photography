@@ -500,10 +500,15 @@ export async function fetchPhotosByAlbumName(
   const cleanTerms = terms.map((t) => t.trim()).filter((t) => t.length >= 2).slice(0, 5);
   if (cleanTerms.length === 0 && !teamAlbums) return { photos: [], totalCount: 0 };
 
-  // Escape PostgREST ILIKE wildcards so a literal % or _ in a query can't widen the match.
-  // For terms embedded in a .or() expression, also strip PostgREST syntax chars (, ( )).
-  const escape = (t: string) => t.replace(/[%_]/g, (c) => `\\${c}`);
-  const orSafe = (t: string) => escape(t).replace(/[(),]/g, '');
+  // Each term must match at the START of a word (Postgres `\y` word boundary, case-insensitive
+  // `imatch`), not anywhere inside one. A substring ILIKE sent "block at the net" to the one album
+  // whose name contains "Be·net" (185 photos, all of "2025 BVB Benet vs DGN") and never reached the
+  // semantic path; word-start matching leaves every real name query's count unchanged (measured
+  // live: benet 185, lewis 926, aurora 705, 630 1338, msoe 59) and "net" at 0. A prefix still
+  // matches ("tiger" finds "Tigers"). Regex metacharacters are escaped, and PostgREST syntax chars
+  // (, ( )) are stripped because these terms are embedded in a .or() expression.
+  const wordStart = (t: string) =>
+    `\\y${t.replace(/[(),]/g, '').replace(/[.*+?^${}|[\]\\]/g, '\\$&')}`;
 
   const unlisted = await getUnlistedAlbumKeys(); // privacy: name search must not surface private albums
   const applyFilters = (q: any) => {
@@ -518,13 +523,13 @@ export async function fetchPhotosByAlbumName(
     //      matching album_name OR in-frame text within that set ("lewis sikora")
     const branches: string[] = [];
     if (cleanTerms.length > 0) {
-      branches.push(`and(${cleanTerms.map((t) => `album_name.ilike.%${orSafe(t)}%`).join(',')})`);
-      branches.push(`and(${cleanTerms.map((t) => `visible_text_flat.ilike.%${orSafe(t)}%`).join(',')})`);
+      branches.push(`and(${cleanTerms.map((t) => `album_name.imatch.${wordStart(t)}`).join(',')})`);
+      branches.push(`and(${cleanTerms.map((t) => `visible_text_flat.imatch.${wordStart(t)}`).join(',')})`);
     }
     if (teamAlbums && teamAlbums.albumKeys.length > 0) {
       const teamParts = [`album_key.in.(${teamAlbums.albumKeys.join(',')})`]
         .concat(teamAlbums.leftoverTerms.map(
-          (t) => `or(album_name.ilike.%${orSafe(t)}%,visible_text_flat.ilike.%${orSafe(t)}%)`
+          (t) => `or(album_name.imatch.${wordStart(t)},visible_text_flat.imatch.${wordStart(t)})`
         ));
       branches.push(teamParts.length > 1 ? `and(${teamParts.join(',')})` : teamParts[0]);
     }
