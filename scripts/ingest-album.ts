@@ -15,23 +15,30 @@
  * created here with an explicit operator --sport. A photo's sport is NEVER guessed.
  *
  * Resumable: a checkpoint (.temp/ingest-<album-key>.checkpoint.json) records done image_keys;
- * idempotent because photo_id = `${albumKey}-${imageKey}` (UPSERT) and sightings dedup on
- * dedup_key. Re-running is safe.
+ * idempotent because photo_id = `${albumKey}-${imageKey}` (UPSERT), and a reprocessed photo's
+ * `photo_jersey_sightings` (source='players_new') are REPLACED — deleted then re-inserted from
+ * the fresh extraction — rather than merely dedup-upserted, so a re-run converges instead of
+ * accumulating stale sightings beside new ones. Re-running is safe.
  *
  * Usage:
  *   OPENROUTER_API_KEY=... npx tsx scripts/ingest-album.ts \
  *     --dir /path/to/album --album-key xSqPJB --album-name "FUTURE — Fall 2025" \
  *     --sport volleyball --upload-date 2025-11-03 [--teams "Lewis University, UCLA"] \
  *     [--venue "Neil Carey Arena"] [--level college] [--division mens] \
- *     [--concurrency 4] [--limit N] [--dry-run] [--overwrite]
+ *     [--concurrency 4] [--limit N] [--dry-run] [--overwrite] [--prune]
  *
  * Findability context (teams/venue/level/division) is operator-known at ingest — pass it here.
  * Skipped flags can be batch-derived later: extract-album-entities.ts (teams/aliases/dates) and
  * backfill-album-facets.ts (level/division) are both idempotent fill-if-null re-runs.
  * event_date is stamped automatically from the album's earliest capture date (fill-if-null).
+ * --prune deletes DB rows for this album whose file is no longer in --dir (default: report only);
+ * --prune-confirm-identity-loss / --prune-confirm-majority lift its two safety gates (see below).
  *
  * Credentials (runtime-injected; see [[photography-live-credentials]]):
- *   OPENROUTER_API_KEY (1Password "OpenRouter photography"), Supabase creds + CF creds (.env.local).
+ *   OPENROUTER_API_KEY (1Password "OpenRouter photography"), CF_ACCOUNT_ID + CF_IMAGES_API_TOKEN
+ *   (1Password "Cloudflare photography" — see ENRICHMENT_WORKFLOW.md; do NOT trust a cached
+ *   .env.local token over the vault), Supabase creds (.env.local: VITE_SUPABASE_URL,
+ *   SUPABASE_SERVICE_ROLE_KEY).
  */
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
@@ -40,6 +47,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { readdir } from 'fs/promises';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { createHash } from 'crypto';
 import sharp from 'sharp';
 import exifReader from 'exif-reader';
 
@@ -47,6 +55,7 @@ import { embedText } from '../src/lib/ai/embeddings';
 import { extractOne, EXTRACTION_VERSION, INGEST_MODEL } from '../src/lib/ai/ingest-extraction';
 import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
+import { generateCanonicalNameFromAlbum } from '../src/lib/utils/canonical-album-naming';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -99,6 +108,14 @@ const DRY = process.argv.includes('--dry-run');
 const OVERWRITE = process.argv.includes('--overwrite');
 const UNLISTED = process.argv.includes('--unlisted'); // hide on the live gallery until the operator publishes
 const MODEL = flagValue('model') || INGEST_MODEL;
+/**
+ * Ingest only ADDS. A photo whose file was removed/renamed on disk after a prior ingest stays
+ * in the DB forever unless something notices. --prune makes THIS run the something: it deletes
+ * (photo_metadata row, cascading to photo_jersey_sightings via FK, + best-effort CF Images
+ * delete) any DB row for this album whose file_name is no longer present in --dir. Without
+ * --prune the run only REPORTS the candidates — never deletes by default.
+ */
+const PRUNE = process.argv.includes('--prune');
 
 // Operator GPS override (e.g. --lat 43.04781 --lng -87.90931). Cameras without a GPS receiver
 // (Sony A7-series) never record a fix; rather than re-export 300+ frames to bake one in, the
@@ -148,7 +165,7 @@ function die(msg: string): never {
 }
 
 if (!DIR || !ALBUM_KEY) {
-	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--lat <deg> --lng <deg>] [--concurrency 4] [--limit N] [--unlisted] [--dry-run] [--overwrite]\n' +
+	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--lat <deg> --lng <deg>] [--concurrency 4] [--limit N] [--unlisted] [--dry-run] [--overwrite] [--prune]\n' +
 		'  --album-key defaults to the folder-name slug; --sport is detected from --album-name when omitted.');
 }
 if (!OPENROUTER_API_KEY) die('OPENROUTER_API_KEY required (1Password "OpenRouter photography")');
@@ -183,6 +200,21 @@ async function uploadToCF(fileBuffer: Buffer, imageId: string, fileName: string,
 		return uploadToCF(fileBuffer, imageId, fileName, attempt + 1);
 	}
 	return (await res.json()) as CFUploadResponse;
+}
+
+/** Best-effort CF Images delete for --prune. Non-fatal: a stray CF image costs storage, not correctness. */
+async function deleteFromCF(imageId: string): Promise<{ ok: boolean; message?: string }> {
+	try {
+		const res = await fetch(`${CF_IMAGES_API}/${imageId}`, {
+			method: 'DELETE',
+			headers: { Authorization: `Bearer ${CF_IMAGES_API_TOKEN}` },
+		});
+		const body = (await res.json().catch(() => ({}))) as { success?: boolean; errors?: Array<{ message: string }> };
+		if (res.ok && body.success) return { ok: true };
+		return { ok: false, message: body.errors?.map((e) => e.message).join('; ') || `HTTP ${res.status}` };
+	} catch (e) {
+		return { ok: false, message: (e as Error).message };
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +272,7 @@ async function resolveAlbum(): Promise<{ sport: Sport | null; albumName: string 
 	// Album missing → bootstrap it. Sport must be KNOWN: explicit --sport wins, else it's detected
 	// from the album name (operator convention: "the sport is in the name"). NEVER guessed/defaulted.
 	const name = ALBUM_NAME_ARG || folderBase;
+	warnIfNameDrifts(name);
 	let sport: Sport | null;
 	if (SPORT_ARG !== undefined) {
 		sport = parseSportArg();
@@ -314,6 +347,31 @@ function detectSportFromName(name: string): Sport | null {
 		if (n.includes(s) || n.includes(s.replace('_', ' '))) return s as Sport;
 	}
 	return null;
+}
+
+/**
+ * Warn — never block — when a NEW album's name drifts from what `canonical-album-naming.ts`
+ * would generate. This is a print, not an enforcement: the module's own format
+ * ("Team vs Team - May 30", level prefix stripped, no year on a single-day event) DISAGREES
+ * with the naming convention actually used for recent real albums, e.g.
+ * "HS Girls VB - JCA at ACC - 09-22-2026" (level prefix kept, "at" not "vs", full
+ * MM-DD-YYYY date). That conflict is unresolved on the module side — see
+ * ENRICHMENT_WORKFLOW.md — so this only surfaces the module's suggestion for the operator to
+ * judge; it never renames anything.
+ */
+function warnIfNameDrifts(name: string): void {
+	if (!name) return;
+	let result;
+	try {
+		result = generateCanonicalNameFromAlbum({ albumKey: ALBUM_KEY!, name });
+	} catch {
+		return; // never let a naming-suggestion helper block ingest
+	}
+	// Drift bands per scripts/ALBUM_NORMALIZATION_README.md: <10 is minor/no-op noise.
+	if (result.name && result.name !== name && (result.driftScore ?? 0) >= 10) {
+		console.warn(`   ⚠️  Album name "${name}" drifts from canonical-album-naming.ts's suggestion (drift ${result.driftScore}): "${result.name}"`);
+		console.warn(`      → NOT enforced — that module's format conflicts with recent naming practice (see ENRICHMENT_WORKFLOW.md). Review, don't auto-apply.`);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -399,8 +457,104 @@ function extractExifMeta(exifBuffer: Buffer | undefined): ExifMeta {
 
 interface ProcessResult { caption: string; players: number; sightings: number; cost: number | null; reprocessed: boolean; }
 
-/** image_key → the album's existing row (photo_id + cf_image_id). Populated in main() for reprocess-in-place. */
-const existingRows = new Map<string, { photo_id: string; cf_image_id: string | null }>();
+/** Local-file matching key → the album's existing row (photo_id + cf_image_id + file_name).
+ * Populated in main() for reprocess-in-place AND the missing-file report/--prune (below). */
+const existingRows = new Map<string, { photo_id: string; cf_image_id: string | null; file_name: string | null }>();
+
+/**
+ * The key existingRows is matched on: file_name with its extension stripped when a file_name is
+ * on record, else the raw image_key column. NOT the raw image_key column alone — on a
+ * pre-north-star album, image_key is a SmugMug-assigned id with NO relationship to the local
+ * filename (e.g. image_key="fpM495R", file_name="acc-vb-vs-delasalle-27.jpg"; verified live on
+ * album CgbH8q). --dir's file listing can only ever produce filename-derived keys, so matching
+ * on image_key there made every legacy row read as "missing" — and, one level up, made
+ * reprocess-in-place mint a brand-new duplicate row for every legacy photo instead of updating it,
+ * since `existingRows.get(job.imageKey)` (job.imageKey is ALSO filename-derived) never hit.
+ */
+function localKeyFor(row: { image_key: string; file_name: string | null }): string {
+	return row.file_name ? row.file_name.replace(/\.(jpg|jpeg)$/i, '') : row.image_key;
+}
+
+/**
+ * Ingest only ADDS. Report (and, with --prune, remove) DB rows for this album whose file is no
+ * longer present in --dir — a candidate is a file that was deleted or renamed on disk after a
+ * prior ingest. Matched on the local key (see localKeyFor), not the raw image_key column, so a
+ * legacy album's SmugMug-id image_keys don't ALL read as missing.
+ *
+ * Never deletes anything unless --prune is passed; even then, respects --dry-run (report only).
+ * Two more guards, because a delete here cascades to photo_jersey_sightings, photo_players,
+ * user_tags, AND engagement_events (all ON DELETE CASCADE — verified against
+ * supabase/migrations/*.sql), which is real, hard-to-recover analytics/identity work, not just a
+ * photo row:
+ *   - a candidate with an admin-CONFIRMED photo_players link or an APPROVED user_tags row is
+ *     never deleted by --prune alone — it needs --prune-confirm-identity-loss too.
+ *   - if more than half the album's existing rows are "missing" (a --dir typo, or pointing at
+ *     the wrong folder, looks exactly like this), --prune refuses outright unless
+ *     --prune-confirm-majority is also passed.
+ */
+async function reportAndPruneMissing(localKeys: Set<string>): Promise<void> {
+	const missing = [...existingRows.entries()].filter(([key]) => !localKeys.has(key));
+	if (missing.length === 0) return;
+
+	console.log(`\n   🗑  ${missing.length} DB row(s) for this album have no file in ${DIR} (candidates for removal):`);
+	for (const [key, row] of missing) {
+		console.log(`      - ${row.photo_id} (local_key=${key}, file_name=${row.file_name ?? 'unknown'})`);
+	}
+
+	const photoIds = missing.map(([, row]) => row.photo_id);
+	const [confirmedLinks, approvedTags, engagementCounts] = await Promise.all([
+		sb.from('photo_players').select('photo_id').eq('status', 'confirmed').in('photo_id', photoIds),
+		sb.from('user_tags').select('photo_id').eq('approved', true).in('photo_id', photoIds),
+		sb.from('engagement_events').select('photo_id', { count: 'exact', head: true }).in('photo_id', photoIds),
+	]);
+	const protectedPhotoIds = new Set<string>([
+		...(confirmedLinks.data ?? []).map((r) => r.photo_id),
+		...(approvedTags.data ?? []).map((r) => r.photo_id),
+	]);
+	if (protectedPhotoIds.size) {
+		console.log(`      ⚠️  ${protectedPhotoIds.size} of these have an admin-CONFIRMED player link or an APPROVED user tag — protected from deletion unless --prune-confirm-identity-loss is also passed.`);
+	}
+	if ((engagementCounts.count ?? 0) > 0) {
+		console.log(`      ℹ️  ${engagementCounts.count} engagement_events row(s) exist for these photos and would be deleted (CASCADE) along with them.`);
+	}
+
+	if (!PRUNE) {
+		console.log(`      → re-run with --prune to remove them (add --dry-run first to preview)\n`);
+		return;
+	}
+
+	const CONFIRM_IDENTITY_LOSS = process.argv.includes('--prune-confirm-identity-loss');
+	const CONFIRM_MAJORITY = process.argv.includes('--prune-confirm-majority');
+	if (existingRows.size >= 5 && missing.length >= existingRows.size * 0.5 && !CONFIRM_MAJORITY) {
+		console.log(`      ⛔ REFUSING: ${missing.length}/${existingRows.size} of the album's rows are "missing" — that's more consistent with a wrong/empty --dir than real removals. Re-run with --prune-confirm-majority to override.\n`);
+		return;
+	}
+
+	const toDelete = missing.filter(([, row]) => !protectedPhotoIds.has(row.photo_id) || CONFIRM_IDENTITY_LOSS);
+	const skipped = missing.length - toDelete.length;
+	if (DRY) {
+		console.log(`      [DRY] --prune would delete ${toDelete.length}/${missing.length} row(s) (photo_metadata, cascading to sightings/photo_players/user_tags/engagement_events) + their CF images${skipped ? ` (${skipped} protected, skipped)` : ''}\n`);
+		return;
+	}
+	let pruned = 0;
+	for (const [, row] of toDelete) {
+		const { error: delErr } = await sb.from('photo_metadata').delete().eq('photo_id', row.photo_id);
+		if (delErr) { console.error(`      ❌ delete ${row.photo_id} failed: ${delErr.message}`); continue; }
+		pruned++;
+		if (row.cf_image_id) {
+			// Album-scoped ids make sharing unlikely, but the ingest header notes the OLD bare-filename
+			// scheme could alias ids across albums — never delete a CF image another row still points at.
+			const { count: sharedCount } = await sb.from('photo_metadata').select('photo_id', { count: 'exact', head: true }).eq('cf_image_id', row.cf_image_id);
+			if ((sharedCount ?? 0) > 0) {
+				console.warn(`      ⚠️  CF image ${row.cf_image_id} still referenced by ${sharedCount} other row(s) — not deleting it.`);
+			} else {
+				const cf = await deleteFromCF(row.cf_image_id);
+				if (!cf.ok) console.warn(`      ⚠️  CF Images delete failed for ${row.cf_image_id} (non-fatal, row already gone): ${cf.message}`);
+			}
+		}
+	}
+	console.log(`      🗑  pruned ${pruned}/${toDelete.length} row(s)${skipped ? ` (${skipped} protected, skipped — re-run with --prune-confirm-identity-loss to override)` : ''}\n`);
+}
 
 async function processImage(job: ImageJob, album: { sport: Sport | null; albumName: string }): Promise<ProcessResult> {
 	const fileBuffer = readFileSync(job.path);
@@ -411,6 +565,32 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	const photoId = prior?.photo_id ?? `${ALBUM_KEY}-${job.imageKey}`;
 	const cfId = prior?.cf_image_id ?? `${ALBUM_KEY}-${job.imageKey}`;
 	const alreadyUploaded = !!prior?.cf_image_id; // existing CF image — refresh metadata, don't re-upload/churn
+
+	// 0. Content-hash duplicate gate (P5 / ADR 0002: `UNIQUE(content_hash)`). A file whose exact
+	// bytes already exist under a DIFFERENT photo_id is the "same shoot exported to a second
+	// folder" duplicate class this project has hit before. Refuse LOUDLY, before spending an
+	// upload + a vision-model call on it — never silently create a second, byte-identical row.
+	// A pure read (safe under --dry-run too); the migration's partial UNIQUE INDEX on
+	// content_hash is the DB-level backstop for the narrow race where two NEW, mutually-identical
+	// files in the same run both pass this check before either is written.
+	const contentHash = createHash('sha256').update(fileBuffer).digest('hex');
+	{
+		const { data: dupe, error: dupeErr } = await sb
+			.from('photo_metadata')
+			.select('photo_id, album_key, file_name')
+			.eq('content_hash', contentHash)
+			.neq('photo_id', photoId)
+			.maybeSingle();
+		if (dupeErr) throw new Error(`content_hash duplicate check failed: ${dupeErr.message}`);
+		if (dupe) {
+			throw new Error(
+				`REFUSED: ${job.file} is byte-identical (content_hash=${contentHash.slice(0, 12)}…) to existing photo ` +
+				`${dupe.photo_id} (album ${dupe.album_key}, file "${dupe.file_name}") — looks like the same shoot exported ` +
+				`to a second folder. Resolve the duplicate (remove the stray file, or confirm it's intentional and ` +
+				`handle it manually) before re-running.`
+			);
+		}
+	}
 
 	// 1. Image dims + full EXIF (capture date, camera/lens/exposure, GPS). Non-fatal if absent.
 	let width: number | null = null, height: number | null = null, aspect: number | null = null;
@@ -456,6 +636,7 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		album_key: ALBUM_KEY,
 		album_name: album.albumName,
 		file_name: job.file,
+		content_hash: contentHash,
 		cf_image_id: cfId,
 		caption: ex.extraction.caption,
 		photo_category: ex.extraction.photo_category,
@@ -493,8 +674,31 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 
 	// 6. Sightings from players[] (NEVER the players column). source='players_new' is the
 	// caption-shape vocabulary the photo_jersey_sightings_source_check constraint allows (same as
-	// the backfill); dedup_key stays consistent across both write paths. Idempotent on dedup_key.
-	const sightings = shredCaptionPlayers(photoId, ALBUM_KEY!, ex.extraction.players);
+	// the backfill); dedup_key stays consistent across both write paths.
+	//
+	// REPLACE, not append: a reprocess re-extracts this photo from scratch, so its OLD
+	// 'players_new' sightings are stale the moment a new set is computed (a player who left the
+	// frame in the re-extraction, or whose color/jersey read differently, must not linger beside
+	// the new row). Delete-then-insert scoped to THIS photo + THIS source converges on re-run;
+	// it never touches 'players_old' / 'jersey_singular' sightings, which ingest doesn't own (they
+	// come from the one-time backfill — scripts/backfill-jersey-sightings.ts).
+	//
+	// `.is('resolved_player_id', null)` on the delete is load-bearing, not decorative: a sighting
+	// with resolved_player_id set has been through admin tag approval (resolve_jersey_to_player),
+	// which also stamps resolved_at/resolved_by. An unconditional delete would erase that human
+	// decision every time the photo is reprocessed and put it back in the unresolved queue.
+	// ignoreDuplicates on the insert below then naturally skips re-adding a resolved sighting that
+	// still shreds to the same dedup_key.
+	const SIGHTINGS_SOURCE = 'players_new';
+	const sightings = shredCaptionPlayers(photoId, ALBUM_KEY!, ex.extraction.players, SIGHTINGS_SOURCE);
+	const { error: delErr } = await sb
+		.from('photo_jersey_sightings')
+		.delete()
+		.eq('photo_id', photoId)
+		.eq('source', SIGHTINGS_SOURCE)
+		.is('resolved_player_id', null);
+	if (delErr) throw new Error(`sightings delete (reprocess replace): ${delErr.message}`);
+
 	if (sightings.length) {
 		const { error: sErr } = await sb
 			.from('photo_jersey_sightings')
@@ -502,7 +706,18 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		if (sErr) throw new Error(`sightings upsert: ${sErr.message}`);
 	}
 
-	return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: sightings.length, cost: ex.cost, reprocessed: !!prior };
+	// Report ROWS ACTUALLY STORED, not rows sent — a plain read-back rather than trusting the
+	// upsert's own reported count (ignoreDuplicates' exact accounting under a conflict is not
+	// something this codebase had verified). This also naturally includes any resolved sighting
+	// the delete above preserved, which is the correct "what's stored for this photo now" answer.
+	const { count: storedCount, error: cErr } = await sb
+		.from('photo_jersey_sightings')
+		.select('sighting_id', { count: 'exact', head: true })
+		.eq('photo_id', photoId)
+		.eq('source', SIGHTINGS_SOURCE);
+	if (cErr) throw new Error(`sightings count read-back: ${cErr.message}`);
+
+	return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: storedCount ?? 0, cost: ex.cost, reprocessed: !!prior };
 }
 
 async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; albumName: string }) {
@@ -558,8 +773,8 @@ async function main() {
 	// Reprocess-in-place (P1): load this album's existing rows so a re-run UPDATES them (preserving
 	// each photo_id + its CF image) instead of minting duplicates. New images get fresh ids.
 	{
-		const { data } = await sb.from('photo_metadata').select('image_key, photo_id, cf_image_id').eq('album_key', ALBUM_KEY!);
-		for (const r of data ?? []) existingRows.set(r.image_key, { photo_id: r.photo_id, cf_image_id: r.cf_image_id });
+		const { data } = await sb.from('photo_metadata').select('image_key, photo_id, cf_image_id, file_name').eq('album_key', ALBUM_KEY!);
+		for (const r of data ?? []) existingRows.set(localKeyFor(r), { photo_id: r.photo_id, cf_image_id: r.cf_image_id, file_name: r.file_name });
 	}
 	if (existingRows.size) {
 		console.log(`   ♻️  ${existingRows.size} existing rows for this album — reprocessing those in place (preserve photo_id, no duplicate rows, no CF churn)\n`);
@@ -571,6 +786,11 @@ async function main() {
 	if (LIMIT) jobs = jobs.slice(0, LIMIT);
 
 	console.log(`   ${files.length} images found · ${jobs.length} to process\n`);
+
+	// Missing/renamed files (P8): report DB rows this album has with no matching local file, and
+	// --prune them when asked. Uses the FULL local listing (not the OVERWRITE/LIMIT-filtered
+	// `jobs`), so --limit for a partial re-run never reports the untouched rest of the album as missing.
+	await reportAndPruneMissing(new Set(files.map((f) => f.replace(/\.(jpg|jpeg)$/i, ''))));
 	if (jobs.length === 0) { console.log('✅ Nothing to do.'); return; }
 
 	let ok = 0, fail = 0, totalCost = 0, totalSightings = 0, totalReprocessed = 0, index = 0;
@@ -676,7 +896,7 @@ async function main() {
 
 	const mins = ((Date.now() - t0) / 60000).toFixed(1);
 	console.log('\n' + '='.repeat(64));
-	console.log(`   ✅ Ingested: ${ok} (${totalReprocessed} updated in place, ${ok - totalReprocessed} new)   ❌ Failed: ${fail}   👕 Sightings: ${totalSightings}`);
+	console.log(`   ✅ Ingested: ${ok} (${totalReprocessed} updated in place, ${ok - totalReprocessed} new)   ❌ Failed: ${fail}   👕 Sightings stored: ${totalSightings}`);
 	console.log(`   💰 Cost: $${totalCost.toFixed(4)}   ⏱️  ${mins} min`);
 	console.log(`   📁 Checkpoint: ${CK_PATH}`);
 	if (fail > 0) console.log(`   ⚠️  ${fail} failures recorded in checkpoint.failed — safe to re-run to retry them.`);
