@@ -194,8 +194,21 @@
   // crossing past the last photo of the currently-loaded periods loads more periods instead
   // of dead-ending. This was previously unwired: hasMore/onLoadMore were never passed to the
   // Lightbox below, so Next silently did nothing once every loaded period's photos were shown.
+  //
+  // A period can load with zero featuredPhotos (or dedupe to nothing — see handleLoadMore's
+  // own dedup in the parent route), which would grow `timelineData` without growing
+  // `allTimelinePhotos` — the Lightbox would then read that as a failed load and show its
+  // retry banner even though hasMorePeriods is still true. Loop the same way scrollToYear
+  // already does: keep pulling periods until a new photo actually appears or there really is
+  // nothing left, capped so an unlucky run of empty periods can't spin forever.
   async function lightboxLoadMore(): Promise<void> {
-    await loadMorePeriods();
+    const startCount = allTimelinePhotos.length;
+    const maxAttempts = 10;
+    for (let i = 0; i < maxAttempts; i++) {
+      await loadMorePeriods();
+      await tick();
+      if (allTimelinePhotos.length > startCount || !hasMorePeriods) return;
+    }
   }
 
   // Filter handlers

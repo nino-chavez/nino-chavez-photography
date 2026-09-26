@@ -243,6 +243,14 @@
 			const loadedCountBefore = photos.length;
 			await triggerLoadMore();
 
+			// A load the LIGHTBOX did not start (the grid's own "Load more" button, the
+			// timeline's scroll sentinel) can still be running when ours resolves — the
+			// parent's own re-entrancy guard (`if (loadingMore) return`) makes onLoadMore()
+			// resolve immediately with nothing new added, which would otherwise read as a
+			// failure. Bail out quietly instead of showing a false "couldn't load" banner;
+			// the real load's own completion is what makes the next Next press succeed.
+			if (loadingMore) return;
+
 			const outcome = resolveLoadMoreOutcome({
 				startIndex,
 				currentIndexNow: currentIndex,

@@ -377,6 +377,16 @@ test.describe('Trending rail and cross-page lightbox navigation', () => {
 			return;
 		}
 
+		// Arm the deterministic prefetch check BEFORE opening — the prefetch effect (see
+		// Lightbox.svelte's shouldPrefetchNextPage) fires as soon as the lightbox opens within
+		// its lookahead window, well before any of the ArrowRight presses below. Awaiting this
+		// with no catch and no manual timeout (the suite's own 30s applies) is the actual
+		// regression check: without the prefetch, this request only ever fires from the
+		// boundary Next click, several steps later than this point in the test.
+		const page2Response = page.waitForResponse(
+			(res) => res.url().includes('/api/album-photos') && res.url().includes('page=2')
+		);
+
 		// Open near the end of the first page (not at it) so the prefetch's lookahead window
 		// (5 photos, see Lightbox.svelte) has room to fire before the boundary click.
 		await gridPhotos.nth(PAGE_SIZE - 3).click();
@@ -386,18 +396,8 @@ test.describe('Trending rail and cross-page lightbox navigation', () => {
 		const counter = dialog.locator('text=/\\d+\\s*\\/\\s*\\d+/').first();
 		await expect(counter).toHaveText(new RegExp(`^${PAGE_SIZE - 2}\\s*/`));
 
-		// Deterministic prefetch check: page 2 should already be in flight (or done) by the
-		// time we reach the true boundary — asserting on real image-paint timing would be
-		// sensitive to network conditions this test doesn't control, but whether the fetch for
-		// the NEXT page started before the boundary click is exactly what the fix changed.
-		const page2Request = page.waitForRequest(
-			(req) => req.url().includes('/api/album-photos') && req.url().includes('page=2'),
-			{ timeout: 3000 }
-		);
-		await page2Request.catch(() => {
-			// Already fired before this listener attached (likely, since we opened 3 photos
-			// before the boundary) — confirm it actually happened via a direct check instead.
-		});
+		// Page 2's data must already be in flight (or done) well before we reach the boundary.
+		await page2Response;
 
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
@@ -405,9 +405,50 @@ test.describe('Trending rail and cross-page lightbox navigation', () => {
 		await expect(counter).toHaveText(new RegExp(`^${PAGE_SIZE}\\s*/`));
 
 		// The boundary crossing itself — this used to hang (Next was a silent no-op on the
-		// share page, and a related latent bug could make the whole lightbox vanish).
+		// share page, and a related latent bug could make the whole lightbox vanish). By now
+		// the prefetch above should make this indistinguishable from an ordinary in-list Next.
 		await page.keyboard.press('ArrowRight');
 		await expect(dialog).toBeVisible();
+		await expect(counter).toHaveText(new RegExp(`^${PAGE_SIZE + 1}\\s*/`), { timeout: 5000 });
+	});
+
+	test('a failed load-more never closes the lightbox, and Retry recovers', async ({ page }) => {
+		await page.goto(`${BASE_PATH}/albums/${ALBUM_KEY}`);
+
+		const gridPhotos = page.locator('#photos-section ~ div a.photo-card');
+		const gridCount = await gridPhotos.count();
+		if (gridCount < PAGE_SIZE) {
+			test.skip(true, `Album grid has only ${gridCount} loaded photos; need a full first page to test the boundary`);
+			return;
+		}
+
+		// Block page 2's fetch BEFORE opening the lightbox — the prefetch effect requests it
+		// immediately once opened within the lookahead window, so the block must already be
+		// armed or the prefetch would succeed unblocked and there'd be nothing to fail.
+		await page.route(/\/api\/album-photos\?.*page=2/, (route) => route.abort());
+
+		// Open on the true boundary photo (the last of the first page) directly.
+		await gridPhotos.nth(PAGE_SIZE - 1).click();
+
+		const dialog = page.getByRole('dialog', { name: /photo lightbox/i });
+		await expect(dialog).toBeVisible({ timeout: 5000 });
+		const counter = dialog.locator('text=/\\d+\\s*\\/\\s*\\d+/').first();
+		await expect(counter).toHaveText(new RegExp(`^${PAGE_SIZE}\\s*/`));
+
+		await page.keyboard.press('ArrowRight');
+
+		// Never vanishes and never silently dead-ends: stays open, stays on the same photo,
+		// and surfaces a retryable message.
+		await expect(dialog).toBeVisible();
+		await expect(counter).toHaveText(new RegExp(`^${PAGE_SIZE}\\s*/`));
+		await expect(dialog.getByRole('status')).toContainText(/couldn.?t load more photos/i, {
+			timeout: 5000
+		});
+
+		// Unblock and retry — recovers rather than staying stuck.
+		await page.unroute(/\/api\/album-photos\?.*page=2/);
+		await dialog.getByRole('button', { name: /retry/i }).click();
+
 		await expect(counter).toHaveText(new RegExp(`^${PAGE_SIZE + 1}\\s*/`), { timeout: 5000 });
 	});
 });
