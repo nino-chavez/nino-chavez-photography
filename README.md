@@ -11,8 +11,7 @@ A high-performance photography portfolio for professional volleyball action-spor
 ## Features
 
 - **Gallery & discovery** — grid gallery with filtering (sport, category, quality), timeline view, album and collection browsing, a keyboard-navigable lightbox, autocomplete search, and a localStorage favorites system.
-- **AI photo enrichment** — every photo is auto-tagged by Google Gemini (`@ai-sdk/google`): sport type, category, emotion, action intensity, and a quality score that drives portfolio-worthy sorting. EXIF is read with `exif-reader`; resizing and transforms via `sharp` and Cloudflare Images.
-- **SmugMug ingest** — albums are imported from SmugMug over OAuth 1.0a (`npm run ingest:album`), then enriched and indexed.
+- **AI photo enrichment** — `npm run ingest:album` walks a local photo directory. Per photo: upload to Cloudflare Images, one structured vision pass (`google/gemini-2.5-flash-lite` via OpenRouter — caption, category, quality sub-scores, jersey/color sightings), embed the caption, then write `photo_metadata` + `photo_jersey_sightings`. Sport is set once per album, never guessed per photo. EXIF comes from `exif-reader`. No SmugMug or OAuth round-trip — see `ENRICHMENT_WORKFLOW.md`.
 - **Album ZIP downloads** — a dedicated Cloudflare Worker (`cloudflare-worker/album-zip`) streams multi-photo ZIPs.
 - **Dynamic share cards** — per-route Open Graph images rendered at the edge with `@cf-wasm/og` (charcoal + gold, hero photo + wordmark).
 - **Performance-first** — SvelteKit SSR, comprehensive Postgres indexing, lazy-loaded images, and in-memory caching for expensive queries; Lighthouse target >90.
@@ -22,7 +21,7 @@ A high-performance photography portfolio for professional volleyball action-spor
 
 - **Frontend** — SvelteKit 2 (SSR) · Svelte 5 (runes) · Tailwind CSS 4 · Lucide
 - **Data** — Supabase (Postgres + Storage) · `@tanstack/svelte-query`
-- **AI & imaging** — Google Gemini (`@ai-sdk/google`) · `exif-reader` · `sharp` · Cloudflare Images
+- **AI & imaging** — `google/gemini-2.5-flash-lite` via OpenRouter (structured vision extraction) · `exif-reader` · `sharp` · Cloudflare Images
 - **Platform** — Cloudflare Pages (`@sveltejs/adapter-cloudflare`) · Cloudflare Workers · R2
 - **Tooling** — TypeScript (strict) · Vite · Playwright (E2E + accessibility)
 
@@ -33,7 +32,7 @@ src/
 ├── lib/
 │   ├── components/     # UI: filters/, gallery/, layout/, ui/
 │   ├── stores/         # Svelte 5 class-based stores (runes)
-│   ├── supabase/       # server (service_role) + client (anon) split
+│   ├── supabase/       # server load (anon, RLS-gated) + browser client (anon) + service_role admin factory
 │   ├── server/         # edge helpers, incl. OG card rendering
 │   └── motion-tokens.ts
 ├── routes/             # albums/ collections/ explore/ favorites/ photo/[id]/ timeline/
@@ -69,7 +68,7 @@ Environment variables live in `.env.local` locally and in the Cloudflare Pages d
 |----------|----------|-------------|
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key (browser-safe) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server | Service-role key for server load functions (bypasses RLS) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | Service-role key for ingest scripts and admin/matview reads (bypasses RLS). NOT used by ordinary server load functions, which read as anon (RLS-gated) — see `CLAUDE.md`. |
 | `VITE_BASE_PATH` | No | Base path for reverse-proxy deployment |
 
 ## Scripts
@@ -81,7 +80,7 @@ Environment variables live in `.env.local` locally and in the Cloudflare Pages d
 | `npm run build` | Production build (output `.svelte-kit/cloudflare`) |
 | `npm run preview` | Preview the production build locally |
 | `npm test` | Playwright E2E (includes axe accessibility audits) |
-| `npm run ingest:album` | Import and enrich a SmugMug album |
+| `npm run ingest:album` | Ingest a local photo directory (upload, extract, embed, write) |
 | `npm run worker:deploy` | Deploy the `album-zip` Worker |
 
 ## Database
@@ -89,7 +88,7 @@ Environment variables live in `.env.local` locally and in the Cloudflare Pages d
 A single primary table, `photo_metadata`, with comprehensive indexing for filter and sort performance.
 
 - **Identity / URLs** — `photo_id` (PK), `image_key`, `ImageUrl`, `ThumbnailUrl`, `OriginalUrl`
-- **AI-derived facets** — `sport_type`, `photo_category`, `emotion`, `action_intensity`, `quality_score`, `portfolio_worthy`, `sharpness`
+- **AI-derived facets** — `sport_type` (mirrors `albums.sport`), `photo_category`, `play_type`, `quality_score` (generated from `sharpness`/`composition_score`/`exposure_accuracy`/`emotional_impact`)
 - **Dates** — `upload_date`, `photo_date`, `enriched_at`
 
 Migrations live in `supabase/migrations/`; see `database/performance-indexes.sql` for the covering indexes.
