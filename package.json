@@ -24,6 +24,8 @@
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
     "ingest:album": "tsx scripts/ingest-album.ts",
+    "verify:album": "tsx scripts/verify-album.ts",
+    "publish:album": "tsx scripts/publish-album.ts",
     "worker:dev": "cd cloudflare-worker/album-zip && wrangler dev",
     "worker:deploy": "cd cloudflare-worker/album-zip && wrangler deploy",
     "worker:tail": "cd cloudflare-worker/album-zip && wrangler tail",
