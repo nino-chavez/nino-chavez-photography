@@ -23,6 +23,7 @@
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { hdrPhotoUrl } from '$lib/utils/hdr-photo-url';
 	import { trackEngagement } from '$lib/analytics/client';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
@@ -72,9 +73,15 @@
 		};
 	});
 	
-	// Get optimized image URL via CF Images
+	// Serve the web-sized HDR (gain-map) copy when one exists (see /photo/[id]/+page.svelte for
+	// the full rationale — same logic, same graceful CF fallback on any load failure).
+	let hdrLoadFailed = $state(false);
+	const hdrUrl = $derived(photo?.hdr_web_available && !hdrLoadFailed ? hdrPhotoUrl(photo.id) : null);
+
+	// Get optimized image URL via CF Images (fallback when there's no HDR copy, or it failed)
 	const optimizedImageUrl = $derived.by(() => {
 		if (!photo) return null;
+		if (hdrUrl) return hdrUrl;
 		if (hasCFImage(photo.cf_image_id)) {
 			return cfImageUrl(photo.cf_image_id, 'large');
 		}
@@ -84,6 +91,7 @@
 	// Get srcset for responsive loading
 	const imageSrcSet = $derived.by(() => {
 		if (!photo) return undefined;
+		if (hdrUrl) return undefined; // single web-sized HDR file, no responsive variants
 		if (hasCFImage(photo.cf_image_id)) return cfSrcSet(photo.cf_image_id);
 		return undefined;
 	});
@@ -182,6 +190,9 @@
 											class="absolute inset-0 w-full h-full object-contain"
 											loading="eager"
 											decoding="async"
+											onerror={() => {
+												if (hdrUrl) hdrLoadFailed = true;
+											}}
 										/>
 									{:else}
 										<Camera class="w-24 h-24 text-charcoal-600" aria-hidden="true" />

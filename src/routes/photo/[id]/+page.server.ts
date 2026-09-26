@@ -66,6 +66,7 @@ export const load: PageServerLoad = async ({
 		image_key: photoData.image_key,
 		album_key: photoData.album_key || undefined,
 		cf_image_id: cfId || undefined,
+		hdr_web_available: !!photoData.hdr_web_available,
 		image_url: cfImageUrl(cfId, 'large'),
 		thumbnail_url: cfImageUrl(cfId, 'thumbnail'),
 		original_url: cfImageUrl(cfId, 'public'),

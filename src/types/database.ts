@@ -43,6 +43,9 @@ export interface PhotoMetadataRow {
 	ImageUrl: string | null;
 	OriginalUrl: string | null;
 	ThumbnailUrl: string | null;
+	// TRUE when a web-sized Ultra HDR (gain-map) copy exists in R2 at hdr/${photo_id}.jpg — see
+	// supabase/migrations/20260926130000_photo_metadata_hdr_web.sql. FALSE/null → Cloudflare Images.
+	hdr_web_available: boolean | null;
 
 	// Core classification (Bucket 1)
 	// NOTE: the vanity CATEGORICAL aesthetic columns (composition, time_of_day, lighting,
