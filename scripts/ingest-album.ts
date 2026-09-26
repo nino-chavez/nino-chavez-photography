@@ -56,8 +56,9 @@ config({ path: join(REPO_ROOT, '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
 import { readdir } from 'fs/promises';
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
 import { createHash } from 'crypto';
+import { execFileSync } from 'child_process';
 import sharp from 'sharp';
 import exifReader from 'exif-reader';
 
@@ -68,6 +69,9 @@ import { extractOne, EXTRACTION_VERSION, INGEST_MODEL } from '../src/lib/ai/inge
 import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
 import { checkAlbumName } from '../src/lib/utils/canonical-album-naming';
+import { classifyReplacePlan, describeReplacePlan, type ExistingRowForReplace } from '../src/lib/ingest/replace-plan';
+import { hasGainMap, computeSdrDrift, readSdrCrsSettings, formatDriftWarning, SDR_DRIFT_THRESHOLD } from '../src/lib/ai/hdr-gainmap';
+import { buildWebHdrCopy } from '../src/lib/ai/hdr-resize';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -128,6 +132,24 @@ const MODEL = flagValue('model') || INGEST_MODEL;
  * --prune the run only REPORTS the candidates — never deletes by default.
  */
 const PRUNE = process.argv.includes('--prune');
+/**
+ * A re-exported album (same folder/filenames, new bytes — e.g. after fixing HDR/SDR settings in
+ * Lightroom) maps to the SAME photo_id/cf_image_id for every file. Without this flag, re-running
+ * ingest against a re-export re-extracts from the NEW bytes but SKIPS the Cloudflare Images
+ * upload (the existing "reprocess-in-place" `alreadyUploaded` short-circuit below) — so the DB
+ * caption/quality-scores refresh from the new file while the served image silently stays the OLD
+ * pixels. --replace closes that gap: a pre-flight plan (src/lib/ingest/replace-plan.ts) hashes
+ * every local file against the album's stored `content_hash`, and this flag authorizes acting on
+ * it — deleting + re-uploading the Cloudflare image for exactly the files whose hash changed,
+ * skipping (no CF op, no AI cost) the ones that didn't. Refuses (dies) when it detects a changed
+ * file and this flag is absent, unless --dry-run is also passed (preview only, see below).
+ */
+const REPLACE = process.argv.includes('--replace');
+/** Skip the HDR web-copy build + R2 upload (src/lib/ai/hdr-resize.ts) — the SDR drift warning
+ * still runs (it's free/local). Useful when `wrangler`/`ultrahdr_app`/`exiftool` aren't set up on
+ * this machine, or to iterate faster; the DB simply keeps hdr_web_available=false (or whatever it
+ * already was) for every photo this run touches, and the site falls back to Cloudflare Images. */
+const SKIP_HDR = process.argv.includes('--skip-hdr');
 
 // Operator GPS override (e.g. --lat 43.04781 --lng -87.90931). Cameras without a GPS receiver
 // (Sony A7-series) never record a fix; rather than re-export 300+ frames to bake one in, the
@@ -177,8 +199,9 @@ function die(msg: string): never {
 }
 
 if (!DIR || !ALBUM_KEY) {
-	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--lat <deg> --lng <deg>] [--concurrency 4] [--limit N] [--unlisted] [--dry-run] [--overwrite] [--prune]\n' +
-		'  --album-key defaults to the folder-name slug; --sport is detected from --album-name when omitted.');
+	die('Usage: npx tsx scripts/ingest-album.ts --dir <photo-dir> [--album-key <KEY>] [--album-name "..."] [--sport volleyball] [--upload-date YYYY-MM-DD] [--lat <deg> --lng <deg>] [--concurrency 4] [--limit N] [--unlisted] [--dry-run] [--overwrite] [--prune] [--replace] [--skip-hdr]\n' +
+		'  --album-key defaults to the folder-name slug; --sport is detected from --album-name when omitted.\n' +
+		'  --replace: for a re-exported album, replace changed photos\' Cloudflare image in place (refuses without it if a content-hash change is detected; see ENRICHMENT_WORKFLOW.md "Replace").');
 }
 if (!OPENROUTER_API_KEY) die('OPENROUTER_API_KEY required (1Password "OpenRouter photography")');
 if (!SUPABASE_URL || !SUPABASE_KEY) die('Supabase creds required (VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
@@ -187,6 +210,40 @@ if (!CF_ACCOUNT_ID || !CF_IMAGES_API_TOKEN) die('Cloudflare creds required (CF_A
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const CF_IMAGES_API = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1`;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * The R2 bucket web-sized HDR copies live in (see src/lib/ai/hdr-resize.ts + supabase/migrations/
+ * 20260926130000_photo_metadata_hdr_web.sql). Uploaded via the `wrangler` CLI rather than a raw
+ * S3/R2 API call — this machine already has an authenticated `wrangler` for worker:deploy, and it
+ * avoids adding a second Cloudflare credential shape (S3 access key/secret) just for this. Requires
+ * `wrangler login` once, or CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the environment
+ * (the same account_id/credential fields already in 1Password's "Cloudflare photography" item).
+ */
+const HDR_R2_BUCKET = process.env.CF_HDR_R2_BUCKET || 'photo-gallery-hdr';
+
+/** Best-effort R2 upload for a photo's web-sized HDR copy. Never fatal: a failed upload just
+ * means this photo falls back to Cloudflare Images, same as before this feature existed. */
+async function uploadHdrToR2(photoId: string, buffer: Buffer): Promise<boolean> {
+	const tmpPath = join(CK_DIR, `.hdr-upload-${photoId}.jpg`);
+	writeFileSync(tmpPath, buffer);
+	try {
+		execFileSync(
+			'wrangler',
+			['r2', 'object', 'put', `${HDR_R2_BUCKET}/hdr/${photoId}.jpg`, '--file', tmpPath, '--content-type', 'image/jpeg', '--remote'],
+			{ stdio: 'ignore' }
+		);
+		return true;
+	} catch (e) {
+		console.warn(`   ⚠️  HDR R2 upload failed for ${photoId} (non-fatal, falls back to Cloudflare Images): ${(e as Error).message}`);
+		return false;
+	} finally {
+		try {
+			unlinkSync(tmpPath);
+		} catch {
+			/* best-effort cleanup */
+		}
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Cloudflare upload (album-scoped id; 5409 is an ERROR, never an alias — Phase 0 invariant)
@@ -467,11 +524,27 @@ function extractExifMeta(exifBuffer: Buffer | undefined): ExifMeta {
 	}
 }
 
-interface ProcessResult { caption: string; players: number; sightings: number; cost: number | null; reprocessed: boolean; }
+interface ProcessResult { caption: string; players: number; sightings: number; cost: number | null; reprocessed: boolean; replaced: boolean; hdrBuilt: boolean; }
 
 /** Local-file matching key → the album's existing row (photo_id + cf_image_id + file_name).
  * Populated in main() for reprocess-in-place AND the missing-file report/--prune (below). */
-const existingRows = new Map<string, { photo_id: string; cf_image_id: string | null; file_name: string | null; image_key: string }>();
+const existingRows = new Map<
+	string,
+	{
+		photo_id: string;
+		cf_image_id: string | null;
+		file_name: string | null;
+		image_key: string;
+		content_hash: string | null;
+		hdr_web_available: boolean;
+	}
+>();
+
+/** Local keys whose content hash changed since the last ingest (see src/lib/ingest/replace-plan.ts)
+ * — populated in main() before the worker loop starts, read by processImage to decide whether a
+ * --replace target needs its Cloudflare image deleted-then-reuploaded. Module-scope for the same
+ * reason `existingRows` is: processImage is a sibling top-level function, not a closure over main(). */
+let replacePlanChanged = new Set<string>();
 
 /**
  * The key existingRows is matched on: file_name with its extension stripped when a file_name is
@@ -591,6 +664,9 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	const photoId = prior?.photo_id ?? `${ALBUM_KEY}-${job.imageKey}`;
 	const cfId = prior?.cf_image_id ?? `${ALBUM_KEY}-${job.imageKey}`;
 	const alreadyUploaded = !!prior?.cf_image_id; // existing CF image — refresh metadata, don't re-upload/churn
+	// --replace target: this local file's content hash differs from what's stored for this
+	// photo_id (src/lib/ingest/replace-plan.ts) AND the operator passed --replace to act on it.
+	const isReplaceTarget = REPLACE && replacePlanChanged.has(job.imageKey);
 
 	// 0. Content-hash duplicate gate (P5 / ADR 0002: `UNIQUE(content_hash)`). A file whose exact
 	// bytes already exist under a DIFFERENT photo_id is the "same shoot exported to a second
@@ -629,9 +705,46 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		exif = extractExifMeta(meta.exif as Buffer | undefined);
 	} catch { /* unreadable image metadata — continue, fields stay null */ }
 
+	// 1b. SDR/HDR drift warning (never blocking — see src/lib/ai/hdr-gainmap.ts) + web HDR copy
+	// (best-effort; falls back to Cloudflare Images on any failure — see hdr-resize.ts). Only
+	// worth doing when this photo's Cloudflare image is actually being (re)written this run — an
+	// unchanged reprocess keeps whatever hdr_web_available state the prior run already established.
+	const shouldRefreshImage = !alreadyUploaded || isReplaceTarget;
+	let hdrWebAvailable = prior?.hdr_web_available ?? false;
+	if (shouldRefreshImage && hasGainMap(fileBuffer)) {
+		try {
+			const drift = await computeSdrDrift(job.path);
+			if (drift && drift.stdLog2Gain > SDR_DRIFT_THRESHOLD) {
+				console.warn(`   ⚠️  ${formatDriftWarning(job.file, drift, readSdrCrsSettings(fileBuffer))}`);
+			}
+		} catch (e) {
+			console.warn(`   ⚠️  SDR drift check failed for ${job.file} (non-fatal): ${(e as Error).message}`);
+		}
+		if (!DRY && !SKIP_HDR) {
+			try {
+				const webHdr = await buildWebHdrCopy(job.path);
+				hdrWebAvailable = webHdr ? await uploadHdrToR2(photoId, webHdr.buffer) : false;
+			} catch (e) {
+				console.warn(`   ⚠️  HDR web-copy build failed for ${job.file} (non-fatal, falls back to Cloudflare Images): ${(e as Error).message}`);
+				hdrWebAvailable = false;
+			}
+		}
+	}
+
 	// 2. Upload to Cloudflare Images (album-scoped id `${albumKey}-${imageKey}`). Skip when the
-	// existing row already has a CF image — a reprocess refreshes metadata without CF churn/orphans.
-	if (!DRY && !alreadyUploaded) {
+	// existing row already has a CF image AND this isn't a --replace target — a plain reprocess
+	// refreshes metadata without CF churn/orphans. A --replace target's bytes changed since the
+	// last ingest (src/lib/ingest/replace-plan.ts), so the existing Cloudflare image is stale
+	// pixels under fresh metadata — delete it first (Cloudflare Images' upload endpoint refuses an
+	// id that already exists, error 5409 — see the "Delete Images" / "Upload using API" docs at
+	// developers.cloudflare.com/images/storage/manage-images/delete-images/ and
+	// developers.cloudflare.com/images/storage/upload-images/methods/, both read this session)
+	// then re-upload the new bytes under the SAME id, so album URLs/photo ids never change.
+	if (!DRY && (!alreadyUploaded || isReplaceTarget)) {
+		if (alreadyUploaded && isReplaceTarget) {
+			const del = await deleteFromCF(cfId);
+			if (!del.ok) throw new Error(`--replace: CF delete failed for ${cfId} before re-upload: ${del.message}`);
+		}
 		const up = await uploadToCF(fileBuffer, cfId, job.file);
 		if (!up.success || !up.result) {
 			// 5409 = an image with this id already exists. Because the id encodes album_key + image_key,
@@ -670,7 +783,7 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	}
 
 	if (DRY) {
-		return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: 0, cost: ex.cost, reprocessed: !!prior };
+		return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: 0, cost: ex.cost, reprocessed: !!prior, replaced: isReplaceTarget, hdrBuilt: false };
 	}
 
 	// 5. UPSERT photo_metadata. sport_type is set by the trigger; quality_score is generated.
@@ -720,6 +833,7 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		ai_provider: 'openrouter',
 		...(ex.cost != null ? { ai_cost: ex.cost } : {}),
 		enriched_at: new Date().toISOString(),
+		hdr_web_available: hdrWebAvailable,
 	};
 	const { error: upErr } = await sb.from('photo_metadata').upsert(row, { onConflict: 'photo_id' });
 	if (upErr) throw new Error(`photo_metadata upsert: ${upErr.message}`);
@@ -769,7 +883,15 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		.eq('source', SIGHTINGS_SOURCE);
 	if (cErr) throw new Error(`sightings count read-back: ${cErr.message}`);
 
-	return { caption: ex.extraction.caption, players: ex.extraction.players.length, sightings: storedCount ?? 0, cost: ex.cost, reprocessed: !!prior };
+	return {
+		caption: ex.extraction.caption,
+		players: ex.extraction.players.length,
+		sightings: storedCount ?? 0,
+		cost: ex.cost,
+		reprocessed: !!prior,
+		replaced: isReplaceTarget,
+		hdrBuilt: hdrWebAvailable
+	};
 }
 
 /** Same bounded-retry-on-429/5xx convention as extractWithRetry below — embedImage throws
@@ -844,16 +966,63 @@ async function main() {
 	// Reprocess-in-place (P1): load this album's existing rows so a re-run UPDATES them (preserving
 	// each photo_id + its CF image) instead of minting duplicates. New images get fresh ids.
 	{
-		const { data } = await sb.from('photo_metadata').select('image_key, photo_id, cf_image_id, file_name').eq('album_key', ALBUM_KEY!);
-		for (const r of data ?? []) existingRows.set(localKeyFor(r), { photo_id: r.photo_id, cf_image_id: r.cf_image_id, file_name: r.file_name, image_key: r.image_key });
+		const { data } = await sb
+			.from('photo_metadata')
+			.select('image_key, photo_id, cf_image_id, file_name, content_hash, hdr_web_available')
+			.eq('album_key', ALBUM_KEY!);
+		for (const r of data ?? [])
+			existingRows.set(localKeyFor(r), {
+				photo_id: r.photo_id,
+				cf_image_id: r.cf_image_id,
+				file_name: r.file_name,
+				image_key: r.image_key,
+				content_hash: r.content_hash ?? null,
+				hdr_web_available: !!r.hdr_web_available
+			});
 	}
 	if (existingRows.size) {
 		console.log(`   ♻️  ${existingRows.size} existing rows for this album — reprocessing those in place (preserve photo_id, no duplicate rows, no CF churn)\n`);
 	}
 
 	const files = (await readdir(DIR!)).filter((f) => /\.(jpg|jpeg)$/i.test(f)).sort();
+
+	// --replace plan (P?): for a re-exported album, hash every local file and compare it to the
+	// stored content_hash for the same local key. Printed unconditionally so an operator always
+	// sees what a re-run against this album would do; refuses (unless --dry-run) when it finds a
+	// changed file and --replace was not passed — see the flag's own doc comment above.
+	let replacePlanUnchanged = new Set<string>();
+	if (existingRows.size > 0) {
+		const localHashes = files.map((f) => ({
+			key: f.replace(/\.(jpg|jpeg)$/i, ''),
+			hash: createHash('sha256').update(readFileSync(join(DIR!, f))).digest('hex')
+		}));
+		const existingForPlan = new Map<string, ExistingRowForReplace>();
+		for (const [key, row] of existingRows) existingForPlan.set(key, { contentHash: row.content_hash });
+		const plan = classifyReplacePlan(localHashes, existingForPlan);
+		replacePlanChanged = new Set(plan.changed);
+		replacePlanUnchanged = new Set(plan.unchanged);
+
+		console.log(`   🔁 Replace plan: ${describeReplacePlan(plan)}`);
+		for (const k of plan.changed.slice(0, 20)) console.log(`      ~ ${k} (content hash changed since last ingest)`);
+		if (plan.changed.length > 20) console.log(`      … and ${plan.changed.length - 20} more`);
+		console.log('');
+
+		if (plan.changed.length > 0 && !REPLACE && !DRY) {
+			die(
+				`${plan.changed.length} file(s) in ${DIR} have content that differs from what's already ingested under the ` +
+					`same photo_id (a re-export?) — re-run with --replace to update Cloudflare Images + the DB row in ` +
+					`place (see the plan above), or --dry-run to preview without refusing.`
+			);
+		}
+	}
+
 	let jobs: ImageJob[] = files.map((f) => ({ file: f, path: join(DIR!, f), imageKey: f.replace(/\.(jpg|jpeg)$/i, '') }));
 	jobs = jobs.filter((j) => OVERWRITE || !done.has(j.imageKey));
+	if (REPLACE && replacePlanUnchanged.size > 0) {
+		const before = jobs.length;
+		jobs = jobs.filter((j) => !replacePlanUnchanged.has(j.imageKey));
+		console.log(`   ⏭  --replace: skipping ${before - jobs.length} unchanged photo(s) (no content change since last ingest, no AI cost spent)\n`);
+	}
 	if (LIMIT) jobs = jobs.slice(0, LIMIT);
 
 	console.log(`   ${files.length} images found · ${jobs.length} to process\n`);
@@ -864,7 +1033,7 @@ async function main() {
 	await reportAndPruneMissing(new Set(files.map((f) => f.replace(/\.(jpg|jpeg)$/i, ''))), files.length);
 	if (jobs.length === 0) { console.log('✅ Nothing to do.'); return; }
 
-	let ok = 0, fail = 0, totalCost = 0, totalSightings = 0, totalReprocessed = 0, index = 0;
+	let ok = 0, fail = 0, totalCost = 0, totalSightings = 0, totalReprocessed = 0, totalReplaced = 0, totalHdrBuilt = 0, index = 0;
 	const t0 = Date.now();
 
 	async function worker() {
@@ -875,6 +1044,8 @@ async function main() {
 				ok++;
 				if (r.cost) totalCost += r.cost;
 				if (r.reprocessed) totalReprocessed++;
+				if (r.replaced) totalReplaced++;
+				if (r.hdrBuilt) totalHdrBuilt++;
 				totalSightings += r.sightings;
 				if (!DRY) { done.add(job.imageKey); delete ck.failed[job.imageKey]; }
 				if (ok <= 8 || ok % 25 === 0) {
@@ -969,7 +1140,8 @@ async function main() {
 
 	const mins = ((Date.now() - t0) / 60000).toFixed(1);
 	console.log('\n' + '='.repeat(64));
-	console.log(`   ✅ Ingested: ${ok} (${totalReprocessed} updated in place, ${ok - totalReprocessed} new)   ❌ Failed: ${fail}   👕 Sightings stored: ${totalSightings}`);
+	console.log(`   ✅ Ingested: ${ok} (${totalReprocessed} updated in place, ${ok - totalReprocessed} new${totalReplaced ? `, ${totalReplaced} replaced (--replace)` : ''})   ❌ Failed: ${fail}   👕 Sightings stored: ${totalSightings}`);
+	if (totalHdrBuilt) console.log(`   🌇 HDR web copies built + uploaded to R2: ${totalHdrBuilt}`);
 	console.log(`   💰 Cost: $${totalCost.toFixed(4)}   ⏱️  ${mins} min`);
 	console.log(`   📁 Checkpoint: ${CK_PATH}`);
 	if (fail > 0) console.log(`   ⚠️  ${fail} failures recorded in checkpoint.failed — safe to re-run to retry them.`);

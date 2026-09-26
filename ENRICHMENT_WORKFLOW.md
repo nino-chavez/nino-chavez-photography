@@ -72,9 +72,148 @@ npm run ingest:album -- \
 # add --dry-run to preview, --overwrite to force re-extraction
 ```
 
-Flags: `--dir` (required) · `--album-key` (defaults to the folder-name slug) · `--album-name` · `--sport` (detected from `--album-name` when omitted) · `--upload-date YYYY-MM-DD` · `--concurrency 4` · `--limit N` · `--unlisted` · `--dry-run` · `--overwrite` · `--prune` (delete DB rows whose file is gone from `--dir`; report-only without this flag).
+Flags: `--dir` (required) · `--album-key` (defaults to the folder-name slug) · `--album-name` · `--sport` (detected from `--album-name` when omitted) · `--upload-date YYYY-MM-DD` · `--concurrency 4` · `--limit N` · `--unlisted` · `--dry-run` · `--overwrite` · `--prune` (delete DB rows whose file is gone from `--dir`; report-only without this flag) · `--replace` (see **Replace** below) · `--skip-hdr` (see **HDR serving** below).
 
 Progress is checkpointed to `.temp/ingest-<album-key>.checkpoint.json` — interrupt and re-run to resume.
+
+## Replace (re-exporting an album in place)
+
+A re-export of an already-ingested album (same folder, same filenames — e.g. after fixing HDR/SDR
+settings in Lightroom and re-exporting) maps every file to the SAME `photo_id`/`cf_image_id` it
+already has. Before `--replace` existed, re-running ingest against a re-export re-extracted the
+caption/quality-scores from the NEW bytes but **skipped the Cloudflare Images upload** (the
+reprocess-in-place short-circuit that avoids CF churn when nothing changed) — so the DB refreshed
+from the new file while the served photo silently stayed the OLD pixels, permanently mismatched.
+
+`--replace` closes that gap. Before touching anything, ingest hashes every local file and compares
+it to the album's stored `content_hash`, then prints a plan:
+
+```
+🔁 Replace plan: 12 changed (replace in place), 31 unchanged (skip), 0 new
+   ~ DSC09484 (content hash changed since last ingest)
+   ~ DSC09457 (content hash changed since last ingest)
+   …
+```
+
+- **Changed** files (hash differs from what's stored) get their Cloudflare image deleted, then
+  re-uploaded under the SAME id — Cloudflare Images' upload endpoint refuses re-using an id that
+  already exists (error 5409; see [Delete Images](https://developers.cloudflare.com/images/storage/manage-images/delete-images/)
+  and [Upload using API](https://developers.cloudflare.com/images/storage/upload-images/methods/),
+  both read while building this) — then re-extracts and updates the row, so album URLs, photo ids
+  and photo page URLs never change.
+- **Unchanged** files (hash matches) are skipped entirely: no Cloudflare operation, no re-extraction,
+  no AI cost.
+- **New** files (no prior row for this local key) are ingested normally regardless of `--replace`.
+
+Without `--replace`, ingest **refuses** the moment it detects a changed file (unless `--dry-run` is
+also passed, which only previews the plan and does nothing). This is a deliberate change of default
+behavior: a plain re-run against a re-export used to silently proceed with mismatched pixels; now it
+stops and tells you to pass `--replace`.
+
+```bash
+npx tsx scripts/ingest-album.ts --dir /path/to/re-export --album-key <KEY> --dry-run   # preview the plan
+npx tsx scripts/ingest-album.ts --dir /path/to/re-export --album-key <KEY> --replace   # act on it
+```
+
+**Known limitation**: a row ingested before the 2026-09-25 content-hash migration has
+`content_hash = NULL` (same gap `verify-album.ts`'s duplicate gate already documents). A row with a
+null stored hash is always classified `unchanged` — never forced into `changed` — since there is
+nothing to compare against. Reprocess that album once WITHOUT `--replace` first (which backfills
+its `content_hash`); from then on `--replace` sees real changes on any later re-export.
+
+Pure classification logic lives in `src/lib/ingest/replace-plan.ts` (`npm run replace-plan:test`).
+
+## SDR/HDR drift check
+
+Lightroom's HDR JPEG export (Ultra HDR / ISO gain-map format) is a normal SDR-viewable JPEG with a
+gain map appended (MPF second image + `XMP-hdrgm` metadata) that HDR-aware decoders (Chrome,
+Safari 26+) apply for a boosted render — everyone else, including Cloudflare Images and R2 serving
+bytes as-is, sees the SDR base only (verified this session: Cloudflare Images' variants for a
+gain-map source come back pixel-identical to the base). An aggressive SDR grade in Lightroom can
+make that base look visibly wrong in places (crushed shadows, blown highlights, a face going dark
+while the background blows out) even though the HDR-rendered version looks fine.
+
+Every ingest of a gain-map JPEG runs a drift check (`src/lib/ai/hdr-gainmap.ts`) and prints a
+**warning only** (never blocks the run) above a calibrated threshold:
+
+```
+⚠️  SDR/HDR drift high for DSC09484.jpg: stdLog2Gain=1.11 (threshold 0.85) spread=3.72 —
+    the non-HDR fallback may look visibly off in some region of the frame. Lightroom settings:
+    SDRBrightness=+97 SDRContrast=-36 SDRClarity=-22 SDRHighlights=-64 SDRShadows=+57 SDRWhites=-76
+```
+
+**What's measured, and why**: the score is the standard deviation of per-pixel `log2(HDR linear
+luma / SDR-base linear luma)` across the frame — how NON-UNIFORM the gain map's correction is, not
+how big it is on average. The mean of that value does NOT separate a bad export from a good one (it
+mostly reflects scene dynamic range); calibrated 2026-09-26 against both real albums this session
+(DWdCET/Milliken, Re7kho/acc-v-jca) — 12 files spanning every distinct SDR-setting group present,
+6 flagged (Milliken's own "+97/-36" group, stdLog2Gain 0.87-1.28) and 6 not (Milliken's "+42/+14"
+group plus other sampled files, 0.46-0.82) — `SDR_DRIFT_THRESHOLD = 0.85` sits in the resulting gap.
+Running the check over full albums confirms it: every one of Milliken's 25 flagged photos (of 43)
+carries the `+97/-36` settings; none of its 18 unflagged `+97/-36` files score above 0.84.
+
+Standalone, over any local folder, no network calls, writes nothing:
+
+```bash
+npx tsx scripts/check-sdr-drift.ts --dir /path/to/album [--threshold 0.85]
+```
+
+Unit tests for the pure detection/parsing pieces: `npm run hdr-gainmap:test`.
+
+## HDR serving (web-sized gain-map copies)
+
+A gain-map original is served as-is on the photo detail page and in the lightbox when one exists,
+falling back to the existing Cloudflare Images variant otherwise — a strict upgrade for browsers
+that render Ultra HDR (Chrome, Safari 26+) and no change at all for everyone else, since the format
+is backward-compatible by design.
+
+Cloudflare Images can't be the delivery path for this (it strips the gain map on ingest — see
+above), so ingest instead resizes the original with the gain map intact
+(`src/lib/ai/hdr-resize.ts`) and uploads the result to the `photo-gallery-hdr` R2 bucket at a
+deterministic key, `hdr/${photo_id}.jpg`. `photo_metadata.hdr_web_available` (additive migration
+`20260926130000_photo_metadata_hdr_web.sql`) is the only thing that gates whether the site ever
+requests that key — no key column needed, since the key is always derivable from the id.
+`src/routes/api/hdr/[id]/+server.ts` streams it from R2 via the `HDR_ORIGINALS` binding
+(`wrangler.toml`); the `<img>` on both surfaces falls back to Cloudflare Images `onerror`, so a
+missing/stale object never breaks the page.
+
+**Resizing without losing the gain map — the pipeline, proven this session on DSC09484**:
+1. Extract the base JPEG (any plain JPEG decoder, including `sharp`, already ignores the MPF
+   trailer) and the gain-map JPEG (`exiftool -mpimage2 -b`).
+2. Read the gain map's own metadata config (`ultrahdr_app -m 1 -j <file> -f cfg` — any decode call
+   writes it; the values describe the gain map's pixel encoding, not its resolution, so they carry
+   over unchanged).
+3. Resize BOTH to the exact same target dimensions (`sharp`, `fit: 'fill'`).
+4. Re-encode via `ultrahdr_app -m 0` (encode scenario 4: recombine an existing SDR + gain-map pair).
+5. Copy the `XMP-hdrgm` metadata block from the ORIGINAL onto the re-encoded output
+   (`exiftool -TagsFromFile … -XMP-hdrgm:all`) — `ultrahdr_app`'s own encoder does NOT write it
+   (verified: `grep`-ing the namespace string found it in the source and not in the raw encoder
+   output), and real decoders (ImageMagick's UHDR delegate, confirmed; presumably Chrome/Safari,
+   which key off the same namespace) need it to recognize the file as HDR at all. `exiftool`
+   correctly rewrites the MPF byte offsets when it touches a file's segments — verified: the gain
+   map still extracts to the right dimensions and `ultrahdr_app` still decodes the edited file.
+
+Proven end-to-end this session: DSC09484 (5.47 MB, 2731×4096) → 1067×1600, 727 KB, `exiftool`
+confirms `XMP-hdrgm:Version 1.0` present and the gain map extracts cleanly; a real object was
+uploaded to and downloaded back from the production `photo-gallery-hdr` R2 bucket, byte-identical,
+gain map intact, then deleted (the bucket itself was left in place, empty, since the wrangler.toml
+binding needs it to exist — no album content was uploaded).
+
+**Known gap**: the re-encoded file's MPF `MPImageType` sub-tag reads "Undefined" instead of "Gain
+Map Image" (not `exiftool`-writable — confirmed). ImageMagick's UHDR delegate still recognizes the
+result as HDR (keys off the XMP block), so this is treated as a cosmetic gap in a secondary signal,
+documented rather than silently accepted. If a decoder ever turns out to require the exact
+`MPImageType` value, this is the next thing to fix.
+
+`buildWebHdrCopy` requires `ultrahdr_app` (`brew install libultrahdr`) and `exiftool`
+(`brew install exiftool`) on the machine running ingest — both already installed on this machine.
+It returns `null` (never throws) when either is missing, when the source has no gain map, or when
+any pipeline step fails; the caller falls back to leaving `hdr_web_available=false`, same as before
+this feature existed. Uploading the result to R2 shells out to `wrangler r2 object put ... --remote`
+(needs `wrangler login`, or `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` in the environment — the
+same account already used for Cloudflare Images). Pass `--skip-hdr` to skip the build/upload step
+entirely (the drift check above still runs — it's free and local); useful on a machine without
+`wrangler`/`ultrahdr_app`/`exiftool` set up, or to iterate faster.
 
 ## Migrations
 
@@ -97,6 +236,13 @@ query-embedder switch (`embedSearchQuery` in `src/lib/supabase/server.ts`, and t
 `src/routes/api/chat/+server.ts`), and only after `scripts/backfill-image-embeddings.ts` has
 caught up existing rows. See ADR 0006's "Deployment sequencing" for the full apply order and why
 the RPC migration is merge-gated where the column migration is not.
+
+**Same again, for HDR serving**: apply `supabase/migrations/20260926130000_photo_metadata_hdr_web.sql`
+before running this version of ingest — it adds `photo_metadata.hdr_web_available` (`boolean NOT
+NULL DEFAULT false`). Unlike the two above, ingest does NOT write this column unconditionally on
+every row — only on a row it actually (re)uploads a Cloudflare image for (see **HDR serving**
+above) — so an un-migrated database fails only on a photo whose Cloudflare image gets (re)written
+this run, not on every photo.
 
 ## Verify
 

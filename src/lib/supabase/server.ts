@@ -78,6 +78,7 @@ export function transformPhotoRow(row: any): Photo {
     image_key: row.image_key,
     album_key: row.album_key || undefined,
     cf_image_id: row.cf_image_id || undefined,
+    hdr_web_available: !!row.hdr_web_available,
     image_url: imageUrl,
     thumbnail_url: thumbnailUrl,
     original_url: originalUrl,

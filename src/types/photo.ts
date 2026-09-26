@@ -91,6 +91,9 @@ export interface Photo {
   image_key: string;
   album_key?: string; // source album — disambiguates the non-unique image_key; popularity attribution
   cf_image_id?: string; // Cloudflare Images ID (uses imagedelivery.net)
+  // TRUE when a web-sized Ultra HDR (gain-map) JPEG exists in R2 at hdr/${id}.jpg — see
+  // src/lib/utils/hdr-photo-url.ts and src/routes/api/hdr/[id]/+server.ts. Falsy → Cloudflare Images.
+  hdr_web_available?: boolean;
   image_url: string;
   thumbnail_url?: string; // Thumbnail URL for blur placeholders
   original_url?: string; // Full-resolution URL

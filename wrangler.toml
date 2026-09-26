@@ -23,3 +23,15 @@ compatibility_flags = ["nodejs_compat"]
 # more valuable reviewable in git than hidden in a dashboard. See src/lib/server/admin-auth.ts;
 # an empty or missing value denies everyone, on purpose.
 ADMIN_EMAILS = "admin@ninochavez.co"
+
+# Web-sized Ultra HDR (gain-map) JPEGs, read by src/routes/api/hdr/[id]/+server.ts and written by
+# scripts/ingest-album.ts (via `wrangler r2 object put ... --remote`, not this binding — the CLI
+# runs on the operator's machine, outside any Worker). Empty on a fresh account/bucket until an
+# ingest with a gain-map source runs; `photo_metadata.hdr_web_available` (additive migration
+# 20260926130000) gates every read, so an empty bucket just means every photo falls back to
+# Cloudflare Images, same as before this binding existed. Created 2026-09-26 (`wrangler r2 bucket
+# create photo-gallery-hdr`); a single test object was uploaded/verified/deleted the same session,
+# never committed to this repo.
+[[r2_buckets]]
+binding = "HDR_ORIGINALS"
+bucket_name = "photo-gallery-hdr"

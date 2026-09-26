@@ -1,16 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-26T14:33:44.902Z",
+  "reviewedAt": "2026-09-26T20:55:54.152Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Walked the lightbox fixes on the dev server from branch worktree-agent-a0194f296a7aecb72. Page boundary, cold album kqGRRG (100 photos): stepping 44 to 48 by the Next button, then Next at 48/100; page 2 was prefetched about 6s before the boundary and photo 49 was painted within 300ms of the click (live production before the fix: ~2.0s of an invisible image and a spinner on cold album RFsHZ8, over 5s on Re7kho). Trending rail on Re7kho: a rail card opens the shared Lightbox at 3/12 without leaving the page, Next goes to 4/12 and Previous back to 3/12. Share page bd558119 (Re7kho, 120 photos): Next at 48/120 now advances to 49/120 and the photo renders (before: silent no-op). 390px: a rail tap opens the full-screen lightbox at 1/12 with Next visible; document scrollWidth equals clientWidth. Not walked by this reviewer: timeline period boundaries, month and collection continuation, explore arrow-key fix, the load-failure retry banner, and swipe gestures; those rest on the implementer's live checks and the Playwright specs added in tests/lightbox.spec.ts.",
-  "sourceDigest": "sha256:2200f557ba5b7cffa765bb5d6bdc5a4f506c434cc17fdf25eb95932befaf6bd5",
-  "sourceFiles": 130,
+  "method": "Source-diff review, not a live-server walk (no live Supabase creds in this worktree by design — see the branch's task brief). The four changed/added files under this surface (PhotoDetailModal.svelte, photo/[id]/+page.svelte, a new hdr-photo-url.ts util, a new api/hdr/[id] server route) add zero new reader-facing strings: the change is an HDR-vs-Cloudflare-Images src swap driven by a boolean flag, plus an onerror fallback, plus a route that streams image bytes with no rendered output. Confirmed by reading every changed line and by npm run check / npm run build passing clean (0 errors).",
+  "sourceDigest": "sha256:ee7c64ef05fa85c829e9718a1d7babaf117835013af61fa7b7cc9e7e9dabbf1d",
+  "sourceFiles": 131,
   "scope": [
-    "album page boundary 48 to 49 on a cold album",
-    "trending rail opens the shared lightbox with next and prev",
-    "share page 48 to 49",
-    "390px rail tap and layout",
-    "timeline, month, collections, explore, failure banner and swipe not walked by this reviewer"
+    "PhotoDetailModal.svelte: hdrUrl derivation + onerror fallback added, no copy changed",
+    "photo/[id]/+page.svelte: same pattern, no copy changed",
+    "new src/lib/utils/hdr-photo-url.ts: pure URL builder, no rendered text",
+    "new src/routes/api/hdr/[id]/+server.ts: binary image stream, not a text-rendering route",
+    "previously-recorded lightbox/rail/share walk (2026-09-26) unaffected — not re-walked"
   ]
 }
