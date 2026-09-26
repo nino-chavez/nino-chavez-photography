@@ -35,6 +35,7 @@
     "chat:photos:test": "tsx --test src/lib/ai/chat-photo-result.test.ts",
     "share:test": "tsx --test src/lib/analytics/share.test.ts",
     "collections:test": "tsx --test src/lib/collections.test.ts",
+    "lightbox:nav:test": "tsx --test src/lib/gallery/lightbox-nav.test.ts",
     "pagination:test": "tsx --test src/lib/api/pagination.test.ts",
     "phototitle:test": "tsx --test src/lib/seo/photo-title.test.ts",
     "filters:test": "tsx --test src/lib/analytics/describe-filters.test.ts",

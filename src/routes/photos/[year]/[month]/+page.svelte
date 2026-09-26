@@ -56,10 +56,16 @@
   let loadedPhotos = $state<Photo[]>([]);
   let nextPage = $state(1);
   let loadingMore = $state(false);
+  // Plain variable, not $state — read/written only inside loadMore's own async flow. Bumped
+  // every reseed so a page-N fetch still in flight when the visitor navigates away (Prev/Next
+  // month, a sort change, or the pager, all before the fetch returns) can tell it's stale and
+  // drop its result instead of appending October's photos onto November's freshly-seeded list.
+  let loadGeneration = 0;
   $effect(() => {
     loadedPhotos = data.photos;
     nextPage = data.currentPage + 1;
     loadingMore = false;
+    loadGeneration++;
   });
 
   const precedingCount = $derived((data.currentPage - 1) * data.pageSize);
@@ -93,16 +99,19 @@
   async function loadMore(): Promise<void> {
     if (loadingMore || !hasMore) return;
     loadingMore = true;
+    const gen = loadGeneration;
+    const pageToFetch = nextPage;
     try {
-      const photos = await fetchPage(nextPage);
+      const photos = await fetchPage(pageToFetch);
+      if (gen !== loadGeneration) return; // reseeded (month/sort/page changed) — drop it
       if (photos.length > 0) {
         loadedPhotos = [...loadedPhotos, ...photos];
-        nextPage += 1;
+        nextPage = pageToFetch + 1;
       }
     } catch (err) {
       console.error('[month] loadMore failed', err);
     } finally {
-      loadingMore = false;
+      if (gen === loadGeneration) loadingMore = false;
     }
   }
 

@@ -30,10 +30,17 @@
 	let loadedPhotos = $state<Photo[]>([]);
 	let nextPage = $state(1);
 	let loadingMore = $state(false);
+	// Plain variable, not $state — it's read/written only inside loadMore's own async flow,
+	// never rendered, so it doesn't need reactivity. Bumped every reseed so a page-N fetch
+	// that was still in flight when the visitor changed pages (closed the lightbox, clicked
+	// a DIFFERENT pager link before the fetch returned) can tell it's stale and drop its
+	// result instead of appending onto the now-reseeded list.
+	let loadGeneration = 0;
 	$effect(() => {
 		loadedPhotos = data.photos;
 		nextPage = data.currentPage + 1;
 		loadingMore = false;
+		loadGeneration++;
 	});
 
 	const precedingCount = $derived((data.currentPage - 1) * data.pageSize);
@@ -66,16 +73,19 @@
 	async function loadMore(): Promise<void> {
 		if (loadingMore || !hasMore) return;
 		loadingMore = true;
+		const gen = loadGeneration;
+		const pageToFetch = nextPage;
 		try {
-			const photos = await fetchPage(nextPage);
+			const photos = await fetchPage(pageToFetch);
+			if (gen !== loadGeneration) return; // reseeded (page/sort/month changed) — drop it
 			if (photos.length > 0) {
 				loadedPhotos = [...loadedPhotos, ...photos];
-				nextPage += 1;
+				nextPage = pageToFetch + 1;
 			}
 		} catch (err) {
 			console.error('[collections] loadMore failed', err);
 		} finally {
-			loadingMore = false;
+			if (gen === loadGeneration) loadingMore = false;
 		}
 	}
 

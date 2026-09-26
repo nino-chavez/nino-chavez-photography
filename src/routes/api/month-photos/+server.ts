@@ -5,6 +5,11 @@ import type { RequestHandler } from './$types';
 
 const VALID_SORTS = new Set(['newest', 'oldest', 'quality']);
 
+// Same rule as /api/album-photos: an empty/error result is never cached, so a scan of
+// out-of-range years/months/pages can't fill a shared cache this project cannot purge.
+const CACHE_HEADERS = { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' };
+const NO_CACHE_HEADERS = { 'cache-control': 'private, no-store' };
+
 // GET /api/month-photos?year=...&month=...&sort=...&page=N
 //
 // A single page of a month's photos, for the month detail page's lightbox to fetch past the
@@ -17,7 +22,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const year = parseInt(url.searchParams.get('year') || '', 10);
 	const month = parseInt(url.searchParams.get('month') || '', 10);
 	if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-		return json({ error: 'Missing or invalid year/month' }, { status: 400 });
+		return json({ error: 'Missing or invalid year/month' }, { status: 400, headers: NO_CACHE_HEADERS });
 	}
 
 	const sortParam = url.searchParams.get('sort') || 'newest';
@@ -32,11 +37,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			limit: MONTH_PHOTOS_PAGE_SIZE,
 			offset
 		});
-		return json(
-			{ photos, page },
-			{ headers: { 'cache-control': 's-maxage=300, stale-while-revalidate=600' } }
-		);
+		return json({ photos, page }, { headers: photos.length ? CACHE_HEADERS : NO_CACHE_HEADERS });
 	} catch {
-		return json({ error: 'Failed to fetch month photos' }, { status: 500 });
+		return json({ error: 'Failed to fetch month photos' }, { status: 500, headers: NO_CACHE_HEADERS });
 	}
 };
