@@ -29,6 +29,12 @@
  * LETSPEPPER_SOCIAL_DIR if it is not at ~/Workspace/dev/apps/letspepper/scripts/social-publish.
  * A missing builder is skipped with a notice; a failed build exits 2 after the publish succeeded.
  *
+ * PUBLISHED_AT: the same hidden -> public transition also stamps `album_settings.published_at`
+ * (never on --unpublish, never on re-publishing an already-public album) — see
+ * `src/lib/albums/publish-target.ts`'s `resolvePublishTarget`, the pure rule this script and its
+ * tests share. It is what the "latest gallery" route (`/latest`, `/api/latest`,
+ * `/api/galleries/recent`) sorts on.
+ *
  * Required env (.env.local): VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
  * Usage:
@@ -52,6 +58,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 config({ path: join(REPO_ROOT, '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { verifyAlbum } from './verify-album';
+import { resolvePublishTarget } from '../src/lib/albums/publish-target';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -121,13 +128,17 @@ async function main() {
 	if (readErr) { console.error(`read failed: ${readErr.message}`); process.exit(1); }
 	console.log(`before: ${before ? JSON.stringify(before) : 'no album_settings row (video-only album)'}`);
 
-	const target = UNPUBLISH
-		? { visibility: 'unlisted', gallery_scope: null }
-		: { visibility: 'public', gallery_scope: SCOPE };
+	const target = resolvePublishTarget({
+		before: before ? { visibility: before.visibility } : null,
+		unpublish: UNPUBLISH,
+		scope: SCOPE,
+		now: new Date().toISOString()
+	});
 	console.log(`target: ${JSON.stringify({ album_key: ALBUM_KEY, ...target })}`);
 	const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || before?.visibility !== 'public');
 	if (DRY) {
 		console.log('dry-run — no write');
+		if (target.published_at) console.log('would set published_at (hidden -> public)');
 		if (willAnnounce) console.log(`would announce: ${SOCIAL_DIR}/build-gallery-announce.mjs --album-key ${ALBUM_KEY} --series ${SCOPE === 'lpo' ? 'lpo' : 'other'}`);
 		return;
 	}
@@ -137,6 +148,12 @@ async function main() {
 		: await supabase.from('album_settings').insert({ album_key: ALBUM_KEY, ...target });
 	if (writeErr) { console.error(`write failed: ${writeErr.message}`); process.exit(1); }
 
+	// NOT `published_at` here: this read's only job is to confirm the write and pick the
+	// announce account (`gallery_scope`), and both are already known from `target` above. Adding
+	// a column this read doesn't need would make it fail — silently, since `error` isn't checked
+	// below and `after` would just read `undefined` — on any deploy that runs before migration
+	// 20260926140000 lands, misrouting the announce (`after?.gallery_scope === 'lpo'` -> false
+	// -> 'other') instead of surfacing the real cause.
 	const { data: after } = await supabase
 		.from('album_settings').select('album_key, visibility, gallery_scope')
 		.eq('album_key', ALBUM_KEY).maybeSingle();

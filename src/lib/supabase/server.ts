@@ -19,6 +19,7 @@ import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { monthWindow, addMonths, monthName } from '$lib/utils/month-window';
 import { embedImageQuery } from '$lib/ai/embeddings';
 import { videoOnlyRows } from '$lib/albums/listing';
+import { rankPublicAlbums, type RankedAlbum } from '$lib/albums/latest';
 import { planQuery, type QueryPlan } from '$lib/search/query-planner';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
 import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
@@ -294,6 +295,53 @@ export async function getPublicGalleryTotals(): Promise<GalleryTotals> {
     videos: videoRows.reduce((sum, v) => sum + (Number(v.video_count) || 0), 0),
     videoAlbums: videoRows.length,
     videoOnlyAlbums: videoOnly.length
+  };
+}
+
+/**
+ * The answer to "what are the public albums, newest first?", with "the read failed" as a
+ * distinct case from "there are genuinely none" — same shape as `AlbumSettingsResult` above,
+ * and for the same reason: a caller that folds a failed read into `[]` cannot tell "no public
+ * gallery exists" from "the database didn't answer", and the two need different responses
+ * (a 503 vs. a real 404, an "unavailable" banner vs. an empty-state message).
+ */
+export type RankedAlbumsResult = { ok: true; albums: RankedAlbum[] } | { ok: false };
+
+/**
+ * Every public album, newest first — the read behind `/latest`, `/api/latest`,
+ * `/api/galleries/recent`, and `/photography/links`. Pure ranking lives in
+ * `$lib/albums/latest` (`rankPublicAlbums`); this is the one place that fetches the two tables
+ * it needs and calls it, so all four callers agree by construction.
+ *
+ * `albums_summary` is a matview (anon REVOKE'd — service_role via matviewClient()), so the
+ * unlisted gate is NOT automatic here and rankPublicAlbums applies it explicitly from the
+ * `album_settings` read alongside it. `album_settings` itself is read through the anon client:
+ * its `SELECT` grant is column-level (20260730030000 + 20260926140000 for `published_at`) and
+ * covers exactly the three columns requested below, not `share_token`.
+ *
+ * Photo-only: `albums_summary` has no row for a video-only album, so one is never "latest" here
+ * — consistent with every other consumer of this view (buildAlbumListing, /api/ai/albums).
+ */
+export async function getRankedPublicAlbums(): Promise<RankedAlbumsResult> {
+  const [{ data: candidates, error: candidatesError }, { data: settings, error: settingsError }] =
+    await Promise.all([
+      matviewClient()
+        .from('albums_summary')
+        .select('album_key, album_name, cover_cf_image_id, photo_count, latest_photo_date'),
+      supabaseServer.from('album_settings').select('album_key, visibility, published_at')
+    ]);
+
+  if (candidatesError || settingsError) {
+    console.error('[getRankedPublicAlbums]', candidatesError ?? settingsError);
+    return { ok: false };
+  }
+
+  return {
+    ok: true,
+    albums: rankPublicAlbums({
+      candidates: candidates ?? [],
+      settings: (settings ?? []) as { album_key: string; visibility: 'public' | 'unlisted'; published_at: string | null }[]
+    })
   };
 }
 

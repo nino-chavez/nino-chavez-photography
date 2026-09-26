@@ -47,6 +47,7 @@
   "replace-plan:test": "tsx --test src/lib/ingest/replace-plan.test.ts",
   "hdr-gainmap:test": "tsx --test src/lib/ai/hdr-gainmap.test.ts",
     "backfill-colors:test": "tsx --test scripts/backfill-sighting-colors.test.ts",
+    "latest-album:test": "tsx --test src/lib/albums/latest.test.ts src/lib/albums/publish-target.test.ts",
     "check:head": "node scripts/check-head-tags.mjs",
     "navigation:contract:test": "tsx --test src/lib/navigation-contract.test.ts"
   },

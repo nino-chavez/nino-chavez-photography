@@ -276,6 +276,17 @@ already-public album does not announce again; `--announce` announces one anyway,
 publishes without it. The builder and posting Worker live in the letspepper repo
 (`scripts/social-publish/`, see its SETUP.md "Arming gallery-announce").
 
+**Latest gallery.** The same hidden -> public transition also stamps
+`album_settings.published_at = now()` (never on `--unpublish`, never on re-publishing an
+already-public album — see `src/lib/albums/publish-target.ts`'s `resolvePublishTarget`, the pure
+rule the script and its tests share). This is what `ninochavez.co/photography/latest`,
+`/api/latest`, `/api/galleries/recent`, and the Instagram bio page `/photography/links` sort
+on — the public album with the newest `published_at`, falling back to capture date
+(`albums_summary.latest_photo_date`) for the many albums published before this column existed.
+Requires migration `20260926140000_album_settings_published_at.sql` — until it's applied, a
+hidden -> public publish fails loudly (the write errors, `publish-album.ts` exits 1) rather than
+silently skipping the stamp.
+
 ## Recovering historical color data
 
 Before the 2026-09 fix, `normColor()` kept only the first word of a jersey/team color

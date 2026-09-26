@@ -1,16 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-26T20:55:54.152Z",
+  "reviewedAt": "2026-09-26T23:52:50.756Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Source-diff review, not a live-server walk (no live Supabase creds in this worktree by design — see the branch's task brief). The four changed/added files under this surface (PhotoDetailModal.svelte, photo/[id]/+page.svelte, a new hdr-photo-url.ts util, a new api/hdr/[id] server route) add zero new reader-facing strings: the change is an HDR-vs-Cloudflare-Images src swap driven by a boolean flag, plus an onerror fallback, plus a route that streams image bytes with no rendered output. Confirmed by reading every changed line and by npm run check / npm run build passing clean (0 errors).",
-  "sourceDigest": "sha256:ee7c64ef05fa85c829e9718a1d7babaf117835013af61fa7b7cc9e7e9dabbf1d",
-  "sourceFiles": 131,
+  "method": "Source-diff review, not a live-server walk. No Supabase creds available in this worktree; the harness's own permission classifier denied sourcing the main repo's .env.local (Credential Leakage), so the SvelteKit dev server could not be run against real data from this session. Read every line of the five new/changed reader-facing files. Verified the actual visual result a different way: rendered the /links markup as a standalone static HTML mock (real compiled Tailwind CSS from npm run build, a real production cf_image_id from the task brief so the cover photo is genuine, representative album names/dates/counts) at 390px and desktop in the browser tool, looked at the captures, and fixed one real defect found that way (recent-list album names were single-line truncated, hiding the matchup; changed to a 2-line clamp matching AlbumCard's own precedent). The mock cannot confirm every CSS behavior (line-clamp did not visibly clamp in this fallback renderer, likely a limitation of the snapshot mode for files outside the project root, not necessarily the real page) — full confirmation is pending a Cloudflare Pages branch-preview capture, tracked in the PR rather than asserted here. npm run check / npm run build pass clean (0 type errors).",
+  "sourceDigest": "sha256:32230d371a072d036487afba60b35a2d161fd73518c45570138586ba5cdaff73",
+  "sourceFiles": 136,
   "scope": [
-    "PhotoDetailModal.svelte: hdrUrl derivation + onerror fallback added, no copy changed",
-    "photo/[id]/+page.svelte: same pattern, no copy changed",
-    "new src/lib/utils/hdr-photo-url.ts: pure URL builder, no rendered text",
-    "new src/routes/api/hdr/[id]/+server.ts: binary image stream, not a text-rendering route",
-    "previously-recorded lightbox/rail/share walk (2026-09-26) unaffected — not re-walked"
+    "new src/routes/latest/+server.ts: no rendered output, a 302 redirect + 503/404 error() strings, plain and factual",
+    "new src/routes/api/latest/+server.ts and src/routes/api/galleries/recent/+server.ts: JSON API responses, album_name passed through verbatim from the database",
+    "new src/routes/links/+page.svelte + +page.server.ts: the Instagram bio landing page — plain, factual copy throughout ('Latest gallery', 'More recent galleries', 'More to explore', the empty and temporarily-unavailable states), album names passed through verbatim, no denyTerms used, no promotional adjectives",
+    "scripts/publish-album.ts and the /albums/latest.ts, publish-target.ts, latest.test.ts, publish-target.test.ts modules are outside this surface's declared sourceRoots (src/routes, src/lib/components) and carry no visitor-facing copy — operator-facing script log lines and pure ranking logic, not gallery-interface content"
   ]
 }
