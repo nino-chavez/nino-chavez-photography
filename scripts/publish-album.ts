@@ -17,6 +17,18 @@
  * the reason is printed (to the run's own output, not silently swallowed) so a forced publish
  * is never invisible in the log. --unpublish is never gated — hiding a bad album is always safe.
  *
+ * ANNOUNCE: when an album goes from hidden to public, this starts the standing "gallery-announce"
+ * campaign (Nino, 2026-09-25/26): it runs the Let's Pepper social publisher's builder, which picks
+ * the photos, writes the caption and alt text, queues the carousel HELD for 12 hours and sends the
+ * phone alert with the veto command, then seeds the item into the posting Worker's queue. The
+ * series (which account posts) comes from this album's own gallery_scope: 'lpo' posts from
+ * letspepper.open, anything else from nino.chavez.photo, with flickday.media as a Collab.
+ * Re-publishing an already-public album does not announce it again; pass --announce to announce
+ * one anyway (the builder refuses a duplicate queue item, so a repeat is harmless), or
+ * --no-announce to publish without it. The builder lives in the letspepper repo; set
+ * LETSPEPPER_SOCIAL_DIR if it is not at ~/Workspace/dev/apps/letspepper/scripts/social-publish.
+ * A missing builder is skipped with a notice; a failed build exits 2 after the publish succeeded.
+ *
  * Required env (.env.local): VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
  * Usage:
@@ -24,9 +36,14 @@
  *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --scope lpo   # Let's Pepper events only
  *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --unpublish
  *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --force "reviewed the 3 flagged rows by hand"
+ *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --announce      # announce an already-public album
+ *   npx tsx scripts/publish-album.ts --album-key jq1Rp7 --no-announce   # publish without the social post
  */
 import { config } from 'dotenv';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
+import { existsSync } from 'fs';
+import { homedir } from 'os';
+import { execFileSync } from 'child_process';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient } from '@supabase/supabase-js';
@@ -55,6 +72,9 @@ const UNPUBLISH = process.argv.includes('--unpublish');
 // --force must carry a reason (a bare `--force` is rejected below) — see the publish-gate note above.
 const FORCE_PRESENT = process.argv.includes('--force') || process.argv.some((a) => a.startsWith('--force='));
 const FORCE_REASON = arg('force');
+const ANNOUNCE_FORCED = process.argv.includes('--announce');
+const NO_ANNOUNCE = process.argv.includes('--no-announce');
+const SOCIAL_DIR = process.env.LETSPEPPER_SOCIAL_DIR || join(homedir(), 'Workspace/dev/apps/letspepper/scripts/social-publish');
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 	console.error('Missing env (VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
@@ -62,6 +82,10 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 }
 if (!ALBUM_KEY || !/^[a-zA-Z0-9]{5,8}$/.test(ALBUM_KEY)) {
 	console.error(`--album-key must be 5-8 alphanumerics (got: ${ALBUM_KEY})`);
+	process.exit(1);
+}
+if (ANNOUNCE_FORCED && (NO_ANNOUNCE || process.argv.includes('--unpublish'))) {
+	console.error('--announce cannot be combined with --no-announce or --unpublish');
 	process.exit(1);
 }
 if (FORCE_PRESENT && !FORCE_REASON) {
@@ -97,7 +121,12 @@ async function main() {
 		? { visibility: 'unlisted', gallery_scope: null }
 		: { visibility: 'public', gallery_scope: SCOPE };
 	console.log(`target: ${JSON.stringify({ album_key: ALBUM_KEY, ...target })}`);
-	if (DRY) { console.log('dry-run — no write'); return; }
+	const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || before?.visibility !== 'public');
+	if (DRY) {
+		console.log('dry-run — no write');
+		if (willAnnounce) console.log(`would announce: ${SOCIAL_DIR}/build-gallery-announce.mjs --album-key ${ALBUM_KEY} --series ${SCOPE === 'lpo' ? 'lpo' : 'other'}`);
+		return;
+	}
 
 	const { error: writeErr } = before
 		? await supabase.from('album_settings').update(target).eq('album_key', ALBUM_KEY)
@@ -113,6 +142,35 @@ async function main() {
 		: SCOPE
 			? `published — ninochavez.co (public) + letspepper.com (gallery_scope=${SCOPE})`
 			: 'published — ninochavez.co (public); no gallery_scope, so it does NOT appear on letspepper.com');
+
+	if (!willAnnounce) {
+		if (!UNPUBLISH && !NO_ANNOUNCE) console.log('announce: skipped — the album was already public (pass --announce to announce it anyway)');
+		return;
+	}
+	announce(after?.gallery_scope === 'lpo' ? 'lpo' : 'other');
+}
+
+/** Build the held carousel (phone alert included) and seed it into the posting Worker's queue. */
+function announce(series: 'lpo' | 'other'): void {
+	const builder = join(SOCIAL_DIR, 'build-gallery-announce.mjs');
+	if (!existsSync(builder)) {
+		console.log(`announce: skipped — no builder at ${builder} (set LETSPEPPER_SOCIAL_DIR, or pull the letspepper repo)`);
+		return;
+	}
+	const steps: string[][] = [
+		[builder, '--album-key', ALBUM_KEY!, '--series', series],
+		[join(SOCIAL_DIR, 'seed-kv.mjs'), '--event', 'gallery-announce', '--append', '--put'],
+	];
+	console.log(`\nannounce: ${series === 'lpo' ? 'letspepper.open' : 'nino.chavez.photo'} + flickday.media Collab, held 12h`);
+	for (const step of steps) {
+		try {
+			execFileSync(process.execPath, step, { cwd: SOCIAL_DIR, stdio: 'inherit' });
+		} catch {
+			console.error(`\nannounce FAILED at: node ${step.join(' ')}`);
+			console.error('The album IS published. Fix the cause, then re-run with --announce (a duplicate queue item is refused, so it is safe).');
+			process.exit(2);
+		}
+	}
 }
 
 main();

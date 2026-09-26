@@ -120,6 +120,16 @@ publish gate — see **Publish** below — so there is one place these rules liv
 failure unless you pass `--force "<reason>"`, which prints the reason and publishes anyway.
 `--unpublish` is never gated — hiding a bad album is always safe.
 
+**Announce.** When an album goes from hidden to public, publishing also starts the standing
+gallery-announce campaign (Nino, 2026-09-25/26): the Let's Pepper social publisher picks up to 10
+photos, writes a facts-only caption and alt text, queues an Instagram + Facebook carousel **held for
+12 hours**, and sends a phone alert (ntfy) with the command that cancels it. The account comes from
+`gallery_scope`: `lpo` posts from letspepper.open, anything else from nino.chavez.photo, with
+flickday.media as a Collab that must be accepted in the Instagram app for each post. Re-publishing an
+already-public album does not announce again; `--announce` announces one anyway, `--no-announce`
+publishes without it. The builder and posting Worker live in the letspepper repo
+(`scripts/social-publish/`, see its SETUP.md "Arming gallery-announce").
+
 ## Recovering historical color data
 
 Before the 2026-09 fix, `normColor()` kept only the first word of a jersey/team color
