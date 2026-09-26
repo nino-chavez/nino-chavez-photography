@@ -166,37 +166,36 @@
   // Photo click handler - find photo in full timeline collection
   // Consistent with other pages: opens full lightbox with all timeline photos
   // PhotoCard's onclick handler already prevents default navigation
+  //
+  // Keyed by `id`, not `image_key` — the timeline spans every album, and 120 image_key
+  // values repeat across different albums' camera rolls (DSC numbers reset per card), so a
+  // by-image_key lookup here could open a different album's photo with the same filename.
   function handlePhotoClick(photo: Photo) {
-    console.log('[Timeline] Photo clicked:', photo.image_key);
-    console.log('[Timeline] All timeline photos count:', allTimelinePhotos.length);
-    
-    // Find the photo in the full timeline collection
-    const index = allTimelinePhotos.findIndex((p) => p.image_key === photo.image_key);
-    
-    console.log('[Timeline] Found photo at index:', index);
-    
+    const index = allTimelinePhotos.findIndex((p) => p.id === photo.id);
+
     if (index !== -1) {
       selectedPhotoIndex = index;
       lightboxOpen = true;
-      console.log('[Timeline] Opening lightbox with index:', index);
-    } else {
-      // Fallback: if photo not found, try to add it temporarily or use first photo
-      console.warn('[Timeline] Photo not found in allTimelinePhotos:', photo.image_key);
-      console.warn('[Timeline] Available photo keys:', allTimelinePhotos.slice(0, 5).map(p => p.image_key));
-      
-      // If we have photos, use the first one as fallback
-      if (allTimelinePhotos.length > 0) {
-        selectedPhotoIndex = 0;
-        lightboxOpen = true;
-        console.log('[Timeline] Using fallback: opening first photo');
-      } else {
-        console.error('[Timeline] No photos available in timeline!');
-      }
+    } else if (allTimelinePhotos.length > 0) {
+      // Fallback: the clicked photo isn't in the collected set (shouldn't happen —
+      // it's rendered FROM that set) — open on the first photo rather than do nothing.
+      console.warn('[Timeline] Photo not found in allTimelinePhotos:', photo.id);
+      selectedPhotoIndex = 0;
+      lightboxOpen = true;
     }
   }
 
   function handleLightboxNavigate(newIndex: number) {
     selectedPhotoIndex = newIndex;
+  }
+
+  // The lightbox reuses the SAME "load more" mechanism the infinite-scroll sentinel already
+  // uses (loadMorePeriods → the page's onLoadMore prop, which appends to timelineData) — so
+  // crossing past the last photo of the currently-loaded periods loads more periods instead
+  // of dead-ending. This was previously unwired: hasMore/onLoadMore were never passed to the
+  // Lightbox below, so Next silently did nothing once every loaded period's photos were shown.
+  async function lightboxLoadMore(): Promise<void> {
+    await loadMorePeriods();
   }
 
   // Filter handlers
@@ -814,13 +813,18 @@
     </div>
   </div>
 
-  <!-- Lightbox - consistent with other pages, shows all timeline photos -->
+  <!-- Lightbox - consistent with other pages, shows all timeline photos. hasMore/onLoadMore
+       reuse the same period-loading machinery as the infinite-scroll sentinel above, so
+       reaching the end of what's loaded fetches more periods instead of dead-ending. -->
   <Lightbox
     bind:open={lightboxOpen}
     photo={allTimelinePhotos[selectedPhotoIndex] || null}
     photos={allTimelinePhotos}
     currentIndex={selectedPhotoIndex}
     onNavigate={handleLightboxNavigate}
+    hasMore={hasMorePeriods}
+    onLoadMore={lightboxLoadMore}
+    loadingMore={isLoadingMore}
     viewSource="timeline"
   />
 
