@@ -1,17 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-08-29T10:09:56.558Z",
-  "reviewedBy": "Codex",
-  "method": "Walked /photography/analytics against the local dev server at 390, 920, and 1280 pixels after separating album opens from photo opens. Verified the Photo Opens headline, Photo Open Sources panel, popular-photo open badges, and Album Reach labels with live aggregate data. The table shows engaged visitors, album opens, photo opens, downloads, favorites, shares, and last activity as separate units. At 1280 and 920 pixels the table fits its container; at 390 pixels it scrolls inside its own container while document scrollWidth equals clientWidth. The stat cards reflow to one column at 390 pixels.",
-  "sourceDigest": "sha256:4500905ecc4573ff8bb5ddaea10894dd55e61f136b71b6473d8d33d153d7849d",
+  "reviewedAt": "2026-09-26T01:48:40.089Z",
+  "reviewedBy": "Claude Opus 5.5",
+  "method": "Walked /photography/albums/Re7kho at 390 and 1280 pixels and /photography/share/<token> at 920 pixels against the local dev server after changing single-album photo order from upload_date+image_key to capture time (photo_date) then image_key. The grid now reads in shutter order (01..13 then 056..064 then 14.., matching EXIF DateTimeOriginal) instead of the text sort of exported filenames. Page 2 from /api/album-photos continues contiguously from page 1 (073 then 074) and the download manifest lists the same order. Document scrollWidth equals clientWidth at all three widths. Layout, Popular in this album strip, header and subnav are unchanged; only row order moved.",
+  "sourceDigest": "sha256:974ad5990d1f9d5d5d748aff3dec27c2213b7075afafa38891829e01568f8081",
   "sourceFiles": 128,
   "scope": [
-    "/photography/analytics at 390px",
-    "/photography/analytics at 920px",
-    "/photography/analytics at 1280px",
-    "photo-open headline and source labels",
-    "Album Reach metric split and table overflow",
-    "live aggregate values after migration"
+    "/photography/albums/Re7kho at 390px",
+    "/photography/albums/Re7kho at 1280px",
+    "/photography/share/<token> at 920px",
+    "album photo order by capture time",
+    "load-more page contiguity",
+    "download manifest order"
   ]
 }
