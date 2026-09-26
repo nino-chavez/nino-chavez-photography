@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
+	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { FolderOpen, Camera } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -15,8 +17,27 @@
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
 
+	// The visible grid stays exactly one server page (`data.photos`) — Pagination's ?page=
+	// links keep working unchanged. The lightbox gets its OWN growing list, seeded from that
+	// same page, so Next can walk past the page boundary without closing. `untrack` makes the
+	// "seed once, then this is a mutable snapshot, not a mirror of `data.photos`" intent
+	// explicit — same pattern as the public album page's `loadedPhotos`. A full page
+	// navigation (see handlePageChange) reloads the whole app, so this re-seeds correctly.
+	let loadedPhotos = $state(untrack(() => data.photos));
+	let nextPage = $state(untrack(() => data.currentPage + 1));
+	let loadingMore = $state(false);
+
+	// How many photos precede this page in the whole album — the lightbox's counter offset,
+	// and the baseline `hasMore` counts up from as `loadedPhotos` grows.
+	const precedingCount = $derived((data.currentPage - 1) * data.pageSize);
+	const hasMore = $derived(precedingCount + loadedPhotos.length < data.totalCount);
+
 	function handlePhotoClick(photo: Photo) {
-		const index = data.photos.findIndex((p) => p.image_key === photo.image_key);
+		// `id`, not `image_key` — a share link's album is one album, but a visitor could still
+		// land here after browsing a cross-album page in the same session; keying by the
+		// camera's own filename risks matching the wrong photo (DSC numbers reset per card and
+		// repeat across albums — confirmed non-unique globally, though not within one album).
+		const index = loadedPhotos.findIndex((p) => p.id === photo.id);
 		if (index !== -1) {
 			selectedPhotoIndex = index;
 			lightboxOpen = true;
@@ -25,6 +46,34 @@
 
 	function handleLightboxNavigate(newIndex: number) {
 		selectedPhotoIndex = newIndex;
+	}
+
+	// Fetch one album page and append it to the lightbox's list. Reuses /api/album-photos'
+	// page mode — the same endpoint the public album page's lightbox uses — scoped by
+	// albumKey with a service_role read, so it serves this UNLISTED album correctly.
+	async function fetchPage(pageNum: number): Promise<Photo[]> {
+		const res = await fetch(
+			`${base}/api/album-photos?albumKey=${encodeURIComponent(data.albumKey)}&page=${pageNum}`
+		);
+		if (!res.ok) return [];
+		const { photos } = (await res.json()) as { photos: Photo[] };
+		return photos ?? [];
+	}
+
+	async function loadMore(): Promise<void> {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+		try {
+			const photos = await fetchPage(nextPage);
+			if (photos.length > 0) {
+				loadedPhotos = [...loadedPhotos, ...photos];
+				nextPage += 1;
+			}
+		} catch (err) {
+			console.error('[share] loadMore failed', err);
+		} finally {
+			loadingMore = false;
+		}
 	}
 
 	function handlePageChange(newPage: number) {
@@ -97,16 +146,22 @@
 	This page paginates server-side, so `data.photos` is one page (48) of a larger album. Without
 	`totalCount`/`indexOffset` the lightbox counts within that slice — a client on page 2 of a
 	100-photo album opened the first thumbnail and read "1 / 48", the same numbers as page 1.
-	`hasMore` is deliberately left false: there is no client-side append here (that is the
-	/albums/[slug] flow), so the lightbox stops at the page boundary and the pager moves on.
+	The grid and Pagination's ?page= links stay bound to `data.photos` (one server page) —
+	only the lightbox is bound to `loadedPhotos`, which grows past the page boundary via
+	`loadMore` so Next doesn't dead-end at the last photo of a page (it used to: hasMore/
+	onLoadMore were never wired here, so canGoNext went false with no way back in except
+	closing the lightbox and using the pager).
 -->
 <Lightbox
 	bind:open={lightboxOpen}
-	photo={data.photos[selectedPhotoIndex] || null}
-	photos={data.photos}
+	photo={loadedPhotos[selectedPhotoIndex] || null}
+	photos={loadedPhotos}
 	currentIndex={selectedPhotoIndex}
 	onNavigate={handleLightboxNavigate}
+	hasMore={hasMore}
+	onLoadMore={loadMore}
+	loadingMore={loadingMore}
 	totalCount={data.totalCount}
-	indexOffset={(data.currentPage - 1) * data.pageSize}
+	indexOffset={precedingCount}
 	viewSource="direct"
 />

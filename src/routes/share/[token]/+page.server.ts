@@ -1,5 +1,6 @@
 import { getAlbumByShareToken, fetchPhotos, getPhotoCount, ALBUM_PHOTO_SORT } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
+import { ALBUM_PHOTO_PAGE_SIZE } from '$lib/albums/pagination';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 
@@ -25,9 +26,12 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// client by RLS. Read them with the service_role client — the share token is the access boundary.
 	const admin = createSupabaseAdminClient();
 
-	// Pagination
+	// Pagination. Must stay in step with ALBUM_PHOTO_PAGE_SIZE elsewhere (the public album
+	// page's SSR page, /api/album-photos' page mode, and this page's own client-side
+	// "continue past this page" fetch below) — the lightbox's accumulated list is only
+	// contiguous if every page-N fetch, from any of these three call sites, uses the same size.
 	const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
-	const pageSize = 48;
+	const pageSize = ALBUM_PHOTO_PAGE_SIZE;
 	const offset = (page - 1) * pageSize;
 
 	// Fetch album metadata, photos, and count in parallel
