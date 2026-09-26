@@ -459,7 +459,7 @@ interface ProcessResult { caption: string; players: number; sightings: number; c
 
 /** Local-file matching key → the album's existing row (photo_id + cf_image_id + file_name).
  * Populated in main() for reprocess-in-place AND the missing-file report/--prune (below). */
-const existingRows = new Map<string, { photo_id: string; cf_image_id: string | null; file_name: string | null }>();
+const existingRows = new Map<string, { photo_id: string; cf_image_id: string | null; file_name: string | null; image_key: string }>();
 
 /**
  * The key existingRows is matched on: file_name with its extension stripped when a file_name is
@@ -482,17 +482,23 @@ function localKeyFor(row: { image_key: string; file_name: string | null }): stri
  * legacy album's SmugMug-id image_keys don't ALL read as missing.
  *
  * Never deletes anything unless --prune is passed; even then, respects --dry-run (report only).
- * Two more guards, because a delete here cascades to photo_jersey_sightings, photo_players,
- * user_tags, AND engagement_events (all ON DELETE CASCADE — verified against
- * supabase/migrations/*.sql), which is real, hard-to-recover analytics/identity work, not just a
- * photo row:
- *   - a candidate with an admin-CONFIRMED photo_players link or an APPROVED user_tags row is
- *     never deleted by --prune alone — it needs --prune-confirm-identity-loss too.
+ * Two more guards, because a delete here cascades to photo_jersey_sightings AND engagement_events
+ * (ON DELETE CASCADE — verified live, and separately confirmed against supabase/migrations/*.sql),
+ * which is real, hard-to-recover analytics work, not just a photo row:
+ *   - a candidate with an APPROVED user_tags row is never deleted by --prune alone — it needs
+ *     --prune-confirm-identity-loss too.
  *   - if more than half the album's existing rows are "missing" (a --dir typo, or pointing at
  *     the wrong folder, looks exactly like this), --prune refuses outright unless
  *     --prune-confirm-majority is also passed.
+ *
+ * NOTE: `players` / `photo_players` (which supabase/migrations/20260609000000_vnext_slice2_identity.sql
+ * defines) and `photo_jersey_sightings.resolved_player_id` do NOT exist in the live database —
+ * verified live 2026-09-25 (`Could not find the table 'public.photo_players' in the schema
+ * cache`). That migration's identity-resolution layer was apparently never applied to production,
+ * so this function can only protect what's actually live today (user_tags, engagement_events). If
+ * that migration is ever applied, extend this function's protection query to cover it.
  */
-async function reportAndPruneMissing(localKeys: Set<string>): Promise<void> {
+async function reportAndPruneMissing(localKeys: Set<string>, localFileCount: number): Promise<void> {
 	const missing = [...existingRows.entries()].filter(([key]) => !localKeys.has(key));
 	if (missing.length === 0) return;
 
@@ -502,17 +508,21 @@ async function reportAndPruneMissing(localKeys: Set<string>): Promise<void> {
 	}
 
 	const photoIds = missing.map(([, row]) => row.photo_id);
-	const [confirmedLinks, approvedTags, engagementCounts] = await Promise.all([
-		sb.from('photo_players').select('photo_id').eq('status', 'confirmed').in('photo_id', photoIds),
+	const [approvedTags, engagementCounts] = await Promise.all([
 		sb.from('user_tags').select('photo_id').eq('approved', true).in('photo_id', photoIds),
 		sb.from('engagement_events').select('photo_id', { count: 'exact', head: true }).in('photo_id', photoIds),
 	]);
-	const protectedPhotoIds = new Set<string>([
-		...(confirmedLinks.data ?? []).map((r) => r.photo_id),
-		...(approvedTags.data ?? []).map((r) => r.photo_id),
-	]);
+	// Fail CLOSED, not open: if either read errored, we cannot tell what's safe to delete, so
+	// treat every candidate as protected rather than silently pruning the exact rows this guard
+	// exists to protect.
+	const queryError = approvedTags.error || engagementCounts.error;
+	if (queryError) {
+		console.log(`      ⛔ REFUSING to prune: a protection query failed (${queryError.message}) — cannot confirm no photo here has an approved tag.\n`);
+		return;
+	}
+	const protectedPhotoIds = new Set<string>((approvedTags.data ?? []).map((r) => r.photo_id));
 	if (protectedPhotoIds.size) {
-		console.log(`      ⚠️  ${protectedPhotoIds.size} of these have an admin-CONFIRMED player link or an APPROVED user tag — protected from deletion unless --prune-confirm-identity-loss is also passed.`);
+		console.log(`      ⚠️  ${protectedPhotoIds.size} of these have an APPROVED user tag — protected from deletion unless --prune-confirm-identity-loss is also passed.`);
 	}
 	if ((engagementCounts.count ?? 0) > 0) {
 		console.log(`      ℹ️  ${engagementCounts.count} engagement_events row(s) exist for these photos and would be deleted (CASCADE) along with them.`);
@@ -523,6 +533,10 @@ async function reportAndPruneMissing(localKeys: Set<string>): Promise<void> {
 		return;
 	}
 
+	if (localFileCount === 0) {
+		console.log(`      ⛔ REFUSING: ${DIR} has 0 files — this reads exactly like a wrong or empty --dir, not a real removal. Point --dir at the real folder.\n`);
+		return;
+	}
 	const CONFIRM_IDENTITY_LOSS = process.argv.includes('--prune-confirm-identity-loss');
 	const CONFIRM_MAJORITY = process.argv.includes('--prune-confirm-majority');
 	if (existingRows.size >= 5 && missing.length >= existingRows.size * 0.5 && !CONFIRM_MAJORITY) {
@@ -533,7 +547,7 @@ async function reportAndPruneMissing(localKeys: Set<string>): Promise<void> {
 	const toDelete = missing.filter(([, row]) => !protectedPhotoIds.has(row.photo_id) || CONFIRM_IDENTITY_LOSS);
 	const skipped = missing.length - toDelete.length;
 	if (DRY) {
-		console.log(`      [DRY] --prune would delete ${toDelete.length}/${missing.length} row(s) (photo_metadata, cascading to sightings/photo_players/user_tags/engagement_events) + their CF images${skipped ? ` (${skipped} protected, skipped)` : ''}\n`);
+		console.log(`      [DRY] --prune would delete ${toDelete.length}/${missing.length} row(s) (photo_metadata, cascading to photo_jersey_sightings/user_tags/engagement_events) + their CF images${skipped ? ` (${skipped} protected, skipped)` : ''}\n`);
 		return;
 	}
 	let pruned = 0;
@@ -630,9 +644,15 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	}
 
 	// 5. UPSERT photo_metadata. sport_type is set by the trigger; quality_score is generated.
+	// image_key: preserve the EXISTING value on reprocess — never overwrite it with the
+	// filename-derived key. A pre-north-star album's image_key can be a SmugMug-assigned id
+	// unrelated to file_name (localKeyFor/existingRows match on file_name for exactly this
+	// reason); rewriting it here would silently change a value other code keys on
+	// (src/lib/supabase/photo-address.ts, the /photo/[id] route) the moment that album is
+	// ever reprocessed. New photos still get the filename-derived key, same as before.
 	const row = {
 		photo_id: photoId,
-		image_key: job.imageKey,
+		image_key: prior?.image_key ?? job.imageKey,
 		album_key: ALBUM_KEY,
 		album_name: album.albumName,
 		file_name: job.file,
@@ -683,20 +703,20 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	// it never touches 'players_old' / 'jersey_singular' sightings, which ingest doesn't own (they
 	// come from the one-time backfill — scripts/backfill-jersey-sightings.ts).
 	//
-	// `.is('resolved_player_id', null)` on the delete is load-bearing, not decorative: a sighting
-	// with resolved_player_id set has been through admin tag approval (resolve_jersey_to_player),
-	// which also stamps resolved_at/resolved_by. An unconditional delete would erase that human
-	// decision every time the photo is reprocessed and put it back in the unresolved queue.
-	// ignoreDuplicates on the insert below then naturally skips re-adding a resolved sighting that
-	// still shreds to the same dedup_key.
+	// NOTE: the module header's "admin tag approval → resolve_jersey_to_player" identity-resolution
+	// layer (a `resolved_player_id` column on this table) is NOT live — verified live 2026-09-25
+	// (`photo_jersey_sightings` has no such column today; `players`/`photo_players`, which
+	// supabase/migrations/20260609000000_vnext_slice2_identity.sql would also create, don't exist
+	// either). So there is currently nothing this delete could erase that a human resolved. If that
+	// migration is ever applied, add `.is('resolved_player_id', null)` here so a reprocess can't
+	// wipe a resolved sighting.
 	const SIGHTINGS_SOURCE = 'players_new';
 	const sightings = shredCaptionPlayers(photoId, ALBUM_KEY!, ex.extraction.players, SIGHTINGS_SOURCE);
 	const { error: delErr } = await sb
 		.from('photo_jersey_sightings')
 		.delete()
 		.eq('photo_id', photoId)
-		.eq('source', SIGHTINGS_SOURCE)
-		.is('resolved_player_id', null);
+		.eq('source', SIGHTINGS_SOURCE);
 	if (delErr) throw new Error(`sightings delete (reprocess replace): ${delErr.message}`);
 
 	if (sightings.length) {
@@ -774,7 +794,7 @@ async function main() {
 	// each photo_id + its CF image) instead of minting duplicates. New images get fresh ids.
 	{
 		const { data } = await sb.from('photo_metadata').select('image_key, photo_id, cf_image_id, file_name').eq('album_key', ALBUM_KEY!);
-		for (const r of data ?? []) existingRows.set(localKeyFor(r), { photo_id: r.photo_id, cf_image_id: r.cf_image_id, file_name: r.file_name });
+		for (const r of data ?? []) existingRows.set(localKeyFor(r), { photo_id: r.photo_id, cf_image_id: r.cf_image_id, file_name: r.file_name, image_key: r.image_key });
 	}
 	if (existingRows.size) {
 		console.log(`   ♻️  ${existingRows.size} existing rows for this album — reprocessing those in place (preserve photo_id, no duplicate rows, no CF churn)\n`);
@@ -790,7 +810,7 @@ async function main() {
 	// Missing/renamed files (P8): report DB rows this album has with no matching local file, and
 	// --prune them when asked. Uses the FULL local listing (not the OVERWRITE/LIMIT-filtered
 	// `jobs`), so --limit for a partial re-run never reports the untouched rest of the album as missing.
-	await reportAndPruneMissing(new Set(files.map((f) => f.replace(/\.(jpg|jpeg)$/i, ''))));
+	await reportAndPruneMissing(new Set(files.map((f) => f.replace(/\.(jpg|jpeg)$/i, ''))), files.length);
 	if (jobs.length === 0) { console.log('✅ Nothing to do.'); return; }
 
 	let ok = 0, fail = 0, totalCost = 0, totalSightings = 0, totalReprocessed = 0, index = 0;
