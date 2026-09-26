@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { fetchAlbumPhotosForDownload, fetchPhotos } from '$lib/supabase/server';
+import { fetchAlbumPhotosForDownload, fetchPhotos, ALBUM_PHOTO_SORT } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { isValidAlbumKey } from '$lib/albums/album-key';
 import type { RequestHandler } from './$types';
@@ -32,8 +32,8 @@ const NO_CACHE_HEADERS = { 'cache-control': 'private, no-store' };
 // 2. With `page`: returns a single page of full Photo rows so the album lightbox can load
 //    the next page client-side. No count is returned — the client gets totalCount once from
 //    the SSR page load (albums_summary.photo_count) and only consumes `photos` here (see
-//    [slug]/+page.svelte fetchPage). Sort order MUST match the album page load (sortBy:
-//    'newest') so the accumulated list stays contiguous.
+//    [slug]/+page.svelte fetchPage). Both use ALBUM_PHOTO_SORT, so the accumulated list
+//    stays contiguous.
 export const GET: RequestHandler = async ({ url }) => {
 	const albumKey = url.searchParams.get('albumKey');
 
@@ -68,7 +68,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const photos = await fetchPhotos(
 		{
 			albumKey,
-			sortBy: 'newest',
+			sortBy: ALBUM_PHOTO_SORT,
 			limit: PAGE_SIZE,
 			offset: (page - 1) * PAGE_SIZE
 		},

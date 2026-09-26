@@ -126,11 +126,23 @@ export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
 export interface FetchPhotosOptions extends PhotoFilterState {
   limit?: number;
   offset?: number;
-  sortBy?: 'quality' | 'newest' | 'oldest' | 'action';
+  sortBy?: 'quality' | 'newest' | 'oldest' | 'action' | 'capture';
   /** Inclusive photo_date lower/upper bounds (ISO). Used by the LLM-planner date filter. */
   dateFrom?: string;
   dateTo?: string;
 }
+
+/**
+ * The one order every single-album view uses: the album page, its client-side "load more"
+ * pages (/api/album-photos), and the share page. Pages are fetched separately and appended,
+ * so these callers MUST agree or the accumulated list skips and repeats photos.
+ *
+ * 'capture' = the order the shutter fired. The previous 'newest' sorted by upload_date, which
+ * is identical for every photo in an album, so image_key (the exported filename) decided the
+ * order as TEXT: "acc-v-jca-06" landed after "-059" and "-100" after "-10", scattering one
+ * match's photos across the grid (album Re7kho, 2026-09-25).
+ */
+export const ALBUM_PHOTO_SORT = 'capture' satisfies FetchPhotosOptions['sortBy'];
 
 /**
  * Discover the distinct non-null values of a categorical column under the anon key.
@@ -345,6 +357,11 @@ export async function fetchPhotos(
       break;
     case 'oldest':
       query = query.order('upload_date', { ascending: true }).order('image_key', { ascending: true });
+      break;
+    case 'capture':
+      // EXIF capture time (ingest falls back to the upload date when a file has none), then
+      // image_key so same-second burst frames keep a stable order across pages.
+      query = query.order('photo_date', { ascending: true }).order('image_key', { ascending: true });
       break;
     case 'action':
       // Sort by play type (alphabetical grouping), then by emotional_impact for deterministic ordering
@@ -1800,7 +1817,12 @@ export async function fetchAlbumPhotosForDownload(
     .select('cf_image_id, image_key')
     .eq('album_key', albumKey)
     .not('sharpness', 'is', null)
-    .not('cf_image_id', 'is', null);
+    .not('cf_image_id', 'is', null)
+    // Same order as the album page (ALBUM_PHOTO_SORT), so a download lists files the way the
+    // visitor saw them. The ZIP worker's cache key sorts cf_image_ids itself (hash.ts), so
+    // this order never changes which cached ZIP is served.
+    .order('photo_date', { ascending: true })
+    .order('image_key', { ascending: true });
 
   if (error) {
     console.error('[fetchAlbumPhotosForDownload] Error:', error);

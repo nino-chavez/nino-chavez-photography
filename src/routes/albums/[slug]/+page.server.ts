@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer, matviewClient } from '$lib/supabase/server';
+import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer, matviewClient, ALBUM_PHOTO_SORT } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
 import { getTopPhotos } from '$lib/analytics/popularity';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
@@ -39,7 +39,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 		// Get the first page of photos for this album
 		fetchPhotos({
 			albumKey,
-			sortBy: 'newest',
+			sortBy: ALBUM_PHOTO_SORT,
 			limit: pageSize,
 			offset: 0,
 		}),

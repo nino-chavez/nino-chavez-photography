@@ -1,4 +1,4 @@
-import { getAlbumByShareToken, fetchPhotos, getPhotoCount } from '$lib/supabase/server';
+import { getAlbumByShareToken, fetchPhotos, getPhotoCount, ALBUM_PHOTO_SORT } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
@@ -40,7 +40,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		fetchPhotos(
 			{
 				albumKey,
-				sortBy: 'newest',
+				sortBy: ALBUM_PHOTO_SORT,
 				limit: pageSize,
 				offset,
 			},
