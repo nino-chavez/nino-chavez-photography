@@ -16,10 +16,13 @@ An orchestrator-dispatched evaluation (worktree `.claude/worktrees/agent-a9ac18f
 2. Does image-vector semantic search beat the production caption-vector search?
 
 Ground truth for both was labeled by Claude (Sonnet 5), not by Nino, from Cloudflare Images
-"public"/"large" variants viewed directly — not from any model's own output. Scale: **65 held-out
-photos across 5 albums** (question 1) and **40 search queries against the same 65-photo pool**
-(question 2). A first pass at question 2 was invalidated by a request-shape bug (see "The $17
-lesson" below) and fully rewritten before this ADR was drafted.
+"public"/"large" variants viewed directly — not from any model's own output. Scale, per
+`REPORT.md`'s own data table (the primary source — a dispatch brief along the way said "5
+albums," which this ADR corrects against the source): **65 held-out TEST photos across 4 albums**
+(fJKdsB 20, 1BlKk4 20, j0g2Hw 13, D6M8cZ 12) for question 1, plus **40 search queries against that
+same 65-photo pool** for question 2. A separate 21-photo TUNE set (2 more albums: eqYF0h, Y2Er7w)
+was used only to design the prompts, never scored. A first pass at question 2 was invalidated by
+a request-shape bug (see "The $17 lesson" below) and fully rewritten before this ADR was drafted.
 
 ## Decision
 
@@ -76,10 +79,13 @@ Image vectors alone beat every hybrid fusion rule tried (flat average, weighted 
 hybrid drags the stronger image signal toward the weaker caption one. **No fusion**: this ADR
 adopts image-vectors-only, not a caption+image blend.
 
-`google/gemini-embedding-2` was chosen over `voyageai/voyage-multimodal-3.5` because it fits
-`vector(768)` natively (zero dimension migration — voyage's smallest native dimension is 256, but
-768 keeps this column's type identical to the existing caption-vector column and its HNSW index
-type) and it scored higher on this eval.
+`google/gemini-embedding-2` was chosen over `voyageai/voyage-multimodal-3.5` for two independent
+reasons: it scored higher on this eval (table above), AND it fits `vector(768)` natively — 768 is
+one of gemini-embedding-2's supported output dimensions, so this column's type stays identical to
+the existing caption-vector column and its HNSW index type, zero dimension migration needed.
+`voyage-multimodal-3.5` offers only [256, 512, 1024, 2048] — no 768 option (verified live in the
+eval) — so adopting it would ALSO have required a `vector(1024)` (or similar) column and a
+matching index, a real migration cost this ADR's choice avoids.
 
 **Per query-type breakdown, and why production relevance is narrower than the headline number:**
 
@@ -148,12 +154,39 @@ nonsense-ordered results. That is a correctness regression invisible to any heal
 what ADR 0004's merge-gating rule exists to prevent. Apply order:
 
 1. `supabase/migrations/20260925230000_photo_metadata_image_embedding.sql` (column + index) —
-   additive, apply pre-merge.
-2. `scripts/backfill-image-embeddings.ts` — backfill existing rows (resumable, cost-capped).
+   additive, apply pre-merge. This is the commit-A migration (git commit `055f7c8`); apply it
+   from a checkout at or after that commit, NOT from a tip that already includes commit B's RPC
+   migration — `supabase db push` applies every pending migration file in one call, so if both
+   migration files are already in the tree when you push, both apply together and step 3's
+   hazard below happens immediately, before the backfill has run.
+2. `scripts/backfill-image-embeddings.ts` — backfill existing rows (resumable, cost-capped). Do
+   NOT proceed to step 3 until this has meaningfully caught up (checked via
+   `--dry-run`'s row count, or the checkpoint file) — every row is `image_embedding IS NULL` until
+   this runs, so cutting ranking over before it does turns semantic search up empty for the whole
+   library, not just the unbackfilled rows.
 3. `supabase/migrations/20260925240000_match_photos_image_embedding.sql` (RPC change) + the app
    deploy that switches `embedSearchQuery` (`src/lib/supabase/server.ts`) and the chat tool
    (`src/routes/api/chat/+server.ts`) from `embedText` to `embedImageQuery` — TOGETHER, same
-   deploy, last.
+   deploy, last. **Deploy before you push**: this repo's live deploy is Cloudflare Pages'
+   git-integration build (`npm run build`, no GitHub Actions), and merging commit B's branch tip
+   trips `reader:check:gallery --strict`'s `manual-review-stale` gate (a human must walk
+   `src/routes/api/chat/+server.ts`'s comment-only diff and record a fresh manual-review receipt
+   — see this ADR's own "What this ADR did not attempt" note). Confirm the Pages deployment is
+   `Success` (`/accounts/{id}/pages/projects/{p}/deployments`, `latest_stage.status`) BEFORE
+   running `supabase db push` for this migration. A failed deploy changes nothing in prod; running
+   the RPC migration ahead of a failed deploy leaves prod ranking image-space column against a
+   caption-space query vector — the exact regression this sequencing exists to prevent — for
+   however long the deploy stays red.
+
+### What this ADR did not attempt
+
+This ADR's own implementation left `npm run build` failing at `reader:check:gallery --strict` for
+commit B (`manual-review-stale` — the gallery-interface surface's recorded source digest no
+longer matches because `src/routes/api/chat/+server.ts` is in that surface's source roots and its
+comments changed). Per this cycle's own hard rule, no receipt was fabricated to clear it; a human
+walk-through and a fresh `docs/reader-audits/gallery-interface.json` entry is required before
+commit B can deploy green. `reader:check:captions` fails the same way for commit A (the caption
+prompt wording actually changed) and needs the same kind of human receipt, not a code fix.
 
 ### What this does not do
 
