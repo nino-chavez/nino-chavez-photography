@@ -30,6 +30,7 @@ import {
 	type Sport,
 } from '$lib/ai/taxonomy';
 import { SITE_URL } from '$lib/site-url';
+import { normColor } from '$lib/identity/sightings';
 
 const PLANNER_MODEL = 'google/gemini-2.5-flash-lite';
 
@@ -40,6 +41,12 @@ export interface QueryPlan {
 	photo_category: string | null;
 	play_type: string | null;
 	jersey_number: string | null;
+	/**
+	 * The jersey color the query ties to jersey_number ("#12 in blue" -> "blue"), normalized by the
+	 * same rule as stored sightings. Kept only alongside a jersey number: a color on its own
+	 * ("players in blue") is a visual description and belongs in semantic_text.
+	 */
+	team_color: string | null;
 	/** ISO date (YYYY-MM-DD) lower bound on photo_date, or null. */
 	date_from: string | null;
 	/** ISO date (YYYY-MM-DD) upper bound on photo_date, or null. */
@@ -60,6 +67,7 @@ Return ONLY a JSON object with these keys:
 "photo_category": one of [${PHOTO_CATEGORIES.map((c) => `"${c}"`).join(', ')}] or null.
 "play_type": one of [${ALL_PLAY_TYPES.map((p) => `"${p}"`).join(', ')}] or null. Only set for a specific action.
 "jersey_number": a jersey number as a string (e.g. "12", "00") if the query names one, else null.
+"team_color": the jersey color the query attaches to that number ("#12 in blue" -> "blue", "light blue 7" -> "light blue"), else null. Leave null when there is no jersey number.
 "date_from": ISO date "YYYY-MM-DD" resolving the EARLIEST date implied by any time expression relative to today, or null.
 "date_to": ISO date "YYYY-MM-DD" resolving the LATEST date implied, or null.
 "place": a city / venue / location phrase if present (e.g. "chicago", "the beach"), else null.
@@ -93,13 +101,14 @@ export function validatePlan(raw: any): QueryPlan {
 		raw?.jersey_number != null && /^[0-9]{1,3}[A-Z]?$/i.test(String(raw.jersey_number).trim())
 			? String(raw.jersey_number).trim().toUpperCase()
 			: null;
+	const team_color = jersey_number ? normColor(raw?.team_color) : null;
 	const date_from = toIsoDate(raw?.date_from);
 	const date_to = toIsoDate(raw?.date_to);
 	const place = typeof raw?.place === 'string' && raw.place.trim() ? raw.place.trim() : null;
 	const semantic_text = typeof raw?.semantic_text === 'string' ? raw.semantic_text.trim() : '';
 
 	const hasStructure = !!(sport || photo_category || play_type || jersey_number || date_from || date_to);
-	return { semantic_text, sport, photo_category, play_type, jersey_number, date_from, date_to, place, hasStructure };
+	return { semantic_text, sport, photo_category, play_type, jersey_number, team_color, date_from, date_to, place, hasStructure };
 }
 
 export interface PlanOptions {

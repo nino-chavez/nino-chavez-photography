@@ -590,15 +590,15 @@ export async function fetchPhotosByAlbumName(
  */
 export async function searchByJersey(
   jersey: string,
-  opts: { sport?: string; albumKey?: string; limit?: number; offset?: number } = {}
+  opts: { sport?: string; albumKey?: string; teamColor?: string; limit?: number; offset?: number } = {}
 ): Promise<{ photos: Photo[]; totalCount: number }> {
-  const { sport, albumKey, limit = 24, offset = 0 } = opts;
+  const { sport, albumKey, teamColor, limit = 24, offset = 0 } = opts;
   // PostgREST caps each response at 1000 rows regardless of p_limit, so page in 1000-chunks to get
   // the true total. Jersey sets are bounded (~1.5k for the most-photographed numbers) → 1-2 calls.
   const PAGE = 1000;
   const all: Photo[] = [];
   for (let o = 0; ; o += PAGE) {
-    const chunk = await findPhotosByJersey(jersey, { sport, albumKey, limit: PAGE, offset: o });
+    const chunk = await findPhotosByJersey(jersey, { sport, albumKey, teamColor, limit: PAGE, offset: o });
     all.push(...chunk);
     if (chunk.length < PAGE) break;
   }
@@ -1513,6 +1513,28 @@ async function tryPlannerSearch(
   const dateFrom = plan.date_from || undefined;
   const dateTo = plan.date_to ? `${plan.date_to}T23:59:59` : undefined; // inclusive end-of-day
 
+  // A jersey number is a find-my-photos lookup, answered by the sightings index, not by
+  // similarity: "#12 in blue" = sightings of #12 whose normalized color is blue. The planner
+  // extracted jersey_number before this but nothing read it, so "#12 in blue" ranked any blue
+  // jersey by image similarity and the top result was a #16. If the color narrows to nothing
+  // (the query or a sighting may name the color differently), answer with #12 in any color and
+  // say so rather than returning an empty page.
+  if (plan.jersey_number) {
+    const base = { sport: f.sportType, albumKey: f.albumKey, limit, offset };
+    const sportBit = f.sportType ? ` · ${f.sportType}` : '';
+    if (plan.team_color) {
+      const colored = await searchByJersey(plan.jersey_number, { ...base, teamColor: plan.team_color });
+      if (colored.photos.length > 0 || offset > 0) {
+        return { ...colored, searchMode: 'structured', parsedDescription: `Jersey #${plan.jersey_number} in ${plan.team_color}${sportBit}` };
+      }
+    }
+    const any = await searchByJersey(plan.jersey_number, base);
+    if (any.photos.length > 0 || offset > 0) {
+      const note = plan.team_color ? ` (no #${plan.jersey_number} in ${plan.team_color} found; showing every color)` : '';
+      return { ...any, searchMode: 'structured', parsedDescription: `Jersey #${plan.jersey_number}${sportBit}${note}` };
+    }
+  }
+
   // Hybrid: there's something visual to rank by → filter AND rank by caption similarity.
   if (plan.semantic_text.trim().length >= 3) {
     const embedding = await embedSearchQuery(plan.semantic_text);
@@ -1653,32 +1675,30 @@ export async function searchPhotos(
     // Zero results on first page — fall through to semantic search
   }
 
-  // Semantic path: unmatched terms or zero structured results
-  // If we had some matched filters but also unmatched terms, try structured first
-  if (hasMatchedFilters && hasUnmatchedTerms) {
-    const [photos, totalCount] = await Promise.all([
-      fetchPhotos({ ...mergedFilters, limit, offset, sortBy }),
-      getPhotoCount(mergedFilters),
-    ]);
-
-    if (photos.length > 0) {
-      return {
-        photos,
-        totalCount,
-        searchMode: 'structured',
-        parsedDescription: parsed.description,
-      };
-    }
-  }
-
-  // Fallback for descriptive/semantic queries that didn't resolve to a name or facet above:
-  // the LLM planner (facet + date + caption-similarity hybrid).
+  // Descriptive queries — unmatched words that are not an event, team or name — go to the LLM
+  // planner, which keeps the recognized facets AND the visual description ("beach volleyball at
+  // sunset" = sport:volleyball + "beach at sunset" ranked by image similarity). A branch here used
+  // to return the recognized facets alone whenever there were leftover words, so "beach volleyball
+  // at sunset" answered with every volleyball photo, "dig near the sideline" with every dig and
+  // "#12 in blue" with #12 in any color: the description was discarded and semantic search never
+  // ran. Facets-only is now the last resort, below, for when no query embedding is available.
   const planned = await tryPlannerSearch(query, existingFilters, { limit, offset, sortBy });
   if (planned) return planned;
 
   // Vector search fallback
   const embedding = await embedSearchQuery(query);
   if (!embedding) {
+    // No planner and no query embedding (missing key or transport failure): the recognized facets
+    // are the best answer left, even though the descriptive words cannot be honored.
+    if (hasMatchedFilters) {
+      const [photos, totalCount] = await Promise.all([
+        fetchPhotos({ ...mergedFilters, limit, offset, sortBy }),
+        getPhotoCount(mergedFilters),
+      ]);
+      if (photos.length > 0 || offset > 0) {
+        return { photos, totalCount, searchMode: 'structured', parsedDescription: parsed.description };
+      }
+    }
     return {
       photos: [],
       totalCount: 0,
