@@ -123,7 +123,7 @@ failure unless you pass `--force "<reason>"`, which prints the reason and publis
 **Announce.** When an album goes from hidden to public, publishing also starts the standing
 gallery-announce campaign (Nino, 2026-09-25/26): the Let's Pepper social publisher picks up to 10
 photos, writes a facts-only caption and alt text, queues an Instagram + Facebook carousel **held for
-12 hours**, and sends a phone alert (ntfy) with the command that cancels it. The account comes from
+2 hours**, and sends a phone alert (ntfy) you can cancel it from. It then posts at the next noon or 5pm Central slot. The account comes from
 `gallery_scope`: `lpo` posts from letspepper.open, anything else from nino.chavez.photo, with
 flickday.media as a Collab that must be accepted in the Instagram app for each post. Re-publishing an
 already-public album does not announce again; `--announce` announces one anyway, `--no-announce`

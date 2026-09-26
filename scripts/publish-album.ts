@@ -19,7 +19,7 @@
  *
  * ANNOUNCE: when an album goes from hidden to public, this starts the standing "gallery-announce"
  * campaign (Nino, 2026-09-25/26): it runs the Let's Pepper social publisher's builder, which picks
- * the photos, writes the caption and alt text, queues the carousel HELD for 12 hours and sends the
+ * the photos, writes the caption and alt text, queues the carousel HELD for 2 hours and sends the
  * phone alert with the veto command, then seeds the item into the posting Worker's queue. The
  * series (which account posts) comes from this album's own gallery_scope: 'lpo' posts from
  * letspepper.open, anything else from nino.chavez.photo, with flickday.media as a Collab.
@@ -165,7 +165,7 @@ function announce(series: 'lpo' | 'other'): void {
 		[builder, '--album-key', ALBUM_KEY!, '--series', series],
 		[join(SOCIAL_DIR, 'seed-kv.mjs'), '--event', 'gallery-announce', '--append', '--put'],
 	];
-	console.log(`\nannounce: ${series === 'lpo' ? 'letspepper.open' : 'nino.chavez.photo'} + flickday.media Collab, held 12h`);
+	console.log(`\nannounce: ${series === 'lpo' ? 'letspepper.open' : 'nino.chavez.photo'} + flickday.media Collab, held 2h`);
 	for (const step of steps) {
 		try {
 			execFileSync(process.execPath, step, { cwd: SOCIAL_DIR, stdio: 'inherit' });
