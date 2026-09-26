@@ -17,7 +17,7 @@ import type { Photo, Video, PhotoFilterState } from '$types/photo';
 import type { AlbumSettingsRow } from '$types/database';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { monthWindow, addMonths, monthName } from '$lib/utils/month-window';
-import { embedText } from '$lib/ai/embeddings';
+import { embedImageQuery } from '$lib/ai/embeddings';
 import { videoOnlyRows } from '$lib/albums/listing';
 import { planQuery, type QueryPlan } from '$lib/search/query-planner';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
@@ -1440,14 +1440,23 @@ export interface SearchResult {
 }
 
 /**
- * Generate a vector embedding for a search query.
+ * Generate a vector embedding for a search query, in the IMAGE space.
  *
- * Delegates to the shared `embedText` (OpenRouter `openai/text-embedding-3-large`
- * @ 768 dims) so the QUERY path matches the WRITE path exactly. They MUST stay in
- * lockstep — same model + dims — or query vectors land in a different space than the
- * stored caption vectors and semantic search returns noise. (The previous code used
- * Gemini `embedding-001` at query time vs `gemini-embedding-001` at write time AND
- * relied on now-revoked Google keys; both are fixed by routing through `embedText`.)
+ * Delegates to `embedImageQuery` (OpenRouter `google/gemini-embedding-2` @ 768 dims — the SAME
+ * model+dims `embedImage` uses to embed photos) so the query vector lands in the same space as
+ * `photo_metadata.image_embedding`. As of blueprint/decisions/0006 this is the primary semantic-
+ * search signal — image vectors beat caption-vector search outright on a 40-query eval
+ * (recall@10 0.82 vs 0.64 overall). This function's own queries never carry a jersey number in
+ * production (`find_photos_by_jersey` handles those structurally, before this path runs — see
+ * searchByJersey); the production-relevant comparison is action/scene/compositional queries,
+ * where image vectors win on 2 of 3 and are within measurement noise on the third (scene). See
+ * the ADR before quoting the jersey-query number as evidence for this path specifically.
+ * match_photos / match_photos_hybrid both rank on `image_embedding` (see
+ * supabase/migrations/20260925240000_match_photos_image_embedding.sql);
+ * this function and that migration shipped in the same commit — never one without the other, or
+ * queries land in a different space than the column they're matched against and search returns
+ * noise. (This project has hit that exact class of bug before: Gemini `embedding-001` at query
+ * time vs `gemini-embedding-001` at write time, plus now-revoked Google keys — see git history.)
  *
  * Returns null on any error (graceful degradation → structured search).
  */
@@ -1460,7 +1469,7 @@ async function embedSearchQuery(query: string): Promise<number[] | null> {
     console.warn('[embedSearchQuery] OPENROUTER_API_KEY not configured — vector search unavailable');
     return null;
   }
-  return embedText(query, apiKey);
+  return embedImageQuery(query, apiKey);
 }
 
 /** Human-readable summary of how the planner interpreted the query (for the results header). */
@@ -1673,9 +1682,18 @@ export async function searchPhotos(
     };
   }
 
+  // match_threshold LOWERED from 0.5 (the caption-space value) to 0.25 for the image-space cutover
+  // (blueprint/decisions/0006). Measured against the eval's cached vectors (40 queries x 65
+  // photos): text-query-to-image-vector cosine similarity for a TRUE match runs ~0.30-0.48 (mean
+  // ~0.40), far below the 0.5+ range caption-text-to-caption-text similarity reaches. 0.5 would
+  // reject every real match in image space, not just weak ones — this is not a tightened filter,
+  // it is the threshold that makes this RPC return any results at all post-cutover. 0.25 sits
+  // below every measured true-match score with margin; it is a measured-floor choice, not a
+  // separating threshold (relevant and irrelevant scores overlap in this space — see the ADR) —
+  // ranking + match_count does the real work of surfacing the best matches.
   const { data: matches, error } = await supabaseServer.rpc('match_photos', {
     query_embedding: embedding,
-    match_threshold: 0.5,
+    match_threshold: 0.25,
     match_count: limit,
   });
 

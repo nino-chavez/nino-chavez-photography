@@ -4,7 +4,7 @@ import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
-import { embedText } from '$lib/ai/embeddings';
+import { embedImageQuery } from '$lib/ai/embeddings';
 import { photoAddresses } from '$lib/supabase/photo-address';
 import { photoIdentityPeers } from '$lib/supabase/photo-address-server';
 import {
@@ -243,12 +243,18 @@ export const POST: RequestHandler = async ({ request }) => {
 						try {
 							const supabase = getSupabaseClient();
 
-							// Semantic path: embed the natural-language query and match against caption
-							// embeddings via match_photos. Must use the SAME embedder as the write path
-							// (embedText → OpenRouter text-embedding-3-large @768).
+							// Semantic path: embed the natural-language query into the IMAGE space and match
+							// against photo_metadata.image_embedding via match_photos. Must use the SAME
+							// embedder as the write path (embedImageQuery → OpenRouter google/gemini-embedding-2
+							// @768 — same model+dims as embedImage). See blueprint/decisions/0006 and
+							// supabase/migrations/20260925240000_match_photos_image_embedding.sql, which this
+							// call ships atomically with.
 							if (query && query.trim()) {
-								const embedding = await embedText(query, env.OPENROUTER_API_KEY);
+								const embedding = await embedImageQuery(query, env.OPENROUTER_API_KEY);
 								if (embedding) {
+									// match_threshold 0.2 was ALREADY below the measured image-space true-match floor
+									// (~0.30 — see the comment on the equivalent call in $lib/supabase/server.ts and
+									// blueprint/decisions/0006), so this value needs no change for the cutover.
 									const { data, error } = await supabase.rpc('match_photos', {
 										query_embedding: embedding,
 										match_threshold: 0.2,
