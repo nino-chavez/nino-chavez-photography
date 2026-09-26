@@ -18,8 +18,9 @@
 	let selectedPhotoIndex = $state(0);
 
 	function handlePhotoClick(photo: Photo) {
-		// Find the index of the clicked photo in data.photos
-		const index = data.photos.findIndex((p) => p.image_key === photo.image_key);
+		// `id`, not `image_key` — a collection spans every album, and image_key values repeat
+		// across different albums' camera rolls (confirmed: 120 values collide table-wide).
+		const index = data.photos.findIndex((p) => p.id === photo.id);
 
 		if (index !== -1) {
 			selectedPhotoIndex = index;

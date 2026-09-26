@@ -46,8 +46,10 @@
   let selectedPhotoIndex = $state(0);
 
   // Handle photo click - open lightbox instead of navigating
+  // `id`, not `image_key` — a month spans every album, and image_key values repeat across
+  // different albums' camera rolls (confirmed: 120 values collide table-wide).
   function handlePhotoClick(photo: Photo) {
-    const index = data.photos.findIndex((p) => p.image_key === photo.image_key);
+    const index = data.photos.findIndex((p) => p.id === photo.id);
     if (index !== -1) {
       selectedPhotoIndex = index;
       lightboxOpen = true;
