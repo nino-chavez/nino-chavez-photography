@@ -144,9 +144,9 @@ test('toLatestApiAlbum builds the album URL from the slug and the cover from cf_
 	const [ranked] = rankPublicAlbums({
 		candidates: [
 			candidate('DWdCET', {
-				album_name: 'HS Girls VB - Millikin at North Central - 09-23-2026',
+				album_name: "College Women's VB - Millikin at North Central - 09-23-2026",
 				cover_cf_image_id: 'DWdCET-DSC09484-sdr-99c86cb116',
-				photo_count: '31',
+				photo_count: '43',
 				latest_photo_date: '2026-09-23'
 			})
 		],
@@ -155,11 +155,11 @@ test('toLatestApiAlbum builds the album URL from the slug and the cover from cf_
 	const api = toLatestApiAlbum(ranked, { siteUrl: 'https://ninochavez.co/photography' });
 	assert.deepEqual(api, {
 		album_key: 'DWdCET',
-		album_name: 'HS Girls VB - Millikin at North Central - 09-23-2026',
-		url: 'https://ninochavez.co/photography/albums/hs-girls-vb-millikin-at-north-central-09-23-2026-DWdCET',
+		album_name: "College Women's VB - Millikin at North Central - 09-23-2026",
+		url: 'https://ninochavez.co/photography/albums/college-womens-vb-millikin-at-north-central-09-23-2026-DWdCET',
 		event_date: '2026-09-23',
 		cover_url: 'https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09484-sdr-99c86cb116/medium',
-		photo_count: 31
+		photo_count: 43
 	});
 });
 
