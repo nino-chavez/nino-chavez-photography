@@ -1,6 +1,7 @@
 import { base } from '$app/paths';
 import { fetchPhotos, getAlbumSettings, fetchAlbumVideos, supabaseServer, matviewClient, ALBUM_PHOTO_SORT } from '$lib/supabase/server';
 import { extractAlbumKey, createAlbumSlug } from '$lib/utils';
+import { ALBUM_PHOTO_PAGE_SIZE } from '$lib/albums/pagination';
 import { getTopPhotos } from '$lib/analytics/popularity';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { isValidSrcParam } from '$lib/analytics/share';
@@ -21,7 +22,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 
 	// Only the first page is server-rendered (SEO/LCP); the client appends the
 	// rest via "Load more" against /api/album-photos, which uses the same size.
-	const pageSize = 48;
+	const pageSize = ALBUM_PHOTO_PAGE_SIZE;
 
 	// Fetch album info, photos, videos, and settings in parallel.
 	// Total count comes from albums_summary.photo_count (already selected below) — not a

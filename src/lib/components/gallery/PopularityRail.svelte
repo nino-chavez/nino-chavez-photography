@@ -19,9 +19,17 @@
 		favorites?: Photo[];
 		/** Number of leading cards that get a rank badge. */
 		badgeTopN?: number;
+		/**
+		 * Opens the SAME lightbox the rest of the gallery uses, walking this rail's own
+		 * currently-active list (trending or fan-favorites, whichever is toggled on) in rail
+		 * order — a curated set, so the caller should NOT splice it into the album's photo
+		 * grid list. Receives the clicked photo and the active list to look up its index in.
+		 * When omitted, PhotoCard falls back to its href (no-JS / open-in-new-tab).
+		 */
+		onPhotoClick?: (photo: Photo, activeList: Photo[]) => void;
 	}
 
-	let { title = 'Trending', trending, favorites, badgeTopN = 3 }: Props = $props();
+	let { title = 'Trending', trending, favorites, badgeTopN = 3, onPhotoClick }: Props = $props();
 
 	let mode = $state<'trending' | 'all_time'>('trending');
 	const hasToggle = $derived(!!favorites && favorites.length > 0);
@@ -126,7 +134,11 @@
 							</Badge>
 						</div>
 					{/if}
-					<PhotoCard {photo} {index} />
+					<PhotoCard
+						{photo}
+						{index}
+						onclick={onPhotoClick ? (p) => onPhotoClick(p, photos) : undefined}
+					/>
 				</li>
 			{/each}
 		</ul>

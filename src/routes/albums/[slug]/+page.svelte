@@ -15,6 +15,7 @@
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { trackEngagement } from '$lib/analytics/client';
+	import { ALBUM_PHOTO_PAGE_SIZE } from '$lib/albums/pagination';
 	import type { PageData } from './$types';
 	import type { Photo, Video } from '$types/photo';
 
@@ -28,9 +29,15 @@
 		trackEngagement('album_open', { albumKey: data.albumKey });
 	});
 
-	// Lightbox state (same pattern as explore page)
+	// Lightbox state (same pattern as explore page). `lightboxSource` picks which list the
+	// lightbox is currently walking: the album grid's growing `loadedPhotos`, or a curated
+	// rail list (trending / fan favorites) captured at the moment the rail was clicked. The
+	// rail is a curated set and must never be spliced into the grid's list — it gets its own
+	// slot instead, and the lightbox switches which one it reads from.
 	let lightboxOpen = $state(false);
 	let selectedPhotoIndex = $state(0);
+	let lightboxSource = $state<'grid' | 'rail'>('grid');
+	let railLightboxPhotos = $state<Photo[]>([]);
 
 	// One growing photo list feeds the grid AND the lightbox. The first page is
 	// server-rendered; "Load more" appends each subsequent page client-side, so
@@ -104,11 +111,38 @@
 	const hasMore = $derived(loadedPhotos.length < data.totalCount);
 	const remaining = $derived(data.totalCount - loadedPhotos.length);
 
+	// What the lightbox is actually bound to right now — the grid's growing list by default,
+	// or the rail's own list while `lightboxSource === 'rail'`. `id` is the lookup key (not
+	// `image_key`, which repeats across different albums' camera rolls — irrelevant to a
+	// single-album grid, but the rail's list here is scoped to this album too, so either would
+	// work; `id` is used throughout for consistency with the cross-album pages that need it).
+	const lightboxPhotos = $derived(lightboxSource === 'rail' ? railLightboxPhotos : displayPhotos);
+	const lightboxHasMore = $derived(lightboxSource === 'rail' ? false : (searchQuery.trim() ? false : hasMore));
+	const lightboxTotalCount = $derived(
+		lightboxSource === 'rail'
+			? railLightboxPhotos.length
+			: (searchQuery.trim() ? undefined : data.totalCount)
+	);
+	const lightboxOnLoadMore = $derived(lightboxSource === 'rail' ? undefined : loadMore);
+
 	function handlePhotoClick(photo: Photo) {
 		// Find the index of the clicked photo in displayPhotos
-		const index = displayPhotos.findIndex((p) => p.image_key === photo.image_key);
+		const index = displayPhotos.findIndex((p) => p.id === photo.id);
 
 		if (index !== -1) {
+			lightboxSource = 'grid';
+			selectedPhotoIndex = index;
+			lightboxOpen = true;
+		}
+	}
+
+	// "Popular in this album" rail — opens the SAME lightbox, walking the rail's own list
+	// (whichever of trending/fan-favorites is toggled on) in rail order rather than the grid's.
+	function handleRailPhotoClick(photo: Photo, activeList: Photo[]) {
+		const index = activeList.findIndex((p) => p.id === photo.id);
+		if (index !== -1) {
+			lightboxSource = 'rail';
+			railLightboxPhotos = activeList;
 			selectedPhotoIndex = index;
 			lightboxOpen = true;
 		}
@@ -370,7 +404,11 @@
 		<!-- Popular in this album (engagement-ranked highlights; hides if no data) -->
 		{#if data.popularInAlbum && data.popularInAlbum.length > 2}
 			<div class="mb-12">
-				<PopularityRail title="Popular in this album" trending={data.popularInAlbum} />
+				<PopularityRail
+					title="Popular in this album"
+					trending={data.popularInAlbum}
+					onPhotoClick={handleRailPhotoClick}
+				/>
 			</div>
 		{/if}
 
@@ -395,7 +433,7 @@
 					<LoadMoreButton
 						hasMore={hasMore}
 						remaining={remaining}
-						batchSize={48}
+						batchSize={ALBUM_PHOTO_PAGE_SIZE}
 						loading={loadingMore}
 						onLoadMore={loadMore}
 					/>
@@ -416,19 +454,20 @@
 	</div>
 </div>
 
-<!-- Lightbox (same component as explore page; walks the full loaded list and
-     pulls the next page at its boundary when not searching) -->
+<!-- Lightbox (same component as explore page). Walks the grid's full loaded list, pulling
+     the next page at its boundary when not searching — or, when opened from the "Popular in
+     this album" rail, walks that curated list instead (see lightboxSource above). -->
 <Lightbox
 	bind:open={lightboxOpen}
-	photo={displayPhotos[selectedPhotoIndex] || null}
-	photos={displayPhotos}
+	photo={lightboxPhotos[selectedPhotoIndex] || null}
+	photos={lightboxPhotos}
 	currentIndex={selectedPhotoIndex}
 	onClose={handleLightboxClose}
 	onNavigate={handleLightboxNavigate}
-	hasMore={searchQuery.trim() ? false : hasMore}
-	onLoadMore={loadMore}
+	hasMore={lightboxHasMore}
+	onLoadMore={lightboxOnLoadMore}
 	loadingMore={loadingMore}
-	totalCount={searchQuery.trim() ? undefined : data.totalCount}
+	totalCount={lightboxTotalCount}
 	indexOffset={0}
 	viewSource="album"
 />

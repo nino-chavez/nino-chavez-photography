@@ -2,9 +2,10 @@ import { json } from '@sveltejs/kit';
 import { fetchAlbumPhotosForDownload, fetchPhotos, ALBUM_PHOTO_SORT } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { isValidAlbumKey } from '$lib/albums/album-key';
+import { ALBUM_PHOTO_PAGE_SIZE } from '$lib/albums/pagination';
 import type { RequestHandler } from './$types';
 
-const PAGE_SIZE = 48;
+const PAGE_SIZE = ALBUM_PHOTO_PAGE_SIZE;
 
 // Album reads are public and change only on ingest (ADR 0001), so they're edge-cacheable.
 // These headers let the CF edge cache the response (via a Cache Rule) and let browsers cache it;
@@ -29,11 +30,13 @@ const NO_CACHE_HEADERS = { 'cache-control': 'private, no-store' };
 //    /share/[token], and by the ZIP worker, which fetches this endpoint rather than holding a
 //    database credential of its own (cloudflare-worker/album-zip/src/manifest.ts).
 //
-// 2. With `page`: returns a single page of full Photo rows so the album lightbox can load
-//    the next page client-side. No count is returned — the client gets totalCount once from
-//    the SSR page load (albums_summary.photo_count) and only consumes `photos` here (see
-//    [slug]/+page.svelte fetchPage). Both use ALBUM_PHOTO_SORT, so the accumulated list
-//    stays contiguous.
+// 2. With `page`: returns a single page of full Photo rows so an album lightbox can load
+//    the next page client-side without closing. No count is returned — the client gets
+//    totalCount once from its own SSR page load (albums_summary.photo_count for the public
+//    album page; the share loader's own count for /share/[token]) and only consumes `photos`
+//    here. Both the public album page (`[slug]/+page.svelte` fetchPage) and the share page
+//    (`share/[token]/+page.svelte` fetchPage) use ALBUM_PHOTO_SORT and ALBUM_PHOTO_PAGE_SIZE,
+//    so the accumulated list stays contiguous across either caller.
 export const GET: RequestHandler = async ({ url }) => {
 	const albumKey = url.searchParams.get('albumKey');
 
@@ -49,11 +52,11 @@ export const GET: RequestHandler = async ({ url }) => {
 	// scoping (not visibility) is the intended boundary for single-album endpoints, and the key is
 	// the capability; /api/zip-url documents the same contract.
 	//
-	// The share page does NOT paginate through here — it pages server-side on its own route via
-	// ?page= (share/[token]/+page.server.ts) — so mode 2's only caller is the public album page.
-	// An earlier comment here claimed otherwise and was the stated reason mode 2 serves unlisted
-	// albums; it was wrong. Left permissive because narrowing it buys nothing while mode 1 hands
-	// the same visitor every cf_image_id by design, but do not cite the share lightbox for it.
+	// Mode 2 (page mode) has two callers as of the share-lightbox fix: the public album page
+	// (`/albums/[slug]`) and the share page (`/share/[token]`), whose own SSR load already pages
+	// through the same `fetchPhotos({ albumKey, ... })` call — its lightbox reuses this endpoint
+	// for pages beyond the one it rendered server-side. Both are single-album-by-key reads, so the
+	// service_role client here is exactly as scoped for one caller as the other.
 	const admin = createSupabaseAdminClient();
 
 	const pageParam = url.searchParams.get('page');
