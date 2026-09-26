@@ -8,8 +8,8 @@ still `openai/text-embedding-3-large`@768) are UNCHANGED — see "What this does
 
 ## Context
 
-An orchestrator-dispatched evaluation (worktree `.claude/worktrees/agent-a9ac18f4737ef6552`,
-`REPORT.md`) scored two independent questions against production's own held-out data:
+An orchestrator-dispatched evaluation (`blueprint/research/2026-09-25-vision-eval/REPORT.md`; harness
+in `scripts/eval/`) scored two independent questions against production's own held-out data:
 
 1. Does a caption-instruction change improve jersey-number findability in captions, and at what
    cost to `players[]` sightings precision?
@@ -32,7 +32,7 @@ a request-shape bug (see "The $17 lesson" below) and fully rewritten before this
 `players[]` extraction section of the ingest prompt (`buildIngestPrompt` in
 `src/lib/ai/ingest-extraction.ts`) is byte-for-byte unchanged. Only the caption instruction's
 first sentence changed, copied VERBATIM from the eval's winning isolation-test arm
-(`scripts/eval/lib/v2-extraction.ts::buildV2Prompt`, that worktree):
+(`scripts/eval/lib/v2-extraction.ts::buildV2Prompt`):
 
 > "Name the jersey number AND color of EVERY on-court player whose number you can actually read
 > (not just the primary subject) — this is the single most important instruction, because a
@@ -207,7 +207,7 @@ prompt wording actually changed) and needs the same kind of human receipt, not a
 ## Caveats (read before treating this as more certain than it is)
 
 - **Ground truth is Claude-labeled, not Nino-labeled.** A 20-photo spot-check sheet
-  (`SPOTCHECK.md` in the eval worktree) exists for human verification; this ADR does not claim
+  (`blueprint/research/2026-09-25-vision-eval/SPOTCHECK.md`) exists for human verification; this ADR does not claim
   that verification happened.
 - **n=65 photos / 40 queries.** Small enough that the eval's OWN first pass at question 2 was
   wrong for an entire round before a request-shape bug was caught — treat any single-digit-point
@@ -244,12 +244,15 @@ prompt wording actually changed) and needs the same kind of human receipt, not a
 
 ## References
 
-- `.claude/worktrees/agent-a9ac18f4737ef6552/.temp/eval/REPORT.md` — the full evaluation, all three
+- `blueprint/research/2026-09-25-vision-eval/REPORT.md` — the full evaluation, all three
   rounds (the request-shape correction is documented inline as "Round... correction round" and
   "Round 3 (final)").
-- `.claude/worktrees/agent-a9ac18f4737ef6552/scripts/eval/lib/v2-extraction.ts` — verbatim source of
+- `blueprint/research/2026-09-25-vision-eval/labels.json`, `photos.json`, `queries.json`,
+  `queries-40.json` — the ground truth and queries, so the evaluation reruns against the same data
+  (`scripts/eval/`; it reads them from `.temp/eval/`, so copy them there first).
+- `scripts/eval/lib/v2-extraction.ts` — verbatim source of
   the adopted caption instruction.
-- `.claude/worktrees/agent-a9ac18f4737ef6552/scripts/eval/lib/embed.ts` — verbatim source of the
+- `scripts/eval/lib/embed.ts` — verbatim source of the
   corrected image-embedding request shape, reused in `src/lib/ai/embeddings.ts`.
 - `blueprint/decisions/0002-know-vs-infer-domain-model.md` — the ADR this one partially supersedes
   (embedder-for-search role only; vision-model lock and KNOW/INFER domain model untouched).
