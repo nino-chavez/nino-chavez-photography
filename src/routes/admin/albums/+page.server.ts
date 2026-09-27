@@ -3,6 +3,7 @@ import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
+import { applyPublishTransition } from '$lib/albums/publish-target';
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	// Check authentication
@@ -87,30 +88,20 @@ export const actions = {
 
 		const adminClient = createSupabaseAdminClient();
 
-		if (currentVisibility === 'unlisted') {
-			// Switch back to public: delete the settings row
-			const { error: deleteError } = await adminClient
-				.from('album_settings')
-				.delete()
-				.eq('album_key', albumKey);
+		// The same writer scripts/publish-album.ts uses — UPSERTs, never DELETEs, and stamps
+		// `published_at` on exactly a hidden -> public transition. This action used to publish an
+		// album by DELETING its settings row outright, which meant an album published here never
+		// got a `published_at` and stayed invisible to the "latest gallery" ranking (/latest,
+		// /api/latest, /api/galleries/recent, /links) forever afterward — see
+		// src/lib/albums/publish-target.ts's module comment.
+		const result = await applyPublishTransition(adminClient, {
+			albumKey,
+			unpublish: currentVisibility !== 'unlisted'
+		});
 
-			if (deleteError) {
-				console.error('[Admin Albums] Error making album public:', deleteError);
-				return fail(500, { error: 'Failed to update album' });
-			}
-		} else {
-			// Switch to unlisted: upsert settings row
-			const { error: upsertError } = await adminClient
-				.from('album_settings')
-				.upsert(
-					{ album_key: albumKey, visibility: 'unlisted', updated_at: new Date().toISOString() },
-					{ onConflict: 'album_key' }
-				);
-
-			if (upsertError) {
-				console.error('[Admin Albums] Error making album unlisted:', upsertError);
-				return fail(500, { error: 'Failed to update album' });
-			}
+		if (!result.ok) {
+			console.error('[Admin Albums] Error updating visibility:', result.error);
+			return fail(500, { error: 'Failed to update album' });
 		}
 
 		return { success: true };
