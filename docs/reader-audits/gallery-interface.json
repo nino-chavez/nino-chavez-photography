@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-27T01:47:15.834Z",
+  "reviewedAt": "2026-09-27T02:13:45.967Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Source-diff review of the five gallery-interface files this PR changes, after migration 20260926150000 (photo_metadata.alt_text) was applied to production and confirmed readable through the anon client. Visible change: the generated caption paragraph is removed from /photo/[id], PhotoDetailModal and Lightbox (Nino: generated text should not be shown as if written). Non-visible change: <img alt> prefers photo_metadata.alt_text, falling back to the previous caption/title-based alt when null (every row is null until the backfill runs, so rendered alt is unchanged at deploy). No new copy, labels or messages were added. A live walk of a production /photo/[id] page follows the deploy.",
-  "sourceDigest": "sha256:5a97ce37aab6708df9d38266aad12393e4942a76ef10f633ce32f400541b3a11",
+  "method": "Re-recorded after merging main (PR #149: visible generated captions removed from photo page, modal and lightbox; alt prefers alt_text). This branch's own change is src/routes/links/+page.svelte: each gallery card's title is the event/matchup segment from splitAlbumNameForDisplay (canonical-album-naming.ts), with the level label as a small secondary line and the date line unchanged; album names are never reworded, only a trailing date duplicating the date line is dropped. Lead card alt keeps the full album name. A live 390px walk of /photography/links follows the deploy.",
+  "sourceDigest": "sha256:75e10a4f98a43ce07098fdda5fed2e28db8a56043b540989df303d39fac8770b",
   "sourceFiles": 136,
   "scope": [
-    "src/routes/photo/[id]/+page.svelte,src/routes/photo/[id]/+page.server.ts,src/lib/components/gallery/PhotoCard.svelte,src/lib/components/gallery/PhotoDetailModal.svelte,src/lib/components/gallery/Lightbox.svelte"
+    "src/routes/links/+page.svelte"
   ]
 }
