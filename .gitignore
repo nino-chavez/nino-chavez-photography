@@ -39,3 +39,7 @@ playwright/.cache/
 *-report.json
 *-drift.*
 *-audit-temp.*
+
+# Python helper bytecode
+__pycache__/
+*.py[cod]
