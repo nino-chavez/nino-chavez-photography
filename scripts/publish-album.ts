@@ -58,7 +58,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 config({ path: join(REPO_ROOT, '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { verifyAlbum } from './verify-album';
-import { resolvePublishTarget } from '../src/lib/albums/publish-target';
+import { resolvePublishTarget, applyPublishTransition } from '../src/lib/albums/publish-target';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -122,42 +122,42 @@ async function main() {
 		}
 	}
 
-	const { data: before, error: readErr } = await supabase
-		.from('album_settings').select('album_key, visibility, gallery_scope')
-		.eq('album_key', ALBUM_KEY).maybeSingle();
-	if (readErr) { console.error(`read failed: ${readErr.message}`); process.exit(1); }
-	console.log(`before: ${before ? JSON.stringify(before) : 'no album_settings row (video-only album)'}`);
-
-	const target = resolvePublishTarget({
-		before: before ? { visibility: before.visibility } : null,
-		unpublish: UNPUBLISH,
-		scope: SCOPE,
-		now: new Date().toISOString()
-	});
-	console.log(`target: ${JSON.stringify({ album_key: ALBUM_KEY, ...target })}`);
-	const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || before?.visibility !== 'public');
+	// Dry-run preview: its own read, never a write, so `applyPublishTransition` (which always
+	// writes) is only called on the real path below.
 	if (DRY) {
+		const { data: before, error: readErr } = await supabase
+			.from('album_settings').select('album_key, visibility, gallery_scope')
+			.eq('album_key', ALBUM_KEY).maybeSingle();
+		if (readErr) { console.error(`read failed: ${readErr.message}`); process.exit(1); }
+		console.log(`before: ${before ? JSON.stringify(before) : 'no album_settings row (video-only album)'}`);
+		const target = resolvePublishTarget({
+			before: before ? { visibility: before.visibility } : null,
+			unpublish: UNPUBLISH,
+			scope: SCOPE,
+			now: new Date().toISOString()
+		});
+		console.log(`target: ${JSON.stringify({ album_key: ALBUM_KEY, ...target })}`);
 		console.log('dry-run — no write');
 		if (target.published_at) console.log('would set published_at (hidden -> public)');
+		const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || before?.visibility !== 'public');
 		if (willAnnounce) console.log(`would announce: ${SOCIAL_DIR}/build-gallery-announce.mjs --album-key ${ALBUM_KEY} --series ${SCOPE === 'lpo' ? 'lpo' : 'other'}`);
 		return;
 	}
 
-	const { error: writeErr } = before
-		? await supabase.from('album_settings').update(target).eq('album_key', ALBUM_KEY)
-		: await supabase.from('album_settings').insert({ album_key: ALBUM_KEY, ...target });
-	if (writeErr) { console.error(`write failed: ${writeErr.message}`); process.exit(1); }
+	// The one write path every publish/unpublish caller shares (also used by the admin
+	// visibility action) — reads the current row, computes the target via
+	// `resolvePublishTarget`, and UPSERTs it (never deletes), so `published_at` is stamped
+	// identically regardless of which caller made the album public.
+	const result = await applyPublishTransition(supabase, {
+		albumKey: ALBUM_KEY!,
+		unpublish: UNPUBLISH,
+		scope: SCOPE
+	});
+	if (!result.ok) { console.error(`write failed: ${result.error}`); process.exit(1); }
 
-	// NOT `published_at` here: this read's only job is to confirm the write and pick the
-	// announce account (`gallery_scope`), and both are already known from `target` above. Adding
-	// a column this read doesn't need would make it fail — silently, since `error` isn't checked
-	// below and `after` would just read `undefined` — on any deploy that runs before migration
-	// 20260926140000 lands, misrouting the announce (`after?.gallery_scope === 'lpo'` -> false
-	// -> 'other') instead of surfacing the real cause.
-	const { data: after } = await supabase
-		.from('album_settings').select('album_key, visibility, gallery_scope')
-		.eq('album_key', ALBUM_KEY).maybeSingle();
-	console.log(`after:  ${JSON.stringify(after)}`);
+	console.log(`before: ${result.before ? JSON.stringify(result.before) : 'no album_settings row (video-only album)'}`);
+	console.log(`target: ${JSON.stringify({ album_key: ALBUM_KEY, ...result.target })}`);
+	const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || result.before?.visibility !== 'public');
 	console.log(UNPUBLISH
 		? 'unpublished — hidden from both sites'
 		: SCOPE
@@ -168,7 +168,7 @@ async function main() {
 		if (!UNPUBLISH && !NO_ANNOUNCE) console.log('announce: skipped — the album was already public (pass --announce to announce it anyway)');
 		return;
 	}
-	announce(after?.gallery_scope === 'lpo' ? 'lpo' : 'other');
+	announce(result.target.gallery_scope === 'lpo' ? 'lpo' : 'other');
 }
 
 /** Build the held carousel (phone alert included) and seed it into the posting Worker's queue. */

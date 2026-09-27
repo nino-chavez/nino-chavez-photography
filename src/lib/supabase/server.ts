@@ -310,37 +310,65 @@ export type RankedAlbumsResult = { ok: true; albums: RankedAlbum[] } | { ok: fal
 /**
  * Every public album, newest first — the read behind `/latest`, `/api/latest`,
  * `/api/galleries/recent`, and `/photography/links`. Pure ranking lives in
- * `$lib/albums/latest` (`rankPublicAlbums`); this is the one place that fetches the two tables
- * it needs and calls it, so all four callers agree by construction.
+ * `$lib/albums/latest` (`rankPublicAlbums`); this is the one place that fetches the tables it
+ * needs and calls it, so all four callers agree by construction.
  *
- * `albums_summary` is a matview (anon REVOKE'd — service_role via matviewClient()), so the
- * unlisted gate is NOT automatic here and rankPublicAlbums applies it explicitly from the
- * `album_settings` read alongside it. `album_settings` itself is read through the anon client:
- * its `SELECT` grant is column-level (20260730030000 + 20260926140000 for `published_at`) and
- * covers exactly the three columns requested below, not `share_token`.
+ * `albums_summary` / `videos_summary` are matviews (anon REVOKE'd — service_role via
+ * matviewClient()), so the unlisted gate is NOT automatic here; `album_settings` and `albums`
+ * are read through the anon client, both publicly readable (`album_settings`'s grant is
+ * column-level — 20260730030000 + 20260926140000 for `published_at`; `albums` has an
+ * unconditional `USING (true)` SELECT policy — 20260608020000).
  *
- * Photo-only: `albums_summary` has no row for a video-only album, so one is never "latest" here
- * — consistent with every other consumer of this view (buildAlbumListing, /api/ai/albums).
+ * `albums_summary` has no row for a video-only album (it's derived purely from
+ * `photo_metadata`), so a video-only publish could never become "latest" without also reading
+ * `videos_summary` and reducing it to the video-ONLY subset — `videoOnlyRows`, the exact
+ * function `buildAlbumListing`/`getPublicGalleryTotals` already use, reused here rather than
+ * re-implemented so a mixed photo+video album is never double-counted.
  */
 export async function getRankedPublicAlbums(): Promise<RankedAlbumsResult> {
-  const [{ data: candidates, error: candidatesError }, { data: settings, error: settingsError }] =
-    await Promise.all([
-      matviewClient()
-        .from('albums_summary')
-        .select('album_key, album_name, cover_cf_image_id, photo_count, latest_photo_date'),
-      supabaseServer.from('album_settings').select('album_key, visibility, published_at')
-    ]);
+  const [
+    { data: candidates, error: candidatesError },
+    { data: videoRows, error: videoError },
+    { data: settings, error: settingsError },
+    { data: albumDates, error: albumDatesError }
+  ] = await Promise.all([
+    matviewClient()
+      .from('albums_summary')
+      .select('album_key, album_name, cover_cf_image_id, photo_count, latest_photo_date'),
+    matviewClient()
+      .from('videos_summary')
+      .select('album_key, album_name, cover_thumbnail_url, video_count, latest_video_date'),
+    supabaseServer.from('album_settings').select('album_key, visibility, published_at'),
+    // Authoritative event date (Codex review, PR #146): albums_summary/videos_summary only ever
+    // derive a CAPTURE date from photo_metadata/videos — `albums.event_date` is the operator-set
+    // or ingest-derived-once value rankPublicAlbums prefers, falling back to capture date only
+    // when this is null.
+    supabaseServer.from('albums').select('album_key, event_date')
+  ]);
 
-  if (candidatesError || settingsError) {
-    console.error('[getRankedPublicAlbums]', candidatesError ?? settingsError);
+  if (candidatesError || videoError || settingsError || albumDatesError) {
+    console.error(
+      '[getRankedPublicAlbums]',
+      candidatesError ?? videoError ?? settingsError ?? albumDatesError
+    );
     return { ok: false };
   }
+
+  const photoAlbumKeys = new Set((candidates ?? []).map((c: { album_key: string }) => c.album_key));
+  const unlistedKeys = new Set(
+    (settings ?? [])
+      .filter((s: { visibility: string }) => s.visibility === 'unlisted')
+      .map((s: { album_key: string }) => s.album_key)
+  );
+  const videoOnlyCandidates = videoOnlyRows(videoRows ?? [], photoAlbumKeys, unlistedKeys);
 
   return {
     ok: true,
     albums: rankPublicAlbums({
       candidates: candidates ?? [],
-      settings: (settings ?? []) as { album_key: string; visibility: 'public' | 'unlisted'; published_at: string | null }[]
+      videoCandidates: videoOnlyCandidates,
+      settings: (settings ?? []) as { album_key: string; visibility: 'public' | 'unlisted'; published_at: string | null }[],
+      albumDates: albumDates ?? []
     })
   };
 }
