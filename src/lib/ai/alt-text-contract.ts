@@ -118,18 +118,21 @@ export function inspectAltText(text: string, opts: { visibleText?: string[] } = 
 		if (!term || typeof term !== 'string') continue;
 		const trimmed = term.trim();
 		if (!trimmed) continue;
-		// A SINGLE-WORD visible_text entry is checked against the generic-vocabulary stoplist below
-		// before it can trigger a reject. Measured against real photo_metadata.visible_text
+		// A visible_text entry is skipped when EVERY word in it is generic vocabulary (the stoplist
+		// below), whether it's one word or several. Measured against real photo_metadata.visible_text
 		// (22,442 rows, 11,512 distinct values, 2026-09-26): the highest-frequency entries are
 		// overwhelmingly generic sports/broadcast/color vocabulary ("volleyball" 1,025x, "home"
-		// 320x, "team" 220x, "blue" 88x, "court" 48x, "ball" 76x) that alt_text is EXPECTED to use
+		// 320x, "team" 220x, "blue" 88x, "court" 48x, "dive" 44x) that alt_text is EXPECTED to use
 		// ("a player in blue... a volleyball... on the court"). Without this filter, the check
 		// would hard-fail ingest on a large fraction of real photos over words that identify
-		// nobody. A MULTI-WORD entry ("aurora central catholic", "lewis university") is never
-		// stopword-filtered — a generic alt_text sentence has no legitimate reason to contain a
-		// multi-word phrase verbatim, so a match there is real signal, same as a single genuinely
-		// identifying word ("sikora", "chargers").
-		if (!trimmed.includes(' ') && NAMED_TEXT_STOPWORDS.has(trimmed.toLowerCase())) continue;
+		// nobody — and that includes MULTI-word all-generic phrases actually present in the same
+		// data ("beach volleyball" 42x, "high school" 65x, "senior night" 45x, "game ball" 33x): an
+		// earlier version of this filter only ever skipped a single-word entry, so "on a beach
+		// volleyball court" would still have been flagged. A phrase with even one non-generic word
+		// ("home of the chargers", "aurora central catholic") is NOT skipped — "chargers"/"aurora"
+		// is real signal, same as a single genuinely identifying word ("sikora").
+		const words = trimmed.toLowerCase().split(/\s+/).filter((w) => /[a-z]/i.test(w));
+		if (words.length > 0 && words.every((w) => NAMED_TEXT_STOPWORDS.has(w))) continue;
 		const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		const match = raw.match(new RegExp(`\\b${escaped}\\b`, 'i'))?.[0];
 		if (match) {

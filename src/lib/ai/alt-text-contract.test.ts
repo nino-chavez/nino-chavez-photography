@@ -76,10 +76,41 @@ test('does not false-positive on generic vocabulary that coincidentally matches 
 		}).map((issue) => issue.code),
 		['named-text']
 	);
-	// A multi-word entry is never stoplist-filtered, even if built entirely from stopwords.
+});
+
+test('does not false-positive on a MULTI-word visible_text entry that is all generic words', () => {
+	// Also measured in real data (2026-09-26): "beach volleyball" (42 rows), "high school" (65),
+	// "senior night" (45), "game ball" (33), "track & field" (46) — an earlier version of this
+	// filter only ever skipped a SINGLE-word entry, so any of these would still have flagged an
+	// alt_text that (correctly, per the prompt) describes the setting/sport in the same words.
+	assert.deepEqual(
+		inspectAltText('A player in white sets the ball on a beach volleyball court.', {
+			visibleText: ['beach volleyball']
+		}),
+		[]
+	);
+	assert.deepEqual(
+		inspectAltText('A player in blue serves the ball during a high school volleyball game.', {
+			visibleText: ['high school']
+		}),
+		[]
+	);
+	assert.deepEqual(
+		inspectAltText('A player in red digs the ball on the track & field.', {
+			visibleText: ['track & field']
+		}),
+		[]
+	);
+	// A multi-word entry with even one non-generic word is NOT skipped — that word is real signal.
 	assert.deepEqual(
 		inspectAltText('A player in blue serves a volleyball at Home of the Chargers.', {
 			visibleText: ['home of the chargers']
+		}).map((issue) => issue.code),
+		['named-text']
+	);
+	assert.deepEqual(
+		inspectAltText('A player in white blocks near a banner for Aurora Central Catholic.', {
+			visibleText: ['aurora central catholic']
 		}).map((issue) => issue.code),
 		['named-text']
 	);
