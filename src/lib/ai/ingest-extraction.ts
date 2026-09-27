@@ -31,8 +31,7 @@
  * consumers that needed accessible alt text were instead stripping numbers back OUT of the
  * caption with regex, which produced broken sentences and missed numbers ("numbers 3 and 12"
  * shipped to a published Instagram alt text). `alt_text` never contains a number, a name, printed
- * text, guessed identity, or aesthetic filler — except an album's own team name when the frame
- * proves it on a uniform — see alt-text-contract.ts. It is placed BEFORE
+ * text, guessed identity, or aesthetic filler — see alt-text-contract.ts. It is placed BEFORE
  * `visible_text` in the returned JSON (both here and in the prompt below) deliberately:
  * `parseWithRepair`'s truncation-recovery path closes the object right before `"visible_text"`,
  * so any key that comes after it is lost on a repaired parse.
@@ -47,12 +46,7 @@ import {
 	inspectCaption,
 	MAX_CAPTION_CORRECTIONS
 } from './caption-contract';
-import {
-	assertAltTextContract,
-	buildAltTextCorrectionMessage,
-	buildAltTextTeamContext,
-	inspectAltText
-} from './alt-text-contract';
+import { assertAltTextContract, buildAltTextCorrectionMessage, inspectAltText } from './alt-text-contract';
 
 export const INGEST_MODEL = 'google/gemini-2.5-flash-lite';
 /** Stamped into `photo_metadata.extraction_version` so future prompt/model changes re-process only stale rows. */
@@ -71,8 +65,9 @@ export interface IngestPlayer {
 export interface IngestExtraction {
 	caption: string;
 	/** Screen-reader / `<img alt>` sentence — never a jersey number, name, printed text, guessed
-	 * identity, or aesthetic filler, except a frame-proven canonical album team name. Distinct job
-	 * from `caption`; see alt-text-contract.ts. */
+	 * identity, or aesthetic filler. Distinct job from `caption`; see alt-text-contract.ts. Never
+	 * names a team: ingest-album.ts asks the separate team-aware alt-text call for that, using this
+	 * pass's visible_text as evidence it could not have produced itself. */
 	alt_text: string;
 	photo_category: string | null;
 	play_type: string | null;
@@ -90,8 +85,6 @@ export interface ExtractContext {
 	/** The album's authoritative sport, or null for a non-sport shoot (portrait/event). */
 	albumSport: Sport | null;
 	albumName?: string;
-	/** The two canonical teams linked to this album, when it is a matchup. */
-	teamNames?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +96,7 @@ export interface ExtractContext {
  * lists ONLY that sport's plays; for a non-sport album it forbids play_type entirely.
  */
 export function buildIngestPrompt(ctx: ExtractContext): string {
-	const { albumSport, albumName, teamNames } = ctx;
+	const { albumSport, albumName } = ctx;
 	const isRealSport = albumSport !== null && albumSport !== 'other';
 	const plays = isRealSport ? PLAY_TYPES_BY_SPORT[albumSport as Sport] : [];
 
@@ -116,21 +109,16 @@ export function buildIngestPrompt(ctx: ExtractContext): string {
 		: `"play_type": always null.`;
 
 	const albumLine = albumName ? `\nAlbum: "${albumName}".` : '';
-	const teamContext = buildAltTextTeamContext(teamNames);
-	const printedTextRule = teamContext
-		? 'printed text from the frame except an allowed team name under the matchup rule above'
-		: 'any printed text from the frame';
 
 	return `You are extracting structured metadata from a single action-sports photograph for a photography portfolio's search index.${albumLine}
 ${sportLine}
-${teamContext}
 
 Return ONLY a JSON object with EXACTLY these keys:
 
 "caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Name the jersey number AND color of EVERY on-court player whose number you can actually read (not just the primary subject) — this is the single most important instruction, because a caption missing a readable number is a photo nobody can find by searching for that number. Include the action and scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
   Name a person by the COLOR of what they wear, never by naming swimwear: write "a player in brown" or "a player in a black top", never "bikini", "swimsuit", "bathing suit", "briefs", or any description of a person's body. Ordinary athletic wear (jersey, shirt, top, shorts, trunks) may be named normally.
   Only state a number you can actually count in the frame — "two players", "three balls". If you are not certain how many, describe without a number rather than guessing one.
-"alt_text": a DIFFERENT, SEPARATE sentence (under 150 characters, one sentence) for a screen reader — who is doing what: describe the team by the COLOR of their uniform and the visible body position and motion. Mention the ball ONLY when the ball itself is visible in this frame — e.g. "reaches overhead for the ball", "extends low for the ball". When no ball is visible, describe posture and contact between players instead — e.g. "two players slap hands", "stands with both hands open", "crouches in a ready stance". Do NOT name a specific volleyball play — never write "serves", "sets", "spikes", "attacks", "blocks", "digs", or "passes". Naming the play is a guess about intent and timing this sentence must never make, even when it looks obvious: describe only what the body and the ball are visibly doing, not which play it is. Only add a setting detail (the net, the sideline, the bleachers, a gym, a beach court) when THAT SPECIFIC detail is actually visible in this frame — do not default to "near the net" or any other location as generic filler when nothing in the frame shows it. This sentence must NEVER include a jersey number or any other digit, a person's name, ${printedTextRule}, guessed identity, or aesthetic language (no "cinematic", "stunning", "beautifully"). Do not just copy "caption" — caption names jersey numbers for search; alt_text never does.
+"alt_text": a DIFFERENT, SEPARATE sentence (under 150 characters, one sentence) for a screen reader — who is doing what: describe the team by the COLOR of their uniform and the visible body position and motion. Mention the ball ONLY when the ball itself is visible in this frame — e.g. "reaches overhead for the ball", "extends low for the ball". When no ball is visible, describe posture and contact between players instead — e.g. "two players slap hands", "stands with both hands open", "crouches in a ready stance". Do NOT name a specific volleyball play — never write "serves", "sets", "spikes", "attacks", "blocks", "digs", or "passes". Naming the play is a guess about intent and timing this sentence must never make, even when it looks obvious: describe only what the body and the ball are visibly doing, not which play it is. Only add a setting detail (the net, the sideline, the bleachers, a gym, a beach court) when THAT SPECIFIC detail is actually visible in this frame — do not default to "near the net" or any other location as generic filler when nothing in the frame shows it. This sentence must NEVER include a jersey number or any other digit, a person's name, any printed text from the frame, guessed identity, or aesthetic language (no "cinematic", "stunning", "beautifully"). Do not just copy "caption" — caption names jersey numbers for search; alt_text never does.
 "photo_category": one of ["${PHOTO_CATEGORIES.join('", "')}"].
 ${playLine}
 "sharpness": number 0-10 (technical focus quality; 0=blurry, 10=tack-sharp).
@@ -293,7 +281,7 @@ export async function extractOne(
 	if (!apiKey) throw new Error('extractOne: missing OpenRouter API key');
 
 	const dataUrl = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
-	const prompt = buildIngestPrompt({ albumSport: opts.albumSport, albumName: opts.albumName, teamNames: opts.teamNames });
+	const prompt = buildIngestPrompt({ albumSport: opts.albumSport, albumName: opts.albumName });
 	const messages: Array<{ role: string; content: unknown }> = [
 		{
 			role: 'user',
@@ -335,19 +323,13 @@ export async function extractOne(
 		if (!extraction.caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
 
 		const captionIssues = inspectCaption(extraction.caption);
-		const altTextIssues = inspectAltText(extraction.alt_text, {
-			visibleText: extraction.visible_text,
-			teamNames: opts.teamNames
-		});
+		const altTextIssues = inspectAltText(extraction.alt_text, { visibleText: extraction.visible_text });
 		if (!captionIssues.length && !altTextIssues.length) return { extraction, cost, rawText: text };
 		// One of the two issue lists is non-empty here, so one of these always throws — the
 		// canonical contract error (caption checked first, matching its historical priority).
 		if (corrections >= MAX_CAPTION_CORRECTIONS) {
 			if (captionIssues.length) assertCaptionContract(extraction.caption);
-			assertAltTextContract(extraction.alt_text, {
-				visibleText: extraction.visible_text,
-				teamNames: opts.teamNames
-			});
+			assertAltTextContract(extraction.alt_text, { visibleText: extraction.visible_text });
 		}
 
 		messages.push({ role: 'assistant', content: text });

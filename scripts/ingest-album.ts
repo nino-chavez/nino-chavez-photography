@@ -66,7 +66,8 @@ import { embedText, embedImage } from '../src/lib/ai/embeddings';
 import { resizeForEmbedding } from '../src/lib/ai/image-resize';
 import { computeSharpness } from '../src/lib/ai/sharpness';
 import { extractOne, EXTRACTION_VERSION, INGEST_MODEL } from '../src/lib/ai/ingest-extraction';
-import { getTwoTeamMatchupNames } from '../src/lib/ai/alt-text-contract';
+import { getTwoTeamMatchupNames, visibleTextProvesMatchupTeam } from '../src/lib/ai/alt-text-contract';
+import { extractAltTextOnly } from '../src/lib/ai/alt-text-only';
 import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
 import { checkAlbumName } from '../src/lib/utils/canonical-album-naming';
@@ -784,6 +785,19 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 
 	// 3. Extract (sport-aware) — retry on 429/5xx.
 	const ex = await extractWithRetry(fileBuffer, album);
+	const resizedForEmbed = await resizeForEmbedding(fileBuffer);
+
+	// 3b. Team-aware alt text, only for a two-team matchup whose frame reads one of the teams. The
+	// visible_text checked here came from the pass above, which was never told the team names, so
+	// it is independent evidence for the naming call. If the naming call cannot satisfy the
+	// contract, the color-only alt text from step 3 stands.
+	if (visibleTextProvesMatchupTeam(ex.extraction.visible_text, album.teamNames)) {
+		const named = await namedAltTextWithRetry(resizedForEmbed, ex.extraction.visible_text, album.teamNames);
+		if (named) {
+			ex.extraction.alt_text = named.altText;
+			if (named.cost) ex.cost = (ex.cost ?? 0) + named.cost;
+		}
+	}
 
 	// 4. Embed the caption (caption-text space; still written, no longer the primary search
 	// ranking signal — see blueprint/decisions/0006).
@@ -793,7 +807,6 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	// 4b. Embed the IMAGE (image space — the primary search-ranking vector as of 0006) +
 	// deterministic sharpness. Same fatal-on-failure contract as the caption embed above: a
 	// failed image embed leaves the checkpoint's `failed` entry for this image, safe to retry.
-	const resizedForEmbed = await resizeForEmbedding(fileBuffer);
 	const imgResult = await embedImageWithRetry(resizedForEmbed);
 	if (!imgResult) throw new Error('image embed failed (null vector)');
 	if (imgResult.cost) ex.cost = (ex.cost ?? 0) + imgResult.cost;
@@ -948,7 +961,6 @@ async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; al
 				model: MODEL,
 				albumSport: album.sport,
 				albumName: album.albumName,
-				teamNames: album.teamNames,
 			});
 		} catch (e: any) {
 			const msg = String(e?.message || e);
@@ -957,6 +969,27 @@ async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; al
 				await sleep(Math.min(2000 * 2 ** (attempt - 1), 30000));
 				continue;
 			}
+			throw e;
+		}
+	}
+}
+
+/** The team-aware alt-text call (the same one the backfill uses), with extractWithRetry's
+ * 429/5xx retry. Returns null when the model cannot meet the alt-text contract, so the caller
+ * keeps the color-only sentence; any other failure is fatal for this image like every step. */
+async function namedAltTextWithRetry(buffer: Buffer, visibleText: string[], teamNames: string[]) {
+	let attempt = 0;
+	for (;;) {
+		try {
+			return await extractAltTextOnly(buffer, { apiKey: OPENROUTER_API_KEY!, visibleText, teamNames });
+		} catch (e: any) {
+			const msg = String(e?.message || e);
+			if (msg.startsWith('RETRY:') && attempt < 5) {
+				attempt++;
+				await sleep(Math.min(2000 * 2 ** (attempt - 1), 30000));
+				continue;
+			}
+			if (msg.startsWith('alt text contract:')) return null;
 			throw e;
 		}
 	}
