@@ -9,7 +9,7 @@
 -->
 <script lang="ts">
 	import { Images, ExternalLink, ChevronRight } from 'lucide-svelte';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -27,13 +27,18 @@
 		}).format(new Date(iso));
 	}
 
-	// "All galleries" -> the site's own homepage (SITE_URL's base path, `/photography`), not the
-	// dedicated /albums browse page — that's the destination Nino named for this row.
+	// "All galleries" -> the site's own homepage (`/photography`), not the dedicated /albums browse
+	// page — that's the destination Nino named for this row.
+	// "Book event coverage" -> ninochavez.co/photography/coverage, which the main ninochavez.co site
+	// serves, not this app. It sits under this app's base path, so the client router would claim it
+	// and 404; `reload` forces a full navigation (same device as the site header/footer, see
+	// navigation-contract.test.ts).
 	const OUTBOUND_LINKS = [
-		{ label: 'All galleries', href: base || '/', external: false },
-		{ label: 'Flickday Media', href: 'https://flickdaymedia.com', external: true },
-		{ label: "Let's Pepper", href: 'https://letspepper.com', external: true },
-		{ label: 'ninochavez.co', href: 'https://ninochavez.co', external: true }
+		{ label: 'Book event coverage', href: '/photography/coverage', external: false, reload: true },
+		{ label: 'All galleries', href: resolve('/'), external: false, reload: false },
+		{ label: 'Flickday Media', href: 'https://flickdaymedia.com', external: true, reload: false },
+		{ label: "Let's Pepper", href: 'https://letspepper.com', external: true, reload: false },
+		{ label: 'ninochavez.co', href: 'https://ninochavez.co', external: true, reload: false }
 	];
 </script>
 
@@ -150,6 +155,7 @@
 					<a
 						href={link.href}
 						rel={link.external ? 'noopener' : undefined}
+						data-sveltekit-reload={link.reload ? '' : undefined}
 						class="flex items-center justify-between rounded-lg border border-charcoal-800 bg-charcoal-900 px-4 py-3 text-base font-medium text-white hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 outline-none"
 					>
 						<span>{link.label}</span>

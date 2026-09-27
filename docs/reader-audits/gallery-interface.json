@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-27T00:08:57.940Z",
+  "reviewedAt": "2026-09-27T00:15:20.264Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Source-diff review of the one additional changed file under this surface's sourceRoots since the last receipt: src/routes/admin/albums/+page.server.ts. The edit replaces a delete/upsert admin-visibility DB call with a call to a shared publish-transition function (src/lib/albums/publish-target.ts); it changes zero rendered strings — no copy, labels, or messages in this file were added, removed, or reworded. All other changes in this pass (src/lib/albums/latest.ts, publish-target.ts, src/lib/supabase/server.ts) are outside this surface's declared sourceRoots (src/routes, src/lib/components) and carry no visitor-facing copy — ranking/DB logic, not gallery-interface content. npm run check / npm run build pass clean (0 type errors).",
-  "sourceDigest": "sha256:83f3c5153cdcf955192057b569c1e9bdf8702c7e1ed7262bad8876570d470e94",
+  "method": "Source-diff review of src/routes/links/+page.svelte, the only changed file under this surface. Adds one visitor-facing row, 'Book event coverage', first in the 'More to explore' list, linking to /photography/coverage (served by the main ninochavez.co site, so it carries data-sveltekit-reload to force a full navigation, matching the header/footer links in navigation-contract.test.ts). Label follows reader-contract.json: it names the visitor's next action plainly with no implementation language. Also replaces the deprecated base import with resolve('/') for the existing All galleries row (same destination). A live 390px walk of /photography/links follows the deploy; no local data render was possible from this session.",
+  "sourceDigest": "sha256:862844487d3a696624f95f6b9882f77ff4ddfe2695582e0560057852b810456c",
   "sourceFiles": 136,
   "scope": [
-    "src/routes/admin/albums/+page.server.ts: DB-write refactor only (delete+upsert -> shared applyPublishTransition), zero copy changes — an admin-only route, not a visitor-facing surface, already covered by the prior receipt's description of the other four files"
+    "src/routes/links/+page.svelte"
   ]
 }
