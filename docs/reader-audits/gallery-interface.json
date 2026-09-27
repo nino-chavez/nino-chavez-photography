@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-27T00:15:20.264Z",
-  "reviewedBy": "Claude Opus 5.5",
-  "method": "Source-diff review of src/routes/links/+page.svelte, the only changed file under this surface. Adds one visitor-facing row, 'Book event coverage', first in the 'More to explore' list, linking to /photography/coverage (served by the main ninochavez.co site, so it carries data-sveltekit-reload to force a full navigation, matching the header/footer links in navigation-contract.test.ts). Label follows reader-contract.json: it names the visitor's next action plainly with no implementation language. Also replaces the deprecated base import with resolve('/') for the existing All galleries row (same destination). A live 390px walk of /photography/links follows the deploy; no local data render was possible from this session.",
-  "sourceDigest": "sha256:862844487d3a696624f95f6b9882f77ff4ddfe2695582e0560057852b810456c",
+  "reviewedAt": "2026-09-27T01:20:28.335Z",
+  "reviewedBy": "Claude Sonnet 5",
+  "method": "Source-diff review of src/routes/links/+page.svelte, the only file under this surface's declared sourceRoots (src/routes, src/lib/components) that changed. The card title now shows the event/matchup segment instead of the full standard-format album name, with any recognized level/division/sport prefix (e.g. 'HS Girls VB') moved to a small secondary line above it, and any trailing date segment that duplicates the date-count line dropped — parsed by splitAlbumNameForDisplay in src/lib/utils/canonical-album-naming.ts (outside this surface's sourceRoots, no visitor-facing copy of its own, covered by 18 unit tests including all 6 currently-live albums from /photography/api/galleries/recent). The lead card's image alt text still uses the full raw album_name, unchanged. No album name text is rewritten, only re-partitioned; reader-contract.json's 'album and event names' precision lock holds. A live 390px walk of /photography/links on the Cloudflare Pages branch preview follows this receipt.",
+  "sourceDigest": "sha256:3a8f4a58c17540b8908292763081a77887c29566f750e95370bd3ef18e539cac",
   "sourceFiles": 136,
   "scope": [
     "src/routes/links/+page.svelte"

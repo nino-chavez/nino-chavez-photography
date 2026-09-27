@@ -18,6 +18,8 @@
  * See: .agent-os/CANONICAL_NAMING_STRATEGY.md (historical)
  */
 
+import { SPORTS } from '../ai/taxonomy';
+
 // UX-aware character limits
 export const MAX_LENGTH_IDEAL = 35; // Optimal for scanning (1 line)
 export const MAX_LENGTH_HARD = 45; // Absolute maximum (2 lines mobile)
@@ -100,6 +102,73 @@ export interface AlbumNameCheck {
 	issues: string[];
 	/** The standard name built from the facts, keeping the operator's middle segment. */
 	suggestion: string;
+}
+
+/**
+ * Every level+division+sport prefix the standard can produce ("HS Girls VB", "College Men's
+ * Soccer", "Club VB", ...), built once from `albumNamePrefix` itself over every known level,
+ * division, and `SPORTS` entry (including "none" for each). A display consumer that only has
+ * the rendered album name — not the album's `level`/`division`/`sport` facts — recognizes the
+ * standard's prefix segment by exact membership in this set, never by guessing from words. That
+ * keeps an event name that happens to start with a word like "College" ("Chicago Big Dig 2026")
+ * from being misread as the standard's prefix.
+ */
+const KNOWN_PREFIXES: Set<string> = (() => {
+	const set = new Set<string>();
+	const levels: (string | undefined)[] = [undefined, ...Object.keys(LEVEL_LABELS)];
+	const divisions: (string | undefined)[] = [undefined, ...Object.keys(DIVISION_LABELS)];
+	const sports: (string | undefined)[] = [undefined, ...SPORTS];
+	for (const level of levels) {
+		for (const division of divisions) {
+			for (const sport of sports) {
+				const prefix = albumNamePrefix({ level, division, sport });
+				if (prefix) set.add(prefix);
+			}
+		}
+	}
+	return set;
+})();
+
+/** A trailing segment in the standard's date format — the one the date·photo-count line repeats. */
+const TRAILING_DATE_SEGMENT = /^\d{2}-\d{2}-\d{4}( to \d{2}-\d{2}-\d{4})?$/;
+
+export interface AlbumDisplayParts {
+	/** The event or matchup segment — the card's title. */
+	title: string;
+	/** The level/division/sport prefix ("HS Girls VB"), for a small secondary line/tag; `null` when the name has none (or one this parser doesn't recognize). */
+	levelLabel: string | null;
+}
+
+/**
+ * Splits a rendered album name into a title and an optional level/division/sport tag, for a card
+ * that already shows the capture date on its own line (so the date must not also open the
+ * title). The album name is a precision lock: this never rewrites a word, it only
+ * - drops a trailing segment that exactly matches the standard's date format (duplicating the
+ *   date line), and
+ * - moves a recognized prefix segment (see `KNOWN_PREFIXES`) to `levelLabel`.
+ * A name that isn't in the standard shape — no recognized prefix, no matching trailing date, e.g.
+ * "Chicago Big Dig 2026 - North Avenue Beach" or "Jalapeño Open - July 2026" — comes back with
+ * `title` equal to the full original name and `levelLabel: null`.
+ */
+export function splitAlbumNameForDisplay(name: string): AlbumDisplayParts {
+	const segments = name
+		.split(/\s+[-–—]\s+/)
+		.map((s) => s.trim())
+		.filter(Boolean);
+	if (segments.length === 0) return { title: name, levelLabel: null };
+
+	let rest = [...segments];
+	if (rest.length > 1 && TRAILING_DATE_SEGMENT.test(rest[rest.length - 1])) {
+		rest = rest.slice(0, -1);
+	}
+
+	let levelLabel: string | null = null;
+	if (rest.length > 1 && KNOWN_PREFIXES.has(rest[0])) {
+		levelLabel = rest[0];
+		rest = rest.slice(1);
+	}
+
+	return { title: rest.join(' - ') || name, levelLabel };
 }
 
 /**

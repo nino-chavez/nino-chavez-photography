@@ -10,9 +10,20 @@
 <script lang="ts">
 	import { Images, ExternalLink, ChevronRight } from 'lucide-svelte';
 	import { resolve } from '$app/paths';
+	import { splitAlbumNameForDisplay } from '$lib/utils/canonical-album-naming';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	// The card title is the event/matchup segment, with any recognized level/division/sport
+	// prefix ("HS Girls VB") lifted to a small secondary line and any trailing date segment
+	// dropped — the date · photo-count line below already shows it. `splitAlbumNameForDisplay`
+	// (the naming standard's own module) does the parsing; the raw `album_name` stays intact for
+	// the lead card's alt text and is never itself rewritten. See canonical-album-naming.ts.
+	let leadDisplay = $derived(data.lead ? splitAlbumNameForDisplay(data.lead.album_name) : null);
+	let recentDisplay = $derived(
+		data.recent.map((album) => ({ album, display: splitAlbumNameForDisplay(album.album_name) }))
+	);
 
 	/** `event_date` is already a bare `YYYY-MM-DD` (`toLatestApiAlbum` normalizes it from
 	 * `latest_photo_date`, which carries a time-of-day) — force UTC on the display format too, so
@@ -79,8 +90,13 @@
 					Latest gallery
 				</span>
 				<div>
+					{#if leadDisplay?.levelLabel}
+						<p class="text-xs font-medium text-charcoal-400 uppercase tracking-wide truncate">
+							{leadDisplay.levelLabel}
+						</p>
+					{/if}
 					<h2 class="text-xl font-semibold text-white leading-snug line-clamp-2">
-						{data.lead.album_name}
+						{leadDisplay?.title ?? data.lead.album_name}
 					</h2>
 					<p class="text-sm text-charcoal-300 mt-1">
 						{formatEventDate(data.lead.event_date)}
@@ -107,7 +123,7 @@
 				More recent galleries
 			</h2>
 			<ul class="flex flex-col gap-2">
-				{#each data.recent as album (album.album_key)}
+				{#each recentDisplay as { album, display } (album.album_key)}
 					<li>
 						<a
 							href={album.url}
@@ -129,7 +145,12 @@
 								{/if}
 							</span>
 							<span class="min-w-0 flex-1">
-								<span class="block line-clamp-2 text-base font-medium text-white">{album.album_name}</span>
+								{#if display.levelLabel}
+									<span class="block text-xs font-medium text-charcoal-400 uppercase tracking-wide truncate">
+										{display.levelLabel}
+									</span>
+								{/if}
+								<span class="block line-clamp-2 text-base font-medium text-white">{display.title}</span>
 								<span class="block text-sm text-charcoal-400">
 									{formatEventDate(album.event_date)}
 									{#if album.photo_count}
