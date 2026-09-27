@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-27T00:15:20.264Z",
+  "reviewedAt": "2026-09-27T01:47:15.834Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Source-diff review of src/routes/links/+page.svelte, the only changed file under this surface. Adds one visitor-facing row, 'Book event coverage', first in the 'More to explore' list, linking to /photography/coverage (served by the main ninochavez.co site, so it carries data-sveltekit-reload to force a full navigation, matching the header/footer links in navigation-contract.test.ts). Label follows reader-contract.json: it names the visitor's next action plainly with no implementation language. Also replaces the deprecated base import with resolve('/') for the existing All galleries row (same destination). A live 390px walk of /photography/links follows the deploy; no local data render was possible from this session.",
-  "sourceDigest": "sha256:862844487d3a696624f95f6b9882f77ff4ddfe2695582e0560057852b810456c",
+  "method": "Source-diff review of the five gallery-interface files this PR changes, after migration 20260926150000 (photo_metadata.alt_text) was applied to production and confirmed readable through the anon client. Visible change: the generated caption paragraph is removed from /photo/[id], PhotoDetailModal and Lightbox (Nino: generated text should not be shown as if written). Non-visible change: <img alt> prefers photo_metadata.alt_text, falling back to the previous caption/title-based alt when null (every row is null until the backfill runs, so rendered alt is unchanged at deploy). No new copy, labels or messages were added. A live walk of a production /photo/[id] page follows the deploy.",
+  "sourceDigest": "sha256:5a97ce37aab6708df9d38266aad12393e4942a76ef10f633ce32f400541b3a11",
   "sourceFiles": 136,
   "scope": [
-    "src/routes/links/+page.svelte"
+    "src/routes/photo/[id]/+page.svelte,src/routes/photo/[id]/+page.server.ts,src/lib/components/gallery/PhotoCard.svelte,src/lib/components/gallery/PhotoDetailModal.svelte,src/lib/components/gallery/Lightbox.svelte"
   ]
 }

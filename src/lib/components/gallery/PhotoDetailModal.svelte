@@ -186,7 +186,7 @@
 											src={optimizedImageUrl || photo.image_url}
 											srcset={imageSrcSet}
 											sizes={imageSizes}
-											alt={photo.title || 'Photo'}
+											alt={photo.alt_text || photo.caption || photo.title || 'Photo'}
 											class="absolute inset-0 w-full h-full object-contain"
 											loading="eager"
 											decoding="async"
@@ -212,14 +212,14 @@
 											</div>
 										{/if}
 
-										<!-- Caption/Description if available -->
-										{#if photo.caption}
-											<div>
-												<Typography variant="body" class="text-charcoal-300">
-													{photo.caption}
-												</Typography>
-											</div>
-										{/if}
+										<!--
+											No visible caption paragraph. `photo.caption` is machine-generated search
+											metadata (ADR 0006) — it names jersey numbers and reads like retrieval text,
+											not prose a person wrote about the photo. Displaying it as if it were a
+											caption misrepresents it (Nino, 2026-09-26). It stays wired into the <img
+											alt> above (preferring alt_text) and into meta description/schema markup
+											elsewhere.
+										-->
 									</div>
 
 									<!-- Download, Favorite & Social Sharing (NEW - Week 3) -->

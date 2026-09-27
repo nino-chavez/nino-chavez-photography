@@ -65,10 +65,19 @@ export function photoPageTitle(albumName: string | null, caption: string | null)
  *
  * This was the album name, so a screen reader announced "Chicago Big Dig 2026 - North Avenue
  * Beach" for all 363 frames in that album — the event, never the picture. The caption
- * describes what is actually visible, which is what alt text is for. Falls back to the album
- * name only when there is no caption at all.
+ * describes what is actually visible, which is what alt text was made to do here first — but a
+ * caption MUST name every legible jersey number (ADR 0006) and `alt_text` (the alt-text pipeline,
+ * 2026-09-26) is the purpose-built sentence that never does. Preference order: `altText` (when
+ * backfilled/reprocessed) → `caption` (today's behavior for every row that predates it) → the
+ * album name → 'Photo'.
  */
-export function photoAltText(albumName: string | null, caption: string | null): string {
+export function photoAltText(
+	altText: string | null | undefined,
+	albumName: string | null,
+	caption: string | null
+): string {
+	const alt = (altText ?? '').trim();
+	if (alt) return alt;
 	const text = (caption ?? '').trim();
 	if (text) return text;
 	const album = (albumName ?? '').trim();

@@ -1,16 +1,12 @@
 {
   "version": 1,
   "surface": "AI search captions",
-  "reviewedAt": "2026-09-26T10:14:14.716Z",
-  "reviewedBy": "Claude Opus 5.5",
-  "method": "Read the actual ingest-v3 (prompt v2, gemini-2.5-flash-lite) captions and sightings written to production for album Re7kho after an in-place reprocess, and compared four of them against the frames viewed directly (acc-v-jca-35, 075, 20, 40). 120/120 captions pass the caption contract (two needed the too-long correction; the correction message now targets 25 words and forbids an unchanged resubmission, after a 31-word caption came back verbatim). 77/120 captions name a jersey number (52/120 under ingest-v2), average 24 words, no relationship, emotion, outcome, aesthetic or swimwear claims found. Defects observed and left recorded: acc-v-jca-35's caption assigns #16 to the player in blue when #16 is the player in white (the sighting row is correct); bench players in warmups are still written as sightings on acc-v-jca-35 (#1 #12 #13 #14 #5 white, #21 black), a known limitation the prompt v2 eval chose not to address because a role field cost precision; acc-v-jca-40's white #5 is not legible to a human at 1000px. Captions still open with 'A player' 84/120.",
-  "sourceDigest": "sha256:ab84331255c31223f158a3947a97eedff95632aadd2a8d80891a718c1d578d22",
+  "reviewedAt": "2026-09-27T01:34:59.952Z",
+  "reviewedBy": "Claude Sonnet 5",
+  "method": "Only alt_text's instruction changed in this round (three iterations, to stop it naming wrong action verbs — see the AI alt text receipt). The caption instruction itself is untouched — confirmed by re-reading buildIngestPrompt: the caption instruction's text is byte-identical to the version this receipt's prior recording covered. The source digest changed only because ingest-extraction.ts (which contains both instructions) and alt-text-only.ts are shared source files between the two surfaces. Prior findings stand: 10/10 DWdCET (Milliken at North Central) captions pass inspectCaption; 8/10 name a jersey number; DSC09432, 09435, and 09437 mislabel the action verb (serve vs. set vs. spike) — the caption's own action-verb accuracy is unchanged by this round's alt_text-only prompt fix and remains a recorded, un-fixed limitation of the underlying vision model, separate from the now-fixed alt_text behavior on those same three photos.",
+  "sourceDigest": "sha256:c0bef9a1097499c3355e8f43f74143e1c86ce6f43a21f820ba9eeb7fe714bd24",
   "sourceFiles": 5,
   "scope": [
-    "Re7kho captions after ingest-v3 reprocess",
-    "caption contract pass rate",
-    "jersey-number coverage",
-    "four captions checked against the frames",
-    "bench-player sightings (known defect)"
+    "10 DWdCET/Milliken photos (already in production, 43 rows), real model, no DB write"
   ]
 }

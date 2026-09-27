@@ -802,6 +802,7 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 		content_hash: contentHash,
 		cf_image_id: cfId,
 		caption: ex.extraction.caption,
+		alt_text: ex.extraction.alt_text || null,
 		photo_category: ex.extraction.photo_category,
 		play_type: ex.extraction.play_type,
 		visible_text: ex.extraction.visible_text.length ? ex.extraction.visible_text : null,

@@ -51,6 +51,13 @@ test('alt text falls back to metadata alone when there is no caption', () => {
 	assert.ok(!alt.includes(FILENAME));
 });
 
+test('alt text prefers the purpose-built alt_text over the caption', () => {
+	const altText = 'A player in white blocks near the net as a teammate in navy watches.';
+	const alt = generatePhotoAltText(photo({ alt_text: altText } as Partial<Photo>));
+	assert.ok(alt.startsWith(altText), alt);
+	assert.ok(!alt.includes(CAPTION), alt);
+});
+
 test('alt text with no metadata still refuses the filename', () => {
 	assert.equal(generatePhotoAltText(photo({ metadata: undefined as never })), CAPTION.replace(/\.$/, ''));
 	assert.equal(

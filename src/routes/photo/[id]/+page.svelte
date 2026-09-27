@@ -201,7 +201,7 @@
 						src={optimizedImageUrl}
 						srcset={imageSrcSet}
 						sizes="(max-width: 768px) 100vw, 896px"
-						alt={photoAltText(data.photo.title, data.photo.caption)}
+						alt={photoAltText(data.photo.alt_text, data.photo.title, data.photo.caption)}
 						class="absolute inset-0 w-full h-full object-cover"
 						loading="eager"
 						decoding="async"
@@ -211,7 +211,14 @@
 						}}
 					/>
 				</div>
-				<p class="text-charcoal-300 mb-4">{data.photo.caption}</p>
+
+				<!--
+					No visible caption paragraph here. `data.photo.caption` is machine-generated search
+					metadata (ADR 0006) — it names jersey numbers and reads like retrieval text, not prose
+					a person wrote about the photo. Displaying it as if it were a caption misrepresents it
+					(Nino, 2026-09-26). It stays wired into <meta description>, <img alt> (via
+					photoAltText, preferring alt_text), and the Schema.org `description` above.
+				-->
 
 				<!-- Photo Metadata (formatted) -->
 				<div class="flex flex-wrap gap-3 text-sm text-charcoal-400 mb-4">
@@ -301,7 +308,7 @@
 	<div class="min-h-screen flex items-center justify-center bg-charcoal-950">
 		<div class="text-center">
 			<h1 class="text-2xl font-bold text-white mb-4">{data.photo.title}</h1>
-			<p class="text-charcoal-300 mb-6">{data.photo.caption}</p>
+			<!-- No visible caption here either — see the note above the main card. -->
 			<button
 				onclick={() => goto(`${base}/explore`)}
 				class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
