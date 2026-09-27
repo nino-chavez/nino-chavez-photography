@@ -72,6 +72,7 @@ import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
 import { checkAlbumName } from '../src/lib/utils/canonical-album-naming';
 import { classifyReplacePlan, describeReplacePlan, type ExistingRowForReplace } from '../src/lib/ingest/replace-plan';
+import { localPhotoKey } from '../src/lib/ingest/local-photo-match';
 import { hasGainMap, computeSdrDrift, readSdrCrsSettings, formatDriftWarning, SDR_DRIFT_THRESHOLD } from '../src/lib/ai/hdr-gainmap';
 import { buildWebHdrCopy } from '../src/lib/ai/hdr-resize';
 
@@ -583,7 +584,7 @@ let replacePlanChanged = new Set<string>();
  * since `existingRows.get(job.imageKey)` (job.imageKey is ALSO filename-derived) never hit.
  */
 function localKeyFor(row: { image_key: string; file_name: string | null }): string {
-	return row.file_name ? row.file_name.replace(/\.(jpg|jpeg)$/i, '') : row.image_key;
+	return localPhotoKey({ imageKey: row.image_key, fileName: row.file_name });
 }
 
 /**
