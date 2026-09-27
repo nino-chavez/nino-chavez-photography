@@ -33,6 +33,47 @@ export const ALT_TEXT_MAX_CHARS = 150;
 /** Below this, a value reads as a keyword/tag rather than a sentence describing the frame. */
 const MIN_WORDS = 3;
 
+/**
+ * Generic, non-identifying vocabulary that a SINGLE-WORD `visible_text` entry does not trigger
+ * the named-text reject over, even on an exact match. Sourced from the actual distribution of
+ * `photo_metadata.visible_text` (2026-09-26, 22,442 rows / 11,512 distinct values) — every word
+ * below is one alt_text is expected to say (a sport name, a scoreboard/broadcast word, a color, a
+ * direction, a generic sports noun, or a stopword), not something that identifies a person or a
+ * school. Genuinely identifying single words (team/school names, surnames — "chargers", "lewis",
+ * "sikora") are NOT in this list and still trigger the reject; neither is any multi-word entry
+ * ("aurora central catholic"), which is never filtered (see inspectAltText's own comment).
+ */
+const NAMED_TEXT_STOPWORDS = new Set([
+	// sports
+	'volleyball', 'basketball', 'football', 'baseball', 'softball', 'soccer', 'tennis', 'track',
+	'field', 'athletics', 'sports', 'sport',
+	// scoreboard / broadcast
+	'home', 'visitor', 'visitors', 'guest', 'guests', 'period', 'bonus', 'fouls', 'exit', 'welcome',
+	'seating', 'score', 'scores',
+	// generic sports nouns
+	'team', 'teams', 'players', 'player', 'court', 'ball', 'game', 'games', 'club', 'class',
+	'classic', 'school', 'college', 'university', 'conference', 'championship', 'champion',
+	'champions', 'senior', 'seniors', 'junior', 'juniors', 'captain', 'national', 'state', 'group',
+	'media', 'academy', 'high', 'night',
+	// colors (alt_text is expected/allowed to name a color)
+	'red', 'blue', 'white', 'black', 'gold', 'green', 'yellow', 'orange', 'purple', 'navy', 'gray',
+	'grey', 'silver', 'maroon', 'pink', 'teal', 'brown',
+	// directions
+	'north', 'south', 'east', 'west',
+	// setting / venue (alt_text is expected to name the setting)
+	'park', 'beach', 'gym', 'gymnasium', 'arena', 'stadium', 'indoor', 'outdoor', 'sand', 'grass',
+	'net', 'sideline',
+	// action verbs (alt_text is expected to name the action) — "dive" is measured in real
+	// visible_text (44 rows, 2026-09-26), almost certainly a sponsor/banner artifact, not a name;
+	// the rest of the family is stoplisted preemptively for the same reason.
+	'spike', 'spikes', 'spiking', 'block', 'blocks', 'blocking', 'dig', 'digs', 'digging', 'dive',
+	'dives', 'diving', 'serve', 'serves', 'serving', 'set', 'sets', 'setting', 'pass', 'passes',
+	'passing', 'watch', 'watches', 'watching', 'celebrate', 'celebrates', 'huddle', 'huddles',
+	// stopwords / filler
+	'the', 'of', 'a', 'an', 'and', 'in', 'on', 'at', 'to', 'go', 'big', 'pro', 'ace', 'love', 'one',
+	'two', 'three', 'four', 'five'
+]);
+
 /** Any digit is treated as a jersey number — the one thing alt text is never allowed to name.
  * Broader than "reject a 1-2 digit token after #/number" on purpose: "numbers 3 and 12" (the
  * observed production failure) has no leading marker at all, and alt text has no legitimate use
@@ -77,6 +118,18 @@ export function inspectAltText(text: string, opts: { visibleText?: string[] } = 
 		if (!term || typeof term !== 'string') continue;
 		const trimmed = term.trim();
 		if (!trimmed) continue;
+		// A SINGLE-WORD visible_text entry is checked against the generic-vocabulary stoplist below
+		// before it can trigger a reject. Measured against real photo_metadata.visible_text
+		// (22,442 rows, 11,512 distinct values, 2026-09-26): the highest-frequency entries are
+		// overwhelmingly generic sports/broadcast/color vocabulary ("volleyball" 1,025x, "home"
+		// 320x, "team" 220x, "blue" 88x, "court" 48x, "ball" 76x) that alt_text is EXPECTED to use
+		// ("a player in blue... a volleyball... on the court"). Without this filter, the check
+		// would hard-fail ingest on a large fraction of real photos over words that identify
+		// nobody. A MULTI-WORD entry ("aurora central catholic", "lewis university") is never
+		// stopword-filtered — a generic alt_text sentence has no legitimate reason to contain a
+		// multi-word phrase verbatim, so a match there is real signal, same as a single genuinely
+		// identifying word ("sikora", "chargers").
+		if (!trimmed.includes(' ') && NAMED_TEXT_STOPWORDS.has(trimmed.toLowerCase())) continue;
 		const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		const match = raw.match(new RegExp(`\\b${escaped}\\b`, 'i'))?.[0];
 		if (match) {

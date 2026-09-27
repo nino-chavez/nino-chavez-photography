@@ -58,6 +58,33 @@ test('rejects printed text (a name or school name) carried over from visible_tex
 	);
 });
 
+test('does not false-positive on generic vocabulary that coincidentally matches visible_text', () => {
+	// Measured against real production photo_metadata.visible_text (2026-09-26): "volleyball"
+	// (1,025 rows), "home" (320), "blue" (88), and "court" (48) are among the most common stored
+	// values, and alt_text is EXPECTED to use exactly this vocabulary. Without the stoplist this
+	// would hard-fail ingest on a large fraction of real photos.
+	assert.deepEqual(
+		inspectAltText('A player in blue serves a volleyball on the home court.', {
+			visibleText: ['volleyball', 'home', 'blue', 'court', 'TEAM']
+		}),
+		[]
+	);
+	// A genuinely identifying single word (a team/school name, a surname) still triggers it.
+	assert.deepEqual(
+		inspectAltText('A player in blue serves a volleyball for the Chargers.', {
+			visibleText: ['volleyball', 'home', 'Chargers']
+		}).map((issue) => issue.code),
+		['named-text']
+	);
+	// A multi-word entry is never stoplist-filtered, even if built entirely from stopwords.
+	assert.deepEqual(
+		inspectAltText('A player in blue serves a volleyball at Home of the Chargers.', {
+			visibleText: ['home of the chargers']
+		}).map((issue) => issue.code),
+		['named-text']
+	);
+});
+
 test('rejects a keyword-only fragment', () => {
 	assert.equal(inspectAltText('Volleyball action')[0]?.code, 'too-short');
 });

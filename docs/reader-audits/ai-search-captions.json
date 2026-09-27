@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "AI search captions",
-  "reviewedAt": "2026-09-27T00:55:17.990Z",
-  "reviewedBy": "Claude Opus 5.5",
-  "method": "Prompt changed only to add the alt_text instruction (inserted between the caption and photo_category instructions) — the caption instruction itself and players[]/quality/visible_text instructions are byte-for-byte unchanged from the prior ADR 0006 receipt. Verified this holds the caption's own contract: ran the real, updated prompt through the live gemini-2.5-flash-lite model on 10 real, previously-unprocessed DWdCET (Milliken at North Central) photos (DSC09426, 09427, 09430, 09432, 09434, 09435, 09437, 09438, 09440, 09441), no database write, and read each of the 10 source images directly to check the caption against it. 10/10 passed inspectCaption (0 issues) — no relationship/emotion/outcome/aesthetic/swimwear claims, all under 30 words. Coverage: 8 of 10 named at least one jersey number (consistent with ADR 0006's v2 prompt). Two defects observed and left recorded, both pre-existing vision-model limitations independent of this change: DSC09426's caption misreads jersey #11 as #17 (a number-legibility error, not a contract violation); DSC09432, 09435, and 09437 mislabel the action verb (serve vs. set vs. spike vs. attack) despite correctly reading colors, numbers, and scene.",
-  "sourceDigest": "sha256:703990741c9f1dc7c708126c839cfee97a5a6b61550865d5d9710915ea839b6e",
+  "reviewedAt": "2026-09-27T01:11:18.223Z",
+  "reviewedBy": "Claude Sonnet 5",
+  "method": "Prompt changed only to add the alt_text instruction (inserted between the caption and photo_category instructions) — the caption instruction itself and players[]/quality/visible_text instructions are byte-for-byte unchanged from the prior ADR 0006 receipt. Ran the real, updated prompt through the live gemini-2.5-flash-lite model on 10 real DWdCET (Milliken at North Central) photos already live in production (this album has 43 rows in production today, confirmed via a read-only row count) — no database write; this reprocesses the same frames through the local, unmerged code to prove the prompt, not new/never-seen photos. Read each of the 10 source images directly and checked its caption against it. 10/10 passed inspectCaption (0 issues) — no relationship/emotion/outcome/aesthetic/swimwear claims, all under 30 words. 8 of 10 named at least one jersey number. Two defects observed and left recorded, both pre-existing vision-model limitations independent of this change: DSC09426's caption misreads jersey #11 as #17 (a number-legibility error, not a contract violation, confirmed by reading the frame at full resolution); DSC09432, 09435, and 09437 mislabel the action verb (serve vs. set vs. spike) despite correctly reading colors, numbers, and scene — the same three photos show the identical verb error in their alt_text, so this is a caption/vision-model defect, not introduced by the alt_text addition.",
+  "sourceDigest": "sha256:08a6d20b0ef3779e4bb79ebacc264ec85c957d6d56574c2c1e9be128f4bbe10b",
   "sourceFiles": 5,
   "scope": [
-    "10 DWdCET/Milliken photos, real model, no DB write"
+    "10 DWdCET/Milliken photos (already in production, 43 rows), real model, no DB write"
   ]
 }

@@ -44,8 +44,13 @@
  * .env.local (VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) — see ENRICHMENT_WORKFLOW.md.
  */
 import { config } from 'dotenv';
-import { resolve, join } from 'path';
-config({ path: resolve(process.cwd(), '.env.local') });
+import { resolve, join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+// Paths resolve from this file, not the shell's working directory, so the script runs the same
+// from any folder — same fix as ingest-album.ts (it used to be run from ~ and fail to find
+// .env.local).
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+config({ path: join(REPO_ROOT, '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
@@ -92,7 +97,7 @@ const SCOPE = ALBUM_KEY ?? 'all';
 // ---------------------------------------------------------------------------
 // Checkpoint
 // ---------------------------------------------------------------------------
-const CK_DIR = '.temp';
+const CK_DIR = join(REPO_ROOT, '.temp');
 if (!existsSync(CK_DIR)) mkdirSync(CK_DIR, { recursive: true });
 const CK_PATH = join(CK_DIR, `backfill-alt-text-${SCOPE}.checkpoint.json`);
 interface Checkpoint { done: string[]; failed: Record<string, string>; updatedAt: string; }
