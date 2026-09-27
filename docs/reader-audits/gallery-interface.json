@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-27T01:20:28.335Z",
-  "reviewedBy": "Claude Sonnet 5",
-  "method": "Source-diff review of src/routes/links/+page.svelte, the only file under this surface's declared sourceRoots (src/routes, src/lib/components) that changed. The card title now shows the event/matchup segment instead of the full standard-format album name, with any recognized level/division/sport prefix (e.g. 'HS Girls VB') moved to a small secondary line above it, and any trailing date segment that duplicates the date-count line dropped — parsed by splitAlbumNameForDisplay in src/lib/utils/canonical-album-naming.ts (outside this surface's sourceRoots, no visitor-facing copy of its own, covered by 18 unit tests including all 6 currently-live albums from /photography/api/galleries/recent). The lead card's image alt text still uses the full raw album_name, unchanged. No album name text is rewritten, only re-partitioned; reader-contract.json's 'album and event names' precision lock holds. A live 390px walk of /photography/links on the Cloudflare Pages branch preview follows this receipt.",
-  "sourceDigest": "sha256:3a8f4a58c17540b8908292763081a77887c29566f750e95370bd3ef18e539cac",
+  "reviewedAt": "2026-09-27T02:13:45.967Z",
+  "reviewedBy": "Claude Opus 5.5",
+  "method": "Re-recorded after merging main (PR #149: visible generated captions removed from photo page, modal and lightbox; alt prefers alt_text). This branch's own change is src/routes/links/+page.svelte: each gallery card's title is the event/matchup segment from splitAlbumNameForDisplay (canonical-album-naming.ts), with the level label as a small secondary line and the date line unchanged; album names are never reworded, only a trailing date duplicating the date line is dropped. Lead card alt keeps the full album name. A live 390px walk of /photography/links follows the deploy.",
+  "sourceDigest": "sha256:75e10a4f98a43ce07098fdda5fed2e28db8a56043b540989df303d39fac8770b",
   "sourceFiles": 136,
   "scope": [
     "src/routes/links/+page.svelte"

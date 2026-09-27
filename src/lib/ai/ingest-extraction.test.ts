@@ -19,6 +19,8 @@ function fakeResponse(payload: unknown): Response {
 	} as unknown as Response;
 }
 
+const VALID_ALT_TEXT = 'A player in white blocks near the net as a teammate in navy watches.';
+
 const BASE = {
 	photo_category: 'candid',
 	play_type: null,
@@ -27,7 +29,8 @@ const BASE = {
 	exposure_accuracy: 7,
 	emotional_impact: 5,
 	players: [],
-	visible_text: []
+	visible_text: [],
+	alt_text: VALID_ALT_TEXT
 };
 
 test('extractOne corrects a contract-violating caption conversationally', async () => {
@@ -65,6 +68,40 @@ test('extractOne throws the contract error after exhausting corrections', async 
 	await assert.rejects(
 		() => extractOne(Buffer.from('img'), { albumSport: null, apiKey: 'k', fetchImpl }),
 		/caption contract: relationship-claim/
+	);
+	assert.equal(calls, MAX_CAPTION_CORRECTIONS + 1);
+});
+
+test('extractOne corrects a jersey-number alt_text conversationally, leaving a valid caption alone', async () => {
+	const calls: any[] = [];
+	const responses = [
+		completion({ ...BASE, caption: 'A player in red, number 12, digs near the sideline.', alt_text: 'A player in red digs near the sideline as numbers 3 and 12 watch.' }, 1),
+		completion({ ...BASE, caption: 'A player in red, number 12, digs near the sideline.', alt_text: 'A player in red digs near the sideline as teammates watch.' }, 2)
+	];
+	const fetchImpl = (async (_url: any, init: any) => {
+		calls.push(JSON.parse(init.body));
+		return fakeResponse(responses[calls.length - 1]);
+	}) as unknown as typeof fetch;
+
+	const result = await extractOne(Buffer.from('img'), { albumSport: null, apiKey: 'k', fetchImpl });
+	assert.equal(result.extraction.alt_text, 'A player in red digs near the sideline as teammates watch.');
+	// The caption never violated its own contract, so only the alt_text correction message is sent.
+	assert.match(calls[1].messages[2].content, /alt-text rule/);
+	assert.doesNotMatch(calls[1].messages[2].content, /visible-facts rule/);
+});
+
+test('extractOne throws the alt-text contract error after exhausting corrections', async () => {
+	let calls = 0;
+	const fetchImpl = (async () => {
+		calls++;
+		return fakeResponse(
+			completion({ ...BASE, caption: 'A player in white, number 9, blocks at the net.', alt_text: 'A player wearing #9 blocks at the net.' }, 1)
+		);
+	}) as unknown as typeof fetch;
+
+	await assert.rejects(
+		() => extractOne(Buffer.from('img'), { albumSport: null, apiKey: 'k', fetchImpl }),
+		/alt text contract: jersey-number/
 	);
 	assert.equal(calls, MAX_CAPTION_CORRECTIONS + 1);
 });

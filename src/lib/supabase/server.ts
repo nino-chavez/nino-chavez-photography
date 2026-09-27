@@ -97,6 +97,7 @@ export function transformPhotoRow(row: any): Photo {
     title: row.image_key,
     album_name: row.album_name || undefined,
     caption: row.caption || '',
+    alt_text: row.alt_text || undefined,
     keywords: [],
     created_at: row.photo_date || row.enriched_at || row.upload_date,
     // PHOTO_COLUMNS already selects both of these; they were being fetched and dropped on the

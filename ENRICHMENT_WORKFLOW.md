@@ -10,7 +10,7 @@ New-album processing is a **single command** that writes directly to the databas
 
 0. **Content-hash gate.** sha256 the file bytes; refuse — loudly, before uploading anything — if that hash already exists under a different `photo_id` ("same shoot exported to a second folder"). Backed by `photo_metadata.content_hash` + a partial `UNIQUE` index (see **Migrations** below).
 1. **Upload** to Cloudflare Images with the album-scoped id `${albumKey}-${imageKey}` (a 5409 "already exists" is an error, never an alias).
-2. **Extract** via the single structured, sport-aware prompt (`src/lib/ai/ingest-extraction.ts` `extractOne`) — caption, `play_type`, `photo_category`, numeric quality sub-scores, and `players[]` for sightings. It **never** emits sport. As of [ADR 0006](blueprint/decisions/0006-vision-prompt-v2-and-image-vector-search.md) (2026-09-25), the caption instruction names every legible on-court jersey number (prompt v2) — see that ADR for the coverage-vs-precision tradeoff this measurably costs `players[]` sightings.
+2. **Extract** via the single structured, sport-aware prompt (`src/lib/ai/ingest-extraction.ts` `extractOne`) — caption, `alt_text`, `play_type`, `photo_category`, numeric quality sub-scores, and `players[]` for sightings. It **never** emits sport. As of [ADR 0006](blueprint/decisions/0006-vision-prompt-v2-and-image-vector-search.md) (2026-09-25), the caption instruction names every legible on-court jersey number (prompt v2) — see that ADR for the coverage-vs-precision tradeoff this measurably costs `players[]` sightings. `alt_text` (2026-09-26, the alt-text pipeline) is a SEPARATE, purpose-built screen-reader sentence — the opposite rule from caption: it never names a jersey number, a person's name, printed text, or aesthetic filler (`src/lib/ai/alt-text-contract.ts`). Downstream consumers that needed accessible alt text used to strip numbers back OUT of the caption with regex; this field exists so nothing has to be subtracted from a sentence written for a different job.
 3. **Embed** the caption via `embedText` (OpenRouter `text-embedding-3-large` @768) — written for the `caption` column, but no longer the search-ranking seam (see step 3b).
 3b. **Embed the image** via `embedImage` (OpenRouter `google/gemini-embedding-2` @768 — `src/lib/ai/embeddings.ts`) + compute deterministic sharpness (`computeSharpness`, `src/lib/ai/sharpness.ts`). `image_embedding` is the primary semantic-search ranking vector as of ADR 0006; `sharpness_measured` is a deterministic companion to the model-scored `sharpness` column, not a replacement.
 4. **Write** `photo_metadata` directly (UPSERT) + `photo_jersey_sightings`. A reprocessed photo's sightings are **replaced** — its prior `source='players_new'` rows are deleted, then the fresh set is inserted — so a re-run converges instead of leaving stale sightings beside new ones. It **never** writes the deprecated `players` JSONB column and **never** sets `sport_type` (the `enforce_album_sport` trigger mirrors it from `albums.sport`).
@@ -244,6 +244,16 @@ every row — only on a row it actually (re)uploads a Cloudflare image for (see 
 above) — so an un-migrated database fails only on a photo whose Cloudflare image gets (re)written
 this run, not on every photo.
 
+**Same situation, same fix, for alt text** (the alt-text pipeline, 2026-09-26): apply
+`supabase/migrations/20260926150000_photo_metadata_alt_text.sql` **before** running this version of
+ingest — it adds `photo_metadata.alt_text` (nullable `text`). Ingest writes it unconditionally;
+running it against an un-migrated database fails on the first photo, same as `content_hash` and
+`image_embedding` above. This one is also a **merge prerequisite for the app-side PR** that adds
+`alt_text` to `PHOTO_COLUMNS` (`src/lib/supabase/columns.ts`) — per PR #145's lesson, that select
+would 400 against a database that hasn't applied this migration yet. Deploy order: apply the
+migration → merge the app PR (site falls back to `caption`/album name for every un-backfilled row,
+so nothing regresses) → run `npm run backfill:alt-text` to catch up existing rows.
+
 ## Verify
 
 `npm run verify:album -- --album-key <KEY> [--dir /path/to/album]` (`scripts/verify-album.ts`) is
@@ -309,6 +319,21 @@ projected cost with ZERO OpenRouter calls), `--limit`, `--album-key`, and a hard
 (default $5) that stops the run once the running total (the API's own reported `usage.cost`, not
 an estimate) reaches it. `--dry-run` degrades gracefully if the column migration hasn't landed yet
 — see the script's own header comment.
+
+## Backfilling alt text (existing rows)
+
+New ingests write `alt_text` directly (see **Overview** step 2). The ~21,743 rows ingested before
+the alt-text pipeline need `npm run backfill:alt-text` (`scripts/backfill-alt-text.ts`): resumable
+checkpoint, bounded concurrency + 429 backoff, `--dry-run` (reports the row count and a projected
+cost with ZERO OpenRouter calls), `--limit`, `--album-key`, and a hard `--max-cost` (default $5)
+that stops the run once the running total (the API's own reported `usage.cost`) reaches it.
+Unlike `backfill-image-embeddings.ts`, this script sends the CF Images 'medium' (800px) variant,
+not the full-resolution original — `alt_text` is forbidden from naming a jersey number, so it
+needs no digit-level resolution, and skipping the resize step also means no `sharp`/native-binding
+dependency. It also passes each row's own stored `visible_text` (from its original ingest) into
+the contract check, so the deterministic "named-text" reject runs the same as it does at ingest
+time. `--dry-run` degrades gracefully if the column migration hasn't landed yet — see the script's
+own header comment.
 
 ## Known gaps (not fixed here — orchestrator's call)
 

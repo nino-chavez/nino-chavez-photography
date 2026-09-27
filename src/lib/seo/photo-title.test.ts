@@ -75,10 +75,18 @@ test('the brand suffix is not appended here — og:site_name carries it', () => 
 // --- alt text -----------------------------------------------------------------
 test('alt text describes the picture, not the event', () => {
 	// Was the album name, so a screen reader announced the event for all 363 frames.
-	assert.equal(photoAltText(ALBUM, CAPTION), CAPTION);
+	assert.equal(photoAltText(null, ALBUM, CAPTION), CAPTION);
 });
 
 test('alt text falls back to the album, then to something', () => {
-	assert.equal(photoAltText(ALBUM, null), ALBUM);
-	assert.equal(photoAltText(null, null), 'Photo');
+	assert.equal(photoAltText(null, ALBUM, null), ALBUM);
+	assert.equal(photoAltText(null, null, null), 'Photo');
+});
+
+test('alt text prefers the purpose-built alt_text over the caption', () => {
+	const alt = 'A player in white blocks near the net as a teammate in navy watches.';
+	assert.equal(photoAltText(alt, ALBUM, CAPTION), alt);
+	// Whitespace-only alt_text is treated the same as absent.
+	assert.equal(photoAltText('   ', ALBUM, CAPTION), CAPTION);
+	assert.equal(photoAltText(undefined, ALBUM, CAPTION), CAPTION);
 });
