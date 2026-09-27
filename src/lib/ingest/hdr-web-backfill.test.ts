@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
 	buildUploadAndMarkHdr,
+	checkSourceMatchesRow,
 	matchLocalFilesToRows,
 	type HdrBackfillRow
 } from './hdr-web-backfill';
@@ -65,4 +66,13 @@ test('does not mark HDR available when the R2 upload fails', async () => {
 
 	assert.equal(result, 'upload-failed');
 	assert.equal(marked, false);
+});
+
+test('an HDR copy is only built from the exact bytes the row was ingested from', () => {
+	assert.equal(checkSourceMatchesRow('abc', 'abc'), 'match');
+	// A re-export or the wrong --album-key: different bytes behind the same photo_id.
+	assert.equal(checkSourceMatchesRow('abc', 'def'), 'changed');
+	// A row ingested before content hashing cannot be proven either way.
+	assert.equal(checkSourceMatchesRow(null, 'abc'), 'unhashed');
+	assert.equal(checkSourceMatchesRow(undefined, 'abc'), 'unhashed');
 });

@@ -6,8 +6,12 @@
  * local files with ingest's file-name-first rule, and writes `hdr_web_available` only after the
  * deterministic R2 object upload succeeds. It never uploads Cloudflare Images or calls AI.
  *
+ * Each local file must be byte-identical to the file the row was ingested from (its stored
+ * content_hash), so the HDR copy never shows different pixels from the Cloudflare copy beside it.
+ * A changed file needs `ingest-album.ts --replace`; a row with no stored hash needs
+ * --allow-unhashed, an explicit statement that the operator checked the pairing by hand.
  * Usage:
- *   npx tsx scripts/backfill-hdr-web.ts --dir /path/to/album --album-key DWdCET [--dry-run]
+ *   npx tsx scripts/backfill-hdr-web.ts --dir /path/to/album --album-key DWdCET [--dry-run] [--allow-unhashed]
  */
 import { config } from 'dotenv';
 import { execFileSync } from 'child_process';
@@ -16,10 +20,11 @@ import { tmpdir } from 'os';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
 
 import { hasGainMap } from '../src/lib/ai/hdr-gainmap';
 import { buildWebHdrCopy } from '../src/lib/ai/hdr-resize';
-import { buildUploadAndMarkHdr, matchLocalFilesToRows, type HdrBackfillRow } from '../src/lib/ingest/hdr-web-backfill';
+import { buildUploadAndMarkHdr, checkSourceMatchesRow, matchLocalFilesToRows, type HdrBackfillRow } from '../src/lib/ingest/hdr-web-backfill';
 import { indexRowsByLocalPhotoKey, stripJpegExtension } from '../src/lib/ingest/local-photo-match';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -42,6 +47,7 @@ function die(message: string): never {
 const DIR = flagValue('dir');
 const ALBUM_KEY = flagValue('album-key');
 const DRY_RUN = process.argv.includes('--dry-run');
+const ALLOW_UNHASHED = process.argv.includes('--allow-unhashed');
 const HDR_R2_BUCKET = process.env.CF_HDR_R2_BUCKET || 'photo-gallery-hdr';
 
 if (!DIR || !ALBUM_KEY) {
@@ -89,14 +95,15 @@ async function uploadHdrToR2(photoId: string, buffer: Buffer): Promise<boolean> 
 async function loadPendingRows(): Promise<HdrBackfillRow[]> {
 	const { data, error } = await supabase
 		.from('photo_metadata')
-		.select('photo_id, image_key, file_name')
+		.select('photo_id, image_key, file_name, content_hash')
 		.eq('album_key', ALBUM_KEY!)
 		.eq('hdr_web_available', false);
 	if (error) throw new Error(`photo_metadata query failed: ${error.message}`);
 	return (data ?? []).map((row) => ({
 		photoId: row.photo_id,
 		imageKey: row.image_key,
-		fileName: row.file_name
+		fileName: row.file_name,
+		contentHash: row.content_hash
 	}));
 }
 
@@ -128,6 +135,8 @@ async function main(): Promise<void> {
 	}
 
 	let skippedNoGainMap = 0;
+	let refusedChanged = 0;
+	let refusedUnhashed = 0;
 	let uploaded = 0;
 	let failed = 0;
 	for (const { fileName, row } of matches) {
@@ -138,6 +147,17 @@ async function main(): Promise<void> {
 		} catch (error) {
 			failed++;
 			console.error(`  Could not read ${fileName}: ${(error as Error).message}`);
+			continue;
+		}
+		const check = checkSourceMatchesRow(row.contentHash, createHash('sha256').update(source).digest('hex'));
+		if (check === 'changed') {
+			refusedChanged++;
+			console.warn(`  Refuse ${fileName}: its bytes differ from the file ${row.photoId} was ingested from. Run ingest-album.ts --replace to update both copies together.`);
+			continue;
+		}
+		if (check === 'unhashed' && !ALLOW_UNHASHED) {
+			refusedUnhashed++;
+			console.warn(`  Refuse ${fileName}: ${row.photoId} has no stored content_hash to compare. Pass --allow-unhashed only after checking this export is that photo.`);
 			continue;
 		}
 		if (!hasGainMap(source)) {
@@ -169,9 +189,9 @@ async function main(): Promise<void> {
 		}
 	}
 
-	console.log(`Done: uploaded ${uploaded}; skipped without gain map ${skippedNoGainMap}; failed ${failed}.`);
+	console.log(`Done: uploaded ${uploaded}; skipped without gain map ${skippedNoGainMap}; refused changed ${refusedChanged}; refused unhashed ${refusedUnhashed}; failed ${failed}.`);
 	if (DRY_RUN) console.log('Dry run: no R2 or database writes were made.');
-	if (failed > 0) process.exitCode = 1;
+	if (failed > 0 || refusedChanged > 0 || refusedUnhashed > 0) process.exitCode = 1;
 }
 
 main().catch((error) => {

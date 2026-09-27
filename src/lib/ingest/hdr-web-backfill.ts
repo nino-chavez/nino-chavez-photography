@@ -6,6 +6,22 @@ import {
 
 export interface HdrBackfillRow extends LocalPhotoRow {
 	photoId: string;
+	/** `photo_metadata.content_hash`: sha256 of the bytes this row's Cloudflare image came from. */
+	contentHash?: string | null;
+}
+
+export type SourceCheck = 'match' | 'changed' | 'unhashed';
+
+/**
+ * Whether a local file is the exact file the row was ingested from. The HDR copy is served beside
+ * the row's Cloudflare Images copy, so it must come from the same bytes: a re-export, an edited
+ * file, or the wrong --album-key would otherwise put different pixels behind the same photo_id.
+ * 'changed' needs `ingest-album.ts --replace` (which rewrites both copies together); 'unhashed'
+ * (a row ingested before content hashing) cannot be proven and needs an explicit operator opt-in.
+ */
+export function checkSourceMatchesRow(storedHash: string | null | undefined, localHash: string): SourceCheck {
+	if (!storedHash) return 'unhashed';
+	return storedHash === localHash ? 'match' : 'changed';
 }
 
 export interface MatchedHdrBackfillFile {
