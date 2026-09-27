@@ -6,6 +6,8 @@ import {
 	buildAltTextCorrectionMessage,
 	inspectAltText
 } from './alt-text-contract';
+import { buildAltTextOnlyPrompt } from './alt-text-only';
+import { buildIngestPrompt } from './ingest-extraction';
 
 test('accepts a plain sentence with no digits, names, or aesthetic language', () => {
 	const alt = 'A player in a red jersey dives near the sideline while a teammate in white watches.';
@@ -56,6 +58,58 @@ test('rejects printed text (a name or school name) carried over from visible_tex
 		inspectAltText('A player in white blocks at the net.', { visibleText: ['Sikora', 'LEWIS'] }),
 		[]
 	);
+});
+
+test('allows an album matchup team name from the frame but rejects another school', () => {
+	const matchup = ['Millikin', 'North Central'];
+	assert.deepEqual(
+		inspectAltText('A North Central player reaches overhead for the ball.', {
+			visibleText: ['NORTH CENTRAL'],
+			teamNames: matchup
+		}),
+		[]
+	);
+	assert.deepEqual(
+		inspectAltText('A Millikin player reaches overhead for the ball.', {
+			visibleText: ['MILLIKIN'],
+			teamNames: matchup
+		}).map((issue) => issue.code),
+		[]
+	);
+	assert.deepEqual(
+		inspectAltText('An Augustana player reaches overhead for the ball.', {
+			visibleText: ['AUGUSTANA'],
+			teamNames: matchup
+		}).map((issue) => issue.code),
+		['named-text']
+	);
+	assert.deepEqual(
+		inspectAltText('A North Central player reaches overhead for the ball.', {
+			visibleText: [],
+			teamNames: matchup
+		}).map((issue) => issue.code),
+		['named-text']
+	);
+});
+
+test('alt-text prompts include names only for a two-team matchup album', () => {
+	const matchup = ['Millikin', 'North Central'];
+	const slim = buildAltTextOnlyPrompt(matchup);
+	const ingest = buildIngestPrompt({ albumSport: 'volleyball', teamNames: matchup });
+	for (const prompt of [slim, ingest]) {
+		assert.match(prompt, /This album is a two-team matchup: "Millikin" and "North Central"/);
+		assert.match(prompt, /Never infer a team from home\/away, court side, or usual uniform colors/);
+		assert.match(prompt, /printed text from the frame except an allowed team name under the matchup rule above/);
+	}
+
+	const nonMatchupSlim = buildAltTextOnlyPrompt();
+	const nonMatchupIngest = buildIngestPrompt({ albumSport: 'volleyball' });
+	assert.doesNotMatch(nonMatchupSlim, /two-team matchup/);
+	assert.doesNotMatch(nonMatchupIngest, /two-team matchup/);
+	assert.doesNotMatch(nonMatchupSlim, /allowed team name/);
+	assert.doesNotMatch(nonMatchupIngest, /allowed team name/);
+	assert.doesNotMatch(buildAltTextOnlyPrompt(['A', 'B', 'C']), /two-team matchup/);
+	assert.doesNotMatch(buildIngestPrompt({ albumSport: 'volleyball', teamNames: ['A', 'B', 'C'] }), /two-team matchup/);
 });
 
 test('does not false-positive on generic vocabulary that coincidentally matches visible_text', () => {

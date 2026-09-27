@@ -66,6 +66,7 @@ import { embedText, embedImage } from '../src/lib/ai/embeddings';
 import { resizeForEmbedding } from '../src/lib/ai/image-resize';
 import { computeSharpness } from '../src/lib/ai/sharpness';
 import { extractOne, EXTRACTION_VERSION, INGEST_MODEL } from '../src/lib/ai/ingest-extraction';
+import { getTwoTeamMatchupNames } from '../src/lib/ai/alt-text-contract';
 import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
 import { checkAlbumName } from '../src/lib/utils/canonical-album-naming';
@@ -407,6 +408,30 @@ async function captureAlbumContext(): Promise<void> {
 	}
 }
 
+/**
+ * Alt text may name a team only for a known two-team matchup. The canonical names live in
+ * teams/album_teams: never parse them from the display title, which intentionally preserves
+ * operator-written event text such as tournaments and dates.
+ */
+async function resolveAltTextTeamNames(): Promise<string[]> {
+	const { data, error } = await sb
+		.from('album_teams')
+		.select('teams(name)')
+		.eq('album_key', ALBUM_KEY!);
+	if (error) throw new Error(`album team lookup failed: ${error.message}`);
+	const linkedNames = (data ?? []).flatMap((link: any) => {
+		const team = Array.isArray(link.teams) ? link.teams[0] : link.teams;
+		return typeof team?.name === 'string' ? [team.name] : [];
+	});
+	const teamNames = getTwoTeamMatchupNames(linkedNames);
+	if (teamNames.length === 2) {
+		console.log(`   ♿ Alt text may name a team only with uniform proof: ${teamNames.join(' · ')}`);
+	} else if (linkedNames.length) {
+		console.log(`   ♿ Alt text uses uniform color only (${linkedNames.length} linked teams, not a two-team matchup)`);
+	}
+	return teamNames;
+}
+
 /** Detect the album's sport from its name (operator convention: "the sport is in the name"). */
 function detectSportFromName(name: string): Sport | null {
 	const n = name.toLowerCase();
@@ -655,7 +680,7 @@ async function reportAndPruneMissing(localKeys: Set<string>, localFileCount: num
 	console.log(`      🗑  pruned ${pruned}/${toDelete.length} row(s)${skipped ? ` (${skipped} protected, skipped — re-run with --prune-confirm-identity-loss to override)` : ''}\n`);
 }
 
-async function processImage(job: ImageJob, album: { sport: Sport | null; albumName: string }): Promise<ProcessResult> {
+async function processImage(job: ImageJob, album: { sport: Sport | null; albumName: string; teamNames: string[] }): Promise<ProcessResult> {
 	const fileBuffer = readFileSync(job.path);
 	// Reprocess-in-place (P1): if this album already has a row for this image_key, UPDATE it —
 	// keep its existing photo_id AND cf_image_id — instead of minting a NEW deterministic photo_id,
@@ -914,7 +939,7 @@ async function embedImageWithRetry(resizedJpegBuffer: Buffer) {
 	}
 }
 
-async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; albumName: string }) {
+async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; albumName: string; teamNames: string[] }) {
 	let attempt = 0;
 	for (;;) {
 		try {
@@ -923,6 +948,7 @@ async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; al
 				model: MODEL,
 				albumSport: album.sport,
 				albumName: album.albumName,
+				teamNames: album.teamNames,
 			});
 		} catch (e: any) {
 			const msg = String(e?.message || e);
@@ -947,12 +973,13 @@ async function main() {
 	console.log(`   Concurrency: ${CONCURRENCY}${LIMIT ? ` · limit ${LIMIT}` : ''}${DRY ? ' · DRY RUN' : ''}${OVERWRITE ? ' · OVERWRITE' : ''}`);
 	console.log(`   Checkpoint: ${CK_PATH} (${done.size} already done)\n`);
 
-	const album = await resolveAlbum();
-	console.log(`   Album sport (authoritative): ${album.sport ?? 'none (non-sport)'}`);
+	const resolvedAlbum = await resolveAlbum();
+	console.log(`   Album sport (authoritative): ${resolvedAlbum.sport ?? 'none (non-sport)'}`);
 	if (OP_LAT !== null) console.log(`   📍 Venue GPS override (fallback for frames without an EXIF fix): ${OP_LAT}, ${OP_LNG}`);
 	console.log('');
 
 	await captureAlbumContext();
+	const album = { ...resolvedAlbum, teamNames: await resolveAltTextTeamNames() };
 
 	// Keep a freshly-ingested album OFF the live gallery until the operator reviews + publishes.
 	if (UNLISTED && !DRY) {

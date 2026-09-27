@@ -10,7 +10,8 @@
  * scripts/social-publish/alt-text.mjs). `alt_text` exists so nothing needs to be subtracted from
  * a sentence written for a different job: it describes who is doing what — team by uniform color,
  * the action, the setting — and never contains a jersey number, a name, printed text from the
- * frame, guessed identity, or aesthetic filler.
+ * frame, guessed identity, or aesthetic filler. The sole printed-text exception is an album's
+ * own canonical team name, when that two-team matchup is supplied and the frame reads that name.
  *
  * Shares the relationship/emotion/outcome/aesthetic/swimwear rules with caption-contract.ts
  * (CLAIM_RULES) — a photo alone still does not establish a relationship, an emotion, an outcome,
@@ -25,6 +26,13 @@ export interface AltTextIssue {
 	code: AltTextIssueCode;
 	message: string;
 	match?: string;
+}
+
+export interface AltTextContractOptions {
+	visibleText?: string[];
+	/** The canonical names of this album's two competing teams. A team name is allowed only when
+	 * it is present here AND the frame's `visible_text` contains that same name. */
+	teamNames?: string[];
 }
 
 /** Target length for an <img alt> — see reader-contract.json's "AI alt text" surface. */
@@ -81,7 +89,26 @@ const NAMED_TEXT_STOPWORDS = new Set([
  * computing the more expensive match-with-context below — most alt text has no digit at all. */
 const DIGIT_PATTERN = /\d/;
 
-export function inspectAltText(text: string, opts: { visibleText?: string[] } = {}): AltTextIssue[] {
+const normalizeTeamName = (value: string): string => value.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+
+/** Return a matchup's two distinct canonical team names, or no context for every other album. */
+export function getTwoTeamMatchupNames(teamNames: readonly string[] | undefined): string[] {
+	const names = new Map<string, string>();
+	for (const teamName of teamNames ?? []) {
+		if (typeof teamName !== 'string' || !teamName.trim()) continue;
+		names.set(normalizeTeamName(teamName), teamName.trim());
+	}
+	return names.size === 2 ? [...names.values()] : [];
+}
+
+/** The shared prompt rule for both the slim backfill and full ingest calls. */
+export function buildAltTextTeamContext(teamNames: readonly string[] | undefined): string {
+	const matchup = getTwoTeamMatchupNames(teamNames);
+	if (matchup.length !== 2) return '';
+	return `This album is a two-team matchup: "${matchup[0]}" and "${matchup[1]}". You may name one of these teams in alt_text ONLY when THIS frame proves it: that team/school name or its recognizable wordmark is legible on that player's uniform and matches the named team. Otherwise describe the player by uniform color. Never infer a team from home/away, court side, or usual uniform colors. Jersey numbers, player names, and every other printed word remain forbidden.`;
+}
+
+export function inspectAltText(text: string, opts: AltTextContractOptions = {}): AltTextIssue[] {
 	const raw = String(text ?? '').trim();
 	if (!raw) return [{ code: 'empty', message: 'alt text must be a non-empty sentence' }];
 
@@ -115,10 +142,40 @@ export function inspectAltText(text: string, opts: { visibleText?: string[] } = 
 		if (match) issues.push({ code: rule.code, message: rule.message, match });
 	}
 
+	const allowedTeamNames = new Map<string, string>();
+	for (const teamName of opts.teamNames ?? []) {
+		if (typeof teamName !== 'string' || !teamName.trim()) continue;
+		allowedTeamNames.set(normalizeTeamName(teamName), teamName.trim());
+	}
+	const visibleTeamNames = new Set(
+		(opts.visibleText ?? [])
+			.filter((term): term is string => typeof term === 'string')
+			.map(normalizeTeamName)
+			.filter((term) => allowedTeamNames.has(term))
+	);
+	// Supplying album context alone is not proof. The model must also return the same team name
+	// in visible_text, its explicit record of what is legible in THIS frame; otherwise it retries
+	// to the safe color description rather than naming a plausible but unproven team.
+	for (const [normalizedName, teamName] of allowedTeamNames) {
+		const escaped = teamName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const match = raw.match(new RegExp(`\\b${escaped}\\b`, 'i'))?.[0];
+		if (match && !visibleTeamNames.has(normalizedName)) {
+			issues.push({
+				code: 'named-text',
+				message: 'alt text may name an album team only when that team name is legible in this frame',
+				match
+			});
+			break;
+		}
+	}
 	for (const term of opts.visibleText ?? []) {
 		if (!term || typeof term !== 'string') continue;
 		const trimmed = term.trim();
 		if (!trimmed) continue;
+		// A team name may be used only when it is one of this album's supplied canonical teams.
+		// This runs before the generic-text filter so a multi-word name such as "North Central"
+		// remains an allowed exception here but is still rejected for every other album.
+		if (allowedTeamNames.has(normalizeTeamName(trimmed))) continue;
 		// A visible_text entry is skipped when EVERY word in it is generic vocabulary (the stoplist
 		// below), whether it's one word or several. Measured against real photo_metadata.visible_text
 		// (22,442 rows, 11,512 distinct values, 2026-09-26): the highest-frequency entries are
@@ -149,7 +206,7 @@ export function inspectAltText(text: string, opts: { visibleText?: string[] } = 
 	return issues;
 }
 
-export function assertAltTextContract(text: string, opts: { visibleText?: string[] } = {}): void {
+export function assertAltTextContract(text: string, opts: AltTextContractOptions = {}): void {
 	const issues = inspectAltText(text, opts);
 	if (!issues.length) return;
 	throw new Error(
