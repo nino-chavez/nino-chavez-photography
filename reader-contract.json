@@ -102,6 +102,66 @@
         }
       ],
       "maxWordsPerText": 30
+    },
+    {
+      "name": "AI alt text",
+      "renderedRoots": [],
+      "sourceRoots": [
+        "src/lib/ai/alt-text-contract.ts",
+        "src/lib/ai/alt-text-only.ts",
+        "src/lib/ai/ingest-extraction.ts",
+        "scripts/ingest-album.ts",
+        "scripts/backfill-alt-text.ts"
+      ],
+      "manualReview": {
+        "evidencePath": "docs/reader-audits/ai-alt-text.json"
+      },
+      "reader": "someone using a screen reader, or a caption shown when an image fails to load",
+      "job": "understand who is in the photo and what they are doing, without needing to see it",
+      "assumedKnowledge": [
+        "common volleyball actions"
+      ],
+      "plainness": "lay",
+      "precisionLocks": [
+        "visible team colors",
+        "visible action and setting",
+        "never a jersey number or any other digit — the opposite rule from AI search captions, which must name them",
+        "never a person's name or printed text from the frame",
+        "never guess a person's identity",
+        "never infer relationships, emotions, or outcomes",
+        "name a person by the color of what they wear, never by naming swimwear"
+      ],
+      "allowTerms": [],
+      "denyTerms": [
+        {
+          "term": "cinematic",
+          "reason": "aesthetic judgment makes alt text less factual"
+        },
+        {
+          "term": "stunning",
+          "reason": "promotional judgment makes alt text less factual"
+        },
+        {
+          "term": "beautifully",
+          "reason": "aesthetic judgment makes alt text less factual"
+        },
+        {
+          "term": "friends",
+          "reason": "a photo alone does not establish a relationship between the people shown",
+          "replacement": "people"
+        },
+        {
+          "term": "bikini",
+          "reason": "the color is what identifies the team; naming the swimwear describes the person's body instead",
+          "replacement": "a player in <color>"
+        },
+        {
+          "term": "swimsuit",
+          "reason": "the color is what identifies the team; naming the swimwear describes the person's body instead",
+          "replacement": "a player in <color>"
+        }
+      ],
+      "maxWordsPerText": 25
     }
   ]
 }

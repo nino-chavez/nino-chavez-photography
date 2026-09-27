@@ -91,6 +91,9 @@ export interface Photo {
   image_key: string;
   album_key?: string; // source album — disambiguates the non-unique image_key; popularity attribution
   cf_image_id?: string; // Cloudflare Images ID (uses imagedelivery.net)
+  // TRUE when a web-sized Ultra HDR (gain-map) JPEG exists in R2 at hdr/${id}.jpg — see
+  // src/lib/utils/hdr-photo-url.ts and src/routes/api/hdr/[id]/+server.ts. Falsy → Cloudflare Images.
+  hdr_web_available?: boolean;
   image_url: string;
   thumbnail_url?: string; // Thumbnail URL for blur placeholders
   original_url?: string; // Full-resolution URL
@@ -105,6 +108,11 @@ export interface Photo {
   /** Album display name. Reader-safe, unlike `title`. */
   album_name?: string;
   caption: string;
+  /** Screen-reader / `<img alt>` sentence — never a jersey number, name, printed text, guessed
+   * identity, or aesthetic filler (src/lib/ai/alt-text-contract.ts). Distinct job from `caption`,
+   * which must name jersey numbers for search. Undefined/null until backfilled or reprocessed;
+   * every reader falls back to `caption` then `album_name`/`title` (photoAltText, $lib/seo/photo-title). */
+  alt_text?: string | null;
   keywords: string[];
   created_at: string; // Actual photo date (photo_date from DB, prioritized for sorting)
   /** Raw `photo_date` from the DB (ISO), independent of `created_at`'s enriched_at/upload_date

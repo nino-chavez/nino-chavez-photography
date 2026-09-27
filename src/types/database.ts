@@ -43,6 +43,9 @@ export interface PhotoMetadataRow {
 	ImageUrl: string | null;
 	OriginalUrl: string | null;
 	ThumbnailUrl: string | null;
+	// TRUE when a web-sized Ultra HDR (gain-map) copy exists in R2 at hdr/${photo_id}.jpg — see
+	// supabase/migrations/20260926130000_photo_metadata_hdr_web.sql. FALSE/null → Cloudflare Images.
+	hdr_web_available: boolean | null;
 
 	// Core classification (Bucket 1)
 	// NOTE: the vanity CATEGORICAL aesthetic columns (composition, time_of_day, lighting,
@@ -59,6 +62,10 @@ export interface PhotoMetadataRow {
 
 	// Caption + semantic search (Phase 1 — vision-extraction v-next)
 	caption: string | null;
+	// Screen-reader / <img alt> sentence — separate from `caption`, never a jersey number, name,
+	// printed text, guessed identity, or aesthetic filler. See src/lib/ai/alt-text-contract.ts and
+	// supabase/migrations/20260926150000_photo_metadata_alt_text.sql. NULL until backfilled/reprocessed.
+	alt_text: string | null;
 	// 768-dim vector. Caption-derived (OpenRouter text-embedding-3-large). No longer the primary
 	// search-ranking signal as of blueprint/decisions/0006 — see `image_embedding` below.
 	embedding: number[] | null;

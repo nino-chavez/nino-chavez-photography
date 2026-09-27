@@ -1,16 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-26T14:33:44.902Z",
+  "reviewedAt": "2026-09-27T02:13:45.967Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Walked the lightbox fixes on the dev server from branch worktree-agent-a0194f296a7aecb72. Page boundary, cold album kqGRRG (100 photos): stepping 44 to 48 by the Next button, then Next at 48/100; page 2 was prefetched about 6s before the boundary and photo 49 was painted within 300ms of the click (live production before the fix: ~2.0s of an invisible image and a spinner on cold album RFsHZ8, over 5s on Re7kho). Trending rail on Re7kho: a rail card opens the shared Lightbox at 3/12 without leaving the page, Next goes to 4/12 and Previous back to 3/12. Share page bd558119 (Re7kho, 120 photos): Next at 48/120 now advances to 49/120 and the photo renders (before: silent no-op). 390px: a rail tap opens the full-screen lightbox at 1/12 with Next visible; document scrollWidth equals clientWidth. Not walked by this reviewer: timeline period boundaries, month and collection continuation, explore arrow-key fix, the load-failure retry banner, and swipe gestures; those rest on the implementer's live checks and the Playwright specs added in tests/lightbox.spec.ts.",
-  "sourceDigest": "sha256:2200f557ba5b7cffa765bb5d6bdc5a4f506c434cc17fdf25eb95932befaf6bd5",
-  "sourceFiles": 130,
+  "method": "Re-recorded after merging main (PR #149: visible generated captions removed from photo page, modal and lightbox; alt prefers alt_text). This branch's own change is src/routes/links/+page.svelte: each gallery card's title is the event/matchup segment from splitAlbumNameForDisplay (canonical-album-naming.ts), with the level label as a small secondary line and the date line unchanged; album names are never reworded, only a trailing date duplicating the date line is dropped. Lead card alt keeps the full album name. A live 390px walk of /photography/links follows the deploy.",
+  "sourceDigest": "sha256:75e10a4f98a43ce07098fdda5fed2e28db8a56043b540989df303d39fac8770b",
+  "sourceFiles": 136,
   "scope": [
-    "album page boundary 48 to 49 on a cold album",
-    "trending rail opens the shared lightbox with next and prev",
-    "share page 48 to 49",
-    "390px rail tap and layout",
-    "timeline, month, collections, explore, failure banner and swipe not walked by this reviewer"
+    "src/routes/links/+page.svelte"
   ]
 }

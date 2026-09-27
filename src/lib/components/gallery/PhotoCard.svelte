@@ -72,15 +72,16 @@
 	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
 	<!-- quality="low" = S/M sizes (400-600px) - appropriate for grid cards at max 25vw -->
 	<!--
-		alt is the caption, not `photo.title` — that field is `image_key`, the camera filename, so
-		this shipped alt="DSC05553" on every card in the gallery. Falls back to the card's position
-		rather than a bare "Photo", matching how a video clip with no reader text is labelled
-		(clipLabel in $lib/video/video-label). The anchor's aria-label above supplies the link's
-		accessible name and now leads with the caption too.
+		alt prefers alt_text (a purpose-built screen-reader sentence with no jersey numbers, ADR
+		alt-text-pipeline 2026-09-26), falling back to caption, not `photo.title` — that field is
+		`image_key`, the camera filename, so this shipped alt="DSC05553" on every card in the
+		gallery. Falls back to the card's position rather than a bare "Photo", matching how a video
+		clip with no reader text is labelled (clipLabel in $lib/video/video-label). The anchor's
+		aria-label above supplies the link's accessible name and now leads with the same text too.
 	-->
 	<OptimizedImage
 		src={imageSrc}
-		alt={photo.caption?.trim() || `Photo ${index + 1}`}
+		alt={photo.alt_text?.trim() || photo.caption?.trim() || `Photo ${index + 1}`}
 		thumbnailSrc={thumbnailSrc}
 		aspectRatio="4/3"
 		sizes={galleryCardSizes}

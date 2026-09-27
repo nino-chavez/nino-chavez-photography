@@ -19,6 +19,7 @@ import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import { monthWindow, addMonths, monthName } from '$lib/utils/month-window';
 import { embedImageQuery } from '$lib/ai/embeddings';
 import { videoOnlyRows } from '$lib/albums/listing';
+import { rankPublicAlbums, type RankedAlbum } from '$lib/albums/latest';
 import { planQuery, type QueryPlan } from '$lib/search/query-planner';
 export { PHOTO_COLUMNS, PHOTO_DETAIL_COLUMNS, photoSelect } from '$lib/supabase/columns';
 import { PHOTO_COLUMNS, PHOTOS_READ } from '$lib/supabase/columns';
@@ -78,6 +79,7 @@ export function transformPhotoRow(row: any): Photo {
     image_key: row.image_key,
     album_key: row.album_key || undefined,
     cf_image_id: row.cf_image_id || undefined,
+    hdr_web_available: !!row.hdr_web_available,
     image_url: imageUrl,
     thumbnail_url: thumbnailUrl,
     original_url: originalUrl,
@@ -95,6 +97,7 @@ export function transformPhotoRow(row: any): Photo {
     title: row.image_key,
     album_name: row.album_name || undefined,
     caption: row.caption || '',
+    alt_text: row.alt_text || undefined,
     keywords: [],
     created_at: row.photo_date || row.enriched_at || row.upload_date,
     // PHOTO_COLUMNS already selects both of these; they were being fetched and dropped on the
@@ -293,6 +296,81 @@ export async function getPublicGalleryTotals(): Promise<GalleryTotals> {
     videos: videoRows.reduce((sum, v) => sum + (Number(v.video_count) || 0), 0),
     videoAlbums: videoRows.length,
     videoOnlyAlbums: videoOnly.length
+  };
+}
+
+/**
+ * The answer to "what are the public albums, newest first?", with "the read failed" as a
+ * distinct case from "there are genuinely none" — same shape as `AlbumSettingsResult` above,
+ * and for the same reason: a caller that folds a failed read into `[]` cannot tell "no public
+ * gallery exists" from "the database didn't answer", and the two need different responses
+ * (a 503 vs. a real 404, an "unavailable" banner vs. an empty-state message).
+ */
+export type RankedAlbumsResult = { ok: true; albums: RankedAlbum[] } | { ok: false };
+
+/**
+ * Every public album, newest first — the read behind `/latest`, `/api/latest`,
+ * `/api/galleries/recent`, and `/photography/links`. Pure ranking lives in
+ * `$lib/albums/latest` (`rankPublicAlbums`); this is the one place that fetches the tables it
+ * needs and calls it, so all four callers agree by construction.
+ *
+ * `albums_summary` / `videos_summary` are matviews (anon REVOKE'd — service_role via
+ * matviewClient()), so the unlisted gate is NOT automatic here; `album_settings` and `albums`
+ * are read through the anon client, both publicly readable (`album_settings`'s grant is
+ * column-level — 20260730030000 + 20260926140000 for `published_at`; `albums` has an
+ * unconditional `USING (true)` SELECT policy — 20260608020000).
+ *
+ * `albums_summary` has no row for a video-only album (it's derived purely from
+ * `photo_metadata`), so a video-only publish could never become "latest" without also reading
+ * `videos_summary` and reducing it to the video-ONLY subset — `videoOnlyRows`, the exact
+ * function `buildAlbumListing`/`getPublicGalleryTotals` already use, reused here rather than
+ * re-implemented so a mixed photo+video album is never double-counted.
+ */
+export async function getRankedPublicAlbums(): Promise<RankedAlbumsResult> {
+  const [
+    { data: candidates, error: candidatesError },
+    { data: videoRows, error: videoError },
+    { data: settings, error: settingsError },
+    { data: albumDates, error: albumDatesError }
+  ] = await Promise.all([
+    matviewClient()
+      .from('albums_summary')
+      .select('album_key, album_name, cover_cf_image_id, photo_count, latest_photo_date'),
+    matviewClient()
+      .from('videos_summary')
+      .select('album_key, album_name, cover_thumbnail_url, video_count, latest_video_date'),
+    supabaseServer.from('album_settings').select('album_key, visibility, published_at'),
+    // Authoritative event date (Codex review, PR #146): albums_summary/videos_summary only ever
+    // derive a CAPTURE date from photo_metadata/videos — `albums.event_date` is the operator-set
+    // or ingest-derived-once value rankPublicAlbums prefers, falling back to capture date only
+    // when this is null.
+    supabaseServer.from('albums').select('album_key, event_date')
+  ]);
+
+  if (candidatesError || videoError || settingsError || albumDatesError) {
+    console.error(
+      '[getRankedPublicAlbums]',
+      candidatesError ?? videoError ?? settingsError ?? albumDatesError
+    );
+    return { ok: false };
+  }
+
+  const photoAlbumKeys = new Set((candidates ?? []).map((c: { album_key: string }) => c.album_key));
+  const unlistedKeys = new Set(
+    (settings ?? [])
+      .filter((s: { visibility: string }) => s.visibility === 'unlisted')
+      .map((s: { album_key: string }) => s.album_key)
+  );
+  const videoOnlyCandidates = videoOnlyRows(videoRows ?? [], photoAlbumKeys, unlistedKeys);
+
+  return {
+    ok: true,
+    albums: rankPublicAlbums({
+      candidates: candidates ?? [],
+      videoCandidates: videoOnlyCandidates,
+      settings: (settings ?? []) as { album_key: string; visibility: 'public' | 'unlisted'; published_at: string | null }[],
+      albumDates: albumDates ?? []
+    })
   };
 }
 

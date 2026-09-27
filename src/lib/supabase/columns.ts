@@ -29,8 +29,13 @@ export const PHOTOS_WRITE = 'photo_metadata';
  * ahead of their schema DROP. The numeric quality sub-scores (sharpness, composition_score,
  * exposure_accuracy, emotional_impact) are DIFFERENT columns and stay — they feed quality_score.
  * `caption` added Phase 1 — small text, used by search-result display + semantic search.
+ * `alt_text` added for the alt-text pipeline (2026-09-26) — a separate screen-reader sentence,
+ * never derived from `caption` (which must keep naming jersey numbers). NULL until ingested under
+ * the alt_text-aware extraction version or backfilled; every reader falls back to `caption`/the
+ * album name, same as before this column existed. MERGE PREREQUISITE: this select fails outright
+ * against a database that hasn't applied supabase/migrations/20260926150000_photo_metadata_alt_text.sql.
  */
-export const PHOTO_COLUMNS = 'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, photo_category, play_type, sharpness, composition_score, exposure_accuracy, emotional_impact, quality_score, caption, time_in_game, jersey_number, ai_provider, ai_cost, aspect_ratio, photo_date, upload_date, enriched_at';
+export const PHOTO_COLUMNS = 'photo_id, image_key, cf_image_id, hdr_web_available, album_key, album_name, sport_type, photo_category, play_type, sharpness, composition_score, exposure_accuracy, emotional_impact, quality_score, caption, alt_text, time_in_game, jersey_number, ai_provider, ai_cost, aspect_ratio, photo_date, upload_date, enriched_at';
 
 /** Extended columns for photo detail pages (includes width, height for EXIF/schema markup). */
 export const PHOTO_DETAIL_COLUMNS = `${PHOTO_COLUMNS}, width, height`;

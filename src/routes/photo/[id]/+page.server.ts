@@ -66,11 +66,13 @@ export const load: PageServerLoad = async ({
 		image_key: photoData.image_key,
 		album_key: photoData.album_key || undefined,
 		cf_image_id: cfId || undefined,
+		hdr_web_available: !!photoData.hdr_web_available,
 		image_url: cfImageUrl(cfId, 'large'),
 		thumbnail_url: cfImageUrl(cfId, 'thumbnail'),
 		original_url: cfImageUrl(cfId, 'public'),
 		title: photoData.album_name || 'Untitled Photo',
 		caption: photoData.caption || '',
+		alt_text: photoData.alt_text || undefined,
 		keywords: [],
 		created_at: photoData.photo_date || photoData.enriched_at || photoData.upload_date,
 		metadata: {
@@ -200,7 +202,7 @@ export const load: PageServerLoad = async ({
 			description: seoDescription,
 			ogImage,
 			// Was the album name, which described the event rather than the picture.
-			ogImageAlt: photoAltText(photo.title, photo.caption),
+			ogImageAlt: photoAltText(photo.alt_text, photo.title, photo.caption),
 			// The layout only emits dimension tags when supplied, and they are what tells
 			// LinkedIn and Facebook to lay out the large card before the image finishes
 			// downloading. Truthful here because we render the card ourselves.

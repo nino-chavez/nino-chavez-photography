@@ -15,7 +15,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
-	import { generatePhotoTitle, generatePhotoCaption, generateMetadataSummary } from '$lib/photo-utils';
+	import { generatePhotoTitle, generateMetadataSummary } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { trackEngagement } from '$lib/analytics/client';
 	import { photoShareUrl } from '$lib/utils/share-url';
@@ -193,7 +193,6 @@
 
 	// Generate user-friendly display text
 	const displayTitle = $derived(photo ? generatePhotoTitle(photo) : 'Sports Photo');
-	const displayCaption = $derived(photo ? generatePhotoCaption(photo) : '');
 	const metadataSummary = $derived(photo ? generateMetadataSummary(photo) : []);
 
 	// Counter: prefer cross-page totals when provided, else fall back to the
@@ -515,11 +514,12 @@
 							<Typography variant="h3" class="text-white text-lg">
 								{displayTitle}
 							</Typography>
-							{#if displayCaption}
-								<Typography variant="body" class="text-white/70 text-sm mt-1 italic">
-									{displayCaption}
-								</Typography>
-							{/if}
+							<!--
+								No visible caption paragraph here either — same decision as /photo/[id] and
+								PhotoDetailModal (Nino, 2026-09-26): `photo.caption` is machine-generated search
+								metadata, not prose a person wrote about the photo. It stays wired into the
+								<img alt> below (displayTitle stays as-is; alt/meta/search uses are untouched).
+							-->
 							{#if photos.length > 0}
 								<Typography variant="caption" class="text-white/60">
 									{counterCurrent} / {counterTotal}

@@ -7,6 +7,7 @@
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { hdrPhotoUrl } from '$lib/utils/hdr-photo-url';
 	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
 	import { trackEngagement, recordShare } from '$lib/analytics/client';
 	import { shareUrl } from '$lib/analytics/share';
@@ -33,8 +34,16 @@
 		});
 	});
 
-	// Optimize image URL via CF Images
+	// Serve the web-sized HDR (gain-map) copy when one exists — it degrades gracefully to the
+	// same SDR pixels Cloudflare Images would show on a browser that can't render the gain map, so
+	// this is a strict upgrade, never a risk. `hdrLoadFailed` is a defensive fallback for the case
+	// hdr_web_available is stale (R2 object missing/deleted) — the <img> below sets it on error.
+	let hdrLoadFailed = $state(false);
+	const hdrUrl = $derived(data.photo.hdr_web_available && !hdrLoadFailed ? hdrPhotoUrl(data.photo.id) : null);
+
+	// Optimize image URL via CF Images (fallback when there's no HDR copy, or it failed to load)
 	const optimizedImageUrl = $derived.by(() => {
+		if (hdrUrl) return hdrUrl;
 		if (hasCFImage(data.photo.cf_image_id)) {
 			return cfImageUrl(data.photo.cf_image_id, 'large');
 		}
@@ -42,6 +51,9 @@
 	});
 
 	const imageSrcSet = $derived.by(() => {
+		// The HDR copy is a single web-sized file (src/lib/ai/hdr-resize.ts), not a responsive set —
+		// Cloudflare Images' srcset only applies once we've fallen back to it.
+		if (hdrUrl) return undefined;
 		if (hasCFImage(data.photo.cf_image_id)) {
 			return cfSrcSet(data.photo.cf_image_id);
 		}
@@ -189,14 +201,24 @@
 						src={optimizedImageUrl}
 						srcset={imageSrcSet}
 						sizes="(max-width: 768px) 100vw, 896px"
-						alt={photoAltText(data.photo.title, data.photo.caption)}
+						alt={photoAltText(data.photo.alt_text, data.photo.title, data.photo.caption)}
 						class="absolute inset-0 w-full h-full object-cover"
 						loading="eager"
 						decoding="async"
 						fetchpriority="high"
+						onerror={() => {
+							if (hdrUrl) hdrLoadFailed = true;
+						}}
 					/>
 				</div>
-				<p class="text-charcoal-300 mb-4">{data.photo.caption}</p>
+
+				<!--
+					No visible caption paragraph here. `data.photo.caption` is machine-generated search
+					metadata (ADR 0006) — it names jersey numbers and reads like retrieval text, not prose
+					a person wrote about the photo. Displaying it as if it were a caption misrepresents it
+					(Nino, 2026-09-26). It stays wired into <meta description>, <img alt> (via
+					photoAltText, preferring alt_text), and the Schema.org `description` above.
+				-->
 
 				<!-- Photo Metadata (formatted) -->
 				<div class="flex flex-wrap gap-3 text-sm text-charcoal-400 mb-4">
@@ -286,7 +308,7 @@
 	<div class="min-h-screen flex items-center justify-center bg-charcoal-950">
 		<div class="text-center">
 			<h1 class="text-2xl font-bold text-white mb-4">{data.photo.title}</h1>
-			<p class="text-charcoal-300 mb-6">{data.photo.caption}</p>
+			<!-- No visible caption here either — see the note above the main card. -->
 			<button
 				onclick={() => goto(`${base}/explore`)}
 				class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
