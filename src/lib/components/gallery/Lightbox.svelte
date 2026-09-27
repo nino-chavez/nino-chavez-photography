@@ -17,6 +17,7 @@
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
 	import { generatePhotoTitle, generateMetadataSummary } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { createHdrSource } from '$lib/utils/hdr-photo-url';
 	import { trackEngagement } from '$lib/analytics/client';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
@@ -91,9 +92,17 @@
 		};
 	});
 
+	// Serve the web-sized HDR (gain-map) copy when one exists, with the same per-photo fallback to
+	// Cloudflare Images as PhotoDetailModal and /photo/[id] (see hdr-photo-url.ts). This is the
+	// viewer the album, explore, favorites, collections, month and share pages open, so without it
+	// the HDR copies were never shown on those pages.
+	const hdr = createHdrSource();
+	const hdrUrl = $derived(hdr.url(photo));
+
 	// Get optimized image URL based on viewport
 	const optimizedImageUrl = $derived.by(() => {
 		if (!photo) return null;
+		if (hdrUrl) return hdrUrl;
 		if (hasCFImage(photo.cf_image_id)) {
 			if (viewportWidth <= 800) return cfImageUrl(photo.cf_image_id, 'medium');
 			return cfImageUrl(photo.cf_image_id, 'large');
@@ -104,6 +113,7 @@
 	// Get srcset for responsive loading
 	const imageSrcSet = $derived.by(() => {
 		if (!photo) return undefined;
+		if (hdrUrl) return undefined; // single web-sized HDR file, no responsive variants
 		if (hasCFImage(photo.cf_image_id)) return cfSrcSet(photo.cf_image_id);
 		return undefined;
 	});
@@ -480,9 +490,10 @@
 
 		for (const idx of toPreload) {
 			const p = photos[idx];
-			if (hasCFImage(p.cf_image_id)) {
+			const src = hdr.url(p) ?? (hasCFImage(p.cf_image_id) ? cfImageUrl(p.cf_image_id, viewportWidth <= 800 ? 'medium' : 'large') : null);
+			if (src) {
 				const img = new Image();
-				img.src = cfImageUrl(p.cf_image_id, viewportWidth <= 800 ? 'medium' : 'large');
+				img.src = src;
 			}
 		}
 	});
@@ -612,6 +623,9 @@
 						loading="eager"
 						decoding="async"
 						onload={handleImageLoad}
+						onerror={() => {
+							if (hdrUrl) hdr.markFailed(photo);
+						}}
 					/>
 				</div>
 

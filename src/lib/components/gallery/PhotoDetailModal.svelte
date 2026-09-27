@@ -23,7 +23,7 @@
 	import DownloadButton from '$lib/components/photo/DownloadButton.svelte';
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
-	import { hdrPhotoUrl } from '$lib/utils/hdr-photo-url';
+	import { createHdrSource } from '$lib/utils/hdr-photo-url';
 	import { trackEngagement } from '$lib/analytics/client';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
@@ -75,8 +75,8 @@
 	
 	// Serve the web-sized HDR (gain-map) copy when one exists (see /photo/[id]/+page.svelte for
 	// the full rationale — same logic, same graceful CF fallback on any load failure).
-	let hdrLoadFailed = $state(false);
-	const hdrUrl = $derived(photo?.hdr_web_available && !hdrLoadFailed ? hdrPhotoUrl(photo.id) : null);
+	const hdr = createHdrSource();
+	const hdrUrl = $derived(hdr.url(photo));
 
 	// Get optimized image URL via CF Images (fallback when there's no HDR copy, or it failed)
 	const optimizedImageUrl = $derived.by(() => {
@@ -191,7 +191,7 @@
 											loading="eager"
 											decoding="async"
 											onerror={() => {
-												if (hdrUrl) hdrLoadFailed = true;
+												if (hdrUrl) hdr.markFailed(photo);
 											}}
 										/>
 									{:else}

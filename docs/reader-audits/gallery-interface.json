@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-27T02:13:45.967Z",
+  "reviewedAt": "2026-09-27T07:31:32.257Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Re-recorded after merging main (PR #149: visible generated captions removed from photo page, modal and lightbox; alt prefers alt_text). This branch's own change is src/routes/links/+page.svelte: each gallery card's title is the event/matchup segment from splitAlbumNameForDisplay (canonical-album-naming.ts), with the level label as a small secondary line and the date line unchanged; album names are never reworded, only a trailing date duplicating the date line is dropped. Lead card alt keeps the full album name. A live 390px walk of /photography/links follows the deploy.",
-  "sourceDigest": "sha256:75e10a4f98a43ce07098fdda5fed2e28db8a56043b540989df303d39fac8770b",
+  "method": "Walked the album page lightbox on a local dev server (localhost:5198, album DWdCET): opening a photo requests /api/hdr/<photo_id> for it and the preloaded neighbour, and on 404 (no local R2 binding) shows the Cloudflare Images large copy; navigating right retried HDR for the next photo. No visible text changed: only the image source choice. Live /api/hdr/DWdCET-DSC09484 serves a 1067x1600 Ultra HDR JPEG (hdrgm 1.0, decodes with ultrahdr_app).",
+  "sourceDigest": "sha256:2396510100708c283553eee6f3d5c1d5c1b87d4e23a4a8e863535a3f05529a8d",
   "sourceFiles": 136,
   "scope": [
-    "src/routes/links/+page.svelte"
+    "src/lib/components/gallery/Lightbox.svelte,src/lib/components/gallery/PhotoDetailModal.svelte,src/routes/photo/[id]/+page.svelte,src/lib/utils/hdr-photo-url.ts"
   ]
 }
