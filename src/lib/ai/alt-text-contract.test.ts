@@ -157,6 +157,19 @@ test('only the slim alt-text prompt carries the team rule; the ingest prompt nev
 	assert.doesNotMatch(buildAltTextOnlyPrompt(['A', 'B', 'C']), /two-team matchup/);
 });
 
+test('does not reject an ordinary function word that also happens to be printed in the frame', () => {
+	// 2026-09-27 backfill: b59S9km ("WITH") and DbS2Tn4 ("OR") were rejected for normal sentences.
+	assert.deepEqual(
+		inspectAltText('A player in blue stands with arms raised or reaches for the ball.', { visibleText: ['WITH', 'OR'] }),
+		[]
+	);
+	// A banner word that names a campaign is still printed text.
+	assert.deepEqual(
+		inspectAltText('Players stand near an Awareness banner.', { visibleText: ['AWARENESS'] }).map((i) => i.code),
+		['named-text']
+	);
+});
+
 test('does not false-positive on generic vocabulary that coincidentally matches visible_text', () => {
 	// Measured against real production photo_metadata.visible_text (2026-09-26): "volleyball"
 	// (1,025 rows), "home" (320), "blue" (88), and "court" (48) are among the most common stored

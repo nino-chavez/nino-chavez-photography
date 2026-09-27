@@ -79,7 +79,12 @@ const NAMED_TEXT_STOPWORDS = new Set([
 	'passing', 'watch', 'watches', 'watching', 'celebrate', 'celebrates', 'huddle', 'huddles',
 	// stopwords / filler
 	'the', 'of', 'a', 'an', 'and', 'in', 'on', 'at', 'to', 'go', 'big', 'pro', 'ace', 'love', 'one',
-	'two', 'three', 'four', 'five'
+	'two', 'three', 'four', 'five',
+	// English function words an alt sentence needs. Measured in the 2026-09-27 full backfill: two
+	// photos with "WITH" / "OR" printed in frame were rejected for alt text that merely used the
+	// word ("a player with arms raised"). They identify nobody.
+	'with', 'or', 'for', 'by', 'from', 'as', 'is', 'are', 'it', 'its', 'this', 'that', 'up', 'out',
+	'off', 'over', 'into', 'near', 'while', 'her', 'his', 'their', 'not', 'no', 'all'
 ]);
 
 /** Any digit is treated as a jersey number — the one thing alt text is never allowed to name.
