@@ -234,45 +234,6 @@ export function generatePhotoTitle(photo: Photo): string {
 }
 
 /**
- * Generate engaging caption for lightbox display
- *
- * Prefers the AI-extracted caption when present; otherwise falls back to a
- * concise sport/play/category description.
- *
- * The vanity CATEGORICAL aesthetic attributes (emotion, time_of_day, lighting)
- * were removed (cutover prep) — those columns are being DROPPED at cutover, so the
- * emotion-narrative caption generator is gone.
- *
- * @param photo - Photo object with metadata
- * @returns Engaging caption string
- */
-export function generatePhotoCaption(photo: Photo): string {
-  // Prefer the durable AI caption when available.
-  if (photo.caption) {
-    return photo.caption;
-  }
-
-  const { metadata } = photo;
-  if (!metadata) {
-    return '';
-  }
-
-  const parts: string[] = [];
-
-  if (metadata.play_type) {
-    parts.push(`during a ${metadata.play_type}`);
-  } else if (metadata.photo_category) {
-    parts.push(`in a ${metadata.photo_category} moment`);
-  }
-
-  if (metadata.sport_type) {
-    parts.push(metadata.sport_type);
-  }
-
-  return parts.join(' ');
-}
-
-/**
  * Capitalize first letter of string
  *
  * @param str - String to capitalize

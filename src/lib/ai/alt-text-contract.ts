@@ -77,7 +77,8 @@ const NAMED_TEXT_STOPWORDS = new Set([
 /** Any digit is treated as a jersey number — the one thing alt text is never allowed to name.
  * Broader than "reject a 1-2 digit token after #/number" on purpose: "numbers 3 and 12" (the
  * observed production failure) has no leading marker at all, and alt text has no legitimate use
- * for a bare digit (no dates, no scores, no counts spelled as digits). */
+ * for a bare digit (no dates, no scores, no counts spelled as digits). Cheap existence test before
+ * computing the more expensive match-with-context below — most alt text has no digit at all. */
 const DIGIT_PATTERN = /\d/;
 
 export function inspectAltText(text: string, opts: { visibleText?: string[] } = {}): AltTextIssue[] {
@@ -97,8 +98,8 @@ export function inspectAltText(text: string, opts: { visibleText?: string[] } = 
 		issues.push({ code: 'too-short', message: 'alt text must be a sentence, not a keyword or tag' });
 	}
 
-	const digitMatch = raw.match(/\S*\d\S*/)?.[0];
-	if (digitMatch) {
+	if (DIGIT_PATTERN.test(raw)) {
+		const digitMatch = raw.match(/\S*\d\S*/)?.[0];
 		issues.push({
 			code: 'jersey-number',
 			message: 'alt text must never name a jersey number or any other digit — describe the team by uniform color instead',
