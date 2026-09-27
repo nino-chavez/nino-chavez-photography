@@ -15,12 +15,14 @@
  * This call extracts no fresh `visible_text` of its own, but a row being backfilled already HAS
  * one from its original ingest (`photo_metadata.visible_text`, written by scripts/ingest-album.ts)
  * — pass it in via `opts.visibleText` and the deterministic "named-text" cross-check
- * (alt-text-contract.ts) runs exactly as it does in the full ingest-time path. Omit it only when
- * the row genuinely has none.
+ * (alt-text-contract.ts) runs exactly as it does in the full ingest-time path. When the row's
+ * album is a known two-team matchup, `opts.teamNames` permits only those canonical team names;
+ * any other printed text remains banned. Omit `visibleText` only when the row genuinely has none.
  */
 import { SITE_URL } from '$lib/site-url';
 import {
 	assertAltTextContract,
+	buildAltTextTeamContext,
 	buildAltTextCorrectionMessage,
 	inspectAltText,
 	MAX_ALT_TEXT_CORRECTIONS
@@ -28,12 +30,17 @@ import {
 
 export const ALT_TEXT_ONLY_MODEL = 'google/gemini-2.5-flash-lite'; // same locked model as ingest (ADR 0002)
 
-export function buildAltTextOnlyPrompt(): string {
-	return `You are writing screen-reader alt text for one action-sports photograph.
+export function buildAltTextOnlyPrompt(teamNames?: readonly string[]): string {
+	const teamContext = buildAltTextTeamContext(teamNames);
+	const teamSection = teamContext ? `\n\n${teamContext}` : '';
+	const printedTextRule = teamContext
+		? 'printed text from the frame except an allowed team name under the matchup rule above'
+		: 'any printed text visible in the frame';
+	return `You are writing screen-reader alt text for one action-sports photograph.${teamSection}
 
 Return ONLY a JSON object with EXACTLY this key:
 
-"alt_text": ONE plain sentence (under 150 characters) for a screen reader — who is doing what: describe the team by the COLOR of their uniform and the visible body position and motion toward the ball — e.g. "reaches overhead for the ball", "leans back with arms raised toward the ball", "extends low for the ball", "stands ready to play the ball". Do NOT name a specific volleyball play — never write "serves", "sets", "spikes", "attacks", "blocks", "digs", or "passes". Naming the play is a guess about intent and timing this sentence must never make, even when it looks obvious: describe only what the body and the ball are visibly doing, not which play it is. Only add a setting detail (the net, the sideline, the bleachers, a gym, a beach court) when THAT SPECIFIC detail is actually visible in this frame — do not default to "near the net" or any other location as generic filler when nothing in the frame shows it. Never include a jersey number or any other digit, a person's name, any printed text visible in the frame, guessed identity, or aesthetic language (no "cinematic", "stunning", "beautifully"). Name a person by the COLOR of what they wear, never by naming swimwear: write "a player in brown" or "a player in a black top", never "bikini", "swimsuit", "bathing suit", "briefs", or any description of a person's body. Ordinary athletic wear (jersey, shirt, top, shorts, trunks) may be named normally. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
+"alt_text": ONE plain sentence (under 150 characters) for a screen reader — who is doing what: describe the team by the COLOR of their uniform and the visible body position and motion. Mention the ball ONLY when the ball itself is visible in this frame — e.g. "reaches overhead for the ball", "extends low for the ball". When no ball is visible, describe posture and contact between players instead — e.g. "two players slap hands", "stands with both hands open", "crouches in a ready stance". Do NOT name a specific volleyball play — never write "serves", "sets", "spikes", "attacks", "blocks", "digs", or "passes". Naming the play is a guess about intent and timing this sentence must never make, even when it looks obvious: describe only what the body and the ball are visibly doing, not which play it is. Only add a setting detail (the net, the sideline, the bleachers, a gym, a beach court) when THAT SPECIFIC detail is actually visible in this frame — do not default to "near the net" or any other location as generic filler when nothing in the frame shows it. Never include a jersey number or any other digit, a person's name, ${printedTextRule}, guessed identity, or aesthetic language (no "cinematic", "stunning", "beautifully"). Name a person by the COLOR of what they wear, never by naming swimwear: write "a player in brown" or "a player in a black top", never "bikini", "swimsuit", "bathing suit", "briefs", or any description of a person's body. Ordinary athletic wear (jersey, shirt, top, shorts, trunks) may be named normally. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
 
 NO markdown. NO explanation. ONLY the JSON object: {"alt_text":"..."}`;
 }
@@ -51,6 +58,8 @@ export interface AltTextOnlyOptions {
 	/** The row's own stored `visible_text` (from its original ingest), if any — enables the
 	 * deterministic "named-text" cross-check in the contract. */
 	visibleText?: string[];
+	/** The two canonical teams linked to this album, when it is a matchup. */
+	teamNames?: string[];
 	/** Override the fetch impl (tests). */
 	fetchImpl?: typeof fetch;
 }
@@ -81,11 +90,11 @@ export async function extractAltTextOnly(
 	imageBuffer: Buffer,
 	opts: AltTextOnlyOptions
 ): Promise<AltTextOnlyResult> {
-	const { apiKey, model = ALT_TEXT_ONLY_MODEL, visibleText, fetchImpl = fetch } = opts;
+	const { apiKey, model = ALT_TEXT_ONLY_MODEL, visibleText, teamNames, fetchImpl = fetch } = opts;
 	if (!apiKey) throw new Error('extractAltTextOnly: missing OpenRouter API key');
 
 	const dataUrl = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
-	const prompt = buildAltTextOnlyPrompt();
+	const prompt = buildAltTextOnlyPrompt(teamNames);
 	const messages: Array<{ role: string; content: unknown }> = [
 		{
 			role: 'user',
@@ -124,10 +133,10 @@ export async function extractAltTextOnly(
 		const altText = parseAltText(text);
 		if (!altText) throw new Error(`no alt_text parsed (got: ${text.slice(0, 80)})`);
 
-		const issues = inspectAltText(altText, { visibleText });
+		const issues = inspectAltText(altText, { visibleText, teamNames });
 		if (!issues.length) return { altText, cost, rawText: text };
 		// issues are non-empty here, so this always throws — the canonical contract error.
-		if (corrections >= MAX_ALT_TEXT_CORRECTIONS) assertAltTextContract(altText, { visibleText });
+		if (corrections >= MAX_ALT_TEXT_CORRECTIONS) assertAltTextContract(altText, { visibleText, teamNames });
 
 		messages.push({ role: 'assistant', content: text });
 		messages.push({ role: 'user', content: buildAltTextCorrectionMessage(issues) });

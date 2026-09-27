@@ -55,6 +55,7 @@ config({ path: join(REPO_ROOT, '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { extractAltTextOnly } from '../src/lib/ai/alt-text-only';
+import { getTwoTeamMatchupNames } from '../src/lib/ai/alt-text-contract';
 import { cfImageUrl } from '../src/lib/utils/cloudflare-images';
 
 // ---------------------------------------------------------------------------
@@ -127,6 +128,36 @@ function isMissingColumnError(error: { code?: string; message?: string } | null 
 interface Row { photo_id: string; image_key: string; album_key: string; cf_image_id: string; visible_text: string[] | null; }
 
 /**
+ * Read the small album_teams mapping once for this run, rather than joining or looking up teams
+ * per photo. Only exact two-team matchups receive context; tournaments and other albums preserve
+ * the existing color-only behavior.
+ */
+async function fetchMatchupTeamNames(albumKeys: Iterable<string>): Promise<Map<string, string[]>> {
+	const keys = [...new Set(albumKeys)];
+	const namesByAlbum = new Map<string, string[]>();
+	for (let start = 0; start < keys.length; start += 100) {
+		const { data, error } = await sb
+			.from('album_teams')
+			.select('album_key, teams(name)')
+			.in('album_key', keys.slice(start, start + 100));
+		if (error) throw new Error(`album team lookup failed: ${error.message}`);
+		for (const link of data ?? []) {
+			const team = Array.isArray((link as any).teams) ? (link as any).teams[0] : (link as any).teams;
+			if (typeof team?.name !== 'string') continue;
+			const names = namesByAlbum.get(link.album_key) ?? [];
+			names.push(team.name);
+			namesByAlbum.set(link.album_key, names);
+		}
+	}
+	const matchups = new Map<string, string[]>();
+	for (const [albumKey, names] of namesByAlbum) {
+		const teamNames = getTwoTeamMatchupNames(names);
+		if (teamNames.length === 2) matchups.set(albumKey, teamNames);
+	}
+	return matchups;
+}
+
+/**
  * Row COUNT only, for --dry-run — never fetches the rows themselves, never touches OpenRouter.
  * Prefers `alt_text IS NULL` (the real "not yet done" predicate); if that column doesn't exist
  * yet (pre-migration), falls back to counting `cf_image_id IS NOT NULL` and says so.
@@ -197,7 +228,7 @@ interface ProcessResult { cost: number | null; altText: string; }
 
 /** Bounded retry on 429/5xx — covers both the CF image fetch AND extractAltTextOnly's own RETRY
  * throw (same convention as extractOne/backfill-image-embeddings.ts's processRow). */
-async function processRow(row: Row): Promise<ProcessResult> {
+async function processRow(row: Row, teamNames?: string[]): Promise<ProcessResult> {
 	let attempt = 0;
 	for (;;) {
 		try {
@@ -209,7 +240,8 @@ async function processRow(row: Row): Promise<ProcessResult> {
 
 			const result = await extractAltTextOnly(buf, {
 				apiKey: OPENROUTER_API_KEY!,
-				visibleText: row.visible_text ?? undefined
+				visibleText: row.visible_text ?? undefined,
+				teamNames
 			});
 
 			const { error } = await sb
@@ -258,6 +290,8 @@ async function main() {
 	const rows = await fetchRows();
 	console.log(`   ${rows.length} row(s) to process\n`);
 	if (rows.length === 0) { console.log('✅ Nothing to do.'); return; }
+	const matchupTeamNames = await fetchMatchupTeamNames(rows.map((row) => row.album_key));
+	console.log(`   ${matchupTeamNames.size} two-team matchup album(s) will receive team-name context; all others stay color-only\n`);
 
 	let ok = 0, fail = 0, totalCost = 0, index = 0;
 	let budgetExceeded = false;
@@ -275,7 +309,7 @@ async function main() {
 			if (i >= rows.length) return;
 			const row = rows[i];
 			try {
-				const r = await processRow(row);
+				const r = await processRow(row, matchupTeamNames.get(row.album_key));
 				ok++;
 				if (r.cost) totalCost += r.cost;
 				done.add(row.photo_id);

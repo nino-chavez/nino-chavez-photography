@@ -66,6 +66,8 @@ import { embedText, embedImage } from '../src/lib/ai/embeddings';
 import { resizeForEmbedding } from '../src/lib/ai/image-resize';
 import { computeSharpness } from '../src/lib/ai/sharpness';
 import { extractOne, EXTRACTION_VERSION, INGEST_MODEL } from '../src/lib/ai/ingest-extraction';
+import { getTwoTeamMatchupNames, visibleTextProvesMatchupTeam } from '../src/lib/ai/alt-text-contract';
+import { extractAltTextOnly } from '../src/lib/ai/alt-text-only';
 import { shredCaptionPlayers } from '../src/lib/identity/sightings';
 import { SPORTS, type Sport } from '../src/lib/ai/taxonomy';
 import { checkAlbumName } from '../src/lib/utils/canonical-album-naming';
@@ -407,6 +409,30 @@ async function captureAlbumContext(): Promise<void> {
 	}
 }
 
+/**
+ * Alt text may name a team only for a known two-team matchup. The canonical names live in
+ * teams/album_teams: never parse them from the display title, which intentionally preserves
+ * operator-written event text such as tournaments and dates.
+ */
+async function resolveAltTextTeamNames(): Promise<string[]> {
+	const { data, error } = await sb
+		.from('album_teams')
+		.select('teams(name)')
+		.eq('album_key', ALBUM_KEY!);
+	if (error) throw new Error(`album team lookup failed: ${error.message}`);
+	const linkedNames = (data ?? []).flatMap((link: any) => {
+		const team = Array.isArray(link.teams) ? link.teams[0] : link.teams;
+		return typeof team?.name === 'string' ? [team.name] : [];
+	});
+	const teamNames = getTwoTeamMatchupNames(linkedNames);
+	if (teamNames.length === 2) {
+		console.log(`   ♿ Alt text may name a team only with uniform proof: ${teamNames.join(' · ')}`);
+	} else if (linkedNames.length) {
+		console.log(`   ♿ Alt text uses uniform color only (${linkedNames.length} linked teams, not a two-team matchup)`);
+	}
+	return teamNames;
+}
+
 /** Detect the album's sport from its name (operator convention: "the sport is in the name"). */
 function detectSportFromName(name: string): Sport | null {
 	const n = name.toLowerCase();
@@ -655,7 +681,7 @@ async function reportAndPruneMissing(localKeys: Set<string>, localFileCount: num
 	console.log(`      🗑  pruned ${pruned}/${toDelete.length} row(s)${skipped ? ` (${skipped} protected, skipped — re-run with --prune-confirm-identity-loss to override)` : ''}\n`);
 }
 
-async function processImage(job: ImageJob, album: { sport: Sport | null; albumName: string }): Promise<ProcessResult> {
+async function processImage(job: ImageJob, album: { sport: Sport | null; albumName: string; teamNames: string[] }): Promise<ProcessResult> {
 	const fileBuffer = readFileSync(job.path);
 	// Reprocess-in-place (P1): if this album already has a row for this image_key, UPDATE it —
 	// keep its existing photo_id AND cf_image_id — instead of minting a NEW deterministic photo_id,
@@ -759,6 +785,19 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 
 	// 3. Extract (sport-aware) — retry on 429/5xx.
 	const ex = await extractWithRetry(fileBuffer, album);
+	const resizedForEmbed = await resizeForEmbedding(fileBuffer);
+
+	// 3b. Team-aware alt text, only for a two-team matchup whose frame reads one of the teams. The
+	// visible_text checked here came from the pass above, which was never told the team names, so
+	// it is independent evidence for the naming call. If the naming call cannot satisfy the
+	// contract, the color-only alt text from step 3 stands.
+	if (visibleTextProvesMatchupTeam(ex.extraction.visible_text, album.teamNames)) {
+		const named = await namedAltTextWithRetry(resizedForEmbed, ex.extraction.visible_text, album.teamNames);
+		if (named) {
+			ex.extraction.alt_text = named.altText;
+			if (named.cost) ex.cost = (ex.cost ?? 0) + named.cost;
+		}
+	}
 
 	// 4. Embed the caption (caption-text space; still written, no longer the primary search
 	// ranking signal — see blueprint/decisions/0006).
@@ -768,7 +807,6 @@ async function processImage(job: ImageJob, album: { sport: Sport | null; albumNa
 	// 4b. Embed the IMAGE (image space — the primary search-ranking vector as of 0006) +
 	// deterministic sharpness. Same fatal-on-failure contract as the caption embed above: a
 	// failed image embed leaves the checkpoint's `failed` entry for this image, safe to retry.
-	const resizedForEmbed = await resizeForEmbedding(fileBuffer);
 	const imgResult = await embedImageWithRetry(resizedForEmbed);
 	if (!imgResult) throw new Error('image embed failed (null vector)');
 	if (imgResult.cost) ex.cost = (ex.cost ?? 0) + imgResult.cost;
@@ -914,7 +952,7 @@ async function embedImageWithRetry(resizedJpegBuffer: Buffer) {
 	}
 }
 
-async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; albumName: string }) {
+async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; albumName: string; teamNames: string[] }) {
 	let attempt = 0;
 	for (;;) {
 		try {
@@ -936,6 +974,27 @@ async function extractWithRetry(buffer: Buffer, album: { sport: Sport | null; al
 	}
 }
 
+/** The team-aware alt-text call (the same one the backfill uses), with extractWithRetry's
+ * 429/5xx retry. Returns null when the model cannot meet the alt-text contract, so the caller
+ * keeps the color-only sentence; any other failure is fatal for this image like every step. */
+async function namedAltTextWithRetry(buffer: Buffer, visibleText: string[], teamNames: string[]) {
+	let attempt = 0;
+	for (;;) {
+		try {
+			return await extractAltTextOnly(buffer, { apiKey: OPENROUTER_API_KEY!, visibleText, teamNames });
+		} catch (e: any) {
+			const msg = String(e?.message || e);
+			if (msg.startsWith('RETRY:') && attempt < 5) {
+				attempt++;
+				await sleep(Math.min(2000 * 2 ** (attempt - 1), 30000));
+				continue;
+			}
+			if (msg.startsWith('alt text contract:')) return null;
+			throw e;
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -947,12 +1006,13 @@ async function main() {
 	console.log(`   Concurrency: ${CONCURRENCY}${LIMIT ? ` · limit ${LIMIT}` : ''}${DRY ? ' · DRY RUN' : ''}${OVERWRITE ? ' · OVERWRITE' : ''}`);
 	console.log(`   Checkpoint: ${CK_PATH} (${done.size} already done)\n`);
 
-	const album = await resolveAlbum();
-	console.log(`   Album sport (authoritative): ${album.sport ?? 'none (non-sport)'}`);
+	const resolvedAlbum = await resolveAlbum();
+	console.log(`   Album sport (authoritative): ${resolvedAlbum.sport ?? 'none (non-sport)'}`);
 	if (OP_LAT !== null) console.log(`   📍 Venue GPS override (fallback for frames without an EXIF fix): ${OP_LAT}, ${OP_LNG}`);
 	console.log('');
 
 	await captureAlbumContext();
+	const album = { ...resolvedAlbum, teamNames: await resolveAltTextTeamNames() };
 
 	// Keep a freshly-ingested album OFF the live gallery until the operator reviews + publishes.
 	if (UNLISTED && !DRY) {

@@ -4,8 +4,13 @@ import {
 	ALT_TEXT_MAX_CHARS,
 	assertAltTextContract,
 	buildAltTextCorrectionMessage,
-	inspectAltText
+	buildAltTextTeamContext,
+	inspectAltText,
+	teamNameForms,
+	visibleTextProvesMatchupTeam
 } from './alt-text-contract';
+import { buildAltTextOnlyPrompt } from './alt-text-only';
+import { buildIngestPrompt } from './ingest-extraction';
 
 test('accepts a plain sentence with no digits, names, or aesthetic language', () => {
 	const alt = 'A player in a red jersey dives near the sideline while a teammate in white watches.';
@@ -56,6 +61,100 @@ test('rejects printed text (a name or school name) carried over from visible_tex
 		inspectAltText('A player in white blocks at the net.', { visibleText: ['Sikora', 'LEWIS'] }),
 		[]
 	);
+});
+
+test('allows an album team by its printed short name, and rejects another school or an unproven one', () => {
+	// Real shapes from album DWdCET (2026-09-26): canonical names from album_teams, jersey text
+	// from visible_text. The jerseys print "MILLIKIN", never "Millikin University".
+	const matchup = ['Millikin University', 'North Central College'];
+	// A rejected name can be flagged by both the team check and the printed-text check; the
+	// assertion is about whether it is rejected, so compare distinct codes.
+	const codes = (alt: string, visibleText: string[]) => [
+		...new Set(inspectAltText(alt, { visibleText, teamNames: matchup }).map((issue) => issue.code))
+	];
+	assert.deepEqual(codes('A Millikin player reaches overhead for the ball.', ['MILLIKIN', 'NCAA']), []);
+	assert.deepEqual(codes('A North Central player reaches overhead for the ball.', ['NORTH CENTRAL COLLEGE']), []);
+	assert.deepEqual(codes('A North Central player reaches overhead for the ball.', ['NORTH-CENTRAL']), []);
+	assert.deepEqual(codes('A North Central College player reaches overhead for the ball.', ['NORTH CENTRAL COLLEGE']), []);
+	// A mascot is not proof of the team.
+	assert.deepEqual(codes('A North Central player reaches overhead for the ball.', ['CARDINALS']), ['named-text']);
+	// Proof of one team does not license naming the other.
+	assert.deepEqual(codes('A North Central player reaches overhead for the ball.', ['MILLIKIN']), ['named-text']);
+	assert.deepEqual(codes('A North Central player reaches overhead for the ball.', []), ['named-text']);
+	// Another school stays banned printed text.
+	assert.deepEqual(codes('An Augustana player reaches overhead for the ball.', ['AUGUSTANA']), ['named-text']);
+	// Without matchup context the album's own name is ordinary banned printed text.
+	assert.deepEqual(
+		inspectAltText('A Millikin player reaches overhead for the ball.', { visibleText: ['MILLIKIN'] }).map((i) => i.code),
+		['named-text']
+	);
+});
+
+test('teams that shorten to the same words can be named only by their full names', () => {
+	const matchup = ['North Central College', 'North Central High School'];
+	// A rejected name can be flagged by both the team check and the printed-text check; the
+	// assertion is about whether it is rejected, so compare distinct codes.
+	const codes = (alt: string, visibleText: string[]) => [
+		...new Set(inspectAltText(alt, { visibleText, teamNames: matchup }).map((issue) => issue.code))
+	];
+	assert.deepEqual(codes('A North Central player reaches overhead for the ball.', ['NORTH CENTRAL']), ['named-text']);
+	assert.deepEqual(codes('A North Central College player reaches overhead for the ball.', ['NORTH CENTRAL COLLEGE']), []);
+	// The prompt offers the distinct full names, never the shared short one.
+	const context = buildAltTextTeamContext(matchup);
+	assert.match(context, /"North Central College" and "North Central High School"/);
+	assert.doesNotMatch(context, /"North Central"[^ ]/);
+});
+
+test('a team whose whole name sits inside the other team\'s name can never be proven by it', () => {
+	const matchup = ['Chicago', 'University of Chicago'];
+	// A rejected name can be flagged by both the team check and the printed-text check; the
+	// assertion is about whether it is rejected, so compare distinct codes.
+	const codes = (alt: string, visibleText: string[]) => [
+		...new Set(inspectAltText(alt, { visibleText, teamNames: matchup }).map((issue) => issue.code))
+	];
+	// "UNIVERSITY OF CHICAGO" proves the university, not the team called Chicago.
+	assert.deepEqual(codes('A Chicago player reaches overhead for the ball.', ['UNIVERSITY OF CHICAGO']), ['named-text']);
+	assert.deepEqual(codes('A University of Chicago player reaches overhead for the ball.', ['UNIVERSITY OF CHICAGO']), []);
+	assert.deepEqual(codes('A Chicago player reaches overhead for the ball.', ['CHICAGO']), ['named-text']);
+	// Only the team that can be proven is offered in the prompt.
+	const context = buildAltTextTeamContext(matchup);
+	assert.match(context, /You may name this team in alt_text: "University of Chicago"/);
+	assert.equal(visibleTextProvesMatchupTeam(['CHICAGO'], matchup), false);
+	assert.equal(visibleTextProvesMatchupTeam(['UNIVERSITY OF CHICAGO'], matchup), true);
+});
+
+test('visibleTextProvesMatchupTeam: only a proving form of this album\'s teams counts', () => {
+	const matchup = ['Millikin University', 'North Central College'];
+	assert.equal(visibleTextProvesMatchupTeam(['MILLIKIN'], matchup), true);
+	assert.equal(visibleTextProvesMatchupTeam(['NORTH-CENTRAL'], matchup), true);
+	assert.equal(visibleTextProvesMatchupTeam(['CARDINALS', 'NCAA'], matchup), false);
+	assert.equal(visibleTextProvesMatchupTeam(null, matchup), false);
+	assert.equal(visibleTextProvesMatchupTeam(['MILLIKIN'], ['Millikin University']), false);
+});
+
+test('teamNameForms: full name plus the distinctive part', () => {
+	assert.deepEqual(teamNameForms('Millikin University'), ['millikin university', 'millikin']);
+	assert.deepEqual(teamNameForms('North Central College'), ['north central college', 'north central']);
+	assert.deepEqual(teamNameForms('University of Chicago'), ['university of chicago', 'chicago']);
+	assert.deepEqual(teamNameForms('Aurora Central Catholic'), ['aurora central catholic']);
+});
+
+test('only the slim alt-text prompt carries the team rule; the ingest prompt never does', () => {
+	const matchup = ['Millikin University', 'North Central College'];
+	const slim = buildAltTextOnlyPrompt(matchup);
+	assert.match(slim, /You may name one of these teams in alt_text: "Millikin" \(Millikin University\) and "North Central" \(North Central College\)/);
+	assert.match(slim, /not on a banner, sign, scoreboard, or the floor/);
+	assert.match(slim, /A nickname or mascot alone does not prove the team/);
+	assert.match(slim, /Never infer a team from home\/away, court side, or usual uniform colors/);
+	assert.match(slim, /printed text from the frame except an allowed team name under the matchup rule above/);
+
+	// The ingest reply's visible_text is the evidence for naming a team, so the ingest prompt must
+	// never disclose the names that evidence would then be checked against.
+	const ingest = buildIngestPrompt({ albumSport: 'volleyball' });
+	assert.doesNotMatch(ingest, /two-team matchup|Millikin|allowed team name/);
+
+	assert.doesNotMatch(buildAltTextOnlyPrompt(), /two-team matchup|allowed team name/);
+	assert.doesNotMatch(buildAltTextOnlyPrompt(['A', 'B', 'C']), /two-team matchup/);
 });
 
 test('does not false-positive on generic vocabulary that coincidentally matches visible_text', () => {

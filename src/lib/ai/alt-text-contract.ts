@@ -10,7 +10,8 @@
  * scripts/social-publish/alt-text.mjs). `alt_text` exists so nothing needs to be subtracted from
  * a sentence written for a different job: it describes who is doing what — team by uniform color,
  * the action, the setting — and never contains a jersey number, a name, printed text from the
- * frame, guessed identity, or aesthetic filler.
+ * frame, guessed identity, or aesthetic filler. The sole printed-text exception is an album's
+ * own canonical team name, when that two-team matchup is supplied and the frame reads that name.
  *
  * Shares the relationship/emotion/outcome/aesthetic/swimwear rules with caption-contract.ts
  * (CLAIM_RULES) — a photo alone still does not establish a relationship, an emotion, an outcome,
@@ -25,6 +26,13 @@ export interface AltTextIssue {
 	code: AltTextIssueCode;
 	message: string;
 	match?: string;
+}
+
+export interface AltTextContractOptions {
+	visibleText?: string[];
+	/** The canonical names of this album's two competing teams. A team may be named only when it
+	 * is one of these AND a `visible_text` entry reads that team's name (see teamNameForms). */
+	teamNames?: string[];
 }
 
 /** Target length for an <img alt> — see reader-contract.json's "AI alt text" surface. */
@@ -81,7 +89,106 @@ const NAMED_TEXT_STOPWORDS = new Set([
  * computing the more expensive match-with-context below — most alt text has no digit at all. */
 const DIGIT_PATTERN = /\d/;
 
-export function inspectAltText(text: string, opts: { visibleText?: string[] } = {}): AltTextIssue[] {
+/** Lowercase, and treat hyphens and other punctuation as word breaks: the same album's
+ * visible_text holds both "NORTH-CENTRAL" and "NORTH CENTRAL COLLEGE" (DWdCET, 2026-09-26). */
+const normalizeTeamName = (value: string): string =>
+	value.toLocaleLowerCase().replace(/[^\p{L}\p{N}']+/gu, ' ').trim();
+
+/** Words that name the kind of institution, not which one. */
+const INSTITUTION_WORDS = new Set(['university', 'college', 'high', 'school', 'hs', 'of', 'the']);
+
+/**
+ * The forms a team's name takes in print. Canonical names are the institution's full name
+ * ("Millikin University", "North Central College"), but uniforms print the distinctive part:
+ * the Millikin album DWdCET reads "MILLIKIN" 6 times and never "Millikin University". So each
+ * team is recognised by its full name and by that name with the institution words removed.
+ * A nickname or mascot ("CARDINALS") is not derivable from the name and is never proof.
+ */
+export function teamNameForms(teamName: string): string[] {
+	const full = normalizeTeamName(teamName);
+	const short = full.split(' ').filter((word) => !INSTITUTION_WORDS.has(word)).join(' ');
+	return short && short !== full ? [full, short] : [full];
+}
+
+/** The team's shortest printed form in its original casing, e.g. "Millikin University" -> "Millikin". */
+function teamShortName(teamName: string): string {
+	const words = teamName.trim().split(/\s+/).filter((word) => !INSTITUTION_WORDS.has(normalizeTeamName(word)));
+	return words.length ? words.join(' ') : teamName.trim();
+}
+
+const containsForm = (normalizedText: string, form: string): boolean =>
+	` ${normalizedText} `.includes(` ${form} `);
+
+/** Return a matchup's two distinct canonical team names, or no context for every other album. */
+export function getTwoTeamMatchupNames(teamNames: readonly string[] | undefined): string[] {
+	const names = new Map<string, string>();
+	for (const teamName of teamNames ?? []) {
+		if (typeof teamName !== 'string' || !teamName.trim()) continue;
+		names.set(normalizeTeamName(teamName), teamName.trim());
+	}
+	return names.size === 2 ? [...names.values()] : [];
+}
+
+interface MatchupTeam {
+	name: string;
+	/** Every printed form of this team's name, used to catch any mention of it. */
+	allForms: string[];
+	/** The forms that identify THIS team and not the other one: a form that appears inside any
+	 * form of the other team ("chicago" inside "university of chicago") can prove neither. */
+	provingForms: string[];
+	/** How the prompt names the team: its shortest proving form, in canonical casing. */
+	label: string | null;
+}
+
+/** A two-team matchup's teams with collision-safe forms, or [] for every other album. */
+function matchupTeams(teamNames: readonly string[] | undefined): MatchupTeam[] {
+	const names = getTwoTeamMatchupNames(teamNames);
+	if (names.length !== 2) return [];
+	const forms = names.map(teamNameForms);
+	return names.map((name, i) => {
+		const other = forms[1 - i];
+		const provingForms = forms[i].filter((form) => !other.some((o) => containsForm(o, form)));
+		const short = teamShortName(name);
+		const label = provingForms.includes(normalizeTeamName(short))
+			? short
+			: provingForms.includes(normalizeTeamName(name)) ? name.trim() : null;
+		return { name, allForms: forms[i], provingForms, label };
+	});
+}
+
+/**
+ * True when some `visible_text` entry reads a proving form of one of the matchup's teams. Ingest
+ * uses this to decide whether a photo is worth the separate, team-aware alt-text call: the
+ * visible_text it checks was extracted without the team names in the prompt, so it is evidence
+ * the naming call cannot have produced itself.
+ */
+export function visibleTextProvesMatchupTeam(
+	visibleText: readonly string[] | null | undefined,
+	teamNames: readonly string[] | undefined
+): boolean {
+	const teams = matchupTeams(teamNames);
+	return (visibleText ?? []).some(
+		(entry) =>
+			typeof entry === 'string' &&
+			teams.some((team) => team.provingForms.some((form) => containsForm(normalizeTeamName(entry), form)))
+	);
+}
+
+/**
+ * The prompt rule for the slim alt-text call. Only that call gets it: its evidence is the row's
+ * stored visible_text from a pass that never saw the team names. The ingest prompt deliberately
+ * never carries it, because a visible_text written in the same reply as the alt text, after the
+ * names were disclosed, would let the model's own claim serve as its proof.
+ */
+export function buildAltTextTeamContext(teamNames: readonly string[] | undefined): string {
+	const nameable = matchupTeams(teamNames).filter((team) => team.label);
+	if (!nameable.length) return '';
+	const quoted = nameable.map((team) => (team.label === team.name ? `"${team.name}"` : `"${team.label}" (${team.name})`));
+	const list = quoted.length === 2 ? `${quoted[0]} and ${quoted[1]}` : quoted[0];
+	return `This album is a two-team matchup. You may name ${nameable.length === 2 ? 'one of these teams' : 'this team'} in alt_text: ${list}. Name a team ONLY when THIS frame proves it: that team's name is legible on that player's uniform — not on a banner, sign, scoreboard, or the floor. Use the quoted name exactly (e.g. "a ${nameable[0].label} player"). A nickname or mascot alone does not prove the team. Otherwise describe the player by uniform color. Never infer a team from home/away, court side, or usual uniform colors. Jersey numbers, player names, and every other printed word remain forbidden.`;
+}
+
+export function inspectAltText(text: string, opts: AltTextContractOptions = {}): AltTextIssue[] {
 	const raw = String(text ?? '').trim();
 	if (!raw) return [{ code: 'empty', message: 'alt text must be a non-empty sentence' }];
 
@@ -115,10 +222,44 @@ export function inspectAltText(text: string, opts: { visibleText?: string[] } = 
 		if (match) issues.push({ code: rule.code, message: rule.message, match });
 	}
 
+	const teams = matchupTeams(opts.teamNames);
+	const visibleEntries = (opts.visibleText ?? [])
+		.filter((term): term is string => typeof term === 'string' && Boolean(term.trim()))
+		.map(normalizeTeamName);
+	const provesAllowedTeam = (normalizedEntry: string): boolean =>
+		teams.some((team) => team.provingForms.some((form) => containsForm(normalizedEntry, form)));
+	// Supplying album context alone is not proof. A visible_text entry must read one of the team's
+	// proving forms, and the alt text must name the team by that same identifying form; any other
+	// mention of either team (an unproven one, or an ambiguous shared form) is rejected so the
+	// retry falls back to the safe color description.
+	// First remove every properly proven mention, so "University of Chicago" named with proof is
+	// not then read as an unproven mention of a team called "Chicago".
+	let unprovenAlt = ` ${normalizeTeamName(raw)} `;
+	for (const team of teams) {
+		for (const form of team.provingForms) {
+			if (visibleEntries.some((entry) => containsForm(entry, form))) {
+				unprovenAlt = unprovenAlt.split(` ${form} `).join('  ');
+			}
+		}
+	}
+	for (const team of teams) {
+		if (team.allForms.some((form) => containsForm(unprovenAlt.trim(), form))) {
+			issues.push({
+				code: 'named-text',
+				message: 'alt text may name an album team only when that team name is legible in this frame',
+				match: team.name
+			});
+			break;
+		}
+	}
 	for (const term of opts.visibleText ?? []) {
 		if (!term || typeof term !== 'string') continue;
 		const trimmed = term.trim();
 		if (!trimmed) continue;
+		// An entry that reads one of THIS album's teams ("MILLIKIN", "NORTH CENTRAL COLLEGE") is the
+		// allowed exception, checked above. It runs before the generic-text filter so a multi-word
+		// name such as "North Central" is still rejected for every other album.
+		if (provesAllowedTeam(normalizeTeamName(trimmed))) continue;
 		// A visible_text entry is skipped when EVERY word in it is generic vocabulary (the stoplist
 		// below), whether it's one word or several. Measured against real photo_metadata.visible_text
 		// (22,442 rows, 11,512 distinct values, 2026-09-26): the highest-frequency entries are
@@ -149,7 +290,7 @@ export function inspectAltText(text: string, opts: { visibleText?: string[] } = 
 	return issues;
 }
 
-export function assertAltTextContract(text: string, opts: { visibleText?: string[] } = {}): void {
+export function assertAltTextContract(text: string, opts: AltTextContractOptions = {}): void {
 	const issues = inspectAltText(text, opts);
 	if (!issues.length) return;
 	throw new Error(
