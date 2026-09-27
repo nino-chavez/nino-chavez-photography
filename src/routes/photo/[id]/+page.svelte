@@ -7,7 +7,7 @@
 	import RelatedPhotosCarousel from '$lib/components/gallery/RelatedPhotosCarousel.svelte'; // NEW: Related photos
 	import TagDisplay from '$lib/components/photo/TagDisplay.svelte'; // NEW: Player tags
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
-	import { hdrPhotoUrl } from '$lib/utils/hdr-photo-url';
+	import { createHdrSource } from '$lib/utils/hdr-photo-url';
 	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
 	import { trackEngagement, recordShare } from '$lib/analytics/client';
 	import { shareUrl } from '$lib/analytics/share';
@@ -36,10 +36,10 @@
 
 	// Serve the web-sized HDR (gain-map) copy when one exists — it degrades gracefully to the
 	// same SDR pixels Cloudflare Images would show on a browser that can't render the gain map, so
-	// this is a strict upgrade, never a risk. `hdrLoadFailed` is a defensive fallback for the case
-	// hdr_web_available is stale (R2 object missing/deleted) — the <img> below sets it on error.
-	let hdrLoadFailed = $state(false);
-	const hdrUrl = $derived(data.photo.hdr_web_available && !hdrLoadFailed ? hdrPhotoUrl(data.photo.id) : null);
+	// this is a strict upgrade, never a risk. `hdr.markFailed` is a defensive per-photo fallback for the case
+	// hdr_web_available is stale (R2 object missing/deleted) — the <img> below calls it on error.
+	const hdr = createHdrSource();
+	const hdrUrl = $derived(hdr.url(data.photo));
 
 	// Optimize image URL via CF Images (fallback when there's no HDR copy, or it failed to load)
 	const optimizedImageUrl = $derived.by(() => {
@@ -207,7 +207,7 @@
 						decoding="async"
 						fetchpriority="high"
 						onerror={() => {
-							if (hdrUrl) hdrLoadFailed = true;
+							if (hdrUrl) hdr.markFailed(data.photo);
 						}}
 					/>
 				</div>
