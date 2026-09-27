@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "surface": "AI alt text",
+  "reviewedAt": "2026-09-27T00:54:57.040Z",
+  "reviewedBy": "Claude Opus 5.5",
+  "method": "Ran the real, updated ingest-extraction.ts prompt (caption + alt_text) through the live OpenRouter gemini-2.5-flash-lite model against 10 real, previously-unprocessed photos from the DWdCET (Milliken at North Central) shoot (DSC09426, 09427, 09430, 09432, 09434, 09435, 09437, 09438, 09440, 09441) — no database write, proof-only. Read every one of the 10 source images directly (not the model's own claim) and compared each against its alt_text. Also ran inspectCaption/inspectAltText programmatically over all 10 pairs: 0/10 caption-contract issues, 0/10 alt-text-contract issues, all alt_text 44-93 chars (max 150). No alt_text named a jersey number, a name, or printed text in any of the 10, including on DSC09426 where the caption itself misread jersey #11 as #17 (a caption-side vision error alt_text was structurally immune to, since it never states a number) and on DSC09432/09435/09437 where both caption and alt_text mislabeled the action verb (serve vs. set vs. spike) — a pre-existing vision-model action-classification limitation, not a defect of the alt-text contract itself, left recorded rather than fixed here. Two alt_texts (DSC09427, DSC09440) were more conservative than their captions (dropped a specific claim the caption over-stated), which is the contract working as intended.",
+  "sourceDigest": "sha256:d964434925dcbee0646ae73cd6e4cac71c93865abad5d981f315fd2f9ae000a1",
+  "sourceFiles": 5,
+  "scope": [
+    "10 DWdCET/Milliken photos run through the real model"
+  ]
+}

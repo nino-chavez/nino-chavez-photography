@@ -1,16 +1,12 @@
 {
   "version": 1,
   "surface": "AI search captions",
-  "reviewedAt": "2026-09-26T10:14:14.716Z",
+  "reviewedAt": "2026-09-27T00:55:17.990Z",
   "reviewedBy": "Claude Opus 5.5",
-  "method": "Read the actual ingest-v3 (prompt v2, gemini-2.5-flash-lite) captions and sightings written to production for album Re7kho after an in-place reprocess, and compared four of them against the frames viewed directly (acc-v-jca-35, 075, 20, 40). 120/120 captions pass the caption contract (two needed the too-long correction; the correction message now targets 25 words and forbids an unchanged resubmission, after a 31-word caption came back verbatim). 77/120 captions name a jersey number (52/120 under ingest-v2), average 24 words, no relationship, emotion, outcome, aesthetic or swimwear claims found. Defects observed and left recorded: acc-v-jca-35's caption assigns #16 to the player in blue when #16 is the player in white (the sighting row is correct); bench players in warmups are still written as sightings on acc-v-jca-35 (#1 #12 #13 #14 #5 white, #21 black), a known limitation the prompt v2 eval chose not to address because a role field cost precision; acc-v-jca-40's white #5 is not legible to a human at 1000px. Captions still open with 'A player' 84/120.",
-  "sourceDigest": "sha256:ab84331255c31223f158a3947a97eedff95632aadd2a8d80891a718c1d578d22",
+  "method": "Prompt changed only to add the alt_text instruction (inserted between the caption and photo_category instructions) — the caption instruction itself and players[]/quality/visible_text instructions are byte-for-byte unchanged from the prior ADR 0006 receipt. Verified this holds the caption's own contract: ran the real, updated prompt through the live gemini-2.5-flash-lite model on 10 real, previously-unprocessed DWdCET (Milliken at North Central) photos (DSC09426, 09427, 09430, 09432, 09434, 09435, 09437, 09438, 09440, 09441), no database write, and read each of the 10 source images directly to check the caption against it. 10/10 passed inspectCaption (0 issues) — no relationship/emotion/outcome/aesthetic/swimwear claims, all under 30 words. Coverage: 8 of 10 named at least one jersey number (consistent with ADR 0006's v2 prompt). Two defects observed and left recorded, both pre-existing vision-model limitations independent of this change: DSC09426's caption misreads jersey #11 as #17 (a number-legibility error, not a contract violation); DSC09432, 09435, and 09437 mislabel the action verb (serve vs. set vs. spike vs. attack) despite correctly reading colors, numbers, and scene.",
+  "sourceDigest": "sha256:703990741c9f1dc7c708126c839cfee97a5a6b61550865d5d9710915ea839b6e",
   "sourceFiles": 5,
   "scope": [
-    "Re7kho captions after ingest-v3 reprocess",
-    "caption contract pass rate",
-    "jersey-number coverage",
-    "four captions checked against the frames",
-    "bench-player sightings (known defect)"
+    "10 DWdCET/Milliken photos, real model, no DB write"
   ]
 }

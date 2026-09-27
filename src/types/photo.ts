@@ -108,6 +108,11 @@ export interface Photo {
   /** Album display name. Reader-safe, unlike `title`. */
   album_name?: string;
   caption: string;
+  /** Screen-reader / `<img alt>` sentence — never a jersey number, name, printed text, guessed
+   * identity, or aesthetic filler (src/lib/ai/alt-text-contract.ts). Distinct job from `caption`,
+   * which must name jersey numbers for search. Undefined/null until backfilled or reprocessed;
+   * every reader falls back to `caption` then `album_name`/`title` (photoAltText, $lib/seo/photo-title). */
+  alt_text?: string | null;
   keywords: string[];
   created_at: string; // Actual photo date (photo_date from DB, prioritized for sorting)
   /** Raw `photo_date` from the DB (ISO), independent of `created_at`'s enriched_at/upload_date

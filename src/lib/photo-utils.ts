@@ -136,11 +136,17 @@ export function sortPhotosByDate(photos: Photo[]): Photo[] {
  * what alt text is for. The metadata terms still follow, because sport and play type are what
  * someone searching within a page scans for and the caption does not always name them.
  *
+ * PREFERS `photo.alt_text` (the alt-text pipeline, 2026-09-26) over `caption` when present — a
+ * purpose-built screen-reader sentence with no jersey number, name, printed text, or aesthetic
+ * filler, vs. a search caption that MUST name jersey numbers (ADR 0006). Falls back to `caption`
+ * for every row that predates backfill/reprocessing — the same text this function always led
+ * with, so nothing regresses for an un-backfilled photo.
+ *
  * The `includeTitle` parameter is now `includeCaption` in effect but keeps its name and default:
  * its one caller passes nothing.
  *
  * @param photo - Photo object
- * @param includeTitle - Whether to prepend the caption
+ * @param includeTitle - Whether to prepend the alt_text/caption
  * @returns Alt text string
  *
  * @example
@@ -149,18 +155,20 @@ export function sortPhotosByDate(photos: Photo[]): Photo[] {
  */
 export function generatePhotoAltText(photo: Photo, includeTitle: boolean = true): string {
   const { metadata } = photo;
+  const altText = (photo.alt_text ?? '').trim();
   const caption = (photo.caption ?? '').trim().replace(/\s+/g, ' ').replace(/\.$/, '');
+  const primary = altText || caption;
 
   // Handle undefined metadata. NOT `photo.title` — that is the filename; see above.
   if (!metadata) {
-    return caption || 'Sports photo';
+    return primary || 'Sports photo';
   }
 
   const parts: string[] = [];
 
-  // Include the caption if available and requested
-  if (includeTitle && caption) {
-    parts.push(caption);
+  // Include the alt_text/caption if available and requested
+  if (includeTitle && primary) {
+    parts.push(primary);
   }
 
   // Sport type

@@ -25,6 +25,16 @@
  * assert more numbers also asserts a few more wrong ones. The players[] schema/instructions below
  * are UNCHANGED — only the caption line moved, matching the eval's isolation test exactly. See
  * the ADR for the full evidence table and what would reverse this.
+ *
+ * ALT_TEXT (2026-09-26): a second, purpose-built sentence for `<img alt>` and screen readers,
+ * separate from `caption`. `caption` MUST name jersey numbers (the instruction above); downstream
+ * consumers that needed accessible alt text were instead stripping numbers back OUT of the
+ * caption with regex, which produced broken sentences and missed numbers ("numbers 3 and 12"
+ * shipped to a published Instagram alt text). `alt_text` never contains a number, a name, printed
+ * text, guessed identity, or aesthetic filler — see alt-text-contract.ts. It is placed BEFORE
+ * `visible_text` in the returned JSON (both here and in the prompt below) deliberately:
+ * `parseWithRepair`'s truncation-recovery path closes the object right before `"visible_text"`,
+ * so any key that comes after it is lost on a repaired parse.
  */
 
 import { PHOTO_CATEGORIES, PLAY_TYPES_BY_SPORT, type Sport } from './taxonomy';
@@ -36,10 +46,11 @@ import {
 	inspectCaption,
 	MAX_CAPTION_CORRECTIONS
 } from './caption-contract';
+import { assertAltTextContract, buildAltTextCorrectionMessage, inspectAltText } from './alt-text-contract';
 
 export const INGEST_MODEL = 'google/gemini-2.5-flash-lite';
 /** Stamped into `photo_metadata.extraction_version` so future prompt/model changes re-process only stale rows. */
-export const EXTRACTION_VERSION = `ingest-v3:${INGEST_MODEL}`; // v3: caption instruction names every legible on-court jersey number (prompt v2 eval, blueprint/decisions/0006)
+export const EXTRACTION_VERSION = `ingest-v4:${INGEST_MODEL}`; // v4: adds alt_text, a separate screen-reader sentence with no jersey numbers (see header comment)
 
 /** Only "action" photos carry a play_type; everything else is null by rule. */
 const ACTION_CATEGORY = 'action';
@@ -53,6 +64,9 @@ export interface IngestPlayer {
 
 export interface IngestExtraction {
 	caption: string;
+	/** Screen-reader / `<img alt>` sentence — never a jersey number, name, printed text, guessed
+	 * identity, or aesthetic filler. Distinct job from `caption`; see alt-text-contract.ts. */
+	alt_text: string;
 	photo_category: string | null;
 	play_type: string | null;
 	sharpness: number | null;
@@ -102,6 +116,7 @@ Return ONLY a JSON object with EXACTLY these keys:
 "caption": ONE natural-language sentence (max 30 words) describing the photo for SEARCH. Name the jersey number AND color of EVERY on-court player whose number you can actually read (not just the primary subject) — this is the single most important instruction, because a caption missing a readable number is a photo nobody can find by searching for that number. Include the action and scene. Plain language, no aesthetic jargon. Do not infer identity, relationships, emotions, or outcomes; state only visible evidence.
   Name a person by the COLOR of what they wear, never by naming swimwear: write "a player in brown" or "a player in a black top", never "bikini", "swimsuit", "bathing suit", "briefs", or any description of a person's body. Ordinary athletic wear (jersey, shirt, top, shorts, trunks) may be named normally.
   Only state a number you can actually count in the frame — "two players", "three balls". If you are not certain how many, describe without a number rather than guessing one.
+"alt_text": a DIFFERENT, SEPARATE sentence (under 150 characters, one sentence) for a screen reader — who is doing what: describe the team by the COLOR of their uniform, the action, and the setting. This sentence must NEVER include a jersey number or any other digit, a person's name, any printed text from the frame, guessed identity, or aesthetic language (no "cinematic", "stunning", "beautifully"). Do not just copy "caption" — caption names jersey numbers for search; alt_text never does.
 "photo_category": one of ["${PHOTO_CATEGORIES.join('", "')}"].
 ${playLine}
 "sharpness": number 0-10 (technical focus quality; 0=blurry, 10=tack-sharp).
@@ -216,9 +231,11 @@ export function validateExtraction(raw: any, ctx: ExtractContext): IngestExtract
 	const visibleText: string[] = coerceVisibleText(raw?.visible_text);
 
 	let caption = (raw?.caption ?? '').toString().trim();
+	let altText = (raw?.alt_text ?? '').toString().trim();
 
 	return {
 		caption,
+		alt_text: altText,
 		photo_category: category,
 		play_type: playType,
 		sharpness: clampScore(raw?.sharpness),
@@ -303,12 +320,24 @@ export async function extractOne(
 		if (!extraction.caption) extraction.caption = extractCaptionLenient(text);
 		if (!extraction.caption) throw new Error(`no caption parsed (got: ${text.slice(0, 80)})`);
 
-		const issues = inspectCaption(extraction.caption);
-		if (!issues.length) return { extraction, cost, rawText: text };
-		// issues are non-empty here, so this always throws — the canonical contract error.
-		if (corrections >= MAX_CAPTION_CORRECTIONS) assertCaptionContract(extraction.caption);
+		const captionIssues = inspectCaption(extraction.caption);
+		const altTextIssues = inspectAltText(extraction.alt_text, { visibleText: extraction.visible_text });
+		if (!captionIssues.length && !altTextIssues.length) return { extraction, cost, rawText: text };
+		// One of the two issue lists is non-empty here, so one of these always throws — the
+		// canonical contract error (caption checked first, matching its historical priority).
+		if (corrections >= MAX_CAPTION_CORRECTIONS) {
+			if (captionIssues.length) assertCaptionContract(extraction.caption);
+			assertAltTextContract(extraction.alt_text, { visibleText: extraction.visible_text });
+		}
 
 		messages.push({ role: 'assistant', content: text });
-		messages.push({ role: 'user', content: buildCaptionCorrectionMessage(issues) });
+		// Both correction messages are self-contained (each ends its own "return the SAME JSON"
+		// instruction), so when both fields have issues they're just concatenated rather than
+		// merged into one hand-written message — same retry budget, one round trip either way.
+		const correctionParts = [
+			captionIssues.length ? buildCaptionCorrectionMessage(captionIssues) : '',
+			altTextIssues.length ? buildAltTextCorrectionMessage(altTextIssues) : ''
+		].filter(Boolean);
+		messages.push({ role: 'user', content: correctionParts.join('\n\n') });
 	}
 }

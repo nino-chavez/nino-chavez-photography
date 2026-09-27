@@ -28,7 +28,9 @@ export interface CaptionIssue {
 	match?: string;
 }
 
-const CLAIM_RULES: Array<{ code: CaptionIssueCode; message: string; pattern: RegExp }> = [
+/** Exported so alt-text-contract.ts can enforce the same relationship/emotion/outcome/aesthetic/
+ * swimwear rules without a second copy of the regexes — one owner, per working-style. */
+export const CLAIM_RULES: Array<{ code: CaptionIssueCode; message: string; pattern: RegExp }> = [
 	{
 		code: 'relationship-claim',
 		message: 'a photo alone does not establish personal or family relationships',
