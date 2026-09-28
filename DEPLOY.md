@@ -7,12 +7,32 @@
 - **Preview URL pattern**: TODO
 
 ## Deploy trigger
-- **Canonical**: CLAUDE.md and README state a git-integrated Cloudflare Pages project — a push
-  to `main` builds and deploys, no GitHub Actions. The actual trigger is a Pages *dashboard*
-  setting; confirm there before relying on it (rally-hq looked git-integrated but was
-  wrangler-only despite similar config).
-- **Manual fallback**: `npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography`
-- **Build time**: TODO — confirm in the CF Pages dashboard
+- **Canonical**: Cloudflare Pages is Git-integrated on this repo. A merge (or push) to
+  `main` starts a Pages build and, on success, deploys production. There is no GitHub
+  Actions deploy workflow for the site.
+- **Local preflight** (does not deploy): `npm run check && npm run build`
+- **Build time**: confirm in the CF Pages dashboard for a given deployment
+
+## When a merge is not live yet
+Do **not** assume the Git integration is broken and jump to a manual Wrangler deploy.
+
+1. **Check the Cloudflare Pages build first** — on the merge commit, look for the
+   GitHub check named `Cloudflare Pages`, or open the matching deployment in the
+   Pages dashboard (`nino-chavez-photography`).
+2. If the check/build **failed**, read those hosted logs and fix the failure (or Retry
+   after a platform flake). A green local `npm run build` does **not** clear a failed
+   Pages build; production stays on the last successful deployment until Pages succeeds.
+3. If the check/build is still **running**, wait for it.
+4. If the check/build **succeeded** but production still looks old, then investigate
+   caching / which deployment is marked Production — not a parallel deploy path.
+
+## Manual Wrangler (operator escape hatch only)
+Use only when Git-integrated Pages cannot run (broken integration, emergency hotfix
+with explicit operator intent) — never as the default response to “merge isn’t live”:
+
+```bash
+npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography
+```
 
 ## Database
 - **Provider**: Supabase — project `skywzpcekhntecegyjoj`, **already linked** (`supabase/.temp/`).
@@ -47,9 +67,10 @@
 
 ## Preflight checks
 - `git status` clean
-- `npm run check` passes
+- `npm run check && npm run build`
 
 ## Verify after deploy
+- GitHub check `Cloudflare Pages` on the merge commit is **success**
 - `curl -fsSL https://photography.ninochavez.co` returns 200
 - Spot-check an album page loads
 
