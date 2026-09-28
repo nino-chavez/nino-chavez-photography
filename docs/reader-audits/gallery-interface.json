@@ -1,12 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-27T07:31:32.257Z",
-  "reviewedBy": "Claude Opus 5.5",
-  "method": "Walked the album page lightbox on a local dev server (localhost:5198, album DWdCET): opening a photo requests /api/hdr/<photo_id> for it and the preloaded neighbour, and on 404 (no local R2 binding) shows the Cloudflare Images large copy; navigating right retried HDR for the next photo. No visible text changed: only the image source choice. Live /api/hdr/DWdCET-DSC09484 serves a 1067x1600 Ultra HDR JPEG (hdrgm 1.0, decodes with ultrahdr_app).",
-  "sourceDigest": "sha256:2396510100708c283553eee6f3d5c1d5c1b87d4e23a4a8e863535a3f05529a8d",
+  "reviewedAt": "2026-09-28T03:37:29.383Z",
+  "reviewedBy": "Cursor agent",
+  "method": "Walked photography albums on local Vite (localhost:5173) and production (photography.ninochavez.co) at a 390×844 mobile viewport after the Header.svelte bottom-nav hoist: measured nav[aria-label=\"Mobile navigation\"] with Playwright — production (pre-deploy) still nested inside .header-animate at y≈32 with clipped icons; local fix is outside .header-animate at y≈772 with full Events/By date/Collections/Saved labels. Confirmed site Menu details open separately under the shell without colliding with the bottom bar. No visitor-facing copy changes beyond existing nav labels.",
+  "sourceDigest": "sha256:e57d16ae9ba0d64840c94fb4d72bea7c400cfa63f13164dfcbbed4e211d85377",
   "sourceFiles": 136,
   "scope": [
-    "src/lib/components/gallery/Lightbox.svelte,src/lib/components/gallery/PhotoDetailModal.svelte,src/routes/photo/[id]/+page.svelte,src/lib/utils/hdr-photo-url.ts"
+    "src/lib/components/layout/Header.svelte",
+    "src/lib/navigation-contract.test.ts"
   ]
 }
