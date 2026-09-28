@@ -1,13 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-28T03:37:29.383Z",
+  "reviewedAt": "2026-09-28T03:54:42.016Z",
   "reviewedBy": "Cursor agent",
-  "method": "Walked photography albums on local Vite (localhost:5173) and production (photography.ninochavez.co) at a 390×844 mobile viewport after the Header.svelte bottom-nav hoist: measured nav[aria-label=\"Mobile navigation\"] with Playwright — production (pre-deploy) still nested inside .header-animate at y≈32 with clipped icons; local fix is outside .header-animate at y≈772 with full Events/By date/Collections/Saved labels. Confirmed site Menu details open separately under the shell without colliding with the bottom bar. No visitor-facing copy changes beyond existing nav labels.",
-  "sourceDigest": "sha256:e57d16ae9ba0d64840c94fb4d72bea7c400cfa63f13164dfcbbed4e211d85377",
+  "method": "Re-walked mobile chrome on local Vite (390×844) after site-Menu overlay fix: closed details nav is display:none; open Menu is position:fixed full-width from y=56 covering gallery-subnav (no Photography|Work interleave); bottom gallery tabs remain viewport-fixed at y≈772 outside .header-animate. Header slide-in is opacity-only (no transform).",
+  "sourceDigest": "sha256:49ea638e8c8b50384c7b3d01acf5cf7b37b4da04381836cade405f4ca1f93963",
   "sourceFiles": 136,
   "scope": [
-    "src/lib/components/layout/Header.svelte",
-    "src/lib/navigation-contract.test.ts"
+    "src/lib/components/layout/Header.svelte"
   ]
 }

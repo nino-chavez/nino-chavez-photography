@@ -331,15 +331,15 @@
 		justify-self: end;
 	}
 
-	/* PERFORMANCE: CSS animation instead of svelte-motion */
+	/* PERFORMANCE: opacity-only — a transform here creates a containing block that
+	   breaks position:fixed (bottom nav) and makes sticky/absolute menu stacking fight
+	   the gallery subnav on mobile. */
 	@keyframes header-slide-in {
 		from {
 			opacity: 0;
-			transform: translateY(-20px);
 		}
 		to {
 			opacity: 1;
-			transform: translateY(0);
 		}
 	}
 
@@ -395,16 +395,27 @@
 			display: none;
 		}
 
+		/* Full-width sheet under the site shell so it covers gallery-subnav instead of
+		   interleaving (Photography | Work) with the sticky strip. */
 		.open-practice-shell__mobile nav {
-			position: absolute;
-			top: calc(100% + 6px);
+			position: fixed;
+			top: var(--practice-shell-height);
+			left: 0;
 			right: 0;
+			z-index: 70;
 			display: grid;
-			width: min(270px, calc(100vw - 32px));
-			padding: 8px;
-			border: 1px solid rgb(241 234 223 / 0.34);
+			width: 100%;
+			max-height: calc(100dvh - var(--practice-shell-height));
+			overflow: auto;
+			padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0));
+			border: none;
+			border-bottom: 1px solid rgb(241 234 223 / 0.22);
 			background: #091426;
 			box-shadow: 0 20px 44px rgb(0 0 0 / 0.42);
+		}
+
+		.open-practice-shell__mobile:not([open]) nav {
+			display: none;
 		}
 
 		.open-practice-shell__mobile nav a {
