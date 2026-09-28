@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-28T03:54:42.016Z",
+  "reviewedAt": "2026-09-28T03:59:19.534Z",
   "reviewedBy": "Cursor agent",
-  "method": "Re-walked mobile chrome on local Vite (390×844) after site-Menu overlay fix: closed details nav is display:none; open Menu is position:fixed full-width from y=56 covering gallery-subnav (no Photography|Work interleave); bottom gallery tabs remain viewport-fixed at y≈772 outside .header-animate. Header slide-in is opacity-only (no transform).",
-  "sourceDigest": "sha256:49ea638e8c8b50384c7b3d01acf5cf7b37b4da04381836cade405f4ca1f93963",
+  "method": "Re-walked mobile Menu on local Vite (390×844): panel is a sibling fixed sheet (.site-menu-sheet) under the 56px site shell with backdrop; elementFromPoint hits every Menu link (Work through Photography) instead of album chrome. Closed Menu shows only Photography subnav. Bottom gallery tabs stay viewport-fixed.",
+  "sourceDigest": "sha256:505e7f7d6bb6635b1de1a72368ce2e8a38d430cf0410e84ee22c411b1ade5220",
   "sourceFiles": 136,
   "scope": [
     "src/lib/components/layout/Header.svelte"
