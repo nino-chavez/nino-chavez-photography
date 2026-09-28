@@ -24,6 +24,16 @@ test('global navigation names Photography as the current top-level section', asy
 	assert.match(header, /label: 'Saved'/);
 	assert.match(header, /<summary>Menu<\/summary>/);
 	assert.doesNotMatch(header, />Site menu<\/summary>/);
+	// Mobile bottom nav must sit outside .header-animate: that wrapper keeps a
+	// transform from the slide-in animation, which would trap position:fixed.
+	assert.match(
+		header,
+		/<\/div>\s*\n\s*<!-- Mobile Bottom Navigation[\s\S]*aria-label="Mobile navigation"/
+	);
+	assert.doesNotMatch(
+		header,
+		/header-animate[\s\S]*aria-label="Mobile navigation"[\s\S]*<\/div>\s*\n\s*<style>/
+	);
 });
 
 test('retired About and Privacy routes point to their canonical owners', async () => {
