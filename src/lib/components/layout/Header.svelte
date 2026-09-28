@@ -48,6 +48,10 @@
 	// Derived from page store
 	let currentPath = $derived($page.url.pathname);
 
+	// Site Menu panel is rendered outside the sticky shell — a fixed sheet nested inside
+	// position:sticky is clipped / loses hit-testing over page content on mobile.
+	let siteMenuOpen = $state(false);
+
 	function isActive(path: string): boolean {
 		if (path === base || path === `${base}/`) {
 			return currentPath === base || currentPath === `${base}/`;
@@ -75,20 +79,8 @@
 				{/each}
 			</nav>
 			<a class="open-practice-shell__search" href="/search" data-sveltekit-reload>Search site</a>
-			<details class="open-practice-shell__mobile">
+			<details class="open-practice-shell__mobile" bind:open={siteMenuOpen}>
 				<summary>Menu</summary>
-				<nav aria-label="Nino Chavez site">
-					{#each practiceLinks as item}
-						<a
-							href={item.href}
-							data-sveltekit-reload
-							aria-current={item.href === '/photography' ? 'location' : undefined}
-						>
-							{item.label}
-						</a>
-					{/each}
-					<a href="/search" data-sveltekit-reload>Search site</a>
-				</nav>
 			</details>
 		</div>
 	</div>
@@ -131,6 +123,39 @@
 		</div>
 	</header>
 </div>
+
+{#if siteMenuOpen}
+	<!-- Outside sticky shell so the sheet isn't clipped and stacks above album chrome -->
+	<button
+		type="button"
+		class="site-menu-backdrop"
+		aria-label="Close menu"
+		onclick={() => {
+			siteMenuOpen = false;
+		}}
+	></button>
+	<nav class="site-menu-sheet" aria-label="Nino Chavez site">
+		{#each practiceLinks as item}
+			<a
+				href={item.href}
+				data-sveltekit-reload
+				aria-current={item.href === '/photography' ? 'location' : undefined}
+				onclick={() => {
+					siteMenuOpen = false;
+				}}
+			>
+				{item.label}
+			</a>
+		{/each}
+		<a
+			href="/search"
+			data-sveltekit-reload
+			onclick={() => {
+				siteMenuOpen = false;
+			}}>Search site</a
+		>
+	</nav>
+{/if}
 
 <!-- Mobile Bottom Navigation - outside .header-animate so position:fixed is viewport-relative -->
 <nav
@@ -395,36 +420,47 @@
 			display: none;
 		}
 
-		/* Full-width sheet under the site shell so it covers gallery-subnav instead of
-		   interleaving (Photography | Work) with the sticky strip. */
-		.open-practice-shell__mobile nav {
+		.site-menu-backdrop {
 			position: fixed;
-			top: var(--practice-shell-height);
+			inset: 0;
+			top: 56px;
+			z-index: 70;
+			padding: 0;
+			border: none;
+			background: rgb(0 0 0 / 0.45);
+			cursor: pointer;
+		}
+
+		/* Full-width sheet under the site shell; sibling of sticky chrome so it is not
+		   clipped and stacks above album page content. */
+		.site-menu-sheet {
+			position: fixed;
+			top: 56px;
 			left: 0;
 			right: 0;
-			z-index: 70;
+			z-index: 71;
 			display: grid;
 			width: 100%;
-			max-height: calc(100dvh - var(--practice-shell-height));
+			max-height: calc(100dvh - 56px);
 			overflow: auto;
 			padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0));
-			border: none;
 			border-bottom: 1px solid rgb(241 234 223 / 0.22);
 			background: #091426;
 			box-shadow: 0 20px 44px rgb(0 0 0 / 0.42);
+			color: #f1eadf;
 		}
 
-		.open-practice-shell__mobile:not([open]) nav {
-			display: none;
-		}
-
-		.open-practice-shell__mobile nav a {
+		.site-menu-sheet a {
 			min-height: 44px;
 			padding: 10px 12px;
 			border-left: 3px solid transparent;
+			color: inherit;
+			font-size: 0.875rem;
+			font-weight: 650;
+			text-decoration: none;
 		}
 
-		.open-practice-shell__mobile nav a[aria-current] {
+		.site-menu-sheet a[aria-current] {
 			border-left-color: #d07a4e;
 			background: rgb(64 81 237 / 0.16);
 		}

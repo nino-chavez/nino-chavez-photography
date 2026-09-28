@@ -24,11 +24,12 @@ test('global navigation names Photography as the current top-level section', asy
 	assert.match(header, /label: 'Saved'/);
 	assert.match(header, /<summary>Menu<\/summary>/);
 	assert.doesNotMatch(header, />Site menu<\/summary>/);
-	// Mobile bottom nav must sit outside .header-animate: that wrapper keeps a
-	// transform from the slide-in animation, which would trap position:fixed.
+	// Mobile bottom nav + site Menu sheet must sit outside .header-animate / sticky
+	// shell so position:fixed is viewport-relative and not clipped by sticky.
+	assert.match(header, /class="site-menu-sheet"/);
 	assert.match(
 		header,
-		/<\/div>\s*\n\s*<!-- Mobile Bottom Navigation[\s\S]*aria-label="Mobile navigation"/
+		/<\/div>\s*\n\s*\{#if siteMenuOpen\}[\s\S]*<!-- Mobile Bottom Navigation[\s\S]*aria-label="Mobile navigation"/
 	);
 	assert.doesNotMatch(
 		header,
