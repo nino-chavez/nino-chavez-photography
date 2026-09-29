@@ -2,16 +2,29 @@ import { dateOnly, type ReportQuery } from './report-contract';
 import { POSTHOG_EVENT_NAMES, type PostHogEventName, type PostHogTrafficContext } from './posthog.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-type V2Properties = Record<string, unknown>;
+type Dimensions = Record<string, unknown>;
 
-/** A deliberately identifier-free input shape for the public v2 report projection. */
+/** Identifier-free raw input. This shape never leaves the server module. */
 export interface V2ReportEvent {
 	event_name: PostHogEventName;
 	occurred_at: string;
 	album_key: string | null;
 	photo_id: string | null;
 	traffic_context: PostHogTrafficContext | 'self_excluded';
-	properties: V2Properties;
+	properties: Dimensions;
+}
+
+/** Identifier-free archive input. Archive rows are aggregate snapshots, not visits. */
+export interface V2ArchivedTotal {
+	bucket_date: string;
+	event_name: PostHogEventName;
+	traffic_context: PostHogTrafficContext | 'self_excluded';
+	album_key: string | null;
+	photo_id: string | null;
+	dimensions: Dimensions;
+	event_count: number;
+	export_eligible_count: number;
+	last_recorded_at: string;
 }
 
 export interface V2ReportProjection {
@@ -19,21 +32,25 @@ export interface V2ReportProjection {
 	coverage: {
 		start: string;
 		end: string;
+		firstRecordedAt: string | null;
+		rawRetainedFrom: string | null;
+		archivedFrom: string | null;
+		archivedThrough: string | null;
 		label: string;
-		observationsRead: number;
-		observationsIncluded: number;
-		observationsExcluded: number;
 	};
 	counts: Array<{ event: PostHogEventName; label: string; count: number }>;
-	albumResponse: { eligibleExposures: number; laterOpens: number; laterActions: number };
-	photoResponse: { eligibleExposures: number; laterActions: number };
 }
 
 export interface V2ProjectionOptions {
-	/** These are resolved from album visibility before this adapter ever aggregates. */
+	/** Resolved from current visibility before aggregation. Visibility is the one current fact. */
 	publicAlbumKeys: readonly string[];
-	albumFacts?: Readonly<Record<string, { sport?: string | null; eventDate?: string | null; eventType?: string | null }>>;
-	photoCategories?: Readonly<Record<string, string | null | undefined>>;
+}
+
+export interface V2CoverageBounds {
+	firstRecordedAt: string | null;
+	rawRetainedFrom: string | null;
+	archivedFrom: string | null;
+	archivedThrough: string | null;
 }
 
 const labels: Record<PostHogEventName, string> = {
@@ -55,48 +72,84 @@ function includesTraffic(context: PostHogTrafficContext | 'self_excluded', traff
 	return traffic === 'inclusive' ? context === 'audience' || context === 'operator' || context === 'test' : context === 'audience';
 }
 
-function matchesScope(row: V2ReportEvent, query: ReportQuery, options: V2ProjectionOptions, publicAlbumKeys: Set<string>): boolean {
-	if (!row.album_key || !publicAlbumKeys.has(row.album_key)) return false;
-	if (query.scope !== 'all' && !query.albumKeys.includes(row.album_key)) return false;
-	if (!includesTraffic(row.traffic_context, query.traffic)) return false;
-	if (dateOnly(new Date(row.occurred_at)) < query.start || dateOnly(new Date(row.occurred_at)) > query.end) return false;
-	const album = options.albumFacts?.[row.album_key];
-	if (query.sport && (album?.sport ?? text(row.properties.album_sport) ?? 'unknown') !== query.sport) return false;
-	if (query.eventDate && (album?.eventDate ?? null) !== query.eventDate) return false;
-	if (query.season && (album?.eventDate?.slice(0, 4) ?? 'unknown') !== query.season) return false;
-	if (query.albumEventType && (album?.eventType ?? 'unknown') !== query.albumEventType) return false;
-	if (query.category && (!row.photo_id || (options.photoCategories?.[row.photo_id] ?? text(row.properties.photo_category) ?? 'unknown') !== query.category)) return false;
-	if (query.source && (text(row.properties.tagged_source) ?? text(row.properties.source) ?? 'direct') !== query.source) return false;
+type CountableObservation = {
+	eventName: PostHogEventName;
+	date: string;
+	albumKey: string | null;
+	photoId: string | null;
+	trafficContext: PostHogTrafficContext | 'self_excluded';
+	dimensions: Dimensions;
+	count: number;
+};
+
+function rawObservation(row: V2ReportEvent): CountableObservation {
+	return {
+		eventName: row.event_name, date: dateOnly(new Date(row.occurred_at)), albumKey: row.album_key,
+		photoId: row.photo_id, trafficContext: row.traffic_context, dimensions: row.properties, count: 1
+	};
+}
+
+function archivedObservation(row: V2ArchivedTotal): CountableObservation {
+	return {
+		eventName: row.event_name, date: row.bucket_date, albumKey: row.album_key,
+		photoId: row.photo_id, trafficContext: row.traffic_context, dimensions: row.dimensions, count: Number(row.event_count)
+	};
+}
+
+function dimension(row: CountableObservation, key: string): string | null {
+	return text(row.dimensions[key]);
+}
+
+function matchesScope(row: CountableObservation, query: ReportQuery, publicAlbumKeys: Set<string>): boolean {
+	// A photo without an album cannot be checked against current visibility, so it cannot enter public output.
+	if (row.photoId && !row.albumKey) return false;
+	if (row.albumKey && !publicAlbumKeys.has(row.albumKey)) return false;
+	// Gallery and search events legitimately have no album. They belong only in an all-album report.
+	if (!row.albumKey && query.scope !== 'all') return false;
+	if (row.albumKey && query.scope !== 'all' && !query.albumKeys.includes(row.albumKey)) return false;
+	if (!includesTraffic(row.trafficContext, query.traffic)) return false;
+	if (row.date < query.start || row.date > query.end) return false;
+	// Recorded dimensions are snapshots. Never reclassify historic observations from today's catalogue.
+	if (query.sport && dimension(row, 'album_sport') !== query.sport) return false;
+	if (query.eventDate && dimension(row, 'event_date') !== query.eventDate) return false;
+	if (query.season && dimension(row, 'event_date')?.slice(0, 4) !== query.season) return false;
+	if (query.albumEventType && dimension(row, 'album_event_type') !== query.albumEventType) return false;
+	if (query.category && dimension(row, 'photo_category') !== query.category) return false;
+	if (query.source && (dimension(row, 'tagged_source') ?? dimension(row, 'source') ?? 'direct') !== query.source) return false;
 	return true;
 }
 
-/**
- * Builds a v2-only count projection. It intentionally counts each accepted
- * observation and never applies the legacy daily fingerprint deduplication.
- * No identifiers from the input shape are returned.
- */
-export function buildV2ReportProjection(rows: readonly V2ReportEvent[], query: ReportQuery, options: V2ProjectionOptions): V2ReportProjection {
-	const publicAlbumKeys = new Set(options.publicAlbumKeys);
-	const included = rows.filter((row) => matchesScope(row, query, options, publicAlbumKeys));
-	const countFor = (event: PostHogEventName) => included.filter((row) => row.event_name === event).length;
-	const count = new Map(POSTHOG_EVENT_NAMES.map((event) => [event, countFor(event)]));
-	const laterAlbumActions = (count.get('favorite_added') ?? 0) + (count.get('download_requested') ?? 0);
-	const laterPhotoActions = (count.get('photo_opened') ?? 0) + (count.get('favorite_added') ?? 0) + (count.get('download_requested') ?? 0);
+function coverageLabel(bounds: V2CoverageBounds): string {
+	if (!bounds.firstRecordedAt) {
+		return 'No collection-bound record is available. This report cannot call the interval complete; a zero count means no matching public observation, not that nothing happened.';
+	}
+	const raw = bounds.rawRetainedFrom ? ` Raw retained observations begin ${dateOnly(new Date(bounds.rawRetainedFrom))}.` : '';
+	const archive = bounds.archivedFrom && bounds.archivedThrough
+		? ` Archived aggregate snapshots cover ${bounds.archivedFrom} through ${bounds.archivedThrough}.`
+		: '';
+	return `Recorded version-2 collection begins ${dateOnly(new Date(bounds.firstRecordedAt))}.${raw}${archive} Counts are observations, not people or a conversion funnel.`;
+}
 
+/**
+ * Builds public aggregate counts. Raw and archived rows are disjoint by the archive contract;
+ * neither identifiers nor inferred people/visit sequences enter the returned shape.
+ */
+export function buildV2ReportProjection(
+	rawRows: readonly V2ReportEvent[],
+	archivedRows: readonly V2ArchivedTotal[],
+	query: ReportQuery,
+	options: V2ProjectionOptions,
+	bounds: V2CoverageBounds = { firstRecordedAt: null, rawRetainedFrom: null, archivedFrom: null, archivedThrough: null }
+): V2ReportProjection {
+	const publicAlbumKeys = new Set(options.publicAlbumKeys);
+	const counts = new Map(POSTHOG_EVENT_NAMES.map((event) => [event, 0]));
+	for (const row of [...rawRows.map(rawObservation), ...archivedRows.map(archivedObservation)]) {
+		if (matchesScope(row, query, publicAlbumKeys)) counts.set(row.eventName, (counts.get(row.eventName) ?? 0) + row.count);
+	}
 	return {
 		available: true,
-		coverage: {
-			start: query.start, end: query.end,
-			label: 'Accepted version-2 observations linked to public albums. Each accepted observation is counted; this is not legacy daily-deduplicated reach or a people count.',
-			observationsRead: rows.length, observationsIncluded: included.length, observationsExcluded: rows.length - included.length
-		},
-		counts: POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: count.get(event) ?? 0 })),
-		albumResponse: {
-			eligibleExposures: count.get('album_exposed') ?? 0,
-			laterOpens: count.get('album_opened') ?? 0,
-			laterActions: laterAlbumActions
-		},
-		photoResponse: { eligibleExposures: count.get('photo_exposed') ?? 0, laterActions: laterPhotoActions }
+		coverage: { start: query.start, end: query.end, ...bounds, label: coverageLabel(bounds) },
+		counts: POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: counts.get(event) ?? 0 }))
 	};
 }
 
@@ -104,31 +157,47 @@ export function unavailableV2ReportProjection(query: ReportQuery): V2ReportProje
 	return {
 		available: false,
 		coverage: {
-			start: query.start, end: query.end,
-			label: 'Accepted version-2 observations could not be read. This is not a zero-result report.',
-			observationsRead: 0, observationsIncluded: 0, observationsExcluded: 0
+			start: query.start, end: query.end, firstRecordedAt: null, rawRetainedFrom: null, archivedFrom: null, archivedThrough: null,
+			label: 'Version-2 observations could not be read. This is not a zero-result or complete-coverage report.'
 		},
-		counts: POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: 0 })),
-		albumResponse: { eligibleExposures: 0, laterOpens: 0, laterActions: 0 },
-		photoResponse: { eligibleExposures: 0, laterActions: 0 }
+		counts: POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: 0 }))
 	};
 }
 
-/** Reads accepted v2 rows on the server, then applies the public projection above. */
+async function readAll<T>(page: (from: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+	const rows: T[] = [];
+	for (let from = 0; ; from += 1000) {
+		const { data, error } = await page(from);
+		if (error) throw error;
+		rows.push(...(data ?? []));
+		if ((data ?? []).length < 1000) return rows;
+	}
+}
+
+/** Reads raw and archive sources server-side; raw and archive buckets are disjoint by migration contract. */
 export async function fetchV2ReportProjection(client: SupabaseClient, query: ReportQuery, options: V2ProjectionOptions): Promise<V2ReportProjection> {
 	try {
-		const rows: V2ReportEvent[] = [];
 		const first = new Date(`${query.start}T00:00:00Z`); first.setUTCDate(first.getUTCDate() - 1);
 		const last = new Date(`${query.end}T00:00:00Z`); last.setUTCDate(last.getUTCDate() + 2);
-		for (let from = 0; ; from += 1000) {
-			const { data, error } = await client.from('analytics_events_v2')
+		const [rawRows, archivedRows, rawStart, archiveStart, archiveEnd] = await Promise.all([
+			readAll<V2ReportEvent>((from) => client.from('analytics_events_v2')
 				.select('event_name, occurred_at, album_key, photo_id, traffic_context, properties')
 				.gte('occurred_at', first.toISOString()).lt('occurred_at', last.toISOString())
-				.order('occurred_at', { ascending: true }).range(from, from + 999);
-			if (error) throw error;
-			rows.push(...((data ?? []) as V2ReportEvent[]));
-			if ((data ?? []).length < 1000) return buildV2ReportProjection(rows, query, options);
-		}
+				.order('occurred_at', { ascending: true }).range(from, from + 999)),
+			readAll<V2ArchivedTotal>((from) => client.from('analytics_v2_archived_totals')
+				.select('bucket_date, event_name, traffic_context, album_key, photo_id, dimensions, event_count, export_eligible_count, last_recorded_at')
+				.gte('bucket_date', query.start).lte('bucket_date', query.end)
+				.order('bucket_date', { ascending: true }).range(from, from + 999)),
+			client.from('analytics_events_v2').select('occurred_at').order('occurred_at', { ascending: true }).limit(1),
+			client.from('analytics_v2_archived_totals').select('bucket_date').order('bucket_date', { ascending: true }).limit(1),
+			client.from('analytics_v2_archived_totals').select('bucket_date').order('bucket_date', { ascending: false }).limit(1)
+		]);
+		if (rawStart.error || archiveStart.error || archiveEnd.error) throw rawStart.error ?? archiveStart.error ?? archiveEnd.error;
+		const rawRetainedFrom = rawStart.data?.[0]?.occurred_at ?? null;
+		const archivedFrom = archiveStart.data?.[0]?.bucket_date ?? null;
+		const archivedThrough = archiveEnd.data?.[0]?.bucket_date ?? null;
+		const firstRecordedAt = [rawRetainedFrom, archivedFrom].filter((value): value is string => !!value).sort()[0] ?? null;
+		return buildV2ReportProjection(rawRows, archivedRows, query, options, { firstRecordedAt, rawRetainedFrom, archivedFrom, archivedThrough });
 	} catch (cause) {
 		console.error('[analytics v2 report] unavailable:', cause);
 		return unavailableV2ReportProjection(query);

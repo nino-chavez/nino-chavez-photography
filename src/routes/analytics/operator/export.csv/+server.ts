@@ -45,9 +45,7 @@ export const GET: RequestHandler = async ({ cookies, url, setHeaders }) => {
 	const v2 = settings.error || albums.error || categories.error
 		? unavailableV2ReportProjection(query)
 		: await fetchV2ReportProjection(admin, query, {
-			publicAlbumKeys: publicScopedAlbumKeys,
-			albumFacts: Object.fromEntries(publicAlbums.map((album) => [album.album_key, { sport: album.sport, eventDate: album.event_date }])),
-			photoCategories: Object.fromEntries(categories.data.map((photo) => [photo.photo_id, photo.photo_category]))
+			publicAlbumKeys: publicAlbums.map((album) => album.album_key)
 		});
 	const shortlist = url.searchParams.has('shortlist')
 		? new Set((url.searchParams.get('shortlist') ?? '').split(',').filter(Boolean))

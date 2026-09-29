@@ -433,7 +433,7 @@ export function reportCsv(report: OperatorReport, shortlist?: Set<string>, v2?: 
 		const measures = 'measures' in row ? row.measures as MeasureTotals : undefined;
 		return ['albumKey' in row && report.query.measure === 'album_opens' ? 'album' : 'album_action', null, row.albumKey, row.count, row.previousCount, row.difference, row.lastActivity, report.query.measure, ...measureColumns(measures), null, null, ...common.slice(1)];
 	});
-	const v2Rows = shortlist || !v2 ? [] : v2.counts.map((row) => ['v2_event', null, null, row.count, null, null, null, 'v2_observation', null, null, null, null, null, row.label, v2.coverage.label, 'Accepted version-2 observations; no legacy daily deduplication.', report.query.start, report.query.end, null, null, 'America/Chicago', v2.available ? 'available' : 'unavailable', report.query.traffic, filters, null, 'public_album_visibility', report.generatedAt]);
+	const v2Rows = shortlist || !v2 ? [] : v2.counts.map((row) => ['v2_event', null, null, row.count, null, null, null, 'v2_observation', null, null, null, null, null, row.label, v2.coverage.label, 'Recorded version-2 event observations; no legacy daily deduplication or conversion inference.', report.query.start, report.query.end, null, null, 'America/Chicago', v2.available ? 'available' : 'unavailable', report.query.traffic, filters, null, 'public_album_visibility', report.generatedAt]);
 	const rows = shortlist ? photoRows : [...photoRows, ...albumRows, ...v2Rows];
 	return [header, ...rows].map((row) => row.map((value) => escape(value as string | number | null)).join(',')).join('\n');
 }

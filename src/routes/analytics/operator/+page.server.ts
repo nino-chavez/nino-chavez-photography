@@ -95,13 +95,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		&& (!query.season || (album.event_date?.slice(0, 4) ?? 'unknown') === query.season)
 		&& (!query.albumEventType || (album.event_type ?? 'unknown') === query.albumEventType);
 	const publicScopedAlbumKeys = catalogue.filter(matchesAlbumScope).map((album) => album.album_key);
-	const v2AlbumFacts = Object.fromEntries(catalogue.map((album) => [album.album_key, {
-		sport: album.sport, eventDate: album.event_date, eventType: album.event_type
-	}]));
-	const v2PhotoCategories = Object.fromEntries((categoryFacets.data ?? [])
-		.filter((photo) => publicAlbum(photo.album_key))
-		.map((photo) => [photo.photo_id, photo.photo_category]));
-	const v2Options = { publicAlbumKeys: publicScopedAlbumKeys, albumFacts: v2AlbumFacts, photoCategories: v2PhotoCategories };
+	const v2Options = { publicAlbumKeys: catalogue.map((album) => album.album_key) };
 	const [v2Report, journeys] = await Promise.all([
 		fetchV2ReportProjection(admin, query, v2Options),
 		Promise.all(POSTHOG_JOURNEY_REPORTS.map((report) => queryGalleryJourneys(

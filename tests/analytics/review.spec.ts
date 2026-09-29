@@ -1,9 +1,10 @@
 import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
-for(const width of [1440,390]) test(`operator ${width}`,async({page,context})=>{
+for(const width of [1440,390]) test(`operator ${width}`,async({page,context,baseURL})=>{
  await page.setViewportSize({width,height:width===390?844:1000});
  const jar=JSON.parse(readFileSync('.temp/analytics-parent-local-cookies.json','utf8'));
- await context.addCookies(jar.map((x:any)=>({name:x.name,value:x.value,domain:'127.0.0.1',path:'/',httpOnly:false,secure:false,sameSite:'Lax'})));
+ const cookieDomain=process.env.ANALYTICS_COOKIE_DOMAIN ?? new URL(baseURL ?? 'http://127.0.0.1').hostname;
+ await context.addCookies(jar.map((x:any)=>({name:x.name,value:x.value,domain:cookieDomain,path:'/',httpOnly:false,secure:false,sameSite:'Lax'})));
  await page.route('**/static.cloudflareinsights.com/**',r=>r.abort());
  await page.route('**/cdn-cgi/rum**',r=>r.abort());
  await page.route('https://imagedelivery.net/**',r=>r.fulfill({path:'static/images/hero/hero-1-mobile.webp',contentType:'image/webp'}));
@@ -12,11 +13,12 @@ for(const width of [1440,390]) test(`operator ${width}`,async({page,context})=>{
  await page.evaluate(()=>{const b=document.createElement('div');b.textContent='Mock — synthetic data. Images are representative gallery photographs.';b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#ffe082;color:#111;padding:6px;z-index:99999;text-align:center;font-size:12px';document.body.append(b);});
  if(width===390){const box=await page.locator('.answer-primary strong').boundingBox();expect(box!.y+box!.height).toBeLessThan(760);}
  await page.screenshot({path:`.temp/parent-ui-review/operator-${width}-top.png`});
+ if(width===1440){const albums=page.locator('#albums');await expect.poll(async()=>{const box=await albums.boundingBox();return box?.y ?? Number.MAX_SAFE_INTEGER;}).toBeLessThan(1000);}
  await page.locator('#photos').scrollIntoViewIfNeeded();
  await page.screenshot({path:`.temp/parent-ui-review/operator-${width}-photos.png`});
  for(const [mode,label] of [['rising','Rising'],['recent','Recently active']]){await page.getByRole('button',{name:label,exact:true}).click();await expect(page.getByRole('button',{name:label,exact:true})).toHaveAttribute('aria-pressed','true');await page.locator('#photos').evaluate(e=>window.scrollTo({top:e.getBoundingClientRect().top+window.scrollY-72,behavior:'instant'}));await page.screenshot({path:`.temp/parent-ui-review/operator-${width}-${mode}.png`});}
  await page.getByRole('button',{name:'Table',exact:true}).click();await page.screenshot({path:`.temp/parent-ui-review/operator-${width}-photo-table.png`});
- await page.getByRole('button',{name:'Images',exact:true}).click();await page.locator('.photo-inspect').first().click();await expect(page.getByRole('dialog')).toBeInViewport();await page.screenshot({path:`.temp/parent-ui-review/operator-${width}-inspection.png`});await page.keyboard.press('Escape');
+ await page.getByRole('button',{name:'Images',exact:true}).click();await page.locator('.photo-inspect').first().click();await expect(page.getByRole('dialog')).toBeInViewport();await page.screenshot({path:`.temp/parent-ui-review/operator-${width}-inspection.png`});await page.getByRole('button',{name:'Return to photos',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
  if(width===390){const nav=await page.getByRole('navigation',{name:'Analytics sections'}).evaluate(e=>{const r=e.getBoundingClientRect();return [...e.querySelectorAll('a')].every(a=>{const x=a.getBoundingClientRect();return x.left>=r.left&&x.right<=r.right;});});expect(nav).toBe(true);}
 
  for(const id of ['overview','albums','sources','measurement']) {await page.locator('#'+id).evaluate(e=>window.scrollTo({top:e.getBoundingClientRect().top+window.scrollY-72,behavior:'instant'}));await page.screenshot({path:`.temp/parent-ui-review/operator-${width}-${id}.png`});}
