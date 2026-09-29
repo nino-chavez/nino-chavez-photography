@@ -87,12 +87,12 @@ function catalogueMatches(album: CatalogueRow, query: ReportQuery): boolean {
   && (!query.albumEventType || (album.event_type ?? 'unknown') === query.albumEventType);
 }
 
-async function fetchAllPublicationSettings(client: SupabaseClient): Promise<Array<{ album_key: string; published_at: string | null }>> {
-	const rows: Array<{ album_key: string; published_at: string | null }> = [];
+async function fetchAllPublicationSettings(client: SupabaseClient): Promise<Array<{ album_key: string; published_at: string | null; visibility?: string | null }>> {
+	const rows: Array<{ album_key: string; published_at: string | null; visibility?: string | null }> = [];
 	for (let from = 0; ; from += 1000) {
-		const { data, error } = await client.from('album_settings').select('album_key, published_at').order('album_key').range(from, from + 999);
+		const { data, error } = await client.from('album_settings').select('album_key, published_at, visibility').order('album_key').range(from, from + 999);
 		if (error) throw error;
-		rows.push(...((data ?? []) as Array<{ album_key: string; published_at: string | null }>));
+		rows.push(...((data ?? []) as Array<{ album_key: string; published_at: string | null; visibility?: string | null }>));
 		if ((data ?? []).length < 1000) return rows;
 	}
 }
@@ -154,11 +154,11 @@ function queryForDates(query: ReportQuery, start: string, end: string): ReportQu
 	return { ...query, start, end };
 }
 
-async function distinctVisitors(client: SupabaseClient, query: ReportQuery): Promise<OperatorReport['visitorEstimate']> {
+async function distinctVisitors(client: SupabaseClient, query: ReportQuery, allowedAlbumKeys?: string[]): Promise<OperatorReport['visitorEstimate']> {
 	const { data, error } = await client.rpc('analytics_count_distinct_visitors', {
 		p_start: query.start,
 		p_end: query.end,
-		p_album_keys: query.scope === 'all' ? [] : query.albumKeys,
+		p_album_keys: allowedAlbumKeys ? (allowedAlbumKeys.length ? allowedAlbumKeys : ['__no_public_albums__']) : query.scope === 'all' ? [] : query.albumKeys,
 		p_sport: query.sport ?? null,
 		p_category: query.category ?? null,
 		p_source: query.source ?? null,
@@ -197,14 +197,17 @@ function emptyReport(query: ReportQuery, error: string): OperatorReport {
 }
 
 /** One server-only contract for screen and CSV. No raw identifier, search text, or private note leaves this module. */
-export async function buildOperatorReport(client: SupabaseClient, query: ReportQuery): Promise<OperatorReport> {
+export async function buildOperatorReport(client: SupabaseClient, query: ReportQuery, options: { publicOnly?: boolean } = {}): Promise<OperatorReport> {
 	const comparisonDates = comparisonWindow(query);
 	const previous = comparisonDates ?? { start: query.start, end: query.end };
 	try {
-		const [catalogue, publicationData] = await Promise.all([
+		const [allCatalogue, allPublicationData] = await Promise.all([
 			fetchCatalogue(client),
 			fetchAllPublicationSettings(client)
 		]);
+		const excluded = new Set(options.publicOnly ? allPublicationData.filter(album => album.visibility === 'unlisted').map(album => album.album_key) : []);
+		const catalogue = allCatalogue.filter(album => !excluded.has(album.album_key));
+		const publicationData = allPublicationData.filter(album => !excluded.has(album.album_key));
 		const scopedPublication = publicationData.filter((album): album is { album_key: string; published_at: string } =>
 			!!album.published_at && (query.scope === 'all' || query.albumKeys.includes(album.album_key))
 		);
@@ -222,7 +225,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
    client.from('analytics_diagnostic_coverage').select('first_recorded_at').order('first_recorded_at').limit(1),
    client.from('analytics_daily_coverage').select('bucket_date').order('bucket_date').limit(1)
   ]);
-  const rows = evidence.rows;
+  const rows = evidence.rows.filter(row => !excluded.has(row.album_key));
   const diagnosticsRows = diagnosticResult.rows;
   let diagnosticError = diagnosticResult.error || (firstDiagnostic.error ? 'Diagnostic coverage could not be read.' : null);
   const coverageByDate = new Map(evidence.coverage.map(entry => [entry.bucket_date, entry.coverage_state]));
@@ -301,6 +304,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 			if (dateOnly(new Date(row.occurred_at)) < query.start || dateOnly(new Date(row.occurred_at)) > query.end) return false;
 			if (query.traffic === 'conservative' && row.traffic_context !== 'audience') return false;
 			const albumKey = row.album_key ?? (row.photo_id ? diagnosticPhotoAlbums.get(row.photo_id)?.album_key : null);
+			if (albumKey && excluded.has(albumKey)) return false;
 			const album = albumKey ? diagnosticAlbums.get(albumKey) : undefined;
 			if (query.scope !== 'all' && (!albumKey || !query.albumKeys.includes(albumKey))) return false;
 			if (query.source && (row.source ?? 'direct') !== query.source) return false;
@@ -368,7 +372,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
     error:diagnosticError,
     label:diagnosticError ?? (firstDiagnostic.data?.[0]?.first_recorded_at ? `First recorded diagnostic evidence: ${dateOnly(new Date(firstDiagnostic.data[0].first_recorded_at))}. Earlier coverage is unknown. This start does not prove uninterrupted delivery. Diagnostic content filters use current catalogue facts.` : 'No diagnostic evidence has been recorded. This is not a measured zero.')
    },
-			visitorEstimate: await distinctVisitors(client, query), publicationAge, generatedAt: new Date().toISOString()
+			visitorEstimate: await distinctVisitors(client, query, options.publicOnly ? selectedKeys : undefined), publicationAge, generatedAt: new Date().toISOString()
 		};
 	} catch (cause) {
 		console.error('[analytics operator report] unavailable:', cause);

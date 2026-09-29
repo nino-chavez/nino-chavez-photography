@@ -2,7 +2,7 @@
 
 Status: the full workspace is deployed at `https://ninochavez.co/photography/analytics/operator`. Production migrations, retained totals, authenticated reports, exports, operator exclusion, saved views, and desktop/phone checks are verified. Signed agent-test requests still require a dedicated secret; its 1Password write is waiting for operator authorization. Operator-account exclusion is already active.
 
-The public activity summary remains available. The private operator workspace lives at `/photography/analytics/operator`. It uses the existing verified Supabase identity and operator allowlist. This is the complete release scope from `ANALYTICS_PLAN.md`.
+The activity summary remains available. At the operator's September 28 request, `/photography/analytics/operator` and its CSV export now open without sign-in and remain unlisted from search engines. Public reports exclude unlisted albums. Private notes, saved views, retained event details, and all write actions still require the verified operator identity. This access decision supersedes the private-report boundary in `ANALYTICS_PLAN.md`.
 
 ## What the operator can do
 
