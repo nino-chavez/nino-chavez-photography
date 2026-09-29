@@ -110,6 +110,9 @@ test('journey results retain their real denominators and remain unavailable on p
 	const success = await queryGalleryJourneys({ query: async () => ({ columns: ['eligible_photo_exposures', 'later_photo_actions'], results: [[12, 3]] }) }, query, { publicOnly: true, allowedAlbumKeys: ['album-a'] });
 	assert.deepEqual(success.totals, { eligible_photo_exposures: 12, later_photo_actions: 3 });
 	assert.equal(success.available, true);
+	const privateScope = await queryGalleryJourneys({ query: async () => ({ columns: ['eligible_photo_exposures', 'later_photo_actions'], results: [[12, 3]] }) }, query, { publicOnly: false, allowedAlbumKeys: ['album-a'] });
+	assert.equal(privateScope.available, false);
+	assert.equal(privateScope.error, 'invalid_query');
 	const unavailable = await queryGalleryJourneys({ query: async () => { throw new Error('timeout'); } }, query, { publicOnly: true, allowedAlbumKeys: ['album-a'] });
 	assert.equal(unavailable.available, false);
 	assert.deepEqual(unavailable.totals, { eligible_photo_exposures: null, later_photo_actions: null });

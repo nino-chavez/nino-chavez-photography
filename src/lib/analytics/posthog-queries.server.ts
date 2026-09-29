@@ -113,6 +113,7 @@ export async function queryGalleryJourneys(
 		coverage: { start: query.start, end: query.end, timezone: CHICAGO, definitionVersion: 2 as const, cohort: 'eligible audience events with a linked visit' as const, excluded: 'operator, test, crawler, suspected automation, opted-out, and unlinked events' as const, metadata: 'event snapshots only; no PostHog catalogue join' as const },
 		totals: emptyTotals(query.report)
 	};
+	if (!options.publicOnly) return { ...base, available: false, error: 'invalid_query' };
 	const fixed = buildPostHogJourneyQuery(query, options.allowedAlbumKeys);
 	if (!fixed) return { ...base, available: false, error: 'invalid_query' };
 	if (!client) return { ...base, available: false, error: 'provider_unavailable' };
