@@ -22,7 +22,7 @@ const dashboards = [
 	},
 	{
 		name: 'Photography: distribution and experiments',
-		description: 'Measured browser return and observed experiment exposure. Tagged-source reporting remains unavailable until the collector supports it. No experiment is activated by this setup.'
+		description: 'Measured browser return and observed experiment exposure. No experiment is activated by this setup.'
 	}
 ];
 
@@ -77,15 +77,16 @@ function fixedInsightPayload(insight, dashboardId) {
 	return {
 		name: insight.name,
 		description: `Photography version-2 fixed ${insight.report} report. Edit the source-controlled query module, not this insight, when definitions change.`,
-		dashboard: dashboardId,
-		query
+		dashboards: [dashboardId],
+		saved: true,
+		query: { kind: 'DataTableNode', source: query }
 	};
 }
 
 async function ensureDashboard(dashboard) {
 	const list = await request(`/api/projects/${selectedProject}/dashboards/`);
 	const existing = (list.results ?? []).find((entry) => entry?.name === dashboard.name);
-	if (existing?.id) return existing;
+	if (existing?.id) { if(existing.is_shared) throw new Error('Existing photography dashboard is publicly shared; inspect access before continuing'); return existing; }
 	return request(`/api/projects/${selectedProject}/dashboards/`, { method: 'POST', body: JSON.stringify(dashboard) });
 }
 
@@ -94,7 +95,7 @@ async function ensureInsight(insight, dashboardId) {
 	let existing;
 	for (const name of names) {
 		const list = await request(`/api/projects/${selectedProject}/insights/?search=${encodeURIComponent(name)}`);
-		existing = (list.results ?? []).find((entry) => names.includes(entry?.name) && Number(entry.dashboard) === Number(dashboardId));
+		existing = (list.results ?? []).find((entry) => names.includes(entry?.name) && (entry.dashboards ?? [entry.dashboard]).some(id => Number(id) === Number(dashboardId)));
 		if (existing) break;
 	}
 	const payload = fixedInsightPayload(insight, dashboardId);

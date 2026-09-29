@@ -1,0 +1,78 @@
+{
+  "project": 635867,
+  "observedAt": "2026-09-29T16:51:03.490771+00:00",
+  "dashboards": [
+    {
+      "id": 2149919,
+      "name": "Photography: distribution and experiments",
+      "is_shared": false,
+      "tiles": 2
+    },
+    {
+      "id": 2149918,
+      "name": "Photography: journeys and reliability",
+      "is_shared": false,
+      "tiles": 5
+    }
+  ],
+  "insights": [
+    {
+      "id": 12341795,
+      "name": "Experiment exposure and guardrails",
+      "saved": true,
+      "dashboards": [
+        2149919
+      ]
+    },
+    {
+      "id": 12341794,
+      "name": "Measured return within browser coverage",
+      "saved": true,
+      "dashboards": [
+        2149919
+      ]
+    },
+    {
+      "id": 12341793,
+      "name": "Photograph response",
+      "saved": true,
+      "dashboards": [
+        2149918
+      ]
+    },
+    {
+      "id": 12341792,
+      "name": "Download reliability",
+      "saved": true,
+      "dashboards": [
+        2149918
+      ]
+    },
+    {
+      "id": 12341790,
+      "name": "Search usefulness",
+      "saved": true,
+      "dashboards": [
+        2149918
+      ]
+    },
+    {
+      "id": 12341788,
+      "name": "Album use: open to photo action",
+      "saved": true,
+      "dashboards": [
+        2149918
+      ]
+    },
+    {
+      "id": 12341785,
+      "name": "Discovery: exposed album to open",
+      "saved": true,
+      "dashboards": [
+        2149918
+      ]
+    }
+  ],
+  "passed": true,
+  "scope": "Only the two Photography dashboards; provider-created onboarding dashboard preserved."
+}

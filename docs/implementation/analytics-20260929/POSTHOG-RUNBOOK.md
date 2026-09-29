@@ -37,7 +37,7 @@ Do not set either enablement binding in local or preview environments. A key and
 
 ## Reported provider state
 
-Nino reported the following account state on September 29. This code pass did not contact PostHog to verify it.
+The integrating parent verified the following through the provider API on September 29. Safe project metadata is saved in provider-projects.json.
 
 - Production project: `635866`
 - Test project: `635867`
@@ -46,7 +46,7 @@ Nino reported the following account state on September 29. This code pass did no
 - Autocapture: off
 - Session replay: off
 
-Treat these as configuration inputs that still need an authorized provider receipt. Do not describe the account as pay-as-you-go or promise seven years of history. Record the retention shown by the active account before publishing retention language. Keep autocapture and session replay off.
+These are provider observations; recheck them at activation. Do not describe the account as pay-as-you-go or promise seven years of history. Record the retention shown by the active account before publishing retention language. Keep autocapture and session replay off.
 
 ## Setup sequence
 
@@ -81,13 +81,13 @@ It creates or reuses two private dashboards and creates or updates seven fixed a
 
 Fixed named queries are the only provider query surface. Public callers can select a supported report and validated filters through the parent integration; they cannot send HogQL/SQL. Each query applies version, audience, Chicago date, linked visit, and current album visibility before aggregation.
 
-Search is site-wide because result-display events have no album target. Album-scoped search requests are rejected. Search selections count one exact visit/search ID after its matching result set; repeat clicks do not increase the numerator, and selections from non-visible albums do not enter it. Zero-result counts use the same exact search IDs as their denominator.
+Search result-display events have no album target. Album/content filters therefore select visits that touched matching visible content, then describe their measured journeys. They do not turn a gallery-wide search into an album-specific search. Search selections count one exact visit/search ID after its matching result set; repeat clicks do not increase the numerator, and selections from non-visible albums do not enter it. Zero-result counts use the same exact search IDs as their denominator.
 
 Download requests are keyed by visit and request ID. Mixed-album requests without an album key enter the visible cohort only through visible item events. Requested and prepared item totals come from their item events and inherit mode from the matching request. Cancellation is terminal; only requests with no handoff, failure, or cancellation are unknown.
 
 The return report separates browsers observed before the selected window from browsers with repeated visits inside it. Its prior scan is capped at 90 days. Both measures are bounded by browser-ID retention, storage clearing, and device changes; neither describes a person or proves history before that coverage.
 
-The current collector does not export tagged arrival source or album sport/category snapshots on journey events. Provider queries reject those filters instead of reading unsupported fields. Source distribution and those content filters remain unavailable until the collector contract adds them and tests cover the new cohort.
+The collector snapshots album sport, event date, photo category and tagged source. Source/content filters select matching visits within the visible catalogue. Journey totals include visible steps within those visits; the first-party album/photo reports retain their action-level filters. The UI explains this distinction.
 
 The provider has no catalogue join in these queries. Historical catalogue facts are not backfilled or guessed.
 
@@ -105,9 +105,9 @@ Do not call this integration live until all are evidenced:
 - dashboard setup receipt retained; no live experiment activated;
 - hosted desktop and phone review completed with real eligible data.
 
-This code has only passed injected-transport unit tests. It has not contacted PostHog, written a provider configuration, scheduled a job, inspected billing, or proven hosted delivery.
+The parent has run all seven fixed queries against synthetic events in the dedicated test project, including a duplicate UUID and filtered cohorts. See evidence/posthog-test.json. The scheduler is implemented but disabled and undeployed. Production runtime delivery and account-scoped read credentials remain unverified.
 
-## Parent live-query validation still required
+## Remaining release validation
 
 The integrating parent must retain receipts for these checks before delivery is called complete:
 

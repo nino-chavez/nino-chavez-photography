@@ -56,7 +56,7 @@ export interface PostHogJourneyQuery {
 }
 
 export interface PostHogQueryTransport {
-	query(body: { query: { kind: 'HogQLQuery'; query: string } }): Promise<unknown>;
+	query(body: { refresh?: 'force_async' | 'async'; query: { kind: 'HogQLQuery'; query: string } }): Promise<unknown>;
 }
 
 export interface JourneyAggregate {

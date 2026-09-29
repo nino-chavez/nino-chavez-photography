@@ -139,7 +139,7 @@ test('album-use semantics require a visible album and an ordered open, render, t
 	]);
 	assert.deepEqual(totals, { album_open_visits: 2, photo_render_visits: 2, album_action_visits: 1 });
 	assert.equal(buildPostHogJourneyQuery({ ...query, albumKeys: ['Private Album'] }, ['Public Album 2026']), null);
-	assert.equal(buildPostHogJourneyQuery({ ...query, source: 'instagram' }, ['Public Album 2026']), null);
+	assert.match(buildPostHogJourneyQuery({ ...query, source: 'instagram' }, ['Public Album 2026'])!.query, /tagged_source/);
 	const quotedAlbum = buildPostHogJourneyQuery({ ...query, albumKeys: ["Nino's Finals"] }, ["Nino's Finals"]);
 	assert.ok(quotedAlbum);
 	assert.match(quotedAlbum.query, /'Nino''s Finals'/);
@@ -187,7 +187,7 @@ test('search semantics count exact search IDs once and hide selections from non-
 	]);
 	assert.deepEqual(totals, { searches_shown: 3, zero_result_searches: 1, selected_searches: 1, selection_duration_ms: 1000 });
 	assert.match(buildPostHogJourneyQuery(query, ['Public Album'])!.query, /selected_searches AS/);
-	assert.equal(buildPostHogJourneyQuery({ ...query, albumKeys: ['Public Album'] }, ['Public Album']), null);
+	assert.match(buildPostHogJourneyQuery({ ...query, albumKeys: ['Public Album'] }, ['Public Album'])!.query, /cohort|visit_id IN/);
 });
 
 test('download semantics scope request IDs by visit, derive item totals by mode, and make cancellation terminal', () => {

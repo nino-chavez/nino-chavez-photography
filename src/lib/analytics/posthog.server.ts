@@ -16,7 +16,8 @@ export function postHogRuntimeConfig(source: Record<string, string | undefined>)
 	try {
 		const parsed = new URL(host);
 		if (parsed.protocol !== 'https:') return null;
-		return { projectApiKey, host: parsed.origin };
+		const captureHost = parsed.origin.replace(/^https:\/\/(us|eu)\.posthog\.com$/, 'https://$1.i.posthog.com');
+		return { projectApiKey, host: captureHost };
 	} catch {
 		return null;
 	}

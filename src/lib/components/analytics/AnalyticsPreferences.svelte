@@ -33,7 +33,7 @@
 <section aria-labelledby="analytics-preferences-title" class="analytics-preferences">
 	<p class="eyebrow">Your choice</p>
 	<h2 id="analytics-preferences-title">Analytics preferences</h2>
-	<p>Linked analytics is optional. It uses random browser and visit IDs. Turning it off stops future linked collection and provider export.</p>
+	<p>Linked analytics is optional. It uses random browser and visit IDs. Turning it off stops new linked collection and cancels queued exports. Records already being sent or stored by the provider are not automatically deleted.</p>
 	<label><input type="checkbox" bind:checked={preferences.linkedAnalytics} onchange={persist} disabled={saving} /> <span>Allow linked analytics</span></label>
 	<label><input type="checkbox" bind:checked={preferences.excludeThisBrowser} onchange={persist} disabled={saving} /> <span>Exclude this browser from audience analytics</span></label>
 	{#if message}<p class="status" aria-live="polite">{message}</p>{/if}

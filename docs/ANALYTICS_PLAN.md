@@ -1,6 +1,6 @@
 # Photography analytics implementation plan
 
-Status: revised September 29, 2026. An earlier implementation exists, but the [red-team review](audits/analytics-red-team-20260929/REVIEW.md) found collection and reporting defects. The current [experience rethink](design/experience-brief.md) and [PostHog integration](POSTHOG_PLAN.md) are planned, not implemented. `ANALYTICS_BUILD.md` records the earlier build; it does not establish acceptance of this revised release. This plan does not itself apply production changes.
+Status: revised September 29, 2026. An earlier implementation exists, but the [red-team review](audits/analytics-red-team-20260929/REVIEW.md) found collection and reporting defects. The current [experience rethink](design/experience-brief.md) and [PostHog integration](POSTHOG_PLAN.md) are integrated locally and undergoing final acceptance. [Build status](implementation/analytics-20260929/STATUS.md) separates implementation, test-provider evidence, and production activation. `ANALYTICS_BUILD.md` records the earlier build; it does not establish acceptance of this revised release. This plan does not itself apply production changes.
 
 Build the full photography analytics north star in one complete release. Nino must be able to understand individual albums, discover popular and rising work, compare performance, investigate distribution and data quality, and save or export useful views. Preserve useful totals, exclude controlled test traffic, and make collection failures visible.
 

@@ -1,11 +1,10 @@
 import { json, error as httpError } from '@sveltejs/kit';
-import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { isBotUserAgent } from '$lib/analytics/bot-detection';
 import { parseEventV2Request, resolveEventV2Target } from '$lib/analytics/collection-contract';
 import { resolveAnalyticsContext, resolveAnalyticsReleaseContext } from '$lib/analytics/context.server';
-import { ANALYTICS_IDENTITY_COOKIE, hasLinkedAnalyticsConsent, issueAnalyticsIdentityBinding } from '$lib/analytics/preferences-contract';
+import { ANALYTICS_IDENTITY_COOKIE, hasLinkedAnalyticsConsent, verifiedAnalyticsIdentityBinding } from '$lib/analytics/preferences-contract';
 import { env } from '$env/dynamic/private';
 
 /** V2 has no legacy fingerprint. One accepted event and eligible outbox row are inserted atomically by the RPC. */
@@ -36,19 +35,15 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	if (photoCategory) target.value.properties.photo_category = photoCategory;
 	const trafficContext = await resolveAnalyticsContext(request, cookies);
 	const linkedConsent = hasLinkedAnalyticsConsent(cookies);
-	const acceptedIdentity = trafficContext === 'audience' && linkedConsent
-		? { anonymous_browser_id: target.value.anonymous_browser_id, visit_id: target.value.visit_id }
+	const secret = env.ANALYTICS_IDENTITY_BINDING_SECRET?.trim() || env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+	const boundBrowser = verifiedAnalyticsIdentityBinding(cookies.get(ANALYTICS_IDENTITY_COOKIE), secret);
+	const acceptedIdentity = trafficContext === 'audience' && linkedConsent && boundBrowser && target.value.anonymous_browser_id
+		? { anonymous_browser_id: boundBrowser, visit_id: target.value.visit_id }
 		: { anonymous_browser_id: null, visit_id: null };
 	const exportEligible = trafficContext === 'audience' && linkedConsent && acceptedIdentity.anonymous_browser_id !== null && acceptedIdentity.visit_id !== null;
 	target.value.properties.release = resolveAnalyticsReleaseContext();
 	const envelope = { ...target.value, ...acceptedIdentity, received_at: new Date().toISOString(), traffic_context: trafficContext, export_eligible: exportEligible };
 	const { data, error } = await admin.rpc('analytics_accept_event_v2', { p_event: envelope }).single();
 	if (error || !data) return json({ accepted: false, duplicate: false, error: 'recording_unavailable' }, { status: 503 });
-	const acceptance = data as { accepted?: boolean };
-	if (exportEligible && acceptance.accepted === true && acceptedIdentity.anonymous_browser_id) {
-		const secret = env.ANALYTICS_IDENTITY_BINDING_SECRET?.trim() || env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-		const binding = issueAnalyticsIdentityBinding(acceptedIdentity.anonymous_browser_id, secret ?? '');
-		if (binding) cookies.set(ANALYTICS_IDENTITY_COOKIE, binding, { path: '/', sameSite: 'lax', secure: !dev, httpOnly: true, maxAge: 90 * 24 * 60 * 60 });
-	}
 	return json(data);
 };

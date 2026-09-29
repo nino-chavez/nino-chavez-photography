@@ -100,7 +100,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		fetchV2ReportProjection(admin, query, v2Options),
 		Promise.all(POSTHOG_JOURNEY_REPORTS.map((report) => queryGalleryJourneys(
 			createPostHogQueryTransport(env),
-			{ report, start: query.start, end: query.end, albumKeys: publicScopedAlbumKeys, source: query.source, sport: query.sport, category: query.category },
+			{ report, start: query.start, end: query.end, ...(query.scope === 'all' && !query.sport && !query.eventDate && !query.season && !query.albumEventType ? {} : {albumKeys: publicScopedAlbumKeys}), source: query.source, sport: query.sport, category: query.category },
 			{ publicOnly: true, allowedAlbumKeys: publicScopedAlbumKeys }
 		)))
 	]);

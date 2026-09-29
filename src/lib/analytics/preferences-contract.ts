@@ -19,7 +19,7 @@ function signIdentity(browserId: string, secret: string): string {
 	return createHmac('sha256', secret).update(`analytics-browser.v2.${browserId}`).digest('base64url');
 }
 
-/** The server issues this only after accepting a consented event for the browser ID. */
+/** The server signs its own random browser ID when linked permission is enabled. */
 export function issueAnalyticsIdentityBinding(browserId: string, secret: string): string | null {
 	if (!ID_PATTERN.test(browserId) || !secret) return null;
 	return `${browserId}.${signIdentity(browserId, secret)}`;

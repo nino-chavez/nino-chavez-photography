@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 test.use({userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'});
 
@@ -39,4 +40,31 @@ test('actual browser senders produce accepted photo, item, ZIP and exclusion eve
  expect(cookies.find(x=>x.name==='gallery_analytics_excluded_v2')?.value).toBe('1');
  const excluded=await page.request.post('/photography/api/engagement',{data:{event_type:'view',photo_id:'legacy-1'}});
  expect(await excluded.json()).toMatchObject({accepted:false,reason:'self_excluded'});
+});
+
+
+test('permission binds a server identity before collection and withdrawal cancels later export', async ({page,baseURL})=>{
+ if(!baseURL || !['127.0.0.1','localhost','analytics-review.localhost'].includes(new URL(baseURL).hostname))throw Error('Loopback only');
+ await page.goto('/photography/analytics/operator');
+ const permission=await page.request.post('/photography/api/analytics/preferences',{data:{linkedAnalytics:true,excludeThisBrowser:false}});
+ expect(permission.ok()).toBe(true);
+ const binding=(await page.context().cookies()).find(x=>x.name==='gallery_analytics_identity_v2');
+ expect(binding?.httpOnly).toBe(true);
+ const event={schema_version:2,event_id:crypto.randomUUID(),event_name:'photo_opened',occurred_at:new Date().toISOString(),anonymous_browser_id:crypto.randomUUID(),visit_id:crypto.randomUUID(),properties:{photo_id:'legacy-1',view_id:crypto.randomUUID(),entry_surface:'photo_route'}};
+ const accepted=await page.request.post('/photography/api/analytics/events',{data:event});
+ expect(await accepted.json()).toMatchObject({accepted:true,export_eligible:true});
+ const runtime=JSON.parse(readFileSync('.temp/analytics-local-rehearsal/runtime.json','utf8'));
+ if(!['127.0.0.1','localhost'].includes(new URL(runtime.API_URL).hostname))throw Error('Local DB only');
+ const headers={apikey:runtime.SERVICE_ROLE_KEY,authorization:'Bearer '+runtime.SERVICE_ROLE_KEY};
+ const stored=await page.request.get(runtime.API_URL+'/rest/v1/analytics_events_v2?event_id=eq.'+event.event_id+'&select=anonymous_browser_id,export_eligible',{headers});
+ const rows=await stored.json();
+ expect(rows[0].anonymous_browser_id).toBe(binding!.value.split('.')[0]);
+ expect(rows[0].anonymous_browser_id).not.toBe(event.anonymous_browser_id);
+ const withdrawal=await page.request.post('/photography/api/analytics/preferences',{data:{linkedAnalytics:false,excludeThisBrowser:false}});
+ expect(withdrawal.ok()).toBe(true);
+ const queued=await page.request.get(runtime.API_URL+'/rest/v1/analytics_posthog_outbox?event_id=eq.'+event.event_id+'&select=event_id',{headers});
+ expect(await queued.json()).toEqual([]);
+ expect((await page.context().cookies()).some(x=>x.name==='gallery_analytics_identity_v2')).toBe(false);
+ const later=await page.request.post('/photography/api/analytics/events',{data:{...event,event_id:crypto.randomUUID()}});
+ expect(await later.json()).toMatchObject({accepted:true,export_eligible:false});
 });

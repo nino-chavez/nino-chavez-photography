@@ -121,6 +121,7 @@ function runFullPass() {
 	psql('supabase/migrations/20260929024500_analytics_unique_suspected_sessions.sql');
 	psql('supabase/migrations/20260929040000_analytics_events_v2_outbox.sql');
 	psql('supabase/migrations/20260929160010_analytics_v2_delivery_retention.sql');
+	psql('supabase/migrations/20260929180000_analytics_v2_consent_revocation.sql');
 	psql('supabase/rehearsal/analytics-fixtures.sql');
 	psql('supabase/rehearsal/analytics-v2-assertions.sql');
 	psql('supabase/rehearsal/analytics-assertions.sql');

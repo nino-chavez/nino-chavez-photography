@@ -68,7 +68,7 @@ function text(value: unknown): string | null {
 }
 
 function includesTraffic(context: PostHogTrafficContext | 'self_excluded', traffic: ReportQuery['traffic']): boolean {
-	if (context === 'self_excluded' || context === 'crawler' || context === 'suspected_automation') return false;
+	if (context === 'self_excluded') return false;
 	return traffic === 'inclusive' ? context === 'audience' || context === 'operator' || context === 'test' : context === 'audience';
 }
 

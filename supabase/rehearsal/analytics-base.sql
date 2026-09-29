@@ -3,6 +3,7 @@
 -- constraints, RLS posture, and role grants the draft migration depends on.
 
 BEGIN;
+DROP TABLE IF EXISTS analytics_private.analytics_v2_revoked_browsers CASCADE;
 DROP TABLE IF EXISTS public.analytics_posthog_outbox CASCADE;
 DROP TABLE IF EXISTS public.analytics_events_v2 CASCADE;
 DROP TABLE IF EXISTS public.analytics_v2_archived_totals CASCADE;

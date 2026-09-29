@@ -34,6 +34,7 @@
 	].filter((item) => item.key !== measure));
 </script>
 
+<div class="comparison"><p class="scroll-help">Scroll sideways to compare every measure. Album names stay visible.</p>
 <div class="table-region" role="region" aria-label="Album comparison table">
 	<table>
 		<thead>
@@ -52,9 +53,12 @@
 		</tbody>
 	</table>
 </div>
+</div>
 
 <style>
-	.table-region { border: 1px solid #d8e0ea; border-radius: 14px; overflow: auto; background: #fff; }
+	.comparison { min-width:0; }
+	.scroll-help { color:#526176; font-size:.75rem; margin:0 0 .6rem; }
+	.table-region { position: relative; border: 1px solid #d8e0ea; border-radius: 14px; overflow: auto; background: #fff; }
 	table { border-collapse: collapse; min-width: 62rem; width: 100%; font-size: .8rem; }
 	th { background: #f4f7fb; color: #526176; font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-align: left; text-transform: uppercase; }
 	th, td { border-bottom: 1px solid #e8edf3; padding: .65rem .75rem; vertical-align: middle; }
