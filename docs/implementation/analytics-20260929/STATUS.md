@@ -1,6 +1,6 @@
 # Analytics build status — September 29
 
-The redesigned dashboard and measurement changes are integrated locally. The production build passes. **This release is not deployed, and production PostHog export is disabled.** The local build and synthetic provider checks pass. Hosted acceptance and production activation remain blocked by the account and release steps below.
+The redesigned dashboard is ready for release. Four production analytics migrations were applied on September 29 and the database reports no pending migrations. The application release is **not yet deployed**: GitHub is waiting for its required GitGuardian check, which has not started. PostHog production export remains disabled pending a restricted query credential.
 
 ## What is ready to review
 
@@ -57,3 +57,13 @@ The chosen interface combines the overview, album table and inspector, followed 
 The source-owned private test dashboards were updated and fetched again: two dashboards, seven saved insights, all using versioned traffic corrections. Production project 635866 received no visitor events from this build. The companion policy is committed only on its isolated branch. Nothing in this completion wave was pushed or deployed.
 
 Branch-ref comparison found changes only to the parent integration branch and the three assigned worker branches. Unrelated `.impeccable` drafts remain untouched. The local review server remains available on `http://analytics-review.localhost:57210/photography/analytics/operator`.
+
+## September 29 production release attempt
+
+- Production Supabase `skywzpcekhntecegyjoj`: applied migrations `20260929040000`, `20260929160010`, `20260929180000`, and `20260929190000`. A second dry run reports up to date.
+- Production delivery-health RPC returns schema version 2 through the server role; anonymous access returns HTTP 401. No event delivery or test events were submitted to production.
+- `PostHog photography` and `PostHog photography-test` now exist in 1Password. Capture keys, scheduler tokens and browser-binding secrets passed read-back verification. A restricted read key is still missing.
+- Gallery release PR: https://github.com/nino-chavez/nino-chavez-photography/pull/164. Privacy release PR: https://github.com/nino-chavez/nino-chavez-site/pull/31. Both have auto-merge queued, but neither has a GitGuardian result. Repository rules were not altered.
+- Cloudflare Pages production git deployment is enabled for gallery `main`. The current production application remains commit `8d840154c2d55726cbc0e6a39299e49e8c7d1fb5` until the release merges.
+- The companion Worker deployment workflow is dormant because its Cloudflare GitHub secrets are absent. Its documented manual deployment remains necessary unless the existing automation is activated.
+- PostHog sign-in in the shared browser is still unavailable. Production export, scheduler, dashboards and hosted linked-report checks remain pending.
