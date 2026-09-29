@@ -7,11 +7,14 @@
 
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { Folder, Camera } from 'lucide-svelte';
+	import { Folder, Camera, ArrowRight } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
 	import { cfImageUrl, cfSrcSet } from '$lib/utils/cloudflare-images';
+	import { exposure } from '$lib/analytics/exposure';
+	import { exposeExperiment, trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { ALBUM_CARD_EXPERIMENT_SURFACE, hasAlbumCardCta, type PhotographyExperimentAssignment } from '$lib/analytics/experiments';
 
 	interface Album {
 		albumKey: string;
@@ -29,15 +32,18 @@
 	interface Props {
 		album: Album;
 		index?: number;
+		resultSetId?: string;
 		onclick?: (album: Album) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images - disables lazy loading
+		experiment?: PhotographyExperimentAssignment | null;
 	}
 
-	let { album, index = 0, onclick, priority = false }: Props = $props();
+	let { album, index = 0, resultSetId = crypto.randomUUID(), onclick, priority = false, experiment = null }: Props = $props();
 
 	// Image loading state
 	let imageLoaded = $state(false);
 	let imageError = $state(false);
+	let previousCoverIdentity = $state('');
 
 	// Generate album URL for navigation (using friendly slug)
 	let albumUrl = $derived(`${base}/albums/${createAlbumSlug(album.albumName, album.albumKey)}`);
@@ -48,6 +54,9 @@
 		album.coverCfImageId ? cfImageUrl(album.coverCfImageId, 'medium') : album.coverImageUrl
 	);
 	let hasCover = $derived(!!(album.coverCfImageId || album.coverImageUrl));
+	let coverIdentity = $derived(`${album.albumKey}:${album.coverCfImageId ?? album.coverImageUrl ?? 'coverless'}`);
+	let exposureIdentity = $derived(`${resultSetId}:${album.albumKey}`);
+	let exposureLoaded = $derived(hasCover ? imageLoaded : true);
 	const albumCardSizes = SIZES_PRESETS.albumCard;
 
 	function handleClick(event: MouseEvent) {
@@ -64,11 +73,22 @@
 		imageLoaded = true;
 		imageError = false;
 	}
+	function recordExposure() {
+		trackAnalyticsEventV2({ eventName: 'album_exposed', properties: { album_key: album.albumKey, position: index, result_set_id: resultSetId } });
+		exposeExperiment(experiment, ALBUM_CARD_EXPERIMENT_SURFACE);
+	}
 
 	function handleImageError() {
 		imageError = true;
 		imageLoaded = false;
 	}
+
+	$effect(() => {
+		if (previousCoverIdentity === coverIdentity) return;
+		previousCoverIdentity = coverIdentity;
+		imageLoaded = false;
+		imageError = false;
+	});
 
 	// Sport emojis for badges
 	const sportEmojis: Record<string, string> = {
@@ -132,6 +152,7 @@
 		if ((album.videoCount ?? 0) > 0) parts.push(`${album.videoCount} ${album.videoCount === 1 ? 'video' : 'videos'}`);
 		return parts.join(' · ') || '0 photos';
 	});
+	let showExperimentCta = $derived(hasAlbumCardCta(experiment));
 </script>
 
 <a
@@ -141,6 +162,7 @@
 	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 cursor-pointer outline-none block"
 	aria-label={`Album: ${album.albumName}, ${contentLabel}`}
 	onclick={handleClick}
+	use:exposure={{ loaded: exposureLoaded, onExpose: recordExposure, identity: exposureIdentity }}
 >
 	<!-- Loading/Fallback State -->
 	{#if !imageLoaded || imageError || !hasCover}
@@ -158,7 +180,7 @@
 
 	<!-- Cover Image with Responsive srcset -->
 	{#if hasCover && !imageError}
-		<img
+		{#key coverIdentity}<img
 			src={optimizedCoverUrl || album.coverImageUrl}
 			srcset={coverSrcset || undefined}
 			sizes={albumCardSizes}
@@ -175,6 +197,7 @@
 			onload={handleImageLoad}
 			onerror={handleImageError}
 		/>
+		{/key}
 	{/if}
 
 	<!-- Album Info Overlay -->
@@ -215,6 +238,11 @@
 					</div>
 				{/if}
 			</div>
+			{#if showExperimentCta}
+				<span class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-gold-300 group-hover:text-gold-200">
+					View event <ArrowRight class="h-4 w-4" aria-hidden="true" />
+				</span>
+			{/if}
 		</div>
 	</div>
 

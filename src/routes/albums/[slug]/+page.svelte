@@ -14,7 +14,7 @@
 	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
 	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackAnalyticsEventV2, trackEngagement } from '$lib/analytics/client';
 	import { ALBUM_PHOTO_PAGE_SIZE } from '$lib/albums/pagination';
 	import type { PageData } from './$types';
 	import type { Photo, Video } from '$types/photo';
@@ -27,6 +27,7 @@
 	// into an album open. The API dedups re-renders per visitor/album/day.
 	$effect(() => {
 		trackEngagement('album_open', { albumKey: data.albumKey });
+		trackAnalyticsEventV2({ eventName: 'album_opened', properties: { album_key: data.albumKey, view_id: crypto.randomUUID(), entry_surface: 'album_route' } });
 	});
 
 	// Lightbox state (same pattern as explore page). `lightboxSource` picks which list the
@@ -422,7 +423,7 @@
 			{/if}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each displayPhotos as photo, index (photo.image_key)}
-					<PhotoCard {photo} {index} onclick={handlePhotoClick} priority={index < 4} />
+					<PhotoCard {photo} {index} favoriteSurface="album" onclick={handlePhotoClick} priority={index < 4} />
 				{/each}
 			</div>
 

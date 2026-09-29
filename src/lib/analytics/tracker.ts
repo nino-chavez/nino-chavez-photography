@@ -15,7 +15,7 @@ export interface SearchQueryEvent {
 	filters_used?: Record<string, any>;
 	results_count: number;
 	userAgent: string;
-	trafficContext?: 'audience' | 'operator' | 'test';
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 export interface ArrivalEvent {
@@ -23,7 +23,7 @@ export interface ArrivalEvent {
 	src: string; // channel value carried on the incoming ?src= param (see $lib/utils/share-url)
 	sessionHash?: string;
 	userAgent: string;
-	trafficContext?: 'audience' | 'operator' | 'test';
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 export interface CollectionDiagnosticEvent {
@@ -35,7 +35,7 @@ export interface CollectionDiagnosticEvent {
 	source?: string;
 	resultCount?: number;
 	errorCode?: string;
-	trafficContext?: 'audience' | 'operator' | 'test';
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 /**
@@ -78,6 +78,7 @@ export async function recordBotFiltered(): Promise<void> {
  * site-wide (homepage) arrivals.
  */
 export async function trackArrival(event: ArrivalEvent): Promise<void> {
+	if (event.trafficContext === 'self_excluded') return;
 	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		const { error: dbError } = await createSupabaseAdminClient()
@@ -104,6 +105,7 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
  * Track a search query (server-side only)
  */
 export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
+	if (event.trafficContext === 'self_excluded') return;
 	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		// The error must be read off the result, not caught: supabase-js resolves
@@ -128,7 +130,7 @@ export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 
 /** Records report-safe collection evidence. Search text and browser identifiers never enter this table. */
 export async function trackCollectionDiagnostic(event: CollectionDiagnosticEvent): Promise<void> {
- if(isBotUserAgent(event.userAgent)) return;
+	if (event.trafficContext === 'self_excluded' || isBotUserAgent(event.userAgent)) return;
 	try {
 		const { error: dbError } = await createSupabaseAdminClient().from('analytics_collection_diagnostics').insert({
 			diagnostic_type: event.type,

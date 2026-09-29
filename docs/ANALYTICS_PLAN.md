@@ -1,38 +1,32 @@
 # Photography analytics implementation plan
 
-Status: the full local implementation and independent visual acceptance are complete; production application and real-data acceptance remain separate. The requirement remains the full release described here. `ANALYTICS_BUILD.md` records the implementation and evidence. This plan does not authorize production migrations, changes to retention or access, or deployment.
+Status: revised September 29, 2026. An earlier implementation exists, but the [red-team review](audits/analytics-red-team-20260929/REVIEW.md) found collection and reporting defects. The current [experience rethink](design/experience-brief.md) and [PostHog integration](POSTHOG_PLAN.md) are integrated locally and undergoing final acceptance. [Build status](implementation/analytics-20260929/STATUS.md) separates implementation, test-provider evidence, and production activation. `ANALYTICS_BUILD.md` records the earlier build; it does not establish acceptance of this revised release. This plan does not itself apply production changes.
 
 Build the full photography analytics north star in one complete release. Nino must be able to understand individual albums, discover popular and rising work, compare performance, investigate distribution and data quality, and save or export useful views. Preserve useful totals, exclude controlled test traffic, and make collection failures visible.
 
 **Scope directive, September 28:** the full north star is the release commitment. Phases describe dependency order, parallel work and verification checkpoints. They are not smaller releases, optional feature bundles, or permission to stop after a subset works. Do not reduce scope on the assumption that a one-person gallery needs less. A preservation-only production change may happen earlier if separately authorized because waiting can lose history; that does not replace the complete release.
 
-Keep first-party events as the initial foundation. Select additional services only if they materially improve delivery of the agreed capabilities; a vendor migration is neither required nor ruled out by the release scope.
+Keep validated first-party events as the shared foundation. Add PostHog Cloud for linked journeys, discovery and download funnels, and site experiments. Keep the gallery workspace for photographic inspection and album comparison. Nino selected PostHog Cloud with proposed updated retention wording on September 29; the [PostHog plan](POSTHOG_PLAN.md) owns that integration, its event contract, privacy proposal and acceptance cases.
 
 Reader: Nino as photographer/operator and the implementer. Preserve precise metric definitions while keeping the decisions and work order easy to follow.
 
 ## 1. Resolve history and access without reducing the product
 
-### Preserve totals first; keep the published raw-data retention
+### Preserve totals and verify the active retention jobs
 
 The repository schedules deletion of engagement events older than 90 days at 03:17 UTC. Its migration date does not prove when production applied it, whether the job is active, or how much history has already disappeared. Do not report a week of loss as an established fact.
 
-The first implementation task is a read-only production check: applied migration, active job and recent executions, earliest retained event, daily event counts, and any existing summaries. Then prepare a small, reviewed migration that preserves daily action totals and backfills the retained window. Do this independently of competitor research, provider comparisons, and the full reporting interface.
+The current build includes daily summaries. Confirm their production coverage and reconciliation, the active pruning job and recent executions, and the earliest retained raw event before changing storage. Repair missing preservation through a reviewed migration if needed; do not recreate an already applied backfill merely because this older plan described it as pending. Preserve history independently of competitor research and the reporting interface.
 
-**Recommendation:** deliver aggregate preservation first and keep raw events on their existing 90-day schedule. The [live privacy policy](https://ninochavez.co/privacy) already describes the IP/browser-derived identifier and promises deletion of engagement events after 90 days. The policy must also explain the proposed longer-lived aggregate totals before that practice ships.
+**Recommendation:** keep local raw engagement events on their 90-day schedule and preserve non-identifying action totals. The [live privacy policy](https://ninochavez.co/privacy), fetched September 29, already describes both practices and the IP/browser-derived identifier. PostHog Cloud has a separate retention policy; publish the proposed distinction and configure the agreed privacy controls before enabling export. A provider reporting window is not an automatic deletion guarantee.
 
 If a verified active prune job will run before aggregate preservation can safely ship, present a concrete, bounded pause for approval: exact job, expiry, maximum retention, policy impact, and resumption procedure. Do not pause it automatically or export raw events elsewhere to bypass the retention decision. Production application still needs authorization; this plan alone does not preserve history.
 
-### Decide access before building report endpoints
+### Keep the public report and protect private operations
 
-The current analytics page is deliberately public. Choose its audience before the report queries and UI are implemented:
+Nino subsequently chose public access to the full aggregate report. `/analytics/operator` now permits anonymous report reads; its name does not make it a private page. Preserve this decision in the redesign. Apply current catalogue visibility before calculating public totals and exports. Never send private fields and merely hide them in the UI.
 
-| Choice | Consequence for the full release |
-| --- | --- |
-| Private operator workspace with the existing public aggregate summary — recommended | Deliver every analytical capability privately and preserve the deliberate public summary. Define separate server response contracts; never send private fields and merely hide them in the UI. |
-| Make the complete analytics workspace private | Deliver every capability behind verified Supabase identity and the existing operator allowlist. This changes the current public route. |
-| Broader public aggregate explorer plus private operator controls | Public visitors can explore approved aggregates; notes, traffic investigations, saved private reports and sensitive diagnostics remain authenticated. |
-
-The implemented choice is the recommended split: `/analytics` remains the public aggregate summary and `/analytics/operator` contains the complete private workspace. The private page and CSV verify the Supabase user with `getUser()` and apply the existing operator allowlist before any service-role read. The browser never receives raw identifiers, search text, or private rows from another owner.
+Private notes, saved private reports, individual event investigation and classification changes still require verified Supabase operator identity. The browser never receives raw identifiers, search text, another owner's private rows or provider credentials. PostHog's project remains private; selected aggregate insights reach the public gallery through fixed server-side queries. Do not reintroduce a login requirement for reading the gallery report.
 
 ## 2. Deliver the complete photographer and analyst workspace
 
@@ -64,13 +58,15 @@ Use authoritative metadata and retain unknown values in filter choices. Do not i
 
 Support sharing annotations and source tags without claiming causation. Tag future arrival collection explicitly; do not give downstream actions a channel by joining only on a persistent fingerprint. Audit and instrument search outcomes and download attempts/failures. Show successful delivery only when observed. Historical diagnostics unavailable before instrumentation show their coverage start, not zero. Shortlisting and export do not authorize publishing or sending anything.
 
-Preserve the site's visual identity. Put album performance ahead of a large photo grid. Support phone and desktop use, keyboard navigation, readable chart/table alternatives, and previews that do not count operator activity as audience engagement.
+Replace the analytics styling completely, as Nino requested September 29. Preserve the product name and real photography. Combine the overview and album comparison with a selected-album side panel, then a dedicated photo detail view. Support phone and desktop use, keyboard navigation, readable chart/table alternatives, and previews that do not count operator activity as audience engagement. The [experience brief](design/experience-brief.md) owns the current composition proposals and user steering.
 
 Before selecting the screen structure, compare three genuinely different whole-screen concepts: a trend-led overview with drilldown, an analyst table with linked charts and image inspection, and an album-led workspace with a cross-gallery discovery view. Walk each through the same cases: a newly shared album, rising older photos, an unusual traffic burst, and an empty or failed report. Select one coherent structure, incorporate useful parts of the rejected concepts, and record the tradeoffs. These are alternatives for the same full scope, not three smaller products.
 
 Popularity is audience response, not a photographic quality score. Different exposure and promotion can explain different counts. Equal reporting windows do not establish equal exposure.
 
 ## 3. Keep the metric contract precise across every view
+
+The table below describes retained version-1 evidence and the intended ranking meanings. The [PostHog plan's version-2 contract](POSTHOG_PLAN.md#3-collect-observations-with-an-explicit-owner) adds visits, exposures and observable outcomes. Do not silently combine daily-deduplicated legacy counts with unrestricted new action counts. Show the definition and collection boundary in every affected report.
 
 | Measure | Definition and limitation |
 | --- | --- |
@@ -80,7 +76,7 @@ Popularity is audience response, not a photographic quality score. Different exp
 | Download actions | Use the label supported by the emitter. A click or initiation is not a completed file transfer. |
 | Favorites and shares | Audit emitters and add/remove/share behavior. Action counts are not necessarily current saved-photo totals or successful deliveries to another person. |
 | Popular | Highest count for the selected measure and period. No combined engagement score. |
-| Rising | Largest absolute increase against the preceding equal period. Show current, previous and difference. A zero baseline says “new activity.” Include percentage growth only for nonzero baselines that meet an explicit support threshold calibrated on the real distribution; show the rule and the underlying counts. |
+| Rising | Largest absolute increase against a complete preceding equal period. Without a valid comparator, explain that Rising is unavailable; never substitute Popular. Unequal periods require an explicitly named rate comparison. Show current, previous and difference. A zero baseline says “new activity.” Include percentage growth only with a stated support rule and underlying counts. |
 | Latest activity | Latest accepted event, separate from popularity, growth, and album event date. |
 
 Use the same scope, date and traffic rules for totals, chart buckets and rankings. Missing coverage and read failures must not become zeros. Do not add conversion percentages without a matching population and observable completion event.
@@ -101,9 +97,9 @@ Apply exclusion to album, photo, search, download, favorite and share paths, inc
 
 Start collection verification with the existing crawler gate and explicit internal/test exclusion, then complete the traffic review capability within this release. Distinguish internal/test, known crawler, suspected automation and unclassified audience. Preserve independent reason flags, deterministic counting precedence, classification version and time. Keep original records unchanged and make supported reclassification reversible.
 
-The private measurement view must compare inclusive and conservative counts and identify which albums/rankings change. A newly added marker cannot identify old agent sessions. Historical exclusions require documented, reproducible evidence and a before/after count; unclassified traffic must never be relabeled “human.” Classification cannot be retroactively corrected once the necessary raw evidence is gone.
+The measurement view must compare inclusive and conservative aggregates and identify which albums/rankings change; detailed event investigation and correction controls remain private. A newly added marker cannot identify old agent sessions. Historical exclusions require documented, reproducible evidence and a before/after count; unclassified traffic must never be relabeled “human.” Classification cannot be retroactively corrected once the necessary raw evidence is gone.
 
-The current collector returns success after some database errors. Correct that contract and distinguish an accepted duplicate from a failed write. Collection reports are evidence of accepted events, not undeniable evidence of human actions.
+The collector now has an explicit failure response, but the browser helper ignores it. The September 29 review also reproduced normal download diagnostics being rejected because an optional error field arrives as `null`, and a ZIP path accepting an HTTP error body as an image. Fix these defects, add stable event IDs and bounded retries, and distinguish an accepted duplicate from a failed write. Collection reports are evidence of accepted events, not undeniable evidence of human actions.
 
 ## 4. Preserve history at the detail the full reports need
 
@@ -117,13 +113,15 @@ Classification stored with totals says what was known at aggregation time. Once 
 
 The current `all_time_score` is a weighted retained-window total. Do not reuse it as lifetime history or as the new explicit popularity metric. Longer-lived totals start at the earliest successfully preserved date; say “since [date].” Provide 90-day and custom historical reports over the preserved interval in this release. For longer-period visitor estimates, evaluate mergeable sketches or another bounded design during data-contract work. Validate availability, precision, privacy, filter support, identity versioning and correction limits before selecting it. HLL is a possible implementation, not a universal 99% accuracy guarantee. Label approximations and their coverage; never sum daily distinct counts. Where an interval predates collection or retained evidence cannot support a measure, show it as unavailable and explain why. Full functionality does not authorize invented history.
 
-## 5. Verify Cloudflare in parallel, without holding up preservation
+## 5. Add PostHog and reconcile equivalent measures
 
-The page shell contains a Cloudflare Web Analytics beacon. The source scan found no PostHog or GA4 instrumentation in `src` or `package.json`; this does not rule out externally injected configuration. Check the active Cloudflare property and whether it is actually receiving events. Do not make access to absent services a delivery gate.
+The [PostHog integration plan](POSTHOG_PLAN.md) is part of this full release. It specifies the collection/export architecture, anonymous visit context, event/property catalogue, decision-focused reports, public aggregate query boundary, proposed privacy wording, delivery health and acceptance tests. The gallery remains the working photography interface; PostHog provides deeper private journey analysis and experiments.
+
+The page shell contains a Cloudflare Web Analytics beacon. The source scan found no PostHog or GA4 instrumentation in `src` or `package.json`; this does not rule out externally injected configuration. Verify existing accounts and actual collection before provisioning PostHog. Check the active Cloudflare property and whether it is receiving events. An absent GA4 integration is not a delivery gate.
 
 Compare one complete week of Cloudflare daily pageviews for the same album routes with recorded album opens. Align timezone, hostname and route coverage, and inspect SPA navigation and repeat visits. This is a diagnostic comparison, not an equality test: our album opens deduplicate repeat visits within a day, while [Cloudflare defines a different pageview measure](https://developers.cloudflare.com/web-analytics/data-metrics/high-level-metrics/). Record the differences and remaining uncertainty.
 
-Where access or compatible route data is unavailable, state that and proceed with direct collection verification. Never declare cross-provider accuracy from similar-looking totals. Only extend the comparison to another provider if it is already collecting relevant events.
+Where access or compatible route data is unavailable, state that and proceed with direct collection verification. Never declare cross-provider accuracy from similar-looking totals. For new PostHog events, reconcile the same event IDs, schema version, eligible population and time window with first-party accepted records. Old fingerprint/day counts cannot validate new visit funnels.
 
 ## 6. Sequence the work; release the full north star
 
@@ -131,9 +129,9 @@ Phasing buys four things: protect expiring history early, settle shared definiti
 
 | Checkpoint | Work | Evidence before dependent work proceeds |
 | --- | --- | --- |
-| 0. Confirm facts and experience | Inspect live retention; settle access placement; compare whole-screen concepts; map all promised filters and measures | No inferred production state; one full-scope experience brief and report/access contract |
-| 1. Preserve and collect reliably | Design summaries for full query needs, backfill and reconcile, fix false success, add trusted test context and privacy/identifier treatment | Reruns cannot inflate counts; marked tests stay out of audience reports; preservation coverage is known |
-| 2. Complete shared reporting | Implement date/scope/content/traffic queries, comparisons, history, classification corrections and authorized server responses | Independent calculations match totals, buckets and rankings; all required filter combinations have explicit support/coverage |
+| 0. Confirm facts and experience | Verify active retention and existing summaries; preserve public access; compare whole-screen concepts; map filters and measures; verify PostHog project/tier/region | No inferred production state; one full-scope experience brief, report contract and collection/privacy proposal |
+| 1. Preserve and collect reliably | Reconcile summaries; repair diagnosed collection defects; add visits, exposure and outcomes; establish exclusions, permission controls and durable PostHog export | Reruns/retries cannot inflate counts; known internal traffic stays out of both audience destinations; coverage is known |
+| 2. Complete shared reporting | Implement date/scope/content/traffic queries, comparisons, history, supported corrections and PostHog journey reports | Independent calculations match totals, buckets, rankings and eligible funnel populations; filter support is explicit |
 | 3. Complete the workspace | Overview, album reports/comparison, photo explorer, sources, annotations, diagnostics, saved views and exports | All photographer and analyst jobs work together with persistent state and real data |
 | 4. Validate the whole release | Numerical reconciliation, cold visual review, desktop/phone journeys, permissions, failure/retry/date tests and migration rehearsal | Every release acceptance case below passes; unresolved limitations are explicit |
 | 5. Release and verify hosted behavior | Apply reviewed migrations and deploy when authorized; verify the hosted code, schema, collection and report behavior | Hosted receipts establish what shipped; a local build is not a production result |
@@ -142,7 +140,7 @@ Provider comparison, design exploration and read-only data audits can run in par
 
 An earlier authorized preservation deployment is an exception for expiring history, not an MVP or permission to finish the task at checkpoint 1. The complete workspace remains the delivery obligation. Queueing, HLL or vendor selection are implementation decisions driven by measured needs; they are not extra user-facing goals. Load-test collection and queries, introduce durable buffering if required, and prove retries cannot duplicate events.
 
-Extend `src/lib/analytics/`, the engagement endpoint, and the analytics route. Use server-only report code and existing catalogue/visibility helpers. The unpublished refit improves layout, labels, links and unavailable states; its `tracker.ts` changes propagate read failures. It is a starting point, not completion of the full design.
+Extend `src/lib/analytics/`, the engagement and diagnostic endpoints, and the analytics routes. Use server-only report code and existing catalogue/visibility helpers. The existing implementation is a starting point. Its earlier build receipt does not establish completion of the September 29 redesign, measurement repairs or PostHog integration.
 
 Release acceptance:
 
@@ -158,10 +156,13 @@ Release acceptance:
 - Verify public/API/export responses contain no fingerprint, visitor search text, private notes or unauthorized content. Private report links and saved views enforce the chosen access contract server-side.
 - Reconcile daily totals against retained evidence and full-scope unique estimates against their documented method. Exercise historical dates before coverage starts.
 - Complete the whole workspace on desktop and phone with keyboard support, readable chart/table alternatives and an independent cold review of real-data captures.
+- Pass the PostHog plan's delivery, journey, privacy, exclusion, visibility and failure cases. A browser action, an accepted local event, a queried PostHog event and a correct report are separate pieces of evidence.
 
 Do not call the release complete because the album page works while exports, sources, diagnostics or saved views remain unfinished. Its effect on photography/business decisions remains unmeasured until use; that is an outcome to evaluate after the agreed functionality is delivered, not a reason to defer it.
 
 ## 7. Evidence and conditions that would change the plan
+
+Current corrections and decisions: [September 29 red-team evidence](audits/analytics-red-team-20260929/REVIEW.md), [experience brief](design/experience-brief.md), and [PostHog plan](POSTHOG_PLAN.md). The September 28 observations below are historical; where they conflict with the current review or the later public-access decision, the newer evidence and decision govern.
 
 Repository evidence inspected during the September 28 investigation:
 
@@ -174,7 +175,7 @@ Repository evidence inspected during the September 28 investigation:
 
 The anomaly was independently recomputed from the sanitized audit snapshot; it is historical evidence, not a live counter. Snapshot SHA-256: `18772d3084f47cf917fc97b1bf42787593d92ca9a7c0ccf712d12a0133dd663c`. Private snapshot files stay outside committed documentation.
 
-Product references were fetched from official help pages on September 28, 2026. These establish documented behavior; authenticated competitor screens were not exercised:
+The earlier plan recorded the following official product references on September 28. On September 29, Pic-Time's activity page was fetched again and supports the described summary, drilldown, segmentation and export. Direct fetches of the SmugMug and Pixieset pages returned 403, so their descriptions below remain prior research claims, not newly verified behavior. Authenticated competitor screens were not exercised:
 
 - [SmugMug statistics](https://www.smugmughelp.com/hc/en-us/articles/18212642507668-Track-the-stats-of-my-photos): date ranges, gallery scope that persists across views, gallery/photo rankings, and report permalinks. Adopt the connected scopes and explicit measures.
 - [Pic-Time user activity](https://help.pic-time.com/en/articles/7905036-how-do-i-see-user-activity): gallery summaries, activity detail, user-type segmentation, and export. Adopt drilldown and explicit internal-activity treatment without importing its identity model.

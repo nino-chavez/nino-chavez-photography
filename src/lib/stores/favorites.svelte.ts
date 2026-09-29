@@ -6,7 +6,8 @@
 
 import type { Photo } from '$types/photo';
 import { toast } from './toast.svelte';
-import { trackEngagement } from '$lib/analytics/client';
+import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
+import { favoriteTransition } from '$lib/analytics/favorite-transaction';
 
 const STORAGE_KEY = 'gallery-favorites';
 const MAX_FAVORITES = 100; // Prevent unlimited storage growth
@@ -41,8 +42,8 @@ function createFavoritesStore() {
 	let state = $state<FavoritesState>(initialState);
 
 	// Save to localStorage whenever state changes
-	function saveToStorage() {
-		if (typeof window === 'undefined') return;
+	function saveToStorage(): boolean {
+		if (typeof window === 'undefined') return true;
 
 		try {
 			const toStore = {
@@ -50,8 +51,10 @@ function createFavoritesStore() {
 				photos: Array.from(state.photos.values())
 			};
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+			return true;
 		} catch (error) {
 			console.error('[Favorites] Failed to save to localStorage:', error);
+			return false;
 		}
 	}
 
@@ -73,42 +76,57 @@ function createFavoritesStore() {
 		},
 
 		// Add photo to favorites
-		addFavorite(photo: Photo) {
+		addFavorite(photo: Photo, surface: string): boolean {
+			if (favoriteTransition(state.photoIds.has(photo.image_key), 'add') !== 'add') return false;
 			// Check limit
-			if (state.photoIds.size >= MAX_FAVORITES && !state.photoIds.has(photo.image_key)) {
+			if (state.photoIds.size >= MAX_FAVORITES) {
 				throw new Error(`You can save up to ${MAX_FAVORITES} photos in this browser`);
 			}
 
 			state.photoIds.add(photo.image_key);
 			state.photos.set(photo.image_key, photo);
-			saveToStorage();
+			if (!saveToStorage()) {
+				state.photoIds.delete(photo.image_key);
+				state.photos.delete(photo.image_key);
+				throw new Error('Could not save this photo');
+			}
 
-			// Favoriting is a strong popularity signal (weight 4). Fire-and-forget.
+			// Persistence and analytics form one local transaction: only a committed add emits.
 			trackEngagement('favorite', {
 				photoId: photo.id,
 				albumKey: photo.album_key,
-				source: 'favorites'
+				source: surface
 			});
+			trackAnalyticsEventV2({ eventName: 'favorite_added', properties: { photo_id: photo.id, album_key: photo.album_key, surface } });
+			return true;
 		},
 
 		// Remove photo from favorites
-		removeFavorite(photoId: string) {
+		removeFavorite(photoId: string, surface: string): boolean {
+			const photo = state.photos.get(photoId);
+			if (!photo || favoriteTransition(state.photoIds.has(photoId), 'remove') !== 'remove') return false;
 			state.photoIds.delete(photoId);
 			state.photos.delete(photoId);
-			saveToStorage();
+			if (!saveToStorage()) {
+				state.photoIds.add(photoId);
+				state.photos.set(photoId, photo);
+				throw new Error('Could not update saved photos');
+			}
+			trackAnalyticsEventV2({ eventName: 'favorite_removed', properties: { photo_id: photo.id, album_key: photo.album_key, surface } });
+			return true;
 		},
 
 		// Toggle favorite status
-		toggleFavorite(photo: Photo): boolean {
+		toggleFavorite(photo: Photo, surface: string): boolean {
 			const isFav = state.photoIds.has(photo.image_key);
 
 			if (isFav) {
-				this.removeFavorite(photo.image_key);
+				if (!this.removeFavorite(photo.image_key, surface)) return false;
 				toast.info('Removed from saved photos', { duration: 2000 });
 				return false;
 			} else {
 				try {
-					this.addFavorite(photo);
+					if (!this.addFavorite(photo, surface)) return false;
 					const count = state.photoIds.size;
 					toast.success(`Photo saved in this browser (${count} total)`, {
 						duration: 3000

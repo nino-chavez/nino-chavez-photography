@@ -25,6 +25,7 @@
 		loading?: boolean;
 		emptyMessage?: string;
 		maxPhotos?: number;
+		favoriteSurface?: string;
 		onclick?: (photo: Photo) => void;
 		class?: string;
 	}
@@ -34,6 +35,7 @@
 		loading = false,
 		emptyMessage = 'No photos to display',
 		maxPhotos,
+		favoriteSurface = 'gallery',
 		onclick,
 		class: className = '',
 	}: Props = $props();
@@ -77,7 +79,7 @@
 	>
 		{#each displayPhotos as photo, i (photo.id)}
 			<!-- PERFORMANCE: Prioritize first 8 images (above-fold) to improve LCP -->
-			<PhotoCard {photo} index={i} {onclick} priority={i < 8} />
+			<PhotoCard {photo} index={i} {favoriteSurface} {onclick} priority={i < 8} />
 		{/each}
 	</div>
 {/if}

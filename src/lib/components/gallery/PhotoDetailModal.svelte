@@ -24,7 +24,8 @@
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createHdrSource } from '$lib/utils/hdr-photo-url';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { flushMediaOutcome, observeMediaOutcome, reconcileMediaView, type MediaView, type MediaViewEvent } from '$lib/analytics/media-view';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
@@ -51,6 +52,8 @@
 
 	// AI Insights collapsed by default (progressive disclosure)
 	let showAIInsights = $state(false);
+	let mediaView = $state<MediaView | null>(null);
+	let openedPhotoId = $state<string | null>(null);
 	
 	// Track viewport for responsive image loading
 	let viewportWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1920);
@@ -72,6 +75,27 @@
 			window.removeEventListener('resize', updateViewport);
 		};
 	});
+
+	function recordMediaEvent(event: MediaViewEvent | null) {
+		if (!event) return;
+		if (event.name === 'photo_rendered') trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, load_duration_ms: event.loadDurationMs! } });
+		else trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, error_code: event.errorCode! } });
+	}
+
+	function recordRendered(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const next = observeMediaOutcome(mediaView, { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' }, 'rendered', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		recordMediaEvent(next.event);
+	}
+	function recordLoadFailed(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const capture = { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' };
+		const next = observeMediaOutcome(mediaView, capture, 'load_failed', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (next.view?.photoId === capture.photoId && hdrUrl && photo?.id === capture.photoId) hdr.markFailed(photo);
+		recordMediaEvent(next.event);
+	}
 	
 	// Serve the web-sized HDR (gain-map) copy when one exists (see /photo/[id]/+page.svelte for
 	// the full rationale — same logic, same graceful CF fallback on any load failure).
@@ -145,8 +169,23 @@
 	// for why this is the only "the visitor looked at this" signal on routes that
 	// never navigate to /photo/[id].
 	$effect(() => {
-		if (!open || !photo) return;
+		const next = reconcileMediaView(mediaView, open, photo ? { id: photo.id, albumKey: photo.album_key } : null, () => crypto.randomUUID(), () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (!open) openedPhotoId = null;
+		if (!next.opened || !next.view || !photo) return;
+		openedPhotoId = photo.id;
 		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
+		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: next.view.viewId, entry_surface: viewSource } });
+	});
+
+	$effect(() => {
+		const onVisibilityChange = () => {
+			const next = flushMediaOutcome(mediaView, document.visibilityState === 'visible', () => performance.now());
+			if (next.view !== mediaView) mediaView = next.view;
+			recordMediaEvent(next.event);
+		};
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		return () => document.removeEventListener('visibilitychange', onVisibilityChange);
 	});
 </script>
 
@@ -183,6 +222,8 @@
 								<div class="relative flex items-center justify-center bg-charcoal-900 rounded-lg aspect-[4/3] border border-charcoal-800 overflow-hidden">
 									{#if optimizedImageUrl || photo.image_url}
 										<img
+											data-analytics-photo-id={photo.id}
+											data-analytics-view-id={mediaView?.viewId ?? ''}
 											src={optimizedImageUrl || photo.image_url}
 											srcset={imageSrcSet}
 											sizes={imageSizes}
@@ -190,9 +231,8 @@
 											class="absolute inset-0 w-full h-full object-contain"
 											loading="eager"
 											decoding="async"
-											onerror={() => {
-												if (hdrUrl) hdr.markFailed(photo);
-											}}
+											onload={recordRendered}
+											onerror={recordLoadFailed}
 										/>
 									{:else}
 										<Camera class="w-24 h-24 text-charcoal-600" aria-hidden="true" />
@@ -227,7 +267,7 @@
 										<!-- Action Buttons -->
 										<div class="flex items-center gap-3">
 											<DownloadButton photo={photo} variant="default" />
-											<FavoriteButton {photo} variant="default" class="flex-1" />
+											<FavoriteButton {photo} surface={viewSource} variant="default" class="flex-1" />
 										</div>
 
 										<!-- Social Sharing — hidden when the item has no addressable URL -->

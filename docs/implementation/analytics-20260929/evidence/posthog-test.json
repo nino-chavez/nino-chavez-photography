@@ -1,0 +1,183 @@
+{
+  "project": "635867",
+  "run": "b45c27f7-8e1c-45fe-9d5c-358b4705dbd3",
+  "album": "rehearsal-b45c27f7-8e1c-45fe-9d5c-358b4705dbd3",
+  "day": "2026-09-29",
+  "expectedEvents": 14,
+  "duplicateDelivery": 1,
+  "queried": true,
+  "queries": {
+    "discovery": {
+      "columns": [
+        "eligible_visits",
+        "album_exposed_visits",
+        "album_opened_after_exposure",
+        "direct_album_open_visits"
+      ],
+      "results": [
+        [
+          1,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    "album_use": {
+      "columns": [
+        "album_open_visits",
+        "photo_render_visits",
+        "album_action_visits"
+      ],
+      "results": [
+        [
+          1,
+          1,
+          1
+        ]
+      ]
+    },
+    "search_usefulness": {
+      "columns": [
+        "searches_shown",
+        "zero_result_searches",
+        "selected_searches",
+        "selection_duration_ms"
+      ],
+      "results": [
+        [
+          1,
+          0,
+          1,
+          999
+        ]
+      ]
+    },
+    "download_reliability": {
+      "columns": [
+        "requests",
+        "prepared",
+        "handed_off",
+        "failed",
+        "cancelled",
+        "unknown_terminal_outcome",
+        "single_photo_requests",
+        "saved_photo_zip_requests",
+        "album_zip_requests",
+        "requested_items",
+        "prepared_items",
+        "single_photo_requested_items",
+        "single_photo_prepared_items",
+        "saved_photo_zip_requested_items",
+        "saved_photo_zip_prepared_items",
+        "album_zip_requested_items",
+        "album_zip_prepared_items"
+      ],
+      "results": [
+        [
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "photo_response": {
+      "columns": [
+        "eligible_photo_exposures",
+        "later_photo_actions"
+      ],
+      "results": [
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    "sources_return": {
+      "columns": [
+        "row_kind",
+        "source",
+        "measured_browsers",
+        "before_window_returning_browsers",
+        "repeated_visit_browsers_in_window",
+        "tagged_arrival_visits",
+        "tagged_arrival_browsers",
+        "subsequent_album_open_visits",
+        "subsequent_photo_open_visits",
+        "subsequent_download_request_visits",
+        "subsequent_favorite_visits"
+      ],
+      "results": [
+        [
+          "overall",
+          "",
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          "source",
+          "rehearsal",
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ]
+    },
+    "experiments": {
+      "columns": [
+        "observed_exposures",
+        "outcome_visits",
+        "guardrail_failures"
+      ],
+      "results": [
+        [
+          0,
+          0,
+          0
+        ]
+      ]
+    }
+  },
+  "observedAt": "2026-09-29T17:22:39.476Z",
+  "providerCounts": [
+    [
+      14,
+      14
+    ]
+  ],
+  "reconciliation": {
+    "available": true,
+    "requested": 14,
+    "confirmed": 14,
+    "missing": 0
+  },
+  "passed": true,
+  "filtered": true
+}

@@ -64,12 +64,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 		return json({ ok: false, accepted: false, reason: 'known_crawler' }, { status: 202 });
 	}
 
-	const sessionHash = await computeSessionHash(
-		getClientAddress(),
-		request.headers.get('user-agent') ?? ''
-	);
-
 	const traffic_context = await resolveAnalyticsContext(request, cookies);
+	if (traffic_context === 'self_excluded') return json({ ok: true, accepted: false, reason: 'self_excluded' }, { status: 202 });
+	const sessionHash = await computeSessionHash(getClientAddress(), request.headers.get('user-agent') ?? '');
 	const { error: dbError } = await admin.from('engagement_events').insert({
 		event_type,
 		photo_id: photo_id ?? null,

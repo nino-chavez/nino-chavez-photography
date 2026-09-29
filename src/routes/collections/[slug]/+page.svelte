@@ -150,7 +150,7 @@
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 			{#each data.photos as photo, index}
 				<div class="collection-card-animate" style="animation-delay: {index * 50}ms">
-					<PhotoCard {photo} {index} onclick={handlePhotoClick} />
+					<PhotoCard {photo} {index} favoriteSurface="collection" onclick={handlePhotoClick} />
 				</div>
 			{/each}
 		</div>

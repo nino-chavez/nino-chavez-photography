@@ -1,0 +1,14 @@
+name = "photography-analytics-relay"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+
+[vars]
+ANALYTICS_RELAY_ENABLED = "false"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[observability]
+enabled = true

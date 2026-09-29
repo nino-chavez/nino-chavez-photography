@@ -769,6 +769,7 @@
                   <PhotoCard
                     {photo}
                     index={photoIndex}
+							favoriteSurface="timeline"
                     onclick={handlePhotoClick}
                   />
                 {/each}

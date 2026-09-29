@@ -1,0 +1,70 @@
+{
+  "sourceCommit": "8d840154c2d55726cbc0e6a39299e49e8c7d1fb5",
+  "reviewDate": "2026-09-29",
+  "sourceSha256": {
+    "src/lib/analytics/client.ts": "df083abbdb64d06cdfa4e582d6b2912e5591fe18da19809325b8e7d22a2f813c",
+    "src/lib/analytics/collection-contract.ts": "fb3b7c2e082b401c9a7f017eeeca4ddb245f7958199e75a9568b5921f27247f4",
+    "src/lib/analytics/context.server.ts": "1ba967d7e0ece74ead9fed23b2ab8c321d8a79b0a5de70a9e83099bf58084dec",
+    "src/lib/analytics/operator-report.server.ts": "1103e1869ed9e54c07eeb180a0b29255eaf9d2172e1e134119aacf34542e8743",
+    "src/lib/analytics/report-contract.ts": "7377eda64afe0bdcaae17695c75c2e98d06fb7cf6587cb67647d737a09850bcf",
+    "src/lib/analytics/session.ts": "fc0b57844272a8b19b7bada5017659fc8470b18d24ad803b1129675b907bd49f",
+    "src/lib/analytics/tracker.ts": "29dc0ccf378ceaf2ff20285468d8a0f2b2faa0da8a80584dd11d92e7a22f708e",
+    "src/routes/api/analytics/diagnostics/+server.ts": "b63f9df1cf56949e614bdd894a6d0a3eb675a356a69c93641191a5144c9bb7f2",
+    "src/routes/analytics/operator/+page.svelte": "89a731586439d30b82ef8cee23ad03a5b737aaae05f84d1f42d7c992dd6dfa7e",
+    "src/lib/components/favorites/FavoritesDownloadButton.svelte": "36104fcfbf53424e0219fba469433246aff93c3924cf3ad8d1759174c41d78ad",
+    "supabase/migrations/20260928120000_analytics_north_star_draft.sql": "b129ab550a73a6210060316d36f28230be06d9c4a4f426de0b43b3315416d5b3",
+    "supabase/migrations/20260929024500_analytics_unique_suspected_sessions.sql": "58d43a37927349092561c6f1bed9a0641dd7c8c11a8dd1b6ad504924442024aa"
+  },
+  "workers": [
+    {
+      "dispatchId": "6460fca9-64e7-4cbf-8d16-fd3f689cb16a",
+      "receiptPath": "/Users/nino/.local/state/nino-operator/dispatch/6460fca9-64e7-4cbf-8d16-fd3f689cb16a/receipt.json",
+      "selectedRoute": {
+        "model": "gpt-5.6-terra",
+        "reasoning_effort": "high",
+        "tier": "implementation"
+      },
+      "runtimeEvidence": {
+        "child_thread_id": "01a0eda1-8040-79c2-aa58-2ea467157947",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "sourceReport": "collection-review.md"
+    },
+    {
+      "dispatchId": "80d4dd6f-6a7f-4050-9d5e-4a26d30b25ba",
+      "receiptPath": "/Users/nino/.local/state/nino-operator/dispatch/80d4dd6f-6a7f-4050-9d5e-4a26d30b25ba/receipt.json",
+      "selectedRoute": {
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "high",
+        "tier": "deep"
+      },
+      "runtimeEvidence": {
+        "child_thread_id": "01a0eda1-7fe9-7d70-b0eb-107d829a8d54",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "sourceReport": "reporting-review.md"
+    }
+  ],
+  "checks": {
+    "analyticsContractSuite": {
+      "command": "npm run analytics:contract:test",
+      "exitCode": 0,
+      "scope": "Existing contract tests, not browser delivery or provider parity"
+    },
+    "branchRefsUnchanged": true,
+    "productionReadsOnly": true,
+    "productionEventInjection": false,
+    "productionChanges": false
+  },
+  "limits": [
+    "Worker selected model and effort are requested route metadata; runtime did not report model or effort",
+    "No live SQL, authenticated provider comparison or browser event-delivery test",
+    "Synthetic reproductions demonstrate source behavior, not the frequency of defects in production"
+  ]
+}

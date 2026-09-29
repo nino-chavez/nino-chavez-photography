@@ -5,12 +5,53 @@ import {
 	createAnalyticsTestMarker,
 	hasTrustedAnalyticsTestMarker,
 	parseCollectionRequest,
+	parseEventV2Request,
+	resolveEventV2Target,
 	resolveCollectionTarget,
 	type CollectionTargetLookup
 } from './collection-contract';
 
 test('a successful write is accepted, not just ok', () => {
 	assert.deepEqual(collectionOutcome(null), { status: 200, body: { ok: true, accepted: true, duplicate: false } });
+});
+
+test('v2 rejects raw search text, incomplete visit context, and invalid target pairs', async () => {
+	const eventId = '123e4567-e89b-42d3-a456-426614174000';
+	const browserId = '123e4567-e89b-42d3-a456-426614174001';
+	const now = Date.UTC(2026, 8, 29, 12);
+	const base = { event_id: eventId, schema_version: 2, event_name: 'photo_opened', occurred_at: new Date(now).toISOString(), anonymous_browser_id: browserId, visit_id: browserId, properties: { photo_id: 'p1', album_key: 'alpha', view_id: browserId, entry_surface: 'gallery' } };
+	assert.equal(parseEventV2Request({ ...base, properties: { photo_id: 'p1', query_text: 'a person' } }, now).ok, false);
+	assert.equal(parseEventV2Request({ ...base, visit_id: null }, now).ok, false);
+	const parsed = parseEventV2Request(base, now);
+	assert.equal(parsed.ok, true);
+	if (!parsed.ok) return;
+	const lookup: CollectionTargetLookup = { async albumForPhoto() { return 'alpha'; }, async albumExists() { return true; } };
+	assert.deepEqual(await resolveEventV2Target({ ...parsed.value, properties: { photo_id: 'p1', album_key: 'wrong' } }, lookup), { ok: false, error: 'photo and album targets do not match' });
+});
+
+test('v2 requires a stable request correlation for download events', () => {
+	const event = { event_id: '123e4567-e89b-42d3-a456-426614174000', schema_version: 2, event_name: 'download_requested', occurred_at: new Date().toISOString(), anonymous_browser_id: null, visit_id: null, properties: { album_key: 'alpha' } };
+	assert.equal(parseEventV2Request(event).ok, false);
+});
+
+test('v2 rejects arbitrary safe-looking fields and incomplete required context', () => {
+	const id = '123e4567-e89b-42d3-a456-426614174000';
+	const base = { event_id: id, schema_version: 2, event_name: 'gallery_page_viewed', occurred_at: new Date().toISOString(), anonymous_browser_id: null, visit_id: null,
+		properties: { route_kind: 'explore', canonical_path: '/photography/explore', view_id: id, layout_class: 'wide' } };
+	assert.equal(parseEventV2Request(base).ok, true);
+	assert.equal(parseEventV2Request({ ...base, properties: { ...base.properties, harmless_extra: 'still rejected' } }).ok, false);
+	assert.equal(parseEventV2Request({ ...base, properties: { route_kind: 'explore', canonical_path: '/photography/explore', view_id: id } }).ok, false);
+	assert.equal(parseEventV2Request({ ...base, event_name: 'analytics_classification_changed' }).ok, false);
+});
+
+test('v2 rejects filter labels outside the gallery vocabulary', () => {
+	const id = '123e4567-e89b-42d3-a456-426614174000';
+	const event = {
+		event_id: id, schema_version: 2, event_name: 'filters_applied', occurred_at: new Date().toISOString(),
+		anonymous_browser_id: null, visit_id: null,
+		properties: { result_set_id: id, result_count: 0, sport: 'invented_sport' }
+	};
+	assert.equal(parseEventV2Request(event).ok, false);
 });
 
 test('a deduplicated replay is an acknowledged duplicate', () => {
@@ -124,4 +165,23 @@ test('controlled markers bind to the configured public origin behind the apex ro
  assert.equal(hasTrustedAnalyticsTestMarker(marker,secret,request,now,origin),true);
  assert.equal(hasTrustedAnalyticsTestMarker(marker,secret,new Request(request.url,{headers:{origin:'https://attacker.example'}}),now,origin),false);
  assert.equal(hasTrustedAnalyticsTestMarker(marker,secret,request,now,'https://another.example'),false);
+});
+
+test('v2 accepts the actual photo and mixed ZIP payloads and derives album facts server-side', async () => {
+ const { parseEventV2Request, resolveEventV2Target } = await import('./collection-contract');
+ const { eventPropertiesMatchContract } = await import('./events-v2');
+ const id = 'c790473e-4c26-4f6c-aed1-13db60383021';
+ const payload = (event_name: string, properties: object) => ({event_id:id,schema_version:2,event_name,occurred_at:new Date().toISOString(),anonymous_browser_id:null,visit_id:null,properties});
+ const photo = parseEventV2Request(payload('photo_exposed',{photo_id:'photo-one',position:0,result_set_id:id}));
+ assert.equal(photo.ok,true);
+ if(photo.ok) {
+  const resolved = await resolveEventV2Target(photo.value,{albumForPhoto:async()=> 'album-one',albumExists:async()=>true});
+  assert.equal(resolved.ok,true);
+  if(resolved.ok) assert.equal(resolved.value.properties.album_key,'album-one');
+ }
+ assert.equal(eventPropertiesMatchContract('download_item_prepared',{photo_id:'photo-one',album_key:undefined,mode:'saved_photo_zip',download_request_id:id,byte_count:20}),true);
+ assert.equal(parseEventV2Request(payload('download_requested',{download_request_id:id,mode:'saved_photo_zip',requested_item_count:2})).ok,true);
+ assert.equal(parseEventV2Request(payload('download_prepared',{album_key:'album-one',download_request_id:id,mode:'album_zip',requested_item_count:2,item_count_known:false,byte_count:20,duration_ms:10})).ok,true);
+ assert.equal(parseEventV2Request(payload('album_opened',{view_id:id,entry_surface:'album'})).ok,false);
+ assert.equal(parseEventV2Request(payload('photo_rendered',{photo_id:'photo-one',view_id:id,load_duration_ms:10,raw_search:'private query'})).ok,false);
 });

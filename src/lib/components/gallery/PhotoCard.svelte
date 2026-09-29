@@ -24,15 +24,20 @@
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { formatCategory, formatSport } from '$lib/utils/format-metadata';
 	import type { Photo } from '$types/photo';
+	import { exposure } from '$lib/analytics/exposure';
+	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
 
 	interface Props {
 		photo: Photo;
 		index?: number;
+		resultSetId?: string;
+		searchId?: string;
+		favoriteSurface?: string;
 		onclick?: (photo: Photo) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images
 	}
 
-	let { photo, index = 0, onclick, priority = false }: Props = $props();
+	let { photo, index = 0, resultSetId = crypto.randomUUID(), searchId, favoriteSurface = 'gallery', onclick, priority = false }: Props = $props();
 
 	// Use image_url for display, thumbnail as blur placeholder
 	// All images now served via Cloudflare proxy with WebP/AVIF conversion
@@ -50,8 +55,19 @@
 
 	// Generate comprehensive alt text for screen readers
 	let accessibleAltText = $derived(generatePhotoAltText(photo));
+	let loaded = $state(false);
+	let previousImageIdentity = $state('');
+	let imageIdentity = $derived(`${photo.id}:${imageSrc}`);
+	let exposureIdentity = $derived(`${resultSetId}:${photo.id}`);
+	$effect(() => {
+		if (previousImageIdentity === imageIdentity) return;
+		previousImageIdentity = imageIdentity;
+		loaded = false;
+	});
+	function recordExposure() { trackAnalyticsEventV2({ eventName: 'photo_exposed', properties: { photo_id: photo.id, album_key: photo.metadata?.album_key, position: index, result_set_id: resultSetId } }); }
 
 	function handleClick(event: MouseEvent) {
+		if (searchId) trackAnalyticsEventV2({ eventName: 'search_result_selected', properties: { search_id: searchId, result_set_id: resultSetId, photo_id: photo.id, album_key: photo.metadata?.album_key, position: index } });
 		// If onclick callback provided, prevent default navigation and use callback instead
 		if (onclick) {
 			event.preventDefault();
@@ -68,6 +84,7 @@
 	aria-label={accessibleAltText}
 	data-sveltekit-preload-data="false"
 	onclick={handleClick}
+	use:exposure={{ loaded, onExpose: recordExposure, identity: exposureIdentity }}
 >
 	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
 	<!-- quality="low" = S/M sizes (400-600px) - appropriate for grid cards at max 25vw -->
@@ -79,6 +96,7 @@
 		clip with no reader text is labelled (clipLabel in $lib/video/video-label). The anchor's
 		aria-label above supplies the link's accessible name and now leads with the same text too.
 	-->
+	{#key imageIdentity}
 	<OptimizedImage
 		src={imageSrc}
 		alt={photo.alt_text?.trim() || photo.caption?.trim() || `Photo ${index + 1}`}
@@ -88,13 +106,15 @@
 		quality="low"
 		{priority}
 		class="absolute inset-0"
+		onLoad={() => (loaded = true)}
 	/>
+	{/key}
 
 	<!-- Favorite Button - Top Right (Always visible on mobile, hover on desktop) -->
 	<div
 		class="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity"
 	>
-		<FavoriteButton {photo} variant="icon-only" />
+		<FavoriteButton {photo} surface={favoriteSurface} variant="icon-only" />
 	</div>
 
 	<!-- Metadata Overlay - Bottom (Hover Only) -->

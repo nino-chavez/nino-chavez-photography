@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { ID_PATTERN, eventPropertiesMatchContract, isEventV2Name, isSafeEventProperty, type AcceptedEventV2, type EventV2Properties } from './events-v2';
 
 const EVENT_TYPES = ['view', 'favorite', 'download', 'share', 'album_open'] as const;
 export type CollectionEventType = (typeof EVENT_TYPES)[number];
@@ -17,6 +18,64 @@ export type CollectionRequestResult =
 export interface CollectionTargetLookup {
 	albumForPhoto(photoId: string): Promise<string | null>;
 	albumExists(albumKey: string): Promise<boolean>;
+}
+
+export type EventV2Request = Omit<AcceptedEventV2, 'received_at' | 'traffic_context' | 'export_eligible'>;
+export type EventV2RequestResult =
+	| { ok: true; value: EventV2Request }
+	| { ok: false; error: string };
+
+function isoTimestamp(value: unknown, now = Date.now()): string | null {
+	if (typeof value !== 'string' || value.length > 40) return null;
+	const timestamp = Date.parse(value);
+	return Number.isFinite(timestamp) && Math.abs(now - timestamp) <= 24 * 60 * 60 * 1000 ? new Date(timestamp).toISOString() : null;
+}
+
+/** Parses only properties approved for export; raw search text and identifiers are rejected at the edge. */
+export function parseEventV2Request(input: unknown, now = Date.now()): EventV2RequestResult {
+	if (!input || typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'invalid request body' };
+	const body = input as Record<string, unknown>;
+	if (body.schema_version !== 2 || !isEventV2Name(body.event_name) || typeof body.event_id !== 'string' || !ID_PATTERN.test(body.event_id)) {
+		return { ok: false, error: 'invalid event identity' };
+	}
+	const occurredAt = isoTimestamp(body.occurred_at, now);
+	if (!occurredAt) return { ok: false, error: 'invalid occurred_at' };
+	const browserId = body.anonymous_browser_id;
+	const visitId = body.visit_id;
+	if ((browserId !== null && (typeof browserId !== 'string' || !ID_PATTERN.test(browserId))) ||
+		(visitId !== null && (typeof visitId !== 'string' || !ID_PATTERN.test(visitId)))) {
+		return { ok: false, error: 'invalid visit context' };
+	}
+	if ((browserId === null) !== (visitId === null)) return { ok: false, error: 'incomplete visit context' };
+	if (!body.properties || typeof body.properties !== 'object' || Array.isArray(body.properties)) return { ok: false, error: 'invalid properties' };
+	const properties: EventV2Properties = {};
+	for (const [key, value] of Object.entries(body.properties as Record<string, unknown>)) {
+		if (!isSafeEventProperty(key, value)) return { ok: false, error: 'invalid event property' };
+		properties[key] = value;
+	}
+	if (Object.keys(properties).length > 20) return { ok: false, error: 'too many event properties' };
+	if (!eventPropertiesMatchContract(body.event_name, properties)) return { ok: false, error: 'event properties do not match contract' };
+	return {
+		ok: true,
+		value: { event_id: body.event_id, schema_version: 2, event_name: body.event_name, occurred_at: occurredAt,
+			anonymous_browser_id: browserId as string | null, visit_id: visitId as string | null, properties }
+	};
+}
+
+export async function resolveEventV2Target(
+	request: EventV2Request,
+	lookup: CollectionTargetLookup
+): Promise<EventV2RequestResult> {
+	const photoId = request.properties.photo_id;
+	const albumKey = request.properties.album_key;
+	if (typeof photoId === 'string' && photoId) {
+		const authoritativeAlbum = await lookup.albumForPhoto(photoId);
+		if (!authoritativeAlbum) return { ok: false, error: 'photo target not found' };
+		if (albumKey && albumKey !== authoritativeAlbum) return { ok: false, error: 'photo and album targets do not match' };
+		return { ok: true, value: { ...request, properties: { ...request.properties, album_key: authoritativeAlbum } } };
+	}
+	if (typeof albumKey === 'string' && albumKey && !(await lookup.albumExists(albumKey))) return { ok: false, error: 'album target not found' };
+	return { ok: true, value: request };
 }
 
 function optionalString(value: unknown, maxLength: number): string | null | undefined {

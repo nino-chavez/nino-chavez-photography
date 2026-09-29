@@ -4,7 +4,8 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
-	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
+	import { startDownloadLifecycle, trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
+	import { isDownloadableImageResponse } from '$lib/analytics/download-response';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -47,20 +48,31 @@
 		event?.stopPropagation();
 		downloading = true;
 		downloadSuccess = false;
+		const lifecycle = startDownloadLifecycle('single_photo', { photoId: photo.id, albumKey: photo.album_key }, 1);
 
 		try {
+			lifecycle.itemRequested(photo.id, photo.album_key);
 			// Use our proxy endpoint to avoid CORS issues (include base path)
 			const proxyUrl = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+			const response = await fetch(proxyUrl);
+			if (!isDownloadableImageResponse(response)) {
+				throw new Error('download_item_failed');
+			}
+			const blob = await response.blob();
+			lifecycle.itemPrepared(photo.id, photo.album_key, blob.size);
+			lifecycle.prepared();
 
-			// Create download link that points to our proxy
 			const link = document.createElement('a');
-			link.href = proxyUrl;
+			const objectUrl = URL.createObjectURL(blob);
+			link.href = objectUrl;
 			link.download = filename;
 
 			// Trigger download
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
+			URL.revokeObjectURL(objectUrl);
+			lifecycle.handedOff();
 
 			// Capture the download for the popularity engine (fire-and-forget; the server
 			// dedups per session/day, so multiple size picks don't inflate the count).
@@ -78,6 +90,7 @@
 				showMenu = false;
 			}, 2000);
 		} catch (error) {
+			lifecycle.failed('request', 'client_request_failed');
 			console.error('Download failed:', error);
 			trackDownloadDiagnostic({ photoId: photo.id, albumKey: photo.album_key, source: 'download-button', status: 'failed', errorCode: 'client_request_failed' });
 			toast.error('Download failed. Please try again.');

@@ -3,7 +3,8 @@
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { slugify } from '$lib/utils';
-	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
+	import { startDownloadLifecycle, trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
+	import { isDownloadableImageResponse } from '$lib/analytics/download-response';
 	import type { CFVariant } from '$lib/utils/cloudflare-images';
 
 	interface Props {
@@ -19,6 +20,7 @@
 	let workerMode = $state(false);
 	let progress = $state({ current: 0, total: 0 });
 	let abortController: AbortController | null = null;
+	let activeLifecycle: ReturnType<typeof startDownloadLifecycle> | null = null;
 
 	// `slugify` comes from $lib/utils rather than a local copy. The copy that lived here skipped
 	// the trim and the leading/trailing-hyphen strip, so an album name with an edge space
@@ -45,32 +47,22 @@
 		URL.revokeObjectURL(url);
 	}
 
-	/**
-	 * Try to download a pre-built ZIP from the edge Worker (R2 cache).
-	 * Returns true if successful, false if we should fall back to client-side.
-	 */
+	/** Keep the cached edge ZIP path. Its contents are not observable item by item. */
 	async function tryWorkerDownload(signal: AbortSignal): Promise<boolean> {
 		try {
-			const res = await fetch(
-				`${base}/api/zip-url?albumKey=${encodeURIComponent(albumKey)}&quality=large`,
-				{ signal }
-			);
-			if (!res.ok) return false;
-
-			const { url: signedUrl } = (await res.json()) as { url: string };
-			const zipRes = await fetch(signedUrl, { signal });
-			if (!zipRes.ok) return false;
-
-			const blob = await zipRes.blob();
-			if (signal.aborted) return false;
-
+			const signed = await fetch(`${base}/api/zip-url?albumKey=${encodeURIComponent(albumKey)}&quality=large`, { signal });
+			if (!signed.ok) return false;
+			const { url } = await signed.json();
+			const response = await fetch(url, { signal });
+			if (!response.ok || !response.headers.get('content-type')?.includes('zip')) return false;
+			const blob = await response.blob();
+			if (signal.aborted || !blob.size) return false;
+			activeLifecycle?.prepared(blob.size, false);
 			triggerBrowserDownload(blob, `${slugify(albumName)}.zip`);
+			activeLifecycle?.handedOff();
 			trackBulkDownload();
 			return true;
-		} catch {
-			trackDownloadDiagnostic({ albumKey, source: 'bulk-zip', status: 'failed', errorCode: 'zip_request_failed' });
-			return false;
-		}
+		} catch { return false; }
 	}
 
 	async function startDownload(quality: CFVariant) {
@@ -79,25 +71,23 @@
 		workerMode = false;
 		progress = { current: 0, total: 0 };
 		abortController = new AbortController();
+		let preparedEntries = 0;
+		activeLifecycle = startDownloadLifecycle('album_zip', { albumKey }, photoCount);
 
 		try {
-			// Worker-first path for "large" quality
+			// Prefer the existing edge cache; preserve client preparation as fallback.
 			if (quality === 'large') {
 				workerMode = true;
 				const success = await tryWorkerDownload(abortController.signal);
-				if (abortController.signal.aborted) return;
-				if (success) return;
-				// Fall through to client-side on failure
+				if (abortController?.signal.aborted || success) return;
 				workerMode = false;
 			}
-
-			// Client-side flow (fallback for "large", primary for "public")
 			const res = await fetch(`${base}/api/album-photos?albumKey=${encodeURIComponent(albumKey)}`);
-			const { photos } = await res.json() as { photos: Array<{ cf_image_id: string; image_key: string }> };
+			if (!res.ok) throw new Error('manifest_failed');
+			const { photos } = await res.json() as { photos: Array<{ photo_id: string; cf_image_id: string; image_key: string }> };
 
 			if (!photos || photos.length === 0) {
-				downloading = false;
-				return;
+				throw new Error('empty_manifest');
 			}
 
 			progress.total = photos.length;
@@ -112,16 +102,18 @@
 				const signal = abortController!.signal;
 				type Entry = { name: string; data: Blob };
 
-				function fetchPhoto(p: (typeof photos)[number]): Promise<Entry> {
+				function fetchPhoto(p: (typeof photos)[number]): Promise<Entry | null> {
+					activeLifecycle?.itemRequested(p.photo_id, albumKey);
 					const url = cfImageUrl(p.cf_image_id, quality);
 					const proxy = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(p.image_key + '.jpg')}`;
 					return fetch(proxy, { signal })
-						.then((r) => r.blob())
-						.then((data) => ({ name: `${p.image_key}.jpg`, data }));
+						.then((r) => { if (!isDownloadableImageResponse(r)) throw new Error('download_item_failed'); return r.blob(); })
+						.then((data) => { activeLifecycle?.itemPrepared(p.photo_id, albumKey, data.size); return { name: `${p.image_key}.jpg`, data }; })
+						.catch(() => null);
 				}
 
 				let next = 0;
-				const inflight = new Map<number, Promise<Entry>>();
+				const inflight = new Map<number, Promise<Entry | null>>();
 
 				// Seed the window
 				while (next < photos.length && inflight.size < CONCURRENCY) {
@@ -143,7 +135,7 @@
 
 					progress.current++;
 					progress = { ...progress };
-					yield { name: result.name, input: result.data };
+					if (result) { preparedEntries++; yield { name: result.name, input: result.data }; }
 				}
 			}
 
@@ -151,22 +143,31 @@
 			const blob = await downloadZip(fileEntries()).blob();
 
 			if (abortController?.signal.aborted) return;
+			if (preparedEntries === 0) throw new Error('no_downloadable_items');
+			activeLifecycle.prepared(blob.size);
 
 			triggerBrowserDownload(blob, `${slugify(albumName)}.zip`);
+			activeLifecycle.handedOff();
 			trackBulkDownload();
 		} catch (err) {
-			if ((err as Error).name !== 'AbortError') {
+			if ((err as Error).name === 'AbortError') {
+				activeLifecycle?.cancelled('item_fetch');
+			} else {
+				activeLifecycle?.failed('item_fetch', 'zip_request_failed');
 				console.error('[BulkDownload] Error:', err);
 			}
 		} finally {
 			downloading = false;
 			workerMode = false;
 			abortController = null;
+			activeLifecycle = null;
 		}
 	}
 
 	function cancelDownload() {
 		abortController?.abort();
+		activeLifecycle?.cancelled('item_fetch');
+		activeLifecycle = null;
 		downloading = false;
 		abortController = null;
 	}

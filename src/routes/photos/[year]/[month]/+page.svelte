@@ -225,7 +225,7 @@
     </div>
 
     <!-- Photo Grid -->
-    <PhotoGrid photos={data.photos} loading={false} onclick={handlePhotoClick} />
+    <PhotoGrid photos={data.photos} loading={false} favoriteSurface="archive_month" onclick={handlePhotoClick} />
 
     <!-- Pagination -->
     <div class="mt-8">

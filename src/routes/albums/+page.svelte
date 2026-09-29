@@ -25,6 +25,8 @@
 
 	// Svelte 5 Runes: $props to receive server data
 	let { data }: { data: PageData } = $props();
+	let resultSetId = $state(crypto.randomUUID());
+	$effect(() => { data.currentPage; data.query; data.selectedSport; data.selectedYear; resultSetId = crypto.randomUUID(); });
 
 	// Server-driven event discovery: search runs across ALL albums (not just the loaded page),
 	// plus sport + year facets. data.albums is already filtered server-side.
@@ -246,7 +248,7 @@
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each displayAlbums as album, index}
 					<div>
-						<AlbumCard {album} {index} onclick={handleAlbumClick} priority={index < 4} />
+						<AlbumCard {album} {index} {resultSetId} onclick={handleAlbumClick} priority={index < 4} experiment={index === 0 ? data.experiment : null} />
 						<!-- Date Range Display -->
 						{#if album.dateRange}
 							{@const dateRange = formatDateRange(album.dateRange)}
