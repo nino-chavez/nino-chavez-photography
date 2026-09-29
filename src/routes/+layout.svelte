@@ -182,7 +182,7 @@
 		`index, follow` to every crawler, so the tag asserted nothing its absence
 		does not. A page that wants out says so on its own, once.
 	-->
-	<meta name="theme-color" content="#D4AF37" />
+	<meta name="theme-color" content={isAnalyticsWorkspace ? '#edf2f7' : '#D4AF37'} />
 
 	<!-- Google Search Console Verification -->
 	<meta name="google-site-verification" content="m_DGu93JLdDvx0_KNbZhjwVB75OdnQEURDhinyriJKQ" />
