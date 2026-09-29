@@ -223,7 +223,7 @@
 <div aria-label="Gallery analytics workspace" class="analytics-workspace mx-auto min-w-0 max-w-[96rem] overflow-x-clip px-4 py-2 sm:py-5 sm:px-6 lg:px-8">
 	<div class="workspace-masthead">
 		<div class="workspace-identity"><span class="workspace-mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="workspace-divider">/</span> Photography reports</span></div>
-		<a class="gallery-return" href="https://ninochavez.co/photography/">View gallery <span aria-hidden="true">↗</span></a>
+		<div class="flex items-center gap-2"><a class="gallery-return" href={`${base}/analytics/sites`}>All sites</a><a class="gallery-return" href="https://ninochavez.co/photography/">View gallery <span aria-hidden="true">↗</span></a></div>
 	</div>
 	<header class="border-b border-charcoal-700 pb-2">
 		<div class="flex flex-wrap items-start justify-between gap-3">

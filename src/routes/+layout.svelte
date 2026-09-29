@@ -33,7 +33,7 @@
 
 	// Navigation loading state
 	let isNavigating = $derived($navigating !== null);
-	let isAnalyticsWorkspace = $derived($page.route.id === '/analytics/operator');
+	let isAnalyticsWorkspace = $derived($page.route.id === '/analytics/operator' || $page.route.id === '/analytics/sites');
 
 	// Kill switch: chat is OFF unless VITE_CHAT_ENABLED === 'true' (disabled in prod for now,
 	// pending the v5 stream-contract fix + a verifiable output guardrail). Re-enable by setting
