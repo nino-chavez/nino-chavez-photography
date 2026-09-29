@@ -22,7 +22,7 @@ compatibility_flags = ["nodejs_compat"]
 # Comma-separated. NOT a secret: it is an authorization list, not a credential, and it is far
 # more valuable reviewable in git than hidden in a dashboard. See src/lib/server/admin-auth.ts;
 # an empty or missing value denies everyone, on purpose.
-ADMIN_EMAILS = "admin@ninochavez.co"
+ADMIN_EMAILS = "admin@ninochavez.co,nino@ninochavez.co"
 
 # Web-sized Ultra HDR (gain-map) JPEGs, read by src/routes/api/hdr/[id]/+server.ts and written by
 # scripts/ingest-album.ts (via `wrangler r2 object put ... --remote`, not this binding — the CLI
