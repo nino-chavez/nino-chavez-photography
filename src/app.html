@@ -22,7 +22,7 @@
 
 		<!-- Cloudflare Web Analytics. Local/test previews must never emit production traffic. -->
 		<script>
-			if (!['localhost', '127.0.0.1', '::1'].includes(location.hostname) && !location.hostname.endsWith('.test')) {
+			if (['ninochavez.co', 'www.ninochavez.co'].includes(location.hostname)) {
 				const beacon = document.createElement('script');
 				beacon.defer = true;
 				beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';

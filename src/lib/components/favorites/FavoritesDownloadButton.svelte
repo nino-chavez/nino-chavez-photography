@@ -51,8 +51,8 @@
 		downloading = true;
 		progress = { current: 0, total: entries.length };
 		abortController = new AbortController();
-		activeLifecycle = startDownloadLifecycle('saved_photo_zip', { photoId: entries[0].id, albumKey: entries[0].album_key }, entries.length);
-		let preparedEntries = 0;
+		activeLifecycle = startDownloadLifecycle('saved_photo_zip', {}, entries.length);
+		const preparedPhotos: Photo[] = [];
 
 		try {
 			const { downloadZip } = await import('client-zip');
@@ -71,7 +71,7 @@
 					const proxy = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
 					return fetch(proxy, { signal })
 						.then((r) => { if (!isDownloadableImageResponse(r)) throw new Error('download_item_failed'); return r.blob(); })
-						.then((data) => { activeLifecycle?.itemPrepared(photo.id, photo.album_key, data.size); return { name: filename, data }; })
+						.then((data) => { activeLifecycle?.itemPrepared(photo.id, photo.album_key, data.size); preparedPhotos.push(photo); return { name: filename, data }; })
 						.catch(() => null);
 				}
 
@@ -98,21 +98,21 @@
 
 					progress.current++;
 					progress = { ...progress };
-					if (result) { preparedEntries++; yield { name: result.name, input: result.data }; }
+					if (result) { yield { name: result.name, input: result.data }; }
 				}
 			}
 
 			const blob = await downloadZip(fileEntries()).blob();
 			if (abortController?.signal.aborted) return;
-			if (preparedEntries === 0) throw new Error('no_downloadable_items');
+			if (preparedPhotos.length === 0) throw new Error('no_downloadable_items');
 			activeLifecycle.prepared(blob.size);
 
 			triggerBrowserDownload(blob, `saved-photos-${todayStamp()}.zip`);
 			activeLifecycle.handedOff();
-			toast.success(`Downloaded ${entries.length} ${entries.length === 1 ? 'photo' : 'photos'}.`);
+			toast.success(`ZIP handed to your browser: ${preparedPhotos.length} of ${entries.length} photos prepared.`);
 
 			// Each downloaded photo is a strong popularity signal (weight 6).
-			for (const p of entries) {
+			for (const p of preparedPhotos) {
 				trackEngagement('download', { photoId: p.id, albumKey: p.album_key, source: 'favorites-zip' });
 				trackDownloadDiagnostic({ photoId: p.id, albumKey: p.album_key, source: 'favorites-zip', status: 'requested' });
 			}

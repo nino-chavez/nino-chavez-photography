@@ -42,14 +42,14 @@ export const EVENT_V2_CONTRACT: Record<EventV2Name, PropertyRule> = {
 	favorite_removed: { required: ['photo_id', 'album_key', 'surface'], targets: 'photo' },
 	share_action: { required: ['channel', 'outcome'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	download_requested: { required: ['download_request_id', 'mode', 'requested_item_count'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
-	download_item_requested: { required: ['download_request_id', 'photo_id', 'album_key'], targets: 'photo' },
-	download_item_prepared: { required: ['download_request_id', 'photo_id', 'album_key', 'byte_count'], targets: 'photo' },
-	download_prepared: { required: ['download_request_id', 'mode', 'requested_item_count', 'prepared_item_count', 'byte_count', 'duration_ms'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
-	download_handed_off: { required: ['download_request_id', 'mode', 'prepared_item_count'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
+	download_item_requested: { required: ['download_request_id', 'photo_id', 'album_key'], optional: ['mode'], targets: 'photo' },
+	download_item_prepared: { required: ['download_request_id', 'photo_id', 'album_key', 'byte_count'], optional: ['mode'], targets: 'photo' },
+	download_prepared: { required: ['download_request_id', 'mode', 'requested_item_count', 'prepared_item_count', 'byte_count', 'duration_ms'], optional: ['item_count_known'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
+	download_handed_off: { required: ['download_request_id', 'mode', 'prepared_item_count'], optional: ['item_count_known'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	download_failed: { required: ['download_request_id', 'mode', 'stage', 'error_code', 'retry_attempt'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	download_cancelled: { required: ['download_request_id', 'mode', 'stage', 'requested_item_count', 'prepared_item_count'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	search_submitted: { required: ['search_id'], optional: ['sport', 'category', 'play_type', 'division', 'level', 'sort'], targets: 'none' },
-	search_results_shown: { required: ['search_id', 'result_set_id', 'result_count', 'duration_ms'], targets: 'none' },
+	search_results_shown: { required: ['search_id', 'result_set_id', 'result_count'], optional: ['duration_ms'], targets: 'none' },
 	search_failed: { required: ['search_id', 'error_code'], targets: 'none' },
 	search_result_selected: { required: ['search_id', 'result_set_id', 'position'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	filters_applied: { required: ['result_set_id', 'result_count'], optional: ['sport', 'category', 'play_type', 'division', 'level', 'sort'], targets: 'none' },
@@ -68,19 +68,22 @@ export function isSafeEventProperty(key: string, value: unknown): value is strin
 
 export function eventPropertiesMatchContract(eventName: EventV2Name, properties: EventV2Properties): boolean {
 	const rule = EVENT_V2_CONTRACT[eventName];
-	const allowed = new Set([...rule.required, ...(rule.optional ?? []), ...(rule.oneOf ?? [])]);
-	if (Object.keys(properties).some((key) => !allowed.has(key))) return false;
-	if (rule.required.some((key) => properties[key] === undefined)) return false;
-	if (rule.oneOf && !rule.oneOf.some((key) => properties[key] !== undefined)) return false;
-	if (rule.targets === 'photo' && (!properties.photo_id || !properties.album_key)) return false;
+	const allowed = new Set([...rule.required, ...(rule.optional ?? []), ...(rule.oneOf ?? []), 'album_key', 'photo_id', 'surface', 'tagged_source', 'release']);
+	if (Object.keys(properties).some((key) => properties[key] !== undefined && !allowed.has(key))) return false;
+	if (rule.required.some((key) => key !== 'album_key' && !(key === 'prepared_item_count' && properties.item_count_known === false) && properties[key] === undefined)) return false;
+	if (rule.oneOf && properties.mode !== 'saved_photo_zip' && !rule.oneOf.some((key) => properties[key] !== undefined)) return false;
+	if (rule.targets === 'photo' && !properties.photo_id) return false;
 	if (rule.targets === 'album' && !properties.album_key) return false;
-	if (rule.targets === 'subject' && !properties.photo_id && !properties.album_key) return false;
+	if (rule.targets === 'subject' && properties.mode !== 'saved_photo_zip' && !properties.photo_id && !properties.album_key) return false;
 	return validPropertyValues(properties);
 }
 
 function validPropertyValues(properties: EventV2Properties): boolean {
 	for (const [key, value] of Object.entries(properties)) {
 		if (value === undefined) continue;
+		if (['photo_id', 'album_key', 'surface', 'entry_surface', 'route_kind', 'error_code', 'release', 'experiment_key', 'variant'].includes(key) && (typeof value !== 'string' || !value.trim() || value.length > 160)) return false;
+		if (key === 'tagged_source' && (typeof value !== 'string' || !/^[a-z0-9_-]{1,32}$/.test(value))) return false;
+		if (key === 'item_count_known' && typeof value !== 'boolean') return false;
 		if (['position', 'result_count', 'requested_item_count', 'prepared_item_count', 'byte_count', 'duration_ms', 'load_duration_ms', 'retry_attempt'].includes(key) &&
 			(typeof value !== 'number' || !Number.isInteger(value) || value < 0)) return false;
 		if (key === 'mode' && !['single_photo', 'saved_photo_zip', 'album_zip'].includes(String(value))) return false;

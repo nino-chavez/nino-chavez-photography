@@ -15,7 +15,7 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { Search, X } from 'lucide-svelte';
-	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { trackAnalyticsEventV2, recordSearchSubmission } from '$lib/analytics/client';
 
 	let isExpanded = $state(false);
 	let searchQuery = $state('');
@@ -65,13 +65,12 @@
 		// Navigate to explore page with search query — server handles filtering
 		const url = new URL(`${base}/explore`, window.location.origin);
 		url.searchParams.set('q', searchQuery.trim());
-		const searchId = crypto.randomUUID();
+		const searchId = recordSearchSubmission();
 		url.searchParams.set('search_id', searchId);
-		trackAnalyticsEventV2({ eventName: 'search_submitted', properties: { search_id: searchId } });
 
 		// Close search and navigate
 		closeSearch();
-		goto(url.toString());
+		void goto(url.toString()).catch(() => trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: searchId, error_code: 'navigation_failed' } }));
 	}
 
 	function handleInputKeyDown(event: KeyboardEvent) {

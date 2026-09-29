@@ -25,7 +25,7 @@
 	import type { Photo } from '$types/photo';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
-	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { trackAnalyticsEventV2, recordSearchSubmission, searchDuration } from '$lib/analytics/client';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -80,17 +80,15 @@
 	// Search - sync with server data on navigation
 	let searchQuery = $state('');
 	let resultSetId = $state(crypto.randomUUID());
-	let resultShownAt = $state(performance.now());
-	$effect(() => {
+		$effect(() => {
 		searchQuery = data.searchQuery || '';
 		resultSetId = crypto.randomUUID();
-		resultShownAt = performance.now();
 	});
 
 	// Photos come directly from server (search filtering is server-side)
 	let displayPhotos = $derived(data.photos);
 	$effect(() => {
-		if (data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, duration_ms: Math.max(0, Math.round(performance.now() - resultShownAt)) } });
+		if (data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, duration_ms: searchDuration(data.searchId) } });
 		if (activeFilterCount > 0) trackAnalyticsEventV2({ eventName: 'filters_applied', properties: { result_set_id: resultSetId, result_count: data.totalCount, sport: data.selectedSport ?? undefined, category: data.selectedCategory ?? undefined, play_type: data.selectedPlayType ?? undefined, division: data.selectedDivision ?? undefined, level: data.selectedLevel ?? undefined, sort: data.sortBy } });
 	});
 
@@ -174,7 +172,9 @@
 		}
 		url.searchParams.delete('page');
 		url.searchParams.delete('similar_to');
-		goto(url.toString());
+		const searchId = recordSearchSubmission();
+		url.searchParams.set('search_id', searchId);
+		void goto(url.toString()).catch(() => trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: searchId, error_code: 'navigation_failed' } }));
 	}
 
 	function handleClearSearch() {

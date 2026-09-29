@@ -14,14 +14,24 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	if (!parsed.ok) throw httpError(400, parsed.error);
 	if (isBotUserAgent(request.headers.get('user-agent'))) return json({ accepted: false, duplicate: false, reason: 'known_crawler' }, { status: 202 });
 	const admin = createSupabaseAdminClient();
+	let photoCategory: string | null = null;
 	let target;
 	try {
 		target = await resolveEventV2Target(parsed.value, {
-			async albumForPhoto(photoId) { const { data, error } = await admin.from('photo_metadata').select('album_key').eq('photo_id', photoId).maybeSingle(); if (error) throw error; return data?.album_key ?? null; },
+			async albumForPhoto(photoId) { const { data, error } = await admin.from('photo_metadata').select('album_key,photo_category').eq('photo_id', photoId).maybeSingle(); if (error) throw error; photoCategory = data?.photo_category ?? null; return data?.album_key ?? null; },
 			async albumExists(albumKey) { const { data, error } = await admin.from('albums').select('album_key').eq('album_key', albumKey).maybeSingle(); if (error) throw error; return !!data; }
 		});
 	} catch { return json({ accepted: false, duplicate: false, error: 'recording_unavailable' }, { status: 503 }); }
 	if (!target.ok) throw httpError(400, target.error);
+	// Snapshot catalog facts at collection time; future recategorization cannot rewrite history.
+	const albumKey = target.value.properties.album_key;
+	if (typeof albumKey === 'string') {
+		const { data: album, error: lookupError } = await admin.from('albums').select('sport,event_date').eq('album_key', albumKey).maybeSingle();
+		if (lookupError || !album) return json({ accepted: false, duplicate: false, error: 'recording_unavailable' }, { status: 503 });
+		if (album.sport) target.value.properties.album_sport = album.sport;
+		if (album.event_date) target.value.properties.event_date = album.event_date;
+	}
+	if (photoCategory) target.value.properties.photo_category = photoCategory;
 	const trafficContext = await resolveAnalyticsContext(request, cookies);
 	const linkedConsent = hasLinkedAnalyticsConsent(cookies);
 	const acceptedIdentity = trafficContext === 'audience' && linkedConsent

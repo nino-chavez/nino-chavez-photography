@@ -17,8 +17,8 @@
 	// Client navigation is the only reliable page-view boundary: SSR and hover prefetch are not views.
 	$effect(() => {
 		const routeId = $page.route.id;
-		if (!routeId || routeId.startsWith('/analytics')) return;
-		trackVisibleGalleryPage(routeId.replace(/[^a-z0-9_]/gi, '_').replace(/^_+|_+$/g, '') || 'gallery', $page.url.pathname);
+		if (!routeId || /^\/(analytics|admin|login|auth)(\/|$)/.test(routeId)) return;
+		trackVisibleGalleryPage(routeId.replace(/[^a-z0-9_]/gi, '_').replace(/^_+|_+$/g, '') || 'gallery', $page.url.pathname, $page.url.searchParams.get('src'));
 	});
 
 	// Create QueryClient instance for TanStack Query

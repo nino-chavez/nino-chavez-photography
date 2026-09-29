@@ -75,7 +75,7 @@
 	aria-label={accessibleAltText}
 	data-sveltekit-preload-data="false"
 	onclick={handleClick}
-	use:exposure={{ loaded, onExpose: recordExposure }}
+	use:exposure={{ loaded, onExpose: recordExposure, identity: photo.id }}
 >
 	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
 	<!-- quality="low" = S/M sizes (400-600px) - appropriate for grid cards at max 25vw -->

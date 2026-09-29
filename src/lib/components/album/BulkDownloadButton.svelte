@@ -47,6 +47,24 @@
 		URL.revokeObjectURL(url);
 	}
 
+	/** Keep the cached edge ZIP path. Its contents are not observable item by item. */
+	async function tryWorkerDownload(signal: AbortSignal): Promise<boolean> {
+		try {
+			const signed = await fetch(`${base}/api/zip-url?albumKey=${encodeURIComponent(albumKey)}&quality=large`, { signal });
+			if (!signed.ok) return false;
+			const { url } = await signed.json();
+			const response = await fetch(url, { signal });
+			if (!response.ok || !response.headers.get('content-type')?.includes('zip')) return false;
+			const blob = await response.blob();
+			if (signal.aborted || !blob.size) return false;
+			activeLifecycle?.prepared(blob.size, false);
+			triggerBrowserDownload(blob, `${slugify(albumName)}.zip`);
+			activeLifecycle?.handedOff();
+			trackBulkDownload();
+			return true;
+		} catch { return false; }
+	}
+
 	async function startDownload(quality: CFVariant) {
 		showMenu = false;
 		downloading = true;
@@ -54,19 +72,25 @@
 		progress = { current: 0, total: 0 };
 		abortController = new AbortController();
 		let preparedEntries = 0;
+		activeLifecycle = startDownloadLifecycle('album_zip', { albumKey }, photoCount);
 
 		try {
-			// Client-side preparation is deliberate: the browser can then report each accepted item.
+			// Prefer the existing edge cache; preserve client preparation as fallback.
+			if (quality === 'large') {
+				workerMode = true;
+				const success = await tryWorkerDownload(abortController.signal);
+				if (abortController?.signal.aborted || success) return;
+				workerMode = false;
+			}
 			const res = await fetch(`${base}/api/album-photos?albumKey=${encodeURIComponent(albumKey)}`);
+			if (!res.ok) throw new Error('manifest_failed');
 			const { photos } = await res.json() as { photos: Array<{ photo_id: string; cf_image_id: string; image_key: string }> };
 
 			if (!photos || photos.length === 0) {
-				downloading = false;
-				return;
+				throw new Error('empty_manifest');
 			}
 
 			progress.total = photos.length;
-			activeLifecycle = startDownloadLifecycle('album_zip', { albumKey }, photos.length);
 
 			// Dynamic import client-zip for tree-shaking
 			const { downloadZip } = await import('client-zip');

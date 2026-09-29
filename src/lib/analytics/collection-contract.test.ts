@@ -155,3 +155,22 @@ test('controlled markers bind to the configured public origin behind the apex ro
  assert.equal(hasTrustedAnalyticsTestMarker(marker,secret,new Request(request.url,{headers:{origin:'https://attacker.example'}}),now,origin),false);
  assert.equal(hasTrustedAnalyticsTestMarker(marker,secret,request,now,'https://another.example'),false);
 });
+
+test('v2 accepts the actual photo and mixed ZIP payloads and derives album facts server-side', async () => {
+ const { parseEventV2Request, resolveEventV2Target } = await import('./collection-contract');
+ const { eventPropertiesMatchContract } = await import('./events-v2');
+ const id = 'c790473e-4c26-4f6c-aed1-13db60383021';
+ const payload = (event_name: string, properties: object) => ({event_id:id,schema_version:2,event_name,occurred_at:new Date().toISOString(),anonymous_browser_id:null,visit_id:null,properties});
+ const photo = parseEventV2Request(payload('photo_exposed',{photo_id:'photo-one',position:0,result_set_id:id}));
+ assert.equal(photo.ok,true);
+ if(photo.ok) {
+  const resolved = await resolveEventV2Target(photo.value,{albumForPhoto:async()=> 'album-one',albumExists:async()=>true});
+  assert.equal(resolved.ok,true);
+  if(resolved.ok) assert.equal(resolved.value.properties.album_key,'album-one');
+ }
+ assert.equal(eventPropertiesMatchContract('download_item_prepared',{photo_id:'photo-one',album_key:undefined,mode:'saved_photo_zip',download_request_id:id,byte_count:20}),true);
+ assert.equal(parseEventV2Request(payload('download_requested',{download_request_id:id,mode:'saved_photo_zip',requested_item_count:2})).ok,true);
+ assert.equal(parseEventV2Request(payload('download_prepared',{album_key:'album-one',download_request_id:id,mode:'album_zip',requested_item_count:2,item_count_known:false,byte_count:20,duration_ms:10})).ok,true);
+ assert.equal(parseEventV2Request(payload('album_opened',{view_id:id,entry_surface:'album'})).ok,false);
+ assert.equal(parseEventV2Request(payload('photo_rendered',{photo_id:'photo-one',view_id:id,load_duration_ms:10,raw_search:'private query'})).ok,false);
+});

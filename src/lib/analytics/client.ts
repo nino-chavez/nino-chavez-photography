@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
-import { SHARE_SRC, type ShareChannel, type ShareSubject } from '$lib/analytics/share';
+import { SHARE_SRC, isValidSrcParam, type ShareChannel, type ShareSubject } from '$lib/analytics/share';
 import { eventPropertiesMatchContract, type EventV2Name, type EventV2Properties } from '$lib/analytics/events-v2';
 import { getAnalyticsPreferences, getVisitContext } from '$lib/analytics/visit';
 import { deliverWithSingleRetry } from '$lib/analytics/delivery';
@@ -48,7 +48,7 @@ export function trackEngagement(
 	eventType: EngagementType,
 	target: { photoId?: string; albumKey?: string; source?: string }
 ): void {
-	if (!browser) return;
+	if (!browser || getAnalyticsPreferences().excludeThisBrowser) return;
 	if (!target.photoId && !target.albumKey) return;
 	try {
 		void fetch(`${base}/api/engagement`, {
@@ -112,25 +112,32 @@ export function startDownloadLifecycle(mode: DownloadMode, target: DownloadTarge
 	const downloadRequestId = newDownloadRequestId();
 	let preparedItemCount = 0;
 	let byteCount = 0;
+	let itemCountKnown = true;
+	let terminal = false;
+	const preparedPhotos = new Set<string>();
 	const startedAt = performance.now();
 	const baseProperties = () => ({ download_request_id: downloadRequestId, mode, photo_id: target.photoId, album_key: target.albumKey });
 	trackAnalyticsEventV2({ eventName: 'download_requested', properties: { ...baseProperties(), requested_item_count: requestedItemCount } });
 	return {
 		id: downloadRequestId,
-		itemRequested(photoId: string, albumKey: string) {
+		itemRequested(photoId: string, albumKey?: string) {
 			trackAnalyticsEventV2({ eventName: 'download_item_requested', properties: { ...baseProperties(), photo_id: photoId, album_key: albumKey } });
 		},
-		itemPrepared(photoId: string, albumKey: string, bytes: number) {
+		itemPrepared(photoId: string, albumKey: string | undefined, bytes: number) {
+			if (terminal || preparedPhotos.has(photoId)) return;
+			preparedPhotos.add(photoId);
 			preparedItemCount += 1; byteCount += bytes;
 			trackAnalyticsEventV2({ eventName: 'download_item_prepared', properties: { ...baseProperties(), photo_id: photoId, album_key: albumKey, byte_count: bytes } });
 		},
-		prepared(extraBytes = 0) {
-			byteCount += extraBytes;
-			trackAnalyticsEventV2({ eventName: 'download_prepared', properties: { ...baseProperties(), requested_item_count: requestedItemCount, prepared_item_count: preparedItemCount, byte_count: byteCount, duration_ms: Math.round(performance.now() - startedAt) } });
+		prepared(extraBytes = 0, countKnown = true) {
+			if (terminal) return;
+			itemCountKnown = countKnown;
+			if (extraBytes > 0) byteCount = extraBytes;
+			trackAnalyticsEventV2({ eventName: 'download_prepared', properties: { ...baseProperties(), requested_item_count: requestedItemCount, prepared_item_count: itemCountKnown ? preparedItemCount : undefined, item_count_known: itemCountKnown, byte_count: byteCount, duration_ms: Math.round(performance.now() - startedAt) } });
 		},
-		handedOff() { trackAnalyticsEventV2({ eventName: 'download_handed_off', properties: { ...baseProperties(), prepared_item_count: preparedItemCount } }); },
-		failed(stage: 'request' | 'item_fetch' | 'prepare' | 'handoff', errorCode: string, retryAttempt = 0) { trackAnalyticsEventV2({ eventName: 'download_failed', properties: { ...baseProperties(), stage, error_code: errorCode, retry_attempt: retryAttempt } }); },
-		cancelled(stage: 'request' | 'item_fetch' | 'prepare' | 'handoff') { trackAnalyticsEventV2({ eventName: 'download_cancelled', properties: { ...baseProperties(), stage, requested_item_count: requestedItemCount, prepared_item_count: preparedItemCount } }); }
+		handedOff() { if (terminal) return; terminal = true; trackAnalyticsEventV2({ eventName: 'download_handed_off', properties: { ...baseProperties(), prepared_item_count: itemCountKnown ? preparedItemCount : undefined, item_count_known: itemCountKnown } }); },
+		failed(stage: 'request' | 'item_fetch' | 'prepare' | 'handoff', errorCode: string, retryAttempt = 0) { if (terminal) return; terminal = true; trackAnalyticsEventV2({ eventName: 'download_failed', properties: { ...baseProperties(), stage, error_code: errorCode, retry_attempt: retryAttempt } }); },
+		cancelled(stage: 'request' | 'item_fetch' | 'prepare' | 'handoff') { if (terminal) return; terminal = true; trackAnalyticsEventV2({ eventName: 'download_cancelled', properties: { ...baseProperties(), stage, requested_item_count: requestedItemCount, prepared_item_count: preparedItemCount } }); }
 	};
 }
 
@@ -140,7 +147,21 @@ export function exposeExperiment(assignment: { key?: string; variant?: string } 
 	trackAnalyticsEventV2({ eventName: 'experiment_exposed', properties: { experiment_key: assignment.key, variant: assignment.variant, surface, release } });
 }
 
-export function trackVisibleGalleryPage(routeKind: string, canonicalPath: string): void {
+export function trackVisibleGalleryPage(routeKind: string, canonicalPath: string, taggedSource?: string | null): void {
 	if (!browser || document.visibilityState !== 'visible' || routeKind === 'analytics' || !canonicalPath.startsWith('/')) return;
-	trackAnalyticsEventV2({ eventName: 'gallery_page_viewed', properties: { route_kind: routeKind, canonical_path: canonicalPath, view_id: crypto.randomUUID(), layout_class: matchMedia('(max-width: 767px)').matches ? 'compact' : 'wide' } });
+	trackAnalyticsEventV2({ eventName: 'gallery_page_viewed', properties: { route_kind: routeKind, canonical_path: canonicalPath, tagged_source: isValidSrcParam(taggedSource ?? null) ? taggedSource! : undefined, view_id: crypto.randomUUID(), layout_class: matchMedia('(max-width: 767px)').matches ? 'compact' : 'wide' } });
+}
+
+const searchStarts = new Map<string, number>();
+/** Time the actual submitted search. Direct result links have no known start time. */
+export function recordSearchSubmission(): string {
+	const searchId = crypto.randomUUID();
+	searchStarts.set(searchId, performance.now());
+	if (searchStarts.size > 50) searchStarts.delete(searchStarts.keys().next().value!);
+	trackAnalyticsEventV2({ eventName: 'search_submitted', properties: { search_id: searchId } });
+	return searchId;
+}
+export function searchDuration(searchId: string): number | undefined {
+	const start = searchStarts.get(searchId);
+	return start === undefined ? undefined : Math.max(0, Math.round(performance.now() - start));
 }

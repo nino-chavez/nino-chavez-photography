@@ -46,12 +46,16 @@ export function getAnalyticsPreferences(): AnalyticsPreferenceState {
 }
 
 export function saveAnalyticsPreferences(preferences: AnalyticsPreferenceState): void {
-	if (typeof window !== 'undefined') writeJson(PREFERENCE_KEY, preferences);
+	if (typeof window === 'undefined') return;
+	writeJson(PREFERENCE_KEY, preferences);
+	if (!preferences.linkedAnalytics || preferences.excludeThisBrowser) {
+		try { localStorage.removeItem(IDENTITY_KEY); localStorage.removeItem(VISIT_KEY); } catch { /* Storage may be disabled. */ }
+	}
 }
 
 /** Returns no persistent identity when the visitor has not opted into linked analytics. */
 export function getVisitContext(now = Date.now()): VisitContext {
-	if (typeof window === 'undefined' || !getAnalyticsPreferences().linkedAnalytics) {
+	if (typeof window === 'undefined' || (!getAnalyticsPreferences().linkedAnalytics || getAnalyticsPreferences().excludeThisBrowser)) {
 		return { anonymous_browser_id: null, visit_id: null };
 	}
 	const priorIdentity = readJson<StoredIdentity>(IDENTITY_KEY);

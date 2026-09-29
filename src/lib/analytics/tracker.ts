@@ -78,6 +78,7 @@ export async function recordBotFiltered(): Promise<void> {
  * site-wide (homepage) arrivals.
  */
 export async function trackArrival(event: ArrivalEvent): Promise<void> {
+	if (event.trafficContext === 'self_excluded') return;
 	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		const { error: dbError } = await createSupabaseAdminClient()
@@ -104,6 +105,7 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
  * Track a search query (server-side only)
  */
 export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
+	if (event.trafficContext === 'self_excluded') return;
 	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		// The error must be read off the result, not caught: supabase-js resolves

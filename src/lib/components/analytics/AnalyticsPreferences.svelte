@@ -11,7 +11,7 @@
 		saving = true;
 		try {
 			const response = await fetch(`${base}/api/analytics/preferences`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(preferences) });
-			message = response.ok ? 'Analytics preference saved for this browser.' : 'The local preference is saved; server exclusion could not be updated.';
+			message = response.ok ? 'Analytics preference saved for this browser.' : 'Your choice is saved locally. Server settings were not saved; please try again.';
 		} catch { message = 'The local preference is saved; server exclusion could not be updated.'; }
 		finally { saving = false; }
 	}
