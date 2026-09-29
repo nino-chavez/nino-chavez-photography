@@ -77,3 +77,71 @@ test('mixed download export preserves both photo and album-only actions without 
  assert.match(csv, /"album_action","","alpha","3"/);
  assert.equal(reportCsv(value,new Set(['missing'])).split('\n').length,1);
 });
+
+// Exercise the full aggregation path: hidden albums must not affect public numbers,
+// comparisons, CSVs, publication-age reports, or the distinct-browser query.
+import { buildOperatorReport } from './operator-report.server';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+function privacyFixture(visibilityError = false) {
+ const day = '2026-09-20';
+ const visitorCalls: string[][] = [];
+ const tables: Record<string, Record<string, unknown>[]> = {
+  albums: ['visible', 'hidden'].map(album_key => ({album_key, sport:'volleyball', event_date:day})),
+  album_settings: ['visible', 'hidden'].map(album_key => ({album_key, visibility:album_key === 'hidden' ? 'unlisted' : 'public', published_at:day+'T12:00:00Z'})),
+  photo_metadata: ['visible', 'hidden'].map(album_key => ({album_key, photo_id:album_key+'-photo', cf_image_id:album_key+'-image', photo_category:'action'})),
+  analytics_collection_diagnostics: [],
+  analytics_diagnostic_coverage: [],
+  analytics_daily_coverage: [{bucket_date:day}]
+ };
+ const client = {
+  from(table:string) {
+   let data = [...(tables[table] ?? [])];
+   const q = {
+    select(){return q;},order(){return q;},gte(){return q;},lt(){return q;},gt(){return q;},lte(){return q;},
+    in(key:string, values:unknown[]){data=data.filter(row=>values.includes(row[key]));return q;},
+    limit(n:number){data=data.slice(0,n);return q;},
+    range(start:number,end:number){data=data.slice(start,end+1);return q;},
+    then(resolve:(value:unknown)=>unknown){return Promise.resolve({data,error:visibilityError&&table==='album_settings'?{message:'visibility unavailable'}:null}).then(resolve);}
+   };return q;
+  },
+  async rpc(name:string, args:Record<string,unknown>) {
+   if(name==='analytics_count_distinct_visitors') {
+    const keys=args.p_album_keys as string[];visitorCalls.push(keys);
+    return {data:keys.length===0 ? 12 : keys.includes('visible') ? 2 : 0,error:null};
+   }
+   return {data:{
+    rows:['visible','hidden'].map(album_key=>({bucket_date:day,album_key,photo_id:album_key+'-photo',event_type:'view',source:album_key+'-source',source_kind:'internal_open_location',sport:'volleyball',photo_category:'action',traffic_classification:'audience',action_count:album_key==='hidden'?10:2,coverage_state:'complete',latest_event_at:day+'T12:00:00Z'})),
+    coverage:[{bucket_date:day,coverage_state:'complete',cutoff_at:day+'T23:59:59Z'}]
+   },error:null};
+  }
+ } as unknown as SupabaseClient;
+ return {client,visitorCalls,query:{...query,start:day,end:day,compare:'publication_age' as const}};
+}
+
+test('public reports exclude unlisted albums from every aggregate and export',async()=>{
+ const f=privacyFixture();
+ const privateReport=await buildOperatorReport(f.client,f.query);
+ assert.equal(privateReport.observedTotal,12); // Negative control: fixture really contains hidden traffic.
+ const publicReport=await buildOperatorReport(f.client,f.query,{publicOnly:true});
+ assert.equal(publicReport.available,true);
+ assert.equal(publicReport.observedTotal,2);
+ assert.equal(publicReport.visitorEstimate.value,2);
+ assert.deepEqual(f.visitorCalls.at(-1),['visible']);
+ assert.doesNotMatch(JSON.stringify(publicReport),/hidden/);
+ assert.doesNotMatch(reportCsv(publicReport),/hidden/);
+ const hiddenOnly=await buildOperatorReport(f.client,{...f.query,scope:'album',albumKeys:['hidden']},{publicOnly:true});
+ assert.equal(hiddenOnly.observedTotal,0);
+ assert.equal(hiddenOnly.visitorEstimate.value,0);
+ assert.deepEqual(f.visitorCalls.at(-1),['__no_public_albums__']);
+ assert.equal(hiddenOnly.photos.length,0);
+ assert.equal(hiddenOnly.publicationAge.albums.length,0);
+});
+
+test('public reports fail closed when album visibility cannot be read',async()=>{
+ const f=privacyFixture(true);
+ const report=await buildOperatorReport(f.client,f.query,{publicOnly:true});
+ assert.equal(report.available,false);
+ assert.equal(report.photos.length,0);
+ assert.equal(f.visitorCalls.length,0);
+});

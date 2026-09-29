@@ -1,5 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
-import { base } from '$app/paths';
+import { error } from '@sveltejs/kit';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { buildOperatorReport, reportCsv } from '$lib/analytics/operator-report.server';
@@ -13,9 +12,7 @@ export const GET: RequestHandler = async ({ cookies, url, setHeaders }) => {
 		'x-robots-tag': 'noindex, nofollow, noarchive'
 	});
 	const { data: { user } } = await createSupabaseServerClient(cookies).auth.getUser();
-	if (!user) throw redirect(302, `${base}/login`);
-	if (!isAllowedAdmin(user.email)) throw error(403, 'Operator access required');
-	const report = await buildOperatorReport(createSupabaseAdminClient(), parseReportQuery(url.searchParams));
+	const report = await buildOperatorReport(createSupabaseAdminClient(), parseReportQuery(url.searchParams), { publicOnly: !user || !isAllowedAdmin(user.email) });
 	if (!report.available) throw error(503, report.error ?? 'Analytics report unavailable');
 	const shortlist = url.searchParams.has('shortlist')
 		? new Set((url.searchParams.get('shortlist') ?? '').split(',').filter(Boolean))

@@ -10,7 +10,7 @@ import type { Actions, PageServerLoad } from './$types';
 type CatalogueEntry = {album_key:string;album_name:string;photo_count:number};
 type AlbumSetting = {album_key:string;visibility:string|null;published_at:string|null};
 type AlbumFact = {album_key:string;sport:string|null;event_date:string|null;event_type?:string|null};
-type CategoryFact = {photo_id:string;photo_category:string|null};
+type CategoryFact = {photo_id:string;album_key:string;photo_category:string|null};
 async function readAll<T>(page:(from:number)=>PromiseLike<{data:T[]|null;error:unknown}>) {
  const data:T[]=[];
  for(let from=0;;from+=1000){const result=await page(from);if(result.error)return {data:[] as T[],error:result.error};data.push(...(result.data??[]));if((result.data??[]).length<1000)return {data,error:null};}
@@ -50,30 +50,33 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		'pragma': 'no-cache',
 		'x-robots-tag': 'noindex, nofollow, noarchive'
 	});
-	const user = await requireOperator(cookies);
+	const { data: { user: signedInUser } } = await createSupabaseServerClient(cookies).auth.getUser();
+	const user = signedInUser && isAllowedAdmin(signedInUser.email) ? signedInUser : null;
 	const query = parseReportQuery(url.searchParams);
 	const admin = createSupabaseAdminClient();
  const eventPage=Math.max(0,Math.min(10000,Number.parseInt(url.searchParams.get('event_page')??'0',10)||0));
  const dayAfter=new Date(`${query.end}T12:00:00Z`);dayAfter.setUTCDate(dayAfter.getUTCDate()+1);
  let retainedQuery=admin.from('engagement_events').select('id, album_key, photo_id, event_type, source, created_at, traffic_context').gte('created_at',chicagoDayStart(query.start)).lt('created_at',chicagoDayStart(dayAfter.toISOString().slice(0,10))).order('created_at',{ascending:false}).order('id',{ascending:false});
- let noteQuery=admin.from('analytics_sharing_annotations').select('id, album_key, activity_date, channel, note, updated_at').eq('created_by',user.id).gte('activity_date',query.start).lte('activity_date',query.end).order('activity_date',{ascending:false});
+ let noteQuery=admin.from('analytics_sharing_annotations').select('id, album_key, activity_date, channel, note, updated_at').eq('created_by',user?.id ?? '').gte('activity_date',query.start).lte('activity_date',query.end).order('activity_date',{ascending:false});
  if(query.scope!=='all'){retainedQuery=retainedQuery.in('album_key',query.albumKeys);noteQuery=noteQuery.in('album_key',query.albumKeys);}
 	const [report, saved, annotations, albumCatalogue, albumSettings, albumFacets, categoryFacets, correctionLog, retainedEvents] = await Promise.all([
-		buildOperatorReport(admin, query),
-		admin.from('analytics_saved_reports').select('id, name, query, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false }),
-		readAll(from=>noteQuery.range(from,from+999))
+		buildOperatorReport(admin, query, { publicOnly: !user }),
+		user ? admin.from('analytics_saved_reports').select('id, name, query, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false }) : { data: [], error: null },
+		user ? readAll(from=>noteQuery.range(from,from+999)) : { data: [], error: null }
 		,
 		readAll<CatalogueEntry>(from=>admin.from('albums_summary').select('album_key, album_name, photo_count').order('album_key').range(from,from+999)),
 		readAll<AlbumSetting>(from=>admin.from('album_settings').select('album_key, visibility, published_at').order('album_key').range(from,from+999)),
 		readAll<AlbumFact>(from=>admin.from('albums').select('album_key, sport, event_date').order('album_key').range(from,from+999)),
-		readAll<CategoryFact>(from=>admin.from('photo_metadata').select('photo_id, photo_category').order('photo_id').range(from,from+999)),
-		admin.from('engagement_classification_corrections').select('id, engagement_event_id, classification, reason_flags, classification_version, note, corrected_at').order('corrected_at', { ascending: false }).limit(30),
-		retainedQuery.range(eventPage*50,eventPage*50+50)
+		readAll<CategoryFact>(from=>admin.from('photo_metadata').select('photo_id, album_key, photo_category').order('photo_id').range(from,from+999)),
+		user ? admin.from('engagement_classification_corrections').select('id, engagement_event_id, classification, reason_flags, classification_version, note, corrected_at').order('corrected_at', { ascending: false }).limit(30) : { data: [], error: null },
+		user ? retainedQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null }
 	]);
+	if (!user && albumSettings.error) throw error(503, 'Album visibility could not be verified.');
+	const publicAlbum = (key: string) => !!user || !(albumSettings.data ?? []).some(row => row.album_key === key && row.visibility === 'unlisted');
 	const unique = (values: Array<string | null | undefined>) => [...new Set(values.map(value=>value || 'unknown'))].sort();
 	const settingsByAlbum = new Map((albumSettings.data ?? []).map((setting) => [setting.album_key, setting]));
-	const factsByAlbum = new Map((albumFacets.data ?? []).map(album=>[album.album_key,album]));
-	const catalogue = (albumCatalogue.data ?? []).map((album) => ({
+	const factsByAlbum = new Map((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map(album=>[album.album_key,album]));
+	const catalogue = (albumCatalogue.data ?? []).filter(album => publicAlbum(album.album_key)).map((album) => ({
 		...album,
 		sport:factsByAlbum.get(album.album_key)?.sport ?? null,
 		event_date:factsByAlbum.get(album.album_key)?.event_date ?? null,
@@ -98,7 +101,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		return { ...correction, event: eventById.get(eventId) ?? null, canReverse };
 	});
 	return {
-		user: { id: user.id, email: user.email },
+		user: user ? { id: user.id, email: user.email } : null,
 		report,
 		savedReports: saved.error ? [] : saved.data ?? [],
 		savedReportsAvailable: !saved.error,
@@ -107,10 +110,10 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		albumCatalogue: albumCatalogue.error ? [] : catalogue,
 		albumCatalogueAvailable: !albumCatalogue.error && !albumSettings.error,
 		facets: {
-			sports: albumFacets.error ? [] : unique((albumFacets.data ?? []).map((row) => row.sport)),
-			seasons: albumFacets.error ? [] : unique((albumFacets.data ?? []).map((row) => row.event_date?.slice(0, 4))),
-			eventTypes: albumFacets.error ? [] : unique((albumFacets.data ?? []).map((row) => row.event_type)),
-			categories: categoryFacets.error ? [] : unique((categoryFacets.data ?? []).map((row) => row.photo_category))
+			sports: albumFacets.error ? [] : unique((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.sport)),
+			seasons: albumFacets.error ? [] : unique((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.event_date?.slice(0, 4))),
+			eventTypes: albumFacets.error ? [] : unique((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.event_type)),
+			categories: categoryFacets.error ? [] : unique((categoryFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.photo_category))
 		},
 		correctionLog: correctionLog.error ? [] : correctionRows,
 		correctionLogAvailable: !correctionLog.error,
