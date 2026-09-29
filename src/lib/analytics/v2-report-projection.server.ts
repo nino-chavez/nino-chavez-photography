@@ -6,11 +6,13 @@ type Dimensions = Record<string, unknown>;
 
 /** Identifier-free raw input. This shape never leaves the server module. */
 export interface V2ReportEvent {
+	event_id?: string;
 	event_name: PostHogEventName;
 	occurred_at: string;
 	album_key: string | null;
 	photo_id: string | null;
 	traffic_context: PostHogTrafficContext | 'self_excluded';
+	classification?: string | null;
 	properties: Dimensions;
 }
 
@@ -18,7 +20,7 @@ export interface V2ReportEvent {
 export interface V2ArchivedTotal {
 	bucket_date: string;
 	event_name: PostHogEventName;
-	traffic_context: PostHogTrafficContext | 'self_excluded';
+	traffic_context: PostHogTrafficContext | 'self_excluded' | 'known_crawler' | 'suspected_automation' | 'unclassified';
 	album_key: string | null;
 	photo_id: string | null;
 	dimensions: Dimensions;
@@ -67,9 +69,11 @@ function text(value: unknown): string | null {
 	return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
-function includesTraffic(context: PostHogTrafficContext | 'self_excluded', traffic: ReportQuery['traffic']): boolean {
+function includesTraffic(context: CountableObservation['trafficContext'], traffic: ReportQuery['traffic']): boolean {
 	if (context === 'self_excluded') return false;
-	return traffic === 'inclusive' ? context === 'audience' || context === 'operator' || context === 'test' : context === 'audience';
+	return traffic === 'inclusive'
+		? ['audience', 'unclassified', 'operator', 'test', 'known_crawler', 'suspected_automation'].includes(context)
+		: context === 'audience' || context === 'unclassified';
 }
 
 type CountableObservation = {
@@ -77,7 +81,7 @@ type CountableObservation = {
 	date: string;
 	albumKey: string | null;
 	photoId: string | null;
-	trafficContext: PostHogTrafficContext | 'self_excluded';
+	trafficContext: PostHogTrafficContext | 'self_excluded' | 'known_crawler' | 'suspected_automation' | 'unclassified';
 	dimensions: Dimensions;
 	count: number;
 };
@@ -85,7 +89,7 @@ type CountableObservation = {
 function rawObservation(row: V2ReportEvent): CountableObservation {
 	return {
 		eventName: row.event_name, date: dateOnly(new Date(row.occurred_at)), albumKey: row.album_key,
-		photoId: row.photo_id, trafficContext: row.traffic_context, dimensions: row.properties, count: 1
+		photoId: row.photo_id, trafficContext: (row.classification ?? row.traffic_context) as CountableObservation['trafficContext'], dimensions: row.properties, count: 1
 	};
 }
 
@@ -194,7 +198,7 @@ export async function fetchV2ReportProjection(client: SupabaseClient, query: Rep
 		const last = new Date(`${query.end}T00:00:00Z`); last.setUTCDate(last.getUTCDate() + 2);
 		const [rawRows, archivedRows, rawStart, archiveStart, archiveEnd] = await Promise.all([
 			readAll<V2ReportEvent>((from) => client.from('analytics_events_v2')
-				.select('event_name, occurred_at, album_key, photo_id, traffic_context, properties')
+				.select('event_id, event_name, occurred_at, album_key, photo_id, traffic_context, properties')
 				.gte('occurred_at', first.toISOString()).lt('occurred_at', last.toISOString())
 				.order('occurred_at', { ascending: true }).range(from, from + 999)),
 			readAll<V2ArchivedTotal>((from) => client.from('analytics_v2_archived_totals')
@@ -206,6 +210,11 @@ export async function fetchV2ReportProjection(client: SupabaseClient, query: Rep
 			client.from('analytics_v2_archived_totals').select('bucket_date').order('bucket_date', { ascending: false }).limit(1)
 		]);
 		if (rawStart.error || archiveStart.error || archiveEnd.error) throw rawStart.error ?? archiveStart.error ?? archiveEnd.error;
+		const classificationRows = await readAll<{ event_id: string; classification: string }>((from) => client.from('analytics_event_v2_classifications')
+			.select('event_id, classification').order('event_id').order('classification_version', { ascending: false }).range(from, from + 999));
+		const latestClassification = new Map<string, string>();
+		for (const row of classificationRows) if (!latestClassification.has(row.event_id)) latestClassification.set(row.event_id, row.classification);
+		for (const row of rawRows) row.classification = row.event_id ? latestClassification.get(row.event_id) ?? null : null;
 		const rawRetainedFrom = rawStart.data?.[0]?.occurred_at ?? null;
 		const archivedFrom = archiveStart.data?.[0]?.bucket_date ?? null;
 		const archivedThrough = archiveEnd.data?.[0]?.bucket_date ?? null;

@@ -41,6 +41,7 @@ test('v2 rejects arbitrary safe-looking fields and incomplete required context',
 	assert.equal(parseEventV2Request(base).ok, true);
 	assert.equal(parseEventV2Request({ ...base, properties: { ...base.properties, harmless_extra: 'still rejected' } }).ok, false);
 	assert.equal(parseEventV2Request({ ...base, properties: { route_kind: 'explore', canonical_path: '/photography/explore', view_id: id } }).ok, false);
+	assert.equal(parseEventV2Request({ ...base, event_name: 'analytics_classification_changed' }).ok, false);
 });
 
 test('v2 rejects filter labels outside the gallery vocabulary', () => {

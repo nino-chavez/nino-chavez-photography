@@ -69,3 +69,13 @@ test('a missing coverage bound is never presented as complete or observed zero',
 	assert.match(projection.coverage.label, /cannot call the interval complete/);
 	assert.match(projection.coverage.label, /no matching public observation/);
 });
+
+test('a current raw classification changes aggregation while archived classifications stay identifier-free', () => {
+	const current = buildV2ReportProjection([
+		event({ event_id: '20000000-0000-4000-8000-000000000099', classification: 'suspected_automation' }),
+		event({ event_id: '20000000-0000-4000-8000-000000000098', classification: 'unclassified' })
+	], [archived({ traffic_context: 'known_crawler', event_count: 4 }), archived({ traffic_context: 'unclassified', event_count: 3 })], query, { publicAlbumKeys: ['public-album'] }, bounds);
+
+	assert.equal(current.counts.find((count) => count.event === 'photo_opened')?.count, 4);
+	assert.equal(JSON.stringify(current).includes('20000000-0000-4000-8000-000000000099'), false);
+});

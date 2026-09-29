@@ -4,6 +4,8 @@
 
 BEGIN;
 DROP TABLE IF EXISTS analytics_private.analytics_v2_revoked_browsers CASCADE;
+DROP TABLE IF EXISTS public.analytics_event_v2_classifications CASCADE;
+DROP TABLE IF EXISTS public.analytics_collection_delivery_counters CASCADE;
 DROP TABLE IF EXISTS public.analytics_posthog_outbox CASCADE;
 DROP TABLE IF EXISTS public.analytics_events_v2 CASCADE;
 DROP TABLE IF EXISTS public.analytics_v2_archived_totals CASCADE;

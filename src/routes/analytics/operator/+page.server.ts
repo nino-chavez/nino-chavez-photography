@@ -15,6 +15,14 @@ type CatalogueEntry = {album_key:string;album_name:string;photo_count:number};
 type AlbumSetting = {album_key:string;visibility:string|null;published_at:string|null};
 type AlbumFact = {album_key:string;sport:string|null;event_date:string|null;event_type?:string|null};
 type CategoryFact = {photo_id:string;album_key:string;photo_category:string|null};
+type V2EvidenceEvent = {event_id:string;event_name:string;occurred_at:string;album_key:string|null;photo_id:string|null;traffic_context:string};
+type V2Correction = {event_id:string;classification:string;classification_version:number;note:string;corrected_at:string;reversed:boolean};
+type MeasurementHealth = {
+	available:boolean; schemaVersion:number | null; pending:number | null; submitted:number | null; confirmed:number | null; failed:number | null;
+	controlPending:number | null; oldestPendingAt:string | null; oldestSubmittedAt:string | null; confirmedWatermark:string | null;
+	accepted:number | null; rejected:number | null; duplicate:number | null; quotaBillingState:'unknown'; eligibleObservations:number | null; eligibleDays:number | null;
+	forecast30Days:number | null; forecastLimit:string;
+};
 async function readAll<T>(page:(from:number)=>PromiseLike<{data:T[]|null;error:unknown}>) {
  const data:T[]=[];
  for(let from=0;;from+=1000){const result=await page(from);if(result.error)return {data:[] as T[],error:result.error};data.push(...(result.data??[]));if((result.data??[]).length<1000)return {data,error:null};}
@@ -22,6 +30,25 @@ async function readAll<T>(page:(from:number)=>PromiseLike<{data:T[]|null;error:u
 
 function validDate(value: string | undefined): value is string {
 	return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00Z`).getTime()) && new Date(`${value}T12:00:00Z`).toISOString().slice(0,10)===value;
+}
+
+function numberOrNull(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function parseMeasurementHealth(value: unknown): MeasurementHealth {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return { available:false, schemaVersion:null, pending:null, submitted:null, confirmed:null, failed:null, controlPending:null, oldestPendingAt:null, oldestSubmittedAt:null, confirmedWatermark:null, accepted:null, rejected:null, duplicate:null, quotaBillingState:'unknown', eligibleObservations:null, eligibleDays:null, forecast30Days:null, forecastLimit:'Delivery health is unavailable. This is not a zero or healthy result.' };
+	const source=value as Record<string,unknown>;
+	const collection=source.collection && typeof source.collection==='object' && !Array.isArray(source.collection) ? source.collection as Record<string,unknown> : {};
+	const eligibleObservations=numberOrNull(source.eligible_observations_14d);
+	const eligibleDays=numberOrNull(source.eligible_days_observed);
+	const forecast30Days=eligibleObservations !== null && eligibleDays !== null && eligibleDays > 0 ? Math.round((eligibleObservations / eligibleDays) * 30) : null;
+	return {
+		available:true, schemaVersion:numberOrNull(source.schema_version), pending:numberOrNull(source.pending), submitted:numberOrNull(source.submitted), confirmed:numberOrNull(source.confirmed), failed:numberOrNull(source.failed), controlPending:numberOrNull(source.control_pending),
+		oldestPendingAt:typeof source.oldest_pending_at==='string'?source.oldest_pending_at:null, oldestSubmittedAt:typeof source.oldest_submitted_at==='string'?source.oldest_submitted_at:null, confirmedWatermark:typeof source.confirmed_watermark==='string'?source.confirmed_watermark:null,
+		accepted:numberOrNull(collection.accepted), rejected:numberOrNull(collection.rejected), duplicate:numberOrNull(collection.duplicate), quotaBillingState:'unknown', eligibleObservations, eligibleDays, forecast30Days,
+		forecastLimit:forecast30Days === null ? 'No forecast is available until eligible observations cover at least one measured day. This does not imply zero traffic.' : `A simple 30-day estimate from ${(eligibleObservations ?? 0).toLocaleString()} eligible observations across ${eligibleDays ?? 0} measured day${eligibleDays===1?'':'s'}. It assumes the observed rate continues; coverage and traffic can change.`
+	};
 }
 
 async function requireOperator(cookies: Parameters<typeof createSupabaseServerClient>[0]) {
@@ -61,9 +88,10 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
  const eventPage=Math.max(0,Math.min(10000,Number.parseInt(url.searchParams.get('event_page')??'0',10)||0));
  const dayAfter=new Date(`${query.end}T12:00:00Z`);dayAfter.setUTCDate(dayAfter.getUTCDate()+1);
  let retainedQuery=admin.from('engagement_events').select('id, album_key, photo_id, event_type, source, created_at, traffic_context').gte('created_at',chicagoDayStart(query.start)).lt('created_at',chicagoDayStart(dayAfter.toISOString().slice(0,10))).order('created_at',{ascending:false}).order('id',{ascending:false});
+	let v2EvidenceQuery=admin.from('analytics_events_v2').select('event_id,event_name,occurred_at,album_key,photo_id,traffic_context').gte('occurred_at',chicagoDayStart(query.start)).lt('occurred_at',chicagoDayStart(dayAfter.toISOString().slice(0,10))).order('occurred_at',{ascending:false}).order('event_id',{ascending:false});
  let noteQuery=admin.from('analytics_sharing_annotations').select('id, album_key, activity_date, channel, note, updated_at').eq('created_by',user?.id ?? '').gte('activity_date',query.start).lte('activity_date',query.end).order('activity_date',{ascending:false});
- if(query.scope!=='all'){retainedQuery=retainedQuery.in('album_key',query.albumKeys);noteQuery=noteQuery.in('album_key',query.albumKeys);}
-	const [report, saved, annotations, albumCatalogue, albumSettings, albumFacets, categoryFacets, correctionLog, retainedEvents] = await Promise.all([
+	if(query.scope!=='all'){retainedQuery=retainedQuery.in('album_key',query.albumKeys);v2EvidenceQuery=v2EvidenceQuery.in('album_key',query.albumKeys);noteQuery=noteQuery.in('album_key',query.albumKeys);}
+	const [report, saved, annotations, albumCatalogue, albumSettings, albumFacets, categoryFacets, correctionLog, retainedEvents, v2CorrectionLog, v2EvidenceEvents, measurementHealthResult] = await Promise.all([
 		buildOperatorReport(admin, query, { publicOnly: true }),
 		user ? admin.from('analytics_saved_reports').select('id, name, query, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false }) : { data: [], error: null },
 		user ? readAll(from=>noteQuery.range(from,from+999)) : { data: [], error: null }
@@ -74,6 +102,10 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		readAll<CategoryFact>(from=>admin.from('photo_metadata').select('photo_id, album_key, photo_category').order('photo_id').range(from,from+999)),
 		user ? admin.from('engagement_classification_corrections').select('id, engagement_event_id, classification, reason_flags, classification_version, note, corrected_at').order('corrected_at', { ascending: false }).limit(30) : { data: [], error: null },
 		user ? retainedQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null }
+		,
+		user ? admin.from('analytics_event_v2_classifications').select('event_id,classification,classification_version,note,corrected_at,reversed').order('corrected_at',{ascending:false}).limit(30) : { data: [], error: null },
+		user ? v2EvidenceQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null },
+		user ? admin.rpc('analytics_posthog_delivery_health') : { data: null, error: null }
 	]);
 	if (albumSettings.error) throw error(503, 'Album visibility could not be verified.');
 	const publicAlbum = (key: string) => !!user || !(albumSettings.data ?? []).some(row => row.album_key === key && row.visibility === 'unlisted');
@@ -104,6 +136,8 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 			{ publicOnly: true, allowedAlbumKeys: publicScopedAlbumKeys }
 		)))
 	]);
+	const queryAsOf = journeys.flatMap((journey) => journey.asOf ? [journey.asOf] : []).sort().at(-1) ?? null;
+	const measurementHealth = measurementHealthResult.error ? parseMeasurementHealth(null) : parseMeasurementHealth(measurementHealthResult.data);
 	const eventById = new Map((retainedEvents.data ?? []).map((event) => [Number(event.id), event]));
 	const missingContextIds = [...new Set((correctionLog.data ?? []).map((correction) => Number(correction.engagement_event_id)))]
 		.filter((id) => !eventById.has(id));
@@ -141,7 +175,13 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		correctionLogAvailable: !correctionLog.error,
 		eventPage, hasMoreEvents: (retainedEvents.data?.length??0)>50,
 		retainedEvents: retainedEvents.error ? [] : (retainedEvents.data ?? []).slice(0,50),
-		retainedEventsAvailable: !retainedEvents.error
+		retainedEventsAvailable: !retainedEvents.error,
+		v2CorrectionLog: v2CorrectionLog.error ? [] : v2CorrectionLog.data ?? [],
+		v2CorrectionLogAvailable: !v2CorrectionLog.error,
+		v2EvidenceEvents: v2EvidenceEvents.error ? [] : (v2EvidenceEvents.data ?? []).slice(0,50) as V2EvidenceEvent[],
+		v2EvidenceEventsAvailable: !v2EvidenceEvents.error,
+		measurementHealth,
+		providerQueryFreshness: { available: journeys.some((journey) => journey.available), asOf: queryAsOf, label: queryAsOf ? `Latest provider query evidence: ${queryAsOf}. This is query freshness, not delivery confirmation.` : 'No provider query freshness is available. This is not a zero-result or healthy provider state.' }
 	};
 };
 
@@ -229,5 +269,25 @@ export const actions: Actions = {
 		});
 		if (undoError) return fail(503, { correctionError: 'The reversal was not recorded. Nothing changed.' });
 		return { correctionUndone: true };
+	},
+	correctV2Classification: async ({ cookies, request }) => {
+		const user = await requireOperator(cookies);
+		const form = await request.formData();
+		const eventId = form.get('eventId')?.toString();
+		const classification = form.get('classification')?.toString();
+		const note = form.get('note')?.toString().trim();
+		const allowed = new Set(['audience', 'operator', 'test', 'known_crawler', 'suspected_automation', 'unclassified', 'self_excluded']);
+		if (!eventId || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(eventId) || !classification || !allowed.has(classification) || !note || note.length > 1000) return fail(400, { v2CorrectionError: 'Use a retained UUID, supported classification, and private evidence of 1–1,000 characters.' });
+		const { error: correctionError } = await createSupabaseAdminClient().rpc('analytics_record_event_v2_classification', { p_event_id:eventId, p_classification:classification, p_note:note, p_corrected_by:user.id, p_reverse:false });
+		if (correctionError) return fail(503, { v2CorrectionError: 'The v2 correction was not recorded. Nothing changed.' });
+		return { v2Corrected:true };
+	},
+	undoV2Classification: async ({ cookies, request }) => {
+		const user = await requireOperator(cookies);
+		const eventId = (await request.formData()).get('eventId')?.toString();
+		if (!eventId || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(eventId)) return fail(400, { v2CorrectionError: 'A valid retained UUID is required.' });
+		const { error: undoError } = await createSupabaseAdminClient().rpc('analytics_record_event_v2_classification', { p_event_id:eventId, p_classification:'unclassified', p_note:'Reversal requested by the operator.', p_corrected_by:user.id, p_reverse:true });
+		if (undoError) return fail(503, { v2CorrectionError: 'The v2 reversal was not recorded. Nothing changed.' });
+		return { v2CorrectionUndone:true };
 	}
 };

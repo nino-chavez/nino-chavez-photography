@@ -5,6 +5,8 @@ export interface PostHogRpcClient {
 	rpc(name: string, args?: Record<string, unknown>): PromiseLike<RpcResult>;
 }
 
+const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+
 function failure(name: string, error: { message?: string } | null): never {
 	throw new Error(`${name} failed${error?.message ? `: ${error.message}` : ''}`);
 }
@@ -53,4 +55,20 @@ export function createPostHogOutboxClient(client: PostHogRpcClient): PostHogOutb
 			return result.data && typeof result.data === 'object' && !Array.isArray(result.data) ? result.data as Record<string, unknown> : {};
 		}
 	};
+}
+
+/**
+ * Provider reconciliation supplies only UUIDs absent from its source-owned
+ * reports. The database enforces grace, age, current classification, and the
+ * durable attempt ceiling before any row becomes pending again.
+ */
+export async function requeueMissingPostHogEvents(client: PostHogRpcClient, eventIds: readonly string[]): Promise<string[]> {
+	const ids = [...new Set(eventIds.filter((id) => UUID.test(id)))].slice(0, 100);
+	if (!ids.length) return [];
+	const result = await client.rpc('analytics_requeue_missing_posthog_events', { p_event_ids: ids });
+	if (result.error) failure('analytics_requeue_missing_posthog_events', result.error);
+	if (!Array.isArray(result.data)) throw new Error('analytics_requeue_missing_posthog_events returned an invalid payload');
+	const requeued = result.data.map((entry) => typeof entry === 'string' ? entry : entry && typeof entry === 'object' ? (entry as { event_id?: unknown }).event_id : null);
+	if (!requeued.every((id): id is string => typeof id === 'string' && UUID.test(id))) throw new Error('analytics_requeue_missing_posthog_events returned an invalid payload');
+	return requeued;
 }

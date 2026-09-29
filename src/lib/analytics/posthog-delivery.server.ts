@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { scrubPostHogProperties } from './posthog-contract';
+import { preparePostHogDelivery } from './posthog-contract';
 import type { PostHogCaptureClient, PostHogOutboxClient } from './posthog.types';
 
 export interface DeliveryResult {
@@ -35,17 +35,14 @@ export async function deliverPostHogBatch(
 			result.skipped += 1;
 			continue;
 		}
-		const properties = scrubPostHogProperties(current);
-		if (!properties) {
+		const delivery = preparePostHogDelivery(current);
+		if (!delivery) {
 			await outbox.finish(row.event_id, 'failed', 'invalid_or_ineligible_envelope');
 			result.skipped += 1;
 			continue;
 		}
 		try {
-			await client.capture({
-				distinctId: current.anonymous_browser_id!, event: current.event_name,
-				timestamp: new Date(current.occurred_at), uuid: current.event_id, properties
-			});
+			await (client as unknown as { capture(event: typeof delivery): Promise<void> }).capture(delivery);
 			await outbox.finish(row.event_id, 'submitted', null);
 			result.submitted += 1;
 			result.submittedEventIds.push(row.event_id);
