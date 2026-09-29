@@ -3,7 +3,7 @@ import { POSTHOG_EVENT_NAMES } from './posthog.types';
 import { EVENT_V2_CONTRACT } from './events-v2';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 /** Only these scalar properties may cross the provider boundary. */
 export const POSTHOG_PROPERTY_ALLOWLIST = new Set([
@@ -36,7 +36,7 @@ function scalar(value: unknown): string | number | boolean | string[] | null {
 
 /** Removes unknown and sensitive properties before the SDK receives the event. */
 export function scrubPostHogProperties(envelope: PostHogEnvelope): Record<string, string | number | boolean | string[]> | null {
-	if (!UUID.test(envelope.event_id) || !ISO_INSTANT.test(envelope.occurred_at) || !ISO_INSTANT.test(envelope.received_at)) return null;
+	if (!UUID.test(envelope.event_id) || !ISO_INSTANT.test(envelope.occurred_at) || !ISO_INSTANT.test(envelope.received_at) || !Number.isFinite(Date.parse(envelope.occurred_at)) || !Number.isFinite(Date.parse(envelope.received_at))) return null;
 	if (!isEventName(envelope.event_name) || !envelope.anonymous_browser_id || envelope.anonymous_browser_id.length > 128 || !envelope.visit_id || envelope.visit_id.length > 128) return null;
 	if (!envelope.export_eligible || envelope.traffic_context !== 'audience') return null;
 	const properties: Record<string, string | number | boolean | string[]> = {
