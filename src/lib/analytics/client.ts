@@ -4,6 +4,7 @@ import { SHARE_SRC, isValidSrcParam, type ShareChannel, type ShareSubject } from
 import { eventPropertiesMatchContract, type EventV2Name, type EventV2Properties } from '$lib/analytics/events-v2';
 import { getAnalyticsPreferences, getVisitContext } from '$lib/analytics/visit';
 import { deliverWithSingleRetry } from '$lib/analytics/delivery';
+import { createExperimentExposureEmitter, type ExperimentAssignment } from '$lib/analytics/experiment-exposure';
 
 export type EngagementType = 'view' | 'favorite' | 'download' | 'share' | 'album_open';
 
@@ -141,10 +142,11 @@ export function startDownloadLifecycle(mode: DownloadMode, target: DownloadTarge
 	};
 }
 
+const emitExperimentExposure = createExperimentExposureEmitter(trackAnalyticsEventV2);
+
 /** Optional flags never break the gallery. Call only after the assigned surface is visible. */
-export function exposeExperiment(assignment: { key?: string; variant?: string } | null | undefined, surface: string, release: string): void {
-	if (!assignment?.key || !assignment.variant || !surface || !release) return;
-	trackAnalyticsEventV2({ eventName: 'experiment_exposed', properties: { experiment_key: assignment.key, variant: assignment.variant, surface, release } });
+export function exposeExperiment(assignment: ExperimentAssignment | null | undefined, surface: string): void {
+	emitExperimentExposure(assignment, surface);
 }
 
 export function trackVisibleGalleryPage(routeKind: string, canonicalPath: string, taggedSource?: string | null): void {

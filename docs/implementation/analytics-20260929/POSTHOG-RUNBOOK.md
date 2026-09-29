@@ -35,6 +35,14 @@ Keep capture, query, schedule, and setup credentials separate. Before binding an
 
 Do not set either enablement binding in local or preview environments. A key and host alone cannot enable capture or provider reads.
 
+## Disabled-by-default album-card experiment plumbing
+
+This repository contains no active experiment. It can evaluate one server-side album-card presentation only after all of these private production bindings are set exactly: `POSTHOG_ENABLED=true`, `POSTHOG_TARGET_ENVIRONMENT=production`, `PHOTOGRAPHY_EXPERIMENTS_ENABLED=true`, `PHOTOGRAPHY_EXPERIMENT_QUOTA_OK=true`, a bounded `PHOTOGRAPHY_EXPERIMENT_KEY`, and `PHOTOGRAPHY_EXPERIMENT_VARIANTS=control,album_card_cta`. The quota acknowledgement is a release check, not a billing change.
+
+The browser receives only the assigned key, allowed variant, and release. The server evaluates with the signed consented browser binding only for audience traffic; operator, test, self-excluded, unconsented, unbound, invalid, unavailable, and quota-failed requests use the unchanged control card. A provider evaluation alone is not an exposure. The existing card visibility observer records one exposure only after the first assigned card has genuinely become visible, and repeated SPA navigation is deduplicated for the same key, variant, release, and surface.
+
+Before any activation, Nino must choose the provider key, write the hypothesis, primary outcome, guardrails, sample-size plan, stopping rule, and a current quota receipt. This plumbing does not create a provider flag, activate an experiment, change billing, configure runtime bindings, or establish hosted rendering or delivery.
+
 ## Reported provider state
 
 The integrating parent verified the following through the provider API on September 29. Safe project metadata is saved in provider-projects.json.

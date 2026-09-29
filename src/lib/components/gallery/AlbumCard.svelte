@@ -7,13 +7,14 @@
 
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { Folder, Camera } from 'lucide-svelte';
+	import { Folder, Camera, ArrowRight } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
 	import { cfImageUrl, cfSrcSet } from '$lib/utils/cloudflare-images';
 	import { exposure } from '$lib/analytics/exposure';
-	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { exposeExperiment, trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { ALBUM_CARD_EXPERIMENT_SURFACE, hasAlbumCardCta, type PhotographyExperimentAssignment } from '$lib/analytics/experiments';
 
 	interface Album {
 		albumKey: string;
@@ -34,9 +35,10 @@
 		resultSetId?: string;
 		onclick?: (album: Album) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images - disables lazy loading
+		experiment?: PhotographyExperimentAssignment | null;
 	}
 
-	let { album, index = 0, resultSetId = crypto.randomUUID(), onclick, priority = false }: Props = $props();
+	let { album, index = 0, resultSetId = crypto.randomUUID(), onclick, priority = false, experiment = null }: Props = $props();
 
 	// Image loading state
 	let imageLoaded = $state(false);
@@ -71,7 +73,10 @@
 		imageLoaded = true;
 		imageError = false;
 	}
-	function recordExposure() { trackAnalyticsEventV2({ eventName: 'album_exposed', properties: { album_key: album.albumKey, position: index, result_set_id: resultSetId } }); }
+	function recordExposure() {
+		trackAnalyticsEventV2({ eventName: 'album_exposed', properties: { album_key: album.albumKey, position: index, result_set_id: resultSetId } });
+		exposeExperiment(experiment, ALBUM_CARD_EXPERIMENT_SURFACE);
+	}
 
 	function handleImageError() {
 		imageError = true;
@@ -147,6 +152,7 @@
 		if ((album.videoCount ?? 0) > 0) parts.push(`${album.videoCount} ${album.videoCount === 1 ? 'video' : 'videos'}`);
 		return parts.join(' · ') || '0 photos';
 	});
+	let showExperimentCta = $derived(hasAlbumCardCta(experiment));
 </script>
 
 <a
@@ -232,6 +238,11 @@
 					</div>
 				{/if}
 			</div>
+			{#if showExperimentCta}
+				<span class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-gold-300 group-hover:text-gold-200">
+					View event <ArrowRight class="h-4 w-4" aria-hidden="true" />
+				</span>
+			{/if}
 		</div>
 	</div>
 

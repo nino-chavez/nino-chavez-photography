@@ -48,6 +48,25 @@ export function createPostHogCaptureClient(config: PostHogRuntimeConfig | null):
 	};
 }
 
+/** Uses the installed official SDK; exposure is emitted through the collector only after visible rendering. */
+export function createPostHogFlagClient(config: PostHogRuntimeConfig | null): PostHogFlagClient | null {
+	if (!config) return null;
+	const client = new PostHog(config.projectApiKey, {
+		host: config.host,
+		flushAt: 1,
+		flushInterval: 0,
+		disableGeoip: true,
+		enableLocalEvaluation: false,
+		fetchRetryCount: 0,
+		requestTimeout: 5_000
+	});
+	return {
+		getFeatureFlag(key, distinctId, options) {
+			return client.getFeatureFlag(key, distinctId, options);
+		}
+	};
+}
+
 export interface ExperimentEvaluation {
 	available: boolean;
 	variant: string | null;

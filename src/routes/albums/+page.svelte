@@ -248,7 +248,7 @@
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each displayAlbums as album, index}
 					<div>
-						<AlbumCard {album} {index} {resultSetId} onclick={handleAlbumClick} priority={index < 4} />
+						<AlbumCard {album} {index} {resultSetId} onclick={handleAlbumClick} priority={index < 4} experiment={index === 0 ? data.experiment : null} />
 						<!-- Date Range Display -->
 						{#if album.dateRange}
 							{@const dateRange = formatDateRange(album.dateRange)}

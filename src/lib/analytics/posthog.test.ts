@@ -3,7 +3,7 @@ import test from 'node:test';
 import { deliverPostHogBatch, hasPostHogScheduleAuthorization } from './posthog-delivery.server';
 import { buildPostHogDashboardQuery, buildPostHogJourneyQuery, evaluatePostHogJourneyFixtures, queryGalleryJourneys, reconcilePostHogEventIds, reconcileSubmittedPostHogEvents, type PostHogFixtureEvent } from './posthog-queries.server';
 import { scrubPostHogProperties } from './posthog-contract';
-import { evaluatePhotographyExperiment, postHogRuntimeConfig } from './posthog.server';
+import { createPostHogFlagClient, evaluatePhotographyExperiment, postHogRuntimeConfig } from './posthog.server';
 import { createPostHogOutboxClient } from './posthog-outbox.server';
 import { EVENT_V2_NAMES } from './events-v2';
 import { POSTHOG_EVENT_NAMES, type PostHogEnvelope, type PostHogOutboxClient, type PostHogOutboxRow } from './posthog.types';
@@ -110,6 +110,7 @@ test('runtime configuration and experiment evaluation fail closed without a vali
 	assert.equal(postHogRuntimeConfig({ POSTHOG_PROJECT_API_KEY: 'key', POSTHOG_HOST: 'https://us.i.posthog.com' }), null);
 	assert.equal(postHogRuntimeConfig({ POSTHOG_ENABLED: 'true', POSTHOG_TARGET_ENVIRONMENT: 'preview', POSTHOG_PROJECT_API_KEY: 'key', POSTHOG_HOST: 'https://us.i.posthog.com' }), null);
 	assert.deepEqual(postHogRuntimeConfig({ POSTHOG_ENABLED: 'true', POSTHOG_TARGET_ENVIRONMENT: 'production', POSTHOG_PROJECT_API_KEY: 'key', POSTHOG_HOST: 'https://us.i.posthog.com/path' }), { projectApiKey: 'key', host: 'https://us.i.posthog.com' });
+	assert.equal(createPostHogFlagClient(null), null);
 	assert.deepEqual(await evaluatePhotographyExperiment(null, 'cover-test', 'browser_123'), { available: false, variant: null, reason: 'disabled' });
 	assert.deepEqual(await evaluatePhotographyExperiment({ getFeatureFlag: async () => { throw new Error('quota'); } }, 'cover-test', 'browser_123'), { available: false, variant: null, reason: 'quota_or_provider_unavailable' });
 	assert.deepEqual(await evaluatePhotographyExperiment({ getFeatureFlag: async () => 'blue' }, 'cover-test', 'browser_123'), { available: true, variant: 'blue', reason: 'evaluated' });

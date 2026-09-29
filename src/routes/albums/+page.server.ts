@@ -1,6 +1,11 @@
 import { error } from '@sveltejs/kit';
 import { supabaseServer, matviewClient } from '$lib/supabase/server';
 import { topPhotoCoverMap } from '$lib/analytics/covers';
+import { resolveAnalyticsContext, resolveAnalyticsReleaseContext } from '$lib/analytics/context.server';
+import { ANALYTICS_IDENTITY_COOKIE, hasLinkedAnalyticsConsent, verifiedAnalyticsIdentityBinding } from '$lib/analytics/preferences-contract';
+import { assignPhotographyExperiment, photographyExperimentConfiguration } from '$lib/analytics/experiments.server';
+import { createPostHogFlagClient, postHogRuntimeConfig } from '$lib/analytics/posthog.server';
+import { env } from '$env/dynamic/private';
 import {
 	buildAlbumListing,
 	listingFacets,
@@ -18,7 +23,7 @@ import type { PageServerLoad } from './$types';
 
 type SortOption = 'name' | 'date' | 'count';
 
-export const load: PageServerLoad = async ({ url, setHeaders }) => {
+export const load: PageServerLoad = async ({ url, setHeaders, request, cookies }) => {
 	// Always fresh so newly-added albums / cover changes show immediately.
 	setHeaders({ 'cache-control': 'no-cache' });
 
@@ -32,6 +37,24 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const year = url.searchParams.get('year')?.trim() || '';
 	const limit = 24;
 	const offset = (page - 1) * limit;
+	// With no complete explicit experiment configuration this does not resolve a
+	// browser identity, read auth state, instantiate the SDK, or make a flag call.
+	const experimentConfig = photographyExperimentConfiguration(env);
+	const postHogConfig = experimentConfig ? postHogRuntimeConfig(env) : null;
+	let experiment = null;
+	if (experimentConfig && postHogConfig) {
+		const trafficContext = await resolveAnalyticsContext(request, cookies);
+		const secret = env.ANALYTICS_IDENTITY_BINDING_SECRET?.trim() || env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+		const result = await assignPhotographyExperiment({
+			configuration: experimentConfig,
+			trafficContext,
+			hasLinkedConsent: hasLinkedAnalyticsConsent(cookies),
+			verifiedBrowserId: verifiedAnalyticsIdentityBinding(cookies.get(ANALYTICS_IDENTITY_COOKIE), secret),
+			release: resolveAnalyticsReleaseContext(env),
+			flagClient: createPostHogFlagClient(postHogConfig)
+		});
+		experiment = result.assignment;
+	}
 
 	// ONE full read of albums_summary, then merge, filter, sort, and paginate IN MEMORY.
 	//
@@ -115,7 +138,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		selectedSport: sport,
 		selectedYear: year,
 		availableSports,
-		availableYears
+		availableYears,
+		experiment
 	};
 };
 
