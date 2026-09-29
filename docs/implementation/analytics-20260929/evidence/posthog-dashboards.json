@@ -1,6 +1,6 @@
 {
   "project": 635867,
-  "observedAt": "2026-09-29T16:51:03.490771+00:00",
+  "observedAt": "2026-09-29T17:30:01.905835+00:00",
   "dashboards": [
     {
       "id": 2149919,
@@ -22,15 +22,19 @@
       "saved": true,
       "dashboards": [
         2149919
-      ]
+      ],
+      "versionedCorrections": true,
+      "queryKind": "DataTableNode"
     },
     {
       "id": 12341794,
-      "name": "Measured return within browser coverage",
+      "name": "Tagged arrivals, return, and subsequent actions",
       "saved": true,
       "dashboards": [
         2149919
-      ]
+      ],
+      "versionedCorrections": true,
+      "queryKind": "DataTableNode"
     },
     {
       "id": 12341793,
@@ -38,7 +42,9 @@
       "saved": true,
       "dashboards": [
         2149918
-      ]
+      ],
+      "versionedCorrections": true,
+      "queryKind": "DataTableNode"
     },
     {
       "id": 12341792,
@@ -46,7 +52,9 @@
       "saved": true,
       "dashboards": [
         2149918
-      ]
+      ],
+      "versionedCorrections": true,
+      "queryKind": "DataTableNode"
     },
     {
       "id": 12341790,
@@ -54,7 +62,9 @@
       "saved": true,
       "dashboards": [
         2149918
-      ]
+      ],
+      "versionedCorrections": true,
+      "queryKind": "DataTableNode"
     },
     {
       "id": 12341788,
@@ -62,7 +72,9 @@
       "saved": true,
       "dashboards": [
         2149918
-      ]
+      ],
+      "versionedCorrections": true,
+      "queryKind": "DataTableNode"
     },
     {
       "id": 12341785,
@@ -70,7 +82,9 @@
       "saved": true,
       "dashboards": [
         2149918
-      ]
+      ],
+      "versionedCorrections": true,
+      "queryKind": "DataTableNode"
     }
   ],
   "passed": true,

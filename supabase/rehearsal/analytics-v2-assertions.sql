@@ -166,6 +166,14 @@ BEGIN
  PERFORM analytics_private.prune_events_v2_at(now());
  IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000014' AND origin='event' AND status='confirmed') THEN RAISE EXCEPTION 'ordinary confirmed receipt expired before raw retention'; END IF;
 
+ -- An excluded leased event loses its ordinary row, but reversal must still mirror.
+ e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000025','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id','30000000-0000-4000-8000-000000000025','visit_id','40000000-0000-4000-8000-000000000025','traffic_context','audience','export_eligible',true,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000025','known_crawler','leased exclusion','50000000-0000-4000-8000-000000000025',false);
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000025') THEN RAISE EXCEPTION 'leased exclusion was not suppressed'; END IF;
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000025','audience','leased reversal','50000000-0000-4000-8000-000000000025',true);
+ IF (SELECT count(*) FROM public.analytics_posthog_outbox WHERE target_event_id='20000000-0000-4000-8000-000000000025')<>2 THEN RAISE EXCEPTION 'leased reversal lost provider mirror'; END IF;
  e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000009','schema_version',2,'event_name','search_results_shown','occurred_at',now()-interval '91 days','anonymous_browser_id',NULL,'visit_id',NULL,'traffic_context','audience','export_eligible',false,'properties',jsonb_build_object('search_id','60000000-0000-4000-8000-000000000009','result_set_id','70000000-0000-4000-8000-000000000009','result_count',0));
  PERFORM public.analytics_accept_event_v2(e);
  e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000010','event_name','search_failed','properties',jsonb_build_object('search_id','60000000-0000-4000-8000-000000000010','error_code','timeout'));
@@ -181,9 +189,9 @@ BEGIN
  SELECT coalesce(sum(event_count),0) INTO archive_total FROM public.analytics_v2_archived_totals;
  PERFORM analytics_private.prune_events_v2_at(now());
  IF (SELECT coalesce(sum(event_count),0) FROM public.analytics_v2_archived_totals)<>archive_total THEN RAISE EXCEPTION 'daily diagnostic aggregate double counted on prune retry'; END IF;
- PERFORM public.analytics_record_collection_delivery(2,'accepted');
- PERFORM public.analytics_record_collection_delivery(2,'rejected');
- PERFORM public.analytics_record_collection_delivery(2,'duplicate');
+ PERFORM public.analytics_record_collection_delivery(2::smallint,'accepted');
+ PERFORM public.analytics_record_collection_delivery(2::smallint,'rejected');
+ PERFORM public.analytics_record_collection_delivery(2::smallint,'duplicate');
  IF public.analytics_posthog_delivery_health()->'collection'->>'accepted' IS NULL THEN RAISE EXCEPTION 'collection counters missing from health'; END IF;
 END $$;
 RESET ROLE;

@@ -46,7 +46,7 @@ for(let batch=0;batch<4 && !ids.every(id=>submitted.has(id));batch++){
 }
 const query=createPostHogQueryTransport({...process.env,POSTHOG_ENABLED:'true',POSTHOG_TARGET_ENVIRONMENT:'production',POSTHOG_HOST:'https://us.i.posthog.com'});
 let reconciliation;
-for(let attempt=0;attempt<6;attempt++){
+for(let attempt=0;attempt<18;attempt++){
  reconciliation=await reconcilePostHogEventIds(query,ids,eventIds=>outbox.confirm(eventIds));
  if(reconciliation.confirmed===ids.length)break;
  await new Promise(resolve=>setTimeout(resolve,5000));

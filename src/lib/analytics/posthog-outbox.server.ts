@@ -49,6 +49,9 @@ export function createPostHogOutboxClient(client: PostHogRpcClient): PostHogOutb
 			const result = await client.rpc('analytics_confirm_posthog_events', { p_event_ids: eventIds });
 			if (result.error) failure('analytics_confirm_posthog_events', result.error);
 		},
+		async requeueMissing(eventIds) {
+			await requeueMissingPostHogEvents(client, eventIds);
+		},
 		async health() {
 			const result = await client.rpc('analytics_posthog_delivery_health');
 			if (result.error) failure('analytics_posthog_delivery_health', result.error);
@@ -58,8 +61,7 @@ export function createPostHogOutboxClient(client: PostHogRpcClient): PostHogOutb
 }
 
 /**
- * Provider reconciliation supplies only UUIDs absent from its source-owned
- * reports. The database enforces grace, age, current classification, and the
+ * Provider reconciliation supplies only UUIDs absent from its direct event lookup. The database enforces grace, age, current classification, and the
  * durable attempt ceiling before any row becomes pending again.
  */
 export async function requeueMissingPostHogEvents(client: PostHogRpcClient, eventIds: readonly string[]): Promise<string[]> {

@@ -79,7 +79,7 @@ It creates or reuses two private dashboards and creates or updates seven fixed a
 - `pending` and due `failed` records are leased by the scheduled relay.
 - Before capture, `analytics_recheck_posthog_event_eligibility` must atomically reload current consent/classification and suppress a withdrawn or reclassified row. A stored payload is not current eligibility proof.
 - An SDK acknowledgement changes a row to `submitted`.
-- `analytics_list_submitted_posthog_event_ids` must return bounded submitted rows from earlier runs as well as the current batch. The read-only query credential searches those UUIDs. Only returned UUIDs become `confirmed`; missing IDs stay submitted and visible as a quota, drop, or ingestion gap.
+- `analytics_list_submitted_posthog_event_ids` must return bounded submitted rows from earlier runs as well as the current batch. The read-only query credential searches those UUIDs. Only returned UUIDs become `confirmed`; missing IDs remain visible as a delivery gap. After a five-minute submission grace period, currently eligible retained rows can be requeued with the same UUID, up to twelve attempts. Checks rotate so terminal missing rows cannot starve newer records. Classification controls use the same receipt checks.
 - The delivery-health RPC exposes bounded counts and oldest pending/submitted age. It must not return an event ID, browser ID, error body, or provider credential.
 - The scheduler response never exposes provider/database error text. A 503 means delivery is unavailable, not zero delivery.
 - Keep retries bounded in the collection RPC. Preserve the original UUID and occurrence time. Do not re-evaluate an experiment while replaying an event.
@@ -89,13 +89,13 @@ It creates or reuses two private dashboards and creates or updates seven fixed a
 
 Fixed named queries are the only provider query surface. Public callers can select a supported report and validated filters through the parent integration; they cannot send HogQL/SQL. Each query applies version, audience, Chicago date, linked visit, and current album visibility before aggregation.
 
-Search result-display events have no album target. Album/content filters therefore select visits that touched matching visible content, then describe their measured journeys. They do not turn a gallery-wide search into an album-specific search. Search selections count one exact visit/search ID after its matching result set; repeat clicks do not increase the numerator, and selections from non-visible albums do not enter it. Zero-result counts use the same exact search IDs as their denominator.
+Search result-display events have no album target. Album/content slices can connect a search only through an exact matching selection. Such a slice is selection-conditioned, so its zero-result total is unavailable and it must not be read as a search success rate. The unsliced report includes zero-result searches. Search selections count one exact visit/search ID after its matching result set; repeat clicks do not increase the numerator, and selections from non-visible albums do not enter it. Zero-result counts use the same exact search IDs as their denominator.
 
 Download requests are keyed by visit and request ID. Mixed-album requests without an album key enter the visible cohort only through visible item events. Requested and prepared item totals come from their item events and inherit mode from the matching request. Cancellation is terminal; only requests with no handoff, failure, or cancellation are unknown.
 
 The return report separates browsers observed before the selected window from browsers with repeated visits inside it. Its prior scan is capped at 90 days. Both measures are bounded by browser-ID retention, storage clearing, and device changes; neither describes a person or proves history before that coverage.
 
-The collector snapshots album sport, event date, photo category and tagged source. Source/content filters select matching visits within the visible catalogue. Journey totals include visible steps within those visits; the first-party album/photo reports retain their action-level filters. The UI explains this distinction.
+The collector snapshots album sport, event date, photo category and tagged source. Content filters match the action and its related target or request. Source filters require a tagged gallery arrival within the same visit; a tag on a later action is not arrival evidence. Cross-photo and hidden-album actions do not convert a visible exposure.
 
 The provider has no catalogue join in these queries. Historical catalogue facts are not backfilled or guessed.
 
@@ -125,3 +125,9 @@ The integrating parent must retain receipts for these checks before delivery is 
 - Submit one event, leave another previously submitted, and confirm the next scheduler run queries both IDs. Force a missing provider ID and verify it remains submitted rather than confirmed or silently dropped.
 - Withdraw analytics permission and reclassify one leased event before delivery. Confirm neither reaches PostHog and both leave an auditable suppressed state.
 - Inspect production project `635866` read-only after authorized activation. Confirm US region, free billing, retention shown by the account, quotas, autocapture off, replay off, private dashboards, and no synthetic test events.
+
+## Correction delivery and local verification
+
+Private versioned corrections create server-only `analytics_classification_changed` records. Official queries select the highest classification version, so late delivery cannot undo a newer decision. A reversal emits a later version. Control records use a fixed system identity and contain no browser, visit, operator identity, or private note. A retained attempted-delivery marker preserves correction behavior even if an in-flight original is suppressed. Raw expiry removes its local delivery evidence; later reclassification is unavailable.
+
+The local database rehearsal, actual collector-to-provider-to-confirmed pipeline, and live negative attribution/correction cases have separate receipts under `evidence/`. They establish synthetic local/provider behavior, not hosted Cloudflare operation or causal photography findings.

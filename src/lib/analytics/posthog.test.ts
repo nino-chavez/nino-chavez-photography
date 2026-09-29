@@ -122,8 +122,8 @@ test('album-use semantics require a visible album and an ordered open, render, t
 	assert.ok(fixed);
 	assert.match(fixed.query, /'Public Album 2026'/);
 	assert.match(fixed.query, /toTimeZone\(timestamp, 'America\/Chicago'\)/);
-	assert.match(fixed.query, /properties\.traffic_context = 'audience'/);
-	assert.match(fixed.query, /album_renders AS/);
+	assert.match(fixed.query, /properties\.traffic_context IN \('audience', 'unclassified'\)/);
+	assert.match(fixed.query, /PARTITION BY visit_id, album_key/);
 	const totals = evaluatePostHogJourneyFixtures(query, ['Public Album 2026', 'Private Album'], [
 		observed('photo_rendered', '2026-09-10T09:59:00Z', 'ordered', { album_key: 'Public Album 2026', photo_id: 'p0' }),
 		observed('album_opened', '2026-09-10T10:00:00Z', 'ordered', { album_key: 'Public Album 2026' }),
@@ -328,8 +328,8 @@ test('source return reports tagged arrivals and only subsequent relevant actions
 		subsequent_album_open_visits: 1, subsequent_photo_open_visits: 1,
 		subsequent_download_request_visits: 1, subsequent_favorite_visits: 1
 	});
-	assert.match(buildPostHogJourneyQuery(query, ['Album A'])!.query, /source_breakdown/);
-	assert.match(buildPostHogJourneyQuery(query, ['Album A'])!.query, /LIMIT 20/);
+	assert.match(buildPostHogJourneyQuery(query, ['Album A'])!.query, /GROUP BY arrival_source/);
+	assert.match(buildPostHogJourneyQuery(query, ['Album A'])!.query, /LIMIT 21/);
 });
 
 test('journey results retain their real denominators and remain unavailable on provider failure', async () => {
@@ -400,4 +400,16 @@ test('reconciliation requeues only provider-missing IDs after a successful query
 	const unavailable = await reconcilePostHogEventIds({ query: async () => { throw new Error('timeout'); } }, [missingId], async () => {}, async (ids) => { requeued.push(ids); });
 	assert.deepEqual(unavailable, { available: false, requested: 1, confirmed: 0, missing: 1 });
 	assert.deepEqual(requeued, [[missingId]]);
+});
+
+test('content-sliced search cannot claim zero-result coverage or an unbiased denominator', async () => {
+ const result=await queryGalleryJourneys({query:async()=>({columns:['searches_shown','zero_result_searches','selected_searches','selection_duration_ms'],results:[[1,0,1,200]]})}, {report:'search_usefulness',start:'2026-09-01',end:'2026-09-02',category:'action'}, {publicOnly:true,allowedAlbumKeys:['Album A']});
+ assert.equal(result.available,true);
+ assert.equal(result.totals.zero_result_searches,null);
+ assert.match(result.coverage.metadata,/Do not interpret this subset as a search success rate/);
+});
+
+test('source overall totals do not depend on UNION response order',async()=>{
+ const result=await queryGalleryJourneys({query:async()=>({columns:['row_kind','source','measured_browsers'],results:[['source','instagram',1],['overall','',4]]})}, {report:'sources_return',start:'2026-09-01',end:'2026-09-02'}, {publicOnly:true,allowedAlbumKeys:['Album A']});
+ assert.equal(result.totals.measured_browsers,4);
 });

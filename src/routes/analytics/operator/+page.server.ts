@@ -16,7 +16,6 @@ type AlbumSetting = {album_key:string;visibility:string|null;published_at:string
 type AlbumFact = {album_key:string;sport:string|null;event_date:string|null;event_type?:string|null};
 type CategoryFact = {photo_id:string;album_key:string;photo_category:string|null};
 type V2EvidenceEvent = {event_id:string;event_name:string;occurred_at:string;album_key:string|null;photo_id:string|null;traffic_context:string};
-type V2Correction = {event_id:string;classification:string;classification_version:number;note:string;corrected_at:string;reversed:boolean};
 type MeasurementHealth = {
 	available:boolean; schemaVersion:number | null; pending:number | null; submitted:number | null; confirmed:number | null; failed:number | null;
 	controlPending:number | null; oldestPendingAt:string | null; oldestSubmittedAt:string | null; confirmedWatermark:string | null;
@@ -47,7 +46,7 @@ function parseMeasurementHealth(value: unknown): MeasurementHealth {
 		available:true, schemaVersion:numberOrNull(source.schema_version), pending:numberOrNull(source.pending), submitted:numberOrNull(source.submitted), confirmed:numberOrNull(source.confirmed), failed:numberOrNull(source.failed), controlPending:numberOrNull(source.control_pending),
 		oldestPendingAt:typeof source.oldest_pending_at==='string'?source.oldest_pending_at:null, oldestSubmittedAt:typeof source.oldest_submitted_at==='string'?source.oldest_submitted_at:null, confirmedWatermark:typeof source.confirmed_watermark==='string'?source.confirmed_watermark:null,
 		accepted:numberOrNull(collection.accepted), rejected:numberOrNull(collection.rejected), duplicate:numberOrNull(collection.duplicate), quotaBillingState:'unknown', eligibleObservations, eligibleDays, forecast30Days,
-		forecastLimit:forecast30Days === null ? 'No forecast is available until eligible observations cover at least one measured day. This does not imply zero traffic.' : `A simple 30-day estimate from ${(eligibleObservations ?? 0).toLocaleString()} eligible observations across ${eligibleDays ?? 0} measured day${eligibleDays===1?'':'s'}. It assumes the observed rate continues; coverage and traffic can change.`
+		forecastLimit:forecast30Days === null ? 'No forecast is available until eligible observations cover at least one measured day. This does not imply zero traffic.' : `A simple 30-day estimate from ${(eligibleObservations ?? 0).toLocaleString()} eligible observations across ${eligibleDays ?? 0} days with eligible activity. Days with no eligible events are excluded, so this active-day estimate may overstate a calendar-month total; partial days and traffic changes add uncertainty.`
 	};
 }
 

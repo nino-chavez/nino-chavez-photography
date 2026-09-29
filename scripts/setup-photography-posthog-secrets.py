@@ -2,7 +2,7 @@
 """Store photography PostHog project capture keys in 1Password; never print keys.
 Run in a PTY for the desktop-authorized write path. Does not enable collection.
 """
-import argparse, json, os, subprocess, urllib.request, uuid
+import argparse, json, os, subprocess, urllib.request, uuid, secrets
 parser=argparse.ArgumentParser()
 parser.add_argument('--apply',action='store_true')
 args=parser.parse_args()
@@ -28,7 +28,7 @@ def make_item(title,values):
     value=json.loads(json.dumps(template));value['title']=title
     for field in value['fields']:
         if field['id'] in values:field['value']=values.pop(field['id'])
-    value['fields'] += [{'id':name,'label':name,'type':'STRING','value':str(v)} for name,v in values.items()]
+    value['fields'] += [{'id':name,'label':name,'type':('CONCEALED' if name in {'schedule_token','identity_binding_secret'} else 'STRING'),'value':str(v)} for name,v in values.items()]
     return value
 
 # Disposable canary verifies the authorized writer and read-only consumer.
@@ -43,6 +43,8 @@ for title,project in projects.items():
     request=urllib.request.Request(f'https://us.posthog.com/api/projects/{project}/',headers={'Authorization':'Bearer '+key})
     with urllib.request.urlopen(request,timeout=20) as response: data=json.load(response)
     token=data['api_token']
-    created=op(['item','create','--vault','Developer Secrets','--format','json'],True,make_item(title,{'credential':token,'hostname':'https://us.i.posthog.com','project_id':str(project),'notesPlain':'Capture key only. Query access requires a separate project-scoped read-only credential. No personal or cross-project management key is stored here.'}))
+    created=op(['item','create','--vault','Developer Secrets','--format','json'],True,make_item(title,{'credential':token,'hostname':'https://us.i.posthog.com','project_id':str(project),'schedule_token':secrets.token_urlsafe(32),'identity_binding_secret':secrets.token_urlsafe(32),'notesPlain':'Capture key only. Query access requires a separate project-scoped read-only credential. No personal or cross-project management key is stored here.'}))
     assert op(['read',f'op://Developer Secrets/{created["id"]}/credential'])==token
+    for field in ['schedule_token','identity_binding_secret']:
+        assert len(op(['read',f'op://Developer Secrets/{created["id"]}/{field}'])) >= 43
     print(title+': capture key saved and read-back verified')

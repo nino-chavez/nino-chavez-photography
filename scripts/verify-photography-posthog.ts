@@ -14,7 +14,7 @@ const query={async query(body:unknown):Promise<any> {
  if(result.results)return result;
  const id=result.query_status?.id;
  if(!id)throw Error('query status absent');
- for(let attempt=0;attempt<20;attempt++){
+ for(let attempt=0;attempt<60;attempt++){
   await new Promise(resolve=>setTimeout(resolve,700));
   const poll=await fetch('https://us.posthog.com/api/projects/'+project+'/query/'+id+'/',{headers,signal:AbortSignal.timeout(15000)});
   if(!poll.ok)throw Error('query status '+poll.status+' '+(await poll.text()).slice(0,2200));
@@ -60,7 +60,7 @@ const providerIds:any=await query.query({query:{kind:'HogQLQuery',query:`SELECT 
 const runtimeTransport=createPostHogQueryTransport({...process.env,POSTHOG_ENABLED:'true',POSTHOG_TARGET_ENVIRONMENT:'production',POSTHOG_HOST:'https://us.i.posthog.com'});
 receipt.reconciliation=await reconcilePostHogEventIds(runtimeTransport,providerIds.results.map((row:any[])=>row[0]),async()=>{});
 const expected:Record<string,number[]>={discovery:[1,1,1,0],album_use:[1,1,1],search_usefulness:[1,0,1],download_reliability:[1,1,1,0,0,0,1,0,0,1,1,1,1,0,0,0,0],photo_response:[1,1],sources_return:[1,0,0],experiments:[0,0,0]};
-receipt.passed=receipt.queried && receipt.reconciliation.confirmed===names.length && Number(receipt.providerCounts?.[0]?.[0])===names.length && Object.entries(receipt.queries).every(([name,value]:[string,any])=>!value.error && expected[name].every((n,i)=>value.results?.[0]?.[i]===n));
+receipt.passed=receipt.queried && receipt.reconciliation.confirmed===names.length && Number(receipt.providerCounts?.[0]?.[0])===names.length && Object.entries(receipt.queries).every(([name,value]:[string,any])=>!value.error && expected[name].every((n,i)=>value.results?.find((row:any[])=>name!=='sources_return'||row[0]==='overall')?.[i+(name==='sources_return'?2:0)]===n));
 receipt.filtered=process.env.POSTHOG_VERIFY_FILTERS==='true';
 writeFileSync('docs/implementation/analytics-20260929/evidence/posthog-test.json',JSON.stringify(receipt,null,2)+'\n');
 console.log(JSON.stringify(receipt,null,2));

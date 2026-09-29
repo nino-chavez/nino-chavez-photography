@@ -2,6 +2,9 @@
 -- Review and apply through the normal Supabase migration workflow; this file does not apply itself.
 BEGIN;
 
+ALTER TABLE public.analytics_events_v2 ADD COLUMN posthog_attempted_at timestamptz;
+UPDATE public.analytics_events_v2 e SET posthog_attempted_at=coalesce(o.submitted_at,e.received_at) FROM public.analytics_posthog_outbox o WHERE o.event_id=e.event_id AND o.attempts>0;
+
 ALTER TABLE public.analytics_posthog_outbox DROP CONSTRAINT IF EXISTS analytics_posthog_outbox_event_id_fkey;
 ALTER TABLE public.analytics_posthog_outbox
   ADD COLUMN origin text NOT NULL DEFAULT 'event' CHECK (origin IN ('event','classification_control')),
@@ -87,10 +90,10 @@ BEGIN
 
   -- A lease means a worker may already be transmitting the original event. Capture
   -- that fact before changing queued receipts so a correction is never stranded.
-  SELECT EXISTS(
+  SELECT event_row.posthog_attempted_at IS NOT NULL OR EXISTS(
     SELECT 1 FROM public.analytics_posthog_outbox
     WHERE event_id = p_event_id AND origin = 'event'
-      AND (status IN ('submitted','confirmed') OR locked_until IS NOT NULL)
+      AND (status IN ('submitted','confirmed') OR attempts > 0 OR locked_until IS NOT NULL)
   ) INTO delivery_potentially_attempted;
   eligible_for_export := event_row.export_eligible
     AND event_row.traffic_context = 'audience'
@@ -158,9 +161,11 @@ BEGIN
     )
   ORDER BY o.next_attempt_at,o.event_id FOR UPDATE OF o SKIP LOCKED
   LIMIT LEAST(GREATEST(p_limit,1),100)
- ) UPDATE public.analytics_posthog_outbox o
+ ), delivered AS (UPDATE public.analytics_posthog_outbox o
  SET locked_until=now()+make_interval(secs=>LEAST(GREATEST(p_lease_seconds,1),300)),attempts=o.attempts+1
- FROM claimed WHERE o.event_id=claimed.event_id RETURNING o.event_id,o.payload,o.attempts;
+ FROM claimed WHERE o.event_id=claimed.event_id RETURNING o.event_id,o.payload,o.attempts), marked AS (
+ UPDATE public.analytics_events_v2 e SET posthog_attempted_at=coalesce(e.posthog_attempted_at,now()) FROM delivered d WHERE e.event_id=d.event_id RETURNING e.event_id
+ ) SELECT d.event_id,d.payload,d.attempts FROM delivered d;
 END $$;
 
 -- A submitted receipt records the most recent provider handoff. Reconciliations

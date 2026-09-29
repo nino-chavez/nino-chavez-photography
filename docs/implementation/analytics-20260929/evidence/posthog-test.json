@@ -109,15 +109,44 @@
     },
     "sources_return": {
       "columns": [
+        "row_kind",
+        "source",
         "measured_browsers",
         "before_window_returning_browsers",
-        "repeated_visit_browsers_in_window"
+        "repeated_visit_browsers_in_window",
+        "tagged_arrival_visits",
+        "tagged_arrival_browsers",
+        "subsequent_album_open_visits",
+        "subsequent_photo_open_visits",
+        "subsequent_download_request_visits",
+        "subsequent_favorite_visits"
       ],
       "results": [
         [
+          "overall",
+          "",
           1,
           0,
-          0
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          "source",
+          "rehearsal",
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
         ]
       ]
     },
@@ -136,7 +165,7 @@
       ]
     }
   },
-  "observedAt": "2026-09-29T16:53:20.877Z",
+  "observedAt": "2026-09-29T17:22:39.476Z",
   "providerCounts": [
     [
       14,

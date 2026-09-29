@@ -1,17 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-29T16:51:40.537Z",
-  "reviewedBy": "Codex parent with independent cold visual review",
-  "method": "Parent inspected desktop 1440x1000 and phone 390x844 captures of the changed analytics workspace, selected album, photo modal, table and corrections. Synthetic records and representative images are visibly labeled; no production-data accuracy is inferred. Independent cold review found two mobile table issues; parent fixed them and opened fresh captures. Browser tests verify public boundaries, filters, CSV, notes, saved reports, shortlist, correction reversal, modal return and sideways scrolling. Collection tests exercise actual senders and consent binding. Measurement-only edits elsewhere do not claim a new visual review of unrelated gallery screens. Evidence: docs/implementation/analytics-20260929/evidence/cold-review.md.",
-  "sourceDigest": "sha256:668b333be094a92726bec9d84ac32d6cd861b372bdca9e51263a5aba2ee71a4c",
+  "reviewedAt": "2026-09-29T17:30:02.052Z",
+  "reviewedBy": "Codex parent",
+  "method": "Opened desktop and phone captures plus Playwright observed journeys; cold whole-screen review and follow-up sections reviewed separately",
+  "sourceDigest": "sha256:a4bd9d629b67761ae3b2b912258e52816ec65ddf2c0071113bc801f380973945",
   "sourceFiles": 147,
   "scope": [
-    "src/routes/analytics",
-    "src/lib/components/analytics",
-    "src/lib/analytics",
-    "src/routes/api/analytics",
-    "src/lib/components/gallery",
-    "src/routes/explore"
+    "Analytics overview, albums, photo drilldown, source unavailable state, delivery health, private notes and traffic correction forms at 1440 and 390 CSS pixels. Synthetic local data only; populated linked source table and hosted production not verified."
   ]
 }

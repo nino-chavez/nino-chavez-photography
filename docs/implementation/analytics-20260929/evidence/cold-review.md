@@ -15,3 +15,11 @@ Behavior limits: [review.spec.ts](/Users/nino/.codex/worktrees/analytics-clarity
 ## Parent resolution
 
 Added a visible sideways-scroll instruction above album comparisons. Combined the photo thumbnail, reference and shortlist control into the sticky photo-table column. Re-ran phone captures and personally opened the corrected album and photo-table frames. The photo section link now has a browser assertion that its heading enters the viewport. This does not claim production data accuracy.
+
+## Follow-up cold review — source and health additions
+
+Pass — no concrete visual blockers in the four supplied captures.
+
+Status language separates zero, pending, submitted, confirmed, unavailable, and unresolved clearly. Text is legible on phone and desktop, with no visible app-content overlap or clipping.
+
+Limit: this review covers only synthetic local captures with unavailable provider-linked panels. It does not verify a populated source table, live provider freshness, action completion, or hosted acceptance.
