@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-29T17:30:02.052Z",
-  "reviewedBy": "Codex parent",
-  "method": "Opened desktop and phone captures plus Playwright observed journeys; cold whole-screen review and follow-up sections reviewed separately",
-  "sourceDigest": "sha256:a4bd9d629b67761ae3b2b912258e52816ec65ddf2c0071113bc801f380973945",
-  "sourceFiles": 147,
+  "reviewedAt": "2026-09-29T19:21:20.160Z",
+  "reviewedBy": "Codex parent and independent cold reviewer",
+  "method": "Local synthetic desktop and phone browser walk, report interactions, theme meta check, and cold screenshot review",
+  "sourceDigest": "sha256:171f509531d3b47921d59818ab32acd9c8dd52094fa6ce03955094a68406e057",
+  "sourceFiles": 146,
   "scope": [
-    "Analytics overview, albums, photo drilldown, source unavailable state, delivery health, private notes and traffic correction forms at 1440 and 390 CSS pixels. Synthetic local data only; populated linked source table and hosted production not verified."
+    "Analytics Overview, Albums, Photos, Sources, Measurement, and Preferences at desktop and phone widths; local synthetic data only; hosted production to verify after deployment"
   ]
 }
