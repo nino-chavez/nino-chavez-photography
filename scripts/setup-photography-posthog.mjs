@@ -18,11 +18,13 @@ const visibleAlbumKeys = argumentsFor('--album-key');
 const dashboards = [
 	{
 		name: 'Photography: journeys and reliability',
-		description: 'Version-2, eligible-audience journey measures. Provider delivery is not collection truth; compare with first-party reconciliation.'
+		description: 'Version-2, eligible-audience journey measures. Provider delivery is not collection truth; compare with first-party reconciliation.',
+		is_shared: false
 	},
 	{
 		name: 'Photography: distribution and experiments',
-		description: 'Measured browser return and observed experiment exposure. No experiment is activated by this setup.'
+		description: 'Tagged-arrival return and subsequent gallery actions, plus observed experiment exposure. No experiment is activated by this setup.',
+		is_shared: false
 	}
 ];
 
@@ -32,7 +34,7 @@ const insights = [
 	{ dashboard: dashboards[0].name, name: 'Search usefulness', legacyNames: [], report: 'search_usefulness' },
 	{ dashboard: dashboards[0].name, name: 'Download reliability', legacyNames: [], report: 'download_reliability' },
 	{ dashboard: dashboards[0].name, name: 'Photograph response', legacyNames: [], report: 'photo_response' },
-	{ dashboard: dashboards[1].name, name: 'Measured return within browser coverage', legacyNames: ['Distribution and return'], report: 'sources_return' },
+	{ dashboard: dashboards[1].name, name: 'Tagged arrivals, return, and subsequent actions', legacyNames: ['Distribution and return', 'Measured return within browser coverage'], report: 'sources_return' },
 	{ dashboard: dashboards[1].name, name: 'Experiment exposure and guardrails', legacyNames: [], report: 'experiments' }
 ];
 

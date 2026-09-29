@@ -188,7 +188,7 @@ test('search semantics count exact search IDs once and hide selections from non-
 	]);
 	assert.deepEqual(totals, { searches_shown: 3, zero_result_searches: 1, selected_searches: 1, selection_duration_ms: 1000 });
 	assert.match(buildPostHogJourneyQuery(query, ['Public Album'])!.query, /selected_searches AS/);
-	assert.match(buildPostHogJourneyQuery({ ...query, albumKeys: ['Public Album'] }, ['Public Album'])!.query, /cohort|visit_id IN/);
+	assert.match(buildPostHogJourneyQuery({ ...query, albumKeys: ['Public Album'] }, ['Public Album'])!.query, /visible_search_selections/);
 });
 
 test('download semantics scope request IDs by visit, derive item totals by mode, and make cancellation terminal', () => {
@@ -248,8 +248,88 @@ test('return semantics separate prior-window browsers from repeat visits and cap
 		observed('gallery_page_viewed', '2026-05-01T12:00:00Z', 'expired-old', {}, 'expired-browser'),
 		observed('gallery_page_viewed', '2026-09-15T12:00:00Z', 'expired-current', {}, 'expired-browser')
 	]);
-	assert.deepEqual(totals, { measured_browsers: 4, before_window_returning_browsers: 1, repeated_visit_browsers_in_window: 1 });
+	assert.deepEqual(totals, {
+		measured_browsers: 4, before_window_returning_browsers: 1, repeated_visit_browsers_in_window: 1,
+		tagged_arrival_visits: 0, tagged_arrival_browsers: 0,
+		subsequent_album_open_visits: 0, subsequent_photo_open_visits: 0,
+		subsequent_download_request_visits: 0, subsequent_favorite_visits: 0
+	});
 	assert.equal(buildPostHogJourneyQuery({ ...query, start: '2026-01-01' }, ['Public Album']), null);
+});
+
+test('slice filters retain only the matching target and tagged-arrival source visit', () => {
+	const album = 'Album A';
+	const query = { report: 'album_use' as const, start: '2026-09-01', end: '2026-09-30', albumKeys: [album], source: 'instagram', category: 'action' };
+	const totals = evaluatePostHogJourneyFixtures(query, [album, 'Album B', 'Private Album'], [
+		observed('gallery_page_viewed', '2026-09-10T10:00:00Z', 'tagged', { tagged_source: 'instagram' }),
+		observed('album_opened', '2026-09-10T10:00:01Z', 'tagged', { album_key: album, album_sport: 'volleyball', photo_category: 'action' }),
+		observed('photo_rendered', '2026-09-10T10:00:02Z', 'tagged', { album_key: album, photo_id: 'a1', album_sport: 'volleyball', photo_category: 'action' }),
+		observed('favorite_added', '2026-09-10T10:00:03Z', 'tagged', { album_key: 'Album B', photo_id: 'b1', album_sport: 'volleyball', photo_category: 'action' }),
+		observed('favorite_added', '2026-09-10T10:00:04Z', 'tagged', { album_key: album, photo_id: 'portrait', album_sport: 'volleyball', photo_category: 'portrait' }),
+		observed('favorite_added', '2026-09-10T10:00:05Z', 'tagged', { album_key: album, photo_id: 'a1', album_sport: 'volleyball', photo_category: 'action' }),
+		observed('gallery_page_viewed', '2026-09-10T11:00:00Z', 'pretender', {}),
+		observed('album_opened', '2026-09-10T11:00:01Z', 'pretender', { album_key: album, album_sport: 'volleyball', photo_category: 'action' }),
+		observed('photo_rendered', '2026-09-10T11:00:02Z', 'pretender', { album_key: album, photo_id: 'a2', album_sport: 'volleyball', photo_category: 'action' }),
+		observed('favorite_added', '2026-09-10T11:00:03Z', 'pretender', { album_key: album, photo_id: 'a2', tagged_source: 'instagram', album_sport: 'volleyball', photo_category: 'action' }),
+		observed('album_opened', '2026-09-10T12:00:00Z', 'hidden', { album_key: 'Private Album', album_sport: 'volleyball', photo_category: 'action' })
+	]);
+	assert.deepEqual(totals, { album_open_visits: 1, photo_render_visits: 1, album_action_visits: 1 });
+	const sql = buildPostHogJourneyQuery(query, [album, 'Album B'])!.query;
+	assert.match(sql, /tagged_arrivals/);
+	assert.match(sql, /source = 'instagram'/);
+	assert.match(sql, /photo_category = 'action'/);
+	assert.doesNotMatch(sql, /minIfOrNull|toInt64OrZero/);
+});
+
+test('search displays use the matched visit/search/result set while selections remain visible-target only', () => {
+	const query = { report: 'search_usefulness' as const, start: '2026-09-01', end: '2026-09-30', albumKeys: ['Album A'] };
+	const totals = evaluatePostHogJourneyFixtures(query, ['Album A', 'Private Album'], [
+		observed('search_results_shown', '2026-09-10T10:00:00Z', 'v', { search_id: 's1', result_set_id: 'r1', result_count: 12 }),
+		observed('search_result_selected', '2026-09-10T10:00:01Z', 'v', { search_id: 's1', result_set_id: 'r1', album_key: 'Private Album', photo_id: 'private', position: 1 }),
+		observed('search_result_selected', '2026-09-10T10:00:02Z', 'v', { search_id: 's1', result_set_id: 'r1', album_key: 'Album A', photo_id: 'a1', position: 2 }),
+		observed('search_results_shown', '2026-09-10T10:01:00Z', 'v', { search_id: 's1', result_set_id: 'r2', result_count: 0 }),
+		observed('search_result_selected', '2026-09-10T10:01:01Z', 'v', { search_id: 's1', result_set_id: 'r2', album_key: 'Private Album', photo_id: 'private', position: 1 })
+	]);
+	assert.deepEqual(totals, { searches_shown: 1, zero_result_searches: 0, selected_searches: 1, selection_duration_ms: 2000 });
+	assert.match(buildPostHogJourneyQuery(query, ['Album A'])!.query, /visible_search_selections/);
+});
+
+test('latest provider correction version controls source-query inclusion regardless of delivery order', () => {
+	const original = { ...observed('photo_exposed', '2026-09-10T10:00:00Z', 'v', { album_key: 'Album A', photo_id: 'a1' }), eventId: 'original-a' };
+	const classified = (version: number, classification: string, timestamp: string): PostHogFixtureEvent => ({
+		event: 'analytics_classification_changed', eventId: `control-${version}`, timestamp, distinctId: 'operator',
+		properties: { target_event_id: 'original-a', classification_version: version, classification }
+	});
+	const query = { report: 'photo_response' as const, start: '2026-09-01', end: '2026-09-30' };
+	assert.deepEqual(evaluatePostHogJourneyFixtures(query, ['Album A'], [original, classified(4, 'audience', '2026-09-01T00:00:00Z'), classified(3, 'operator', '2026-09-30T00:00:00Z')]), { eligible_photo_exposures: 1, later_photo_actions: 0 });
+	assert.deepEqual(evaluatePostHogJourneyFixtures(query, ['Album A'], [original, classified(4, 'operator', '2026-09-01T00:00:00Z'), classified(5, 'unclassified', '2026-09-02T00:00:00Z')]), { eligible_photo_exposures: 1, later_photo_actions: 0 });
+	assert.deepEqual(evaluatePostHogJourneyFixtures(query, ['Album A'], [original, classified(6, 'self_excluded', '2026-09-01T00:00:00Z')]), { eligible_photo_exposures: 0, later_photo_actions: 0 });
+	const sql = buildPostHogJourneyQuery(query, ['Album A'])!.query;
+	assert.match(sql, /analytics_classification_changed/);
+	assert.match(sql, /argMax\(toString\(properties\.classification\), toIntOrZero/);
+	assert.match(sql, /'audience', 'unclassified'/);
+});
+
+test('source return reports tagged arrivals and only subsequent relevant actions', () => {
+	const query = { report: 'sources_return' as const, start: '2026-09-10', end: '2026-09-20', albumKeys: ['Album A'] };
+	const totals = evaluatePostHogJourneyFixtures(query, ['Album A', 'Private Album'], [
+		observed('gallery_page_viewed', '2026-09-09T10:00:00Z', 'old', {}, 'browser-returning'),
+		observed('album_opened', '2026-09-09T10:00:01Z', 'old', { album_key: 'Album A' }, 'browser-returning'),
+		observed('gallery_page_viewed', '2026-09-11T10:00:00Z', 'tagged', { tagged_source: 'instagram' }, 'browser-returning'),
+		observed('album_opened', '2026-09-11T10:00:01Z', 'tagged', { album_key: 'Album A' }, 'browser-returning'),
+		observed('photo_opened', '2026-09-11T10:00:02Z', 'tagged', { album_key: 'Album A', photo_id: 'a1' }, 'browser-returning'),
+		observed('favorite_added', '2026-09-11T10:00:03Z', 'tagged', { album_key: 'Album A', photo_id: 'a1' }, 'browser-returning'),
+		observed('download_item_requested', '2026-09-11T10:00:04Z', 'tagged', { album_key: 'Album A', photo_id: 'a1', download_request_id: 'd1' }, 'browser-returning'),
+		observed('favorite_added', '2026-09-11T10:00:05Z', 'tagged', { album_key: 'Private Album', photo_id: 'secret' }, 'browser-returning')
+	]);
+	assert.deepEqual(totals, {
+		measured_browsers: 1, before_window_returning_browsers: 1, repeated_visit_browsers_in_window: 0,
+		tagged_arrival_visits: 1, tagged_arrival_browsers: 1,
+		subsequent_album_open_visits: 1, subsequent_photo_open_visits: 1,
+		subsequent_download_request_visits: 1, subsequent_favorite_visits: 1
+	});
+	assert.match(buildPostHogJourneyQuery(query, ['Album A'])!.query, /source_breakdown/);
+	assert.match(buildPostHogJourneyQuery(query, ['Album A'])!.query, /LIMIT 20/);
 });
 
 test('journey results retain their real denominators and remain unavailable on provider failure', async () => {
@@ -263,6 +343,30 @@ test('journey results retain their real denominators and remain unavailable on p
 	const unavailable = await queryGalleryJourneys({ query: async () => { throw new Error('timeout'); } }, query, { publicOnly: true, allowedAlbumKeys: ['album-a'] });
 	assert.equal(unavailable.available, false);
 	assert.deepEqual(unavailable.totals, { eligible_photo_exposures: null, later_photo_actions: null });
+});
+
+test('source-return provider rows expose only bounded source aggregates', async () => {
+	const response = {
+		columns: ['row_kind', 'source', 'measured_browsers', 'before_window_returning_browsers', 'repeated_visit_browsers_in_window', 'tagged_arrival_visits', 'tagged_arrival_browsers', 'subsequent_album_open_visits', 'subsequent_photo_open_visits', 'subsequent_download_request_visits', 'subsequent_favorite_visits'],
+		results: [
+			['overall', '', 4, 1, 2, 3, 3, 2, 2, 1, 1],
+			['source', 'instagram', 2, 1, 1, 2, 2, 1, 1, 1, 1],
+			['source', 'x'.repeat(33), 1, 0, 0, 1, 1, 0, 0, 0, 0]
+		]
+	};
+	const result = await queryGalleryJourneys({ query: async () => response }, { report: 'sources_return', start: '2026-09-10', end: '2026-09-20' }, { publicOnly: true, allowedAlbumKeys: ['album-a'] });
+	assert.deepEqual(result.totals, {
+		measured_browsers: 4, before_window_returning_browsers: 1, repeated_visit_browsers_in_window: 2,
+		tagged_arrival_visits: 3, tagged_arrival_browsers: 3,
+		subsequent_album_open_visits: 2, subsequent_photo_open_visits: 2,
+		subsequent_download_request_visits: 1, subsequent_favorite_visits: 1
+	});
+	assert.deepEqual(result.breakdown, [{
+		source: 'instagram', tagged_arrival_visits: 2, measured_browsers: 2,
+		before_window_returning_browsers: 1, repeated_visit_browsers_in_window: 1,
+		subsequent_album_open_visits: 1, subsequent_photo_open_visits: 1,
+		subsequent_download_request_visits: 1, subsequent_favorite_visits: 1
+	}]);
 });
 
 test('reconciliation only confirms returned provider UUIDs', async () => {
@@ -283,4 +387,17 @@ test('scheduler reconciliation checks the durable submitted backlog and leaves p
 	const outcome = await reconcileSubmittedPostHogEvents({ query: async () => ({ results: [[eventId]] }) }, outbox);
 	assert.deepEqual(outcome, { available: true, requested: 2, confirmed: 1, missing: 1 });
 	assert.deepEqual(confirmed, [[eventId]]);
+});
+
+test('reconciliation requeues only provider-missing IDs after a successful query', async () => {
+	const missingId = '550e8400-e29b-41d4-a716-446655440002';
+	const requeued: string[][] = [];
+	const confirmed: string[][] = [];
+	const success = await reconcilePostHogEventIds({ query: async () => ({ results: [[eventId]] }) }, [eventId, missingId], async (ids) => { confirmed.push(ids); }, async (ids) => { requeued.push(ids); });
+	assert.deepEqual(success, { available: true, requested: 2, confirmed: 1, missing: 1 });
+	assert.deepEqual(confirmed, [[eventId]]);
+	assert.deepEqual(requeued, [[missingId]]);
+	const unavailable = await reconcilePostHogEventIds({ query: async () => { throw new Error('timeout'); } }, [missingId], async () => {}, async (ids) => { requeued.push(ids); });
+	assert.deepEqual(unavailable, { available: false, requested: 1, confirmed: 0, missing: 1 });
+	assert.deepEqual(requeued, [[missingId]]);
 });

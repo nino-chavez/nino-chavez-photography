@@ -6,6 +6,7 @@ import type {
 	PostHogOutboxClient,
 	PostHogQueryTransport
 } from './posthog.types';
+import type { SourceReturnBreakdownRow } from './posthog.types';
 import { POSTHOG_EVENT_NAMES, POSTHOG_JOURNEY_REPORTS } from './posthog.types';
 import { isPostHogProductionRuntime } from './posthog-contract';
 
@@ -20,7 +21,8 @@ const DOWNLOAD_LIFECYCLE_EVENTS: readonly PostHogEventName[] = [
 ];
 
 export interface PostHogFixtureEvent {
-	event: PostHogEventName;
+	event: PostHogEventName | 'analytics_classification_changed';
+	eventId?: string;
 	timestamp: string;
 	distinctId: string;
 	properties: Record<string, string | number | boolean>;
@@ -58,7 +60,12 @@ function emptyTotals(report: PostHogJourneyReport): Record<string, number | null
 			'album_zip_requested_items', 'album_zip_prepared_items'
 		],
 		photo_response: ['eligible_photo_exposures', 'later_photo_actions'],
-		sources_return: ['measured_browsers', 'before_window_returning_browsers', 'repeated_visit_browsers_in_window'],
+		sources_return: [
+			'measured_browsers', 'before_window_returning_browsers', 'repeated_visit_browsers_in_window',
+			'tagged_arrival_visits', 'tagged_arrival_browsers',
+			'subsequent_album_open_visits', 'subsequent_photo_open_visits',
+			'subsequent_download_request_visits', 'subsequent_favorite_visits'
+		],
 		experiments: ['observed_exposures', 'outcome_visits', 'guardrail_failures']
 	};
 	return Object.fromEntries(reportTotals[report].map((key) => [key, null]));
@@ -80,9 +87,12 @@ function validatedQuery(query: PostHogJourneyQuery, allowedAlbumKeys: string[]):
 }
 
 /**
- * Every saved report starts from this CTE. It applies version, audience, date,
- * album visibility and optional source/metadata filters before any aggregation.
- * Metadata is the v2 event snapshot; no provider-side catalogue join exists.
+ * Every report first applies the latest provider correction for each original
+ * UUID. A correction is ordered by its positive classification version, never
+ * by its delivery time. Only audience and unclassified originals remain.
+ * Target filters apply to the event row itself; a source filter applies only to
+ * a tagged gallery arrival for the same visit. Neither rule widens to an
+ * arbitrary action elsewhere in that visit.
  */
 function scopedEvents(query: PostHogJourneyQuery, albumKeys: string[]): string {
 	const albumPredicate = albumKeys.length
@@ -92,33 +102,39 @@ function scopedEvents(query: PostHogJourneyQuery, albumKeys: string[]): string {
 	const datePredicate = query.report === 'sources_return'
 		? `${localDate} BETWEEN addDays(toDate(${quoted(query.start)}), -90) AND toDate(${quoted(query.end)})`
 		: `${localDate} BETWEEN toDate(${quoted(query.start)}) AND toDate(${quoted(query.end)})`;
-	const filters = [
+	const activityFilters = [
 		`event IN (${POSTHOG_EVENT_NAMES.map(quoted).join(', ')})`,
 		`toString(${eventProperty('schema_version')}) = '2'`,
 		`${eventProperty('traffic_context')} = 'audience'`,
 		`${eventProperty('visit_id')} != ''`,
 		datePredicate
 	];
-	const cohortFilters = [
-		...(query.albumKeys !== undefined ? [albumPredicate] : []),
-		...(query.source ? [`coalesce(tagged_source, 'unknown') = ${quoted(query.source)}`] : []),
-		...(query.sport ? [`coalesce(album_sport, 'unknown') = ${quoted(query.sport)}`] : []),
-		...(query.category ? [`coalesce(photo_category, 'unknown') = ${quoted(query.category)}`] : [])
+	const targetFilters = [
+		albumPredicate,
+		...(query.sport ? [`album_sport = ${quoted(query.sport)}`] : []),
+		...(query.category ? [`photo_category = ${quoted(query.category)}`] : [])
 	];
-	const cohortPredicate = cohortFilters.length ? `visit_id IN (SELECT visit_id FROM visible WHERE ${cohortFilters.join(' AND ')})` : '1 = 1';
+	const targetPredicate = `album_key != '' AND ${targetFilters.join(' AND ')}`;
+	const hasTargetSlice = query.albumKeys !== undefined || !!query.sport || !!query.category;
+	const sourceVisitPredicate = query.source
+		? `visit_id IN (SELECT visit_id FROM tagged_arrivals WHERE source = ${quoted(query.source)})`
+		: '1 = 1';
 	const sitewide = SITEWIDE_EVENTS.map(quoted).join(', ');
 	const downloadLifecycle = DOWNLOAD_LIFECYCLE_EVENTS.map(quoted).join(', ');
-	return `WITH base AS (SELECT event, timestamp, ${localDate} AS local_date, coalesce(toString(${eventProperty('visit_id')}), '') AS visit_id, coalesce(toString(${eventProperty('album_key')}), '') AS album_key, coalesce(toString(${eventProperty('photo_id')}), '') AS photo_id, coalesce(toString(${eventProperty('search_id')}), '') AS search_id, coalesce(toString(${eventProperty('result_set_id')}), '') AS result_set_id, coalesce(toString(${eventProperty('download_request_id')}), '') AS download_request_id, properties.tagged_source AS tagged_source, properties.album_sport AS album_sport, properties.photo_category AS photo_category, distinct_id AS browser_id, coalesce(toString(${eventProperty('mode')}), '') AS mode, toIntOrZero(toString(${eventProperty('result_count')})) AS result_count, coalesce(toString(${eventProperty('experiment_key')}), '') AS experiment_key, coalesce(toString(${eventProperty('variant')}), '') AS variant FROM events WHERE ${filters.join(' AND ')}), visible_download_keys AS (SELECT visit_id, download_request_id FROM base WHERE event IN ('download_item_requested', 'download_item_prepared') AND ${albumPredicate} AND download_request_id != '' GROUP BY visit_id, download_request_id), visible AS (SELECT * FROM base WHERE (event IN (${sitewide}) AND album_key = '') OR ${albumPredicate} OR (event IN (${downloadLifecycle}) AND album_key = '' AND (visit_id, download_request_id) IN (SELECT visit_id, download_request_id FROM visible_download_keys))), scoped AS (SELECT * FROM visible WHERE ${cohortPredicate}), sequenced AS (SELECT *, minOrNull(if(event = 'album_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_exposed_at, minOrNull(if(event = 'album_opened', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_opened_at, minOrNull(if(event = 'photo_rendered', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS photo_rendered_at, minOrNull(if(event = 'photo_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key, photo_id) AS photo_exposed_at, minOrNull(if(event = 'search_results_shown', timestamp, NULL)) OVER (PARTITION BY visit_id, search_id, result_set_id) AS search_results_at, minOrNull(if(event = 'download_requested', timestamp, NULL)) OVER (PARTITION BY visit_id, download_request_id) AS download_requested_at FROM scoped)`;
+	return `WITH activity_candidates AS (SELECT uuid AS event_id, event, timestamp, ${localDate} AS local_date, coalesce(toString(${eventProperty('visit_id')}), '') AS visit_id, coalesce(toString(${eventProperty('album_key')}), '') AS album_key, coalesce(toString(${eventProperty('photo_id')}), '') AS photo_id, coalesce(toString(${eventProperty('search_id')}), '') AS search_id, coalesce(toString(${eventProperty('result_set_id')}), '') AS result_set_id, coalesce(toString(${eventProperty('download_request_id')}), '') AS download_request_id, coalesce(toString(${eventProperty('tagged_source')}), '') AS tagged_source, coalesce(toString(${eventProperty('album_sport')}), '') AS album_sport, coalesce(toString(${eventProperty('photo_category')}), '') AS photo_category, distinct_id AS browser_id, coalesce(toString(${eventProperty('mode')}), '') AS mode, toIntOrZero(toString(${eventProperty('result_count')})) AS result_count, coalesce(toString(${eventProperty('experiment_key')}), '') AS experiment_key, coalesce(toString(${eventProperty('variant')}), '') AS variant FROM events WHERE ${activityFilters.join(' AND ')}), latest_classifications AS (SELECT toString(properties.target_event_id) AS target_event_id, argMax(toString(properties.classification), toIntOrZero(toString(properties.classification_version))) AS classification FROM events WHERE event = 'analytics_classification_changed' AND toString(properties.target_event_id) IN (SELECT event_id FROM activity_candidates) AND toIntOrZero(toString(properties.classification_version)) > 0 GROUP BY target_event_id), base AS (SELECT activity_candidates.* FROM activity_candidates LEFT JOIN latest_classifications ON activity_candidates.event_id = latest_classifications.target_event_id WHERE coalesce(latest_classifications.classification, 'audience') IN ('audience', 'unclassified')), tagged_arrivals AS (SELECT visit_id, tagged_source AS source, min(timestamp) AS arrived_at FROM base WHERE event = 'gallery_page_viewed' AND tagged_source != '' GROUP BY visit_id, source), source_scoped AS (SELECT * FROM base WHERE ${sourceVisitPredicate}), target_events AS (SELECT * FROM source_scoped WHERE ${targetPredicate}), visible_search_selections AS (SELECT * FROM target_events WHERE event = 'search_result_selected' AND search_id != '' AND result_set_id != ''), visible_download_keys AS (SELECT visit_id, download_request_id FROM target_events WHERE event IN ('download_item_requested', 'download_item_prepared') AND download_request_id != '' GROUP BY visit_id, download_request_id), scoped AS (SELECT * FROM source_scoped WHERE ${targetPredicate} OR (${hasTargetSlice ? '1 = 0' : `event IN (${sitewide}) AND album_key = ''`}) OR (event IN (${downloadLifecycle}) AND album_key = '' AND (visit_id, download_request_id) IN (SELECT visit_id, download_request_id FROM visible_download_keys))), sequenced AS (SELECT *, minOrNull(if(event = 'album_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_exposed_at, minOrNull(if(event = 'album_opened', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_opened_at, minOrNull(if(event = 'photo_rendered', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS photo_rendered_at, minOrNull(if(event = 'photo_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key, photo_id) AS photo_exposed_at, minOrNull(if(event = 'search_results_shown', timestamp, NULL)) OVER (PARTITION BY visit_id, search_id, result_set_id) AS search_results_at, minOrNull(if(event = 'download_requested', timestamp, NULL)) OVER (PARTITION BY visit_id, download_request_id) AS download_requested_at FROM scoped)`;
 }
 
 function reportSql(query: PostHogJourneyQuery): string {
+	const searchScreenPredicate = query.albumKeys !== undefined || query.sport || query.category
+		? `(visit_id, search_id, result_set_id) IN (SELECT visit_id, search_id, result_set_id FROM visible_search_selections)`
+		: '1 = 1';
 	const sql: Record<PostHogJourneyReport, string> = {
 		discovery: `SELECT uniqExact(visit_id) AS eligible_visits, uniqExactIf(visit_id, event = 'album_exposed') AS album_exposed_visits, uniqExactIf(visit_id, event = 'album_opened' AND album_exposed_at IS NOT NULL AND timestamp > album_exposed_at) AS album_opened_after_exposure, uniqExactIf(visit_id, event = 'album_opened' AND (album_exposed_at IS NULL OR timestamp <= album_exposed_at)) AS direct_album_open_visits FROM sequenced`,
 		album_use: `, album_opens AS (SELECT visit_id, album_key, min(timestamp) AS opened_at FROM scoped WHERE event = 'album_opened' GROUP BY visit_id, album_key), album_renders AS (SELECT opened.visit_id, opened.album_key, opened.opened_at, min(event.timestamp) AS rendered_at FROM album_opens opened INNER JOIN scoped event ON event.visit_id = opened.visit_id AND event.album_key = opened.album_key AND event.event = 'photo_rendered' AND event.timestamp > opened.opened_at GROUP BY opened.visit_id, opened.album_key, opened.opened_at), album_actions AS (SELECT rendered.visit_id, rendered.album_key FROM album_renders rendered INNER JOIN scoped event ON event.visit_id = rendered.visit_id AND event.album_key = rendered.album_key AND event.event IN ('favorite_added', 'download_requested', 'download_item_requested') AND event.timestamp > rendered.rendered_at GROUP BY rendered.visit_id, rendered.album_key) SELECT (SELECT uniqExact(visit_id) FROM album_opens) AS album_open_visits, (SELECT uniqExact(visit_id) FROM album_renders) AS photo_render_visits, (SELECT uniqExact(visit_id) FROM album_actions) AS album_action_visits`,
-		search_usefulness: `, searches AS (SELECT visit_id, search_id, min(timestamp) AS shown_at, argMin(toString(result_set_id), timestamp) AS shown_result_set_id, argMin(result_count, timestamp) AS shown_result_count FROM scoped WHERE event = 'search_results_shown' AND search_id != '' GROUP BY visit_id, search_id), selected_searches AS (SELECT search.visit_id, search.search_id, search.shown_at, min(event.timestamp) AS selected_at FROM searches search INNER JOIN scoped event ON event.visit_id = search.visit_id AND event.search_id = search.search_id AND toString(event.result_set_id) = search.shown_result_set_id AND event.event = 'search_result_selected' AND event.timestamp > search.shown_at GROUP BY search.visit_id, search.search_id, search.shown_at) SELECT count() AS searches_shown, countIf(shown_result_count = 0) AS zero_result_searches, (SELECT count() FROM selected_searches) AS selected_searches, (SELECT avg(dateDiff('millisecond', shown_at, selected_at)) FROM selected_searches) AS selection_duration_ms FROM searches`,
+		search_usefulness: `, searches AS (SELECT visit_id, search_id, result_set_id AS shown_result_set_id, min(timestamp) AS shown_at, argMin(result_count, timestamp) AS shown_result_count FROM source_scoped WHERE event = 'search_results_shown' AND search_id != '' AND result_set_id != '' AND ${searchScreenPredicate} GROUP BY visit_id, search_id, result_set_id), selected_searches AS (SELECT search.visit_id, search.search_id, search.shown_result_set_id, search.shown_at, min(selection.timestamp) AS selected_at FROM searches search INNER JOIN visible_search_selections selection ON selection.visit_id = search.visit_id AND selection.search_id = search.search_id AND selection.result_set_id = search.shown_result_set_id AND selection.timestamp > search.shown_at GROUP BY search.visit_id, search.search_id, search.shown_result_set_id, search.shown_at) SELECT count() AS searches_shown, countIf(shown_result_count = 0) AS zero_result_searches, (SELECT count() FROM selected_searches) AS selected_searches, (SELECT avg(dateDiff('millisecond', shown_at, selected_at)) FROM selected_searches) AS selection_duration_ms FROM searches`,
 		download_reliability: `, download_timeline AS (SELECT *, minOrNull(if(event = 'download_requested', timestamp, NULL)) OVER (PARTITION BY visit_id, download_request_id) AS requested_at FROM scoped WHERE download_request_id != ''), download_outcomes AS (SELECT visit_id, download_request_id, min(requested_at) AS request_at, argMin(if(event = 'download_requested', mode, NULL), timestamp) AS request_mode, countIf(event = 'download_prepared' AND timestamp >= requested_at) > 0 AS seen_prepared, countIf(event = 'download_handed_off' AND timestamp >= requested_at) > 0 AS seen_handed_off, countIf(event = 'download_failed' AND timestamp >= requested_at) > 0 AS seen_failed, countIf(event = 'download_cancelled' AND timestamp >= requested_at) > 0 AS seen_cancelled, uniqExactIf((album_key, photo_id), event = 'download_item_requested' AND timestamp >= requested_at) AS request_item_count, uniqExactIf((album_key, photo_id), event = 'download_item_prepared' AND timestamp >= requested_at) AS prepared_item_count FROM download_timeline WHERE requested_at IS NOT NULL GROUP BY visit_id, download_request_id) SELECT count() AS requests, countIf(seen_prepared) AS prepared, countIf(seen_handed_off) AS handed_off, countIf(seen_failed) AS failed, countIf(seen_cancelled) AS cancelled, countIf(NOT seen_handed_off AND NOT seen_failed AND NOT seen_cancelled) AS unknown_terminal_outcome, countIf(request_mode = 'single_photo') AS single_photo_requests, countIf(request_mode = 'saved_photo_zip') AS saved_photo_zip_requests, countIf(request_mode = 'album_zip') AS album_zip_requests, sum(request_item_count) AS requested_items, sum(prepared_item_count) AS prepared_items, sumIf(request_item_count, request_mode = 'single_photo') AS single_photo_requested_items, sumIf(prepared_item_count, request_mode = 'single_photo') AS single_photo_prepared_items, sumIf(request_item_count, request_mode = 'saved_photo_zip') AS saved_photo_zip_requested_items, sumIf(prepared_item_count, request_mode = 'saved_photo_zip') AS saved_photo_zip_prepared_items, sumIf(request_item_count, request_mode = 'album_zip') AS album_zip_requested_items, sumIf(prepared_item_count, request_mode = 'album_zip') AS album_zip_prepared_items FROM download_outcomes`,
 		photo_response: `SELECT uniqExactIf((visit_id, album_key, photo_id), event = 'photo_exposed') AS eligible_photo_exposures, uniqExactIf((visit_id, album_key, photo_id), event IN ('photo_opened', 'favorite_added', 'download_requested', 'download_item_requested') AND photo_exposed_at IS NOT NULL AND timestamp > photo_exposed_at) AS later_photo_actions FROM sequenced`,
-		sources_return: `, current_visits AS (SELECT browser_id, visit_id FROM scoped WHERE local_date BETWEEN toDate(${quoted(query.start)}) AND toDate(${quoted(query.end)}) GROUP BY browser_id, visit_id), current_browsers AS (SELECT browser_id, uniqExact(visit_id) AS visit_count FROM current_visits GROUP BY browser_id), before_window AS (SELECT browser_id FROM scoped WHERE local_date < toDate(${quoted(query.start)}) GROUP BY browser_id) SELECT count() AS measured_browsers, countIf(browser_id IN (SELECT browser_id FROM before_window)) AS before_window_returning_browsers, countIf(visit_count > 1) AS repeated_visit_browsers_in_window FROM current_browsers`,
+		sources_return: `, current_visits AS (SELECT browser_id, visit_id FROM scoped WHERE local_date BETWEEN toDate(${quoted(query.start)}) AND toDate(${quoted(query.end)}) GROUP BY browser_id, visit_id), current_browsers AS (SELECT browser_id, uniqExact(visit_id) AS visit_count FROM current_visits GROUP BY browser_id), before_window AS (SELECT browser_id FROM scoped WHERE local_date < toDate(${quoted(query.start)}) GROUP BY browser_id), current_arrivals AS (SELECT arrivals.visit_id, arrivals.source, arrivals.arrived_at, any(source_scoped.browser_id) AS browser_id FROM tagged_arrivals arrivals INNER JOIN source_scoped ON source_scoped.visit_id = arrivals.visit_id WHERE source_scoped.local_date BETWEEN toDate(${quoted(query.start)}) AND toDate(${quoted(query.end)}) GROUP BY arrivals.visit_id, arrivals.source, arrivals.arrived_at), source_actions AS (SELECT arrivals.visit_id, arrivals.source, arrivals.browser_id, event.event FROM current_arrivals arrivals INNER JOIN scoped event ON event.visit_id = arrivals.visit_id AND event.timestamp > arrivals.arrived_at WHERE event.event IN ('album_opened', 'photo_opened', 'download_requested', 'download_item_requested', 'favorite_added')), source_breakdown AS (SELECT arrival.source, uniqExact(arrival.visit_id) AS tagged_arrival_visits, uniqExact(arrival.browser_id) AS measured_browsers, uniqExactIf(arrival.browser_id, arrival.browser_id IN (SELECT browser_id FROM before_window)) AS before_window_returning_browsers, uniqExactIf(arrival.browser_id, arrival.browser_id IN (SELECT browser_id FROM current_browsers WHERE visit_count > 1)) AS repeated_visit_browsers_in_window, uniqExactIf(arrival.visit_id, action.event = 'album_opened') AS subsequent_album_open_visits, uniqExactIf(arrival.visit_id, action.event = 'photo_opened') AS subsequent_photo_open_visits, uniqExactIf(arrival.visit_id, action.event IN ('download_requested', 'download_item_requested')) AS subsequent_download_request_visits, uniqExactIf(arrival.visit_id, action.event = 'favorite_added') AS subsequent_favorite_visits FROM current_arrivals arrival LEFT JOIN scoped action ON action.visit_id = arrival.visit_id AND action.timestamp > arrival.arrived_at AND action.event IN ('album_opened', 'photo_opened', 'download_requested', 'download_item_requested', 'favorite_added') GROUP BY arrival.source ORDER BY tagged_arrival_visits DESC, arrival.source ASC LIMIT 20) SELECT 'overall' AS row_kind, '' AS source, (SELECT count() FROM current_browsers) AS measured_browsers, (SELECT countIf(browser_id IN (SELECT browser_id FROM before_window)) FROM current_browsers) AS before_window_returning_browsers, (SELECT countIf(visit_count > 1) FROM current_browsers) AS repeated_visit_browsers_in_window, (SELECT uniqExact(visit_id) FROM current_arrivals) AS tagged_arrival_visits, (SELECT uniqExact(browser_id) FROM current_arrivals) AS tagged_arrival_browsers, (SELECT uniqExact(visit_id) FROM source_actions WHERE event = 'album_opened') AS subsequent_album_open_visits, (SELECT uniqExact(visit_id) FROM source_actions WHERE event = 'photo_opened') AS subsequent_photo_open_visits, (SELECT uniqExact(visit_id) FROM source_actions WHERE event IN ('download_requested', 'download_item_requested')) AS subsequent_download_request_visits, (SELECT uniqExact(visit_id) FROM source_actions WHERE event = 'favorite_added') AS subsequent_favorite_visits UNION ALL SELECT 'source' AS row_kind, source, measured_browsers, before_window_returning_browsers, repeated_visit_browsers_in_window, tagged_arrival_visits, measured_browsers AS tagged_arrival_browsers, subsequent_album_open_visits, subsequent_photo_open_visits, subsequent_download_request_visits, subsequent_favorite_visits FROM source_breakdown`,
 		experiments: `, exposures AS (SELECT visit_id, experiment_key, variant, min(timestamp) AS exposed_at FROM scoped WHERE event = 'experiment_exposed' AND experiment_key != '' AND variant != '' GROUP BY visit_id, experiment_key, variant), outcome_exposures AS (SELECT exposure.visit_id, exposure.experiment_key, exposure.variant FROM exposures exposure INNER JOIN scoped event ON event.visit_id = exposure.visit_id AND event.event IN ('album_opened', 'photo_opened', 'download_requested', 'download_item_requested') AND event.timestamp > exposure.exposed_at GROUP BY exposure.visit_id, exposure.experiment_key, exposure.variant), guardrail_exposures AS (SELECT exposure.visit_id, exposure.experiment_key, exposure.variant FROM exposures exposure INNER JOIN scoped event ON event.visit_id = exposure.visit_id AND event.event IN ('photo_load_failed', 'download_failed') AND event.timestamp > exposure.exposed_at GROUP BY exposure.visit_id, exposure.experiment_key, exposure.variant) SELECT count() AS observed_exposures, (SELECT count() FROM outcome_exposures) AS outcome_visits, (SELECT count() FROM guardrail_exposures) AS guardrail_failures FROM exposures`
 	};
 	return sql[query.report];
@@ -141,32 +157,62 @@ function fixtureScope(events: PostHogFixtureEvent[], query: PostHogJourneyQuery,
 		day.setUTCDate(day.getUTCDate() - 90);
 		return day.toISOString().slice(0, 10);
 	})() : query.start;
-	const base = events.filter((event) => {
+	const classifications = new Map<string, { version: number; classification: string }>();
+	for (const event of events) {
+		if (event.event !== 'analytics_classification_changed') continue;
+		const target = textProperty(event, 'target_event_id');
+		const version = Number(event.properties.classification_version);
+		const classification = textProperty(event, 'classification');
+		if (!target || !Number.isInteger(version) || version <= 0) continue;
+		const current = classifications.get(target);
+		if (!current || version > current.version) classifications.set(target, { version, classification });
+	}
+	const base = events.filter((event, index) => {
 		const date = chicagoDate(event.timestamp);
-		return POSTHOG_EVENT_NAMES.includes(event.event)
+		const correction = classifications.get(event.eventId ?? `fixture-${index}`);
+		return event.event !== 'analytics_classification_changed'
+			&& (POSTHOG_EVENT_NAMES as readonly string[]).includes(event.event)
 			&& event.properties.schema_version === 2
 			&& event.properties.traffic_context === 'audience'
+			&& (!correction || correction.classification === 'audience' || correction.classification === 'unclassified')
 			&& textProperty(event, 'visit_id') !== ''
 			&& date !== null && date >= earliest && date <= query.end;
 	});
+	const sourceArrivals = new Map<string, Set<string>>();
+	for (const event of base) {
+		if (event.event !== 'gallery_page_viewed') continue;
+		const source = textProperty(event, 'tagged_source');
+		if (!source) continue;
+		const visits = sourceArrivals.get(source) ?? new Set<string>();
+		visits.add(textProperty(event, 'visit_id'));
+		sourceArrivals.set(source, visits);
+	}
+	const sourceVisits = query.source ? sourceArrivals.get(query.source) ?? new Set<string>() : null;
+	const inSourceVisit = (event: PostHogFixtureEvent) => !sourceVisits || sourceVisits.has(textProperty(event, 'visit_id'));
+	const hasTargetSlice = query.albumKeys !== undefined || !!query.sport || !!query.category;
+	const isTarget = (event: PostHogFixtureEvent) => inSourceVisit(event)
+		&& albumKeys.includes(textProperty(event, 'album_key'))
+		&& (!query.sport || textProperty(event, 'album_sport') === query.sport)
+		&& (!query.category || textProperty(event, 'photo_category') === query.category);
 	const visibleRequests = new Set(base.filter((event) =>
 		(event.event === 'download_item_requested' || event.event === 'download_item_prepared')
-		&& albumKeys.includes(textProperty(event, 'album_key'))
+		&& isTarget(event)
 	).map((event) => `${textProperty(event, 'visit_id')}\u0000${textProperty(event, 'download_request_id')}`));
 	const visible = base.filter((event) => {
 		const albumKey = textProperty(event, 'album_key');
-		if (SITEWIDE_EVENTS.includes(event.event)) return albumKey === '';
-		if (albumKeys.includes(albumKey)) return true;
-		return DOWNLOAD_LIFECYCLE_EVENTS.includes(event.event) && albumKey === ''
+		if (!inSourceVisit(event)) return false;
+		if (isTarget(event)) return true;
+		if (query.report === 'sources_return' && event.event === 'gallery_page_viewed' && textProperty(event, 'tagged_source') !== '') return true;
+		if (!hasTargetSlice && (SITEWIDE_EVENTS as readonly string[]).includes(event.event)) return albumKey === '';
+		return (DOWNLOAD_LIFECYCLE_EVENTS as readonly string[]).includes(event.event) && albumKey === ''
 			&& visibleRequests.has(`${textProperty(event, 'visit_id')}\u0000${textProperty(event, 'download_request_id')}`);
 	});
-	const matches = (event: PostHogFixtureEvent) =>
-		(query.albumKeys === undefined || albumKeys.includes(textProperty(event, 'album_key')))
-		&& (!query.source || (textProperty(event, 'tagged_source') || 'unknown') === query.source)
-		&& (!query.sport || (textProperty(event, 'album_sport') || 'unknown') === query.sport)
-		&& (!query.category || (textProperty(event, 'photo_category') || 'unknown') === query.category);
-	const visits = new Set(visible.filter(matches).map(event => textProperty(event, 'visit_id')));
-	return visible.filter(event => visits.has(textProperty(event, 'visit_id')));
+	if (!hasTargetSlice) return visible;
+	const selectedResultSets = new Set(base.filter((event) => event.event === 'search_result_selected' && isTarget(event)).map((event) =>
+		`${textProperty(event, 'visit_id')}\u0000${textProperty(event, 'search_id')}\u0000${textProperty(event, 'result_set_id')}`
+	));
+	return [...visible, ...base.filter((event) => event.event === 'search_results_shown' && inSourceVisit(event)
+		&& selectedResultSets.has(`${textProperty(event, 'visit_id')}\u0000${textProperty(event, 'search_id')}\u0000${textProperty(event, 'result_set_id')}`))];
 }
 
 /** Executes the source-owned report plan over synthetic events for semantic regression tests. */
@@ -340,10 +386,38 @@ export function evaluatePostHogJourneyFixtures(
 			visits.add(textProperty(event, 'visit_id'));
 			visitsByBrowser.set(event.distinctId, visits);
 		}
+		const arrivals = new Map<string, { source: string; visit: string; browser: string; at: number }>();
+		for (const event of current) {
+			if (event.event !== 'gallery_page_viewed') continue;
+			const source = textProperty(event, 'tagged_source');
+			if (!source) continue;
+			const key = `${textProperty(event, 'visit_id')}\u0000${source}`;
+			const at = Date.parse(event.timestamp);
+			const prior = arrivals.get(key);
+			if (!prior || at < prior.at) arrivals.set(key, { source, visit: textProperty(event, 'visit_id'), browser: event.distinctId, at });
+		}
+		const actionVisits = {
+			album: new Set<string>(), photo: new Set<string>(), download: new Set<string>(), favorite: new Set<string>()
+		};
+		for (const arrival of arrivals.values()) {
+			for (const event of scoped) {
+				if (textProperty(event, 'visit_id') !== arrival.visit || Date.parse(event.timestamp) <= arrival.at) continue;
+				if (event.event === 'album_opened') actionVisits.album.add(arrival.visit);
+				if (event.event === 'photo_opened') actionVisits.photo.add(arrival.visit);
+				if (event.event === 'download_requested' || event.event === 'download_item_requested') actionVisits.download.add(arrival.visit);
+				if (event.event === 'favorite_added') actionVisits.favorite.add(arrival.visit);
+			}
+		}
 		return {
 			measured_browsers: visitsByBrowser.size,
 			before_window_returning_browsers: [...visitsByBrowser.keys()].filter((browser) => before.has(browser)).length,
-			repeated_visit_browsers_in_window: [...visitsByBrowser.values()].filter((visits) => visits.size > 1).length
+			repeated_visit_browsers_in_window: [...visitsByBrowser.values()].filter((visits) => visits.size > 1).length,
+			tagged_arrival_visits: new Set([...arrivals.values()].map((arrival) => arrival.visit)).size,
+			tagged_arrival_browsers: new Set([...arrivals.values()].map((arrival) => arrival.browser)).size,
+			subsequent_album_open_visits: actionVisits.album.size,
+			subsequent_photo_open_visits: actionVisits.photo.size,
+			subsequent_download_request_visits: actionVisits.download.size,
+			subsequent_favorite_visits: actionVisits.favorite.size
 		};
 	}
 	return null;
@@ -386,6 +460,35 @@ function aggregateFromResponse(report: PostHogJourneyReport, response: unknown):
 	return totals;
 }
 
+function sourceReturnBreakdownFromResponse(response: unknown): SourceReturnBreakdownRow[] {
+	if (!response || typeof response !== 'object') return [];
+	const source = response as { columns?: unknown; results?: unknown };
+	if (!Array.isArray(source.columns) || !Array.isArray(source.results)) return [];
+	const columns = source.columns as unknown[];
+	const index = (name: string) => columns.indexOf(name);
+	const rowKind = index('row_kind');
+	const sourceName = index('source');
+	const metric = (row: unknown[], name: keyof Omit<SourceReturnBreakdownRow, 'source'>) => {
+		const value = row[index(name as string)];
+		return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+	};
+	if (rowKind < 0 || sourceName < 0) return [];
+	return source.results.flatMap((row): SourceReturnBreakdownRow[] => {
+		if (!Array.isArray(row) || row[rowKind] !== 'source' || typeof row[sourceName] !== 'string' || !boundedText(row[sourceName], 32)) return [];
+		const values = {
+			tagged_arrival_visits: metric(row, 'tagged_arrival_visits'),
+			measured_browsers: metric(row, 'measured_browsers'),
+			before_window_returning_browsers: metric(row, 'before_window_returning_browsers'),
+			repeated_visit_browsers_in_window: metric(row, 'repeated_visit_browsers_in_window'),
+			subsequent_album_open_visits: metric(row, 'subsequent_album_open_visits'),
+			subsequent_photo_open_visits: metric(row, 'subsequent_photo_open_visits'),
+			subsequent_download_request_visits: metric(row, 'subsequent_download_request_visits'),
+			subsequent_favorite_visits: metric(row, 'subsequent_favorite_visits')
+		};
+		return Object.values(values).some((value) => value === null) ? [] : [{ source: row[sourceName], ...values } as SourceReturnBreakdownRow];
+	}).slice(0, 20);
+}
+
 export async function queryGalleryJourneys(
 	client: PostHogQueryTransport | null,
 	query: PostHogJourneyQuery,
@@ -394,8 +497,9 @@ export async function queryGalleryJourneys(
 	const base = {
 		report: query.report,
 		asOf: null,
-		coverage: { start: query.start, end: query.end, timezone: CHICAGO, definitionVersion: 2 as const, cohort: 'eligible audience events with a linked visit' as const, excluded: 'operator, test, self-excluded, ineligible, and unlinked events' as const, metadata: 'event snapshots only; no PostHog catalogue join' as const },
-		totals: emptyTotals(query.report)
+		coverage: { start: query.start, end: query.end, timezone: CHICAGO, definitionVersion: 2 as const, cohort: 'eligible audience or unclassified originals with a linked visit; source slices require a tagged gallery arrival' as const, excluded: 'latest operator, test, crawler, suspected-automation, self-excluded, ineligible, and unlinked classifications' as const, metadata: 'event snapshots only; missing snapshots remain unknown; no PostHog catalogue join' as const },
+		totals: emptyTotals(query.report),
+		breakdown: [] as SourceReturnBreakdownRow[]
 	};
 	if (!options.publicOnly) return { ...base, available: false, error: 'invalid_query' };
 	const fixed = buildPostHogJourneyQuery(query, options.allowedAlbumKeys);
@@ -405,7 +509,7 @@ export async function queryGalleryJourneys(
 		const response = await client.query({ query: fixed });
 		const totals = aggregateFromResponse(query.report, response);
 		if (!totals) return { ...base, available: false, error: 'provider_query_failed' };
-		return { ...base, available: true, asOf: new Date().toISOString(), totals };
+		return { ...base, available: true, asOf: new Date().toISOString(), totals, breakdown: query.report === 'sources_return' ? sourceReturnBreakdownFromResponse(response) : [] };
 	} catch {
 		return { ...base, available: false, error: 'provider_query_failed' };
 	}
@@ -453,7 +557,9 @@ export function createPostHogQueryTransport(source: Record<string, string | unde
 /** Reconciliation only confirms provider-returned UUIDs; it never treats capture success as confirmation. */
 export async function reconcilePostHogEventIds(
 	transport: PostHogQueryTransport | null,
-	eventIds: string[], confirm: (ids: string[]) => Promise<void>
+	eventIds: string[],
+	confirm: (ids: string[]) => Promise<void>,
+	requeueMissing?: (ids: string[]) => Promise<void>
 ): Promise<{ available: boolean; requested: number; confirmed: number; missing: number }> {
 	const ids = [...new Set(eventIds.filter((id) => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 100);
 	if (!transport || ids.length === 0) return { available: !!transport, requested: ids.length, confirmed: 0, missing: ids.length };
@@ -462,6 +568,13 @@ export async function reconcilePostHogEventIds(
 		const result = await transport.query({ refresh: 'force_async', query: { kind: 'HogQLQuery', query } }) as { results?: unknown };
 		const confirmed = Array.isArray(result.results) ? result.results.map((row) => Array.isArray(row) ? row[0] : null).filter((id): id is string => typeof id === 'string' && ids.includes(id)) : [];
 		if (confirmed.length) await confirm(confirmed);
+		const missingIds = ids.filter((id) => !confirmed.includes(id));
+		// A successful provider read is the only point at which a missing ID may
+		// be requeued. The database RPC keeps grace, consent, retention, and
+		// attempt guards authoritative; a requeue failure does not erase the read.
+		if (missingIds.length && requeueMissing) {
+			try { await requeueMissing(missingIds); } catch { /* retry remains durable */ }
+		}
 		return { available: true, requested: ids.length, confirmed: confirmed.length, missing: ids.length - confirmed.length };
 	} catch {
 		return { available: false, requested: ids.length, confirmed: 0, missing: ids.length };
@@ -475,5 +588,5 @@ export async function reconcileSubmittedPostHogEvents(
 	limit = 100
 ): Promise<{ available: boolean; requested: number; confirmed: number; missing: number }> {
 	const ids = await outbox.submitted(Math.min(Math.max(limit, 1), 100));
-	return reconcilePostHogEventIds(transport, ids, (confirmed) => outbox.confirm(confirmed));
+	return reconcilePostHogEventIds(transport, ids, (confirmed) => outbox.confirm(confirmed), outbox.requeueMissing);
 }
