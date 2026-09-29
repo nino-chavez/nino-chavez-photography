@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-29T20:27:23.500Z",
-  "reviewedBy": "Codex cold analytics reviewer",
-  "method": "Desktop and 390px phone rendered review with real Cloudflare data; checked section filtering, page 2 pagination, and public-path allowlist against source tests",
-  "sourceDigest": "sha256:a0a3c5b4abdf63ecc99530ee2bd18a11b3a4b758d898c831b703c3076ca3f236",
+  "reviewedAt": "2026-09-29T21:21:45.316Z",
+  "reviewedBy": "Codex credential cleanup review",
+  "method": "Reviewed the credential-only server loader change against the read-only Account Analytics token contract; no rendered UI source changed. Prior desktop and phone visual review remains the UI baseline.",
+  "sourceDigest": "sha256:1ed8a05dc99ad9eeaf857466a5b7eacbaba70ca7693ff10517963ebc8cbd6342",
   "sourceFiles": 148,
   "scope": [
-    "New cross-site report and gallery navigation; desktop and phone; production to verify after deployment"
+    "Cross-site server credential selection; prior desktop and phone report review preserved"
   ]
 }

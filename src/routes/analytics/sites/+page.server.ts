@@ -20,6 +20,6 @@ export const load: PageServerLoad = async ({ url, setHeaders, fetch }) => {
 		section,
 		period,
 		page,
-		report: await loadSiteTraffic(period, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_ANALYTICS_TOKEN || env.CF_IMAGES_API_TOKEN, fetch)
+		report: await loadSiteTraffic(period, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_ANALYTICS_TOKEN, fetch)
 	};
 };

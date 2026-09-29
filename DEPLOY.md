@@ -44,11 +44,11 @@
   Missing or invalid signatures are rejected. Operator exclusion separately uses the verified
   Supabase identity and `ADMIN_EMAILS`; no client-supplied traffic classification is trusted.
 - **Cross-site traffic report**: `CLOUDFLARE_ACCOUNT_ID` is a non-secret Pages variable in
-  `wrangler.toml`. The report uses `CLOUDFLARE_ANALYTICS_TOKEN` when present, otherwise the
-  existing server-only `CF_IMAGES_API_TOKEN`. The Pages analytics secret currently contains
-  the verified Images token, after the older Pages copy returned 401 on September 29, 2026.
-  A separately scoped Analytics Read token should replace it when available. Do not use the broad
-  account-ops token in production. The report at
+  `wrangler.toml`. The report requires the server-only `CLOUDFLARE_ANALYTICS_TOKEN`.
+  Use the account token `nino-site-analytics-read`, with only Account Analytics Read permission.
+  Its vault reference is `op://Developer Secrets/Cloudflare photography/analytics_api_token`.
+  Set it as a Pages secret; new deployments receive the updated value. Images and account-ops
+  credentials must not be used for this report. The report at
   `/photography/analytics/sites` reads Cloudflare Web Analytics page-load groups for
   `ninochavez.co`. It groups the profile, writing, demos, and photography paths, without
   adding a browser tracker or joining people across sections. Gallery actions remain in
