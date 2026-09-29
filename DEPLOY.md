@@ -43,6 +43,16 @@
 - **Analytics test markers**: `ANALYTICS_TEST_TOKEN` signs short-lived test requests.
   Missing or invalid signatures are rejected. Operator exclusion separately uses the verified
   Supabase identity and `ADMIN_EMAILS`; no client-supplied traffic classification is trusted.
+- **Cross-site traffic report**: `CLOUDFLARE_ACCOUNT_ID` is a non-secret Pages variable in
+  `wrangler.toml`. The report uses `CLOUDFLARE_ANALYTICS_TOKEN` when present, otherwise the
+  existing server-only `CF_IMAGES_API_TOKEN`. The latter was verified against the exact
+  Cloudflare GraphQL query on September 29, 2026 and is already in this Pages runtime.
+  A dedicated Analytics Read token should replace it when available. Do not use the broad
+  account-ops token in production. The report at
+  `/photography/analytics/sites` reads Cloudflare Web Analytics page-load groups for
+  `ninochavez.co`. It groups the profile, writing, demos, and photography paths, without
+  adding a browser tracker or joining people across sections. Gallery actions remain in
+  the separate gallery report. Missing or invalid access shows an explicit unavailable state.
 
 ## Domains
 - ninochavez.co/photography (apex router to Pages)
@@ -62,6 +72,8 @@
 - `curl -fsSL https://ninochavez.co/photography` returns 200
 - `curl -I https://analytics.ninochavez.co/` redirects to the report. The report returns 200,
   while the old gallery analytics URL redirects to the new host.
+- Check `/photography/analytics/sites` on the analytics subdomain for nonzero page loads,
+  a section-specific trend, and a paginated page list. Private share paths must not appear.
 - Spot-check an album page loads
 
 ## Authority limits
