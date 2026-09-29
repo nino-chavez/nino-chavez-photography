@@ -69,6 +69,8 @@
 
 	// Image transition state
 	let imageLoading = $state(false);
+	let viewId = $state(crypto.randomUUID());
+	let openedAt = $state(performance.now());
 	let navDirection = $state<'left' | 'right' | null>(null);
 
 	// Track viewport size for responsive image loading
@@ -462,6 +464,8 @@
 		// Reading image_key to track photo changes
 		const _key = photo.image_key;
 		imageLoading = true;
+		viewId = crypto.randomUUID();
+		openedAt = performance.now();
 		loadMoreFailed = false;
 	});
 
@@ -475,11 +479,12 @@
 	$effect(() => {
 		if (!open || !photo) return;
 		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
+		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, entry_surface: viewSource } });
 	});
 
 	function handleImageLoad() {
 		imageLoading = false;
-		if (photo) trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: photo.id, album_key: photo.album_key, source: viewSource } });
+		if (photo) trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, load_duration_ms: Math.max(0, Math.round(performance.now() - openedAt)) } });
 	}
 
 	// Preload adjacent images
@@ -626,7 +631,7 @@
 						onload={handleImageLoad}
 						onerror={() => {
 							if (hdrUrl) hdr.markFailed(photo);
-							trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: photo.id, album_key: photo.album_key, error_code: 'image_load_failed' } });
+							trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, error_code: 'image_load_failed' } });
 						}}
 					/>
 				</div>

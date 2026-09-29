@@ -10,8 +10,16 @@
 	import { SITE_ORIGIN, SITE_URL } from '$lib/site-url';
 	import { canonicalUrl as buildCanonical } from '$lib/seo/canonical';
 	import { canPublishRouteUrl, chatEnabledForRoute } from '$lib/routes';
+	import { trackVisibleGalleryPage } from '$lib/analytics/client';
 
 	let { children } = $props();
+
+	// Client navigation is the only reliable page-view boundary: SSR and hover prefetch are not views.
+	$effect(() => {
+		const routeId = $page.route.id;
+		if (!routeId || routeId.startsWith('/analytics')) return;
+		trackVisibleGalleryPage(routeId.replace(/[^a-z0-9_]/gi, '_').replace(/^_+|_+$/g, '') || 'gallery', $page.url.pathname);
+	});
 
 	// Create QueryClient instance for TanStack Query
 	const queryClient = new QueryClient({

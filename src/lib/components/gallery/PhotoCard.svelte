@@ -30,11 +30,13 @@
 	interface Props {
 		photo: Photo;
 		index?: number;
+		resultSetId?: string;
+		searchId?: string;
 		onclick?: (photo: Photo) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images
 	}
 
-	let { photo, index = 0, onclick, priority = false }: Props = $props();
+	let { photo, index = 0, resultSetId = crypto.randomUUID(), searchId, onclick, priority = false }: Props = $props();
 
 	// Use image_url for display, thumbnail as blur placeholder
 	// All images now served via Cloudflare proxy with WebP/AVIF conversion
@@ -53,9 +55,10 @@
 	// Generate comprehensive alt text for screen readers
 	let accessibleAltText = $derived(generatePhotoAltText(photo));
 	let loaded = $state(false);
-	function recordExposure() { trackAnalyticsEventV2({ eventName: 'photo_exposed', properties: { photo_id: photo.id, album_key: photo.metadata?.album_key, position: index } }); }
+	function recordExposure() { trackAnalyticsEventV2({ eventName: 'photo_exposed', properties: { photo_id: photo.id, album_key: photo.metadata?.album_key, position: index, result_set_id: resultSetId } }); }
 
 	function handleClick(event: MouseEvent) {
+		if (searchId) trackAnalyticsEventV2({ eventName: 'search_result_selected', properties: { search_id: searchId, result_set_id: resultSetId, photo_id: photo.id, album_key: photo.metadata?.album_key, position: index } });
 		// If onclick callback provided, prevent default navigation and use callback instead
 		if (onclick) {
 			event.preventDefault();

@@ -8,5 +8,5 @@ export function parseDownloadDiagnostic(input: unknown): DownloadDiagnosticInput
 	if (typeof value.photo_id !== 'string' && typeof value.album_key !== 'string') return null;
 	if (value.error_code !== undefined && value.error_code !== null && typeof value.error_code !== 'string') return null;
 	if (value.result_count !== undefined && value.result_count !== null && (!Number.isInteger(value.result_count) || Number(value.result_count) < 0)) return null;
-	return value as DownloadDiagnosticInput;
+	return value as unknown as DownloadDiagnosticInput;
 }

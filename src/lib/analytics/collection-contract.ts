@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { ID_PATTERN, isEventV2Name, isSafeEventProperty, type AcceptedEventV2, type EventV2Properties } from './events-v2';
+import { ID_PATTERN, eventPropertiesMatchContract, isEventV2Name, isSafeEventProperty, type AcceptedEventV2, type EventV2Properties } from './events-v2';
 
 const EVENT_TYPES = ['view', 'favorite', 'download', 'share', 'album_open'] as const;
 export type CollectionEventType = (typeof EVENT_TYPES)[number];
@@ -54,9 +54,7 @@ export function parseEventV2Request(input: unknown, now = Date.now()): EventV2Re
 		properties[key] = value;
 	}
 	if (Object.keys(properties).length > 20) return { ok: false, error: 'too many event properties' };
-	if (body.event_name.includes('photo') && !properties.photo_id) return { ok: false, error: 'photo event requires photo_id' };
-	if (body.event_name.startsWith('album_') && !properties.album_key) return { ok: false, error: 'album event requires album_key' };
-	if (body.event_name.startsWith('download_') && !properties.download_request_id) return { ok: false, error: 'download event requires download_request_id' };
+	if (!eventPropertiesMatchContract(body.event_name, properties)) return { ok: false, error: 'event properties do not match contract' };
 	return {
 		ok: true,
 		value: { event_id: body.event_id, schema_version: 2, event_name: body.event_name, occurred_at: occurredAt,
@@ -70,13 +68,13 @@ export async function resolveEventV2Target(
 ): Promise<EventV2RequestResult> {
 	const photoId = request.properties.photo_id;
 	const albumKey = request.properties.album_key;
-	if (photoId) {
+	if (typeof photoId === 'string' && photoId) {
 		const authoritativeAlbum = await lookup.albumForPhoto(photoId);
 		if (!authoritativeAlbum) return { ok: false, error: 'photo target not found' };
 		if (albumKey && albumKey !== authoritativeAlbum) return { ok: false, error: 'photo and album targets do not match' };
 		return { ok: true, value: { ...request, properties: { ...request.properties, album_key: authoritativeAlbum } } };
 	}
-	if (albumKey && !(await lookup.albumExists(albumKey))) return { ok: false, error: 'album target not found' };
+	if (typeof albumKey === 'string' && albumKey && !(await lookup.albumExists(albumKey))) return { ok: false, error: 'album target not found' };
 	return { ok: true, value: request };
 }
 

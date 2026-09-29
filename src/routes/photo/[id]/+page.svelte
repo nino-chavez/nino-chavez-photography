@@ -20,6 +20,8 @@
 	let { data }: { data: PageData } = $props();
 
 	let showModal = $state(true);
+	let viewId = $state(crypto.randomUUID());
+	let openedAt = $state(performance.now());
 
 	// Record the view here rather than in the server load. The load also runs on
 	// prefetch (data-sveltekit-preload-data="hover"), so tracking there banked a view
@@ -32,9 +34,10 @@
 			albumKey: data.photo.album_key,
 			source: data.viewSource
 		});
+		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, view_id: viewId, entry_surface: 'photo_route' } });
 	});
-	function recordRendered() { trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, source: data.viewSource } }); }
-	function recordLoadFailed() { trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, error_code: 'image_load_failed' } }); }
+	function recordRendered() { trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, view_id: viewId, load_duration_ms: Math.max(0, Math.round(performance.now() - openedAt)) } }); }
+	function recordLoadFailed() { trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, view_id: viewId, error_code: 'image_load_failed' } }); }
 
 	// Serve the web-sized HDR (gain-map) copy when one exists — it degrades gracefully to the
 	// same SDR pixels Cloudflare Images would show on a browser that can't render the gain map, so
@@ -98,11 +101,12 @@
 	async function copyPhotoLink() {
 		try {
 			await navigator.clipboard.writeText(shareUrl(data.seo.canonical, 'copy'));
-			recordShare({ photoId: data.photo.id, albumKey: data.photo.album_key }, 'copy');
+			recordShare({ photoId: data.photo.id, albumKey: data.photo.album_key }, 'copy', 'clipboard_succeeded');
 			linkCopied = true;
 			toast.success('Link copied to clipboard.');
 			setTimeout(() => (linkCopied = false), 2000);
 		} catch (err) {
+			recordShare({ photoId: data.photo.id, albumKey: data.photo.album_key }, 'copy', 'failed');
 			console.error('[PhotoDetail] Copy link failed:', err);
 			toast.error('Could not copy link. Please try again.');
 		}

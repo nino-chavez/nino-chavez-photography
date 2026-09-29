@@ -89,6 +89,7 @@ function createFavoritesStore() {
 				albumKey: photo.album_key,
 				source: 'favorites'
 			});
+			trackAnalyticsEventV2({ eventName: 'favorite_added', properties: { photo_id: photo.id, album_key: photo.album_key, surface: 'favorites' } });
 		},
 
 		// Remove photo from favorites
@@ -97,7 +98,7 @@ function createFavoritesStore() {
 			state.photoIds.delete(photoId);
 			state.photos.delete(photoId);
 			saveToStorage();
-			if (photo) trackAnalyticsEventV2({ eventName: 'favorite_removed', properties: { photo_id: photo.id, album_key: photo.album_key, source: 'favorites' } });
+			if (photo) trackAnalyticsEventV2({ eventName: 'favorite_removed', properties: { photo_id: photo.id, album_key: photo.album_key, surface: 'favorites' } });
 		},
 
 		// Toggle favorite status

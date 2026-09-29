@@ -41,19 +41,20 @@
 	async function copyLink() {
 		try {
 			await navigator.clipboard.writeText(shareUrl(url, 'copy'));
-			recordShare(subject, 'copy');
+			recordShare(subject, 'copy', 'clipboard_succeeded');
 			copySuccess = true;
 			setTimeout(() => {
 				copySuccess = false;
 			}, 2000);
 		} catch (err) {
+			recordShare(subject, 'copy', 'failed');
 			console.error('Failed to copy link:', err);
 		}
 	}
 
 	function handleShare(channel: 'x' | 'fb' | 'linkedin') {
-		window.open(shareUrls[channel], '_blank', 'width=600,height=400');
-		recordShare(subject, channel);
+		const handoff = window.open(shareUrls[channel], '_blank', 'width=600,height=400');
+		recordShare(subject, channel, handoff ? 'composer_opened' : 'failed');
 	}
 </script>
 
@@ -102,7 +103,7 @@
 		     time and the event has to be recorded separately on click. -->
 		<a
 			href={shareUrls.email}
-			onclick={() => recordShare(subject, 'email')}
+			onclick={() => recordShare(subject, 'email', 'email_link_opened')}
 			class="p-2.5 rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-gold-500/50 hover:bg-gold-500/10 hover:scale-105 active:scale-95 transition-transform transition-colors group"
 			aria-label="Share via Email"
 			title="Share via Email"

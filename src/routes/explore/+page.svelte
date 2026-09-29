@@ -79,15 +79,19 @@
 
 	// Search - sync with server data on navigation
 	let searchQuery = $state('');
+	let resultSetId = $state(crypto.randomUUID());
+	let resultShownAt = $state(performance.now());
 	$effect(() => {
 		searchQuery = data.searchQuery || '';
+		resultSetId = crypto.randomUUID();
+		resultShownAt = performance.now();
 	});
 
 	// Photos come directly from server (search filtering is server-side)
 	let displayPhotos = $derived(data.photos);
 	$effect(() => {
-		if (!data.searchId || !data.searchQuery) return;
-		trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: crypto.randomUUID(), result_count: data.totalCount } });
+		if (data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, duration_ms: Math.max(0, Math.round(performance.now() - resultShownAt)) } });
+		if (activeFilterCount > 0) trackAnalyticsEventV2({ eventName: 'filters_applied', properties: { result_set_id: resultSetId, result_count: data.totalCount, sport: data.selectedSport ?? undefined, category: data.selectedCategory ?? undefined, play_type: data.selectedPlayType ?? undefined, division: data.selectedDivision ?? undefined, level: data.selectedLevel ?? undefined, sort: data.sortBy } });
 	});
 
 	// Active filters count
@@ -650,7 +654,7 @@
 	{:else if displayPhotos.length > 0}
 		<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-4 lg:gap-6">
 			{#each displayPhotos as photo, index (photo.image_key)}
-				<PhotoCard {photo} {index} onclick={handlePhotoClick} priority={index < 4} />
+				<PhotoCard {photo} {index} {resultSetId} searchId={data.searchId ?? undefined} onclick={handlePhotoClick} priority={index < 4} />
 			{/each}
 		</div>
 	{:else}

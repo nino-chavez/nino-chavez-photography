@@ -11,7 +11,7 @@
  */
 
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet, searchByJersey } from '$lib/supabase/server';
-import { trackSearchQuery, trackCollectionDiagnostic, keepTrackingAlive } from '$lib/analytics/tracker';
+import { trackCollectionDiagnostic, keepTrackingAlive } from '$lib/analytics/tracker';
 import { resolveAnalyticsContext } from '$lib/analytics/context.server';
 import type { PageServerLoad } from './$types';
 
@@ -62,30 +62,6 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
 
   // Check if any filters are active
   const hasActiveFilters = !!(sportFilter || categoryFilter || playTypeFilter || jerseyFilter || divisionFilter || levelFilter);
-
-  /**
-   * What the VISITOR selected, for `search_queries.filters_used`.
-   *
-   * Not `filterOptions` — that is the internal argument to searchPhotos, and its `albumKeys`
-   * is the resolved facet expansion. Logging it stored a dump of every album matching the
-   * division/level facet: 11 rows averaging 611 bytes, one at 1,035, each a list of ~100
-   * album keys. It also LOST the thing worth recording, because `division` and `level` are
-   * consumed into that list and never appear — so the one column meant to answer "what was
-   * this person filtering by" could not answer it for the two filters that need resolving.
-   *
-   * Undefined keys are dropped so a row carries only what was actually chosen. The jersey
-   * branch above already logged this shape; this makes the two agree.
-   */
-  const visitorFilters = Object.fromEntries(
-    Object.entries({
-      sport: sportFilter,
-      category: categoryFilter,
-      playType: playTypeFilter,
-      jersey: jerseyFilter,
-      division: divisionFilter,
-      level: levelFilter
-    }).filter(([, value]) => value !== undefined && value !== null && value !== '')
-  );
 
   // PERFORMANCE: Stream filter counts — don't block FCP on expensive aggregation query
   // When filters are active, getFilterCounts can take 2-4s. By not awaiting,
@@ -143,17 +119,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
     totalCount = r.totalCount;
     parsedDescription = `Jersey #${jerseyFilter}${sportFilter ? ` · ${sportFilter}` : ''}`;
     searchMode = 'structured';
-    // Jersey lookups are the find-my-photos demand signal — a zero-result one is
-    // a person asking "did you get that?" and leaving empty-handed. First page
-    // only, so pagination doesn't multiply rows. Fire-and-forget, never awaited.
     if (offset === 0) {
-      keepTrackingAlive(platform, trackSearchQuery({
-        query_text: `jersey #${jerseyFilter}`,
-        filters_used: sportFilter ? { sport: sportFilter } : undefined,
-        results_count: totalCount,
-        userAgent,
-		trafficContext,
-      }));
 			keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'accepted', resultCount: totalCount, source: 'jersey', trafficContext }));
     }
   } else if (searchQuery) {
@@ -171,13 +137,6 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
     searchMode = result.searchMode;
     parsedDescription = result.parsedDescription;
     if (offset === 0) {
-      keepTrackingAlive(platform, trackSearchQuery({
-        query_text: searchQuery,
-        filters_used: hasActiveFilters ? visitorFilters : undefined,
-        results_count: totalCount,
-        userAgent,
-		trafficContext,
-      }));
 			keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'accepted', resultCount: totalCount, source: searchMode ?? 'search', trafficContext }));
     }
   } else {

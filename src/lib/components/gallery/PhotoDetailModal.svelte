@@ -51,6 +51,9 @@
 
 	// AI Insights collapsed by default (progressive disclosure)
 	let showAIInsights = $state(false);
+	let viewId = $state(crypto.randomUUID());
+	let openedAt = $state(performance.now());
+	let openedPhotoId = $state<string | null>(null);
 	
 	// Track viewport for responsive image loading
 	let viewportWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1920);
@@ -73,8 +76,8 @@
 		};
 	});
 
-	function recordRendered() { if (photo) trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: photo.id, album_key: photo.album_key, source: viewSource } }); }
-	function recordLoadFailed() { if (photo) trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: photo.id, album_key: photo.album_key, error_code: 'image_load_failed' } }); }
+	function recordRendered() { if (photo) trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, load_duration_ms: Math.max(0, Math.round(performance.now() - openedAt)) } }); }
+	function recordLoadFailed() { if (photo) trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, error_code: 'image_load_failed' } }); }
 	
 	// Serve the web-sized HDR (gain-map) copy when one exists (see /photo/[id]/+page.svelte for
 	// the full rationale — same logic, same graceful CF fallback on any load failure).
@@ -149,7 +152,14 @@
 	// never navigate to /photo/[id].
 	$effect(() => {
 		if (!open || !photo) return;
+		if (openedPhotoId === photo.id) return;
+		openedPhotoId = photo.id;
+		const nextViewId = crypto.randomUUID();
+		const nextOpenedAt = performance.now();
+		viewId = nextViewId;
+		openedAt = nextOpenedAt;
 		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
+		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: nextViewId, entry_surface: viewSource } });
 	});
 </script>
 

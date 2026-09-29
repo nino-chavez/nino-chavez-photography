@@ -19,7 +19,7 @@ test('v2 rejects raw search text, incomplete visit context, and invalid target p
 	const eventId = '123e4567-e89b-42d3-a456-426614174000';
 	const browserId = '123e4567-e89b-42d3-a456-426614174001';
 	const now = Date.UTC(2026, 8, 29, 12);
-	const base = { event_id: eventId, schema_version: 2, event_name: 'photo_opened', occurred_at: new Date(now).toISOString(), anonymous_browser_id: browserId, visit_id: browserId, properties: { photo_id: 'p1' } };
+	const base = { event_id: eventId, schema_version: 2, event_name: 'photo_opened', occurred_at: new Date(now).toISOString(), anonymous_browser_id: browserId, visit_id: browserId, properties: { photo_id: 'p1', album_key: 'alpha', view_id: browserId, entry_surface: 'gallery' } };
 	assert.equal(parseEventV2Request({ ...base, properties: { photo_id: 'p1', query_text: 'a person' } }, now).ok, false);
 	assert.equal(parseEventV2Request({ ...base, visit_id: null }, now).ok, false);
 	const parsed = parseEventV2Request(base, now);
@@ -32,6 +32,15 @@ test('v2 rejects raw search text, incomplete visit context, and invalid target p
 test('v2 requires a stable request correlation for download events', () => {
 	const event = { event_id: '123e4567-e89b-42d3-a456-426614174000', schema_version: 2, event_name: 'download_requested', occurred_at: new Date().toISOString(), anonymous_browser_id: null, visit_id: null, properties: { album_key: 'alpha' } };
 	assert.equal(parseEventV2Request(event).ok, false);
+});
+
+test('v2 rejects arbitrary safe-looking fields and incomplete required context', () => {
+	const id = '123e4567-e89b-42d3-a456-426614174000';
+	const base = { event_id: id, schema_version: 2, event_name: 'gallery_page_viewed', occurred_at: new Date().toISOString(), anonymous_browser_id: null, visit_id: null,
+		properties: { route_kind: 'explore', canonical_path: '/photography/explore', view_id: id, layout_class: 'wide' } };
+	assert.equal(parseEventV2Request(base).ok, true);
+	assert.equal(parseEventV2Request({ ...base, properties: { ...base.properties, harmless_extra: 'still rejected' } }).ok, false);
+	assert.equal(parseEventV2Request({ ...base, properties: { route_kind: 'explore', canonical_path: '/photography/explore', view_id: id } }).ok, false);
 });
 
 test('a deduplicated replay is an acknowledged duplicate', () => {

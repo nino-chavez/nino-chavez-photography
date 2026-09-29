@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
+	import { startDownloadLifecycle, trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
 	import { isDownloadableImageResponse } from '$lib/analytics/download-response';
 	import type { Photo } from '$types/photo';
 
@@ -16,6 +16,7 @@
 	let downloading = $state(false);
 	let progress = $state({ current: 0, total: 0 });
 	let abortController: AbortController | null = null;
+	let activeLifecycle: ReturnType<typeof startDownloadLifecycle> | null = null;
 
 	// Only photos with a Cloudflare image ID can be downloaded.
 	const downloadable = $derived(photos.filter((p) => p.cf_image_id));
@@ -50,6 +51,8 @@
 		downloading = true;
 		progress = { current: 0, total: entries.length };
 		abortController = new AbortController();
+		activeLifecycle = startDownloadLifecycle('saved_photo_zip', { photoId: entries[0].id, albumKey: entries[0].album_key }, entries.length);
+		let preparedEntries = 0;
 
 		try {
 			const { downloadZip } = await import('client-zip');
@@ -61,17 +64,19 @@
 				const signal = abortController!.signal;
 				type Entry = { name: string; data: Blob };
 
-				function fetchPhoto(photo: Photo): Promise<Entry> {
+				function fetchPhoto(photo: Photo): Promise<Entry | null> {
+					activeLifecycle?.itemRequested(photo.id, photo.album_key);
 					const url = cfImageUrl(photo.cf_image_id!, 'large');
 					const filename = `${photo.image_key}.jpg`;
 					const proxy = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
 					return fetch(proxy, { signal })
 						.then((r) => { if (!isDownloadableImageResponse(r)) throw new Error('download_item_failed'); return r.blob(); })
-						.then((data) => ({ name: filename, data }));
+						.then((data) => { activeLifecycle?.itemPrepared(photo.id, photo.album_key, data.size); return { name: filename, data }; })
+						.catch(() => null);
 				}
 
 				let next = 0;
-				const inflight = new Map<number, Promise<Entry>>();
+				const inflight = new Map<number, Promise<Entry | null>>();
 
 				// Seed the window.
 				while (next < entries.length && inflight.size < CONCURRENCY) {
@@ -93,14 +98,17 @@
 
 					progress.current++;
 					progress = { ...progress };
-					yield { name: result.name, input: result.data };
+					if (result) { preparedEntries++; yield { name: result.name, input: result.data }; }
 				}
 			}
 
 			const blob = await downloadZip(fileEntries()).blob();
 			if (abortController?.signal.aborted) return;
+			if (preparedEntries === 0) throw new Error('no_downloadable_items');
+			activeLifecycle.prepared(blob.size);
 
 			triggerBrowserDownload(blob, `saved-photos-${todayStamp()}.zip`);
+			activeLifecycle.handedOff();
 			toast.success(`Downloaded ${entries.length} ${entries.length === 1 ? 'photo' : 'photos'}.`);
 
 			// Each downloaded photo is a strong popularity signal (weight 6).
@@ -109,7 +117,10 @@
 				trackDownloadDiagnostic({ photoId: p.id, albumKey: p.album_key, source: 'favorites-zip', status: 'requested' });
 			}
 		} catch (err) {
-			if ((err as Error).name !== 'AbortError') {
+			if ((err as Error).name === 'AbortError') {
+				activeLifecycle?.cancelled('item_fetch');
+			} else {
+				activeLifecycle?.failed('item_fetch', 'zip_request_failed');
 				console.error('[FavoritesDownload] Error:', err);
 				trackDownloadDiagnostic({ albumKey: entries[0]?.album_key, source: 'favorites-zip', status: 'failed', errorCode: 'zip_request_failed' });
 				toast.error('Download failed. Please try again.');
@@ -117,12 +128,15 @@
 		} finally {
 			downloading = false;
 			abortController = null;
+			activeLifecycle = null;
 		}
 	}
 
 	function cancelDownload(event?: MouseEvent) {
 		event?.stopPropagation();
 		abortController?.abort();
+		activeLifecycle?.cancelled('item_fetch');
+		activeLifecycle = null;
 		downloading = false;
 		abortController = null;
 	}

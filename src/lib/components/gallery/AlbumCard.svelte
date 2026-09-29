@@ -31,11 +31,12 @@
 	interface Props {
 		album: Album;
 		index?: number;
+		resultSetId?: string;
 		onclick?: (album: Album) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images - disables lazy loading
 	}
 
-	let { album, index = 0, onclick, priority = false }: Props = $props();
+	let { album, index = 0, resultSetId = crypto.randomUUID(), onclick, priority = false }: Props = $props();
 
 	// Image loading state
 	let imageLoaded = $state(false);
@@ -66,7 +67,7 @@
 		imageLoaded = true;
 		imageError = false;
 	}
-	function recordExposure() { trackAnalyticsEventV2({ eventName: 'album_exposed', properties: { album_key: album.albumKey, position: index } }); }
+	function recordExposure() { trackAnalyticsEventV2({ eventName: 'album_exposed', properties: { album_key: album.albumKey, position: index, result_set_id: resultSetId } }); }
 
 	function handleImageError() {
 		imageError = true;

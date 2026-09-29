@@ -86,10 +86,13 @@
 				text: shareText,
 				url: shareUrl(target.url, 'web')
 			});
-			recordShare(subject, 'web');
+			recordShare(subject, 'web', 'native_share_handed_off');
 		} catch (err) {
 			// User cancelled or not supported — ignore
-			if ((err as DOMException).name !== 'AbortError') {
+			if ((err as DOMException).name === 'AbortError') {
+				recordShare(subject, 'web', 'cancelled');
+			} else {
+				recordShare(subject, 'web', 'failed');
 				console.error('Web Share failed:', err);
 			}
 		}
@@ -101,17 +104,18 @@
 		try {
 			await navigator.clipboard.writeText(shareUrl(target.url, 'copy'));
 			copySuccess = true;
-			recordShare(subject, 'copy');
+			recordShare(subject, 'copy', 'clipboard_succeeded');
 			setTimeout(() => { copySuccess = false; }, 2000);
 		} catch (err) {
+			recordShare(subject, 'copy', 'failed');
 			console.error('Failed to copy:', err);
 		}
 	}
 
 	function handlePlatformShare(channel: 'x' | 'fb' | 'pin', event: MouseEvent) {
 		event.stopPropagation();
-		window.open(shareUrls[channel], '_blank', 'width=600,height=400');
-		recordShare(subject, channel);
+		const handoff = window.open(shareUrls[channel], '_blank', 'width=600,height=400');
+		recordShare(subject, channel, handoff ? 'composer_opened' : 'failed');
 		closeMenu();
 	}
 

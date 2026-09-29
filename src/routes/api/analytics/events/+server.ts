@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { isBotUserAgent } from '$lib/analytics/bot-detection';
 import { parseEventV2Request, resolveEventV2Target } from '$lib/analytics/collection-contract';
 import { resolveAnalyticsContext } from '$lib/analytics/context.server';
+import { hasLinkedAnalyticsConsent } from '$lib/analytics/preferences-contract';
 
 /** V2 has no legacy fingerprint. One accepted event and eligible outbox row are inserted atomically by the RPC. */
 export const POST: RequestHandler = async ({ request, cookies }) => {
@@ -22,8 +23,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	} catch { return json({ accepted: false, duplicate: false, error: 'recording_unavailable' }, { status: 503 }); }
 	if (!target.ok) throw httpError(400, target.error);
 	const trafficContext = await resolveAnalyticsContext(request, cookies);
-	const exportEligible = trafficContext === 'audience' && target.value.anonymous_browser_id !== null && target.value.visit_id !== null;
-	const envelope = { ...target.value, received_at: new Date().toISOString(), traffic_context: trafficContext, export_eligible: exportEligible };
+	const linkedConsent = hasLinkedAnalyticsConsent(cookies);
+	const acceptedIdentity = trafficContext === 'audience' && linkedConsent
+		? { anonymous_browser_id: target.value.anonymous_browser_id, visit_id: target.value.visit_id }
+		: { anonymous_browser_id: null, visit_id: null };
+	const exportEligible = trafficContext === 'audience' && linkedConsent && acceptedIdentity.anonymous_browser_id !== null && acceptedIdentity.visit_id !== null;
+	const envelope = { ...target.value, ...acceptedIdentity, received_at: new Date().toISOString(), traffic_context: trafficContext, export_eligible: exportEligible };
 	const { data, error } = await admin.rpc('analytics_accept_event_v2', { p_event: envelope }).single();
 	if (error || !data) return json({ accepted: false, duplicate: false, error: 'recording_unavailable' }, { status: 503 });
 	return json(data);
