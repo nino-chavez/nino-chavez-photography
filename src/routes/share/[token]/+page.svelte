@@ -116,7 +116,7 @@
 		{#if data.photos.length > 0}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each data.photos as photo, index}
-					<PhotoCard {photo} {index} onclick={handlePhotoClick} />
+					<PhotoCard {photo} {index} favoriteSurface="shared_link" onclick={handlePhotoClick} />
 				{/each}
 			</div>
 

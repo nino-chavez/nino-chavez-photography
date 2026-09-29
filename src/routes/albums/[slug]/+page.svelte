@@ -423,7 +423,7 @@
 			{/if}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{#each displayPhotos as photo, index (photo.image_key)}
-					<PhotoCard {photo} {index} onclick={handlePhotoClick} priority={index < 4} />
+					<PhotoCard {photo} {index} favoriteSurface="album" onclick={handlePhotoClick} priority={index < 4} />
 				{/each}
 			</div>
 

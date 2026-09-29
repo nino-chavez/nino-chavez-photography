@@ -19,6 +19,7 @@
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createHdrSource } from '$lib/utils/hdr-photo-url';
 	import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { flushMediaOutcome, observeMediaOutcome, reconcileMediaView, type MediaView, type MediaViewEvent } from '$lib/analytics/media-view';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
@@ -69,8 +70,7 @@
 
 	// Image transition state
 	let imageLoading = $state(false);
-	let viewId = $state(crypto.randomUUID());
-	let openedAt = $state(performance.now());
+	let mediaView = $state<MediaView | null>(null);
 	let navDirection = $state<'left' | 'right' | null>(null);
 
 	// Track viewport size for responsive image loading
@@ -458,34 +458,51 @@
 		}
 	});
 
-	// Reset loading state when photo changes
-	$effect(() => {
-		if (!photo) return;
-		// Reading image_key to track photo changes
-		const _key = photo.image_key;
-		imageLoading = true;
-		viewId = crypto.randomUUID();
-		openedAt = performance.now();
-		loadMoreFailed = false;
-	});
-
-	// Record a view for whatever photo is on screen while the lightbox is open.
-	// This is the only "the visitor actually looked at this photo" signal for
-	// every route that opens photos in-place instead of navigating to
-	// /photo/[id] (album grids, explore, timeline, favorites, collections,
-	// share links) — without it, downloading/favoriting/sharing a photo here
-	// could happen with zero recorded views, which is exactly what fed the
-	// "0 views · 1 dl" readout on the analytics dashboard.
-	$effect(() => {
-		if (!open || !photo) return;
-		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
-		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, entry_surface: viewSource } });
-	});
-
-	function handleImageLoad() {
-		imageLoading = false;
-		if (photo) trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, load_duration_ms: Math.max(0, Math.round(performance.now() - openedAt)) } });
+	function recordMediaEvent(event: MediaViewEvent | null) {
+		if (!event) return;
+		if (event.name === 'photo_rendered') trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, load_duration_ms: event.loadDurationMs! } });
+		else trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, error_code: event.errorCode! } });
 	}
+
+	// A real open/photo transition starts exactly one view. Closing clears the identity so reopening
+	// the same image becomes a new view rather than reviving a stale timer.
+	$effect(() => {
+		const next = reconcileMediaView(mediaView, open, photo ? { id: photo.id, albumKey: photo.album_key } : null, () => crypto.randomUUID(), () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (!next.opened || !next.view || !photo) return;
+		imageLoading = true;
+		loadMoreFailed = false;
+		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
+		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: next.view.viewId, entry_surface: viewSource } });
+	});
+
+	function handleImageLoad(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const capture = { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' };
+		const next = observeMediaOutcome(mediaView, capture, 'rendered', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (next.view?.photoId === capture.photoId) imageLoading = false;
+		recordMediaEvent(next.event);
+	}
+
+	function handleImageError(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const capture = { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' };
+		const next = observeMediaOutcome(mediaView, capture, 'load_failed', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (next.view?.photoId === capture.photoId && hdrUrl && photo?.id === capture.photoId) hdr.markFailed(photo);
+		recordMediaEvent(next.event);
+	}
+
+	$effect(() => {
+		const onVisibilityChange = () => {
+			const next = flushMediaOutcome(mediaView, document.visibilityState === 'visible', () => performance.now());
+			if (next.view !== mediaView) mediaView = next.view;
+			recordMediaEvent(next.event);
+		};
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+	});
 
 	// Preload adjacent images
 	$effect(() => {
@@ -619,6 +636,8 @@
 						</div>
 					{/if}
 					<img
+						data-analytics-photo-id={photo.id}
+						data-analytics-view-id={mediaView?.viewId ?? ''}
 						src={optimizedImageUrl || photo.image_url}
 						srcset={imageSrcSet}
 						sizes={imageSizes}
@@ -629,10 +648,7 @@
 						loading="eager"
 						decoding="async"
 						onload={handleImageLoad}
-						onerror={() => {
-							if (hdrUrl) hdr.markFailed(photo);
-							trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: viewId, error_code: 'image_load_failed' } });
-						}}
+						onerror={handleImageError}
 					/>
 				</div>
 

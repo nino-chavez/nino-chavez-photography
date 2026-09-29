@@ -87,9 +87,21 @@
 
 	// Photos come directly from server (search filtering is server-side)
 	let displayPhotos = $derived(data.photos);
+	let reportedSearchFailureId = $state<string | null>(null);
+	function reportVisibleSearchFailure() {
+		if (!data.searchError?.searchId || reportedSearchFailureId === data.searchError.searchId || document.visibilityState !== 'visible') return;
+		reportedSearchFailureId = data.searchError.searchId;
+		trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: data.searchError.searchId, error_code: data.searchError.errorCode } });
+	}
 	$effect(() => {
-		if (data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, duration_ms: searchDuration(data.searchId) } });
+		if (!data.searchError && data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, duration_ms: searchDuration(data.searchId) } });
+		reportVisibleSearchFailure();
 		if (activeFilterCount > 0) trackAnalyticsEventV2({ eventName: 'filters_applied', properties: { result_set_id: resultSetId, result_count: data.totalCount, sport: data.selectedSport ?? undefined, category: data.selectedCategory ?? undefined, play_type: data.selectedPlayType ?? undefined, division: data.selectedDivision ?? undefined, level: data.selectedLevel ?? undefined, sort: data.sortBy } });
+	});
+	$effect(() => {
+		const onVisibilityChange = () => reportVisibleSearchFailure();
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		return () => document.removeEventListener('visibilitychange', onVisibilityChange);
 	});
 
 	// Active filters count
@@ -651,10 +663,16 @@
 	{#if isLoading}
 		<!-- Show skeleton while navigating -->
 		<PhotoGridSkeleton count={data.pageSize} />
+	{:else if data.searchError}
+		<div class="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto" role="alert">
+			<Camera class="w-16 h-16 text-charcoal-600 mb-4" aria-hidden="true" />
+			<Typography variant="h3" class="mb-2">Search is temporarily unavailable</Typography>
+			<Typography variant="body" class="text-charcoal-400">No results were recorded. Please try your search again.</Typography>
+		</div>
 	{:else if displayPhotos.length > 0}
 		<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-4 lg:gap-6">
 			{#each displayPhotos as photo, index (photo.image_key)}
-				<PhotoCard {photo} {index} {resultSetId} searchId={data.searchId ?? undefined} onclick={handlePhotoClick} priority={index < 4} />
+				<PhotoCard {photo} {index} {resultSetId} searchId={data.searchId ?? undefined} favoriteSurface="explore" onclick={handlePhotoClick} priority={index < 4} />
 			{/each}
 		</div>
 	{:else}

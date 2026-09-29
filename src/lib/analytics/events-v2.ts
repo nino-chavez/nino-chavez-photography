@@ -92,7 +92,9 @@ function validPropertyValues(properties: EventV2Properties): boolean {
 		if (key === 'stage' && !['request', 'item_fetch', 'prepare', 'handoff'].includes(String(value))) return false;
 		if (['view_id', 'search_id', 'result_set_id', 'download_request_id'].includes(key) && (typeof value !== 'string' || !ID_PATTERN.test(value))) return false;
 		if (key === 'canonical_path' && (typeof value !== 'string' || !value.startsWith('/') || value.includes('?') || value.includes('#'))) return false;
+		if (['sport', 'category', 'play_type', 'division', 'level', 'sort'].includes(key) && !isValidAnalyticsFilter(key, value)) return false;
 		if (typeof value === 'string' && ['unknown', 'none', 'n/a', 'placeholder'].includes(value.toLowerCase())) return false;
 	}
 	return true;
 }
+import { isValidAnalyticsFilter } from './search-contract';

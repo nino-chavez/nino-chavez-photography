@@ -248,7 +248,7 @@ What are you looking for?`
 								{#each message.toolInvocations as toolCall}
 									{#if toolCall.toolName === 'searchPhotos' && toolCall.result?.photos?.length}
 										<div class="mt-4 -mx-2">
-											<PhotoGrid photos={toolCall.result.photos} />
+											<PhotoGrid photos={toolCall.result.photos} favoriteSurface="chat_result" />
 										</div>
 									{:else if toolCall.toolName === 'searchPhotos'}
                                         <p class="mt-2 text-xs font-mono text-zinc-500 uppercase tracking-wider">[NO_MATCHES_FOUND]</p>

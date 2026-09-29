@@ -130,7 +130,7 @@ export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 
 /** Records report-safe collection evidence. Search text and browser identifiers never enter this table. */
 export async function trackCollectionDiagnostic(event: CollectionDiagnosticEvent): Promise<void> {
- if(isBotUserAgent(event.userAgent)) return;
+	if (event.trafficContext === 'self_excluded' || isBotUserAgent(event.userAgent)) return;
 	try {
 		const { error: dbError } = await createSupabaseAdminClient().from('analytics_collection_diagnostics').insert({
 			diagnostic_type: event.type,

@@ -24,6 +24,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
  });}catch{return json({ok:false,error:'recording_unavailable'},{status:503});}
  if(!target.ok)throw error(400,target.error);
 	const traffic_context = await resolveAnalyticsContext(request, cookies);
+	if (traffic_context === 'self_excluded') return json({ ok: true, accepted: false, reason: 'self_excluded' }, { status: 202 });
 	const { error: dbError } = await admin.from('analytics_collection_diagnostics').insert({
 		diagnostic_type: body.type, status: body.status, album_key: target.value.album_key, photo_id: target.value.photo_id,
 		source: body.source?.slice(0, 120) || 'direct', error_code: body.error_code?.slice(0, 120) ?? null, result_count: body.result_count ?? null, traffic_context

@@ -41,6 +41,7 @@
 	// Image loading state
 	let imageLoaded = $state(false);
 	let imageError = $state(false);
+	let previousCoverIdentity = $state('');
 
 	// Generate album URL for navigation (using friendly slug)
 	let albumUrl = $derived(`${base}/albums/${createAlbumSlug(album.albumName, album.albumKey)}`);
@@ -51,6 +52,9 @@
 		album.coverCfImageId ? cfImageUrl(album.coverCfImageId, 'medium') : album.coverImageUrl
 	);
 	let hasCover = $derived(!!(album.coverCfImageId || album.coverImageUrl));
+	let coverIdentity = $derived(`${album.albumKey}:${album.coverCfImageId ?? album.coverImageUrl ?? 'coverless'}`);
+	let exposureIdentity = $derived(`${resultSetId}:${album.albumKey}`);
+	let exposureLoaded = $derived(hasCover ? imageLoaded : true);
 	const albumCardSizes = SIZES_PRESETS.albumCard;
 
 	function handleClick(event: MouseEvent) {
@@ -73,6 +77,13 @@
 		imageError = true;
 		imageLoaded = false;
 	}
+
+	$effect(() => {
+		if (previousCoverIdentity === coverIdentity) return;
+		previousCoverIdentity = coverIdentity;
+		imageLoaded = false;
+		imageError = false;
+	});
 
 	// Sport emojis for badges
 	const sportEmojis: Record<string, string> = {
@@ -145,7 +156,7 @@
 	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 cursor-pointer outline-none block"
 	aria-label={`Album: ${album.albumName}, ${contentLabel}`}
 	onclick={handleClick}
-	use:exposure={{ loaded: imageLoaded, onExpose: recordExposure }}
+	use:exposure={{ loaded: exposureLoaded, onExpose: recordExposure, identity: exposureIdentity }}
 >
 	<!-- Loading/Fallback State -->
 	{#if !imageLoaded || imageError || !hasCover}
@@ -163,7 +174,7 @@
 
 	<!-- Cover Image with Responsive srcset -->
 	{#if hasCover && !imageError}
-		<img
+		{#key coverIdentity}<img
 			src={optimizedCoverUrl || album.coverImageUrl}
 			srcset={coverSrcset || undefined}
 			sizes={albumCardSizes}
@@ -180,6 +191,7 @@
 			onload={handleImageLoad}
 			onerror={handleImageError}
 		/>
+		{/key}
 	{/if}
 
 	<!-- Album Info Overlay -->

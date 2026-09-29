@@ -43,6 +43,16 @@ test('v2 rejects arbitrary safe-looking fields and incomplete required context',
 	assert.equal(parseEventV2Request({ ...base, properties: { route_kind: 'explore', canonical_path: '/photography/explore', view_id: id } }).ok, false);
 });
 
+test('v2 rejects filter labels outside the gallery vocabulary', () => {
+	const id = '123e4567-e89b-42d3-a456-426614174000';
+	const event = {
+		event_id: id, schema_version: 2, event_name: 'filters_applied', occurred_at: new Date().toISOString(),
+		anonymous_browser_id: null, visit_id: null,
+		properties: { result_set_id: id, result_count: 0, sport: 'invented_sport' }
+	};
+	assert.equal(parseEventV2Request(event).ok, false);
+});
+
 test('a deduplicated replay is an acknowledged duplicate', () => {
 	assert.deepEqual(collectionOutcome({ code: '23505' }), { status: 200, body: { ok: true, accepted: false, duplicate: true } });
 });

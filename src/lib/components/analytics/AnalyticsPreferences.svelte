@@ -1,18 +1,31 @@
 <script lang="ts">
-	import { getAnalyticsPreferences, saveAnalyticsPreferences, type AnalyticsPreferenceState } from '$lib/analytics/visit';
+	import { getAnalyticsPreferences, saveAnalyticsPreferences, subscribeAnalyticsPreferences, type AnalyticsPreferenceState } from '$lib/analytics/visit';
 	import { base } from '$app/paths';
 
 	let preferences = $state<AnalyticsPreferenceState>(getAnalyticsPreferences());
 	let saving = $state(false);
 	let message = $state('');
+	let savedPreferences = $state<AnalyticsPreferenceState>(getAnalyticsPreferences());
+
+	$effect(() => subscribeAnalyticsPreferences((next) => {
+		savedPreferences = next;
+		preferences = { ...next };
+	}));
 
 	async function persist(): Promise<void> {
-		saveAnalyticsPreferences(preferences);
 		saving = true;
 		try {
 			const response = await fetch(`${base}/api/analytics/preferences`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(preferences) });
-			message = response.ok ? 'Analytics preference saved for this browser.' : 'Your choice is saved locally. Server settings were not saved; please try again.';
-		} catch { message = 'The local preference is saved; server exclusion could not be updated.'; }
+			if (!response.ok) throw new Error('preference_rejected');
+			saveAnalyticsPreferences(preferences);
+			savedPreferences = getAnalyticsPreferences();
+			preferences = { ...savedPreferences };
+			message = 'Analytics preference saved for this browser.';
+		} catch {
+			// Do not clear the local browser ID until the server has revoked queued exports.
+			preferences = { ...savedPreferences };
+			message = 'Your previous preference remains active. Please try again.';
+		}
 		finally { saving = false; }
 	}
 </script>

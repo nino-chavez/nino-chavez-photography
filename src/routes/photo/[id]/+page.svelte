@@ -10,6 +10,7 @@
 	import { createHdrSource } from '$lib/utils/hdr-photo-url';
 	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
 	import { trackEngagement, recordShare, trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { flushMediaOutcome, observeMediaOutcome, reconcileMediaView, type MediaView, type MediaViewEvent } from '$lib/analytics/media-view';
 	import { shareUrl } from '$lib/analytics/share';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
@@ -20,24 +21,51 @@
 	let { data }: { data: PageData } = $props();
 
 	let showModal = $state(true);
-	let viewId = $state(crypto.randomUUID());
-	let openedAt = $state(performance.now());
+	let mediaView = $state<MediaView | null>(null);
 
 	// Record the view here rather than in the server load. The load also runs on
 	// prefetch (data-sveltekit-preload-data="hover"), so tracking there banked a view
 	// for every photo a cursor passed over in an album grid. This effect runs only
 	// when the page actually renders. Deduped per visitor/photo/day server-side, so a
 	// re-visit or a re-render costs nothing.
+	function recordMediaEvent(event: MediaViewEvent | null) {
+		if (!event) return;
+		if (event.name === 'photo_rendered') trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, load_duration_ms: event.loadDurationMs! } });
+		else trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, error_code: event.errorCode! } });
+	}
+
 	$effect(() => {
-		trackEngagement('view', {
-			photoId: data.photo.id,
-			albumKey: data.photo.album_key,
-			source: data.viewSource
-		});
-		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, view_id: viewId, entry_surface: 'photo_route' } });
+		const next = reconcileMediaView(mediaView, showModal, { id: data.photo.id, albumKey: data.photo.album_key }, () => crypto.randomUUID(), () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (!next.opened || !next.view) return;
+		trackEngagement('view', { photoId: data.photo.id, albumKey: data.photo.album_key, source: data.viewSource });
+		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, view_id: next.view.viewId, entry_surface: 'photo_route' } });
 	});
-	function recordRendered() { trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, view_id: viewId, load_duration_ms: Math.max(0, Math.round(performance.now() - openedAt)) } }); }
-	function recordLoadFailed() { trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, view_id: viewId, error_code: 'image_load_failed' } }); }
+
+	function recordRendered(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const next = observeMediaOutcome(mediaView, { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' }, 'rendered', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		recordMediaEvent(next.event);
+	}
+	function recordLoadFailed(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const capture = { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' };
+		const next = observeMediaOutcome(mediaView, capture, 'load_failed', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (next.view?.photoId === capture.photoId && hdrUrl && data.photo.id === capture.photoId) hdr.markFailed(data.photo);
+		recordMediaEvent(next.event);
+	}
+
+	$effect(() => {
+		const onVisibilityChange = () => {
+			const next = flushMediaOutcome(mediaView, document.visibilityState === 'visible', () => performance.now());
+			if (next.view !== mediaView) mediaView = next.view;
+			recordMediaEvent(next.event);
+		};
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+	});
 
 	// Serve the web-sized HDR (gain-map) copy when one exists — it degrades gracefully to the
 	// same SDR pixels Cloudflare Images would show on a browser that can't render the gain map, so
@@ -204,6 +232,8 @@
 						: '4 / 3'};"
 				>
 					<img
+						data-analytics-photo-id={data.photo.id}
+						data-analytics-view-id={mediaView?.viewId ?? ''}
 						src={optimizedImageUrl}
 						srcset={imageSrcSet}
 						sizes="(max-width: 768px) 100vw, 896px"
@@ -213,10 +243,7 @@
 						decoding="async"
 						fetchpriority="high"
 						onload={recordRendered}
-						onerror={() => {
-							if (hdrUrl) hdr.markFailed(data.photo);
-							recordLoadFailed();
-						}}
+						onerror={recordLoadFailed}
 					/>
 				</div>
 

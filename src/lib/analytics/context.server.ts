@@ -6,9 +6,14 @@ import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { hasTrustedAnalyticsTestMarker } from '$lib/analytics/collection-contract';
 import { hasAnalyticsBrowserExclusion } from '$lib/analytics/preferences-contract';
+import { analyticsReleaseContext } from '$lib/analytics/release-context';
 import type { Cookies } from '@sveltejs/kit';
 
 export type AnalyticsTrafficContext = 'audience' | 'operator' | 'test' | 'self_excluded';
+
+export function resolveAnalyticsReleaseContext(values: Record<string, string | undefined> = env): string {
+	return analyticsReleaseContext(values, dev);
+}
 
 /**
  * Context is proven server-side. Client body/query values are intentionally not

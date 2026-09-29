@@ -47,10 +47,21 @@ export function getAnalyticsPreferences(): AnalyticsPreferenceState {
 
 export function saveAnalyticsPreferences(preferences: AnalyticsPreferenceState): void {
 	if (typeof window === 'undefined') return;
-	writeJson(PREFERENCE_KEY, preferences);
-	if (!preferences.linkedAnalytics || preferences.excludeThisBrowser) {
+	const normalized = { linkedAnalytics: preferences.linkedAnalytics && !preferences.excludeThisBrowser, excludeThisBrowser: preferences.excludeThisBrowser };
+	writeJson(PREFERENCE_KEY, normalized);
+	if (!normalized.linkedAnalytics) {
 		try { localStorage.removeItem(IDENTITY_KEY); localStorage.removeItem(VISIT_KEY); } catch { /* Storage may be disabled. */ }
 	}
+}
+
+/** Storage events reach other tabs; the initiating tab saves directly after server revocation succeeds. */
+export function subscribeAnalyticsPreferences(listener: (preferences: AnalyticsPreferenceState) => void): () => void {
+	if (typeof window === 'undefined') return () => {};
+	const onStorage = (event: StorageEvent) => {
+		if (event.key === PREFERENCE_KEY) listener(getAnalyticsPreferences());
+	};
+	window.addEventListener('storage', onStorage);
+	return () => window.removeEventListener('storage', onStorage);
 }
 
 /** Returns no persistent identity when the visitor has not opted into linked analytics. */
@@ -59,14 +70,18 @@ export function getVisitContext(now = Date.now()): VisitContext {
 		return { anonymous_browser_id: null, visit_id: null };
 	}
 	const priorIdentity = readJson<StoredIdentity>(IDENTITY_KEY);
-	const identity = priorIdentity && now - priorIdentity.createdAt < BROWSER_MAX_AGE
+	let identity = priorIdentity && now - priorIdentity.createdAt < BROWSER_MAX_AGE
 		? priorIdentity : { id: newId(), createdAt: now };
 	if (!writeJson(IDENTITY_KEY, identity)) return { anonymous_browser_id: null, visit_id: null };
+	// Another consented tab may have created an ID between our first read and write. The persisted
+	// value is the shared browser authority, so re-read it before creating the visit.
+	identity = readJson<StoredIdentity>(IDENTITY_KEY) ?? identity;
 	const priorVisit = readJson<StoredVisit>(VISIT_KEY);
-	const active = priorVisit && now - priorVisit.lastInteractionAt < VISIT_IDLE && now - priorVisit.startedAt < VISIT_MAX_AGE
+	let active = priorVisit && now - priorVisit.lastInteractionAt < VISIT_IDLE && now - priorVisit.startedAt < VISIT_MAX_AGE
 		? priorVisit : { id: newId(), startedAt: now, lastInteractionAt: now };
 	active.lastInteractionAt = now;
 	if (!writeJson(VISIT_KEY, active)) return { anonymous_browser_id: null, visit_id: null };
+	active = readJson<StoredVisit>(VISIT_KEY) ?? active;
 	return { anonymous_browser_id: identity.id, visit_id: active.id };
 }
 

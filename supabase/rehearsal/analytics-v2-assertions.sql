@@ -41,6 +41,25 @@ BEGIN
  IF EXISTS(SELECT 1 FROM public.analytics_v2_archived_totals WHERE dimensions::text~'(browser_id|visit_id|search_id|view_id|request_id)') THEN RAISE EXCEPTION 'retention kept identifiers'; END IF;
 END $$;
 RESET ROLE;
+SET LOCAL ROLE service_role;
+DO $$
+DECLARE queued jsonb; submitted jsonb; later jsonb;
+BEGIN
+ queued:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000003','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id','30000000-0000-4000-8000-000000000003','visit_id','40000000-0000-4000-8000-000000000003','traffic_context','audience','export_eligible',true,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ PERFORM public.analytics_accept_event_v2(queued);
+ PERFORM public.analytics_revoke_browser_exports_v2('30000000-0000-4000-8000-000000000003');
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000003') OR EXISTS(SELECT 1 FROM public.analytics_events_v2 WHERE event_id='20000000-0000-4000-8000-000000000003' AND export_eligible) THEN RAISE EXCEPTION 'withdrawal left a queued export eligible'; END IF;
+ later:=queued || jsonb_build_object('event_id','20000000-0000-4000-8000-000000000004');
+ PERFORM public.analytics_accept_event_v2(later);
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000004') OR EXISTS(SELECT 1 FROM public.analytics_events_v2 WHERE event_id='20000000-0000-4000-8000-000000000004' AND (anonymous_browser_id IS NOT NULL OR visit_id IS NOT NULL OR export_eligible)) THEN RAISE EXCEPTION 'revoked browser raced back into export'; END IF;
+ submitted:=queued || jsonb_build_object('event_id','20000000-0000-4000-8000-000000000005','anonymous_browser_id','30000000-0000-4000-8000-000000000005','visit_id','40000000-0000-4000-8000-000000000005');
+ PERFORM public.analytics_accept_event_v2(submitted);
+ PERFORM public.analytics_claim_posthog_events(1,30);
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000005','submitted',NULL);
+ PERFORM public.analytics_revoke_browser_exports_v2('30000000-0000-4000-8000-000000000005');
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000005' AND status='submitted') OR EXISTS(SELECT 1 FROM public.analytics_events_v2 WHERE event_id='20000000-0000-4000-8000-000000000005' AND export_eligible) THEN RAISE EXCEPTION 'withdrawal rewrote submitted provider history'; END IF;
+END $$;
+RESET ROLE;
 SET LOCAL ROLE anon;
 DO $$ BEGIN
  BEGIN PERFORM public.analytics_recheck_posthog_event_eligibility('20000000-0000-4000-8000-000000000001'); RAISE EXCEPTION 'anon recheck allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;

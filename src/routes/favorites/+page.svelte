@@ -183,7 +183,7 @@
 			{#if favoriteCount > 0}
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 					{#each favoritePhotos as photo, index}
-						<PhotoCard {photo} {index} onclick={handlePhotoClick} />
+						<PhotoCard {photo} {index} favoriteSurface="favorites" onclick={handlePhotoClick} />
 					{/each}
 				</div>
 			{:else}

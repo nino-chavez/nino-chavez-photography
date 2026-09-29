@@ -13,6 +13,8 @@
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet, searchByJersey } from '$lib/supabase/server';
 import { trackCollectionDiagnostic, keepTrackingAlive } from '$lib/analytics/tracker';
 import { resolveAnalyticsContext } from '$lib/analytics/context.server';
+import { EXPLORE_FILTER_VALUES, optionalKnownFilter, validSearchCorrelationId } from '$lib/analytics/search-contract';
+import { error as httpError } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 function diagnosticErrorCode(cause: unknown): string {
@@ -29,18 +31,30 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
   const { sports, categories, baseFilterCounts } = await parent();
 
   // User-facing filter params from URL
-  let sportFilter = url.searchParams.get('sport') || undefined;
-  let categoryFilter = url.searchParams.get('category') || undefined;
-  let playTypeFilter = url.searchParams.get('play_type') || undefined;
+  const rawSportFilter = url.searchParams.get('sport');
+  const rawCategoryFilter = url.searchParams.get('category');
+  const rawPlayTypeFilter = url.searchParams.get('play_type');
+  const rawDivisionFilter = url.searchParams.get('division');
+  const rawLevelFilter = url.searchParams.get('level');
+  const rawSort = url.searchParams.get('sort');
+  if ((rawSportFilter && !optionalKnownFilter(rawSportFilter, EXPLORE_FILTER_VALUES.sport)) ||
+    (rawCategoryFilter && !optionalKnownFilter(rawCategoryFilter, EXPLORE_FILTER_VALUES.category)) ||
+    (rawPlayTypeFilter && !optionalKnownFilter(rawPlayTypeFilter, EXPLORE_FILTER_VALUES.play_type)) ||
+    (rawDivisionFilter && !optionalKnownFilter(rawDivisionFilter, EXPLORE_FILTER_VALUES.division)) ||
+    (rawLevelFilter && !optionalKnownFilter(rawLevelFilter, EXPLORE_FILTER_VALUES.level)) ||
+    (rawSort && !optionalKnownFilter(rawSort, EXPLORE_FILTER_VALUES.sort))) throw httpError(400, 'invalid gallery filter');
+  let sportFilter = optionalKnownFilter(rawSportFilter, EXPLORE_FILTER_VALUES.sport);
+  let categoryFilter = optionalKnownFilter(rawCategoryFilter, EXPLORE_FILTER_VALUES.category);
+  let playTypeFilter = optionalKnownFilter(rawPlayTypeFilter, EXPLORE_FILTER_VALUES.play_type);
   let searchQuery = url.searchParams.get('q') || undefined;
-	const searchId = url.searchParams.get('search_id');
+	const searchId = validSearchCorrelationId(url.searchParams.get('search_id'));
   let similarToImageKey = url.searchParams.get('similar_to') || undefined;
   let jerseyFilter = url.searchParams.get('jersey') ? parseInt(url.searchParams.get('jersey')!) : undefined;
-  const divisionFilter = url.searchParams.get('division') || undefined;
-  const levelFilter = url.searchParams.get('level') || undefined;
+  const divisionFilter = optionalKnownFilter(rawDivisionFilter, EXPLORE_FILTER_VALUES.division);
+  const levelFilter = optionalKnownFilter(rawLevelFilter, EXPLORE_FILTER_VALUES.level);
 
   // Sort mode (default to quality)
-  const sortBy = (url.searchParams.get('sort') || 'quality') as 'quality' | 'newest' | 'oldest';
+  const sortBy = (optionalKnownFilter(rawSort, EXPLORE_FILTER_VALUES.sort) || 'quality') as 'quality' | 'newest' | 'oldest';
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1')); // Ensure minimum page 1
   const pageSize = 24; // Fixed page size for consistent pagination
   const offset = (page - 1) * pageSize;
@@ -113,7 +127,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
 			r = await searchByJersey(String(jerseyFilter), { sport: sportFilter, limit: pageSize, offset });
 		} catch (cause) {
 			if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'failed', source: 'jersey', errorCode: diagnosticErrorCode(cause), trafficContext }));
-			throw cause;
+		return searchFailureResponse();
 		}
     photos = r.photos;
     totalCount = r.totalCount;
@@ -130,7 +144,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
 			result = await searchPhotos(searchQuery, filterOptions, { limit: pageSize, offset, sortBy });
 		} catch (cause) {
 			if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'failed', source: 'search', errorCode: diagnosticErrorCode(cause), trafficContext }));
-			throw cause;
+		return searchFailureResponse();
 		}
     photos = result.photos;
     totalCount = result.totalCount;
@@ -174,7 +188,21 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
     searchQuery,
 		searchId,
     searchMode,
-    parsedDescription,
+		parsedDescription,
+		searchError: null,
     similarToImageKey,
   };
+
+  function searchFailureResponse() {
+		return {
+			seo: { title: 'Search unavailable | Nino Chavez Photography', description: 'The gallery search is temporarily unavailable.' },
+			photos: [], totalCount: 0, currentPage: page, pageSize, sortBy, sports,
+			selectedSport: sportFilter || null, categories, selectedCategory: categoryFilter || null,
+			selectedPlayType: playTypeFilter || null, selectedJerseyNumber: jerseyFilter || null,
+			selectedDivision: divisionFilter || null, selectedLevel: levelFilter || null,
+			filterCounts: Promise.resolve(baseFilterCounts), clearedFilters, searchQuery, searchId,
+			searchMode: null, parsedDescription: '', similarToImageKey,
+			searchError: { searchId, errorCode: 'search_unavailable' }
+		};
+	}
 };
