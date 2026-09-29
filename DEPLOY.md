@@ -45,9 +45,9 @@
   Supabase identity and `ADMIN_EMAILS`; no client-supplied traffic classification is trusted.
 - **Cross-site traffic report**: `CLOUDFLARE_ACCOUNT_ID` is a non-secret Pages variable in
   `wrangler.toml`. The report uses `CLOUDFLARE_ANALYTICS_TOKEN` when present, otherwise the
-  existing server-only `CF_IMAGES_API_TOKEN`. The latter was verified against the exact
-  Cloudflare GraphQL query on September 29, 2026 and is already in this Pages runtime.
-  A dedicated Analytics Read token should replace it when available. Do not use the broad
+  existing server-only `CF_IMAGES_API_TOKEN`. The Pages analytics secret currently contains
+  the verified Images token, after the older Pages copy returned 401 on September 29, 2026.
+  A separately scoped Analytics Read token should replace it when available. Do not use the broad
   account-ops token in production. The report at
   `/photography/analytics/sites` reads Cloudflare Web Analytics page-load groups for
   `ninochavez.co`. It groups the profile, writing, demos, and photography paths, without
@@ -56,10 +56,11 @@
 
 ## Domains
 - ninochavez.co/photography (apex router to Pages)
-- analytics.ninochavez.co/photography/analytics/operator (same Pages project). The proxied
+- analytics.ninochavez.co/ (same Pages project). The proxied
   `analytics` CNAME points to `nino-chavez-photography.pages.dev`, and the hostname is attached
-  as a Pages custom domain. Cloudflare Page Rule `4abee86fac06ab509ec6e74a93c4019e` forwards
-  the subdomain root to the report because SvelteKit is built with the `/photography` base path.
+  as a Pages custom domain. Cloudflare Page Rules `4abee86fac06ab509ec6e74a93c4019e` and
+  `49cd0626a9c5fe0e70031b988f948c2c` forward the subdomain root and root with query
+  to `/photography/analytics/sites` because SvelteKit is built with the `/photography` base path.
 - Old analytics GET/HEAD URLs redirect to this hostname. Old-host analytics writes return 404.
   The report remains public; the hostname is an access-control boundary for a future
   Cloudflare Access policy, not authentication by itself.
