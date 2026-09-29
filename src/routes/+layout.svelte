@@ -33,6 +33,7 @@
 
 	// Navigation loading state
 	let isNavigating = $derived($navigating !== null);
+	let isAnalyticsWorkspace = $derived($page.route.id === '/analytics/operator');
 
 	// Kill switch: chat is OFF unless VITE_CHAT_ENABLED === 'true' (disabled in prod for now,
 	// pending the v5 stream-contract fix + a verifiable output guardrail). Re-enable by setting
@@ -195,14 +196,14 @@
 		</div>
 	{/if}
 
-	<div class="min-h-screen bg-charcoal-950 text-white flex flex-col">
-		<Header />
+	<div class={isAnalyticsWorkspace ? 'min-h-screen flex flex-col bg-[#f4f7fb]' : 'min-h-screen flex flex-col bg-charcoal-950 text-white'}>
+		{#if !isAnalyticsWorkspace}<Header />{/if}
 
-		<main class="flex-1 pb-20 sm:pb-0">
+		<main class={isAnalyticsWorkspace ? 'flex-1' : 'flex-1 pb-20 sm:pb-0'}>
 			{@render children?.()}
 		</main>
 
-		<Footer />
+		{#if !isAnalyticsWorkspace}<Footer />{/if}
 	</div>
 
 	<!-- Global Toast Notifications -->

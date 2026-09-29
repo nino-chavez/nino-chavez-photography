@@ -1,6 +1,21 @@
 import {test,expect} from '@playwright/test';
 
 const route='/photography/analytics/operator';
+test('the retired analytics address keeps report filters and opens the workspace',async({request})=>{
+ const response=await request.get('/photography/analytics?period=7&measure=downloads',{maxRedirects:0});
+ expect(response.status()).toBe(308);
+ expect(response.headers().location).toBe(`${route}?period=7&measure=downloads`);
+});
+
+test('photo results use pages inside the photo view',async({page})=>{
+ await page.goto(route+'?period=7#photos');
+ await expect(page.getByRole('button',{name:'Next',exact:true})).toBeEnabled();
+ await expect(page.locator('.photo-card')).toHaveCount(12);
+ await page.getByRole('button',{name:'Next',exact:true}).click();
+ await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
+ await expect(page.locator('.photo-card')).toHaveCount(12);
+});
+
 test('reports, filters and CSV are available without a session',async({page})=>{
  const response=await page.goto(route+'?period=7');
  expect(response?.status()).toBe(200);

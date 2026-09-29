@@ -10,7 +10,7 @@ test.beforeEach(async({page,context,baseURL})=>{
 });
 const query='period=custom&start=2026-09-27&end=2026-09-27&compare=none';
 test('selecting a named album updates the inspector and compare changes report scope',async({page})=>{
-	await page.goto('/photography/analytics/operator?'+query);
+	await page.goto('/photography/analytics/operator?'+query+'#albums');
 	const row=page.locator('#albums tr').filter({hasText:'Alpha Invitational'});
 	await row.getByRole('button',{name:/Alpha Invitational/}).click();
 	await expect(page.locator('.inspector')).toContainText('Alpha Invitational');
@@ -23,7 +23,7 @@ test('selecting a named album updates the inspector and compare changes report s
  await expect(page.locator('.album-picker summary')).toContainText('All albums');
 });
 test('save and reopen preserves the chosen dates and album',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha');
+ await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha#sources');
  const name='Parent acceptance '+Date.now();
  await page.getByLabel('View name').fill(name);
  await page.getByRole('button',{name:'Save view',exact:true}).click();
@@ -35,7 +35,8 @@ test('save and reopen preserves the chosen dates and album',async({page})=>{
  expect(params.get('end')).toBe('2026-09-27');
  expect(params.get('albums')).toBe('alpha');
  await saved.click();
-	await expect(page.locator('.inspector')).toContainText('Alpha Invitational');
+	await expect.poll(()=>new URL(page.url()).searchParams.get('albums')).toBe('alpha');
+	await expect(page.getByRole('heading',{name:'Repeat this analysis'})).toBeVisible();
  await page.getByRole('combobox',{name:'Measure',exact:true}).selectOption('downloads');
  await page.getByRole('button',{name:'Apply',exact:true}).click();
  await expect.poll(()=>new URL(page.url()).searchParams.get('measure')).toBe('downloads');
@@ -47,7 +48,7 @@ test('save and reopen preserves the chosen dates and album',async({page})=>{
  await expect(page.getByRole('link',{name,exact:true})).toHaveCount(0);
 });
 test('photo inspection supports keyboard focus and shortlist export',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query);
+ await page.goto('/photography/analytics/operator?'+query+'#photos');
  const trigger=page.locator('.photo-inspect').first();
  await trigger.click();
  const dialog=page.getByRole('dialog');
@@ -65,7 +66,7 @@ test('photo inspection supports keyboard focus and shortlist export',async({page
 });
 
 test('sharing note can be created, updated and deleted in the selected report',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha');
+ await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha#sources');
  const note='Synthetic sharing rehearsal '+Date.now();
  const add=page.locator('form[action*="addAnnotation"]');
  await add.getByRole('combobox',{name:'Album',exact:true}).selectOption('alpha');
@@ -73,8 +74,10 @@ test('sharing note can be created, updated and deleted in the selected report',a
  await add.getByLabel('Channel').fill('Instagram');
  await add.getByLabel('What happened').fill(note);
  await add.getByRole('button',{name:'Save note'}).click();
- const created=page.locator('li').filter({has:page.locator('textarea').filter({hasText:note})});
- await expect(created).toHaveCount(1);
+ const notes=page.locator('li').filter({has:page.locator('textarea[name="note"]')});
+ const noteIndex=()=>notes.evaluateAll((items, value)=>items.findIndex(item=>(item.querySelector('textarea[name="note"]') as HTMLTextAreaElement)?.value===value),note);
+ await expect.poll(noteIndex).toBeGreaterThanOrEqual(0);
+ const created=notes.nth(await noteIndex());
  const id=await created.locator('input[name="id"]').first().inputValue();
  const row=page.locator('li').filter({has:page.locator(`input[name="id"][value="${id}"]`)});
  await row.getByRole('textbox',{name:'Note',exact:true}).fill(note+' updated');
@@ -87,8 +90,9 @@ test('sharing note can be created, updated and deleted in the selected report',a
 });
 
 test('classification correction changes the report and can be reversed',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha');
+ await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha#overview');
  await expect(page.locator('.answer-primary strong')).toHaveText('3');
+ await page.getByRole('button',{name:'Measurement',exact:true}).click();
  const form=page.locator('form[action*="correctClassification"]');
  const id=await form.locator('select[name="eventId"] option').evaluateAll(options=>(options.find(o=>o.textContent?.includes(' · view ·')&&o.textContent?.includes('gallery-grid')) as HTMLOptionElement)?.value);
  expect(id).toBeTruthy();
@@ -97,9 +101,12 @@ test('classification correction changes the report and can be reversed',async({p
  const reason='Synthetic browser correction '+Date.now();
  await form.getByRole('textbox',{name:'Reason',exact:true}).fill(reason);
  await form.getByRole('button',{name:'Record',exact:true}).click();
+ await page.getByRole('button',{name:'Overview',exact:true}).click();
  await expect(page.locator('.answer-primary strong')).toHaveText('2');
+ await page.getByRole('button',{name:'Measurement',exact:true}).click();
  const correction=page.locator('tr').filter({hasText:reason});
  await correction.getByRole('button',{name:'Reverse latest',exact:true}).click();
+ await page.getByRole('button',{name:'Overview',exact:true}).click();
  await expect(page.locator('.answer-primary strong')).toHaveText('3');
 });
 
