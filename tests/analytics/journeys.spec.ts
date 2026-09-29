@@ -99,3 +99,9 @@ test('classification correction changes the report and can be reversed',async({p
  await correction.getByRole('button',{name:'Reverse latest',exact:true}).click();
  await expect(page.locator('.answer-primary strong')).toHaveText('3');
 });
+
+test('an explicitly empty shortlist exports no photos',async({page})=>{
+ const response=await page.request.get('/photography/analytics/operator/export.csv?'+query+'&shortlist=');
+ expect(response.status()).toBe(200);
+ expect((await response.text()).trim().split('\n')).toHaveLength(1);
+});

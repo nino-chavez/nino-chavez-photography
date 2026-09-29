@@ -1,6 +1,6 @@
 # Analytics build record
 
-Status: the full build is implemented and deployment is authorized. Local numerical, failure, interaction, and independent visual acceptance passed. The production database migrations are applied. Gallery publication and hosted checks are in progress; the release record below distinguishes completed steps.
+Status: the full workspace is deployed at `https://ninochavez.co/photography/analytics/operator`. Production migrations, retained totals, authenticated reports, exports, operator exclusion, saved views, and desktop/phone checks are verified. Signed agent-test requests still require a dedicated secret; its 1Password write is waiting for operator authorization. Operator-account exclusion is already active.
 
 The public activity summary remains available. The private operator workspace lives at `/photography/analytics/operator`. It uses the existing verified Supabase identity and operator allowlist. This is the complete release scope from `ANALYTICS_PLAN.md`.
 
@@ -118,3 +118,15 @@ The parent site's privacy disclosure was committed as `d264e7d30cede17689faab512
 The live post-migration count comparison found a multiplicity defect in the suspected-automation join: the same fingerprint appeared once for each flagged day. A new regression failed with 1,002 raw events versus 2,004 joined events. Follow-up migration `20260929024500` makes that relation distinct by fingerprint. Both migrations and the expanded rehearsal passed, and retained summaries were rebuilt after the correction. The applied migration remains intact; the correction is a separate migration.
 
 The signed-test marker also uses the configured public origin behind the apex router. Its regression accepts the canonical origin and rejects a different origin. The collection and report suite now has 23 passing tests. The seven browser journeys passed after the catalogue fix. The dedicated 1Password secret write is pending operator authorization after a timeout; operator-account exclusion works independently.
+
+### Hosted verification
+
+PR #160 merged as `c9d6779eb31d4fc94c205fe2e8cddbe9c4dccfd5`. Cloudflare Pages deployment `da9bb3ae-5502-4f50-993f-f926b1b00fc9` completed successfully. The final closed-day preservation check matched 48,496 raw actions to 48,496 daily-summary actions.
+
+The live September 21–27 report matched an independent raw-event query: 1,396 photo opens, 99 album opens, and 85 distinct fingerprints with any activity. These are estimated browsers, not verified people. CSV export succeeded. Anonymous page and CSV requests redirect to sign-in with private/no-store headers. No fingerprint fields appeared in the responses. The private database RPC denies anonymous and ordinary authenticated roles.
+
+A controlled photo open under the verified operator account was accepted and classified `operator`; invalid signed-test markers were rejected. Desktop and phone browser checks passed with no horizontal overflow, real images, and working rising-photo selection. Creating and deleting a private saved view also passed. Production captures remain in ignored local release evidence because the operator workspace can include private albums.
+
+Release verification also found an empty-shortlist route edge case: the CSV helper handled an empty set correctly, but the route converted it to an unrestricted export. The authenticated regression failed before the fix and passed afterward. The route now distinguishes an absent shortlist from an explicitly empty one.
+
+External Cloudflare reconciliation remains unresolved. The live match above is between the gallery report and its raw database evidence; it does not establish parity with another analytics provider.
