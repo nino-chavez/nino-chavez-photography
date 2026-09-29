@@ -7,9 +7,19 @@
 export const REPORT_TIME_ZONE = 'America/Chicago';
 export const REPORT_MEASURES = ['photo_opens', 'album_opens', 'downloads', 'favorites', 'shares'] as const;
 export type ReportMeasure = (typeof REPORT_MEASURES)[number];
+export type MeasureTotals = Record<ReportMeasure, number | null>;
 export type TrafficMode = 'inclusive' | 'conservative';
 export type ReportScope = 'all' | 'album' | 'selected';
 export type ComparisonMode = 'previous' | 'custom' | 'publication_age' | 'none';
+export type ComparisonBasis = 'absolute' | 'daily_rate' | 'unavailable';
+
+export interface RisingComparison {
+	available: boolean;
+	basis: ComparisonBasis;
+	currentDays: number;
+	previousDays: number;
+	label: string;
+}
 
 export interface ReportQuery {
 	start: string;
@@ -142,6 +152,32 @@ export function datesInclusive(start: string, end: string): string[] {
 	const dates: string[] = [];
 	for (const cursor = new Date(`${start}T12:00:00Z`); cursor <= new Date(`${end}T12:00:00Z`); cursor.setUTCDate(cursor.getUTCDate() + 1)) dates.push(cursor.toISOString().slice(0, 10));
 	return dates;
+}
+
+export function daysInWindow(start: string, end: string): number {
+	return datesInclusive(start, end).length;
+}
+
+/**
+ * Rising is only a comparison when both complete windows exist. Equal windows
+ * compare actions; unequal custom windows compare actions per calendar day.
+ */
+export function risingComparison(query: ReportQuery, coverage: 'complete' | 'partial' | 'unavailable', previousCoverage: 'complete' | 'partial' | 'unavailable'): RisingComparison {
+	const comparison = comparisonWindow(query);
+	if (!comparison) return { available: false, basis: 'unavailable', currentDays: daysInWindow(query.start, query.end), previousDays: 0, label: 'Rising is unavailable because no comparison period is selected.' };
+	const currentDays = daysInWindow(query.start, query.end);
+	const previousDays = daysInWindow(comparison.start, comparison.end);
+	if (coverage !== 'complete' || previousCoverage !== 'complete') {
+		return { available: false, basis: 'unavailable', currentDays, previousDays, label: 'Rising is unavailable until both comparison windows have complete coverage.' };
+	}
+	if (currentDays === previousDays) return { available: true, basis: 'absolute', currentDays, previousDays, label: 'Rising compares the change in recorded actions across equal calendar-day windows.' };
+	return { available: true, basis: 'daily_rate', currentDays, previousDays, label: 'Rising compares recorded actions per calendar day because the selected windows have different lengths.' };
+}
+
+export function risingValue(current: number, previous: number, comparison: Pick<RisingComparison, 'available' | 'basis' | 'currentDays' | 'previousDays'>): number | null {
+	if (!comparison.available) return null;
+	if (comparison.basis === 'daily_rate') return current / comparison.currentDays - previous / comparison.previousDays;
+	return current - previous;
 }
 
 export function isConservative(row: Pick<DailyActionRow, 'traffic_classification'>): boolean {

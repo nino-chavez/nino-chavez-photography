@@ -5,9 +5,12 @@ import {
 	dateOnly,
 	datesInclusive,
 	rising,
+	risingComparison,
+	risingValue,
 	rowMatches,
 	rowMatchesMeasure,
 	type DailyActionRow,
+	type MeasureTotals,
 	type ReportQuery
 } from './report-contract';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
@@ -35,8 +38,9 @@ export interface OperatorReport {
 	previousTotal: number | null;
 	change: { difference: number; label: string } | null;
 	daily: DailyCount[];
-	albums: Array<{ albumKey: string; count: number | null; previousCount: number | null; difference: number | null; lastActivity: string | null; publicationAt: string | null }>;
-	photos: Array<{ photoId: string; albumKey: string; count: number | null; previousCount: number | null; difference: number | null; lastActivity: string | null; imageUrl: string | null; photoSegment?: string | null }>;
+	rising: ReturnType<typeof risingComparison>;
+	albums: Array<{ albumKey: string; count: number | null; previousCount: number | null; difference: number | null; risingValue: number | null; measures: MeasureTotals; lastActivity: string | null; publicationAt: string | null }>;
+	photos: Array<{ photoId: string; albumKey: string; count: number | null; previousCount: number | null; difference: number | null; risingValue: number | null; measures: MeasureTotals; lastActivity: string | null; imageUrl: string | null; photoSegment?: string | null }>;
 	albumOnlyActions: Array<{ albumKey: string; count: number | null; previousCount: number | null; difference: number | null; lastActivity: string | null }>;
 	sources: {
 		arrivals: Array<{ source: string; count: number }>;
@@ -45,7 +49,7 @@ export interface OperatorReport {
 	};
 	traffic: Array<{ classification: string; count: number }>;
  trafficImpact: Array<{albumKey:string;inclusive:number;conservative:number;excluded:number;inclusiveRank:number;conservativeRank:number}>;
-	diagnostics: Array<{ type: string; status: string; count: number; latestAt: string | null }>;
+	diagnostics: Array<{ type: string; status: string; count: number; resultCount: number | null; errorCodes: string[]; latestAt: string | null }>;
 	diagnosticsCoverage: { availableFrom: string | null; label: string; error: string | null };
 	visitorEstimate: { value: number | null; limit: string };
 	publicationAge: {
@@ -67,6 +71,23 @@ interface DiagnosticRow {
 	album_key: string | null;
 	photo_id: string | null;
 	source: string | null;
+	result_count?: number | null;
+	error_code?: string | null;
+}
+
+/** Aggregate only safe diagnostic fields; search text and visitor identifiers never enter reports. */
+export function aggregateDiagnostics(rows: DiagnosticRow[]): OperatorReport['diagnostics'] {
+	const diagnosticsByKey = new Map<string, { type: string; status: string; count: number; resultCount: number | null; errorCodes: string[]; latestAt: string | null }>();
+	for (const row of rows) {
+		const key = `${row.diagnostic_type}\u0000${row.status}`;
+		const entry = diagnosticsByKey.get(key) ?? { type: row.diagnostic_type, status: row.status, count: 0, resultCount: null, errorCodes: [], latestAt: null };
+		entry.count += 1;
+		if (row.result_count !== null && row.result_count !== undefined) entry.resultCount = (entry.resultCount ?? 0) + Number(row.result_count);
+		if (row.error_code && !entry.errorCodes.includes(row.error_code)) entry.errorCodes.push(row.error_code);
+		entry.latestAt = !entry.latestAt || row.occurred_at > entry.latestAt ? row.occurred_at : entry.latestAt;
+		diagnosticsByKey.set(key, entry);
+	}
+	return [...diagnosticsByKey.values()].sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
 }
 
 async function fetchCatalogue(client: SupabaseClient): Promise<CatalogueRow[]> {
@@ -116,7 +137,7 @@ async function fetchAllDiagnostics(client: SupabaseClient, start: string, end: s
 	const highWater = Number(cap?.[0]?.id ?? 0);
 	while (lastId < highWater) {
 		const { data, error } = await client.from('analytics_collection_diagnostics')
-			.select('id, diagnostic_type, status, occurred_at, traffic_context, album_key, photo_id, source')
+			.select('id, diagnostic_type, status, occurred_at, traffic_context, album_key, photo_id, source, result_count, error_code')
 			.gte('occurred_at', fromUtc.toISOString()).lt('occurred_at', toUtc.toISOString())
 			.gt('id', lastId).lte('id', highWater).order('id', { ascending: true }).limit(1000);
 		if (error) throw error;
@@ -187,7 +208,7 @@ function emptyReport(query: ReportQuery, error: string): OperatorReport {
 		available: false, error, query, previous: fallback, comparison: null,
 		coverage: 'unavailable', previousCoverage: 'unavailable', total: null, previousTotal: null,
 		observedTotal: 0, catalogueBasis:'unavailable', today: {date: dateOnly(new Date()), count: null, asOf: null}, dataAsOf: null, preservedSince: null,
-		change: null, daily: [], albums: [], photos: [], albumOnlyActions: [],
+		change: null, rising: risingComparison(query, 'unavailable', 'unavailable'), daily: [], albums: [], photos: [], albumOnlyActions: [],
 		sources: { arrivals: [], openLocations: [], unknown: 0 }, traffic: [], trafficImpact: [], diagnostics: [],
 		diagnosticsCoverage: { availableFrom: null, label: 'Unavailable while the report source cannot be read.', error: 'Report source unavailable' },
 		visitorEstimate: { value: null, limit: 'Unavailable while the report source cannot be read.' },
@@ -242,6 +263,20 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 		const currentRows = rows.filter((row) => rowMatches(row, query) && rowMatchesMeasure(row, query.measure));
 		const comparisonQuery = comparisonDates ? queryForDates(query, comparisonDates.start, comparisonDates.end) : null;
 		const comparisonRows = comparisonQuery ? rows.filter((row) => rowMatches(row, comparisonQuery) && rowMatchesMeasure(row, query.measure)) : [];
+		const currentEvidenceRows = rows.filter((row) => rowMatches(row, query));
+		const comparisonEvidenceRows = comparisonQuery ? rows.filter((row) => rowMatches(row, comparisonQuery)) : [];
+		const risingState = risingComparison(query, coverage, comparisonCoverage);
+		const zeroMeasures = (): MeasureTotals => ({ photo_opens: null, album_opens: null, downloads: null, favorites: null, shares: null });
+		const measuresFor = (predicate: (row: DailyActionRow) => boolean): MeasureTotals => {
+			const totals = zeroMeasures();
+			if (coverage !== 'complete') return totals;
+			for (const measure of ['photo_opens', 'album_opens', 'downloads', 'favorites', 'shares'] as const) {
+				totals[measure] = currentEvidenceRows
+					.filter((row) => predicate(row) && rowMatchesMeasure(row, measure))
+					.reduce((sum, row) => sum + Number(row.action_count), 0);
+			}
+			return totals;
+		};
 		const currentCount = currentRows.reduce((sum, row) => sum + Number(row.action_count), 0);
 		const comparisonCount = comparisonRows.reduce((sum, row) => sum + Number(row.action_count), 0);
 		const total = coverage === 'complete' ? currentCount : null;
@@ -260,7 +295,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
    }).sort((a,b)=>(b.count ?? -1)-(a.count ?? -1)||a.key.localeCompare(b.key));
   };
   const eligibleCatalogue=catalogue.filter(album=>catalogueMatches(album,query));
-  const albums=pairs(currentRows,comparisonRows,row=>row.album_key,[...new Set([...eligibleCatalogue.map(album=>album.album_key),...rows.filter(row=>rowMatches(row,query)).map(row=>row.album_key)])]).map(({key,...rest})=>({albumKey:key,...rest}));
+  const albums=pairs(currentRows,comparisonRows,row=>row.album_key,[...new Set([...eligibleCatalogue.map(album=>album.album_key),...rows.filter(row=>rowMatches(row,query)).map(row=>row.album_key)])]).map(({key,...rest})=>({albumKey:key,...rest,risingValue:rest.count !== null && rest.previousCount !== null ? risingValue(rest.count, rest.previousCount, risingState) : null,measures:measuresFor(row=>row.album_key===key)}));
   const albumOnlyActions=pairs(currentRows.filter(row=>!row.photo_id),comparisonRows.filter(row=>!row.photo_id),row=>row.album_key).map(({key,...rest})=>({albumKey:key,...rest}));
   const photoGroups=pairs(currentRows.filter(row=>!!row.photo_id),comparisonRows.filter(row=>!!row.photo_id),row=>`${row.photo_id}\u0000${row.album_key}`);
 		const previews = new Map<string, string>();
@@ -274,7 +309,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 		}
   const photos = photoGroups.map(({key,publicationAt: _publicationAt,...rest})=>{
    const [photoId,albumKey]=key.split('\u0000');
-   return {photoId,albumKey,...rest,imageUrl:previews.get(photoId)??null,photoSegment:photoSegments.get(photoId)??null};
+   return {photoId,albumKey,...rest,risingValue:rest.count !== null && rest.previousCount !== null ? risingValue(rest.count, rest.previousCount, risingState) : null,measures:measuresFor(row=>row.photo_id===photoId && row.album_key===albumKey),imageUrl:previews.get(photoId)??null,photoSegment:photoSegments.get(photoId)??null};
   });
 
 		const sourceRows = rows.filter((row) => rowMatches(row, query));
@@ -315,14 +350,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 			if (query.albumEventType && (album?.event_type ?? 'unknown') !== query.albumEventType) return false;
 			return true;
 		});
-		const diagnosticsByKey = new Map<string, { type: string; status: string; count: number; latestAt: string | null }>();
-		for (const row of scopedDiagnostics) {
-			const key = `${row.diagnostic_type}\u0000${row.status}`;
-			const entry = diagnosticsByKey.get(key) ?? { type: row.diagnostic_type, status: row.status, count: 0, latestAt: null };
-			entry.count += 1;
-			entry.latestAt = !entry.latestAt || row.occurred_at > entry.latestAt ? row.occurred_at : entry.latestAt;
-			diagnosticsByKey.set(key, entry);
-		}
+		const diagnostics = aggregateDiagnostics(scopedDiagnostics);
 
 		const selectedKeys = [...new Set([...eligibleCatalogue.map(album=>album.album_key),...rows.filter(row=>rowMatches(row,query)).map(row=>row.album_key)])];
 		const publicationByAlbum = new Map(scopedPublication.map((album) => [album.album_key, album.published_at as string]));
@@ -363,10 +391,11 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 		return {
 			available: true, query, previous, comparison, coverage,
 			catalogueBasis:[...new Set(evidence.coverage.filter(row=>row.bucket_date>=query.start&&row.bucket_date<=query.end).map(row=>row.catalogue_basis??'unknown'))].join(', ') || 'unavailable', trafficImpact, previousCoverage: comparisonCoverage, total, observedTotal:currentCount, today, dataAsOf, preservedSince, previousTotal,
-			change: total !== null && previousTotal !== null ? rising(total, previousTotal) : null,
+			change: total !== null && previousTotal !== null && risingState.basis === 'absolute' ? rising(total, previousTotal) : null,
+			rising: risingState,
 			daily, albums, albumOnlyActions, photos, sources,
 			traffic: groupRows(rows.filter(row=>rowMatches(row,{...query,traffic:'inclusive'}) && rowMatchesMeasure(row,query.measure)), (row) => row.traffic_classification).map(({ key, count }) => ({ classification: key, count })),
-			diagnostics: (diagnosticError ? [] : [...diagnosticsByKey.values()]).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type)),
+			diagnostics: diagnosticError ? [] : diagnostics,
    diagnosticsCoverage: {
     availableFrom:firstDiagnostic.error ? null : firstDiagnostic.data?.[0]?.first_recorded_at ?? null,
     error:diagnosticError,

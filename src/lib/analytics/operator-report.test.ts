@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { reportCsv, type OperatorReport } from './operator-report.server';
+import { aggregateDiagnostics, reportCsv, type OperatorReport } from './operator-report.server';
 import type { ReportQuery } from './report-contract';
 
 const query: ReportQuery = {
@@ -20,6 +20,7 @@ function report(overrides: Partial<OperatorReport> = {}): OperatorReport {
 		previous: { start: '2026-08-02', end: '2026-08-31' },
 		comparison: { start: '2026-08-02', end: '2026-08-31', total: 0, coverage: 'complete', label: 'Previous equal period' },
 		coverage: 'complete', previousCoverage: 'complete', total: 0, previousTotal: 0, change: null,
+		rising: { available: true, basis: 'absolute', currentDays: 30, previousDays: 30, label: 'Equal windows.' },
 		observedTotal:0, catalogueBasis:'event_snapshot', today:{date:'2026-09-28',count:null,asOf:null}, dataAsOf:null, preservedSince:null,
 		daily: [], albums: [], photos: [], albumOnlyActions:[], sources: { arrivals: [], openLocations: [], unknown: 0 },
 		traffic: [], trafficImpact: [], diagnostics: [], diagnosticsCoverage: { availableFrom: null, label: 'No diagnostic coverage.', error:null },
@@ -37,6 +38,8 @@ test('full photo export preserves more than the PostgREST default page', () => {
 		count: index + 1,
 		previousCount: index,
 		difference: 1,
+		risingValue: 1,
+		measures: { photo_opens: index + 1, album_opens: 0, downloads: 0, favorites: 0, shares: 0 },
 		lastActivity: '2026-09-28T12:00:00.000Z',
 		imageUrl: null
 	}));
@@ -48,7 +51,7 @@ test('full photo export preserves more than the PostgREST default page', () => {
 test('album-open export emits album grain even when there are no photo rows', () => {
 	const csv = reportCsv(report({
 		query: { ...query, measure: 'album_opens' },
-		albums: [{ albumKey: 'alpha', count: 12, previousCount: 8, difference: 4, lastActivity: '2026-09-28T12:00:00.000Z', publicationAt: null }]
+		albums: [{ albumKey: 'alpha', count: 12, previousCount: 8, difference: 4, risingValue: 4, measures: { photo_opens: 0, album_opens: 12, downloads: 0, favorites: 0, shares: 0 }, lastActivity: '2026-09-28T12:00:00.000Z', publicationAt: null }]
 	}));
 	assert.equal(csv.split('\n').length, 2);
 	assert.match(csv, /^"row_type"/);
@@ -57,7 +60,7 @@ test('album-open export emits album grain even when there are no photo rows', ()
 
 test('spreadsheet formulas are neutralized in every exported string field', () => {
 	const csv = reportCsv(report({
-		photos: [{ photoId: '=IMPORTXML("https://example.invalid")', albumKey: '+unsafe', count: 1, previousCount: 0, difference: 1, lastActivity: '@NOW()', imageUrl: null }]
+		photos: [{ photoId: '=IMPORTXML("https://example.invalid")', albumKey: '+unsafe', count: 1, previousCount: 0, difference: 1, risingValue: 1, measures: { photo_opens: 1, album_opens: 0, downloads: 0, favorites: 0, shares: 0 }, lastActivity: '@NOW()', imageUrl: null }]
 	}));
 	assert.match(csv, /"'=IMPORTXML/);
 	assert.match(csv, /"'\+unsafe"/);
@@ -67,8 +70,8 @@ test('spreadsheet formulas are neutralized in every exported string field', () =
 
 test('mixed download export preserves both photo and album-only actions without double counting', () => {
  const value=report({query:{...query,measure:'downloads'},
-  photos:[{photoId:'one',albumKey:'alpha',count:2,previousCount:3,difference:-1,lastActivity:null,imageUrl:null}],
-  albums:[{albumKey:'alpha',count:5,previousCount:3,difference:2,lastActivity:null,publicationAt:null}],
+  photos:[{photoId:'one',albumKey:'alpha',count:2,previousCount:3,difference:-1,risingValue:-1,measures:{photo_opens:0,album_opens:0,downloads:2,favorites:0,shares:0},lastActivity:null,imageUrl:null}],
+  albums:[{albumKey:'alpha',count:5,previousCount:3,difference:2,risingValue:2,measures:{photo_opens:0,album_opens:0,downloads:5,favorites:0,shares:0},lastActivity:null,publicationAt:null}],
   albumOnlyActions:[{albumKey:'alpha',count:3,previousCount:0,difference:3,lastActivity:null}]
  });
  const csv=reportCsv(value);
@@ -76,6 +79,17 @@ test('mixed download export preserves both photo and album-only actions without 
  assert.match(csv, /"photo","one","alpha","2","3","-1"/);
  assert.match(csv, /"album_action","","alpha","3"/);
  assert.equal(reportCsv(value,new Set(['missing'])).split('\n').length,1);
+});
+
+test('diagnostics retain result aggregates and bounded error categories', () => {
+	const diagnostics = aggregateDiagnostics([
+		{ id: 1, diagnostic_type: 'search_results', status: 'ok', occurred_at: '2026-09-28T12:00:00Z', traffic_context: 'audience', album_key: null, photo_id: null, source: null, result_count: 0, error_code: null },
+		{ id: 2, diagnostic_type: 'search_results', status: 'ok', occurred_at: '2026-09-28T13:00:00Z', traffic_context: 'audience', album_key: null, photo_id: null, source: null, result_count: 3, error_code: null },
+		{ id: 3, diagnostic_type: 'download', status: 'failed', occurred_at: '2026-09-28T14:00:00Z', traffic_context: 'audience', album_key: 'alpha', photo_id: null, source: null, result_count: null, error_code: 'upstream_503' },
+		{ id: 4, diagnostic_type: 'download', status: 'failed', occurred_at: '2026-09-28T15:00:00Z', traffic_context: 'audience', album_key: 'alpha', photo_id: null, source: null, result_count: null, error_code: 'upstream_503' }
+	]);
+	assert.deepEqual(diagnostics.find((row) => row.type === 'search_results'), { type: 'search_results', status: 'ok', count: 2, resultCount: 3, errorCodes: [], latestAt: '2026-09-28T13:00:00Z' });
+	assert.deepEqual(diagnostics.find((row) => row.type === 'download')?.errorCodes, ['upstream_503']);
 });
 
 // Exercise the full aggregation path: hidden albums must not affect public numbers,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chicagoDayStart, comparisonWindow, coverageFor, coverageFromStates, datesInclusive, parseReportQuery, previousWindow, rising, sumMeasure, type DailyActionRow } from './report-contract';
+import { chicagoDayStart, comparisonWindow, coverageFor, coverageFromStates, datesInclusive, parseReportQuery, previousWindow, rising, risingComparison, risingValue, sumMeasure, type DailyActionRow } from './report-contract';
 
 const row = (overrides: Partial<DailyActionRow> = {}): DailyActionRow => ({
 	bucket_date: '2026-09-14', album_key: 'a', photo_id: 'p', event_type: 'view', source: 'direct', source_kind: 'internal_open_location',
@@ -48,6 +48,17 @@ test('coverage and rising labels never turn a gap or zero baseline into a false 
 	assert.deepEqual(datesInclusive('2026-09-27', '2026-09-28'), ['2026-09-27', '2026-09-28']);
 	assert.equal(coverageFor([row({ coverage_state: 'partial' })], query), 'partial');
 	assert.deepEqual(rising(5, 0), { difference: 5, label: 'New activity' });
+});
+
+test('rising never falls back to popularity and normalizes unequal complete windows', () => {
+	const noComparator = parseReportQuery(new URLSearchParams('period=7&compare=none'));
+	assert.equal(risingComparison(noComparator, 'complete', 'unavailable').available, false);
+	const unequal = parseReportQuery(new URLSearchParams('period=custom&start=2026-09-01&end=2026-09-30&compare=custom&compare_start=2026-08-01&compare_end=2026-08-07'));
+	const comparison = risingComparison(unequal, 'complete', 'complete');
+	assert.equal(comparison.basis, 'daily_rate');
+	// 30 actions over 30 days fell from 14 over 7 days; raw +16 must not read as rising.
+	assert.equal(risingValue(30, 14, comparison), -1);
+	assert.equal(risingComparison(unequal, 'partial', 'complete').available, false);
 });
 
 test('tagged arrivals are not counted as photo opens', () => {

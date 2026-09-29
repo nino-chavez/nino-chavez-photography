@@ -112,7 +112,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		facets: {
 			sports: albumFacets.error ? [] : unique((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.sport)),
 			seasons: albumFacets.error ? [] : unique((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.event_date?.slice(0, 4))),
-			eventTypes: albumFacets.error ? [] : unique((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.event_type)),
+			eventTypes: albumFacets.error ? [] : unique((albumFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.event_type ?? 'unknown')),
 			categories: categoryFacets.error ? [] : unique((categoryFacets.data ?? []).filter(row => publicAlbum(row.album_key)).map((row) => row.photo_category))
 		},
 		correctionLog: correctionLog.error ? [] : correctionRows,
