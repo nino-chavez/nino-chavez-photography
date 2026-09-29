@@ -4,6 +4,10 @@ import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supa
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { buildOperatorReport } from '$lib/analytics/operator-report.server';
 import { parseReportQuery, chicagoDayStart } from '$lib/analytics/report-contract';
+import { fetchV2ReportProjection } from '$lib/analytics/v2-report-projection.server';
+import { createPostHogQueryTransport, queryGalleryJourneys } from '$lib/analytics/posthog-queries.server';
+import { POSTHOG_JOURNEY_REPORTS } from '$lib/analytics/posthog.types';
+import { env } from '$env/dynamic/private';
 import type { Actions, PageServerLoad } from './$types';
 
 
@@ -60,7 +64,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
  let noteQuery=admin.from('analytics_sharing_annotations').select('id, album_key, activity_date, channel, note, updated_at').eq('created_by',user?.id ?? '').gte('activity_date',query.start).lte('activity_date',query.end).order('activity_date',{ascending:false});
  if(query.scope!=='all'){retainedQuery=retainedQuery.in('album_key',query.albumKeys);noteQuery=noteQuery.in('album_key',query.albumKeys);}
 	const [report, saved, annotations, albumCatalogue, albumSettings, albumFacets, categoryFacets, correctionLog, retainedEvents] = await Promise.all([
-		buildOperatorReport(admin, query, { publicOnly: !user }),
+		buildOperatorReport(admin, query, { publicOnly: true }),
 		user ? admin.from('analytics_saved_reports').select('id, name, query, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false }) : { data: [], error: null },
 		user ? readAll(from=>noteQuery.range(from,from+999)) : { data: [], error: null }
 		,
@@ -71,7 +75,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		user ? admin.from('engagement_classification_corrections').select('id, engagement_event_id, classification, reason_flags, classification_version, note, corrected_at').order('corrected_at', { ascending: false }).limit(30) : { data: [], error: null },
 		user ? retainedQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null }
 	]);
-	if (!user && albumSettings.error) throw error(503, 'Album visibility could not be verified.');
+	if (albumSettings.error) throw error(503, 'Album visibility could not be verified.');
 	const publicAlbum = (key: string) => !!user || !(albumSettings.data ?? []).some(row => row.album_key === key && row.visibility === 'unlisted');
 	const unique = (values: Array<string | null | undefined>) => [...new Set(values.map(value=>value || 'unknown'))].sort();
 	const settingsByAlbum = new Map((albumSettings.data ?? []).map((setting) => [setting.album_key, setting]));
@@ -84,6 +88,28 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		visibility: settingsByAlbum.get(album.album_key)?.visibility ?? 'public',
 		published_at: settingsByAlbum.get(album.album_key)?.published_at ?? null
 	})).sort((a,b)=>a.album_name.localeCompare(b.album_name));
+	const matchesAlbumScope = (album: typeof catalogue[number]) =>
+		(query.scope === 'all' || query.albumKeys.includes(album.album_key))
+		&& (!query.sport || (album.sport ?? 'unknown') === query.sport)
+		&& (!query.eventDate || album.event_date === query.eventDate)
+		&& (!query.season || (album.event_date?.slice(0, 4) ?? 'unknown') === query.season)
+		&& (!query.albumEventType || (album.event_type ?? 'unknown') === query.albumEventType);
+	const publicScopedAlbumKeys = catalogue.filter(matchesAlbumScope).map((album) => album.album_key);
+	const v2AlbumFacts = Object.fromEntries(catalogue.map((album) => [album.album_key, {
+		sport: album.sport, eventDate: album.event_date, eventType: album.event_type
+	}]));
+	const v2PhotoCategories = Object.fromEntries((categoryFacets.data ?? [])
+		.filter((photo) => publicAlbum(photo.album_key))
+		.map((photo) => [photo.photo_id, photo.photo_category]));
+	const v2Options = { publicAlbumKeys: publicScopedAlbumKeys, albumFacts: v2AlbumFacts, photoCategories: v2PhotoCategories };
+	const [v2Report, journeys] = await Promise.all([
+		fetchV2ReportProjection(admin, query, v2Options),
+		Promise.all(POSTHOG_JOURNEY_REPORTS.map((report) => queryGalleryJourneys(
+			createPostHogQueryTransport(env),
+			{ report, start: query.start, end: query.end, albumKeys: publicScopedAlbumKeys, source: query.source, sport: query.sport, category: query.category },
+			{ publicOnly: true, allowedAlbumKeys: publicScopedAlbumKeys }
+		)))
+	]);
 	const eventById = new Map((retainedEvents.data ?? []).map((event) => [Number(event.id), event]));
 	const missingContextIds = [...new Set((correctionLog.data ?? []).map((correction) => Number(correction.engagement_event_id)))]
 		.filter((id) => !eventById.has(id));
@@ -103,6 +129,8 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 	return {
 		user: user ? { id: user.id, email: user.email } : null,
 		report,
+		v2Report,
+		journeys,
 		savedReports: saved.error ? [] : saved.data ?? [],
 		savedReportsAvailable: !saved.error,
 		annotations: annotations.error ? [] : annotations.data ?? [],

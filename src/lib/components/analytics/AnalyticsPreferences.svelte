@@ -17,10 +17,22 @@
 	}
 </script>
 
-<section aria-labelledby="analytics-preferences-title" class="rounded-lg border border-charcoal-800 bg-charcoal-900 p-4">
-	<h2 id="analytics-preferences-title" class="text-base font-medium text-charcoal-100">Analytics preference</h2>
-	<p class="mt-1 text-sm text-charcoal-400">Linked analytics is optional. It uses random browser and visit IDs. Turning it off stops future linked collection and provider export.</p>
-	<label class="mt-3 flex gap-3 text-sm text-charcoal-200"><input type="checkbox" bind:checked={preferences.linkedAnalytics} onchange={persist} disabled={saving} /> Allow linked analytics</label>
-	<label class="mt-3 flex gap-3 text-sm text-charcoal-200"><input type="checkbox" bind:checked={preferences.excludeThisBrowser} onchange={persist} disabled={saving} /> Exclude this browser from audience analytics</label>
-	{#if message}<p class="mt-3 text-sm text-charcoal-400" aria-live="polite">{message}</p>{/if}
+<section aria-labelledby="analytics-preferences-title" class="analytics-preferences">
+	<p class="eyebrow">Your choice</p>
+	<h2 id="analytics-preferences-title">Analytics preferences</h2>
+	<p>Linked analytics is optional. It uses random browser and visit IDs. Turning it off stops future linked collection and provider export.</p>
+	<label><input type="checkbox" bind:checked={preferences.linkedAnalytics} onchange={persist} disabled={saving} /> <span>Allow linked analytics</span></label>
+	<label><input type="checkbox" bind:checked={preferences.excludeThisBrowser} onchange={persist} disabled={saving} /> <span>Exclude this browser from audience analytics</span></label>
+	{#if message}<p class="status" aria-live="polite">{message}</p>{/if}
 </section>
+
+<style>
+	.analytics-preferences { border: 1px solid #d8e0ea; border-radius: .8rem; background: #fff; padding: 1rem; color: #172033; }
+	.eyebrow { margin: 0; color: #174ea6; font-size: .7rem; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; }
+	h2 { margin: .2rem 0 0; font-size: 1.2rem; font-weight: 650; }
+	p { margin: .5rem 0 0; color: #526176; font-size: .875rem; line-height: 1.5; }
+	label { display: flex; min-height: 2.75rem; align-items: center; gap: .65rem; margin-top: .55rem; color: #172033; font-size: .875rem; }
+	input { width: 1.1rem; height: 1.1rem; accent-color: #1769e0; }
+	input:focus-visible { outline: 2px solid #1769e0; outline-offset: 2px; }
+	.status { color: #243b5a; }
+</style>

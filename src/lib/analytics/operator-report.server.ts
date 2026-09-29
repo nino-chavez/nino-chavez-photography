@@ -14,6 +14,7 @@ import {
 	type ReportQuery
 } from './report-contract';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
+import type { V2ReportProjection } from './v2-report-projection.server';
 
 type Coverage = 'complete' | 'partial' | 'unavailable';
 type DailyCount = { date: string; count: number | null; observed: number | null; coverage: Coverage };
@@ -409,7 +410,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 	}
 }
 
-export function reportCsv(report: OperatorReport, shortlist?: Set<string>): string {
+export function reportCsv(report: OperatorReport, shortlist?: Set<string>, v2?: V2ReportProjection): string {
 	const escape = (value: string | number | null) => `"${formulaSafe(value).replaceAll('"', '""')}"`;
 	const filters = JSON.stringify({
 		scope: report.query.scope, albums: report.query.albumKeys, sport: report.query.sport ?? null,
@@ -422,10 +423,17 @@ export function reportCsv(report: OperatorReport, shortlist?: Set<string>): stri
 		: report.query.measure === 'album_opens'
 			? 'Recorded album-open events deduplicated by visitor fingerprint, album, event type, and UTC day. Chart dates use America/Chicago.'
 			: `${report.query.measure.replaceAll('_', ' ')} are recorded actions, not verified downstream outcomes.`;
-	const header = ['row_type', 'photo_id', 'album_key', 'count', 'comparison_count', 'difference', 'last_activity', 'measure', 'definition', 'period_start', 'period_end', 'comparison_start', 'comparison_end', 'timezone', 'coverage', 'traffic_rule', 'filters', 'visitor_estimate', 'catalogue_basis', 'generated_at'];
+	const header = ['row_type', 'photo_id', 'album_key', 'count', 'comparison_count', 'difference', 'last_activity', 'measure', 'photo_opens', 'album_opens', 'downloads', 'favorites', 'shares', 'v2_label', 'v2_coverage', 'definition', 'period_start', 'period_end', 'comparison_start', 'comparison_end', 'timezone', 'coverage', 'traffic_rule', 'filters', 'visitor_estimate', 'catalogue_basis', 'generated_at'];
 	const common = [report.query.measure, definition, report.query.start, report.query.end, report.comparison?.start ?? null, report.comparison?.end ?? null, 'America/Chicago', report.coverage, report.query.traffic, filters, report.visitorEstimate.value, report.catalogueBasis, report.generatedAt];
-	const photoRows = report.photos.filter((row) => !shortlist || shortlist.has(row.photoId)).map((row) => ['photo', row.photoId, row.albumKey, row.count, row.previousCount, row.difference, row.lastActivity, ...common]);
-	const albumRows = (report.query.measure === 'album_opens' ? report.albums : report.albumOnlyActions).map((row) => [report.query.measure === 'album_opens' ? 'album' : 'album_action', null, row.albumKey, row.count, row.previousCount, row.difference, row.lastActivity, ...common]);
-	const rows = shortlist ? photoRows : [...photoRows, ...albumRows];
+	const measureColumns = (measures: MeasureTotals | undefined) => measures
+		? [measures.photo_opens, measures.album_opens, measures.downloads, measures.favorites, measures.shares]
+		: [null, null, null, null, null];
+	const photoRows = report.photos.filter((row) => !shortlist || shortlist.has(row.photoId)).map((row) => ['photo', row.photoId, row.albumKey, row.count, row.previousCount, row.difference, row.lastActivity, report.query.measure, ...measureColumns(row.measures), null, null, ...common.slice(1)]);
+	const albumRows = (report.query.measure === 'album_opens' ? report.albums : report.albumOnlyActions).map((row) => {
+		const measures = 'measures' in row ? row.measures as MeasureTotals : undefined;
+		return ['albumKey' in row && report.query.measure === 'album_opens' ? 'album' : 'album_action', null, row.albumKey, row.count, row.previousCount, row.difference, row.lastActivity, report.query.measure, ...measureColumns(measures), null, null, ...common.slice(1)];
+	});
+	const v2Rows = shortlist || !v2 ? [] : v2.counts.map((row) => ['v2_event', null, null, row.count, null, null, null, 'v2_observation', null, null, null, null, null, row.label, v2.coverage.label, 'Accepted version-2 observations; no legacy daily deduplication.', report.query.start, report.query.end, null, null, 'America/Chicago', v2.available ? 'available' : 'unavailable', report.query.traffic, filters, null, 'public_album_visibility', report.generatedAt]);
+	const rows = shortlist ? photoRows : [...photoRows, ...albumRows, ...v2Rows];
 	return [header, ...rows].map((row) => row.map((value) => escape(value as string | number | null)).join(',')).join('\n');
 }

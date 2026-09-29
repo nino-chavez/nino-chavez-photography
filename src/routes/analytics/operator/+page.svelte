@@ -5,6 +5,7 @@
 	import AnalyticsTrend from '$lib/components/analytics/AnalyticsTrend.svelte';
 	import AlbumComparisonTable, { type AlbumRow } from '$lib/components/analytics/AlbumComparisonTable.svelte';
 	import AlbumInspector from '$lib/components/analytics/AlbumInspector.svelte';
+	import AnalyticsPreferences from '$lib/components/analytics/AnalyticsPreferences.svelte';
 	import type { PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: Record<string, unknown> | null } = $props();
@@ -138,7 +139,16 @@
 		await tick();
 		photoTrigger?.focus();
 	}
- function countLabel(count:number|null) { return count===null ? 'Unavailable' : `${count.toLocaleString()}${report.coverage==='complete'?'':' recorded'}`; }
+	function countLabel(count:number|null) { return count===null ? 'Unavailable' : `${count.toLocaleString()}${report.coverage==='complete'?'':' recorded'}`; }
+	function legacyMeasureTotal(measure: 'photo_opens' | 'album_opens' | 'downloads' | 'favorites' | 'shares'): number | null {
+		const values = report.albums.map((album) => album.measures[measure]);
+		return values.some((value) => value === null) ? null : values.reduce((total, value) => total + (value ?? 0), 0);
+	}
+	function legacyEngagementTotal(): number | null {
+		const values = ['downloads', 'favorites', 'shares'] as const;
+		const totals = values.map(legacyMeasureTotal);
+		return totals.some((value) => value === null) ? null : totals.reduce((total, value) => total + (value ?? 0), 0);
+	}
  function changeLabel(item:{count:number|null;previousCount:number|null;difference:number|null}) {
   if(report.query.compare==='none')return 'No comparison selected';
   if(report.rising.basis==='daily_rate' && item.count!==null && item.previousCount!==null) {
@@ -180,8 +190,9 @@
 		<a class="section-link" href="#overview">Overview</a>
 		<a class="section-link" href="#albums">Albums</a>
 		<a class="section-link" href="#photos">Photos</a>
-		<a class="section-link" href="#sources">Sources</a>
-		<a class="section-link" href="#measurement">Measurement</a>
+			<a class="section-link" href="#sources">Sources</a>
+			<a class="section-link" href="#measurement">Measurement</a>
+			<a class="section-link" href="#analytics-preferences">Preferences</a>
 	</nav>
 
 	<form method="GET" class="report-controls mt-3" aria-label="Report filters">
@@ -285,7 +296,11 @@
 		<section id="measurement" class="mt-6 min-w-0 scroll-mt-20 space-y-6">
    <div class="panel"><p class="eyebrow">External cross-check</p><h2>Cloudflare comparison is unresolved</h2><p class="mt-2 text-sm text-charcoal-300">The September 28, 2026 audit could not establish matching album-route coverage for the September 21–27 week. This is a dated audit, not a live provider connection.</p><details class="mt-3"><summary class="text-link cursor-pointer">What this means for these numbers</summary><p class="mt-2 text-sm text-charcoal-400">Cloudflare pageviews and these deduplicated actions have different definitions. Similar totals would not prove accuracy. These reports use accepted first-party events; controlled collection, retry, and aggregation checks establish what they count. A recorded action still does not prove a human viewer or a completed download.</p></details></div>
 
-   <div class="panel"><p class="eyebrow">Linked journeys</p><h2>Evidence still being collected</h2><dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3"><div><dt class="text-charcoal-400">Visible-photo exposure</dt><dd class="mt-1 font-medium">Unavailable</dd></div><div><dt class="text-charcoal-400">Visit and search follow-through</dt><dd class="mt-1 font-medium">Unavailable</dd></div><div><dt class="text-charcoal-400">Download request journey</dt><dd class="mt-1 font-medium">Unavailable</dd></div></dl><p class="mt-3 text-sm text-charcoal-400">These are not zero. They need accepted version-2 collection and a fixed server-side provider projection. When that evidence exists, each measure will show its covered population, collection start, definition version, and as-of time.</p></div>
+	   <div class="panel"><p class="eyebrow">Legacy measures</p><h2>Daily-deduplicated activity remains separate</h2><p class="mt-2 text-sm text-charcoal-300">The overview, album comparison, and photo drilldown use the existing legacy daily-deduplicated measures. Their selected-period coverage is <strong class="capitalize">{report.coverage}</strong>. They are not linked journeys and do not claim complete visitor behavior.</p><dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3"><div><dt class="text-charcoal-400">Photo opens</dt><dd class="mt-1 font-medium">{countLabel(legacyMeasureTotal('photo_opens'))}</dd></div><div><dt class="text-charcoal-400">Album opens</dt><dd class="mt-1 font-medium">{countLabel(legacyMeasureTotal('album_opens'))}</dd></div><div><dt class="text-charcoal-400">Downloads, favorites, shares</dt><dd class="mt-1 font-medium">{countLabel(legacyEngagementTotal())}</dd></div></dl></div>
+
+	   <div class="panel"><p class="eyebrow">Version 2 observations</p><h2>Accepted linked observations</h2>{#if data.v2Report.available}<div class="mt-3 grid gap-3 text-sm sm:grid-cols-3"><div><dt class="text-charcoal-400">Album response</dt><dd class="mt-1 font-medium">{data.v2Report.albumResponse.eligibleExposures.toLocaleString()} exposed · {data.v2Report.albumResponse.laterOpens.toLocaleString()} opened · {data.v2Report.albumResponse.laterActions.toLocaleString()} later actions</dd></div><div><dt class="text-charcoal-400">Photo response</dt><dd class="mt-1 font-medium">{data.v2Report.photoResponse.eligibleExposures.toLocaleString()} exposed · {data.v2Report.photoResponse.laterActions.toLocaleString()} later actions</dd></div><div><dt class="text-charcoal-400">Coverage</dt><dd class="mt-1 font-medium">{data.v2Report.coverage.observationsIncluded.toLocaleString()} included of {data.v2Report.coverage.observationsRead.toLocaleString()} read</dd></div></div><p class="mt-3 text-sm text-charcoal-400">{data.v2Report.coverage.label}</p><details class="mt-4"><summary class="text-link cursor-pointer">Inspect every accepted event count</summary><div tabindex="0" role="region" aria-label="Version 2 event counts" class="table-wrap mt-3"><table><thead><tr><th>Event</th><th class="numeric">Accepted observations</th></tr></thead><tbody>{#each data.v2Report.counts as count}<tr><td>{count.label}</td><td class="numeric">{count.count.toLocaleString()}</td></tr>{/each}</tbody></table></div></details>{:else}<p class="coverage-note">{data.v2Report.coverage.label}</p>{/if}</div>
+
+	   <div class="panel"><p class="eyebrow">Linked journeys</p><h2>Seven fixed provider projections</h2><p class="mt-2 text-sm text-charcoal-400">Each job uses the selected public albums, dates, source, sport, and photo category. Provider results are a separate linked-journey population, not a completeness claim for the legacy measures.</p><div class="mt-4 grid gap-3">{#each data.journeys as journey}<details class="journey-job"><summary><span>{journey.report.replaceAll('_', ' ')}</span><span class:journey-unavailable={!journey.available}>{journey.available ? 'Available' : journey.error === 'provider_unavailable' ? 'Provider unavailable' : 'Unavailable'}</span></summary><p class="mt-3 text-sm text-charcoal-400">{journey.coverage.cohort}. Excludes {journey.coverage.excluded}. {journey.coverage.metadata}</p>{#if journey.available}<dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">{#each Object.entries(journey.totals) as [label, value]}<div class="flex justify-between gap-4 border-b border-charcoal-800 pb-2"><dt>{label.replaceAll('_', ' ')}</dt><dd class="font-medium tabular-nums">{value === null ? 'Unavailable' : value.toLocaleString()}</dd></div>{/each}</dl><p class="mt-3 text-xs text-charcoal-400">As of {formatTime(journey.asOf)} · {journey.coverage.start}–{journey.coverage.end} · version {journey.coverage.definitionVersion}</p>{:else}<p class="coverage-note">No provider result is substituted with zero.</p>{/if}</details>{/each}</div></div>
 
    <div class="panel"><div class="panel-heading"><div><p class="eyebrow">Traffic impact</p><h2>Which album rankings change</h2></div></div><p class="mt-2 text-sm text-charcoal-400">Same dates, content filters, and measure. Audience includes unclassified traffic. Excluded actions are operator, test, known crawler, or suspected automation.</p>{#if report.trafficImpact.length}<p class="table-hint">Scroll sideways for every column. The first column stays visible.</p><div tabindex="0" role="region" aria-label="Scrollable analytics table" class="table-wrap mt-4"><table><thead><tr><th>Album</th><th class="numeric">All traffic</th><th class="numeric">Audience</th><th class="numeric">Excluded</th><th>Rank: all → audience</th></tr></thead><tbody>{#each report.trafficImpact as item}<tr><td><a class="text-link" href={reportHref({scope:'album',albums:item.albumKey})}>{data.albumCatalogue.find(a=>a.album_key===item.albumKey)?.album_name??item.albumKey}</a></td><td class="numeric">{item.inclusive}</td><td class="numeric">{item.conservative}</td><td class="numeric">{item.excluded}</td><td>{item.inclusiveRank} → {item.conservativeRank}</td></tr>{/each}</tbody></table></div>{:else}<p class="empty-copy">No recorded actions match these filters.</p>{/if}</div>
 
@@ -293,8 +308,9 @@
 			{#if data.user}
 			<div class="panel"><div class="panel-heading"><div><p class="eyebrow">Classification history</p><h2>Correct retained traffic evidence</h2></div></div><p class="mt-2 text-sm text-charcoal-400">Events follow the selected activity dates and album scope. Other content filters do not hide evidence here. Each correction creates a new version and reconciles the affected day.</p><div class="mt-3 flex flex-wrap gap-3 text-sm">{#if data.eventPage>0}<a class="text-link" href={reportHref({event_page:String(data.eventPage-1)})+'#measurement'}>Newer events</a>{/if}<span>Evidence page {data.eventPage+1}</span>{#if data.hasMoreEvents}<a class="text-link" href={reportHref({event_page:String(data.eventPage+1)})+'#measurement'}>Older events</a>{/if}</div>{#if !data.retainedEventsAvailable}<p role="alert" class="text-red-300">Retained events could not be loaded.</p>{:else if !data.retainedEvents.length}<p class="empty-copy">No retained events match these dates and albums.</p>{/if}{#if !data.correctionLogAvailable}<p role="alert" class="text-red-300">Correction history could not be loaded.</p>{/if}<form method="POST" action={actionHref('correctClassification')} class="mt-4 grid gap-3 lg:grid-cols-[minmax(16rem,1.4fr)_minmax(12rem,.7fr)_minmax(14rem,1fr)_auto]"><label class="report-field">Retained event<select disabled={!interactive} class="control" name="eventId" required><option value="">Choose an event</option>{#each data.retainedEvents as event}<option value={event.id}>{data.albumCatalogue.find((album) => album.album_key === event.album_key)?.album_name ?? 'Gallery'} · {event.event_type.replaceAll('_', ' ')} · {formatTime(event.created_at)} · {event.source ?? 'unknown source'}</option>{/each}</select></label><label class="report-field">Classification<select disabled={!interactive} class="control" name="classification"><option value="audience">Audience</option><option value="operator">Operator</option><option value="test">Test</option><option value="known_crawler">Known crawler</option><option value="suspected_automation">Suspected automation</option><option value="unclassified">Unclassified</option></select></label><label class="report-field">Reason<input disabled={!interactive} class="control" name="note" maxlength="1000" required /></label><button class="action-primary self-end" disabled={!interactive} type="submit">Record</button></form>{#if form?.correctionError}<p role="alert" class="mt-2 text-sm text-red-300">{String(form.correctionError)}</p>{/if}{#if data.correctionLogAvailable && data.correctionLog.length}<p class="table-hint">Scroll sideways for every column. The first column stays visible.</p><div tabindex="0" role="region" aria-label="Scrollable analytics table" class="table-wrap mt-5"><table><thead><tr><th>Event context</th><th>Version</th><th>Classification</th><th>Reason</th><th>Action</th></tr></thead><tbody>{#each data.correctionLog as correction}<tr><td>{correctionContext(correction)}</td><td class="numeric">{correction.classification_version}</td><td>{correction.classification.replaceAll('_', ' ')}</td><td>{correction.note}</td><td>{#if correction.canReverse}<form method="POST" action={actionHref('undoClassification')}><input disabled={!interactive} type="hidden" name="eventId" value={correction.engagement_event_id} /><button class="text-link" disabled={!interactive} type="submit">Reverse latest</button></form>{:else}<span class="text-charcoal-500">Earlier version</span>{/if}</td></tr>{/each}</tbody></table></div>{/if}</div>
 			{/if}
-		</section>
-	{/if}
+			</section>
+			<section id="analytics-preferences" class="scroll-mt-20"><AnalyticsPreferences /></section>
+		{/if}
 </div>
 
 {#if selectedPhoto}
@@ -342,12 +358,12 @@
  .freshness-line { display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;margin-top:.75rem;font-size:.75rem;color:#aeb7c4; }
  .coverage-note { margin-top:.75rem;border:1px solid #e1ad36;padding:.5rem .75rem;color:#ddc995;font-size:.85rem; }
 
-	:global(.control) { width: 100%; min-height: 2.75rem; border: 1px solid #49505c; border-radius: .55rem; background: #12151b; padding: .55rem .75rem; color: #f1f3f5; outline: none; }
-	:global(.control:focus) { border-color: #d4a63f; box-shadow: 0 0 0 2px rgb(212 166 63 / .3); }
-	:global(.action-primary), :global(.action-secondary), .icon-toggle { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: .5rem; border-radius: .55rem; padding: .55rem .8rem; font-size: .875rem; font-weight: 650; }
-	:global(.action-primary) { background: #e1ad36; color: #101216; }
-	:global(.action-secondary), .icon-toggle { border: 1px solid #49505c; color: #e7eaef; }
-	:global(.action-secondary:disabled) { opacity: .4; }
+		.analytics-workspace :global(.control) { width: 100%; min-height: 2.75rem; border: 1px solid #49505c; border-radius: .55rem; background: #12151b; padding: .55rem .75rem; color: #f1f3f5; outline: none; }
+		.analytics-workspace :global(.control:focus) { border-color: #d4a63f; box-shadow: 0 0 0 2px rgb(212 166 63 / .3); }
+		.analytics-workspace :global(.action-primary), .analytics-workspace :global(.action-secondary), .analytics-workspace .icon-toggle { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: .5rem; border-radius: .55rem; padding: .55rem .8rem; font-size: .875rem; font-weight: 650; }
+		.analytics-workspace :global(.action-primary) { background: #e1ad36; color: #101216; }
+		.analytics-workspace :global(.action-secondary), .analytics-workspace .icon-toggle { border: 1px solid #49505c; color: #e7eaef; }
+		.analytics-workspace :global(.action-secondary:disabled) { opacity: .4; }
 	.report-controls { border: 1px solid #49505c; border-radius: .85rem; background: rgb(37 41 50 / .82); padding: .9rem; }
 	.control.pl-9 { padding-left:2.25rem; }
 	.report-field { display: grid; gap: .3rem; min-width: 0; font-size: .78rem; color: #b7beca; }
@@ -380,7 +396,10 @@
 	.numeric { text-align: right; font-variant-numeric: tabular-nums; }
 	tr.selected td { background: rgb(212 166 63 / .1); }
 	.text-link { color: #ecc65f; font-size: .82rem; text-underline-offset: 4px; }
-	.empty-copy { margin-top: 1rem; font-size: .86rem; color: #9ea7b5; }
+		.empty-copy { margin-top: 1rem; font-size: .86rem; color: #9ea7b5; }
+		.journey-job { border: 1px solid #d8e0ea; border-radius: .55rem; padding: .8rem; }
+		.journey-job summary { display: flex; cursor: pointer; align-items: center; justify-content: space-between; gap: 1rem; color: #172033; font-weight: 650; text-transform: capitalize; }
+		.journey-unavailable { color: #8c5b00; font-size: .8rem; font-weight: 500; text-transform: none; }
 	.error-panel { margin-top: 1.25rem; border: 1px solid rgb(248 113 113 / .55); border-radius: .8rem; background: rgb(69 10 10 / .35); padding: 1rem; color: #fecaca; }
 	.error-panel h2 { font-size: 1.1rem; font-weight: 650; }
 	.error-panel p { margin-top: .35rem; font-size: .85rem; }

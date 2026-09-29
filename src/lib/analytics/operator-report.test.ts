@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { aggregateDiagnostics, reportCsv, type OperatorReport } from './operator-report.server';
 import type { ReportQuery } from './report-contract';
+import type { V2ReportProjection } from './v2-report-projection.server';
 
 const query: ReportQuery = {
 	start: '2026-09-01',
@@ -65,6 +66,24 @@ test('spreadsheet formulas are neutralized in every exported string field', () =
 	assert.match(csv, /"'=IMPORTXML/);
 	assert.match(csv, /"'\+unsafe"/);
 	assert.match(csv, /"'@NOW\(\)"/);
+});
+
+test('CSV includes every legacy measure and identifier-free v2 labels with their coverage', () => {
+	const v2: V2ReportProjection = {
+		available: true,
+		coverage: { start: query.start, end: query.end, label: 'Accepted v2 observations linked to public albums.', observationsRead: 4, observationsIncluded: 3, observationsExcluded: 1 },
+		counts: [{ event: 'photo_opened', label: 'Photos opened', count: 3 }],
+		albumResponse: { eligibleExposures: 0, laterOpens: 0, laterActions: 0 },
+		photoResponse: { eligibleExposures: 0, laterActions: 3 }
+	};
+	const csv = report({ photos: [{ photoId: 'photo-1', albumKey: 'album-1', count: 3, previousCount: 1, difference: 2, risingValue: 2, measures: { photo_opens: 3, album_opens: 2, downloads: 1, favorites: 1, shares: 0 }, lastActivity: null, imageUrl: null }] });
+	const output = reportCsv(csv, undefined, v2);
+
+	assert.match(output, /"photo_opens","album_opens","downloads","favorites","shares"/);
+	assert.match(output, /"v2_event","","","3"/);
+	assert.match(output, /"Photos opened"/);
+	assert.match(output, /"Accepted v2 observations linked to public albums\."/);
+	assert.doesNotMatch(output, /visit_id|anonymous_browser_id/);
 });
 
 
