@@ -13,13 +13,16 @@
 
 	let { points, measureLabel }: Props = $props();
 	const usablePoints = $derived(points.filter((point) => point.count !== null));
-	const maximum = $derived(Math.max(1, ...usablePoints.map((point) => point.count ?? 0)));
-	const line = $derived(usablePoints.map((point, index) => {
-		const originalIndex = points.indexOf(point);
-		const x = points.length === 1 ? 50 : (originalIndex / (points.length - 1)) * 100;
-		const y = 88 - ((point.count ?? 0) / maximum) * 76;
-		return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-	}).join(' '));
+	const peak = $derived(Math.max(0, ...usablePoints.map((point) => point.count ?? 0)));
+	const maximum = $derived(Math.max(1, peak));
+	const coordinates = $derived(points.map((point, index) => ({
+		x: points.length === 1 ? 300 : 6 + (index / (points.length - 1)) * 588,
+		y: 88 - ((point.count ?? 0) / maximum) * 76,
+		point, index
+	})));
+	const line = $derived(coordinates.filter(({point}) => point.count !== null).map(({x,y,index}) =>
+		`${index === 0 || points[index - 1]?.count === null ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+	).join(' '));
 	const startLabel = $derived(points[0]?.date ?? '');
 	const endLabel = $derived(points.at(-1)?.date ?? '');
 </script>
@@ -30,12 +33,13 @@
 			<h2 id="trend-title">Recorded {measureLabel.toLowerCase()}</h2>
 			<p>{startLabel} to {endLabel} · America/Chicago</p>
 		</div>
-		<span>{maximum.toLocaleString()} peak</span>
+		<span>{peak.toLocaleString()} peak</span>
 	</div>
 	{#if usablePoints.length}
-		<svg viewBox="0 0 100 100" role="img" aria-label={`Daily recorded ${measureLabel.toLowerCase()} from ${startLabel} to ${endLabel}`} preserveAspectRatio="none">
-			<line x1="0" x2="100" y1="88" y2="88" class="axis" />
+		<svg viewBox="0 0 600 100" role="img" aria-label={`Daily recorded ${measureLabel.toLowerCase()} from ${startLabel} to ${endLabel}`} preserveAspectRatio="none">
+			<line x1="0" x2="600" y1="88" y2="88" class="axis" />
 			<path d={line} class="line" vector-effect="non-scaling-stroke" />
+			{#each coordinates.filter(({point}) => point.count !== null) as item}<circle cx={item.x} cy={item.y} r="3" fill="#1769e0"><title>{item.point.date}: {item.point.count}</title></circle>{/each}
 		</svg>
 	{:else}
 		<p class="empty">No complete daily evidence is available for this interval.</p>

@@ -14,6 +14,7 @@ BEGIN
  IF (SELECT count(*) FROM public.analytics_posthog_outbox)<>1 THEN RAISE EXCEPTION 'unlinked event exported'; END IF;
  SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
  IF n<>1 THEN RAISE EXCEPTION 'claim failed'; END IF;
+ IF public.analytics_recheck_posthog_event_eligibility('20000000-0000-4000-8000-000000000001')->>'export_eligible'<>'true' THEN RAISE EXCEPTION 'eligible lease lost'; END IF;
  IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE status='submitted') THEN RAISE EXCEPTION 'claim falsely reported submission'; END IF;
  SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
  IF n<>0 THEN RAISE EXCEPTION 'live lease reclaimed'; END IF;
@@ -28,6 +29,7 @@ BEGIN
  IF n<>1 THEN RAISE EXCEPTION 'retry did not recover'; END IF;
  PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000001','submitted',NULL);
  IF (SELECT status FROM public.analytics_posthog_outbox LIMIT 1)<>'submitted' THEN RAISE EXCEPTION 'ack missing'; END IF;
+ IF (SELECT count(*) FROM public.analytics_list_submitted_posthog_event_ids(100))<>1 THEN RAISE EXCEPTION 'submitted backlog disappeared'; END IF;
  PERFORM public.analytics_confirm_posthog_events(ARRAY['20000000-0000-4000-8000-000000000001'::uuid]);
  IF (SELECT status FROM public.analytics_posthog_outbox LIMIT 1)<>'confirmed' THEN RAISE EXCEPTION 'confirmation missing'; END IF;
  UPDATE public.analytics_events_v2 SET received_at=now()-interval '91 days';
@@ -41,6 +43,8 @@ END $$;
 RESET ROLE;
 SET LOCAL ROLE anon;
 DO $$ BEGIN
+ BEGIN PERFORM public.analytics_recheck_posthog_event_eligibility('20000000-0000-4000-8000-000000000001'); RAISE EXCEPTION 'anon recheck allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM public.analytics_list_submitted_posthog_event_ids(100); RAISE EXCEPTION 'anon backlog allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN PERFORM public.analytics_claim_posthog_events(1,30); RAISE EXCEPTION 'anon claim allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN PERFORM * FROM public.analytics_events_v2; RAISE EXCEPTION 'anon raw read allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN PERFORM * FROM public.analytics_v2_archived_totals; RAISE EXCEPTION 'anon aggregate table bypass allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;

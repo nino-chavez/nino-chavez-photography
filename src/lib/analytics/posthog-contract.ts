@@ -7,6 +7,7 @@ const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 
 /** Only these scalar properties may cross the provider boundary. */
 export const POSTHOG_PROPERTY_ALLOWLIST = new Set([
+	'album_sport', 'event_date', 'photo_category', 'tagged_source', 'surface', 'release', 'environment',
 	...Object.values(EVENT_V2_CONTRACT).flatMap((rule) => [
 		...rule.required,
 		...(rule.optional ?? []),

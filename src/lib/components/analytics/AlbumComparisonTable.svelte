@@ -68,4 +68,8 @@
 	.number { font-variant-numeric: tabular-nums; text-align: right; }
 	a { color: #174ea6; font-weight: 700; white-space: nowrap; }
 	.sr-only { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+	@media (max-width: 639px) {
+		th:first-child, td:first-child { position: sticky; left: 0; z-index: 1; background: #fff; min-width: 8rem; max-width: 10rem; overflow-wrap: anywhere; box-shadow: 1px 0 #d8e0ea; }
+		th:first-child { background: #f4f7fb; }
+	}
 </style>

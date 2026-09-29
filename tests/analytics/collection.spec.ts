@@ -13,7 +13,8 @@ test('actual browser senders produce accepted photo, item, ZIP and exclusion eve
  });
  await page.evaluate(async()=>{
   // Import the same Vite module the gallery components call; do not reconstruct its payloads.
-  const analytics=await import('/photography/src/lib/analytics/client.ts');
+  const modulePath='/photography/src/lib/analytics/client.ts';
+  const analytics=await import(modulePath);
   await analytics.sendAnalyticsEventV2({eventName:'photo_rendered',properties:{photo_id:'legacy-1',view_id:crypto.randomUUID(),load_duration_ms:40}});
   const zip=analytics.startDownloadLifecycle('saved_photo_zip',{},2);
   zip.itemRequested('legacy-1'); zip.itemPrepared('legacy-1',undefined,100); zip.itemPrepared('legacy-1',undefined,100);

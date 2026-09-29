@@ -56,7 +56,7 @@ export interface V2CoverageBounds {
 const labels: Record<PostHogEventName, string> = {
 	gallery_page_viewed: 'Gallery pages viewed', album_exposed: 'Albums exposed', album_opened: 'Albums opened',
 	photo_exposed: 'Photos exposed', photo_opened: 'Photos opened', photo_rendered: 'Photos rendered', photo_load_failed: 'Photo loads failed',
-	favorite_added: 'Favorites added', favorite_removed: 'Favorites removed', share_action: 'Shares',
+	favorite_added: 'Favorites added', favorite_removed: 'Favorites removed', share_action: 'Share actions (all outcomes)',
 	download_requested: 'Downloads requested', download_item_requested: 'Download items requested', download_item_prepared: 'Download items prepared',
 	download_prepared: 'Downloads prepared', download_handed_off: 'Downloads handed off', download_failed: 'Downloads failed', download_cancelled: 'Downloads cancelled',
 	search_submitted: 'Searches submitted', search_results_shown: 'Search results shown', search_failed: 'Searches failed',
@@ -143,13 +143,26 @@ export function buildV2ReportProjection(
 ): V2ReportProjection {
 	const publicAlbumKeys = new Set(options.publicAlbumKeys);
 	const counts = new Map(POSTHOG_EVENT_NAMES.map((event) => [event, 0]));
+	const shareOutcomes = new Map([
+		['clipboard_succeeded', {label: 'Share links copied', count: 0}],
+		['native_share_handed_off', {label: 'Native shares handed off', count: 0}],
+		['composer_opened', {label: 'Share composers opened', count: 0}],
+		['email_link_opened', {label: 'Share email links opened', count: 0}],
+		['cancelled', {label: 'Share actions cancelled', count: 0}],
+		['failed', {label: 'Share actions failed', count: 0}]
+	]);
 	for (const row of [...rawRows.map(rawObservation), ...archivedRows.map(archivedObservation)]) {
-		if (matchesScope(row, query, publicAlbumKeys)) counts.set(row.eventName, (counts.get(row.eventName) ?? 0) + row.count);
+		if (!matchesScope(row, query, publicAlbumKeys)) continue;
+		counts.set(row.eventName, (counts.get(row.eventName) ?? 0) + row.count);
+		if (row.eventName === 'share_action') {
+			const outcome = shareOutcomes.get(String(row.dimensions.outcome));
+			if (outcome) outcome.count += row.count;
+		}
 	}
 	return {
 		available: true,
 		coverage: { start: query.start, end: query.end, ...bounds, label: coverageLabel(bounds) },
-		counts: POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: counts.get(event) ?? 0 }))
+		counts: [...POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: counts.get(event) ?? 0 })), ...[...shareOutcomes.values()].map((outcome) => ({event: 'share_action' as const, ...outcome}))]
 	};
 }
 

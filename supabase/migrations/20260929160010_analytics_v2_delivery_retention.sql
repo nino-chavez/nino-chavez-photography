@@ -24,6 +24,32 @@ BEGIN
  SET locked_until=now()+make_interval(secs=>LEAST(GREATEST(p_lease_seconds,1),300)),attempts=o.attempts+1
  FROM claimed WHERE o.event_id=claimed.event_id RETURNING o.event_id,o.payload,o.attempts;
 END $$;
+CREATE OR REPLACE FUNCTION public.analytics_recheck_posthog_event_eligibility(p_event_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+DECLARE e public.analytics_events_v2%ROWTYPE; result jsonb;
+BEGIN
+ IF current_user <> 'service_role' THEN RAISE EXCEPTION 'service role required' USING ERRCODE='42501'; END IF;
+ SELECT * INTO e FROM public.analytics_events_v2 WHERE event_id=p_event_id FOR UPDATE;
+ IF NOT FOUND OR NOT e.export_eligible OR e.traffic_context<>'audience' OR e.anonymous_browser_id IS NULL OR e.visit_id IS NULL OR e.received_at<now()-interval '90 days' THEN
+  DELETE FROM public.analytics_posthog_outbox WHERE event_id=p_event_id AND status IN ('pending','failed');
+  RETURN NULL;
+ END IF;
+ SELECT payload INTO result FROM public.analytics_posthog_outbox WHERE event_id=p_event_id AND status IN ('pending','failed') AND locked_until>now();
+ IF result IS NULL THEN RETURN NULL; END IF;
+ RETURN result || jsonb_build_object('export_eligible',e.export_eligible,'traffic_context',e.traffic_context,'properties',e.properties,'anonymous_browser_id',e.anonymous_browser_id,'visit_id',e.visit_id);
+END $$;
+REVOKE ALL ON FUNCTION public.analytics_recheck_posthog_event_eligibility(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.analytics_recheck_posthog_event_eligibility(uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.analytics_list_submitted_posthog_event_ids(p_limit integer)
+RETURNS TABLE(event_id uuid) LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+BEGIN
+ IF current_user <> 'service_role' THEN RAISE EXCEPTION 'service role required' USING ERRCODE='42501'; END IF;
+ RETURN QUERY SELECT o.event_id FROM public.analytics_posthog_outbox o WHERE o.status='submitted' ORDER BY o.submitted_at,o.event_id LIMIT LEAST(GREATEST(p_limit,1),100);
+END $$;
+REVOKE ALL ON FUNCTION public.analytics_list_submitted_posthog_event_ids(integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.analytics_list_submitted_posthog_event_ids(integer) TO service_role;
+
 -- Leased records remain pending/failed until acknowledgment. A killed worker's
 -- lease expires and the next worker reclaims the exact same event UUID.
 
