@@ -5,7 +5,8 @@ BEGIN;
 ALTER TABLE public.analytics_posthog_outbox DROP CONSTRAINT IF EXISTS analytics_posthog_outbox_event_id_fkey;
 ALTER TABLE public.analytics_posthog_outbox
   ADD COLUMN origin text NOT NULL DEFAULT 'event' CHECK (origin IN ('event','classification_control')),
-  ADD COLUMN target_event_id uuid;
+  ADD COLUMN target_event_id uuid,
+  ADD COLUMN last_checked_at timestamptz;
 CREATE INDEX analytics_posthog_outbox_origin_claim_idx
   ON public.analytics_posthog_outbox (origin, status, next_attempt_at)
   WHERE status IN ('pending','failed');
@@ -32,6 +33,15 @@ GRANT ALL ON public.analytics_event_v2_classifications TO service_role;
 CREATE OR REPLACE FUNCTION analytics_private.enforce_posthog_outbox_origin()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 BEGIN
+  -- Delivery workers update status, leases, retries, and receipts after a control
+  -- has been created. Only its provenance and payload are protected here.
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.origin IS NOT DISTINCT FROM OLD.origin
+      AND NEW.target_event_id IS NOT DISTINCT FROM OLD.target_event_id
+      AND NEW.payload IS NOT DISTINCT FROM OLD.payload THEN
+      RETURN NEW;
+    END IF;
+  END IF;
   IF NEW.origin = 'classification_control' AND current_setting('analytics.classification_control_write', true) IS DISTINCT FROM 'on' THEN
     RAISE EXCEPTION 'classification controls require the correction RPC' USING ERRCODE = '42501';
   END IF;
@@ -57,7 +67,8 @@ DECLARE
   next_version integer;
   effective_classification text;
   control_id uuid;
-  was_exported boolean;
+  delivery_potentially_attempted boolean;
+  eligible_for_export boolean;
 BEGIN
   IF current_user <> 'service_role' THEN RAISE EXCEPTION 'service role required' USING ERRCODE = '42501'; END IF;
   IF p_corrected_by IS NULL OR p_note IS NULL OR char_length(btrim(p_note)) NOT BETWEEN 1 AND 1000 THEN
@@ -74,15 +85,25 @@ BEGIN
   INSERT INTO public.analytics_event_v2_classifications(event_id, classification_version, classification, note, corrected_by, reversed)
     VALUES (p_event_id, next_version, effective_classification, btrim(p_note), p_corrected_by, p_reverse);
 
-  -- Queued records have not reached the provider and are removed immediately.
-  DELETE FROM public.analytics_posthog_outbox
-    WHERE event_id = p_event_id AND origin = 'event' AND status IN ('pending','failed');
-  -- Reversal restores a still-retained, originally eligible queued event. It does
-  -- not touch a submitted/confirmed receipt or a terminal provider decision.
-  IF p_reverse AND event_row.export_eligible AND event_row.traffic_context='audience'
+  -- A lease means a worker may already be transmitting the original event. Capture
+  -- that fact before changing queued receipts so a correction is never stranded.
+  SELECT EXISTS(
+    SELECT 1 FROM public.analytics_posthog_outbox
+    WHERE event_id = p_event_id AND origin = 'event'
+      AND (status IN ('submitted','confirmed') OR locked_until IS NOT NULL)
+  ) INTO delivery_potentially_attempted;
+  eligible_for_export := event_row.export_eligible
+    AND event_row.traffic_context = 'audience'
+    AND effective_classification IN ('audience','unclassified')
     AND event_row.anonymous_browser_id IS NOT NULL AND event_row.visit_id IS NOT NULL
-    AND event_row.received_at >= now()-interval '90 days'
-    AND NOT EXISTS (SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id=p_event_id) THEN
+    AND event_row.received_at >= now()-interval '90 days';
+  IF NOT eligible_for_export THEN
+    -- A queued record has not been accepted by the provider and can be suppressed.
+    DELETE FROM public.analytics_posthog_outbox
+      WHERE event_id = p_event_id AND origin = 'event' AND status IN ('pending','failed');
+  ELSIF NOT EXISTS (SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id=p_event_id AND origin='event') THEN
+    -- A correction to audience/unclassified restores an eligible retained event,
+    -- but never creates an export for an originally unconsented event.
     INSERT INTO public.analytics_posthog_outbox(event_id,payload)
     VALUES (event_row.event_id, jsonb_build_object(
       'event_id',event_row.event_id,'schema_version',event_row.schema_version,'event_name',event_row.event_name,
@@ -90,11 +111,7 @@ BEGIN
       'visit_id',event_row.visit_id,'traffic_context',event_row.traffic_context,'export_eligible',event_row.export_eligible,'properties',event_row.properties
     ));
   END IF;
-  SELECT EXISTS(
-    SELECT 1 FROM public.analytics_posthog_outbox
-    WHERE event_id = p_event_id AND origin = 'event' AND status IN ('submitted','confirmed')
-  ) INTO was_exported;
-  IF was_exported THEN
+  IF delivery_potentially_attempted THEN
     control_id := gen_random_uuid();
     PERFORM set_config('analytics.classification_control_write', 'on', true);
     INSERT INTO public.analytics_posthog_outbox(event_id, payload, origin, target_event_id)
@@ -111,6 +128,7 @@ BEGIN
       ),
       'classification_control', p_event_id
     );
+    PERFORM set_config('analytics.classification_control_write', 'off', true);
   END IF;
   RETURN jsonb_build_object(
     'event_id', p_event_id, 'classification_version', next_version,
@@ -145,6 +163,24 @@ BEGIN
  FROM claimed WHERE o.event_id=claimed.event_id RETURNING o.event_id,o.payload,o.attempts;
 END $$;
 
+-- A submitted receipt records the most recent provider handoff. Reconciliations
+-- use this timestamp for their grace period, including after a missing retry.
+CREATE OR REPLACE FUNCTION public.analytics_finish_posthog_delivery(p_event_id uuid, p_status text, p_error_code text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+BEGIN
+ IF current_user <> 'service_role' THEN RAISE EXCEPTION 'service role required' USING ERRCODE='42501'; END IF;
+ IF p_status NOT IN ('submitted','failed') THEN RAISE EXCEPTION 'invalid status' USING ERRCODE='22023'; END IF;
+ UPDATE public.analytics_posthog_outbox
+ SET status=p_status,
+     locked_until=NULL,
+     last_error_code=left(p_error_code,120),
+     submitted_at=CASE WHEN p_status='submitted' THEN now() ELSE submitted_at END,
+     next_attempt_at=CASE WHEN p_status='failed' THEN now()+make_interval(secs=>LEAST(3600,2^LEAST(attempts,10))) ELSE next_attempt_at END
+ WHERE event_id=p_event_id;
+END $$;
+REVOKE ALL ON FUNCTION public.analytics_finish_posthog_delivery(uuid,text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.analytics_finish_posthog_delivery(uuid,text,text) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.analytics_recheck_posthog_event_eligibility(p_event_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,public AS $$
 DECLARE e public.analytics_events_v2%ROWTYPE; result jsonb; effective_classification text; origin_value text;
@@ -157,9 +193,13 @@ BEGIN
    RETURN NULL;
  END IF;
  SELECT * INTO e FROM public.analytics_events_v2 WHERE event_id=p_event_id;
+ IF NOT FOUND THEN
+  DELETE FROM public.analytics_posthog_outbox WHERE event_id=p_event_id AND origin='event' AND status IN ('pending','failed');
+  RETURN NULL;
+ END IF;
  SELECT classification INTO effective_classification FROM public.analytics_event_v2_classifications
    WHERE event_id=p_event_id ORDER BY classification_version DESC LIMIT 1;
- IF NOT FOUND OR NOT e.export_eligible OR e.traffic_context<>'audience' OR coalesce(effective_classification,e.traffic_context) NOT IN ('audience','unclassified')
+ IF NOT e.export_eligible OR e.traffic_context<>'audience' OR coalesce(effective_classification,e.traffic_context) NOT IN ('audience','unclassified')
    OR e.anonymous_browser_id IS NULL OR e.visit_id IS NULL OR e.received_at<now()-interval '90 days' THEN
   DELETE FROM public.analytics_posthog_outbox WHERE event_id=p_event_id AND origin='event' AND status IN ('pending','failed');
   RETURN NULL;
@@ -170,18 +210,26 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.analytics_requeue_missing_posthog_events(p_event_ids uuid[])
 RETURNS TABLE(event_id uuid) LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+DECLARE requested_ids uuid[];
 BEGIN
  IF current_user <> 'service_role' THEN RAISE EXCEPTION 'service role required' USING ERRCODE='42501'; END IF;
+ SELECT coalesce(array_agg(value ORDER BY value), ARRAY[]::uuid[]) INTO requested_ids
+ FROM (SELECT DISTINCT value FROM unnest(coalesce(p_event_ids, ARRAY[]::uuid[])) value ORDER BY value LIMIT 100) requested;
+ UPDATE public.analytics_posthog_outbox o
+ SET last_checked_at=now(), last_error_code='provider_reconciliation_missing'
+ WHERE o.status='submitted' AND o.event_id=ANY(requested_ids);
  RETURN QUERY WITH requested AS (
-  SELECT DISTINCT value AS event_id FROM unnest(coalesce(p_event_ids, ARRAY[]::uuid[])) value LIMIT 100
+  SELECT value AS event_id FROM unnest(requested_ids) value
  ), eligible AS (
   SELECT o.event_id FROM requested r
-  JOIN public.analytics_posthog_outbox o ON o.event_id=r.event_id AND o.origin='event'
-  JOIN public.analytics_events_v2 e ON e.event_id=o.event_id
+  JOIN public.analytics_posthog_outbox o ON o.event_id=r.event_id
+  LEFT JOIN public.analytics_events_v2 e ON e.event_id=o.event_id
   LEFT JOIN LATERAL (SELECT classification FROM public.analytics_event_v2_classifications c WHERE c.event_id=e.event_id ORDER BY classification_version DESC LIMIT 1) c ON true
-  WHERE o.status='submitted' AND o.attempts<12
-    AND e.received_at <= now()-interval '5 minutes' AND e.received_at >= now()-interval '90 days'
-    AND e.export_eligible AND e.traffic_context='audience' AND coalesce(c.classification,e.traffic_context) IN ('audience','unclassified')
+  WHERE o.status='submitted' AND o.attempts<12 AND o.submitted_at <= now()-interval '5 minutes'
+    AND (o.origin='classification_control' OR (
+      e.received_at >= now()-interval '90 days' AND e.export_eligible AND e.traffic_context='audience'
+      AND coalesce(c.classification,e.traffic_context) IN ('audience','unclassified')
+    ))
  ) UPDATE public.analytics_posthog_outbox o
  SET status='pending', locked_until=NULL, next_attempt_at=now()+interval '30 seconds', last_error_code='provider_reconciliation_missing'
  FROM eligible WHERE o.event_id=eligible.event_id
@@ -190,14 +238,23 @@ END $$;
 REVOKE ALL ON FUNCTION public.analytics_requeue_missing_posthog_events(uuid[]) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.analytics_requeue_missing_posthog_events(uuid[]) TO service_role;
 
--- Provider reconciliation is for source-owned visitor events. Server controls are
--- deliberately absent from that source query and cannot consume its backlog.
+-- Reconcile submitted receipts fairly. Visitor events remain eligibility-gated;
+-- server controls use their own minimal payload and target-retention lifecycle.
 CREATE OR REPLACE FUNCTION public.analytics_list_submitted_posthog_event_ids(p_limit integer)
 RETURNS TABLE(event_id uuid) LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,public AS $$
 BEGIN
  IF current_user <> 'service_role' THEN RAISE EXCEPTION 'service role required' USING ERRCODE='42501'; END IF;
  RETURN QUERY SELECT o.event_id FROM public.analytics_posthog_outbox o
- WHERE o.origin='event' AND o.status='submitted' ORDER BY o.submitted_at,o.event_id LIMIT LEAST(GREATEST(p_limit,1),100);
+  WHERE o.status='submitted' AND o.submitted_at <= now()-interval '5 minutes'
+    AND (o.origin='classification_control' OR EXISTS (
+      SELECT 1 FROM public.analytics_events_v2 e
+      LEFT JOIN LATERAL (SELECT classification FROM public.analytics_event_v2_classifications c WHERE c.event_id=e.event_id ORDER BY classification_version DESC LIMIT 1) c ON true
+      WHERE e.event_id=o.event_id AND e.received_at >= now()-interval '90 days'
+        AND e.export_eligible AND e.traffic_context='audience'
+        AND coalesce(c.classification,e.traffic_context) IN ('audience','unclassified')
+    ))
+  ORDER BY o.last_checked_at NULLS FIRST,o.submitted_at,o.event_id
+  LIMIT LEAST(GREATEST(p_limit,1),100);
 END $$;
 
 CREATE TABLE public.analytics_collection_delivery_counters (
@@ -232,6 +289,7 @@ RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path=pg_catalog,public AS
   'confirmed',count(*) FILTER (WHERE status='confirmed' AND origin='event'),
   'failed',count(*) FILTER (WHERE status='failed' AND origin='event'),
   'control_pending',count(*) FILTER (WHERE status IN ('pending','failed') AND origin='classification_control'),
+  'terminal_reconciliation_gap',count(*) FILTER (WHERE status='submitted' AND attempts>=12 AND last_error_code='provider_reconciliation_missing'),
   'oldest_pending_at',min(next_attempt_at) FILTER (WHERE status IN ('pending','failed')),
   'oldest_submitted_at',min(submitted_at) FILTER (WHERE status='submitted'),
   'confirmed_watermark',max(confirmed_at) FILTER (WHERE status='confirmed'),
@@ -273,12 +331,16 @@ BEGIN
   export_eligible_count=analytics_v2_archived_totals.export_eligible_count+EXCLUDED.export_eligible_count,
   last_recorded_at=greatest(analytics_v2_archived_totals.last_recorded_at,EXCLUDED.last_recorded_at);
 
- -- The original foreign key cannot cover server control rows. Remove only event
- -- outbox rows whose retained raw event was deleted above; control rows persist
- -- as their own delivery receipts.
+ -- Keep ordinary delivery evidence for as long as its raw event survives, so a
+ -- late correction can mirror an older provider event. Controls are safe to prune
+ -- seven days after confirmation, or when their target raw event expires.
  DELETE FROM public.analytics_posthog_outbox o
  WHERE o.origin='event' AND NOT EXISTS (SELECT 1 FROM public.analytics_events_v2 e WHERE e.event_id=o.event_id);
- DELETE FROM public.analytics_posthog_outbox WHERE status='confirmed' AND confirmed_at<run_at-interval '7 days';
+ DELETE FROM public.analytics_posthog_outbox o
+ WHERE o.origin='classification_control' AND (
+   (o.status='confirmed' AND o.confirmed_at<run_at-interval '7 days')
+   OR NOT EXISTS (SELECT 1 FROM public.analytics_events_v2 e WHERE e.event_id=o.target_event_id)
+ );
 END $$;
 
 NOTIFY pgrst,'reload schema';
