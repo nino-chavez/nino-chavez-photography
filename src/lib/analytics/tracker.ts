@@ -15,7 +15,7 @@ export interface SearchQueryEvent {
 	filters_used?: Record<string, any>;
 	results_count: number;
 	userAgent: string;
-	trafficContext?: 'audience' | 'operator' | 'test';
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 export interface ArrivalEvent {
@@ -23,7 +23,7 @@ export interface ArrivalEvent {
 	src: string; // channel value carried on the incoming ?src= param (see $lib/utils/share-url)
 	sessionHash?: string;
 	userAgent: string;
-	trafficContext?: 'audience' | 'operator' | 'test';
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 export interface CollectionDiagnosticEvent {
@@ -35,7 +35,7 @@ export interface CollectionDiagnosticEvent {
 	source?: string;
 	resultCount?: number;
 	errorCode?: string;
-	trafficContext?: 'audience' | 'operator' | 'test';
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 /**

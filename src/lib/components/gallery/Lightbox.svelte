@@ -18,7 +18,7 @@
 	import { generatePhotoTitle, generateMetadataSummary } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createHdrSource } from '$lib/utils/hdr-photo-url';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
@@ -479,6 +479,7 @@
 
 	function handleImageLoad() {
 		imageLoading = false;
+		if (photo) trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: photo.id, album_key: photo.album_key, source: viewSource } });
 	}
 
 	// Preload adjacent images
@@ -625,6 +626,7 @@
 						onload={handleImageLoad}
 						onerror={() => {
 							if (hdrUrl) hdr.markFailed(photo);
+							trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: photo.id, album_key: photo.album_key, error_code: 'image_load_failed' } });
 						}}
 					/>
 				</div>

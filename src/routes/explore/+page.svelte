@@ -25,6 +25,7 @@
 	import type { Photo } from '$types/photo';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -84,6 +85,10 @@
 
 	// Photos come directly from server (search filtering is server-side)
 	let displayPhotos = $derived(data.photos);
+	$effect(() => {
+		if (!data.searchId || !data.searchQuery) return;
+		trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: crypto.randomUUID(), result_count: data.totalCount } });
+	});
 
 	// Active filters count
 	let activeFilterCount = $derived.by(() => {

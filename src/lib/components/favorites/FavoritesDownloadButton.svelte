@@ -4,6 +4,7 @@
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
+	import { isDownloadableImageResponse } from '$lib/analytics/download-response';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -65,7 +66,7 @@
 					const filename = `${photo.image_key}.jpg`;
 					const proxy = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
 					return fetch(proxy, { signal })
-						.then((r) => r.blob())
+						.then((r) => { if (!isDownloadableImageResponse(r)) throw new Error('download_item_failed'); return r.blob(); })
 						.then((data) => ({ name: filename, data }));
 				}
 

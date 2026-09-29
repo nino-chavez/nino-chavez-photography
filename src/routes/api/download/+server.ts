@@ -8,6 +8,7 @@
  */
 
 import type { RequestHandler } from './$types';
+import { isDownloadableImageResponse } from '$lib/analytics/download-response';
 
 /** Allowed image source hosts (exact hostname match — NOT substring) */
 const ALLOWED_HOSTS = ['imagedelivery.net'];
@@ -47,7 +48,7 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       },
     });
 
-    if (!response.ok) {
+    if (!isDownloadableImageResponse(response)) {
       console.error('[Download Proxy] Upstream responded with:', response.status, response.statusText);
       return new Response(`Failed to fetch image: ${response.status} ${response.statusText}`, { status: response.status });
     }

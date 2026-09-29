@@ -24,7 +24,7 @@
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createHdrSource } from '$lib/utils/hdr-photo-url';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
@@ -72,6 +72,9 @@
 			window.removeEventListener('resize', updateViewport);
 		};
 	});
+
+	function recordRendered() { if (photo) trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: photo.id, album_key: photo.album_key, source: viewSource } }); }
+	function recordLoadFailed() { if (photo) trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: photo.id, album_key: photo.album_key, error_code: 'image_load_failed' } }); }
 	
 	// Serve the web-sized HDR (gain-map) copy when one exists (see /photo/[id]/+page.svelte for
 	// the full rationale — same logic, same graceful CF fallback on any load failure).
@@ -190,8 +193,10 @@
 											class="absolute inset-0 w-full h-full object-contain"
 											loading="eager"
 											decoding="async"
+											onload={recordRendered}
 											onerror={() => {
 												if (hdrUrl) hdr.markFailed(photo);
+												recordLoadFailed();
 											}}
 										/>
 									{:else}

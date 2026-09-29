@@ -6,7 +6,7 @@
 
 import type { Photo } from '$types/photo';
 import { toast } from './toast.svelte';
-import { trackEngagement } from '$lib/analytics/client';
+import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
 
 const STORAGE_KEY = 'gallery-favorites';
 const MAX_FAVORITES = 100; // Prevent unlimited storage growth
@@ -93,9 +93,11 @@ function createFavoritesStore() {
 
 		// Remove photo from favorites
 		removeFavorite(photoId: string) {
+			const photo = state.photos.get(photoId);
 			state.photoIds.delete(photoId);
 			state.photos.delete(photoId);
 			saveToStorage();
+			if (photo) trackAnalyticsEventV2({ eventName: 'favorite_removed', properties: { photo_id: photo.id, album_key: photo.album_key, source: 'favorites' } });
 		},
 
 		// Toggle favorite status

@@ -1,8 +1,41 @@
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { SHARE_SRC, type ShareChannel, type ShareSubject } from '$lib/analytics/share';
+import type { EventV2Name, EventV2Properties } from '$lib/analytics/events-v2';
+import { getAnalyticsPreferences, getVisitContext } from '$lib/analytics/visit';
+import { deliverWithSingleRetry } from '$lib/analytics/delivery';
 
 export type EngagementType = 'view' | 'favorite' | 'download' | 'share' | 'album_open';
+
+const legacyEventMap: Record<EngagementType, EventV2Name> = {
+	view: 'photo_opened', favorite: 'favorite_added', download: 'download_requested', share: 'share_action', album_open: 'album_opened'
+};
+
+export interface V2TrackInput { eventName: EventV2Name; properties?: EventV2Properties; eventId?: string; occurredAt?: string; }
+
+/** Delivery failure is deliberately invisible to gallery interaction, but the client retries once with the same ID. */
+export async function sendAnalyticsEventV2(input: V2TrackInput, fetcher: typeof fetch = fetch): Promise<'accepted' | 'duplicate' | 'failed'> {
+	if (!browser) return 'failed';
+	const preferences = getAnalyticsPreferences();
+	const visit = getVisitContext();
+	const body = JSON.stringify({
+		event_id: input.eventId ?? crypto.randomUUID(), schema_version: 2, event_name: input.eventName,
+		occurred_at: input.occurredAt ?? new Date().toISOString(), anonymous_browser_id: visit.anonymous_browser_id,
+		visit_id: visit.visit_id, properties: input.properties ?? {}, consented: preferences.linkedAnalytics
+	});
+	return deliverWithSingleRetry(body, async (stableBody) => {
+		const response = await fetcher(`${base}/api/analytics/events`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: stableBody, keepalive: true });
+		const result = response.ok ? await response.json() as { accepted?: boolean; duplicate?: boolean } : {};
+		return { status: response.status, accepted: result.accepted, duplicate: result.duplicate };
+	});
+}
+
+export function trackAnalyticsEventV2(input: V2TrackInput): void {
+	if (!browser) return;
+	void sendAnalyticsEventV2(input).catch(() => {});
+}
+
+export function newDownloadRequestId(): string { return crypto.randomUUID(); }
 
 /**
  * Fire-and-forget engagement ping from the client to /api/engagement.
@@ -33,6 +66,11 @@ export function trackEngagement(
 			}),
 			keepalive: true
 		}).catch(() => {});
+		const eventName = legacyEventMap[eventType];
+		const properties: EventV2Properties = { photo_id: target.photoId, album_key: target.albumKey, source: target.source ?? 'direct' };
+		if (eventName === 'download_requested') properties.download_request_id = newDownloadRequestId();
+		if (eventName === 'share_action') properties.outcome = 'composer_opened';
+		trackAnalyticsEventV2({ eventName, properties });
 	} catch {
 		/* analytics never breaks the app */
 	}
@@ -69,4 +107,8 @@ export function recordShare(subject: ShareSubject, channel: ShareChannel): void 
 		albumKey: subject.albumKey,
 		source: SHARE_SRC[channel]
 	});
+	trackAnalyticsEventV2({ eventName: 'share_action', properties: {
+		photo_id: subject.photoId, album_key: subject.albumKey, channel,
+		outcome: channel === 'copy' ? 'clipboard_succeeded' : 'composer_opened'
+	} });
 }

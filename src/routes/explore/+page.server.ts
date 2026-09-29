@@ -33,6 +33,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
   let categoryFilter = url.searchParams.get('category') || undefined;
   let playTypeFilter = url.searchParams.get('play_type') || undefined;
   let searchQuery = url.searchParams.get('q') || undefined;
+	const searchId = url.searchParams.get('search_id');
   let similarToImageKey = url.searchParams.get('similar_to') || undefined;
   let jerseyFilter = url.searchParams.get('jersey') ? parseInt(url.searchParams.get('jersey')!) : undefined;
   const divisionFilter = url.searchParams.get('division') || undefined;
@@ -212,6 +213,7 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
     filterCounts,
     clearedFilters,
     searchQuery,
+		searchId,
     searchMode,
     parsedDescription,
     similarToImageKey,

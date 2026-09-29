@@ -24,6 +24,8 @@
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { formatCategory, formatSport } from '$lib/utils/format-metadata';
 	import type { Photo } from '$types/photo';
+	import { exposure } from '$lib/analytics/exposure';
+	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
 
 	interface Props {
 		photo: Photo;
@@ -50,6 +52,8 @@
 
 	// Generate comprehensive alt text for screen readers
 	let accessibleAltText = $derived(generatePhotoAltText(photo));
+	let loaded = $state(false);
+	function recordExposure() { trackAnalyticsEventV2({ eventName: 'photo_exposed', properties: { photo_id: photo.id, album_key: photo.metadata?.album_key, position: index } }); }
 
 	function handleClick(event: MouseEvent) {
 		// If onclick callback provided, prevent default navigation and use callback instead
@@ -68,6 +72,7 @@
 	aria-label={accessibleAltText}
 	data-sveltekit-preload-data="false"
 	onclick={handleClick}
+	use:exposure={{ loaded, onExpose: recordExposure }}
 >
 	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
 	<!-- quality="low" = S/M sizes (400-600px) - appropriate for grid cards at max 25vw -->
@@ -88,6 +93,7 @@
 		quality="low"
 		{priority}
 		class="absolute inset-0"
+		onLoad={() => (loaded = true)}
 	/>
 
 	<!-- Favorite Button - Top Right (Always visible on mobile, hover on desktop) -->

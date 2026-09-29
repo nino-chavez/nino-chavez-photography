@@ -5,12 +5,33 @@ import {
 	createAnalyticsTestMarker,
 	hasTrustedAnalyticsTestMarker,
 	parseCollectionRequest,
+	parseEventV2Request,
+	resolveEventV2Target,
 	resolveCollectionTarget,
 	type CollectionTargetLookup
 } from './collection-contract';
 
 test('a successful write is accepted, not just ok', () => {
 	assert.deepEqual(collectionOutcome(null), { status: 200, body: { ok: true, accepted: true, duplicate: false } });
+});
+
+test('v2 rejects raw search text, incomplete visit context, and invalid target pairs', async () => {
+	const eventId = '123e4567-e89b-42d3-a456-426614174000';
+	const browserId = '123e4567-e89b-42d3-a456-426614174001';
+	const now = Date.UTC(2026, 8, 29, 12);
+	const base = { event_id: eventId, schema_version: 2, event_name: 'photo_opened', occurred_at: new Date(now).toISOString(), anonymous_browser_id: browserId, visit_id: browserId, properties: { photo_id: 'p1' } };
+	assert.equal(parseEventV2Request({ ...base, properties: { photo_id: 'p1', query_text: 'a person' } }, now).ok, false);
+	assert.equal(parseEventV2Request({ ...base, visit_id: null }, now).ok, false);
+	const parsed = parseEventV2Request(base, now);
+	assert.equal(parsed.ok, true);
+	if (!parsed.ok) return;
+	const lookup: CollectionTargetLookup = { async albumForPhoto() { return 'alpha'; }, async albumExists() { return true; } };
+	assert.deepEqual(await resolveEventV2Target({ ...parsed.value, properties: { photo_id: 'p1', album_key: 'wrong' } }, lookup), { ok: false, error: 'photo and album targets do not match' });
+});
+
+test('v2 requires a stable request correlation for download events', () => {
+	const event = { event_id: '123e4567-e89b-42d3-a456-426614174000', schema_version: 2, event_name: 'download_requested', occurred_at: new Date().toISOString(), anonymous_browser_id: null, visit_id: null, properties: { album_key: 'alpha' } };
+	assert.equal(parseEventV2Request(event).ok, false);
 });
 
 test('a deduplicated replay is an acknowledged duplicate', () => {

@@ -4,6 +4,7 @@
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { slugify } from '$lib/utils';
 	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
+	import { isDownloadableImageResponse } from '$lib/analytics/download-response';
 	import type { CFVariant } from '$lib/utils/cloudflare-images';
 
 	interface Props {
@@ -116,7 +117,7 @@
 					const url = cfImageUrl(p.cf_image_id, quality);
 					const proxy = `${base}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(p.image_key + '.jpg')}`;
 					return fetch(proxy, { signal })
-						.then((r) => r.blob())
+						.then((r) => { if (!isDownloadableImageResponse(r)) throw new Error('download_item_failed'); return r.blob(); })
 						.then((data) => ({ name: `${p.image_key}.jpg`, data }));
 				}
 

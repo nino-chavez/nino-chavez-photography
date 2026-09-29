@@ -12,6 +12,8 @@
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { createAlbumSlug } from '$lib/utils';
 	import { cfImageUrl, cfSrcSet } from '$lib/utils/cloudflare-images';
+	import { exposure } from '$lib/analytics/exposure';
+	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
 
 	interface Album {
 		albumKey: string;
@@ -64,6 +66,7 @@
 		imageLoaded = true;
 		imageError = false;
 	}
+	function recordExposure() { trackAnalyticsEventV2({ eventName: 'album_exposed', properties: { album_key: album.albumKey, position: index } }); }
 
 	function handleImageError() {
 		imageError = true;
@@ -141,6 +144,7 @@
 	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 cursor-pointer outline-none block"
 	aria-label={`Album: ${album.albumName}, ${contentLabel}`}
 	onclick={handleClick}
+	use:exposure={{ loaded: imageLoaded, onExpose: recordExposure }}
 >
 	<!-- Loading/Fallback State -->
 	{#if !imageLoaded || imageError || !hasCover}

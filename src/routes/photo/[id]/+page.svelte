@@ -9,7 +9,7 @@
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createHdrSource } from '$lib/utils/hdr-photo-url';
 	import { formatSport, formatCategory } from '$lib/utils/format-metadata';
-	import { trackEngagement, recordShare } from '$lib/analytics/client';
+	import { trackEngagement, recordShare, trackAnalyticsEventV2 } from '$lib/analytics/client';
 	import { shareUrl } from '$lib/analytics/share';
 	import type { PageData } from './$types';
 	import type { Photo } from '$types/photo';
@@ -33,6 +33,8 @@
 			source: data.viewSource
 		});
 	});
+	function recordRendered() { trackAnalyticsEventV2({ eventName: 'photo_rendered', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, source: data.viewSource } }); }
+	function recordLoadFailed() { trackAnalyticsEventV2({ eventName: 'photo_load_failed', properties: { photo_id: data.photo.id, album_key: data.photo.album_key, error_code: 'image_load_failed' } }); }
 
 	// Serve the web-sized HDR (gain-map) copy when one exists — it degrades gracefully to the
 	// same SDR pixels Cloudflare Images would show on a browser that can't render the gain map, so
@@ -206,8 +208,10 @@
 						loading="eager"
 						decoding="async"
 						fetchpriority="high"
+						onload={recordRendered}
 						onerror={() => {
 							if (hdrUrl) hdr.markFailed(data.photo);
+							recordLoadFailed();
 						}}
 					/>
 				</div>
