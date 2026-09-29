@@ -18,13 +18,15 @@ import { photoPageTitle, photoAltText } from '$lib/seo/photo-title';
 import { isValidSrcParam } from '$lib/analytics/share';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { computeSessionHash } from '$lib/analytics/session';
+import { resolveAnalyticsContext } from '$lib/analytics/context.server';
 
 export const load: PageServerLoad = async ({
 	params,
 	url,
 	request,
 	getClientAddress,
-	platform
+	platform,
+	cookies
 }) => {
 	// Stringified nulls are not image keys — they are a caller that interpolated a missing value
 	// into a URL template. The share-URL builders that produced them are fixed (see
@@ -148,10 +150,11 @@ export const load: PageServerLoad = async ({
 	const src = url.searchParams.get('src');
 	if (isValidSrcParam(src)) {
 		const userAgent = request.headers.get('user-agent') ?? '';
+		const trafficContext = await resolveAnalyticsContext(request, cookies);
 		keepTrackingAlive(
 			platform,
 			computeSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
-				trackArrival({ albumKey: photo.album_key, src, sessionHash, userAgent })
+				trackArrival({ albumKey: photo.album_key, src, sessionHash, userAgent, trafficContext })
 			)
 		);
 	}
@@ -320,4 +323,3 @@ async function fetchRelatedPhotos(
 
 	return [...collected.values()];
 }
-

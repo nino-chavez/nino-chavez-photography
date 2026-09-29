@@ -20,7 +20,15 @@
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
 
-		<!-- Cloudflare Web Analytics -->
-		<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "24ecd813bb2d45798f0512e6beebc164"}'></script>
+		<!-- Cloudflare Web Analytics. Local/test previews must never emit production traffic. -->
+		<script>
+			if (!['localhost', '127.0.0.1', '::1'].includes(location.hostname) && !location.hostname.endsWith('.test')) {
+				const beacon = document.createElement('script');
+				beacon.defer = true;
+				beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+				beacon.dataset.cfBeacon = '{"token":"24ecd813bb2d45798f0512e6beebc164"}';
+				document.body.appendChild(beacon);
+			}
+		</script>
 	</body>
 </html>

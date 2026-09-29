@@ -4,7 +4,7 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -69,8 +69,9 @@
 				albumKey: photo.album_key,
 				source: 'download-button'
 			});
+			trackDownloadDiagnostic({ photoId: photo.id, albumKey: photo.album_key, source: 'download-button', status: 'requested' });
 
-			// Show success feedback (we assume success since the download was triggered)
+			// The browser accepted a download request; it cannot prove the transfer completed.
 			downloadSuccess = true;
 			setTimeout(() => {
 				downloadSuccess = false;
@@ -78,6 +79,7 @@
 			}, 2000);
 		} catch (error) {
 			console.error('Download failed:', error);
+			trackDownloadDiagnostic({ photoId: photo.id, albumKey: photo.album_key, source: 'download-button', status: 'failed', errorCode: 'client_request_failed' });
 			toast.error('Download failed. Please try again.');
 		} finally {
 			downloading = false;

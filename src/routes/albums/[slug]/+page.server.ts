@@ -6,11 +6,12 @@ import { getTopPhotos } from '$lib/analytics/popularity';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { isValidSrcParam } from '$lib/analytics/share';
 import { computeSessionHash } from '$lib/analytics/session';
+import { resolveAnalyticsContext } from '$lib/analytics/context.server';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { SITE_URL } from '$lib/site-url';
 
-export const load: PageServerLoad = async ({ params, url, setHeaders, request, getClientAddress, platform }) => {
+export const load: PageServerLoad = async ({ params, url, setHeaders, request, getClientAddress, platform, cookies }) => {
 	// Always fresh: album content changes (new/re-tagged photos & videos, settings)
 	// must show immediately. stale-while-revalidate was serving ~15-min-stale pages.
 	setHeaders({ 'cache-control': 'no-cache' });
@@ -139,10 +140,11 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 	const src = url.searchParams.get('src');
 	if (isValidSrcParam(src)) {
 		const userAgent = request.headers.get('user-agent') ?? '';
+		const trafficContext = await resolveAnalyticsContext(request, cookies);
 		keepTrackingAlive(
 			platform,
 			computeSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
-				trackArrival({ albumKey, src, sessionHash, userAgent })
+				trackArrival({ albumKey, src, sessionHash, userAgent, trafficContext })
 			)
 		);
 	}

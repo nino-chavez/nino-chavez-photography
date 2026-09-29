@@ -38,6 +38,17 @@ export function trackEngagement(
 	}
 }
 
+/** A browser can prove it requested a download, not that a file completed after navigation. */
+export function trackDownloadDiagnostic(target: { photoId?: string; albumKey?: string; source?: string; status: 'requested' | 'failed'; errorCode?: string }): void {
+	if (!browser || (!target.photoId && !target.albumKey)) return;
+	try {
+		void fetch(`${base}/api/analytics/diagnostics`, {
+			method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,
+			body: JSON.stringify({ type: 'download', status: target.status, photo_id: target.photoId ?? null, album_key: target.albumKey ?? null, source: target.source ?? null, error_code: target.errorCode ?? null })
+		}).catch(() => {});
+	} catch { /* diagnostics never break the download */ }
+}
+
 /**
  * Record a completed share, tagged with the same channel value the outbound URL
  * carries (see `./share` for why the two must match).

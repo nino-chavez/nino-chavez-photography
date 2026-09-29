@@ -6,7 +6,7 @@
 
 import { getPopularPhotos, getBotFilteredCount } from '$lib/analytics/tracker';
 import { PHOTOS_READ } from '$lib/supabase/columns';
-import { supabaseServer, matviewClient } from '$lib/supabase/server';
+import { excludeUnlisted, getUnlistedAlbumKeys, supabaseServer, matviewClient } from '$lib/supabase/server';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { PageServerLoad } from './$types';
@@ -16,6 +16,7 @@ import type { PageServerLoad } from './$types';
 const SINCE_30D = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
 export const load: PageServerLoad = async () => {
+	const unlistedAlbumKeys = await getUnlistedAlbumKeys();
 	// PUBLIC PAGE. This used to be gated behind a Supabase session plus the ADMIN_EMAILS
 	// allowlist. It is now open, deliberately — the numbers here are this gallery's own
 	// traffic, and there is no reason a visitor cannot see them.
@@ -34,7 +35,13 @@ export const load: PageServerLoad = async () => {
 	// visitor typed is not, no matter which table it now lives in.
 
 	// Get popular photos with full metadata
-	const popularPhotoIds = await getPopularPhotos(20);
+	let popularPhotoIds: Awaited<ReturnType<typeof getPopularPhotos>> = [];
+	let popularPhotosAvailable = true;
+	try {
+		popularPhotoIds = await getPopularPhotos(20);
+	} catch {
+		popularPhotosAvailable = false;
+	}
 
 	// Fetch full photo data for popular photos
 	const photoIds = popularPhotoIds.map((p) => p.photo_id);
@@ -45,15 +52,21 @@ export const load: PageServerLoad = async () => {
 		favorite_count: number;
 		share_count: number;
 		image_key: string;
+		album_key: string | null;
 		thumbnail_url: string;
+		sport_type: string;
 		photo_category: string;
 	}> = [];
 
 	if (photoIds.length > 0) {
-		const { data } = await supabaseServer
+		const { data, error: photoMetadataError } = await excludeUnlisted(supabaseServer
 			.from(PHOTOS_READ)
-			.select('photo_id, image_key, cf_image_id, sport_type, photo_category')
-			.in('photo_id', photoIds);
+			.select('photo_id, image_key, album_key, cf_image_id, sport_type, photo_category')
+			.in('photo_id', photoIds), unlistedAlbumKeys);
+		if (photoMetadataError) {
+			console.error('[Analytics] Failed to load ranked photo metadata:', photoMetadataError);
+			popularPhotosAvailable = false;
+		}
 
 		// Merge engagement counts, iterating popularPhotoIds so the panel keeps the
 		// trending order (the .in() refetch returns rows unordered). All four count
@@ -67,7 +80,9 @@ export const load: PageServerLoad = async () => {
 				{
 					photo_id: photo.photo_id,
 					image_key: photo.image_key,
+					album_key: photo.album_key,
 					thumbnail_url: cfImageUrl(photo.cf_image_id, 'thumbnail'),
+					sport_type: photo.sport_type,
 					photo_category: photo.photo_category,
 					view_count: stats.views || 0,
 					download_count: stats.downloads || 0,
@@ -80,7 +95,13 @@ export const load: PageServerLoad = async () => {
 
 	// Bot-filtered events: crawler hits the isbot gate suppressed before they
 	// reached engagement_events (see 20260713150000_bot_filtered_events.sql).
-	const botFilteredCount = await getBotFilteredCount(30);
+	let botFilteredCount = 0;
+	let botFilteredAvailable = true;
+	try {
+		botFilteredCount = await getBotFilteredCount(30);
+	} catch {
+		botFilteredAvailable = false;
+	}
 
 	// View sources + headline totals, aggregated in Postgres.
 	//
@@ -91,7 +112,7 @@ export const load: PageServerLoad = async () => {
 	// with `album` missing outright — the PR #74 ?src= channels were unmeasurable.
 	// Both views also exclude crawler sessions; see the migration
 	// 20260728090000_analytics_exclude_automated_sessions.sql for the evidence.
-	const { data: photoOpenSourceRows } = await createSupabaseAdminClient()
+	const { data: photoOpenSourceRows, error: photoOpenSourceError } = await createSupabaseAdminClient()
 		.from('view_source_30d')
 		.select('source, views');
 
@@ -103,16 +124,17 @@ export const load: PageServerLoad = async () => {
 		{} as Record<string, number>
 	);
 
-	const { data: totals } = await createSupabaseAdminClient()
+	const { data: totals, error: totalsError } = await createSupabaseAdminClient()
 		.from('engagement_totals_30d')
 		.select('photo_opens, engaged_visitors, album_opens, automated_photo_opens')
 		.maybeSingle();
 
 	// search_queries is RLS-hidden from anon (count silently reads 0) — use the
 	// admin client like every other engagement read on this dashboard.
-	const { count: totalSearches } = await createSupabaseAdminClient()
+	const { count: totalSearches, error: searchesError } = await createSupabaseAdminClient()
 		.from('search_queries')
 		.select('*', { count: 'exact', head: true })
+		.eq('traffic_context', 'audience')
 		.gte('searched_at', SINCE_30D());
 
 	// Album reach: estimated engaged visitors, album opens, photo opens, and
@@ -138,6 +160,7 @@ export const load: PageServerLoad = async () => {
 		shares: number;
 		last_event: string;
 	}> = [];
+	let albumReachAvailable = true;
 
 	try {
 		const { data: reachRows, error: reachError } = await createSupabaseAdminClient()
@@ -146,16 +169,17 @@ export const load: PageServerLoad = async () => {
 			.order('engaged_visitors', { ascending: false });
 		if (reachError) throw reachError;
 
-		const albumKeys = (reachRows || []).map((row) => row.album_key);
+		const publicReachRows = (reachRows || []).filter((row) => !unlistedAlbumKeys.includes(row.album_key));
+		const albumKeys = publicReachRows.map((row) => row.album_key);
 		let albumNames: Record<string, string> = {};
 
 		if (albumKeys.length > 0) {
 			// albums_summary is a materialized view, anon-revoked (lint 0016) —
 			// read via matviewClient() (service_role), not supabaseServer.
-			const { data: albumsData } = await matviewClient()
+			const { data: albumsData } = await excludeUnlisted(matviewClient()
 				.from('albums_summary')
 				.select('album_key, album_name')
-				.in('album_key', albumKeys);
+				.in('album_key', albumKeys), unlistedAlbumKeys);
 
 			albumNames = (albumsData || []).reduce((acc, { album_key, album_name }) => {
 				if (album_name) acc[album_key] = album_name;
@@ -163,18 +187,24 @@ export const load: PageServerLoad = async () => {
 			}, {} as Record<string, string>);
 		}
 
-		albumReach = (reachRows || []).map((row) => ({
+		albumReach = publicReachRows.map((row) => ({
 			...row,
 			album_name: albumNames[row.album_key] ?? null,
 		}));
 	} catch (err) {
 		console.error('[Analytics] Failed to load album reach:', err);
+		albumReachAvailable = false;
 	}
 
 	return {
 		popularPhotos,
+		popularPhotosAvailable,
 		albumReach,
+		albumReachAvailable,
 		stats: {
+			totalsAvailable: !totalsError && !!totals,
+			searchesAvailable: !searchesError,
+			sourcesAvailable: !photoOpenSourceError,
 			totalPhotoOpens: Number(totals?.photo_opens ?? 0),
 			totalEngagedVisitors: Number(totals?.engaged_visitors ?? 0),
 			totalAlbumOpens: Number(totals?.album_opens ?? 0),
@@ -182,6 +212,7 @@ export const load: PageServerLoad = async () => {
 			totalSearches: totalSearches || 0,
 			photoOpenSourceCounts,
 			botFilteredCount,
+			botFilteredAvailable,
 		},
 	};
 };

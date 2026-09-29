@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { slugify } from '$lib/utils';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
 	import type { CFVariant } from '$lib/utils/cloudflare-images';
 
 	interface Props {
@@ -31,6 +31,7 @@
 	// whole-album archive); the per-day dedup index still caps repeat clicks.
 	function trackBulkDownload(): void {
 		trackEngagement('download', { albumKey, source: 'bulk-zip' });
+		trackDownloadDiagnostic({ albumKey, source: 'bulk-zip', status: 'requested' });
 	}
 
 	function triggerBrowserDownload(blob: Blob, filename: string): void {
@@ -67,6 +68,7 @@
 			trackBulkDownload();
 			return true;
 		} catch {
+			trackDownloadDiagnostic({ albumKey, source: 'bulk-zip', status: 'failed', errorCode: 'zip_request_failed' });
 			return false;
 		}
 	}

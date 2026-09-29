@@ -11,12 +11,19 @@
  */
 
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet, searchByJersey } from '$lib/supabase/server';
-import { trackSearchQuery, keepTrackingAlive } from '$lib/analytics/tracker';
+import { trackSearchQuery, trackCollectionDiagnostic, keepTrackingAlive } from '$lib/analytics/tracker';
+import { resolveAnalyticsContext } from '$lib/analytics/context.server';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, request }) => {
+function diagnosticErrorCode(cause: unknown): string {
+	if (cause && typeof cause === 'object' && 'code' in cause && typeof cause.code === 'string') return cause.code.slice(0, 120);
+	return 'search_failed';
+}
+
+export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, request, cookies }) => {
   setHeaders({ 'cache-control': 's-maxage=60, stale-while-revalidate=120' });
   const userAgent = request.headers.get('user-agent') ?? '';
+	const trafficContext = await resolveAnalyticsContext(request, cookies);
 
   // Get cached data from parent layout
   const { sports, categories, baseFilterCounts } = await parent();
@@ -123,7 +130,14 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
   } else if (useJersey) {
     // Jersey filter → comprehensive sightings (RPC), not the sparse jersey_number column.
     // Jersey-primary: scoped by sport only (the RPC join can't compose with category/play_type).
-    const r = await searchByJersey(String(jerseyFilter), { sport: sportFilter, limit: pageSize, offset });
+		if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'requested', source: 'jersey', trafficContext }));
+		let r;
+		try {
+			r = await searchByJersey(String(jerseyFilter), { sport: sportFilter, limit: pageSize, offset });
+		} catch (cause) {
+			if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'failed', source: 'jersey', errorCode: diagnosticErrorCode(cause), trafficContext }));
+			throw cause;
+		}
     photos = r.photos;
     totalCount = r.totalCount;
     parsedDescription = `Jersey #${jerseyFilter}${sportFilter ? ` · ${sportFilter}` : ''}`;
@@ -137,15 +151,20 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
         filters_used: sportFilter ? { sport: sportFilter } : undefined,
         results_count: totalCount,
         userAgent,
+		trafficContext,
       }));
+			keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'accepted', resultCount: totalCount, source: 'jersey', trafficContext }));
     }
   } else if (searchQuery) {
     // Smart search: structured parse + vector fallback
-    const result = await searchPhotos(searchQuery, filterOptions, {
-      limit: pageSize,
-      offset,
-      sortBy,
-    });
+		if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'requested', source: 'search', trafficContext }));
+		let result;
+		try {
+			result = await searchPhotos(searchQuery, filterOptions, { limit: pageSize, offset, sortBy });
+		} catch (cause) {
+			if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'failed', source: 'search', errorCode: diagnosticErrorCode(cause), trafficContext }));
+			throw cause;
+		}
     photos = result.photos;
     totalCount = result.totalCount;
     searchMode = result.searchMode;
@@ -156,7 +175,9 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
         filters_used: hasActiveFilters ? visitorFilters : undefined,
         results_count: totalCount,
         userAgent,
+		trafficContext,
       }));
+			keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'accepted', resultCount: totalCount, source: searchMode ?? 'search', trafficContext }));
     }
   } else {
     // No search — standard filter + paginate
