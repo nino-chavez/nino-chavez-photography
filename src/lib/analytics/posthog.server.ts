@@ -1,4 +1,5 @@
 import { PostHog } from 'posthog-node';
+import { isPostHogProductionRuntime } from './posthog-contract';
 import type { PostHogCaptureClient, PostHogFlagClient } from './posthog.types';
 export { POSTHOG_PROPERTY_ALLOWLIST, scrubPostHogProperties } from './posthog-contract';
 
@@ -8,6 +9,7 @@ export interface PostHogRuntimeConfig {
 }
 
 export function postHogRuntimeConfig(source: Record<string, string | undefined>): PostHogRuntimeConfig | null {
+	if (!isPostHogProductionRuntime(source)) return null;
 	const projectApiKey = source.POSTHOG_PROJECT_API_KEY?.trim();
 	const host = source.POSTHOG_HOST?.trim();
 	if (!projectApiKey || !host) return null;

@@ -24,9 +24,24 @@ export function createPostHogOutboxClient(client: PostHogRpcClient): PostHogOutb
 			if (!Array.isArray(result.data) || !result.data.every(isOutboxRow)) throw new Error('analytics_claim_posthog_events returned an invalid payload');
 			return result.data;
 		},
+		async recheck(eventId) {
+			const result = await client.rpc('analytics_recheck_posthog_event_eligibility', { p_event_id: eventId });
+			if (result.error) failure('analytics_recheck_posthog_event_eligibility', result.error);
+			if (result.data === null) return null;
+			if (!isOutboxRow({ event_id: eventId, attempts: 0, payload: result.data })) throw new Error('analytics_recheck_posthog_event_eligibility returned an invalid payload');
+			return result.data as PostHogEnvelope;
+		},
 		async finish(eventId, status, errorCode) {
 			const result = await client.rpc('analytics_finish_posthog_delivery', { p_event_id: eventId, p_status: status, p_error_code: errorCode });
 			if (result.error) failure('analytics_finish_posthog_delivery', result.error);
+		},
+		async submitted(limit) {
+			const result = await client.rpc('analytics_list_submitted_posthog_event_ids', { p_limit: Math.min(Math.max(limit, 1), 100) });
+			if (result.error) failure('analytics_list_submitted_posthog_event_ids', result.error);
+			if (!Array.isArray(result.data)) throw new Error('analytics_list_submitted_posthog_event_ids returned an invalid payload');
+			const ids = result.data.map((entry) => typeof entry === 'string' ? entry : entry && typeof entry === 'object' ? (entry as { event_id?: unknown }).event_id : null);
+			if (!ids.every((id): id is string => typeof id === 'string')) throw new Error('analytics_list_submitted_posthog_event_ids returned an invalid payload');
+			return ids;
 		},
 		async confirm(eventIds) {
 			const result = await client.rpc('analytics_confirm_posthog_events', { p_event_ids: eventIds });

@@ -23,7 +23,19 @@ export async function deliverPostHogBatch(
 	for (const row of rows) {
 		if (seen.has(row.event_id)) { result.duplicateIds += 1; continue; }
 		seen.add(row.event_id);
-		const properties = scrubPostHogProperties(row.payload);
+		let current;
+		try {
+			current = await outbox.recheck(row.event_id);
+		} catch {
+			await outbox.finish(row.event_id, 'failed', 'eligibility_recheck_failed');
+			result.failed += 1;
+			continue;
+		}
+		if (!current) {
+			result.skipped += 1;
+			continue;
+		}
+		const properties = scrubPostHogProperties(current);
 		if (!properties) {
 			await outbox.finish(row.event_id, 'failed', 'invalid_or_ineligible_envelope');
 			result.skipped += 1;
@@ -31,8 +43,8 @@ export async function deliverPostHogBatch(
 		}
 		try {
 			await client.capture({
-				distinctId: row.payload.anonymous_browser_id!, event: row.payload.event_name,
-				timestamp: new Date(row.payload.occurred_at), uuid: row.payload.event_id, properties
+				distinctId: current.anonymous_browser_id!, event: current.event_name,
+				timestamp: new Date(current.occurred_at), uuid: current.event_id, properties
 			});
 			await outbox.finish(row.event_id, 'submitted', null);
 			result.submitted += 1;

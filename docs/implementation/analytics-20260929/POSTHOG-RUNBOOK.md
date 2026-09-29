@@ -22,6 +22,8 @@ Set these as server-only Cloudflare Pages bindings. Never use a `VITE_` name.
 
 | Binding | Job | Required for |
 | --- | --- | --- |
+| `POSTHOG_ENABLED` | exact `true` enables the adapter | delivery and provider reads |
+| `POSTHOG_TARGET_ENVIRONMENT` | exact `production` names the only export target | delivery and provider reads |
 | `POSTHOG_PROJECT_API_KEY` | project capture key | relay delivery |
 | `POSTHOG_HOST` | chosen PostHog regional HTTPS origin | delivery and query |
 | `POSTHOG_QUERY_API_KEY` | read-only query credential | reconciliation and journey panels |
@@ -31,31 +33,45 @@ Set these as server-only Cloudflare Pages bindings. Never use a `VITE_` name.
 
 Keep capture, query, schedule, and setup credentials separate. Before binding any of them, inspect existing 1Password item names and field labels. Do not create a new organization, project, billing plan, or credential by assumption.
 
-The proposed account shape is pay-as-you-go only if the existing organization already has the required project slots: one isolated test project and one production project, with analytics-event and feature-flag billing limits set to $0. The researched September 29 provider terms described one project and one year of event history on the free plan, versus six projects and seven years on pay-as-you-go. Those are planning inputs, not evidence of the active account. Recheck the actual provider plan and usage alert controls before activation. Never silently sample journey events when a cap is reached.
+Do not set either enablement binding in local or preview environments. A key and host alone cannot enable capture or provider reads.
+
+## Reported provider state
+
+Nino reported the following account state on September 29. This code pass did not contact PostHog to verify it.
+
+- Production project: `635866`
+- Test project: `635867`
+- Region: US
+- Account billing page: free
+- Autocapture: off
+- Session replay: off
+
+Treat these as configuration inputs that still need an authorized provider receipt. Do not describe the account as pay-as-you-go or promise seven years of history. Record the retention shown by the active account before publishing retention language. Keep autocapture and session replay off.
 
 ## Setup sequence
 
-1. Inspect the existing PostHog organization, project slots, region, and billing state with authorized provider access. Record the actual organization ID, production project ID, test project ID, region, SDK version, and existing dashboards in the release receipt.
-2. Confirm that separate test and production projects are available. Do not put synthetic events in production. If the account tier cannot support this, stop before hosted activation.
+1. Inspect the existing PostHog organization, projects `635866` and `635867`, US region, and free billing state with authorized provider access. Record the organization ID, project IDs, region, SDK version, retention shown by the account, quota behavior, and existing dashboards in the release receipt.
+2. Confirm that project `635867` remains isolated for synthetic tests and `635866` remains production-only. Do not put synthetic events in production.
 3. Choose the retention language that matches the verified tier. PostHog's provider retention is separate from the gallery's 90-day raw-event schedule. The provider retention window is not an automatic deletion control.
 4. Publish the policy change from the site-wide privacy-policy owner, including the real region, consent choice, 90-day browser-ID rotation, withdrawal behavior, provider retention, and deletion-request path. Do not say that PostHog automatically deletes data after 90 days.
 5. Apply the collection migration and deploy the collection worker first. Confirm the RPCs and outbox exist. This runbook does not apply a migration.
-6. Add the runtime bindings and schedule a `POST` to `/api/internal/analytics-posthog` with `x-analytics-posthog-schedule-token`. A scheduler must store the token as a secret and run at a bounded cadence. There is no anonymous cron fallback.
-7. Run the setup script without `--apply` and review its exact dashboard/insight list. It makes no network call in that mode. Apply only against the explicitly named project after the gates above. The script reuses matching names; it does not provision projects, billing, or experiments.
+6. Add the runtime bindings and schedule a `POST` to `/api/internal/analytics-posthog` with `x-analytics-posthog-schedule-token`. Set `POSTHOG_ENABLED=true` and `POSTHOG_TARGET_ENVIRONMENT=production` only on the production deployment. A scheduler must store the token as a secret and run at a bounded cadence. There is no anonymous cron fallback.
+7. Supply every currently visible album key to the setup script and run it without `--apply`. Review the exact dashboard/insight list and visible-album count. Dry-run mode makes no network call. Apply only against the explicitly named test or production project after the gates above. The script reuses dashboards and updates matching insight definitions; it does not provision projects, billing, or experiments.
 8. In the test project, run the acceptance journeys and inspect the actual outbound payload before enabling production export. Confirm a duplicate UUID appears once after reconciliation, an outage leaves a retryable failed row, and a provider acknowledgement alone does not mark confirmation.
-9. Configure a $0 analytics-event and feature-flag billing limit only after Nino explicitly approves the provider configuration. Quota exhaustion is a coverage gap: it must disable experiments safely and make journey data unavailable, not silently sample or fabricate zeros.
+9. Keep the reported free billing state unless Nino separately authorizes a billing change. Quota exhaustion or dropped events are coverage gaps: they must disable experiments safely and remain unconfirmed in delivery health, not silently sample or fabricate zeros.
 
 ## Dashboard setup
 
-The source-owned setup script is [setup-photography-posthog.mjs](../../../scripts/setup-photography-posthog.mjs). Its dry run is safe to inspect. Its apply mode requires all of the following: a numeric `--project`, an exact match to `POSTHOG_PROJECT_ID`, an HTTPS host, a setup API key, and `POSTHOG_SETUP_CONFIRM=photography-posthog-setup`.
+The source-owned setup script is [setup-photography-posthog.mjs](../../../scripts/setup-photography-posthog.mjs). Run it through `node --import tsx`. Its dry run is safe to inspect. Its apply mode requires all of the following: a numeric `--project`, an exact match to `POSTHOG_PROJECT_ID`, at least one `--album-key` for the current public catalogue, an HTTPS host, a setup API key, and `POSTHOG_SETUP_CONFIRM=photography-posthog-setup`.
 
-It creates or reuses two private dashboards and seven fixed aggregate insights: discovery, album use, search usefulness, download reliability, photograph response, sources/return, and experiment exposure/guardrails. They do not activate experiments. They use only version-2 eligible-audience events from the last 30 days; an empty result means no matching provider events in that window, not that historical collection was zero. Change their definitions only alongside the reviewed named query definitions in `src/lib/analytics/posthog-queries.server.ts`.
+It creates or reuses two private dashboards and creates or updates seven fixed aggregate insights: discovery, album use, search usefulness, download reliability, photograph response, measured return, and experiment exposure/guardrails. The setup script imports the same query builder as the server. Each rolling query applies current visible-album keys before aggregation. Re-run setup after an album becomes listed or unlisted. The queries do not activate experiments. They use only version-2 eligible-audience events; an empty result means no matching provider events in that window, not that historical collection was zero.
 
 ## Reconciliation and failure handling
 
 - `pending` and due `failed` records are leased by the scheduled relay.
+- Before capture, `analytics_recheck_posthog_event_eligibility` must atomically reload current consent/classification and suppress a withdrawn or reclassified row. A stored payload is not current eligibility proof.
 - An SDK acknowledgement changes a row to `submitted`.
-- The read-only query credential searches the submitted UUIDs. Only returned UUIDs become `confirmed`.
+- `analytics_list_submitted_posthog_event_ids` must return bounded submitted rows from earlier runs as well as the current batch. The read-only query credential searches those UUIDs. Only returned UUIDs become `confirmed`; missing IDs stay submitted and visible as a quota, drop, or ingestion gap.
 - The delivery-health RPC exposes bounded counts and oldest pending/submitted age. It must not return an event ID, browser ID, error body, or provider credential.
 - The scheduler response never exposes provider/database error text. A 503 means delivery is unavailable, not zero delivery.
 - Keep retries bounded in the collection RPC. Preserve the original UUID and occurrence time. Do not re-evaluate an experiment while replaying an event.
@@ -63,11 +79,17 @@ It creates or reuses two private dashboards and seven fixed aggregate insights: 
 
 ## Report rules
 
-Fixed named queries are the only provider query surface. Public callers can select a supported report and validated filters through the parent integration; they cannot send HogQL/SQL. Each query applies the version-2, audience, Chicago-date, visit, album-visibility, source, and optional event-snapshot metadata filters before aggregation.
+Fixed named queries are the only provider query surface. Public callers can select a supported report and validated filters through the parent integration; they cannot send HogQL/SQL. Each query applies version, audience, Chicago date, linked visit, and current album visibility before aggregation.
 
-Rates always return their numerator and denominator. An album visit is not added across album reports. Search selection is a recorded selection, not proof that a visitor found a photo. Download handoff is not a completed disk save. “Returning” means a measured browser within the browser-ID coverage period, not a person.
+Search is site-wide because result-display events have no album target. Album-scoped search requests are rejected. Search selections count one exact visit/search ID after its matching result set; repeat clicks do not increase the numerator, and selections from non-visible albums do not enter it. Zero-result counts use the same exact search IDs as their denominator.
 
-The provider has no catalogue join in these queries. Sport and category filters use only version-2 event snapshots. Historical data without those snapshots is unavailable for that filter; it is not backfilled or guessed.
+Download requests are keyed by visit and request ID. Mixed-album requests without an album key enter the visible cohort only through visible item events. Requested and prepared item totals come from their item events and inherit mode from the matching request. Cancellation is terminal; only requests with no handoff, failure, or cancellation are unknown.
+
+The return report separates browsers observed before the selected window from browsers with repeated visits inside it. Its prior scan is capped at 90 days. Both measures are bounded by browser-ID retention, storage clearing, and device changes; neither describes a person or proves history before that coverage.
+
+The current collector does not export tagged arrival source or album sport/category snapshots on journey events. Provider queries reject those filters instead of reading unsupported fields. Source distribution and those content filters remain unavailable until the collector contract adds them and tests cover the new cohort.
+
+The provider has no catalogue join in these queries. Historical catalogue facts are not backfilled or guessed.
 
 ## External activation gates
 
@@ -84,3 +106,14 @@ Do not call this integration live until all are evidenced:
 - hosted desktop and phone review completed with real eligible data.
 
 This code has only passed injected-transport unit tests. It has not contacted PostHog, written a provider configuration, scheduled a job, inspected billing, or proven hosted delivery.
+
+## Parent live-query validation still required
+
+The integrating parent must retain receipts for these checks before delivery is called complete:
+
+- Run all seven generated HogQL queries in test project `635867` and confirm PostHog accepts their functions, tuple keys, joins, and rolling date expressions.
+- Replay the mixed-album download, repeated search click, zero-result search, cancellation, ordinary experiment outcome, and before-window return fixtures as real test-project events. Compare every returned column with the semantic fixture totals.
+- Confirm a selection from a non-visible album changes no public aggregate, then list and unlist a test album and verify refreshed insight definitions remove or restore its contribution.
+- Submit one event, leave another previously submitted, and confirm the next scheduler run queries both IDs. Force a missing provider ID and verify it remains submitted rather than confirmed or silently dropped.
+- Withdraw analytics permission and reclassify one leased event before delivery. Confirm neither reaches PostHog and both leave an auditable suppressed state.
+- Inspect production project `635866` read-only after authorized activation. Confirm US region, free billing, retention shown by the account, quotas, autocapture off, replay off, private dashboards, and no synthetic test events.

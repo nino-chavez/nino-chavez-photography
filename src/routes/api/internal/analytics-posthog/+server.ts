@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { createPostHogCaptureClient, postHogRuntimeConfig } from '$lib/analytics/posthog.server';
 import { deliverPostHogBatch, hasPostHogScheduleAuthorization } from '$lib/analytics/posthog-delivery.server';
 import { createPostHogOutboxClient } from '$lib/analytics/posthog-outbox.server';
-import { createPostHogQueryTransport, reconcilePostHogEventIds } from '$lib/analytics/posthog-queries.server';
+import { createPostHogQueryTransport, reconcileSubmittedPostHogEvents } from '$lib/analytics/posthog-queries.server';
 import type { RequestHandler } from './$types';
 
 function publicHealth(input: Record<string, unknown>): Record<string, string | number | null> {
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 	try {
 		const outbox = createPostHogOutboxClient(createSupabaseAdminClient());
 		const delivery = await deliverPostHogBatch(capture, outbox);
-		const reconciliation = await reconcilePostHogEventIds(createPostHogQueryTransport(env), delivery.submittedEventIds, (ids) => outbox.confirm(ids));
+		const reconciliation = await reconcileSubmittedPostHogEvents(createPostHogQueryTransport(env), outbox);
 		const health = await outbox.health();
 		return json({
 			ok: true,
