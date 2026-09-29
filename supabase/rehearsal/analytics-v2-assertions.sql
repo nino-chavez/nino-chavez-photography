@@ -1,0 +1,49 @@
+-- Synthetic acceptance, access-control, crash recovery and retention tests.
+BEGIN;
+SET LOCAL ROLE service_role;
+DO $$
+DECLARE e jsonb; result jsonb; n integer;
+BEGIN
+ e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000001','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id','30000000-0000-4000-8000-000000000001','visit_id','40000000-0000-4000-8000-000000000001','traffic_context','audience','export_eligible',true,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ result:=public.analytics_accept_event_v2(e);
+ IF result->>'accepted'<>'true' THEN RAISE EXCEPTION 'acceptance failed'; END IF;
+ result:=public.analytics_accept_event_v2(e);
+ IF result->>'duplicate'<>'true' OR (SELECT count(*) FROM public.analytics_events_v2)<>1 OR (SELECT count(*) FROM public.analytics_posthog_outbox)<>1 THEN RAISE EXCEPTION 'retry double counted'; END IF;
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000002','anonymous_browser_id',NULL,'visit_id',NULL,'export_eligible',false);
+ PERFORM public.analytics_accept_event_v2(e);
+ IF (SELECT count(*) FROM public.analytics_posthog_outbox)<>1 THEN RAISE EXCEPTION 'unlinked event exported'; END IF;
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>1 THEN RAISE EXCEPTION 'claim failed'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE status='submitted') THEN RAISE EXCEPTION 'claim falsely reported submission'; END IF;
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>0 THEN RAISE EXCEPTION 'live lease reclaimed'; END IF;
+ UPDATE public.analytics_posthog_outbox SET locked_until=now()-interval '1 second';
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>1 THEN RAISE EXCEPTION 'dead worker event stranded'; END IF;
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000001','failed','provider_unavailable');
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>0 THEN RAISE EXCEPTION 'backoff ignored'; END IF;
+ UPDATE public.analytics_posthog_outbox SET next_attempt_at=now()-interval '1 second';
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>1 THEN RAISE EXCEPTION 'retry did not recover'; END IF;
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000001','submitted',NULL);
+ IF (SELECT status FROM public.analytics_posthog_outbox LIMIT 1)<>'submitted' THEN RAISE EXCEPTION 'ack missing'; END IF;
+ PERFORM public.analytics_confirm_posthog_events(ARRAY['20000000-0000-4000-8000-000000000001'::uuid]);
+ IF (SELECT status FROM public.analytics_posthog_outbox LIMIT 1)<>'confirmed' THEN RAISE EXCEPTION 'confirmation missing'; END IF;
+ UPDATE public.analytics_events_v2 SET received_at=now()-interval '91 days';
+ PERFORM analytics_private.prune_events_v2_at(now());
+ IF (SELECT count(*) FROM public.analytics_events_v2)<>0 OR (SELECT count(*) FROM public.analytics_posthog_outbox)<>0 THEN RAISE EXCEPTION '90-day identity/outbox expiry failed'; END IF;
+ IF (SELECT sum(event_count) FROM public.analytics_v2_archived_totals)<>2 THEN RAISE EXCEPTION 'retention lost action totals'; END IF;
+ PERFORM analytics_private.prune_events_v2_at(now());
+ IF (SELECT sum(event_count) FROM public.analytics_v2_archived_totals)<>2 THEN RAISE EXCEPTION 'prune retry double counted'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_v2_archived_totals WHERE dimensions::text~'(browser_id|visit_id|search_id|view_id|request_id)') THEN RAISE EXCEPTION 'retention kept identifiers'; END IF;
+END $$;
+RESET ROLE;
+SET LOCAL ROLE anon;
+DO $$ BEGIN
+ BEGIN PERFORM public.analytics_claim_posthog_events(1,30); RAISE EXCEPTION 'anon claim allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM * FROM public.analytics_events_v2; RAISE EXCEPTION 'anon raw read allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM * FROM public.analytics_v2_archived_totals; RAISE EXCEPTION 'anon aggregate table bypass allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+RESET ROLE;
+ROLLBACK;
