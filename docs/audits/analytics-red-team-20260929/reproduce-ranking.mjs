@@ -1,0 +1,27 @@
+// Synthetic audit cases; imports the real report contract and evaluates the actual UI sort expression.
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import {parseReportQuery,comparisonWindow,datesInclusive,rising,dateOnly,sumMeasure} from '../../../src/lib/analytics/report-contract.ts';
+const query=parseReportQuery(new URLSearchParams('period=custom&start=2026-08-01&end=2026-08-30&compare=custom&compare_start=2026-07-25&compare_end=2026-07-31'));
+const previous=comparisonWindow(query);
+const currentDays=datesInclusive(query.start,query.end).length,previousDays=datesInclusive(previous.start,previous.end).length;
+assert.equal(currentDays,30);assert.equal(previousDays,7);
+const change=rising(30,14);assert.equal(change.difference,16);
+const source=fs.readFileSync('src/routes/analytics/operator/+page.svelte','utf8');
+const expression=source.match(/const sortedPhotos = \$derived\(([\s\S]*?)\);/)?.[1];
+assert.ok(expression);
+const report={photos:[{photoId:'synthetic-low',count:5,difference:null},{photoId:'synthetic-high',count:50,difference:null}]};
+const sorted=rank=>vm.runInNewContext('('+expression+')',{report,photoRank:rank}).map(p=>p.photoId).join(',');
+assert.equal(sorted('rising'),sorted('popular'));
+const earlyPublication='2026-09-20T05:01:00Z',latePublication='2026-09-21T04:59:00Z';
+assert.equal(dateOnly(new Date(earlyPublication)),dateOnly(new Date(latePublication)));
+const boundaryPair=['2026-09-28T23:30:00Z','2026-09-29T00:30:00Z'].map(t=>({utcDay:t.slice(0,10),reportDay:dateOnly(new Date(t))}));
+assert.equal(boundaryPair[0].reportDay,boundaryPair[1].reportDay);assert.notEqual(boundaryPair[0].utcDay,boundaryPair[1].utcDay);
+const row={bucket_date:'2026-09-20',album_key:'synthetic-album',event_type:'download',source_kind:'action',sport:'volleyball',photo_category:'action',traffic_classification:'audience',action_count:1,coverage_state:'complete'};
+const downloadsQuery=parseReportQuery(new URLSearchParams('period=custom&start=2026-09-20&end=2026-09-20&measure=downloads&compare=none'));
+const mixedTotal=sumMeasure([{...row,photo_id:'synthetic-photo',source:'download-button'},{...row,photo_id:'',source:'bulk-zip'}],downloadsQuery);
+assert.equal(mixedTotal,2);
+const evidence={checkedAt:new Date().toISOString(),synthetic:true,note:'Every example count, identifier and publication time in these reproduction cases is invented; not production data.',unequalRising:{current:30,currentDays,prior:14,priorDays:previousDays,display:change.label,currentPerDay:30/currentDays,priorPerDay:14/previousDays},noComparator:{risingOrder:sorted('rising'),popularOrder:sorted('popular'),equal:true},publicationDay:{earlyPublication,latePublication,bothChicagoDay:dateOnly(new Date(earlyPublication)),eligibleMinutesDayOne:[1439,1]},dedupBoundary:boundaryPair,mixedDownloads:{photoRequests:1,albumZipRequests:1,combinedTotal:mixedTotal},limits:['No live SQL execution','Calendar-boundary examples establish the difference between declared keys and reporting dates, not production loss volume','Rank sort expression is from actual Svelte source, evaluated without rendering the UI']};
+fs.writeFileSync(new URL('./ranking-reproduction.json',import.meta.url),JSON.stringify(evidence,null,2)+'\n');
+console.log(JSON.stringify(evidence,null,2));
