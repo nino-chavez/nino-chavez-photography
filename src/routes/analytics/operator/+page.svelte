@@ -104,6 +104,8 @@
 	$effect(() => { albumTableSearch; albumPage = 0; });
 	$effect(() => { report.query; impactPage = 0; });
  const selectedAlbumDetail = $derived(albumRows.find(album=>album.key===selectedAlbumKey) ?? null);
+	const leadingAlbums = $derived([...albumRows].filter((album) => album.count !== null && album.count > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 5));
+	const leadingPhotos = $derived([...report.photos].filter((photo) => photo.count !== null && photo.count > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 4));
 	$effect(() => {
 		if (albumRows.length && !albumRows.some((album) => album.key === selectedAlbumKey)) selectedAlbumKey = albumRows[0].key;
 	});
@@ -221,7 +223,7 @@
 <div aria-label="Gallery analytics workspace" class="analytics-workspace mx-auto min-w-0 max-w-[96rem] overflow-x-clip px-4 py-2 sm:py-5 sm:px-6 lg:px-8">
 	<div class="workspace-masthead">
 		<div class="workspace-identity"><span class="workspace-mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="workspace-divider">/</span> Photography reports</span></div>
-		<a class="gallery-return" href={`${base}/`}>View gallery <span aria-hidden="true">↗</span></a>
+		<a class="gallery-return" href="https://ninochavez.co/photography/">View gallery <span aria-hidden="true">↗</span></a>
 	</div>
 	<header class="border-b border-charcoal-700 pb-2">
 		<div class="flex flex-wrap items-start justify-between gap-3">
@@ -243,7 +245,9 @@
 	<div class="mobile-filter-bar"><span>{report.query.scope === 'all' ? 'All albums' : report.query.albumKeys.length === 1 ? 'One album' : `${report.query.albumKeys.length} albums`} · {displayMeasure(report.query.measure)}{activeFilterCount ? ` · ${activeFilterCount} active` : ''}</span><button type="button" aria-expanded={mobileFiltersOpen} aria-controls="report-filters" onclick={() => (mobileFiltersOpen = !mobileFiltersOpen)}>{mobileFiltersOpen ? 'Hide filters' : 'Filters'}</button></div>
 	<form id="report-filters" method="GET" action={`#${activeSection}`} class="report-controls mt-2" class:mobile-open={mobileFiltersOpen} aria-label="Report filters">
 		<div class="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-[minmax(14rem,1.4fr)_minmax(9rem,.7fr)_minmax(10rem,.8fr)_auto]">
-			<details class="album-picker col-span-2 min-w-0 md:col-span-1">
+			<div class="album-picker-wrap report-field col-span-2 min-w-0 md:col-span-1">
+				<span class="filter-label">Albums</span>
+			<details class="album-picker min-w-0">
 				<summary class="control flex min-h-11 cursor-pointer items-center justify-between gap-2">
 					<span class="truncate">{selectedAlbums.length === 0 ? 'All albums' : selectedAlbums.length === 1 ? data.albumCatalogue.find((album) => album.album_key === selectedAlbums[0])?.album_name ?? 'One album' : `${selectedAlbums.length} albums`}</span>
 					<span class="text-xs text-charcoal-400">Choose</span>
@@ -258,6 +262,7 @@
 					</div>
 				</div>
 			</details>
+			</div>
 			<input disabled={!interactive} type="hidden" name="albums" value={selectedAlbums.join(',')} />
 			<input disabled={!interactive} type="hidden" name="scope" value={selectedAlbums.length > 1 ? 'selected' : selectedAlbums.length === 1 ? 'album' : 'all'} />
 			<label class="report-field">Period<select disabled={!interactive} name="period" class="control" bind:value={period}><option value="7">Last 7 complete days</option><option value="30">Last 30 complete days</option><option value="90">Last 90 complete days</option><option value="custom">Custom dates</option></select></label>
@@ -314,6 +319,18 @@
 					<p class="mt-4 text-xs text-charcoal-400">The default report excludes operator, test, known crawler, and suspected automated activity. These counts show every class for the same dates, albums, and measure. Unclassified remains visible and is not labeled human.</p>
 				</section>
 			</div></div>
+			<div class="overview-next">
+				<section class="panel overview-ranking" aria-labelledby="leading-albums-title">
+					<div class="panel-heading"><div><p class="eyebrow">Compare</p><h3 id="leading-albums-title">Albums getting attention</h3></div><button class="text-link" type="button" onclick={() => openSection('albums')}>All albums</button></div>
+					<p class="overview-caption">Ranked by recorded {displayMeasure(report.query.measure).toLowerCase()} in this period.</p>
+					{#if leadingAlbums.length}<ol class="overview-albums">{#each leadingAlbums as album, index}<li><span class="rank-number">{index + 1}</span><button type="button" onclick={() => { selectAlbum(album); openSection('albums'); }}><strong>{album.name}</strong><span>{album.photoCount.toLocaleString()} photos · inspect album</span></button><strong class="rank-count">{album.count?.toLocaleString()}</strong></li>{/each}</ol>{:else}<p class="empty-copy">No album activity is available for this selection.</p>{/if}
+				</section>
+				<section class="panel overview-ranking" aria-labelledby="leading-photos-title">
+					<div class="panel-heading"><div><p class="eyebrow">Discover</p><h3 id="leading-photos-title">Photos drawing attention</h3></div><button class="text-link" type="button" onclick={() => openSection('photos')}>Explore photos</button></div>
+					<p class="overview-caption">These are response signals, not a rating of photographic quality.</p>
+					{#if leadingPhotos.length}<div class="overview-photos">{#each leadingPhotos as photo}<button type="button" onclick={() => { photoRank = 'popular'; photoPage = Math.max(0, Math.floor(sortedPhotos.findIndex((item) => item.photoId === photo.photoId) / photoPageSize)); openSection('photos'); }}><span class="overview-thumb">{#if photo.imageUrl}<img src={photo.imageUrl} alt="" />{:else}<span>No preview</span>{/if}</span><span class="overview-photo-copy"><strong>{data.albumCatalogue.find((album) => album.album_key === photo.albumKey)?.album_name ?? 'Gallery photo'}</strong><span>{photo.count?.toLocaleString()} recorded {displayMeasure(report.query.measure).toLowerCase()}</span></span></button>{/each}</div>{:else}<p class="empty-copy">No photo activity is available for this selection.</p>{/if}
+				</section>
+			</div>
 		</section>
 		{/if}
 
@@ -398,7 +415,7 @@
 	<dialog bind:this={photoDialog} class="photo-dialog" aria-labelledby="photo-dialog-title" oncancel={(event)=>{event.preventDefault();void closePhoto();}}>
 			<button class="dialog-close" type="button" aria-label="Close photo inspection" onclick={() => void closePhoto()}><X class="size-5" /></button>
 			{#if selectedPhoto.imageUrl}<img src={selectedPhoto.imageUrl} alt={`Inspection preview for photo ${selectedPhoto.photoId}`} />{/if}
-			<div class="p-5"><p class="eyebrow">Photo inspection · {displayMeasure(report.query.measure)}</p><h2 id="photo-dialog-title" class="mt-1 text-xl text-charcoal-100">{data.albumCatalogue.find((album) => album.album_key === selectedPhoto?.albumKey)?.album_name ?? 'Gallery photo'}</h2><dl class="mt-4 grid grid-cols-2 gap-4 text-sm"><div><dt>Current</dt><dd>{countLabel(selectedPhoto.count)}</dd></div><div><dt>Previous</dt><dd>{selectedPhoto.previousCount??'Unavailable'}</dd></div><div><dt>Change</dt><dd>{selectedPhoto.difference === null ? 'Unavailable' : `${selectedPhoto.difference >= 0 ? '+' : ''}${selectedPhoto.difference}`}</dd></div><div><dt>Latest activity</dt><dd>{formatTime(selectedPhoto.lastActivity)}</dd></div><div><dt>Photo reference</dt><dd class="font-mono text-xs">{selectedPhoto.photoId}</dd></div></dl>{#if selectedPhoto.photoSegment}<a class="action-primary mt-5" href={`${base}/photo/${encodeURIComponent(selectedPhoto.photoSegment)}`}>Open photo to share or download</a>{:else}<p class="mt-3 text-sm text-charcoal-400">A public photo address is unavailable.</p>{/if}<div class="mt-5 flex flex-wrap gap-2"><button class="action-secondary" type="button" onclick={() => toggleShortlist(selectedPhoto!.photoId)}>{shortlist.includes(selectedPhoto.photoId) ? 'Remove from shortlist' : 'Add to shortlist'}</button><button class="action-secondary" type="button" onclick={() => void closePhoto()}>Return to photos</button></div></div>
+			<div class="p-5"><p class="eyebrow">Photo inspection · {displayMeasure(report.query.measure)}</p><h2 id="photo-dialog-title" class="mt-1 text-xl text-charcoal-100">{data.albumCatalogue.find((album) => album.album_key === selectedPhoto?.albumKey)?.album_name ?? 'Gallery photo'}</h2><dl class="mt-4 grid grid-cols-2 gap-4 text-sm"><div><dt>Current</dt><dd>{countLabel(selectedPhoto.count)}</dd></div><div><dt>Previous</dt><dd>{selectedPhoto.previousCount??'Unavailable'}</dd></div><div><dt>Change</dt><dd>{selectedPhoto.difference === null ? 'Unavailable' : `${selectedPhoto.difference >= 0 ? '+' : ''}${selectedPhoto.difference}`}</dd></div><div><dt>Latest activity</dt><dd>{formatTime(selectedPhoto.lastActivity)}</dd></div><div><dt>Photo reference</dt><dd class="font-mono text-xs">{selectedPhoto.photoId}</dd></div></dl>{#if selectedPhoto.photoSegment}<a class="action-primary mt-5" href={`https://ninochavez.co${base}/photo/${encodeURIComponent(selectedPhoto.photoSegment)}`}>Open photo to share or download</a>{:else}<p class="mt-3 text-sm text-charcoal-400">A public photo address is unavailable.</p>{/if}<div class="mt-5 flex flex-wrap gap-2"><button class="action-secondary" type="button" onclick={() => toggleShortlist(selectedPhoto!.photoId)}>{shortlist.includes(selectedPhoto.photoId) ? 'Remove from shortlist' : 'Add to shortlist'}</button><button class="action-secondary" type="button" onclick={() => void closePhoto()}>Return to photos</button></div></div>
 	</dialog>
 {/if}
 
@@ -585,4 +602,27 @@
 	}
 	.analytics-workspace .shortlist-check, .analytics-workspace .table-hint, .analytics-workspace .answer-grid span { color: #526176; }
 	.analytics-workspace section[id] { scroll-margin-top: 6.5rem; }
+	.analytics-workspace .album-picker-wrap { align-content: end; }
+	.analytics-workspace .filter-label { font-size: .78rem; line-height: 1.2; color: #33445c; }
+	.analytics-workspace .album-picker > summary { width: 100%; }
+	.analytics-workspace .report-controls > details > summary { width: fit-content; }
+	.analytics-workspace .report-controls > .grid { align-items: end; }
+	.analytics-workspace .overview-next { display: grid; gap: 1rem; margin-top: 1rem; }
+	.analytics-workspace .overview-ranking { padding: 1rem 1.1rem; }
+	.analytics-workspace .overview-caption { color: #526176; font-size: .78rem; margin-top: .35rem; }
+	.analytics-workspace .overview-albums { list-style: none; padding: 0; margin: .75rem 0 0; }
+	.analytics-workspace .overview-albums li { display: grid; grid-template-columns: 1.5rem minmax(0,1fr) auto; align-items: center; gap: .75rem; border-top: 1px solid #e8edf3; padding: .68rem 0; }
+	.analytics-workspace .rank-number { color: #667892; font-size: .78rem; font-variant-numeric: tabular-nums; }
+	.analytics-workspace .overview-albums button { min-width: 0; background: none; border: 0; color: #172033; cursor: pointer; text-align: left; }
+	.analytics-workspace .overview-albums button strong, .analytics-workspace .overview-photo-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .84rem; }
+	.analytics-workspace .overview-albums button span, .analytics-workspace .overview-photo-copy span { display: block; color: #526176; font-size: .72rem; }
+	.analytics-workspace .rank-count { color: #174ea6; font-size: .85rem; font-variant-numeric: tabular-nums; }
+	.analytics-workspace .overview-photos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .6rem; margin-top: .8rem; }
+	.analytics-workspace .overview-photos button { display: flex; min-width: 0; align-items: center; gap: .6rem; border: 1px solid #e8edf3; border-radius: .55rem; background: #fff; padding: .4rem; color: #172033; text-align: left; cursor: pointer; }
+	.analytics-workspace .overview-photos button:hover, .analytics-workspace .overview-photos button:focus-visible { border-color: #1769e0; background: #f4f8ff; }
+	.analytics-workspace .overview-thumb { width: 3.6rem; height: 3.6rem; flex: none; overflow: hidden; border-radius: .35rem; background: #e8edf3; font-size: .65rem; color: #526176; }
+	.analytics-workspace .overview-thumb img { width: 100%; height: 100%; object-fit: cover; }
+	.analytics-workspace .overview-photo-copy { min-width: 0; }
+	@media (min-width: 900px) { .analytics-workspace .overview-next { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+	@media (max-width: 639px) { .analytics-workspace .overview-photos { grid-template-columns: 1fr; } }
 </style>

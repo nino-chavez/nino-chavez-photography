@@ -46,6 +46,13 @@
 
 ## Domains
 - ninochavez.co/photography (apex router to Pages)
+- analytics.ninochavez.co/photography/analytics/operator (same Pages project). The proxied
+  `analytics` CNAME points to `nino-chavez-photography.pages.dev`, and the hostname is attached
+  as a Pages custom domain. Cloudflare Page Rule `4abee86fac06ab509ec6e74a93c4019e` forwards
+  the subdomain root to the report because SvelteKit is built with the `/photography` base path.
+- Old analytics GET/HEAD URLs redirect to this hostname. Old-host analytics writes return 404.
+  The report remains public; the hostname is an access-control boundary for a future
+  Cloudflare Access policy, not authentication by itself.
 
 ## Preflight checks
 - `git status` clean
@@ -53,6 +60,8 @@
 
 ## Verify after deploy
 - `curl -fsSL https://ninochavez.co/photography` returns 200
+- `curl -I https://analytics.ninochavez.co/` redirects to the report. The report returns 200,
+  while the old gallery analytics URL redirects to the new host.
 - Spot-check an album page loads
 
 ## Authority limits

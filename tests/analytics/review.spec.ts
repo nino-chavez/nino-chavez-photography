@@ -11,11 +11,18 @@ for(const width of [1440,390]) test(`operator ${width}`,async({page,context,base
  await page.route('https://imagedelivery.net/**',r=>r.fulfill({path:'static/images/hero/hero-1-mobile.webp',contentType:'image/webp'}));
  await page.goto('/photography/analytics/operator?period=custom&start=2026-09-27&end=2026-09-27');
  await expect(page.getByRole('heading',{name:'Gallery analytics',exact:true})).toBeVisible();
+	await expect(page.getByRole('heading',{name:'Albums getting attention'})).toBeVisible();
+	await expect(page.getByRole('heading',{name:'Photos drawing attention'})).toBeVisible();
  await expect(page.locator('#report-filters select[name="measure"]')).toBeEnabled();
  await expect(page.getByRole('link',{name:'View gallery'})).toBeVisible();
  await expect(page.getByRole('navigation',{name:'Photography navigation'})).toHaveCount(0);
  await page.evaluate(()=>{const b=document.createElement('div');b.textContent='Mock — synthetic data. Images are representative gallery photographs.';b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#ffe082;color:#111;padding:6px;z-index:99999;text-align:center;font-size:12px';document.body.append(b);});
  if(width===390){const box=await page.locator('.answer-primary strong').boundingBox();expect(box!.y+box!.height).toBeLessThan(760);}
+	if(width===1440){
+		const controls=await Promise.all(['.album-picker > summary','.report-field select[name="period"]','.report-field select[name="measure"]'].map(selector=>page.locator(selector).boundingBox()));
+		expect(controls.every(Boolean)).toBe(true);
+		expect(Math.max(...controls.map(box=>box!.y))-Math.min(...controls.map(box=>box!.y))).toBeLessThan(3);
+	}
  if(width===390){await page.getByRole('button',{name:'Filters',exact:true}).click();await expect(page.getByRole('combobox',{name:'Measure',exact:true})).toBeVisible();await page.getByRole('button',{name:'Hide filters'}).click();}
  await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-top.png`});
  const nav=page.getByRole('navigation',{name:'Analytics sections'});

@@ -93,7 +93,7 @@
 	// are correct, because they append a bare route like `/photo/${key}`.
 	//
 	// The trailing-slash strip is load-bearing on exactly one route — see canonical.ts.
-	const pageCanonical = $derived(buildCanonical(SITE_ORIGIN, $page.url.pathname));
+	const pageCanonical = $derived(buildCanonical(isAnalyticsWorkspace ? 'https://analytics.ninochavez.co' : SITE_ORIGIN, $page.url.pathname));
 
 	// Resolved SEO values: page override (data.seo) → site default.
 	const resolvedTitle = $derived(seo?.title ?? pageTitle);
