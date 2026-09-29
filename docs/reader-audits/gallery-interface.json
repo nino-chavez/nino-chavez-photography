@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-29T02:43:46.130Z",
+  "reviewedAt": "2026-09-29T02:52:21.149Z",
   "reviewedBy": "Codex parent and independent cold reviewer",
-  "method": "Changed analytics surfaces reviewed at desktop 1440x1000 and phone 390x844. Parent inspected actual local frames; independent cold review findings fixed and rechecked with no visible blockers (docs/audits/analytics-20260928/cold-review-final.md). Operator captures use labeled synthetic records and representative owned imagery; they do not establish live data accuracy. Browser journeys verify native dialog viewport/focus, table scrolling, album scope/Back, saved views, notes, shortlist CSV and correction/reversal. Earlier public analytics rendered review remains recorded in the baseline; this receipt covers the current changed source snapshot, not a new review of unrelated gallery screens. Release recheck: parent reopened refreshed desktop and phone frames after removing queries for the absent album event-type column; all seven browser journeys passed. Test-marker origin validation now handles the deployed apex router and has a rejecting-origin regression test.",
-  "sourceDigest": "sha256:562738c1659a976e570987ace5b95fb31ff33a27f6de8495e8697a6edab287c7",
+  "method": "Changed analytics surfaces reviewed at desktop 1440x1000 and phone 390x844. Parent inspected actual local frames; independent cold review findings fixed and rechecked with no visible blockers (docs/audits/analytics-20260928/cold-review-final.md). Operator captures use labeled synthetic records and representative owned imagery; they do not establish live data accuracy. Browser journeys verify native dialog viewport/focus, table scrolling, album scope/Back, saved views, notes, shortlist CSV and correction/reversal. Earlier public analytics rendered review remains recorded in the baseline; this receipt covers the current changed source snapshot, not a new review of unrelated gallery screens. Release recheck: parent reopened refreshed desktop and phone frames after removing queries for the absent album event-type column; all seven browser journeys passed. Test-marker origin validation now handles the deployed apex router and has a rejecting-origin regression test. Hosted parent review also inspected real desktop and phone frames. The only later source change preserves an explicitly empty CSV shortlist, verified by a failing-then-passing authenticated HTTP test; it does not change rendered copy or layout.",
+  "sourceDigest": "sha256:e41cc3522175f593b31d716ca3620f47a605fb4209707dbae7688d12ec02066d",
   "sourceFiles": 140,
   "scope": [
     "src/routes/analytics/+page.svelte",

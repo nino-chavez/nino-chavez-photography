@@ -17,8 +17,10 @@ export const GET: RequestHandler = async ({ cookies, url, setHeaders }) => {
 	if (!isAllowedAdmin(user.email)) throw error(403, 'Operator access required');
 	const report = await buildOperatorReport(createSupabaseAdminClient(), parseReportQuery(url.searchParams));
 	if (!report.available) throw error(503, report.error ?? 'Analytics report unavailable');
-	const shortlist = url.searchParams.get('shortlist')?.split(',').filter(Boolean);
-	return new Response(reportCsv(report, shortlist?.length ? new Set(shortlist) : undefined), {
+	const shortlist = url.searchParams.has('shortlist')
+		? new Set((url.searchParams.get('shortlist') ?? '').split(',').filter(Boolean))
+		: undefined;
+	return new Response(reportCsv(report, shortlist), {
 		headers: {
 			'content-type': 'text/csv; charset=utf-8',
 			'content-disposition': `attachment; filename="gallery-analytics-${report.query.start}-to-${report.query.end}.csv"`,
