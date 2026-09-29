@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, trackDownloadDiagnostic } from '$lib/analytics/client';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -105,10 +105,12 @@
 			// Each downloaded photo is a strong popularity signal (weight 6).
 			for (const p of entries) {
 				trackEngagement('download', { photoId: p.id, albumKey: p.album_key, source: 'favorites-zip' });
+				trackDownloadDiagnostic({ photoId: p.id, albumKey: p.album_key, source: 'favorites-zip', status: 'requested' });
 			}
 		} catch (err) {
 			if ((err as Error).name !== 'AbortError') {
 				console.error('[FavoritesDownload] Error:', err);
+				trackDownloadDiagnostic({ albumKey: entries[0]?.album_key, source: 'favorites-zip', status: 'failed', errorCode: 'zip_request_failed' });
 				toast.error('Download failed. Please try again.');
 			}
 		} finally {

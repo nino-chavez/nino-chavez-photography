@@ -1,0 +1,211 @@
+{
+  "checkedAt": "2026-09-29T02:17:45.884444+00:00",
+  "scope": "Full local build; production application and real-data acceptance remain pending",
+  "baseCommit": "821a40fb5466be5032fba78dc9d0ff364c68104d",
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "productionMigrationApplied": false,
+  "checks": {
+    "typeAndTaxonomy": "pass",
+    "productionBuild": "pass",
+    "readerGate": "pass",
+    "contractTests": {
+      "passed": 22,
+      "failed": 0
+    },
+    "browserTests": {
+      "passed": 7,
+      "failed": 0,
+      "viewports": [
+        "1440x1000",
+        "390x844"
+      ]
+    },
+    "sqlRehearsal": "guarded reset/apply twice; concurrent snapshot; retention; correction; grants; diagnostic history; today partial",
+    "localSecurityAdvisors": "pass",
+    "refsUnchanged": true,
+    "diffWhitespace": "pass"
+  },
+  "http": {
+    "checkedAt": "2026-09-29T02:15:55.729Z",
+    "synthetic": true,
+    "checks": [
+      {
+        "name": "audience photo opens",
+        "pass": true,
+        "total": 4,
+        "visitors": 7
+      },
+      {
+        "name": "inclusive photo opens",
+        "pass": true,
+        "total": 6,
+        "visitors": 9
+      },
+      {
+        "name": "photo category removes album-only arrival",
+        "pass": true,
+        "total": 3,
+        "visitors": 4
+      },
+      {
+        "name": "tagged arrival is not a photo open",
+        "pass": true,
+        "total": 0,
+        "visitors": 1
+      },
+      {
+        "name": "historical album event date",
+        "pass": true,
+        "total": 3,
+        "visitors": 5
+      },
+      {
+        "name": "unknown season uses historical nulls",
+        "pass": true,
+        "total": 1,
+        "visitors": 2
+      },
+      {
+        "name": "zero under a supported content filter",
+        "pass": true,
+        "total": 0,
+        "visitors": 0
+      },
+      {
+        "name": "full photo export",
+        "pass": true,
+        "expectedRows": 1105
+      },
+      {
+        "name": "album-only export",
+        "pass": true,
+        "expectedRows": 1
+      }
+    ]
+  },
+  "collectionBurst": {
+    "checkedAt": "2026-09-29T02:15:55.996Z",
+    "synthetic": true,
+    "requests": 100,
+    "concurrency": 20,
+    "accepted": 20,
+    "duplicates": 80,
+    "errors": 0,
+    "p50Ms": 17,
+    "p95Ms": 19,
+    "operatorActionsExcluded": 5,
+    "ordinaryAudienceControl": 1,
+    "invalidMarkersRejected": true,
+    "invalidTargetsRejected": true,
+    "limit": "Loopback rehearsal only; this does not establish production capacity."
+  },
+  "forcedFailures": {
+    "checkedAt": "2026-09-29T02:15:56.430Z",
+    "synthetic": true,
+    "reportFailureIsUnavailable": true,
+    "failedExportStatus": 503,
+    "failedCollectionStatus": 503,
+    "grantsRestored": true
+  },
+  "coldReview": {
+    "initialDispatch": "a108719f-3dd6-4215-a545-72286033ce6f",
+    "recheckDispatch": "c9445a00-3f46-45a3-b625-f2766efcd8ab",
+    "actualRuntimeModel": "gpt-5.6-terra",
+    "actualRuntimeEffort": "high",
+    "runtimeEvidence": "child turn_context records inspected; requested route alone was not used",
+    "verdict": "earlier visible blockers resolved; still-frame limits retained",
+    "record": "cold-review-final.md"
+  },
+  "limits": [
+    "Synthetic fixtures and representative images do not prove production analytics accuracy.",
+    "Cloudflare album-route comparison unresolved.",
+    "Production migration/grants/cron history unverified.",
+    "No long-period unique visitor estimates without retained raw evidence.",
+    "Historical agent sessions cannot be reliably inferred from a newly introduced marker.",
+    "Local burst is not a production capacity guarantee.",
+    "Effect on photography/business decisions unmeasured."
+  ],
+  "sourceSha256": {
+    "package.json": "956b46442e48852d648d0c54e3e4df611086a1578c7a8eccad0e25ea4ed0625f",
+    "playwright.analytics.config.ts": "19654bd9482a33d2f033f8e989c676094c885af0b073655b83a0194ff35bb61b",
+    "scripts/dev-analytics-local.mjs": "06f8b497521069faa130130138a74c36bde0f49d3c220bde34fe8efbf5b15a7f",
+    "scripts/rehearse-analytics-local.mjs": "44a821dc8b6cfe036c396b3803c9c665599010dc45385a69e2263b369dd8a5e6",
+    "scripts/verify-analytics-local.mjs": "ee97cc6430036f10f85ce6c22e59dd5e3b7482f85f7e53f9055fd6220c53034d",
+    "src/app.html": "fab154851194b23c71f2e89a84cbeecba9db965f00ce595a2e4b5737192788e2",
+    "src/lib/analytics/client.ts": "df083abbdb64d06cdfa4e582d6b2912e5591fe18da19809325b8e7d22a2f813c",
+    "src/lib/analytics/collection-contract.test.ts": "26fd29671f5468b4e88328d2fa9cefc230eadfcfed60237b17941c7339570512",
+    "src/lib/analytics/collection-contract.ts": "1af0bb8c615b7117a576c31d5eed33861bde919b54002a5daca883c7357f34c5",
+    "src/lib/analytics/context.server.ts": "68ed1abf3c088a45a5962f0eb75f3e80570440b18292877550b5a663629a9cb7",
+    "src/lib/analytics/operator-report.server.ts": "30e2bae9e00b89629021cc87de695f338d6b5e5c9b69e075094b78a91d4d0e79",
+    "src/lib/analytics/operator-report.test.ts": "38ebaae92f40f75afba35da12db81976c9f596749d4701b9eb0b3f6506c43882",
+    "src/lib/analytics/report-contract.test.ts": "51b89fa48c066250a8ab1cd96fa6fe4eb7aa58ba36b188d36b901c4acb4495d1",
+    "src/lib/analytics/report-contract.ts": "7377eda64afe0bdcaae17695c75c2e98d06fb7cf6587cb67647d737a09850bcf",
+    "src/lib/analytics/tracker.ts": "29dc0ccf378ceaf2ff20285468d8a0f2b2faa0da8a80584dd11d92e7a22f708e",
+    "src/lib/components/album/BulkDownloadButton.svelte": "b9ebe4ea73d72bd6600c93b9d2b6a4268d0c92bfd6bf9670b2ac8833f1cab759",
+    "src/lib/components/favorites/FavoritesDownloadButton.svelte": "36104fcfbf53424e0219fba469433246aff93c3924cf3ad8d1759174c41d78ad",
+    "src/lib/components/photo/DownloadButton.svelte": "8b850b8c82cfd52e88448a22f4a9dc5dbebbe5565a687a075da2be9876b0a26d",
+    "src/routes/albums/[slug]/+page.server.ts": "0c4e9966486878d60941b586cea6b0a3de01cb528500e8ba36a9ad9f46b40058",
+    "src/routes/analytics/+page.server.ts": "f25b8faabf8f6e7cc8f954ca02c66096bf0bd3b82a93828fcc00fd6d58bba309",
+    "src/routes/analytics/+page.svelte": "944b75b4051f72fa75d51e5161acff933c7a17c525578eb1a3cbe3f81b36c1aa",
+    "src/routes/analytics/operator/+page.server.ts": "92408b6236997184604f7ec1aacbfe77b6b6a0683e843245fbdcdd88c95067d7",
+    "src/routes/analytics/operator/+page.svelte": "de3abc4c4485f053d19dd688f62c23b87be66d9d117f429ead6188aa3527b105",
+    "src/routes/analytics/operator/export.csv/+server.ts": "2b8279afb80d9945b5d8228e320ab53ed3dc58277d872916696442897843c199",
+    "src/routes/api/analytics/diagnostics/+server.ts": "b63f9df1cf56949e614bdd894a6d0a3eb675a356a69c93641191a5144c9bb7f2",
+    "src/routes/api/engagement/+server.ts": "8c69d787ad9db3b35681a5c413e65f610af3e2abe430431b714c59bffefd9c4e",
+    "src/routes/explore/+page.server.ts": "bc0949e09a76af970742e0bdee6c16e7d4d4a7ea13840335e4dbfa204722d36f",
+    "src/routes/photo/[id]/+page.server.ts": "6d1c135fe30e2255c3b78faa2d1b51a356c1b301b68eb8bdfdea80079384aee3",
+    "supabase/migrations/20260928120000_analytics_north_star_draft.sql": "4a8708fb89a7f33f35056d1d18ea8a95ae9472102e609d7412f41fe41a90d273",
+    "supabase/rehearsal/analytics-assertions.sql": "ffdb1a45d722c4421494cc16fb1de6bb56fa7384b80f93441a2409b8890e43e0",
+    "supabase/rehearsal/analytics-base.sql": "ba24e872dec06e37e097e561fb43115b8302787b60a335ccbb89de2b2be7f8dd",
+    "supabase/rehearsal/analytics-fixtures.sql": "2e9e4cdf29e8ad7816417aa1fa4ab335782017dfebe128e3a8945c88782ade9f",
+    "supabase/rehearsal/config.toml": "5992749c5a5ddbeecfacbc41038b9498b2584a52c4d53709029a145b666e2c2a",
+    "tests/analytics/journeys.spec.ts": "72365a6d975d932958546092aca4212b29fb424cf4f290737ab22374a770c313",
+    "tests/analytics/review.spec.ts": "5ce2b8dbbdbe854e4ef0f1480242d945672adcac5913cbba1768e16deea32c08"
+  },
+  "renderedSha256": {
+    "concept-album-burst.png": "b8acc6a7c577d96647f149259118670a604b4fff3cc706b705dbabb5370e3420",
+    "concept-album-empty.png": "63f6e619f733deeefbb57fb4379d125c0282b1b421e04415911991fd0469e6df",
+    "concept-album-failed.png": "4c8c46c34d48d3518bdd5c2300da39179432a8b09703bd7b7a1c8bf8ce472897",
+    "concept-album-new.png": "f1158865aa8628e840febc03199d75a86d15a766954df70ee840876142ed4d93",
+    "concept-album-rising.png": "45bf85a30430108857d1aa071b42b459dfdbc2c692ffc84e83c4cb5496e7a8f5",
+    "concept-analyst-burst.png": "3dac9716d5f32136b8d37571b0fe744b7ff5bc3b351a70d4689f81eecc43cc19",
+    "concept-analyst-empty.png": "34507999a95e14a6eac9756c2ece535cdb28c5eab1d95c93eef9160b5c5740d3",
+    "concept-analyst-failed.png": "085025105f4bf74630f7be07e8b5b470d1db6be11a222ab376c247f6ecfafadb",
+    "concept-analyst-new.png": "452ec5017c12e97ce5bf2025e8526381faafcaa3b263063815588672d3b93602",
+    "concept-analyst-rising.png": "89889138b6537b5d34ffa50edac4889a1fad67c43f9b6974cbad237f2204ba41",
+    "concept-trend-burst.png": "2fc01a81f244b07b63839d9b09566b202d846c76f11802bd7d31db87f63201ec",
+    "concept-trend-empty.png": "521694a15cc87605c275a033d354929f7bd1c6bfc58162e6af634009c8d28be2",
+    "concept-trend-failed.png": "8b4c27d960cf3c22166b7620417efaac240d21e816c49aa0b424607c0d3c4fff",
+    "concept-trend-new.png": "f62183be845c7ced115355c67b266299d3548ae32b67c9ed15dd5556b81fff8c",
+    "concept-trend-rising.png": "409e5f2c3a1250e08eddb461db7fef3f86a1af2ab26f89e692e843438b86257a",
+    "operator-1440-albums.png": "9940cdc527406872f3320b18f628581d33f1feb9317fedabe28116d408cc16d0",
+    "operator-1440-corrections.png": "3e7573b70ea0157e02058ba4004da81b1f1cae95479040e5bfce970dd0380f19",
+    "operator-1440-inspection.png": "20cc5144594619b859cc1a2826ed286351ef919107bcc367dadca0d78e01ee73",
+    "operator-1440-measurement.png": "7b8476ebc128e32ead176795e9267779451dca9b7c1f219272b0716b6145839d",
+    "operator-1440-notes.png": "4c06d4432db88b4a099adf1937675ae1da29bac07744d45650a25d7e820e069d",
+    "operator-1440-overview.png": "56ecd3076a868c53a9c27484cf6f31d29f0869ad5afb297059fd30894af11c3f",
+    "operator-1440-photo-table.png": "79f4aa97d487707efa7237d6dd1cbb1f2d5ab2334a5356d2ff5c3561c3308aad",
+    "operator-1440-photos.png": "5761dd31e5ba5d4f0a76fff26ca027a8beee0f678e01f12474782f130b613e63",
+    "operator-1440-recent.png": "6990cb126934b464449690b8509748fbca53a4c19925f5eec195e6f2bb3a1083",
+    "operator-1440-rising.png": "3fb8bedbacf0248836e450b9ba7d57e6be618b6399d92b174fecec5de5ede6be",
+    "operator-1440-saved.png": "4c06d4432db88b4a099adf1937675ae1da29bac07744d45650a25d7e820e069d",
+    "operator-1440-sources.png": "b4348a957c036148455994ffa619ccc5b881b69001a17b6f0d9f2a19588c35ba",
+    "operator-1440-top.png": "0d8d14bb5352d5195e97543590db618960daa6398a7c98a6fee64e799ced2049",
+    "operator-390-albums-scrolled.png": "6a6a7d6c1bd6b042ed6d63037886b93e2f59f9ead4c3b6f4cff70a8ba286bd60",
+    "operator-390-albums.png": "30da1c00b3ea51a7876b5a490d280c0ce4675fce68a8f40a3dae7d587b7b7dc9",
+    "operator-390-corrections.png": "505009ff9984b54d4a04ee819b76827f8fbed6e019cdfd631d0cc14968fd37f9",
+    "operator-390-inspection.png": "331a5d88d42aa199c9759b03c3766a08dee3b07c3d24f6f183bbb41488f12906",
+    "operator-390-measurement.png": "e3b74b6c48bde5ab67367c62265b1d01bbaa54cf97d4a72e1d55842f3d6e78b9",
+    "operator-390-notes.png": "33645763cf1c6777e4e7cd6835f74de7d781cbfc2d1722b6c5e676fa31fd857e",
+    "operator-390-overview.png": "16484673e4dbaedb32af972c7250364aaa8d6d079ff49d2b141884079785f2b2",
+    "operator-390-photo-table.png": "347aea46dfecd210054962f9d288cbb7e925b3c2a9be70aca49bc57471bfd2d0",
+    "operator-390-photos.png": "dae81ca38ed830346971d88f427cb114623daee3773627267c33e779fc467936",
+    "operator-390-recent.png": "7a3d12dfa1911d4a9397bd6a1d87c95f4e3c812e3f70938a8ed29008cb5d3dfb",
+    "operator-390-rising.png": "ccbaab104e8b566152befb60a19538f3ae4de0b57144c4183590880a11eee8ba",
+    "operator-390-saved.png": "9c58743e7ea45ec378866423f94e592000409acfeb64dd91d4e54c4628bde8ab",
+    "operator-390-sources.png": "a455c49ad7e4a13a0348172fd2c1eb601b96e56611563863920c87417e896368",
+    "operator-390-top.png": "92c2428036b6b61582b217e2db6c8e2cdc3866c20f24f8e912f8694d57ed212f"
+  }
+}

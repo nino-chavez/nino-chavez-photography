@@ -3,14 +3,13 @@
 ## Host
 - **Platform**: Cloudflare Pages
 - **Project name**: `nino-chavez-photography`
-- **Production URL**: https://photography.ninochavez.co
-- **Preview URL pattern**: TODO
+- **Production URL**: https://ninochavez.co/photography
+- **Preview builds**: disabled in the Pages project configuration.
 
 ## Deploy trigger
-- **Canonical**: CLAUDE.md and README state a git-integrated Cloudflare Pages project — a push
-  to `main` builds and deploys, no GitHub Actions. The actual trigger is a Pages *dashboard*
-  setting; confirm there before relying on it (rally-hq looked git-integrated but was
-  wrangler-only despite similar config).
+- **Canonical**: Cloudflare Pages git integration builds `main` with `npm run build` and
+  publishes `.svelte-kit/cloudflare`. Verified through the Pages API on September 28, 2026:
+  production deployments enabled; preview branches disabled. A push to `main` deploys.
 - **Manual fallback**: `npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography`
 - **Build time**: TODO — confirm in the CF Pages dashboard
 
@@ -41,16 +40,19 @@
   `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only, bypasses RLS), and
   `OPENROUTER_API_KEY` (runtime embeddings for semantic search). Ingest/upload tooling also
   needs `CF_ACCOUNT_ID` + `CF_IMAGES_API_TOKEN`.
+- **Analytics test markers**: `ANALYTICS_TEST_TOKEN` signs short-lived test requests.
+  Missing or invalid signatures are rejected. Operator exclusion separately uses the verified
+  Supabase identity and `ADMIN_EMAILS`; no client-supplied traffic classification is trusted.
 
 ## Domains
-- photography.ninochavez.co
+- ninochavez.co/photography (apex router to Pages)
 
 ## Preflight checks
 - `git status` clean
 - `npm run check` passes
 
 ## Verify after deploy
-- `curl -fsSL https://photography.ninochavez.co` returns 200
+- `curl -fsSL https://ninochavez.co/photography` returns 200
 - Spot-check an album page loads
 
 ## Authority limits

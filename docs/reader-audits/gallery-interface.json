@@ -1,12 +1,18 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-28T03:59:19.534Z",
-  "reviewedBy": "Cursor agent",
-  "method": "Re-walked mobile Menu on local Vite (390×844): panel is a sibling fixed sheet (.site-menu-sheet) under the 56px site shell with backdrop; elementFromPoint hits every Menu link (Work through Photography) instead of album chrome. Closed Menu shows only Photography subnav. Bottom gallery tabs stay viewport-fixed.",
-  "sourceDigest": "sha256:505e7f7d6bb6635b1de1a72368ce2e8a38d430cf0410e84ee22c411b1ade5220",
-  "sourceFiles": 136,
+  "reviewedAt": "2026-09-29T02:43:46.130Z",
+  "reviewedBy": "Codex parent and independent cold reviewer",
+  "method": "Changed analytics surfaces reviewed at desktop 1440x1000 and phone 390x844. Parent inspected actual local frames; independent cold review findings fixed and rechecked with no visible blockers (docs/audits/analytics-20260928/cold-review-final.md). Operator captures use labeled synthetic records and representative owned imagery; they do not establish live data accuracy. Browser journeys verify native dialog viewport/focus, table scrolling, album scope/Back, saved views, notes, shortlist CSV and correction/reversal. Earlier public analytics rendered review remains recorded in the baseline; this receipt covers the current changed source snapshot, not a new review of unrelated gallery screens. Release recheck: parent reopened refreshed desktop and phone frames after removing queries for the absent album event-type column; all seven browser journeys passed. Test-marker origin validation now handles the deployed apex router and has a rejecting-origin regression test.",
+  "sourceDigest": "sha256:562738c1659a976e570987ace5b95fb31ff33a27f6de8495e8697a6edab287c7",
+  "sourceFiles": 140,
   "scope": [
-    "src/lib/components/layout/Header.svelte"
+    "src/routes/analytics/+page.svelte",
+    "src/routes/analytics/+page.server.ts",
+    "src/routes/analytics/operator",
+    "src/lib/analytics",
+    "src/lib/components/photo/DownloadButton.svelte",
+    "src/lib/components/album/BulkDownloadButton.svelte",
+    "src/lib/components/favorites/FavoritesDownloadButton.svelte"
   ]
 }
