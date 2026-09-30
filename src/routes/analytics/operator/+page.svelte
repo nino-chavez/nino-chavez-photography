@@ -46,6 +46,7 @@
 	}
 
 	const report = $derived(data.report);
+	const intelligenceOwner = $derived('intelligenceOwner' in data && data.intelligenceOwner === true);
 	const sourceJourney = $derived(data.journeys.find((journey) => journey.report === 'sources_return'));
 	let hydrated = $state(false);
 	const interactive = $derived(hydrated && !navigating.to);
@@ -352,7 +353,12 @@
 					<p class="mt-4 text-xs text-charcoal-400">The default report excludes operator, test, known crawler, and suspected automated activity. These counts show every class for the same dates, albums, and measure. Unclassified remains visible and is not labeled human.</p>
 				</section>
 			</div></div>
-			<IntelligenceWorkspace kind="gallery" scope={{ kind: 'gallery', query: report.query }} owner={data.user !== null} />
+			<IntelligenceWorkspace
+				kind="gallery"
+				scope={{ kind: 'gallery', query: report.query }}
+				owner={intelligenceOwner}
+				contextTarget={selectedAlbumKey ? { kind: 'album', albumKey: selectedAlbumKey } : null}
+			/>
 			<div class="overview-next">
 				<section class="panel overview-ranking" aria-labelledby="leading-albums-title">
 					<div class="panel-heading"><div><p class="eyebrow">Compare</p><h3 id="leading-albums-title">Albums getting attention</h3></div><a class="text-link" href={sectionHref('albums')}>All albums</a></div>

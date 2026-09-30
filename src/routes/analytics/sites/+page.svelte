@@ -8,6 +8,7 @@
 
 	let { data }: { data: PageData } = $props();
 	const report = $derived(data.report);
+	const intelligenceOwner = $derived('intelligenceOwner' in data && data.intelligenceOwner === true);
 	const selected = $derived(report.available && data.section !== 'all'
 		? report.sections.find((section) => section.key === data.section) : null);
 	const pages = $derived(report.available ? selected?.topPages ?? report.topPages : []);
@@ -94,7 +95,7 @@
 			</section>
 		</div>
 		<p class="measurement-note">A page load is a browser measurement, not a person. Entry visits are page loads reached from another site or a direct link. Your own and agent-assisted visits can be included. These counts do not measure reading, clicks, or completed requests.</p>
-		<IntelligenceWorkspace kind="sites" scope={{ kind: 'sites', period: data.period, section: data.section }} owner={false} />
+		<IntelligenceWorkspace kind="sites" scope={{ kind: 'sites', period: data.period, section: data.section }} owner={intelligenceOwner} />
 
 		{#if data.section === 'all'}
 			<section class="section-breakdown" aria-labelledby="section-heading"><div class="section-title"><div><p class="eyebrow">Compare</p><h2 id="section-heading">Where attention went</h2></div><p>Same dates and measure across sections</p></div>
