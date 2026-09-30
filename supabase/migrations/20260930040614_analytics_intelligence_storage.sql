@@ -480,7 +480,7 @@ BEGIN
   UPDATE public.analytics_intelligence_requests SET status='expired',updated_at=p_now WHERE status IN ('pending','leased') AND expires_at < p_now;
   today := (p_now AT TIME ZONE 'America/Chicago')::date;
   completed_day := today-1;
-  FOR d IN SELECT value::date FROM generate_series(completed_day-p_max_catchup_periods+1,completed_day,interval '1 day') LOOP
+  FOR d IN SELECT generated_day::date FROM generate_series(completed_day-p_max_catchup_periods+1,completed_day,interval '1 day') AS generated_day LOOP
     EXIT WHEN inserted >= p_max_catchup_periods;
     IF p_daily_period IS NOT NULL AND d <= least(p_daily_period,completed_day) THEN
       INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,available_at)
