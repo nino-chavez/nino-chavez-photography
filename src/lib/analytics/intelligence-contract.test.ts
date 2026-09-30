@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { intelligenceScopeKey, parseIntelligenceScope, parsePublicIntelligenceTarget, standardIntelligenceScopes, type IntelligenceScope } from './intelligence-contract';
+import { intelligenceScopeKey, parseIntelligenceBriefSourceWindow, parseIntelligenceScope, parsePublicIntelligenceTarget, standardIntelligenceScopes, type IntelligenceScope } from './intelligence-contract';
 
 const gallery: IntelligenceScope = { kind: 'gallery', query: { start: '2026-03-01', end: '2026-03-30', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } };
 test('scope validation rejects impossible dates, huge windows, extra fields, and invalid custom comparisons', () => {
@@ -29,4 +29,12 @@ test('standalone action targets accept only a small public target contract', () 
 	assert.equal(parsePublicIntelligenceTarget({ kind: 'page', id: '/admin' }), null);
 	assert.equal(parsePublicIntelligenceTarget({ kind: 'album', albumKey: 'fall', id: 'ignored' }), null);
 	assert.equal(parsePublicIntelligenceTarget({ kind: 'photo', id: '../private' }), null);
+});
+
+test('brief provenance preserves complete saved windows and rejects malformed unknowns', () => {
+	const decoded = parseIntelligenceBriefSourceWindow({ scope: gallery, cutoff: '2026-09-30T14:00:00.000Z', timezone: 'America/Chicago', current: { start: '2026-09-01', end: '2026-09-30' }, previous: { start: '2026-08-02', end: '2026-08-31' } });
+	assert.deepEqual(decoded?.current, { start: '2026-09-01', end: '2026-09-30' });
+	assert.equal(decoded?.timezone, 'America/Chicago');
+	assert.equal(parseIntelligenceBriefSourceWindow({ scope: gallery, cutoff: 'not-a-date', timezone: 'America/Chicago', current: { start: '2026-09-31', end: '2026-09-30' } }), null);
+	assert.equal(parseIntelligenceBriefSourceWindow({ scope: gallery, cutoff: null, timezone: 'not/a-timezone' }), null);
 });

@@ -143,3 +143,41 @@ test('renders stored private brief content and freezes an album question scope',
 	await expect.poll(() => questionScope).not.toBeNull();
 	expect(questionScope).toMatchObject({ kind: 'gallery', query: { scope: 'album', albumKeys: ['alpha'] } });
 });
+
+test('keeps stored brief provenance private, compact, and paged', async ({ page }) => {
+	await addOwnerFixture(page);
+	const sourceWindows = [{
+		scope: report.scope,
+		cutoff: '2026-09-08T06:00:00.000Z',
+		timezone: 'America/Chicago',
+		current: { start: '2026-09-01', end: '2026-09-07' },
+		previous: { start: '2026-08-25', end: '2026-08-31' }
+	}];
+	const pageOneBriefs = Array.from({ length: 4 }, (_, index) => ({
+		id: `brief-${index + 1}`, kind: 'daily' as const, periodKey: `2026-09-0${index + 1}`, createdAt: '2026-09-08T12:00:00.000Z', title: `Morning review ${index + 1}`,
+		sourceWindows, suppressions: [{ rule: 'album_momentum', reason: 'Comparable history is still limited.' }], late: index === 0
+	}));
+	let requestedBriefPage = '0';
+	await page.route('**/api/analytics/intelligence**', async (route) => {
+		const request = route.request(); const url = new URL(request.url());
+		if (url.pathname.endsWith('/preferences')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...ownerPreferences, retention: '90_days' }) });
+		requestedBriefPage = url.searchParams.get('briefsPage') ?? '0';
+		const briefs = requestedBriefPage === '1'
+			? [{ ...pageOneBriefs[0], id: 'brief-11', title: 'Morning review 11' }]
+			: pageOneBriefs;
+		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true, briefs, briefsPage: Number(requestedBriefPage), briefsPageCount: 2 }) });
+	});
+	await page.goto(galleryRoute);
+	await expect(page.getByText('Morning review 1')).toBeVisible();
+	await expect(page.getByText('Morning review 4')).toHaveCount(0);
+	await page.getByRole('button', { name: 'Show all on this brief page' }).click();
+	await expect(page.getByText('Morning review 4')).toBeVisible();
+	await page.getByText('Read stored brief evidence').first().click();
+	await expect(page.getByText('2026-09-01 to 2026-09-07')).toBeVisible();
+	await expect(page.getByText('America/Chicago')).toBeVisible();
+	await expect(page.getByText('Comparable history is still limited.')).toHaveCount(2);
+	await expect(page.getByText('Late delivery was recorded.')).toBeVisible();
+	await page.getByRole('button', { name: 'Next briefs' }).click();
+	await expect.poll(() => requestedBriefPage).toBe('1');
+	await expect(page.getByText('Morning review 11')).toBeVisible();
+});

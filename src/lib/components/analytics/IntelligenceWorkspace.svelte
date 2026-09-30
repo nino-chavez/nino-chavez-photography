@@ -47,12 +47,12 @@
 		findingRefs?: string[];
 		findings?: Finding[];
 		snapshotHref?: string | null;
-		sourceWindows?: Array<{ start: string; end: string; href?: string | null }>;
 	};
 
 	const endpoint = `${base}/api/analytics/intelligence`;
 	const preferencesEndpoint = `${endpoint}/preferences`;
 	const firstViewportLimit = 3;
+	const firstBriefLimit = 3;
 	const maximumPollMs = 120_000;
 	const initialPollMs = 750;
 	const maximumPollDelayMs = 5_000;
@@ -75,6 +75,7 @@
 	let actionMessage = $state<string | null>(null);
 	let actionError = $state<string | null>(null);
 	let expandedHistory = $state(false);
+	let expandedBriefs = $state(false);
 	let preferences = $state<Preferences | null>(null);
 	let preferencesLoading = $state(false);
 	let preferencesError = $state<string | null>(null);
@@ -94,6 +95,7 @@
 	const visibleFindings = $derived(expandedFindings ? (report?.findings ?? []) : (report?.findings ?? []).slice(0, firstViewportLimit));
 	const actions = $derived((report?.actions ?? []) as ActionRecord[]);
 	const briefs = $derived((report?.briefs ?? []) as BriefRecord[]);
+	const visibleBriefs = $derived(expandedBriefs ? briefs : briefs.slice(0, firstBriefLimit));
 	const visibleActions = $derived(expandedHistory ? actions : actions.slice(0, 5));
 	const contextLabel = $derived(targetLabel(contextTarget));
 
@@ -125,21 +127,37 @@
 		return object(value) && typeof value.id === 'string' && ['record', 'dismiss', 'snooze', 'undo'].includes(String(value.kind))
 			&& typeof value.createdAt === 'string' && (value.target === undefined || value.target === null || validTarget(value.target));
 	}
+	function validBriefSourceWindow(value: unknown): boolean {
+		return object(value) && !!parseIntelligenceScope(value.scope) && (typeof value.cutoff === 'string' || value.cutoff === null)
+			&& typeof value.timezone === 'string' && value.timezone.length > 0
+			&& (value.current === undefined || value.current === null || validWindow(value.current))
+			&& (value.previous === undefined || value.previous === null || validWindow(value.previous));
+	}
+	function validSuppression(value: unknown): boolean {
+		return object(value) && typeof value.rule === 'string' && typeof value.reason === 'string'
+			&& (value.target === undefined || validTarget(value.target));
+	}
 	function validBrief(value: unknown): value is BriefRecord {
 		return object(value) && typeof value.id === 'string' && typeof value.periodKey === 'string' && typeof value.createdAt === 'string'
 			&& ['daily', 'weekly', 'operational'].includes(String(value.kind))
 			&& (value.title === undefined || value.title === null || typeof value.title === 'string')
 			&& (value.body === undefined || value.body === null || typeof value.body === 'string')
 			&& (value.snapshotHref === undefined || value.snapshotHref === null || safeHref(value.snapshotHref))
-			&& (value.findings === undefined || (Array.isArray(value.findings) && value.findings.every(validFinding)));
+			&& (value.findings === undefined || (Array.isArray(value.findings) && value.findings.every(validFinding)))
+			&& (value.sourceWindows === undefined || (Array.isArray(value.sourceWindows) && value.sourceWindows.every(validBriefSourceWindow)))
+			&& (value.suppressions === undefined || (Array.isArray(value.suppressions) && value.suppressions.every(validSuppression)))
+			&& (value.late === undefined || typeof value.late === 'boolean');
 	}
 	function validReport(value: unknown): value is IntelligenceReport {
 		return object(value) && !!parseIntelligenceScope(value.scope) && typeof value.generatedAt === 'string'
 			&& (typeof value.cutoff === 'string' || value.cutoff === null) && ['complete', 'partial', 'unavailable'].includes(String(value.coverage))
 			&& Array.isArray(value.findings) && value.findings.every(validFinding) && Array.isArray(value.suppressions)
-			&& value.suppressions.every((item) => object(item) && typeof item.rule === 'string' && typeof item.reason === 'string')
+			&& value.suppressions.every(validSuppression)
 			&& Array.isArray(value.actions) && value.actions.every(validAction) && Array.isArray(value.briefs) && value.briefs.every(validBrief)
-			&& Number.isInteger(value.page) && Number.isInteger(value.pageCount) && typeof value.owner === 'boolean';
+			&& Number.isInteger(value.page) && Number.isInteger(value.pageCount)
+			&& (value.briefsPage === undefined || Number.isInteger(value.briefsPage))
+			&& (value.briefsPageCount === undefined || Number.isInteger(value.briefsPageCount))
+			&& typeof value.owner === 'boolean';
 	}
 	function validAnswer(value: unknown): value is AssistantAnswer {
 		return object(value) && !!parseIntelligenceScope(value.scope) && typeof value.question === 'string' && typeof value.operation === 'string'
@@ -177,6 +195,9 @@
 		const current = `Current: ${evidence.windows.current.start} to ${evidence.windows.current.end}`;
 		return evidence.windows.previous ? `${current}. Previous: ${evidence.windows.previous.start} to ${evidence.windows.previous.end}` : current;
 	}
+	function briefWindowLabel(window: { start: string; end: string } | null | undefined) {
+		return window ? `${window.start} to ${window.end}` : 'Not stored';
+	}
 	function findingLimitations(finding: Finding) { return report?.suppressions.filter((item) => item.rule === finding.rule).map((item) => item.reason) ?? []; }
 	function sameTarget(left: Finding['target'] | null | undefined, right: Finding['target'] | null | undefined) { return left?.kind === right?.kind && left?.id === right?.id && left?.albumKey === right?.albumKey; }
 	function actionsForFinding(finding: Finding) { return actions.filter((item) => item.findingId === finding.id && item.kind === 'record'); }
@@ -208,16 +229,16 @@
 		if (pendingPoll?.requestId !== poll.requestId || pendingPoll.scopeKey !== poll.scopeKey) return;
 		pollTimer = setTimeout(() => void pollAnswer(), Math.min(maximumPollDelayMs, initialPollMs * 2 ** poll.attempt));
 	}
-	async function loadReport(page = 0, actionsPage = report?.actionsPage ?? 0) {
+	async function loadReport(page = 0, actionsPage = report?.actionsPage ?? 0, briefsPage = report?.briefsPage ?? 0) {
 		if (!validatedScope) { reportError = 'This report has an invalid scope.'; loading = false; return; }
 		reportAbort?.abort(); const controller = new AbortController(); reportAbort = controller; const version = ++reportRequestVersion;
 		loading = true; reportError = null;
 		try {
-			const params = new URLSearchParams({ scope: scopeKey, page: String(page), actionsPage: String(actionsPage) });
+			const params = new URLSearchParams({ scope: scopeKey, page: String(page), actionsPage: String(actionsPage), briefsPage: String(briefsPage) });
 			const response = await fetch(`${endpoint}?${params}`, { signal: controller.signal, headers: { accept: 'application/json' }, cache: 'no-store' });
 			const payload = await json(response); if (!response.ok || !validReport(payload)) throw new Error('report');
 			if (version !== reportRequestVersion) return;
-			report = payload; currentPage = payload.page; expandedFindings = false;
+			report = payload; currentPage = payload.page; expandedFindings = false; expandedBriefs = false;
 			if (!selectedFinding || !payload.findings.some((finding) => finding.id === selectedFinding?.id)) selectedFinding = payload.findings[0] ?? null;
 		} catch {
 			if (!controller.signal.aborted && version === reportRequestVersion) { report = null; reportError = 'Saved intelligence is unavailable right now. The rest of this report is still usable.'; }
@@ -323,7 +344,7 @@
 	}
 
 	$effect(() => {
-		scopeKey; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; untrack(() => { stopPolling(); answerAbort?.abort(); void loadReport(0, 0); });
+		scopeKey; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; expandedBriefs = false; untrack(() => { stopPolling(); answerAbort?.abort(); void loadReport(0, 0, 0); });
 		return () => { reportAbort?.abort(); answerAbort?.abort(); stopPolling(); };
 	});
 	$effect(() => { if (owner) untrack(() => void loadPreferences()); else preferences = null; });
@@ -383,7 +404,33 @@
 			</div>
 		{:else}<div class="state"><strong>No actionable findings for this scope</strong><p>This is not a zero-activity claim. The saved evidence may be sparse, suppressed, stale, or not yet capable of a safe recommendation.</p></div>{/if}
 
-		{#if owner}<section class="briefs" aria-labelledby={`${kind}-briefs-heading`}><div><p class="kicker">Scheduled briefs</p><h3 id={`${kind}-briefs-heading`}>Daily and weekly review</h3></div>{#if briefs.length}<div class="brief-list">{#each briefs as brief}<article><strong>{brief.title ?? (brief.kind === 'daily' ? 'Daily brief' : brief.kind === 'weekly' ? 'Weekly brief' : 'Operational brief')}</strong><span>{brief.periodKey} · created {formatTime(brief.createdAt)}</span>{#if brief.body}<p>{brief.body}</p>{/if}{#if briefFindings(brief).length}<div class="links">{#each briefFindings(brief) as finding}<a href={evidenceHref(finding.reportHref)}>{finding.title}</a>{/each}</div>{/if}{#if brief.snapshotHref && safeHref(brief.snapshotHref)}<p class="links"><a href={evidenceHref(brief.snapshotHref)}>Open exact saved snapshot</a></p>{/if}{#if brief.sourceWindows?.length}<p class="brief-windows">Source windows: {#each brief.sourceWindows as window, index}{#if index > 0}; {/if}{#if window.href && safeHref(window.href)}<a href={window.href}>{window.start} to {window.end}</a>{:else}{window.start} to {window.end}{/if}{/each}</p>{/if}</article>{/each}</div>{:else}<p class="brief-empty">No stored daily or weekly brief is available for this report scope. That does not mean there was no activity.</p>{/if}</section>{/if}
+		{#if owner}
+			<section class="briefs" aria-labelledby={`${kind}-briefs-heading`}>
+				<div><p class="kicker">Scheduled briefs</p><h3 id={`${kind}-briefs-heading`}>Daily and weekly review</h3></div>
+				{#if briefs.length}
+					<div class="brief-list">
+						{#each visibleBriefs as brief}
+							<article>
+								<strong>{brief.title ?? (brief.kind === 'daily' ? 'Daily brief' : brief.kind === 'weekly' ? 'Weekly brief' : 'Operational brief')}</strong>
+								<span>{brief.periodKey} · created {formatTime(brief.createdAt)}</span>
+								{#if brief.body}<p>{brief.body}</p>{/if}
+								{#if briefFindings(brief).length}<div class="links">{#each briefFindings(brief) as finding}<a href={evidenceHref(finding.reportHref)}>{finding.title}</a>{/each}</div>{/if}
+								{#if brief.snapshotHref && safeHref(brief.snapshotHref)}<p class="links"><a href={evidenceHref(brief.snapshotHref)}>Open exact saved snapshot</a></p>{/if}
+								{#if brief.sourceWindows?.length || brief.suppressions?.length || brief.late !== undefined}
+									<details class="brief-evidence"><summary>Read stored brief evidence</summary>
+										{#if brief.sourceWindows?.length}<dl>{#each brief.sourceWindows as window}<div><dt>Source scope</dt><dd>{scopeLabel(window.scope)}</dd></div><div><dt>Current window</dt><dd>{briefWindowLabel(window.current)}</dd></div><div><dt>Previous window</dt><dd>{briefWindowLabel(window.previous)}</dd></div><div><dt>Timezone</dt><dd>{window.timezone}</dd></div><div><dt>Cutoff</dt><dd>{formatTime(window.cutoff)}</dd></div>{/each}</dl>{/if}
+										{#if brief.suppressions?.length}<p><strong>Stored limits</strong></p><ul>{#each brief.suppressions as suppression}<li>{suppression.rule}: {suppression.reason}</li>{/each}</ul>{/if}
+										{#if brief.late !== undefined}<p><strong>Delivery timing:</strong> {brief.late ? 'Late delivery was recorded.' : 'No late delivery was recorded.'}</p>{/if}
+									</details>
+								{/if}
+							</article>
+						{/each}
+						{#if !expandedBriefs && briefs.length > firstBriefLimit}<button type="button" onclick={() => expandedBriefs = true}>Show all on this brief page</button>{:else if expandedBriefs && briefs.length > firstBriefLimit}<button type="button" onclick={() => expandedBriefs = false}>Show recent briefs</button>{/if}
+						{#if (report?.briefsPageCount ?? 1) > 1}<nav class="pager" aria-label="Scheduled brief pages"><span>Brief page {(report?.briefsPage ?? 0) + 1} of {report?.briefsPageCount}</span><div><button type="button" disabled={loading || !report?.briefsPage} onclick={() => void loadReport(report?.page ?? 0, report?.actionsPage ?? 0, (report?.briefsPage ?? 0) - 1)}>Previous briefs</button><button type="button" disabled={loading || (report?.briefsPage ?? 0) + 1 >= (report?.briefsPageCount ?? 1)} onclick={() => void loadReport(report?.page ?? 0, report?.actionsPage ?? 0, (report?.briefsPage ?? 0) + 1)}>Next briefs</button></div></nav>{/if}
+					</div>
+				{:else}<p class="brief-empty">No stored daily or weekly brief is available for this report scope. That does not mean there was no activity.</p>{/if}
+			</section>
+		{/if}
 
 		{#if owner && actions.length}<section class="action-history" aria-labelledby={`${kind}-actions-heading`}><div><p class="kicker">Private history</p><h3 id={`${kind}-actions-heading`}>Recorded actions and follow-up</h3><p>Recent records are shown first. Use the history pages to review earlier changes.</p></div><ul>{#each visibleActions as item}<li><div><strong>{item.kind === 'record' ? 'Recorded change' : item.kind}</strong><span>{targetLabel(actionTarget(item))} · {formatTime(item.createdAt)}</span>{#if item.changeType}<p><strong>Change:</strong> {item.changeType.replaceAll('_', ' ')}</p>{/if}{#if item.hypothesis}<p><strong>Hypothesis:</strong> {item.hypothesis}</p>{/if}{#if item.primaryMeasure}<p><strong>Primary outcome:</strong> {item.primaryMeasure.replaceAll('_', ' ')}</p>{/if}{#if item.observationDays}<p><strong>Observation window:</strong> {item.observationDays} days</p>{/if}{#if item.followUpAt}<p><strong>Follow-up:</strong> {followUpState(item)}</p>{/if}{#if item.coarseOutcome ?? item.outcome}<p><strong>Recorded outcome:</strong> {item.coarseOutcome ?? item.outcome}</p>{/if}</div>{#if item.outcomeCount !== null && item.outcomeCount !== undefined}<p><strong>Recorded outcome count:</strong> {item.outcomeCount}</p>{/if}{#if item.kind === 'dismiss' || item.kind === 'snooze'}<button type="button" onclick={() => void reverseAction(item)}>Reverse this row</button>{/if}</li>{/each}</ul>{#if actions.length > visibleActions.length}<button type="button" onclick={() => expandedHistory = true}>Show all returned history</button>{:else if expandedHistory && actions.length > 5}<button type="button" onclick={() => expandedHistory = false}>Show recent history</button>{/if}{#if (report?.actionsPageCount ?? 1) > 1}<nav class="pager" aria-label="Private history pages"><span>History page {(report?.actionsPage ?? 0) + 1} of {report?.actionsPageCount}</span><div><button type="button" disabled={loading || !report?.actionsPage} onclick={() => void loadReport(report?.page ?? 0, (report?.actionsPage ?? 0) - 1)}>Previous history</button><button type="button" disabled={loading || (report?.actionsPage ?? 0) + 1 >= (report?.actionsPageCount ?? 1)} onclick={() => void loadReport(report?.page ?? 0, (report?.actionsPage ?? 0) + 1)}>Next history</button></div></nav>{/if}</section>{/if}
 	{/if}
@@ -400,4 +447,5 @@
 <style>
 	.intelligence{margin-top:1.25rem;border-top:1px solid #d8e0ea;padding-top:1.25rem;color:#172033}.heading,.finding-topline,.finding-actions,.pager,.action-sheet-heading,.action-history li{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.heading{align-items:end}.kicker{color:#174ea6;font-size:.68rem;font-weight:800;letter-spacing:.07em;margin:0 0 .35rem;text-transform:uppercase}h2,h3,p{margin-top:0}h2{font-size:1.2rem;letter-spacing:-.02em;margin-bottom:.3rem}h3{font-size:1rem;line-height:1.3;margin-bottom:.45rem}.heading>div>p:last-child,.inspector-copy,.scope,.freshness,.evidence,.auth-note,.context-note,.delivery-note{color:#526176;font-size:.78rem;line-height:1.5}.freshness{margin:0;text-align:right}.scope,.context-note{margin:.8rem 0}.context-note{background:#eef5ff;border-left:3px solid #6195df;padding:.55rem .7rem}.content-grid{display:grid;gap:1rem;grid-template-columns:minmax(0,1.35fr) minmax(17rem,.8fr);align-items:start}.finding-list{display:grid;gap:.65rem}.finding,.inspector,.briefs,.state,.action-sheet,.action-history{background:#fff;border:1px solid #d8e0ea;border-radius:.75rem;padding:1rem}.reporting-settings{margin:.9rem 0}.reporting-settings>summary{cursor:pointer;color:#174ea6;font-weight:700}.settings{background:#fff;border:1px solid #d8e0ea;border-radius:.75rem;padding:1rem}.finding.selected{border-color:#1769e0;box-shadow:inset 3px 0 #1769e0}.finding-topline{color:#64758a;font-size:.7rem;text-transform:capitalize}.finding p{color:#384b66;font-size:.84rem;line-height:1.5}.proposal{color:#172033!important}.follow-up{border-left:2px solid #91b7ee;margin:.65rem 0;padding-left:.7rem}.follow-up p{font-size:.78rem;margin:.25rem 0}.finding-actions{justify-content:start;flex-wrap:wrap;margin-top:.85rem}.inspector{position:sticky;top:1rem;background:#f4f7fb}.presets{display:flex;flex-wrap:wrap;gap:.45rem;margin:.8rem 0}.question-form,.action-sheet form,.settings form{display:grid;gap:.6rem;margin-top:.9rem}.question-form label,.action-sheet label,.settings label{display:grid;color:#33445c;font-size:.78rem;font-weight:700;gap:.35rem}.settings{display:grid;gap:.4rem;grid-template-columns:minmax(14rem,.55fr) minmax(0,1fr);margin:1rem 0}.settings fieldset{border:0;margin:0;padding:0}.settings legend{color:#33445c;font-size:.78rem;font-weight:700;margin-bottom:.35rem}.settings label{display:inline-flex;margin-right:.8rem}.settings input[type=radio],.settings input[type=checkbox]{accent-color:#1769e0}button,.finding-actions a{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#174ea6;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .65rem;text-decoration:none}button:hover,button:focus-visible,.finding-actions a:hover,.finding-actions a:focus-visible{border-color:#1769e0;background:#edf5ff}button:disabled{cursor:not-allowed;opacity:.55}button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #1769e0;outline-offset:2px}textarea,input,select{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#172033;font:inherit;min-height:2.45rem;padding:.55rem .65rem}textarea{min-height:5rem;resize:vertical}.question-form button,.action-sheet form button,.settings form button{background:#1769e0;border-color:#1769e0;color:#fff}.form-grid{display:grid;gap:.6rem;grid-template-columns:repeat(2,minmax(0,1fr))}.answer,.previous-answer{border-top:1px solid #d8e0ea;margin-top:.9rem;padding-top:.9rem}.answer-status{color:#174ea6;font-size:.72rem;font-weight:800;text-transform:capitalize}.answer ul,.finding details ul{color:#526176;font-size:.77rem;line-height:1.45;margin:.65rem 0 0;padding-left:1.1rem}.comparison{overflow-x:auto}.comparison table{width:100%;border-collapse:collapse;font-size:.78rem}.comparison caption{text-align:left;color:#526176;margin:.5rem 0}.comparison th,.comparison td{text-align:left;border-bottom:1px solid #d8e0ea;padding:.5rem}.comparison a{color:#174ea6}.answer-findings{display:grid;gap:.35rem;margin-top:.75rem}.answer-findings a,.links a{color:#174ea6;font-size:.78rem;font-weight:700}.links{display:grid;gap:.35rem;margin:.65rem 0 0}.state{color:#526176;font-size:.84rem;line-height:1.5}.state p{margin:.3rem 0 0}.unavailable{border-color:#dba6a6}.answer-error{color:#a42424;font-size:.8rem;line-height:1.45}.pager{border-top:1px solid #d8e0ea;color:#526176;font-size:.78rem;padding-top:.8rem}.pager div{display:flex;gap:.4rem}.actions-review{align-items:start;background:#eef5ff;border-left:3px solid #6195df;color:#384b66;display:flex;font-size:.78rem;gap:1rem;justify-content:space-between;line-height:1.5;margin:.9rem 0;padding:.75rem .85rem}.actions-review p{margin:0}.briefs{display:grid;gap:.8rem;grid-template-columns:minmax(12rem,.45fr) minmax(0,1fr);margin-top:1rem}.brief-list{display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}.brief-list article{border-left:2px solid #91b7ee;padding-left:.7rem}.brief-list strong,.brief-list span{display:block}.brief-list span,.brief-empty,.brief-windows{color:#64758a;font-size:.72rem;margin-top:.15rem}.brief-list p{color:#526176;font-size:.78rem;line-height:1.45;margin:.4rem 0 0}.action-history{margin-top:1rem}.action-history li > div > span { display: block; margin-top: .2rem; }
 	.action-history ul{display:grid;gap:.65rem;list-style:none;margin:.8rem 0;padding:0}.action-history li{align-items:start;border-top:1px solid #e3e9f1;padding-top:.7rem}.action-history span,.action-history p{color:#526176;font-size:.78rem;line-height:1.45}.action-history p{margin:.25rem 0 0}.action-sheet{border-color:#9ebce8;margin-top:1rem;max-width:52rem}.action-sheet-heading{align-items:start}.action-sheet-heading p{color:#526176;font-size:.82rem;margin-bottom:0}.action-message{color:#195b33;font-size:.82rem;margin:.75rem 0 0}.evidence summary{cursor:pointer;color:#174ea6;font-weight:700}.evidence dl{display:grid;gap:.35rem;margin:.7rem 0}.evidence dl div{display:grid;gap:.6rem;grid-template-columns:7rem minmax(0,1fr)}.evidence dt{color:#64758a}.evidence dd{margin:0;overflow-wrap:anywhere}.evidence>p{margin:.7rem 0 0}@media(max-width:900px){.content-grid,.briefs,.settings{grid-template-columns:1fr}.inspector{position:static}}@media(max-width:600px){.heading,.actions-review,.action-history li{align-items:start;flex-direction:column}.freshness{text-align:left}.finding-actions button,.finding-actions a{flex:1 1 auto;text-align:center}.evidence dl div,.form-grid{grid-template-columns:1fr}.settings label{display:flex;margin:.2rem 0}}
+	.brief-evidence{margin-top:.65rem}.brief-evidence summary{cursor:pointer;color:#174ea6;font-size:.78rem;font-weight:700}.brief-evidence dl{display:grid;gap:.35rem;margin:.7rem 0}.brief-evidence dl div{display:grid;gap:.6rem;grid-template-columns:7rem minmax(0,1fr)}.brief-evidence dt{color:#64758a}.brief-evidence dd{margin:0;overflow-wrap:anywhere}.brief-evidence>p{margin:.7rem 0 0}.brief-evidence ul{color:#526176;font-size:.77rem;line-height:1.45;margin:.65rem 0 0;padding-left:1.1rem}
 </style>

@@ -42,6 +42,61 @@ export interface Finding {
 
 export interface IntelligenceSuppression { rule: string; target?: Finding['target']; reason: string; }
 
+export interface IntelligenceBriefWindow {
+	start: string;
+	end: string;
+}
+
+/**
+ * Stored delivery provenance. It belongs to an owner's brief rather than the
+ * public report because it can describe private delivery timing and limits.
+ * Older rows may not have persisted the actual current or previous dates.
+ */
+export interface IntelligenceBriefSourceWindow {
+	scope: IntelligenceScope;
+	cutoff: string | null;
+	timezone: string;
+	current?: IntelligenceBriefWindow | null;
+	previous?: IntelligenceBriefWindow | null;
+}
+
+export interface IntelligenceBrief {
+	id: string;
+	periodKey: string;
+	kind: 'daily' | 'weekly' | 'operational';
+	createdAt: string;
+	title?: string;
+	body?: string;
+	findings?: Finding[];
+	snapshotIds?: string[];
+	sourceWindows?: IntelligenceBriefSourceWindow[];
+	suppressions?: IntelligenceSuppression[];
+	/** Missing means the stored row did not say whether this delivery was late. */
+	late?: boolean;
+}
+
+function parseBriefWindow(value: unknown): IntelligenceBriefWindow | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const row = value as Record<string, unknown>;
+	if (typeof row.start !== 'string' || typeof row.end !== 'string' || !DATE.test(row.start) || !DATE.test(row.end)) return null;
+	const start = new Date(`${row.start}T12:00:00Z`);
+	const end = new Date(`${row.end}T12:00:00Z`);
+	return !Number.isNaN(start.valueOf()) && !Number.isNaN(end.valueOf()) && start <= end ? { start: row.start, end: row.end } : null;
+}
+
+/** Accept persisted provenance only when it remains a complete, dated source description. */
+export function parseIntelligenceBriefSourceWindow(value: unknown): IntelligenceBriefSourceWindow | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const row = value as Record<string, unknown>;
+	const scope = parseIntelligenceScope(row.scope);
+	if (!scope || (row.cutoff !== null && (typeof row.cutoff !== 'string' || Number.isNaN(Date.parse(row.cutoff)))) || typeof row.timezone !== 'string' || row.timezone.length === 0 || row.timezone.length > 80) return null;
+	try { Intl.DateTimeFormat('en-US', { timeZone: row.timezone }).format(); } catch { return null; }
+	const current = row.current === undefined || row.current === null ? null : parseBriefWindow(row.current);
+	const previous = row.previous === undefined || row.previous === null ? null : parseBriefWindow(row.previous);
+	if ((row.current !== undefined && row.current !== null && !current) || (row.previous !== undefined && row.previous !== null && !previous)) return null;
+	return { scope, cutoff: row.cutoff as string | null, timezone: row.timezone, ...(row.current !== undefined ? { current } : {}), ...(row.previous !== undefined ? { previous } : {}) };
+}
+
 export interface IntelligenceAction {
 	id: string;
 	kind: 'record' | 'dismiss' | 'snooze' | 'undo';
@@ -96,11 +151,13 @@ export interface IntelligenceReport {
 	findings: Finding[];
 	suppressions: IntelligenceSuppression[];
 	actions: IntelligenceAction[];
-	briefs: Array<{ id: string; periodKey: string; kind: 'daily' | 'weekly' | 'operational'; createdAt: string; body?: string; findings?: Finding[]; snapshotIds?: string[] }>;
+	briefs: IntelligenceBrief[];
 	page: number;
 	pageCount: number;
 	actionsPage?: number;
 	actionsPageCount?: number;
+	briefsPage?: number;
+	briefsPageCount?: number;
 	owner: boolean;
 }
 
@@ -120,6 +177,7 @@ export interface AssistantAnswer {
 
 export const INTELLIGENCE_RULE_VERSION = 2;
 export const INTELLIGENCE_PAGE_SIZE = 20;
+export const INTELLIGENCE_BRIEF_PAGE_SIZE = 10;
 export const STANDARD_SITE_INTELLIGENCE_SCOPES: readonly IntelligenceScope[] = [
 	...(['all', 'profile', 'writing', 'demos', 'photography', 'other'] as const).flatMap((section) =>
 		([7, 30, 90] as const).map((period) => ({ kind: 'sites' as const, period, section }))
