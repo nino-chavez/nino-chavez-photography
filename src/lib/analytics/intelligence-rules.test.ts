@@ -82,3 +82,12 @@ test('render union measures failed views without summing retry successes and fai
  const result=evaluateIntelligenceRules(input({rendering:{rendered:98,failed:4,observedTerminal:100}}));
  const finding=result.findings.find(row=>row.id==='render-failures');assert.equal(finding?.evidence.denominator,100);assert.equal(finding?.evidence.numerator,4);
 });
+
+
+test('observed failures rank before promotion without changing evidence strength', () => {
+ const result=evaluateIntelligenceRules(input({download:{requests:30,failed:3,unknownTerminal:0,handedOff:27}, diagnostics:[{type:'relay',status:'failed',count:2}]}));
+ assert.equal(result.findings[0].severity,'high');
+ assert.equal(result.findings.find(f=>f.rule==='momentum')?.severity,'low');
+ assert.equal(result.findings.find(f=>f.rule==='momentum')?.evidence.strength,'exploratory');
+ assert.ok(result.findings.findIndex(f=>f.rule==='rendering_download_reliability')<result.findings.findIndex(f=>f.rule==='momentum'));
+});

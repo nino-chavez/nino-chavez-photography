@@ -277,7 +277,7 @@ BEGIN
   UPDATE public.analytics_intelligence_jobs j SET status='expired',leased_until=NULL,error_code='request_expired',updated_at=p_now
     FROM public.analytics_intelligence_requests r WHERE j.request_id=r.id AND r.status='expired' AND j.status IN ('pending','retry','leased');
   UPDATE public.analytics_intelligence_jobs SET status='unavailable',error_code='attempts_exhausted',leased_until=NULL,updated_at=p_now
-    WHERE status IN ('pending','retry','leased') AND attempts>=20;
+    WHERE status IN ('pending','retry') AND attempts>=20;
   RETURN QUERY WITH candidates AS (
     SELECT j.id FROM public.analytics_intelligence_jobs j
     LEFT JOIN public.analytics_intelligence_requests r ON r.id=j.request_id
@@ -324,11 +324,11 @@ BEGIN
     FROM public.analytics_intelligence_jobs jobs JOIN public.analytics_intelligence_snapshots snapshot ON snapshot.snapshot_id=jobs.report_id
     CROSS JOIN LATERAL jsonb_array_elements(snapshot.suppressions) f(value)
     WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period AND jobs.status='complete';
-    SELECT coalesce(aggregate_suppressions,'[]'::jsonb) || coalesce(jsonb_agg(jsonb_build_object('scope',jobs.scope,'reason',coalesce(jobs.error_code,jobs.status),'coverage','unavailable')),'[]'::jsonb)
+    SELECT coalesce(aggregate_suppressions,'[]'::jsonb) || coalesce(jsonb_agg(jsonb_build_object('rule','collection_health','scope',jobs.scope,'reason','Unavailable '||(jobs.scope->>'kind')||' source: '||coalesce(jobs.scope->>'section',jobs.scope#>>'{query,scope}','all')||' ('||coalesce(jobs.error_code,jobs.status)||')','coverage','unavailable')),'[]'::jsonb)
       INTO aggregate_suppressions FROM public.analytics_intelligence_jobs jobs
       WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period AND jobs.status IN ('unavailable','expired');
     SELECT string_agg((value->>'title') || E'\n' || (value->>'explanation') || E'\n' || (value->>'action'),E'\n\n') INTO brief_body
-    FROM (SELECT value FROM jsonb_array_elements(aggregate_findings) LIMIT 6) shortlist;
+    FROM (SELECT value FROM jsonb_array_elements(aggregate_findings) ORDER BY CASE value->>'severity' WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,value->>'id' LIMIT 6) shortlist;
     brief_body:=left(coalesce(brief_body,'The saved evidence does not support an actionable finding. Review the report limits before interpreting this as quiet traffic.'),11000)||E'\n\nOpen https://analytics.ninochavez.co/ for the full evidence, windows, and limitations.';
     SELECT EXISTS(SELECT 1 FROM jsonb_array_elements(aggregate_findings) f WHERE NOT EXISTS (
       SELECT 1 FROM jsonb_array_elements(coalesce((SELECT b.findings FROM public.analytics_intelligence_briefs b WHERE b.owner_id=j.owner_id AND b.kind=j.kind AND b.period_key<j.intended_period ORDER BY b.period_key DESC LIMIT 1),'[]'::jsonb)) prior
@@ -349,9 +349,13 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.analytics_prepare_intelligence_periods(p_daily_period date,p_weekly_period date,p_standard_scopes jsonb,p_refresh_cadence_seconds integer,p_provider_pending_retry_seconds integer,p_max_catchup_periods integer,p_now timestamptz)
 RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
-DECLARE s jsonb; k text; today date; completed_day date; d date; scheduled_kind text;
+DECLARE s jsonb; k text; today date; completed_day date; d date; scheduled_kind text; exhausted uuid;
 BEGIN
   IF p_now IS NULL OR jsonb_typeof(p_standard_scopes)<>'array' OR p_refresh_cadence_seconds NOT BETWEEN 60 AND 86400 OR p_provider_pending_retry_seconds NOT BETWEEN 30 AND 86400 OR p_max_catchup_periods NOT BETWEEN 1 AND 31 THEN RAISE EXCEPTION 'invalid intelligence period'; END IF;
+  FOR exhausted IN SELECT id FROM public.analytics_intelligence_jobs WHERE attempts>=20 AND (status IN ('pending','retry') OR (status='leased' AND leased_until<p_now)) FOR UPDATE SKIP LOCKED LOOP
+    UPDATE public.analytics_intelligence_jobs SET status='leased' WHERE id=exhausted;
+    PERFORM public.analytics_finish_intelligence_job(exhausted,'retry',NULL,'attempts_exhausted');
+  END LOOP;
   FOR s IN SELECT value FROM jsonb_array_elements(p_standard_scopes) LOOP
     k:=public.analytics_intelligence_scope_key(s);
     IF NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='refresh' AND scope_key=k AND status IN ('pending','leased','retry'))
@@ -390,10 +394,19 @@ END $$;
 
 -- The standalone-target action contract. This function is service-only: the route verifies the owner before
 -- calling it, and no browser role can invoke privileged writes directly.
+CREATE FUNCTION public.analytics_intelligence_incident_scope(p_scope jsonb,p_rule text)
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path=pg_catalog,public AS $$
+ SELECT CASE WHEN p_rule='collection_health' THEN 'collection_health'
+ WHEN p_rule='rendering_download_reliability' THEN 'flow:'||md5(((p_scope->'query')-ARRAY['start','end','measure','compare','compareStart','compareEnd'])::text)
+ ELSE public.analytics_intelligence_scope_key(p_scope) END;
+$$;
+REVOKE ALL ON FUNCTION public.analytics_intelligence_incident_scope(jsonb,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.analytics_intelligence_incident_scope(jsonb,text) TO service_role;
+
 CREATE FUNCTION public.analytics_record_intelligence_action(
   p_owner_id uuid,p_scope_key text,p_kind text,p_finding_id text,p_target jsonb,p_actual_at timestamptz,p_hypothesis text,p_primary_measure text,p_follow_up_at timestamptz,p_note text,p_reverses_action_id uuid,p_change_type text,p_channel text,p_campaign text,p_release text,p_variant text,p_outcome text,p_outcome_count integer,p_observation_days integer,p_target_context jsonb)
 RETURNS public.analytics_intelligence_actions LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
-DECLARE original public.analytics_intelligence_actions%ROWTYPE; result public.analytics_intelligence_actions%ROWTYPE; policy text;
+DECLARE original public.analytics_intelligence_actions%ROWTYPE; result public.analytics_intelligence_actions%ROWTYPE; policy text; incident_scope text;
 BEGIN
   SELECT retention_policy INTO policy FROM public.analytics_intelligence_preferences WHERE owner_id=p_owner_id FOR UPDATE;
   IF coalesce(policy,'undecided')='undecided' THEN RAISE EXCEPTION 'retention decision required before private intelligence writes'; END IF;
@@ -408,6 +421,14 @@ BEGIN
     INSERT INTO public.analytics_intelligence_finding_lifecycle(owner_id,scope_key,finding_id,status,snoozed_until,updated_at)
     VALUES(p_owner_id,original.scope_key,original.finding_id,'open',NULL,clock_timestamp())
     ON CONFLICT(owner_id,scope_key,finding_id) DO UPDATE SET status='open',snoozed_until=NULL,updated_at=excluded.updated_at;
+    SELECT i.scope_key INTO incident_scope FROM public.analytics_intelligence_incidents i
+      JOIN public.analytics_intelligence_snapshots s ON s.snapshot_id=i.opened_snapshot_id
+      CROSS JOIN LATERAL jsonb_array_elements(s.findings) f
+      WHERE i.finding_id=original.finding_id AND (i.scope_key=original.scope_key OR i.scope_key='collection_health' OR i.scope_key=(SELECT public.analytics_intelligence_incident_scope(snap.scope,'rendering_download_reliability') FROM public.analytics_intelligence_snapshot_current c JOIN public.analytics_intelligence_snapshots snap ON snap.snapshot_id=c.snapshot_id WHERE c.scope_key=original.scope_key))
+        AND f->>'id'=i.finding_id AND (f->>'rule'='collection_health' OR (f->>'rule'='rendering_download_reliability' AND f->>'id'<>'download-unknown-terminal'))
+      ORDER BY (i.scope_key=original.scope_key) DESC LIMIT 1 FOR UPDATE OF i;
+    UPDATE public.analytics_intelligence_incidents SET status='open',acknowledged_until=NULL,updated_at=clock_timestamp()
+      WHERE scope_key=incident_scope AND finding_id=original.finding_id AND status='acknowledged';
     RETURN result;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_snapshot_current WHERE scope_key=p_scope_key) THEN RAISE EXCEPTION 'unknown intelligence scope'; END IF;
@@ -422,6 +443,14 @@ BEGIN
     INSERT INTO public.analytics_intelligence_finding_lifecycle(owner_id,scope_key,finding_id,status,snoozed_until,updated_at)
     VALUES(p_owner_id,p_scope_key,p_finding_id,p_kind,CASE WHEN p_kind='snooze' THEN clock_timestamp()+interval '7 days' END,clock_timestamp())
     ON CONFLICT(owner_id,scope_key,finding_id) DO UPDATE SET status=excluded.status,snoozed_until=excluded.snoozed_until,updated_at=excluded.updated_at;
+    SELECT i.scope_key INTO incident_scope FROM public.analytics_intelligence_incidents i
+      JOIN public.analytics_intelligence_snapshots s ON s.snapshot_id=i.opened_snapshot_id
+      CROSS JOIN LATERAL jsonb_array_elements(s.findings) f
+      WHERE i.finding_id=p_finding_id AND (i.scope_key=p_scope_key OR i.scope_key='collection_health' OR i.scope_key=(SELECT public.analytics_intelligence_incident_scope(snap.scope,'rendering_download_reliability') FROM public.analytics_intelligence_snapshot_current c JOIN public.analytics_intelligence_snapshots snap ON snap.snapshot_id=c.snapshot_id WHERE c.scope_key=p_scope_key))
+        AND f->>'id'=i.finding_id AND (f->>'rule'='collection_health' OR (f->>'rule'='rendering_download_reliability' AND f->>'id'<>'download-unknown-terminal'))
+      ORDER BY (i.scope_key=p_scope_key) DESC LIMIT 1 FOR UPDATE OF i;
+    UPDATE public.analytics_intelligence_incidents SET status='acknowledged',acknowledged_until=clock_timestamp()+CASE WHEN p_kind='dismiss' THEN interval '30 days' ELSE interval '7 days' END,updated_at=clock_timestamp()
+      WHERE scope_key=incident_scope AND finding_id=p_finding_id AND status IN ('open','acknowledged');
   END IF;
   RETURN result;
 END $$;
@@ -461,13 +490,16 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.analytics_record_intelligence_lifecycle(p_report_id uuid, p_now timestamptz)
 RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
-DECLARE v_scope text; v_coverage text; v_finding jsonb; v_key text; v_prior public.analytics_intelligence_incidents%ROWTYPE; v_incident public.analytics_intelligence_incidents%ROWTYPE; transition text; owner uuid; brief_id uuid; brief_body text;
+DECLARE v_scope text; v_coverage text; v_evidence jsonb; v_scope_json jsonb; v_source_window jsonb; v_finding jsonb; v_key text; v_rule text; v_operational boolean; v_compatible boolean; v_prior public.analytics_intelligence_incidents%ROWTYPE; v_incident public.analytics_intelligence_incidents%ROWTYPE; owner uuid; brief_id uuid; brief_body text; brief_subject text;
 BEGIN
-  SELECT scope_key,coverage INTO v_scope,v_coverage FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id;
+  SELECT scope_key,coverage,evidence,scope INTO v_scope,v_coverage,v_evidence,v_scope_json FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id;
   IF v_scope IS NULL OR p_now IS NULL THEN RAISE EXCEPTION 'invalid intelligence lifecycle report'; END IF;
+  v_source_window:=jsonb_build_array(jsonb_build_object('snapshotId',p_report_id,'scope',v_scope_json,'cutoff',(SELECT cutoff_at FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id),'timezone',CASE WHEN v_scope_json->>'kind'='gallery' THEN 'America/Chicago' ELSE 'UTC' END,'current',CASE WHEN v_scope_json->>'kind'='gallery' THEN jsonb_build_object('start',v_scope_json#>>'{query,start}','end',v_scope_json#>>'{query,end}') ELSE v_evidence#>'{siteWindows,current}' END,'previous',v_evidence#>'{siteWindows,previous}'));
   FOR v_finding IN SELECT value FROM jsonb_array_elements((SELECT findings FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id)) LOOP
-    -- Delivery health is a shared cause, independent of the currently selected album/date scope.
-    v_key:=CASE WHEN v_finding->>'rule'='collection_health' THEN 'collection_health' ELSE v_scope END;
+    v_rule:=v_finding->>'rule';
+    v_operational:=v_rule='collection_health' OR (v_rule='rendering_download_reliability' AND v_finding->>'id'<>'download-unknown-terminal');
+    -- Collection health is shared by cause; render/download failures remain bound to the exact report scope.
+    v_key:=public.analytics_intelligence_incident_scope(v_scope_json,v_rule);
     IF v_coverage<>'complete' AND v_key<>'collection_health' THEN CONTINUE; END IF;
     SELECT * INTO v_prior FROM public.analytics_intelligence_incidents WHERE scope_key=v_key AND finding_id=v_finding->>'id' FOR UPDATE;
     INSERT INTO public.analytics_intelligence_incidents(scope_key,finding_id,opened_snapshot_id,last_snapshot_id,status,updated_at)
@@ -477,42 +509,59 @@ BEGIN
       last_snapshot_id=excluded.last_snapshot_id,recovered_at=NULL,
       status=CASE WHEN public.analytics_intelligence_incidents.status='acknowledged' AND public.analytics_intelligence_incidents.acknowledged_until>p_now THEN 'acknowledged' ELSE 'open' END,updated_at=p_now
     RETURNING * INTO v_incident;
-    IF v_key='collection_health' AND (v_prior.finding_id IS NULL OR v_prior.status='recovered') THEN
+    IF v_operational AND (v_prior.finding_id IS NULL OR v_prior.status='recovered') THEN
       FOR owner IN SELECT owner_id FROM public.analytics_intelligence_preferences WHERE retention_policy<>'undecided' AND dashboard_enabled LOOP
-        brief_body:=coalesce(v_finding->>'title','A collection diagnostic needs attention')||E'\n'||coalesce(v_finding->>'explanation','')||E'\n'||coalesce(v_finding->>'action','Inspect collection health.')||E'\nThis is a collection incident, not evidence of falling audience activity.';
-        INSERT INTO public.analytics_intelligence_briefs(owner_id,scope_key,snapshot_id,period_key,kind,body,findings,snapshot_ids,incident_key)
-        VALUES(owner,NULL,p_report_id,(p_now AT TIME ZONE 'America/Chicago')::date,'operational',brief_body,jsonb_build_array(v_finding),jsonb_build_array(p_report_id),v_incident.opened_snapshot_id::text||':open')
+        brief_subject:=CASE WHEN v_rule='collection_health' THEN 'Collection needs attention' ELSE 'Visitor flow needs attention' END;
+        brief_body:=coalesce(v_finding->>'title',brief_subject)||E'\n'||coalesce(v_finding->>'explanation','')||E'\n'||coalesce(v_finding->>'action','Inspect the affected flow.')||E'\nThis is an operational incident, not evidence of falling audience activity.';
+        INSERT INTO public.analytics_intelligence_briefs(owner_id,scope_key,snapshot_id,period_key,kind,body,findings,snapshot_ids,source_windows,incident_key)
+        VALUES(owner,NULL,p_report_id,(p_now AT TIME ZONE 'America/Chicago')::date,'operational',brief_body,jsonb_build_array(v_finding),jsonb_build_array(p_report_id),v_source_window,v_incident.opened_snapshot_id::text||':open')
         ON CONFLICT(owner_id,incident_key) WHERE kind='operational' DO NOTHING RETURNING id INTO brief_id;
         IF brief_id IS NOT NULL THEN
           INSERT INTO public.analytics_intelligence_deliveries(brief_id,channel,sender,destination_verified,preference_enabled,idempotency_key,payload)
-          VALUES(brief_id,'dashboard','owned',false,true,'dashboard:'||brief_id::text,jsonb_build_object('subject','Collection needs attention','body',brief_body));
+          VALUES(brief_id,'dashboard','owned',false,true,'dashboard:'||brief_id::text,jsonb_build_object('subject',brief_subject,'body',brief_body));
           INSERT INTO public.analytics_intelligence_deliveries(brief_id,channel,sender,destination_verified,preference_enabled,idempotency_key,payload,destination)
-          SELECT brief_id,'email',p.sender,true,true,'email:'||brief_id::text,jsonb_build_object('subject','Collection needs attention','body',brief_body),jsonb_build_object('channel','email','address',p.destination,'verifiedAt',p.destination_verified_at)
+          SELECT brief_id,'email',p.sender,true,true,'email:'||brief_id::text,jsonb_build_object('subject',brief_subject,'body',brief_body),jsonb_build_object('channel','email','address',p.destination,'verifiedAt',p.destination_verified_at)
           FROM public.analytics_intelligence_preferences p WHERE p.owner_id=owner AND p.external_enabled AND p.destination_verified AND p.destination_verified_at IS NOT NULL AND p.destination IS NOT NULL AND p.sender IN ('owned','posthog_native') ON CONFLICT(idempotency_key) DO NOTHING;
         END IF;
       END LOOP;
     END IF;
   END LOOP;
-  -- Partial or unavailable history alone cannot prove recovery. Nor can a
-  -- different non-health cause recover a global health incident.
+  -- Recovery needs this exact scope (except shared health), complete report coverage,
+  -- and the same compatible provider cohort. An absent cohort is not a zero.
   IF v_coverage<>'complete' THEN RETURN; END IF;
   FOR v_incident IN SELECT * FROM public.analytics_intelligence_incidents i
-    WHERE (i.scope_key=v_scope OR (i.scope_key='collection_health' AND (SELECT evidence ? 'diagnostics' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(evidence->'diagnostics') d WHERE d->>'type' LIKE '%unavailable%') FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id)))
-      AND i.status IN ('open','acknowledged')
-      AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements((SELECT findings FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id)) f WHERE f->>'id'=i.finding_id)
+    WHERE (i.scope_key=v_scope OR i.scope_key='collection_health' OR i.scope_key=public.analytics_intelligence_incident_scope(v_scope_json,'rendering_download_reliability')) AND i.status IN ('open','acknowledged')
     FOR UPDATE LOOP
+    IF EXISTS(SELECT 1 FROM jsonb_array_elements((SELECT findings FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id)) f WHERE f->>'id'=v_incident.finding_id) THEN CONTINUE; END IF;
+    SELECT f->>'rule' INTO v_rule FROM public.analytics_intelligence_snapshots s CROSS JOIN LATERAL jsonb_array_elements(s.findings) f WHERE s.snapshot_id=v_incident.opened_snapshot_id AND f->>'id'=v_incident.finding_id LIMIT 1;
+    v_compatible:=CASE
+      WHEN v_rule='collection_health' THEN jsonb_typeof(v_evidence->'diagnostics')='array' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_evidence->'diagnostics') d WHERE d->>'type' LIKE '%unavailable%')
+      WHEN v_rule='rendering_download_reliability' AND v_incident.finding_id='render-failures' THEN jsonb_typeof(v_evidence->'rendering')='object' AND jsonb_typeof(v_evidence#>'{rendering,observedTerminal}')='number' AND jsonb_typeof(v_evidence#>'{rendering,failed}')='number' AND (v_evidence#>>'{rendering,observedTerminal}')::numeric>=20 AND (v_evidence#>>'{rendering,failed}')::numeric BETWEEN 0 AND 1
+      WHEN v_rule='rendering_download_reliability' AND v_incident.finding_id='download-failures' THEN jsonb_typeof(v_evidence->'download')='object' AND jsonb_typeof(v_evidence#>'{download,requests}')='number' AND jsonb_typeof(v_evidence#>'{download,failed}')='number' AND (v_evidence#>>'{download,requests}')::numeric>=20 AND (v_evidence#>>'{download,failed}')::numeric=0
+      WHEN v_rule='search_usefulness' THEN jsonb_typeof(v_evidence->'search')='object'
+      WHEN v_rule='strong_photo_response' THEN jsonb_typeof(v_evidence->'linkedPhotoResponse')='array' AND jsonb_array_length(v_evidence->'linkedPhotoResponse')>0
+      WHEN v_rule='discovery_friction' THEN jsonb_typeof(v_evidence->'albumDiscovery')='array' AND jsonb_array_length(v_evidence->'albumDiscovery')>0
+      WHEN v_rule IN ('profile_response','writing_demo_response') THEN jsonb_typeof(v_evidence->'siteJourneys')='array' AND jsonb_array_length(v_evidence->'siteJourneys')>0
+      WHEN v_rule='distribution' THEN jsonb_typeof(v_evidence->'distribution')='object'
+      WHEN v_rule='follow_up' THEN jsonb_typeof(v_evidence->'followUp')='object'
+      WHEN v_rule='momentum' THEN jsonb_typeof(v_evidence->'current')='number' AND jsonb_typeof(v_evidence->'previous')='number' AND v_evidence->>'previousCoverage'='complete'
+      ELSE false END;
+    IF v_compatible IS NOT TRUE THEN CONTINUE; END IF;
+    IF v_rule='rendering_download_reliability' AND EXISTS(SELECT 1 FROM public.analytics_intelligence_snapshots prior WHERE prior.snapshot_id=v_incident.last_snapshot_id AND (prior.scope#>>'{query,end}')::date>(v_scope_json#>>'{query,end}')::date) THEN CONTINUE; END IF;
     UPDATE public.analytics_intelligence_incidents SET status='recovered',recovered_at=p_now,last_snapshot_id=p_report_id,updated_at=p_now WHERE scope_key=v_incident.scope_key AND finding_id=v_incident.finding_id;
-    IF v_incident.scope_key='collection_health' THEN
+    v_operational:=v_rule='collection_health' OR (v_rule='rendering_download_reliability' AND v_incident.finding_id<>'download-unknown-terminal');
+    IF v_operational THEN
       FOR owner IN SELECT owner_id FROM public.analytics_intelligence_preferences WHERE retention_policy<>'undecided' AND dashboard_enabled LOOP
-        brief_body:='Collection recovered: '||v_incident.finding_id||E'\nThe same diagnostic is clear in a complete report. This does not establish that audience behavior changed.';
-        INSERT INTO public.analytics_intelligence_briefs(owner_id,scope_key,snapshot_id,period_key,kind,body,snapshot_ids,incident_key)
-        VALUES(owner,NULL,p_report_id,(p_now AT TIME ZONE 'America/Chicago')::date,'operational',brief_body,jsonb_build_array(p_report_id),v_incident.opened_snapshot_id::text||':recovered')
+        brief_subject:=CASE WHEN v_rule='collection_health' THEN 'Collection recovered' ELSE 'Visitor flow recovered' END;
+        brief_body:=brief_subject||E'\nThe same eligible cohort no longer crosses the alert threshold in a complete report. This does not establish that audience behavior changed.';
+        INSERT INTO public.analytics_intelligence_briefs(owner_id,scope_key,snapshot_id,period_key,kind,body,snapshot_ids,source_windows,incident_key)
+        VALUES(owner,NULL,p_report_id,(p_now AT TIME ZONE 'America/Chicago')::date,'operational',brief_body,jsonb_build_array(p_report_id),v_source_window,v_incident.opened_snapshot_id::text||':recovered')
         ON CONFLICT(owner_id,incident_key) WHERE kind='operational' DO NOTHING RETURNING id INTO brief_id;
         IF brief_id IS NOT NULL THEN
           INSERT INTO public.analytics_intelligence_deliveries(brief_id,channel,sender,destination_verified,preference_enabled,idempotency_key,payload)
-          VALUES(brief_id,'dashboard','owned',false,true,'dashboard:'||brief_id::text,jsonb_build_object('subject','Collection recovered','body',brief_body));
+          VALUES(brief_id,'dashboard','owned',false,true,'dashboard:'||brief_id::text,jsonb_build_object('subject',brief_subject,'body',brief_body));
           INSERT INTO public.analytics_intelligence_deliveries(brief_id,channel,sender,destination_verified,preference_enabled,idempotency_key,payload,destination)
-          SELECT brief_id,'email',p.sender,true,true,'email:'||brief_id::text,jsonb_build_object('subject','Collection recovered','body',brief_body),jsonb_build_object('channel','email','address',p.destination,'verifiedAt',p.destination_verified_at)
+          SELECT brief_id,'email',p.sender,true,true,'email:'||brief_id::text,jsonb_build_object('subject',brief_subject,'body',brief_body),jsonb_build_object('channel','email','address',p.destination,'verifiedAt',p.destination_verified_at)
           FROM public.analytics_intelligence_preferences p WHERE p.owner_id=owner AND p.external_enabled AND p.destination_verified AND p.destination_verified_at IS NOT NULL AND p.destination IS NOT NULL AND p.sender IN ('owned','posthog_native') ON CONFLICT(idempotency_key) DO NOTHING;
         END IF;
       END LOOP;

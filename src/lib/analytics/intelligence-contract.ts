@@ -8,7 +8,7 @@ export type IntelligenceScope =
 	| { kind: 'sites'; period: 7 | 30 | 90; section: SiteSection | 'all' };
 
 export type IntelligenceCoverage = 'complete' | 'partial' | 'unavailable';
-export type FindingStatus = 'open' | 'dismissed' | 'snoozed' | 'recorded' | 'recovered';
+export type FindingStatus = 'open' | 'dismissed' | 'snoozed' | 'recorded' | 'recovered' | 'acknowledged';
 export type FindingSeverity = 'high' | 'medium' | 'low';
 export type EvidenceStrength = 'strong' | 'exploratory' | 'limited';
 

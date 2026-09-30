@@ -1,5 +1,5 @@
 {
-  "observedAt": "2026-09-30T07:50:17.376Z",
+  "observedAt": "2026-09-30T08:21:15.168Z",
   "passed": true,
   "environment": "local synthetic Supabase and actual SvelteKit routes",
   "productionTouched": false,

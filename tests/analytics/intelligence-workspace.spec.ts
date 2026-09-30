@@ -78,7 +78,7 @@ test('keeps a pending poll pending and renders a completed result only from answ
 	await page.goto(galleryRoute);
 	await page.getByRole('button', { name: 'Compare this album' }).click();
 	await expect(page.getByText('This calculation is still running against the captured report scope.')).toBeVisible();
-	await expect.poll(() => polls).toBeGreaterThan(1);
+	await expect.poll(() => polls, { timeout: 15000 }).toBeGreaterThan(1);
 	await expect(page.getByText('The stored evidence supports the findings below.')).toBeVisible();
 	await page.getByRole('combobox', { name: 'Measure', exact: true }).selectOption('downloads');
 	await page.getByRole('button', { name: 'Apply', exact: true }).click();

@@ -187,10 +187,16 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 		const latestOutcomes = await loadLatestIntelligenceOutcomes(client, options.ownerId, actions.filter((item) => item.kind === 'record').map((item) => item.id));
 		actions = actions.map((item) => { const latest = latestOutcomes.get(item.id); return latest ? { ...item, outcome: latest.outcome, outcomeCount: latest.outcomeCount } : item; });
 		briefs = safeArray<Record<string, unknown>>(briefRows).map(decodeIntelligenceBrief).filter((item): item is IntelligenceBrief => !!item);
+		const {data: flowKey,error: flowKeyError}=await client.rpc('analytics_intelligence_incident_scope',{p_scope:checked,p_rule:'rendering_download_reliability'});
+		if(flowKeyError || typeof flowKey!=='string') throw new Error('incident state unavailable');
+		const {data: incidents,error: incidentError}=await client.from('analytics_intelligence_incidents').select('finding_id,status,acknowledged_until').in('scope_key',[scopeKey,'collection_health',flowKey]).eq('status','acknowledged');
+		if(incidentError) throw new Error('incident state unavailable');
+		const acknowledged=new Set(safeArray<Record<string,unknown>>(incidents).filter(row=>typeof row.finding_id==='string' && safeInstant(row.acknowledged_until) && Date.parse(String(row.acknowledged_until))>Date.now()).map(row=>row.finding_id));
 		const lifecycle = new Map(safeArray<LifecycleRow>(lifecycleRows).map((row) => [row.finding_id, row]));
 		for (const finding of visible.findings) {
 			const row = lifecycle.get(finding.id);
 			if (row && (row.status === 'dismiss' || row.status === 'snooze') && (!row.snoozed_until || Date.parse(row.snoozed_until) > Date.now())) finding.status = row.status === 'dismiss' ? 'dismissed' : 'snoozed';
+			if(acknowledged.has(finding.id)) finding.status='acknowledged';
 		}
 		const input = decodeInput(snapshot.evidence, checked);
 		if (input) {

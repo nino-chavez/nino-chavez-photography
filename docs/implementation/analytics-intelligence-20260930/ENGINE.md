@@ -74,3 +74,5 @@ filters, ranges, finding references, timestamps, and action ownership are all
 validated at the route boundary.
 
 The final forward migrations have passed isolated SQL and actual local API rehearsals. See the evidence receipts for the tested boundaries. Hosted migration and deployment require their own release receipt. External delivery remains disabled.
+
+Observed failures rank ahead of promotion candidates. Severity, evidence strength and lifecycle stay separate. Rule version 3 stores that ranking. Missing linked evidence remains a suppression, and older saved calculations show their age rather than suggesting they are fresh.

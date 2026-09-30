@@ -16,7 +16,7 @@ It guards every stored response before rendering. Invalid JSON, unknown targets,
 and unsafe evidence links leave the intelligence area unavailable; they never
 become a zero-activity result or a navigation target.
 
-The first three saved findings remain in the first viewport. The rest of the
+The initial list shows up to three saved findings. The rest of the
 page and the remaining pages stay available through accessible controls. Findings
 keep their own evidence windows, coverage, unit, strength, values, limitations,
 and exact report links. The workspace preserves the existing report filters,
@@ -69,15 +69,11 @@ and source-window links when those fields are in the response. The UI does not s
 generic blank-brief message or expose a brief to an anonymous report. It supports
 the older minimal brief response without inventing absent content.
 
-The backend-completion worktree currently accepts the coarse `outcome` field but
-still requires a finding. It must add the declared optional `publicTarget`
-standalone path before that portion of the form can persist. Until then, the
-expanded record form correctly reports a safe save failure rather than silently
-dropping fields.
+The standalone target path is implemented and passed the actual local API rehearsal. Brief history is owner-only, ten rows per page, with three initially shown. Stored dates, timezone, cutoff, suppressions and late delivery remain available through each brief's evidence disclosure. Saved-source links reopen the immutable snapshot for its original scope.
 
 ## Verification boundary
 
-This worker used no server, browser, database, provider, or production resource.
+The initial worker used source-only checks. Parent acceptance subsequently ran the actual local routes, local synthetic PostgreSQL and loaded desktop/mobile screens. The saved frames are labeled synthetic; they do not prove production audience behavior or mail delivery. Production acceptance is recorded separately after deployment.
 The focused Playwright spec covers guarded stored evidence, anonymous privacy,
 pending polling, explicit retention before standalone records, target/window
 payloads, stored brief content, and frozen album question scope. The parent owns

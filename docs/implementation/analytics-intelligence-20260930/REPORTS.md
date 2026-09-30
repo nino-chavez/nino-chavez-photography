@@ -71,3 +71,5 @@ key from storage. It does not guess an email address. A provider throw or
 uncertain response becomes `ambiguous`; it is never blindly resent. A failed
 reconciliation remains unresolved. Native PostHog delivery remains a distinct
 single sender and is suppressed here to prevent a duplicate notification.
+
+Operational failures group by stable cause and eligible flow filters rather than moving date windows. Acknowledge pauses an incident for 30 days; snooze pauses it for 7 days. Undo reopens the incident. Neither acknowledgement nor missing provider evidence claims a repair. Recovery requires complete compatible evidence and a window at least as recent as the last failure. Exhausted crashed jobs finalize their period as unavailable instead of leaving a brief waiting forever.

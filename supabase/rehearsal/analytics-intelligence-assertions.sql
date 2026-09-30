@@ -234,6 +234,54 @@ BEGIN
  IF (SELECT count(*) FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational')<>before_count+2 OR NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE finding_id='collection-health-provider_delivery_failures' AND status='recovered') THEN RAISE EXCEPTION 'verified recovery was lost or repeatedly alerted'; END IF;
 END $$;
 
+-- Render/download failures are operational episodes. Unknown terminal outcomes
+-- stay instrumentation review; acknowledgement is reversible and recovery needs
+-- the same complete scope with the same provider cohort present.
+DO $$
+DECLARE owner uuid := '11111111-1111-4111-8111-111111111111'; scope jsonb := '{"kind":"gallery","query":{"start":"2026-06-01","end":"2026-06-07","measure":"downloads","scope":"all","albumKeys":[],"compare":"previous","traffic":"conservative"}}'; other_scope jsonb := '{"kind":"gallery","query":{"start":"2026-05-24","end":"2026-05-30","measure":"downloads","scope":"all","albumKeys":[],"compare":"previous","traffic":"conservative"}}'; key text; flow_key text; snap uuid; action_id uuid; before_count bigint;
+BEGIN
+ key:=public.analytics_intelligence_scope_key(scope); flow_key:=public.analytics_intelligence_incident_scope(scope,'rendering_download_reliability');
+ SELECT count(*) INTO before_count FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational';
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(key,scope,clock_timestamp(),'complete','[{"id":"download-unknown-terminal","rule":"rendering_download_reliability","title":"Lifecycle instrumentation needs review","target":{"kind":"gallery"}}]','{"download":{"requests":25,"failed":0,"unknownTerminal":4,"handedOff":21}}',2) RETURNING snapshot_id INTO snap;
+ INSERT INTO public.analytics_intelligence_snapshot_current(scope_key,snapshot_id) VALUES(key,snap) ON CONFLICT(scope_key) DO UPDATE SET snapshot_id=excluded.snapshot_id,updated_at=clock_timestamp();
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF (SELECT count(*) FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational')<>before_count THEN RAISE EXCEPTION 'unknown download terminal was alerted as a confirmed visitor failure'; END IF;
+
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(key,scope,clock_timestamp(),'complete','[{"id":"download-failures","rule":"rendering_download_reliability","title":"Recorded download failures need review","explanation":"Two failed requests","action":"Inspect the named flow.","target":{"kind":"gallery"}}]','{"download":{"requests":25,"failed":2,"unknownTerminal":0,"handedOff":23}}',2) RETURNING snapshot_id INTO snap;
+ UPDATE public.analytics_intelligence_snapshot_current SET snapshot_id=snap,updated_at=clock_timestamp() WHERE scope_key=key;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF (SELECT count(*) FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational')<>before_count+1 OR NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE scope_key=flow_key AND finding_id='download-failures' AND status='open') THEN RAISE EXCEPTION 'download failure did not open exactly one operational episode'; END IF;
+
+ SELECT id INTO action_id FROM public.analytics_record_intelligence_action(owner,key,'dismiss','download-failures','{"kind":"gallery"}',NULL,NULL,NULL,NULL,'acknowledged',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'{}');
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE scope_key=flow_key AND finding_id='download-failures' AND status='acknowledged' AND acknowledged_until BETWEEN clock_timestamp()+interval '29 days 23 hours' AND clock_timestamp()+interval '30 days 1 hour') THEN RAISE EXCEPTION 'dismiss did not acknowledge the operational incident for 30 days'; END IF;
+ PERFORM public.analytics_record_intelligence_action(owner,key,'undo',NULL,NULL,NULL,NULL,NULL,NULL,NULL,action_id,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'{}');
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE scope_key=flow_key AND finding_id='download-failures' AND status='open' AND acknowledged_until IS NULL AND recovered_at IS NULL) THEN RAISE EXCEPTION 'undo did not reopen the acknowledged incident'; END IF;
+
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(key,scope,clock_timestamp(),'complete','[]','{}',2) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(public.analytics_intelligence_scope_key(other_scope),other_scope,clock_timestamp(),'complete','[]','{"download":{"requests":25,"failed":0,"unknownTerminal":0,"handedOff":25}}',2) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE scope_key=flow_key AND finding_id='download-failures' AND status='open') THEN RAISE EXCEPTION 'missing or different-scope provider evidence falsely recovered download failure'; END IF;
+
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(key,scope,clock_timestamp(),'complete','[]','{"download":{"requests":25,"failed":0,"unknownTerminal":0,"handedOff":25}}',2) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF (SELECT count(*) FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational')<>before_count+2 OR NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE scope_key=flow_key AND finding_id='download-failures' AND status='recovered') THEN RAISE EXCEPTION 'same-scope verified download recovery was lost or alerted repeatedly'; END IF;
+
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(key,scope,clock_timestamp(),'complete','[{"id":"render-failures","rule":"rendering_download_reliability","title":"Render failures need review","target":{"kind":"gallery"}}]','{"rendering":{"rendered":23,"failed":2,"observedTerminal":25}}',2) RETURNING snapshot_id INTO snap;
+ UPDATE public.analytics_intelligence_snapshot_current SET snapshot_id=snap,updated_at=clock_timestamp() WHERE scope_key=key;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ SELECT id INTO action_id FROM public.analytics_record_intelligence_action(owner,key,'snooze','render-failures','{"kind":"gallery"}',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'{}');
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE scope_key=flow_key AND finding_id='render-failures' AND status='acknowledged' AND acknowledged_until BETWEEN clock_timestamp()+interval '6 days 23 hours' AND clock_timestamp()+interval '7 days 1 hour') THEN RAISE EXCEPTION 'snooze did not acknowledge the operational incident for 7 days'; END IF;
+END $$;
+
 -- Deliberate negative controls prove that these gates can fail.
 DO $$ BEGIN
   PERFORM public.analytics_claim_intelligence_jobs(0,120,clock_timestamp());
@@ -376,4 +424,13 @@ END $$;
 DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='weekly' AND scope->>'kind'='gallery' AND (scope#>>'{query,end}')::date-(scope#>>'{query,start}')::date<>6)
  OR EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='weekly' AND scope->>'kind'='sites' AND scope->>'period'<>'7') THEN RAISE EXCEPTION 'weekly brief used a monthly source window'; END IF;
+END $$;
+
+-- A worker crash on the final attempt still closes the scheduled period.
+DO $$
+DECLARE owner uuid:='11111111-1111-4111-8111-111111111111'; scope jsonb:='{"kind":"sites","period":7,"section":"all"}'; job uuid;
+BEGIN
+ INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,status,attempts,leased_until) VALUES('daily',owner,public.analytics_intelligence_scope_key(scope),scope,current_date-77,'leased',20,clock_timestamp()-interval '1 minute') RETURNING id INTO job;
+ PERFORM public.analytics_prepare_intelligence_periods(NULL,NULL,'[]',900,300,4,clock_timestamp());
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE id=job AND status='unavailable') OR NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='daily' AND period_key=current_date-77 AND jsonb_array_length(suppressions)>0) THEN RAISE EXCEPTION 'exhausted crashed job left its period hanging'; END IF;
 END $$;
