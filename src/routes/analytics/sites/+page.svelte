@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SiteActions from '$lib/components/analytics/SiteActions.svelte';
+	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
 	import { page } from '$app/state';
  import { reportPath } from '$lib/analytics/report-paths';
 	import { SITE_SECTIONS } from '$lib/analytics/site-traffic';
@@ -93,6 +94,7 @@
 			</section>
 		</div>
 		<p class="measurement-note">A page load is a browser measurement, not a person. Entry visits are page loads reached from another site or a direct link. Your own and agent-assisted visits can be included. These counts do not measure reading, clicks, or completed requests.</p>
+		<IntelligenceWorkspace kind="sites" scope={{ kind: 'sites', period: data.period, section: data.section }} owner={false} />
 
 		{#if data.section === 'all'}
 			<section class="section-breakdown" aria-labelledby="section-heading"><div class="section-title"><div><p class="eyebrow">Compare</p><h2 id="section-heading">Where attention went</h2></div><p>Same dates and measure across sections</p></div>

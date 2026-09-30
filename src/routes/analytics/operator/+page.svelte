@@ -9,6 +9,7 @@
 	import AlbumComparisonTable, { type AlbumRow } from '$lib/components/analytics/AlbumComparisonTable.svelte';
 	import AlbumInspector from '$lib/components/analytics/AlbumInspector.svelte';
 	import AnalyticsPreferences from '$lib/components/analytics/AnalyticsPreferences.svelte';
+	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
 	import type { PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: Record<string, unknown> | null } = $props();
@@ -351,6 +352,7 @@
 					<p class="mt-4 text-xs text-charcoal-400">The default report excludes operator, test, known crawler, and suspected automated activity. These counts show every class for the same dates, albums, and measure. Unclassified remains visible and is not labeled human.</p>
 				</section>
 			</div></div>
+			<IntelligenceWorkspace kind="gallery" scope={{ kind: 'gallery', query: report.query }} owner={data.user !== null} />
 			<div class="overview-next">
 				<section class="panel overview-ranking" aria-labelledby="leading-albums-title">
 					<div class="panel-heading"><div><p class="eyebrow">Compare</p><h3 id="leading-albums-title">Albums getting attention</h3></div><a class="text-link" href={sectionHref('albums')}>All albums</a></div>
