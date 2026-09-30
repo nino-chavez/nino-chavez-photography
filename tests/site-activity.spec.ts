@@ -20,18 +20,18 @@ async function fixture(page:Page,options:{linked?:boolean;excluded?:boolean;webd
  await page.waitForTimeout(400);
  return events;
 }
-test('React readiness waits for loaded preferences before consuming the initial view',async({page})=>{
+for(const initialPath of ['/work/blueprint','/photography']) test('React readiness waits for loaded preferences at '+initialPath,async({page})=>{
  let resolvePreferences!:(value:Preferences)=>void;
  const preferences=new Promise<Preferences>(resolve=>{resolvePreferences=resolve;});
- const events=await fixture(page,{react:true,path:'/work/example',preferences});
- await page.evaluate(()=>{document.documentElement.dataset.analyticsPath='/work/example';dispatchEvent(new Event('nino:page-ready'));dispatchEvent(new Event('nino:page-ready'));});
+ const events=await fixture(page,{react:true,path:initialPath,preferences});
+ await page.evaluate(path=>{document.documentElement.dataset.analyticsPath=path;dispatchEvent(new Event('nino:page-ready'));dispatchEvent(new Event('nino:page-ready'));},initialPath);
  expect(events).toHaveLength(0);
  resolvePreferences({linkedAnalytics:false,excludeThisBrowser:false});
  await expect.poll(()=>events.filter(e=>e.event_name==='site_page_viewed').length).toBe(1);
  await page.evaluate(()=>{history.pushState(null,'','/about');document.documentElement.dataset.analyticsPath='/about';dispatchEvent(new Event('nino:page-ready'));});
  await expect.poll(()=>events.filter(e=>e.event_name==='site_page_viewed').length).toBe(2);
 });
-test('delayed excluded preferences do not consume or send the initial view',async({page})=>{
+test('delayed excluded preferences send no actions',async({page})=>{
  let resolvePreferences!:(value:Preferences)=>void;
  const preferences=new Promise<Preferences>(resolve=>{resolvePreferences=resolve;});
  const events=await fixture(page,{react:true,path:'/work/example',preferences});
