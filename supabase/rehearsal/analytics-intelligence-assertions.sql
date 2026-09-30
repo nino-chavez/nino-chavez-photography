@@ -161,6 +161,43 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_deliveries delivery WHERE delivery.id=delivery_id AND delivery.status='ambiguous' AND delivery.attempts=0 AND delivery.error_code='lease_expired') THEN RAISE EXCEPTION 'expired delivery lease was silently re-sent'; END IF;
 END $$;
 
+-- A recent undo cannot retain an older private note past the owner's selected
+-- retention window; deleting the expired parent cascades its reversal safely.
+DO $$
+DECLARE owner uuid := '11111111-1111-4111-8111-111111111111'; scope_key text := public.analytics_intelligence_scope_key('{"kind":"sites","period":7,"section":"all"}'); dismissed uuid; undone uuid;
+BEGIN
+  INSERT INTO public.analytics_intelligence_actions(owner_id,scope_key,kind,finding_id,target,note) VALUES(owner,scope_key,'dismiss','retention-note','{"kind":"site"}','expired private note') RETURNING id INTO dismissed;
+  INSERT INTO public.analytics_intelligence_actions(owner_id,scope_key,kind,finding_id,target,reverses_action_id) VALUES(owner,scope_key,'undo','retention-note','{"kind":"site"}',dismissed) RETURNING id INTO undone;
+  UPDATE public.analytics_intelligence_actions SET created_at=clock_timestamp()-interval '91 days' WHERE id=dismissed;
+  PERFORM public.analytics_cleanup_intelligence_private(clock_timestamp());
+  IF EXISTS (SELECT 1 FROM public.analytics_intelligence_actions WHERE id IN (dismissed,undone)) THEN RAISE EXCEPTION 'recent undo preserved expired private action note'; END IF;
+END $$;
+
+-- Scheduler fairness and terminal brief rules. These assertions inspect real
+-- rows and RPC output, not a mocked client payload.
+DO $$
+DECLARE owner uuid := '11111111-1111-4111-8111-111111111111'; scope_a jsonb := '{"kind":"sites","period":7,"section":"all"}'; scope_b jsonb := '{"kind":"sites","period":30,"section":"all"}'; key_a text; key_b text; request_id uuid; expired_id uuid; first_job uuid; second_job uuid; snap_a uuid; snap_b uuid; delivery jsonb;
+BEGIN
+  key_a:=public.analytics_intelligence_scope_key(scope_a); key_b:=public.analytics_intelligence_scope_key(scope_b);
+  INSERT INTO public.analytics_intelligence_requests(owner_id,scope_key,operation,status,expires_at) VALUES(owner,key_a,'site_retention','pending',clock_timestamp()+interval '10 minutes') RETURNING id INTO request_id;
+  INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,request_id,operation,status,available_at) VALUES('request',owner,key_a,scope_a,request_id,'site_retention','pending',clock_timestamp());
+  INSERT INTO public.analytics_intelligence_requests(owner_id,scope_key,operation,status,expires_at) VALUES(owner,key_b,'site_retention','pending',clock_timestamp()-interval '1 minute') RETURNING id INTO expired_id;
+  INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,request_id,operation,status,available_at) VALUES('request',owner,key_b,scope_b,expired_id,'site_retention','pending',clock_timestamp()-interval '2 minutes');
+  IF NOT EXISTS (SELECT 1 FROM public.analytics_claim_intelligence_jobs(4,120,clock_timestamp()) c WHERE c."requestId"=request_id AND c."ownerId"=owner) THEN RAISE EXCEPTION 'live request was not prioritized'; END IF;
+  IF EXISTS (SELECT 1 FROM public.analytics_intelligence_jobs j WHERE j.request_id=expired_id AND j.status='leased') OR NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_requests WHERE id=expired_id AND status='expired') THEN RAISE EXCEPTION 'expired request was leased'; END IF;
+
+  INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version) VALUES(key_a,scope_a,clock_timestamp(),'complete','[]','{}',1) RETURNING snapshot_id INTO snap_a;
+  INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version) VALUES(key_b,scope_b,clock_timestamp(),'complete','[]','{}',1) RETURNING snapshot_id INTO snap_b;
+  INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,status,leased_until) VALUES('daily',owner,key_a,scope_a,current_date-10000,'leased',clock_timestamp()+interval '2 minutes') RETURNING id INTO first_job;
+  INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,status,leased_until) VALUES('daily',owner,key_b,scope_b,current_date-10000,'leased',clock_timestamp()+interval '2 minutes') RETURNING id INTO second_job;
+  PERFORM public.analytics_finish_intelligence_job(first_job,'complete',snap_a,NULL);
+  IF EXISTS (SELECT 1 FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='daily' AND period_key=current_date-10000) THEN RAISE EXCEPTION 'multi-scope brief emitted early'; END IF;
+  PERFORM public.analytics_finish_intelligence_job(second_job,'complete',snap_b,NULL);
+  IF NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='daily' AND period_key=current_date-10000 AND jsonb_array_length(snapshot_ids)=2) THEN RAISE EXCEPTION 'multi-scope final brief did not await all snapshots'; END IF;
+  SELECT to_jsonb(c) INTO delivery FROM public.analytics_claim_intelligence_deliveries(1,120) c;
+  IF delivery IS NOT NULL AND (NOT (delivery ? 'destinationVerified') OR NOT (delivery ? 'preferenceEnabled') OR NOT (delivery ? 'idempotencyKey') OR NOT (delivery ? 'destination')) THEN RAISE EXCEPTION 'delivery claim lost camel-case or snapshotted destination fields'; END IF;
+END $$;
+
 -- Deliberate negative controls prove that these gates can fail.
 DO $$ BEGIN
   PERFORM public.analytics_claim_intelligence_jobs(0,120,clock_timestamp());

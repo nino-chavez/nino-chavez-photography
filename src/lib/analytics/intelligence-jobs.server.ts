@@ -37,9 +37,11 @@ export type IntelligenceJourneys = (scope: IntelligenceScope) => Promise<Intelli
 /** This allowlist is the provider contract, never a client-supplied operation. */
 export const FIXED_INTELLIGENCE_JOURNEYS = POSTHOG_JOURNEY_REPORTS;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const REFRESH_CADENCE_SECONDS = 15 * 60;
+// The protected endpoint runs every five minutes.  Keep standard refresh work
+// current at that cadence; SQL gives interactive requests first claim.
+const REFRESH_CADENCE_SECONDS = 5 * 60;
 const PROVIDER_PENDING_RETRY_SECONDS = 5 * 60;
-const MAX_CATCHUP_PERIODS = 8;
+const MAX_CATCHUP_PERIODS = 4;
 
 function invalid(name: string): never { throw new Error(`${name} returned an invalid payload`); }
 function object(value: unknown): Record<string, unknown> | null {

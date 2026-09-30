@@ -17,6 +17,13 @@ later day can also carry the same week's weekly key. The database must dedupe
 these candidates and make catch-up bounded. No call may create a future period.
 Late work keeps its intended local period and has `late = true`.
 
+Interactive requests expire after ten minutes and claim ahead of all scheduled
+work. A claim leases no more than four jobs. Current standard refreshes claim
+ahead of older daily or weekly catch-up, so an old backlog cannot indefinitely
+delay current dashboard evidence. Each tick creates only the newest missing
+period in the bounded catch-up horizon, not a job set for every stored custom
+snapshot.
+
 The engine contract owns the standard refresh scopes:
 
 - Gallery: 30 and 90 completed Chicago days.
@@ -42,9 +49,9 @@ deployment receipt.
 
 | RPC | Exact input | Required behavior |
 | --- | --- | --- |
-| `analytics_prepare_intelligence_periods` | `p_daily_period date`, `p_weekly_period date`, `p_standard_scopes jsonb`, `p_refresh_cadence_seconds integer`, `p_provider_pending_retry_seconds integer`, `p_max_catchup_periods integer`, `p_now timestamptz` | Insert only due, non-future daily/weekly candidates; catch up at most the supplied bound; queue the full typed standard set only when its cadence/backoff permits. Create in-dashboard brief work after all eligible scoped snapshot references are available. |
+| `analytics_prepare_intelligence_periods` | `p_daily_period date`, `p_weekly_period date`, `p_standard_scopes jsonb`, `p_refresh_cadence_seconds integer`, `p_provider_pending_retry_seconds integer`, `p_max_catchup_periods integer`, `p_now timestamptz` | Insert only due, non-future daily/weekly candidates from the fixed standard scopes. Gallery jobs use the intended completed Chicago window; site source windows stay explicitly UTC. Catch up only the newest missing bounded period; never copy custom snapshot windows. |
 | `analytics_claim_intelligence_jobs` | `p_limit integer`, `p_lease_seconds integer`, `p_now timestamptz` | Atomically lease at most four jobs. Return strict camel-case rows: `id`, `kind`, `scope`, `ownerId`, `intendedPeriod`, `late`, `requestId`, `operation`. A request row includes only `album_comparison` or `site_retention`, its owner, and its request id. |
-| `analytics_finish_intelligence_job` | `p_job_id uuid`, `p_status text`, `p_report_id uuid null`, `p_error_code text null` | Store the immutable snapshot reference, never `generated_at`. `provider_query_pending` gets the configured backoff. |
+| `analytics_finish_intelligence_job` | `p_job_id uuid`, `p_status text`, `p_report_id uuid null`, `p_error_code text null` | Store the immutable snapshot reference, never `generated_at`. `provider_query_pending` gets the configured backoff. A final brief waits for every scoped job, or records terminal unavailable scopes and their limits rather than hanging. |
 | `analytics_record_intelligence_lifecycle` | `p_report_id uuid`, `p_now timestamptz` | Read exactly that snapshot. Keep one incident per cause and a recovery on that same incident; it does not send. |
 | `analytics_claim_intelligence_deliveries` | `p_limit integer`, `p_lease_seconds integer` | Return delivery rows with `destination` (`channel`, `address`, `verifiedAt`) as well as verification/preference/sender/idempotency metadata. A daily or weekly owner brief aggregates eligible same-snapshot references, source windows/timezones, and suppressions. |
 | `analytics_finish_intelligence_delivery` | `p_delivery_id uuid`, `p_status text`, `p_error_code text null`, `p_provider_message_id text null` | `accepted` means provider acceptance, not inbox delivery. |

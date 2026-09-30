@@ -337,20 +337,24 @@ BEGIN
   UPDATE public.analytics_intelligence_jobs SET status=CASE WHEN p_status='complete' THEN 'complete' WHEN attempts>=20 THEN 'unavailable' ELSE 'retry' END,
     report_id=coalesce(p_report_id,report_id),error_code=CASE WHEN p_status='complete' THEN NULL ELSE coalesce(p_error_code,'intelligence_refresh_unavailable') END,
     leased_until=NULL,available_at=CASE WHEN p_status='complete' THEN available_at ELSE clock_timestamp()+make_interval(secs=>delay_seconds) END,updated_at=clock_timestamp() WHERE id=p_job_id;
-  IF p_status='complete' AND j.kind IN ('daily','weekly') AND j.owner_id IS NOT NULL THEN
-    -- Publish one final brief only after every scoped job for this period finishes.
-    IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE owner_id=j.owner_id AND kind=j.kind AND intended_period=j.intended_period AND status<>'complete') THEN RETURN; END IF;
+  IF j.kind IN ('daily','weekly') AND j.owner_id IS NOT NULL THEN
+    -- Publish once every scoped job is terminal.  A bounded unavailable scope is
+    -- named in the immutable brief; it must not make the period hang forever.
+    IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE owner_id=j.owner_id AND kind=j.kind AND intended_period=j.intended_period AND status NOT IN ('complete','unavailable','expired')) THEN RETURN; END IF;
     SELECT coalesce(jsonb_agg(DISTINCT f.value),'[]'::jsonb) INTO aggregate_findings
     FROM public.analytics_intelligence_jobs jobs JOIN public.analytics_intelligence_snapshots snapshot ON snapshot.snapshot_id=jobs.report_id
     CROSS JOIN LATERAL jsonb_array_elements(snapshot.findings) f(value)
-    WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period;
+    WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period AND jobs.status='complete';
     SELECT coalesce(jsonb_agg(DISTINCT jobs.report_id),'[]'::jsonb),coalesce(jsonb_agg(DISTINCT jsonb_build_object('scope',snapshot.scope,'cutoff',snapshot.cutoff_at,'timezone',CASE WHEN snapshot.scope->>'kind'='gallery' THEN 'America/Chicago' ELSE 'UTC' END)),'[]'::jsonb)
     INTO aggregate_ids,aggregate_windows FROM public.analytics_intelligence_jobs jobs JOIN public.analytics_intelligence_snapshots snapshot ON snapshot.snapshot_id=jobs.report_id
-    WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period;
+    WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period AND jobs.status='complete';
     SELECT coalesce(jsonb_agg(DISTINCT f.value),'[]'::jsonb) INTO aggregate_suppressions
     FROM public.analytics_intelligence_jobs jobs JOIN public.analytics_intelligence_snapshots snapshot ON snapshot.snapshot_id=jobs.report_id
     CROSS JOIN LATERAL jsonb_array_elements(snapshot.suppressions) f(value)
-    WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period;
+    WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period AND jobs.status='complete';
+    SELECT coalesce(aggregate_suppressions,'[]'::jsonb) || coalesce(jsonb_agg(jsonb_build_object('scope',jobs.scope,'reason',coalesce(jobs.error_code,jobs.status),'coverage','unavailable')),'[]'::jsonb)
+      INTO aggregate_suppressions FROM public.analytics_intelligence_jobs jobs
+      WHERE jobs.owner_id=j.owner_id AND jobs.kind=j.kind AND jobs.intended_period=j.intended_period AND jobs.status IN ('unavailable','expired');
     SELECT string_agg((value->>'title') || E'\n' || (value->>'explanation') || E'\n' || (value->>'action'),E'\n\n') INTO brief_body
     FROM (SELECT value FROM jsonb_array_elements(aggregate_findings) LIMIT 6) shortlist;
     brief_body:=left(coalesce(brief_body,'The saved evidence does not support an actionable finding. Review the report limits before interpreting this as quiet traffic.'),11000)||E'\n\nOpen https://analytics.ninochavez.co/ for the full evidence, windows, and limitations.';
@@ -556,6 +560,79 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.analytics_queue_intelligence_request(uuid,jsonb,text,timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.analytics_queue_intelligence_request(uuid,jsonb,text,timestamptz) TO service_role;
+
+-- The worker wakes frequently, so the queue itself owns fairness.  A live
+-- request is always ahead of scheduled work; current standard refreshes are
+-- ahead of old brief catch-up.  An expired request can never lease its job.
+CREATE OR REPLACE FUNCTION public.analytics_claim_intelligence_jobs(p_limit integer, p_lease_seconds integer, p_now timestamptz)
+RETURNS TABLE("id" uuid,"kind" text,"scope" jsonb,"ownerId" uuid,"intendedPeriod" date,"late" boolean,"requestId" uuid,"operation" text)
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF p_limit NOT BETWEEN 1 AND 4 OR p_lease_seconds NOT BETWEEN 30 AND 900 OR p_now IS NULL THEN RAISE EXCEPTION 'invalid intelligence job claim'; END IF;
+  UPDATE public.analytics_intelligence_requests SET status='expired',updated_at=p_now
+    WHERE status IN ('pending','leased') AND expires_at<=p_now;
+  UPDATE public.analytics_intelligence_jobs j SET status='expired',leased_until=NULL,error_code='request_expired',updated_at=p_now
+    FROM public.analytics_intelligence_requests r WHERE j.request_id=r.id AND r.status='expired' AND j.status IN ('pending','retry','leased');
+  UPDATE public.analytics_intelligence_jobs SET status='unavailable',error_code='attempts_exhausted',leased_until=NULL,updated_at=p_now
+    WHERE status IN ('pending','retry','leased') AND attempts>=20;
+  RETURN QUERY WITH candidates AS (
+    SELECT j.id FROM public.analytics_intelligence_jobs j
+    LEFT JOIN public.analytics_intelligence_requests r ON r.id=j.request_id
+    WHERE ((j.status IN ('pending','retry') AND j.available_at<=p_now) OR (j.status='leased' AND j.leased_until<p_now))
+      AND j.attempts<20 AND (j.kind<>'request' OR (r.status='pending' AND r.expires_at>p_now))
+    ORDER BY CASE WHEN j.kind='request' THEN 0 WHEN j.kind='refresh' THEN 1 ELSE 2 END,
+      CASE WHEN j.kind IN ('daily','weekly') THEN j.intended_period END DESC NULLS LAST, j.available_at, j.created_at
+    FOR UPDATE OF j SKIP LOCKED LIMIT p_limit
+  ), claimed AS (
+    UPDATE public.analytics_intelligence_jobs j SET status='leased',leased_until=p_now+make_interval(secs=>p_lease_seconds),attempts=j.attempts+1,updated_at=p_now
+    FROM candidates c WHERE j.id=c.id RETURNING j.*
+  ), request_leases AS (
+    UPDATE public.analytics_intelligence_requests r SET status='leased',updated_at=p_now FROM claimed c
+    WHERE r.id=c.request_id AND r.status='pending' AND r.expires_at>p_now
+  ) SELECT c.id,c.kind,c.scope,c.owner_id,c.intended_period,
+    (c.intended_period IS NOT NULL AND p_now>(c.intended_period::timestamp AT TIME ZONE 'America/Chicago')+interval '8 hours'),c.request_id,c.operation FROM claimed c;
+END $$;
+
+-- Create one bounded next period per schedule, from the engine's declared
+-- standard scopes only. Gallery periods are immutable completed Chicago
+-- windows; site scopes retain their own explicitly UTC rolling source window.
+CREATE OR REPLACE FUNCTION public.analytics_prepare_intelligence_periods(p_daily_period date,p_weekly_period date,p_standard_scopes jsonb,p_refresh_cadence_seconds integer,p_provider_pending_retry_seconds integer,p_max_catchup_periods integer,p_now timestamptz)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+DECLARE s jsonb; k text; today date; completed_day date; d date; scheduled_kind text;
+BEGIN
+  IF p_now IS NULL OR jsonb_typeof(p_standard_scopes)<>'array' OR p_refresh_cadence_seconds NOT BETWEEN 60 AND 86400 OR p_provider_pending_retry_seconds NOT BETWEEN 30 AND 86400 OR p_max_catchup_periods NOT BETWEEN 1 AND 31 THEN RAISE EXCEPTION 'invalid intelligence period'; END IF;
+  FOR s IN SELECT value FROM jsonb_array_elements(p_standard_scopes) LOOP
+    k:=public.analytics_intelligence_scope_key(s);
+    IF NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='refresh' AND scope_key=k AND status IN ('pending','leased','retry'))
+       AND NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_snapshot_current WHERE scope_key=k AND updated_at>p_now-make_interval(secs=>p_refresh_cadence_seconds)) THEN
+      INSERT INTO public.analytics_intelligence_jobs(kind,scope_key,scope,available_at) VALUES('refresh',k,s,p_now) ON CONFLICT DO NOTHING;
+    END IF;
+  END LOOP;
+  UPDATE public.analytics_intelligence_requests SET status='expired',updated_at=p_now WHERE status IN ('pending','leased') AND expires_at<=p_now;
+  UPDATE public.analytics_intelligence_jobs j SET status='expired',leased_until=NULL,error_code='request_expired',updated_at=p_now FROM public.analytics_intelligence_requests r WHERE j.request_id=r.id AND r.status='expired' AND j.status IN ('pending','retry','leased');
+  today := (p_now AT TIME ZONE 'America/Chicago')::date; completed_day:=today-1;
+  FOREACH scheduled_kind IN ARRAY ARRAY['daily','weekly'] LOOP
+    d:=CASE WHEN scheduled_kind='daily' THEN least(coalesce(p_daily_period,completed_day),completed_day) ELSE least(coalesce(p_weekly_period,completed_day),completed_day) END;
+    IF scheduled_kind='weekly' THEN d:=d-extract(isodow FROM d)::integer+1; END IF;
+    -- Do not manufacture a whole backlog: choose only the newest missing period
+    -- in the allowed catch-up horizon. Later ticks continue from there.
+    SELECT candidate INTO d FROM generate_series(d, greatest(d-p_max_catchup_periods+1,date '2000-01-01'), '-1 day') candidate
+      WHERE NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_briefs b JOIN public.analytics_intelligence_schedules sch ON sch.owner_id=b.owner_id WHERE b.kind=scheduled_kind AND b.period_key=candidate::date AND ((scheduled_kind='daily' AND sch.daily_enabled) OR (scheduled_kind='weekly' AND sch.weekly_enabled)))
+      ORDER BY candidate DESC LIMIT 1;
+    IF d IS NULL THEN CONTINUE; END IF;
+    FOR s IN SELECT value FROM jsonb_array_elements(p_standard_scopes) LOOP
+      -- A daily brief delivered on d contains the completed day ending d-1.
+      IF s->>'kind'='gallery' THEN
+        s:=jsonb_set(jsonb_set(s,'{query,end}',to_jsonb((d-1)::text)),'{query,start}',to_jsonb((d-1-((s#>>'{query,end}')::date-(s#>>'{query,start}')::date))::text));
+      END IF;
+      k:=public.analytics_intelligence_scope_key(s);
+      INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,available_at)
+      SELECT scheduled_kind,sch.owner_id,k,s,d,p_now FROM public.analytics_intelligence_schedules sch
+      WHERE (scheduled_kind='daily' AND sch.daily_enabled) OR (scheduled_kind='weekly' AND sch.weekly_enabled)
+      ON CONFLICT DO NOTHING;
+    END LOOP;
+  END LOOP;
+END $$;
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;
