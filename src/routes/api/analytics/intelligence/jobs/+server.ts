@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 			if (scope.query.albumKeys.some(key => !keys.includes(key))) throw new Error('requested album is not public');
 			return keys;
 		};
-		const jobs = await runIntelligenceJobs(client, { refreshIntelligence }, async (scope) => loadFixedIntelligenceJourneys(scope, {
+		const jobs = await runIntelligenceJobs(client, { refreshIntelligence }, async (scope) => !transport ? { journeys: {}, providerQueries: 0, providerPending: false } : loadFixedIntelligenceJourneys(scope, {
 			gallery: async (report, current) => {
 				const albumKeys = await keysFor(current);
 				const query = current.query;
@@ -70,7 +70,7 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 		}), { now, deadlineMs: 25_000, concurrency: 2 });
 		const provider = createOwnedIntelligenceDeliveryProvider({
 			enabled: env.ANALYTICS_INTELLIGENCE_DELIVERY_ENABLED === 'true',
-			endpoint: env.ANALYTICS_INTELLIGENCE_DELIVERY_ENDPOINT,
+			from: env.ANALYTICS_INTELLIGENCE_EMAIL_FROM,
 			token: env.ANALYTICS_INTELLIGENCE_DELIVERY_TOKEN
 		});
 		const delivery = await deliverIntelligenceBriefs(client, provider);

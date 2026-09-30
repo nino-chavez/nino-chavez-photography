@@ -28,8 +28,11 @@ export const POST: RequestHandler = async ({ cookies, request, url }) => {
 	if (request.headers.get('origin') !== (dev ? url.origin : 'https://analytics.ninochavez.co')) throw error(403, 'Use this reporting page to change preferences.');
 	const owner = await intelligenceOwner(cookies);
 	if (!owner.owner || !owner.userId) throw error(403, 'Owner sign-in is required.');
-	const raw = await request.text();
-	if (new TextEncoder().encode(raw).byteLength > 1024) throw error(413, 'The request is too large.');
+	const reader = request.body?.getReader(); if (!reader) throw error(400, 'Choose valid reporting preferences.');
+	let total = 0; const chunks: Uint8Array[] = [];
+	for (;;) { const part = await reader.read(); if (part.done) break; total += part.value.byteLength; if (total > 1024) { await reader.cancel(); throw error(413, 'The request is too large.'); } chunks.push(part.value); }
+	const bytes = new Uint8Array(total); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+	const raw = new TextDecoder().decode(bytes);
 	let value: unknown; try { value = JSON.parse(raw); } catch { throw error(400, 'Choose valid reporting preferences.'); }
 	const parsed = parseIntelligencePreferences(value);
 	if (!parsed) throw error(400, 'Choose a retention period and reporting schedule.');

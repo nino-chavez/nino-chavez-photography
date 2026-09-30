@@ -70,21 +70,17 @@ would hide the report evidence and turn an empty prompt into the starting point.
 - Synthetic fixtures must say “Synthetic” and may not imply hosted evidence.
 - A result may be unavailable or insufficient. Neither state is a zero.
 
-## Integration limits, kept visible
+## Implemented integration
 
-The action endpoint currently records a finding-linked action with actual time,
-hypothesis, primary measure, optional note, and its server-set follow-up time.
-It does not yet accept a standalone promotion, change, or outcome record, or
-separate target type, observation window, channel/tag, or release fields. The
-dashboard names that limit in the form instead of presenting unsupported fields
-as saved data.
+The owner can record a standalone change or attach it to a finding. Each record
+keeps its actual action time, public target, hypothesis, declared measure,
+observation window, and optional channel, campaign, release, and variant.
+Coarse inquiry or booking counts can be appended later. Zero remains a known
+count; a missing count remains unknown. Public readers receive none of this
+private history.
 
-Brief records currently contain only `id`, `periodKey`, `kind`, and `createdAt`.
-The dashboard labels those fields exactly and sends the reader to the saved
-findings for the current scope. A separate brief body, title, or finding list
-must be added to the contract before the UI can present one as stored content.
-
-Pending assistant work is a bounded request for the captured scope. The UI
-polls the `{ status, answer }` result with backoff for at most two minutes,
-cancels on scope change or unmount, and keeps the original answer and its scope
-visible until an explicit rerun is requested.
+Daily and weekly briefs keep their body, findings, and immutable source snapshot
+references. A new scope can be queued explicitly; a pending assistant calculation
+polls with backoff for up to two minutes. Its answer stays tied to the captured
+scope until the owner asks to rerun it. External delivery stays off until a
+verified destination and explicit activation exist.

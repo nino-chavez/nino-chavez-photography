@@ -1,5 +1,5 @@
 interface Env { ANALYTICS_INTELLIGENCE_ENABLED?: string; ANALYTICS_POSTHOG_SCHEDULE_TOKEN?: string; }
-const ENDPOINT = 'https://ninochavez.co/photography/api/analytics/intelligence/jobs';
+const ENDPOINT = 'https://analytics.ninochavez.co/photography/api/analytics/intelligence/jobs';
 
 /** The database owns 08:00 Chicago and period deduplication; UTC cron only wakes bounded work. */
 export async function runIntelligenceWorker(env: Env, fetcher: typeof fetch = fetch): Promise<{ state: 'disabled' | 'ran' }> {

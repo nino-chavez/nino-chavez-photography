@@ -42,8 +42,8 @@ test('shows the target and complete stored evidence without flattening windows',
 	await page.getByText('Read exact evidence').click();
 	await expect(page.getByText('Current: 2026-09-01 to 2026-09-07. Previous: 2026-08-25 to 2026-08-31')).toBeVisible();
 	await expect(page.getByText('eligible album opens')).toBeVisible();
-	await expect(page.getByText('8')).toBeVisible();
-	await expect(page.getByText('42')).toBeVisible();
+	await expect(page.getByText('8', { exact: true })).toBeVisible();
+	await expect(page.getByText('42', { exact: true })).toHaveCount(2);
 	await expect(page.getByText('Comparable history is still limited.')).toBeVisible();
 });
 
@@ -73,7 +73,7 @@ test('keeps a pending poll pending and renders a completed result only from answ
 test('reports a safe unavailable state when the intelligence response is invalid', async ({ page }) => {
 	await page.route('**/api/analytics/intelligence**', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ provider: 'private detail' }) }));
 	await page.goto(galleryRoute);
-	await expect(page.getByText('Intelligence is unavailable')).toBeVisible();
+	await expect(page.getByText('Intelligence is unavailable', { exact: true })).toBeVisible();
 	await expect(page.getByText('Saved intelligence is unavailable right now. The rest of this report is still usable.')).toBeVisible();
 });
 
@@ -104,7 +104,8 @@ test('requires an explicit private-retention choice before a standalone change a
 	await page.getByLabel('What do you expect to change?').fill('A verified promotion should increase album opens.');
 	await page.getByRole('button', { name: 'Record actual change' }).click();
 	await expect(page.getByText('Choose private record retention in Reporting settings before saving a private action.')).toBeVisible();
-	await page.getByLabel('90 days').check();
+	await page.getByText('Reporting settings', { exact: true }).click();
+	await page.getByRole('radio', { name: '90 days', exact: true }).check();
 	await page.getByRole('button', { name: 'Save private settings' }).click();
 	await page.getByRole('button', { name: 'Record actual change' }).click();
 	await expect.poll(() => actionPayload).not.toBeNull();
@@ -125,5 +126,5 @@ test('renders stored private brief content and freezes an album question scope',
 	await expect(page.getByText('Inspect the album before choosing a promotion.')).toBeVisible();
 	await page.getByRole('button', { name: 'Compare this album' }).click();
 	await expect.poll(() => questionScope).not.toBeNull();
-	expect(questionScope).toMatchObject({ kind: 'gallery', query: { scope: 'album', albumKeys: ['fall-classic'] } });
+	expect(questionScope).toMatchObject({ kind: 'gallery', query: { scope: 'album', albumKeys: ['alpha'] } });
 });

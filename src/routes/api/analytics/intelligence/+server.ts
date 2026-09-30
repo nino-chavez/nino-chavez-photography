@@ -29,6 +29,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const scope = parseScopeParam(url.searchParams.get('scope'));
 	if (!scope) plain(400, 'invalid analytics scope');
 	const page = Number(url.searchParams.get('page') ?? '0');
+	const actionsPage = Number(url.searchParams.get('actionsPage') ?? '0');
+	if (!Number.isSafeInteger(actionsPage) || actionsPage < 0 || actionsPage > 1000) plain(400, 'invalid private history page');
 	if (!Number.isSafeInteger(page) || page < 0 || page > 1000) plain(400, 'invalid analytics page');
 	const owner = await intelligenceOwner(cookies);
 	const admin = createSupabaseAdminClient();
@@ -38,7 +40,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		try { return json(await loadIntelligenceRequest(admin, owner.userId, scope, requestId), { headers: { 'cache-control': 'no-store' } }); } catch { return plain(404, 'analytics request unavailable'); }
 	}
 	try {
-		const report = await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page });
+		const report = await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page, actionsPage });
 		if (!owner.owner) { report.actions = []; report.briefs = []; report.findings = report.findings.map(({ status: _status, ...finding }) => ({ ...finding, status: 'open' })); }
 		return json(report, { headers: { 'cache-control': 'no-store' } });
 	} catch { return plain(503, 'analytics report unavailable'); }

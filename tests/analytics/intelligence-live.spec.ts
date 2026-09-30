@@ -1,0 +1,22 @@
+import {test,expect} from '@playwright/test';
+import {readFileSync,existsSync,mkdirSync} from 'node:fs';
+const folder='docs/implementation/analytics-intelligence-20260930/evidence';
+for(const size of [{name:'desktop',width:1280,height:900},{name:'mobile',width:390,height:844}]) test(`actual owner workflow and ${size.name} layout`,async({page})=>{
+ const cookiePath='.temp/analytics-parent-local-cookies.json';test.skip(!existsSync(cookiePath),'identified local owner fixture required');
+ const cookies=JSON.parse(readFileSync(cookiePath,'utf8'));await page.context().addCookies(cookies.map((c:any)=>({name:c.name,value:c.value,domain:'127.0.0.1',path:'/',secure:false,httpOnly:false,sameSite:'Lax' as const})));
+ await page.setViewportSize({width:size.width,height:size.height});
+ await page.goto('/photography/analytics/operator');
+ await expect(page.getByRole('heading',{name:'Worth your attention',exact:true})).toBeVisible();
+ await expect(page.getByText('Saved intelligence is unavailable right now.',{exact:false})).toHaveCount(0);
+ await page.getByText('Reporting settings',{exact:true}).click();
+ await expect(page.getByRole('radio',{name:'90 days',exact:true})).toBeChecked();
+ await page.getByRole('button',{name:'Record a change',exact:true}).click();
+ await expect(page.getByLabel('Actual action time',{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth)).toBe(false);
+ mkdirSync(folder,{recursive:true});
+ await page.screenshot({path:`${folder}/owner-${size.name}-overview.png`,fullPage:true});
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.getByRole('link',{name:'Albums',exact:true}).click();
+ await expect(page.getByRole('button',{name:/Alpha Invitational/}).first()).toBeVisible();
+ await page.screenshot({path:`${folder}/owner-${size.name}-albums.png`,fullPage:true});
+});

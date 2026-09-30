@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { comparisonWindow } from './report-contract';
 import type { IntelligenceScope } from './intelligence-contract';
 
 export type AlbumFact = { album_key: string; album_name?: string | null; sport: string | null; event_type: string | null; event_date: string | null; division: string | null; level: string | null; visibility?: string | null };
@@ -25,6 +26,44 @@ const median = (values: number[]): number | null => {
 };
 const slugify = (value: string) => value.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 const link = (fact: AlbumFact) => `/albums/${encodeURIComponent(`${slugify(fact.album_name?.trim() || fact.album_key)}-${fact.album_key}`)}`;
+
+/** Stored answers never supply links or catalogue authority to a public read. */
+export async function projectAlbumComparison(client: SupabaseClient, scope: IntelligenceScope, value: unknown): Promise<AlbumComparison> {
+	if (scope.kind !== 'gallery' || scope.query.albumKeys.length !== 1 || !value || typeof value !== 'object') return unavailable('The saved comparison is unavailable.');
+	const row = value as AlbumComparison;
+	const validCount = (v: unknown) => v === null || (typeof v === 'number' && Number.isFinite(v) && v >= 0);
+	if (!row.target || row.target.albumKey !== scope.query.albumKeys[0] || !Array.isArray(row.peers) || row.peers.length > 25
+		|| !Array.isArray(row.criteria) || !row.criteria.every((v) => typeof v === 'string')
+		|| ![row.target, ...row.peers].every((v) => typeof v?.albumKey === 'string' && validCount(v.current) && validCount(v.previous))
+		|| !row.windows || row.windows.current.start !== scope.query.start || row.windows.current.end !== scope.query.end
+		|| row.units !== scope.query.measure) return unavailable('The saved comparison does not match this report.');
+	const keys = [row.target.albumKey, ...row.peers.map((v) => v.albumKey)];
+	if (new Set(keys).size !== keys.length) return unavailable('The saved comparison contains duplicate albums.');
+	const [facts, settings] = await Promise.all([
+		client.from('albums').select('album_key, album_name, sport, event_type, event_date, division, level').in('album_key', keys),
+		client.from('album_settings').select('album_key, visibility').in('album_key', keys)
+	]);
+	if (facts.error || settings.error) return unavailable('Current public catalogue visibility could not be checked.');
+	const hidden = new Set((settings.data ?? []).filter((v) => v.visibility === 'unlisted').map((v) => v.album_key));
+	const byKey = new Map<string, AlbumFact>((facts.data ?? []).map((v) => [v.album_key, v as AlbumFact]));
+	if (keys.some((key) => !byKey.has(key) || hidden.has(key))) return unavailable('An album in this saved comparison is no longer public. Run a new comparison.');
+	const currentFacts = comparableAlbums(byKey.get(keys[0])!, keys.slice(1).map((key) => byKey.get(key)!));
+	if (JSON.stringify(currentFacts.criteria) !== JSON.stringify(row.criteria) || currentFacts.comparableAlbumKeys.length !== row.peers.length) return unavailable('Known album facts have changed since this comparison. Run a new comparison.');
+	const project = (v: NonNullable<AlbumComparison['target']>) => ({ albumKey: v.albumKey, current: v.current, previous: v.previous, href: link(byKey.get(v.albumKey)!) });
+	const peers = row.peers.map(project);
+	const values = row.coverage?.current === 'complete' ? peers.flatMap((v) => v.current === null ? [] : [v.current]) : [];
+	const age = row.publicationAge;
+	const validAge = age && typeof age.available === 'boolean' && Number.isSafeInteger(age.days) && age.days > 0
+		&& Number.isSafeInteger(age.sampleSize) && age.sampleSize >= 0 && age.sampleSize <= peers.length && validCount(age.target) && validCount(age.median);
+	return {
+		available: row.available === true && values.length > 0, target: project(row.target), peers,
+		criteria: currentFacts.criteria, comparableAlbumKeys: currentFacts.comparableAlbumKeys, excluded: currentFacts.excluded,
+		median: median(values), sampleSize: values.length, units: scope.query.measure,
+		coverage: row.coverage, windows: { current: { start: scope.query.start, end: scope.query.end }, previous: comparisonWindow(scope.query) },
+		...(validAge ? { publicationAge: { available: age.available && age.sampleSize >= 3, days: age.days, sampleSize: age.sampleSize, target: age.target, median: age.median, ...(typeof age.reason === 'string' ? { reason: age.reason } : {}) } } : {}),
+		...(values.length < 3 ? { reason: 'Fewer than three complete public peers are available; values are shown without a peer ranking.' } : {})
+	};
+}
 type ComparisonReport = { coverage: 'complete' | 'partial' | 'unavailable'; previousCoverage: 'complete' | 'partial' | 'unavailable'; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null }>; publicationAge: { available: boolean; days: number; albums: Array<{ albumKey: string; coverage: 'complete' | 'partial' | 'unavailable'; total: number | null }> } };
 type ReportLoader = (client: SupabaseClient, query: Extract<IntelligenceScope, { kind: 'gallery' }>['query']) => Promise<ComparisonReport>;
 async function scheduledReport(client: SupabaseClient, query: Extract<IntelligenceScope, { kind: 'gallery' }>['query']): Promise<ComparisonReport> {
@@ -80,8 +119,10 @@ export async function calculateAlbumComparison(client: SupabaseClient, scope: In
 	const selectedKeys = [targetKey, ...selected.comparableAlbumKeys];
 	// The scheduled report keeps the requested calendar window for `albums` while
 	// adding the exact recorded-publication-age series in the same bounded RPC.
-	const query = { ...scope.query, scope: 'selected' as const, albumKeys: selectedKeys, compare: 'publication_age' as const, compareStart: undefined, compareEnd: undefined };
-	const report = await (options.loadReport ?? scheduledReport)(client, query);
+	const query = { ...scope.query, scope: 'selected' as const, albumKeys: selectedKeys };
+	const loadReport = options.loadReport ?? scheduledReport;
+	const report = await loadReport(client, query);
+	const ageReport = query.compare === 'publication_age' ? report : await loadReport(client, { ...query, compare: 'publication_age', compareStart: undefined, compareEnd: undefined });
 	const rows = new Map(report.albums.map((row) => [row.albumKey, row]));
 	const rowFor = (albumKey: string) => {
 		const row = rows.get(albumKey); const fact = factsByKey.get(albumKey)!;
@@ -89,18 +130,18 @@ export async function calculateAlbumComparison(client: SupabaseClient, scope: In
 	};
 	const peerRows = selected.comparableAlbumKeys.map(rowFor);
 	const currentPeerValues = report.coverage === 'complete' ? peerRows.map((row) => row.current).filter((value): value is number => value !== null) : [];
-	const publicationRows = report.publicationAge.albums;
+	const publicationRows = ageReport.publicationAge.albums;
 	const publicationByKey = new Map(publicationRows.map((row) => [row.albumKey, row]));
 	const targetAge = publicationByKey.get(targetKey);
-	const peerAgeValues = report.publicationAge.available && targetAge?.coverage === 'complete'
+	const peerAgeValues = ageReport.publicationAge.available && targetAge?.coverage === 'complete'
 		? selected.comparableAlbumKeys.map((key) => publicationByKey.get(key)).filter((row): row is NonNullable<typeof row> => row?.coverage === 'complete' && row.total !== null).map((row) => row.total!) : [];
-	const publicationAge = report.publicationAge.available
-		? { available: peerAgeValues.length >= 3 && targetAge?.coverage === 'complete', days: report.publicationAge.days, sampleSize: peerAgeValues.length, target: targetAge?.coverage === 'complete' ? targetAge.total : null, median: median(peerAgeValues), ...(peerAgeValues.length < 3 ? { reason: 'Fewer than three complete public peers share this publication-age window; no peer ranking is shown.' } : {}) }
-		: { available: false, days: report.publicationAge.days, sampleSize: 0, target: null, median: null, reason: 'Publication-age values require a selected report with recorded publication times and complete daily coverage.' };
+	const publicationAge = ageReport.publicationAge.available
+		? { available: peerAgeValues.length >= 3 && targetAge?.coverage === 'complete', days: ageReport.publicationAge.days, sampleSize: peerAgeValues.length, target: targetAge?.coverage === 'complete' ? targetAge.total : null, median: median(peerAgeValues), ...(peerAgeValues.length < 3 ? { reason: 'Fewer than three complete public peers share this publication-age window; no peer ranking is shown.' } : {}) }
+		: { available: false, days: ageReport.publicationAge.days, sampleSize: 0, target: null, median: null, reason: 'Publication-age values require a selected report with recorded publication times and complete daily coverage.' };
 	return {
 		...selected, available: report.coverage === 'complete' && currentPeerValues.length > 0,
 		target: rowFor(targetKey), peers: peerRows, median: median(currentPeerValues), sampleSize: currentPeerValues.length,
-		coverage: { current: report.coverage, previous: report.previousCoverage }, units: scope.query.measure, windows: { current: { start: query.start, end: query.end }, previous: null },
+		coverage: { current: report.coverage, previous: report.previousCoverage }, units: scope.query.measure, windows: { current: { start: query.start, end: query.end }, previous: comparisonWindow(scope.query) },
 		publicationAge,
 		...(currentPeerValues.length < 3 ? { reason: 'Fewer than three complete public peers are available; values are shown without a peer ranking.' } : {})
 	};

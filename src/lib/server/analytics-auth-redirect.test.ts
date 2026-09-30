@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyticsAuthCallbackUrl } from './analytics-auth-redirect';
+import { analyticsAuthCallbackUrl, authReturnPath } from './analytics-auth-redirect';
 
 const gallery = 'https://ninochavez.co/photography';
 test('analytics sign-in keeps its callback on the analytics host', () => {
@@ -18,4 +18,10 @@ test('a caller cannot supply an external redirect target', () => {
 	for (const next of ['https://attacker.example', '//attacker.example', '/\\attacker.example']) {
 		assert.equal(new URL(analyticsAuthCallbackUrl('analytics.ninochavez.co', gallery, next)).search, '');
 	}
+});
+
+test('callback paths reject external, backslash and control-character destinations', () => {
+ for (const unsafe of ['https://attacker.invalid', '//attacker.invalid', '/\\attacker.invalid', '/ok\n']) assert.equal(authReturnPath(unsafe), '/admin/tags');
+ assert.equal(authReturnPath('/analytics/operator?section=albums'), '/analytics/operator?section=albums');
+ assert.equal(authReturnPath(null, '/analytics/operator'), '/analytics/operator');
 });

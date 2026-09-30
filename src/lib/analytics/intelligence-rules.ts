@@ -10,6 +10,7 @@ export interface IntelligenceRuleInput {
 	current: number | null;
 	previous: number | null;
 	eligibility?: string;
+	providerLimitation?: string;
 	diagnostics?: Array<{ type: string; status: string; count: number }>;
 	linkedPhotoResponse?: Array<{ photoId: string; albumKey: string; exposures: number; responses: number; evidenceLinks: string[] }>;
 	albumDiscovery?: Array<{ albumKey: string; exposures: number; opens: number; directEntries: number; evidenceLinks: string[] }>;
@@ -21,7 +22,7 @@ export interface IntelligenceRuleInput {
 	distribution?: { taggedArrivals: number; laterNamedAction: number; actionName: string };
 	siteWindows?: { current: { start: string; end: string }; previous: { start: string; end: string } };
 	catalogue?: { eligibleAlbums: number; eligiblePhotos: number; missingAlbumFacts: number };
-	followUp?: { actionId: string; before: number; after: number; coverage: IntelligenceCoverage; previousCoverage: IntelligenceCoverage | null; concurrentChanges: number; measure: string; window: { before: { start: string; end: string }; after: { start: string; end: string } } };
+	followUp?: { actionId: string; target?: Finding['target']; before: number; after: number; coverage: IntelligenceCoverage; previousCoverage: IntelligenceCoverage | null; concurrentChanges: number; measure: string; window: { before: { start: string; end: string }; after: { start: string; end: string } } };
 }
 export interface IntelligenceRuleResult { findings: Finding[]; suppressions: IntelligenceSuppression[]; }
 export const INTELLIGENCE_RULES = [
@@ -58,7 +59,7 @@ function evidence(input: IntelligenceRuleInput, units: string, values: Partial<P
 	return { windows: windows(input), cutoff: input.cutoff, coverage: input.coverage, previousCoverage: input.previousCoverage ?? null, units, eligibility: input.eligibility, strength, ...values };
 }
 function finding(input: IntelligenceRuleInput, rule: string, id: string, title: string, explanation: string, action: string, data: FindingEvidence, target: Finding['target'] = { kind: input.scope.kind === 'gallery' ? 'gallery' : 'site' }, evidenceLinks?: string[]): Finding {
-	const albumKey = target.kind === 'album' ? target.id ?? undefined : target.albumKey ?? undefined;
+	const albumKey = target.kind === 'album' ? target.albumKey ?? target.id ?? undefined : target.albumKey ?? undefined;
 	return { id, rule, target, title, explanation, action, evidence: data, reportHref: reportHref(input.scope, albumKey), ...(evidenceLinks?.length ? { evidenceLinks: [...new Set(evidenceLinks)].filter((link) => link.startsWith('/')).slice(0, 6) } : {}), status: 'open' };
 }
 function suppress(result: IntelligenceRuleResult, rule: string, reason: string, target?: Finding['target']): void { result.suppressions.push({ rule, reason, target }); }
@@ -67,13 +68,13 @@ function suppress(result: IntelligenceRuleResult, rule: string, reason: string, 
 export function evaluateIntelligenceRules(input: IntelligenceRuleInput): IntelligenceRuleResult {
 	const result: IntelligenceRuleResult = { findings: [], suppressions: [] };
 	if (input.coverage !== 'complete') {
-		result.findings.push(finding(input, 'collection_health', 'collection-health', 'Analytics evidence needs attention', 'The selected collection window is partial or unavailable. Behavioral recommendations are withheld until a complete refresh exists.', 'Repair or refresh the collection, then compare complete windows.', evidence(input, 'report coverage', {}, 'limited')));
-		for (const rule of INTELLIGENCE_RULES.filter((rule) => rule !== 'collection_health')) suppress(result, rule, 'The selected evidence window is not complete.');
-		return result;
-	}
+        for (const diagnostic of input.diagnostics ?? []) if (diagnostic.status === 'failed' && nonnegative(diagnostic.count) && diagnostic.count > 0) result.findings.push(finding(input, 'collection_health', `collection-health-${diagnostic.type}`, 'A collection diagnostic needs attention', `${diagnostic.count} observations match the stable ${diagnostic.type} incident source.`, 'Inspect the collection diagnostic and confirm recovery before closing it.', evidence(input, 'diagnostic observations', { numerator: diagnostic.count }, 'limited')));
+        for (const rule of INTELLIGENCE_RULES) suppress(result, rule, 'The selected evidence window is partial or unavailable. This alone does not establish a collection outage.');
+        return result;
+    }
 
 	const momentum = input.scope.kind === 'gallery' && input.albumMomentum?.length
-		? input.albumMomentum.map((row) => ({ ...row, target: { kind: 'album' as const, id: row.albumKey } }))
+		? input.albumMomentum.map((row) => ({ ...row, target: { kind: 'album' as const, albumKey: row.albumKey } }))
 		: [{ albumKey: null, current: input.current, previous: input.previous, evidenceLinks: [], target: { kind: input.scope.kind === 'gallery' ? 'gallery' as const : 'site' as const } }];
 	for (const row of momentum) {
 		if (!completeComparison(input) || !nonnegative(row.current, row.previous) || row.current === null || row.previous === null) { suppress(result, 'momentum', 'A complete comparable period is not available.', row.target); continue; }
@@ -83,6 +84,7 @@ export function evaluateIntelligenceRules(input: IntelligenceRuleInput): Intelli
 		result.findings.push(finding(input, 'momentum', `momentum-increase-${row.albumKey ?? input.scope.kind}`, 'Recorded activity increased', `The current window has ${row.current} recorded actions versus ${row.previous} in the declared comparable window. This is not proof of audience growth.`, 'Inspect the affected known catalogue or publication context before deciding whether to repeat a promotion.', evidence(input, input.scope.kind === 'sites' ? 'page views' : 'recorded actions', { current: row.current, previous: row.previous }, 'exploratory'), row.target, row.evidenceLinks));
 	}
 
+	if (input.providerLimitation) for (const rule of ['strong_photo_response','discovery_friction','rendering_download_reliability','search_usefulness','distribution']) suppress(result, rule, input.providerLimitation);
 	if (!input.linkedPhotoResponse?.length) suppress(result, 'strong_photo_response', 'Per-photo eligible exposures with the named favorite-or-download-item response union are not available.');
 	else for (const row of input.linkedPhotoResponse) {
 		const target: Finding['target'] = { kind: 'photo', id: row.photoId, albumKey: row.albumKey };
@@ -93,12 +95,13 @@ export function evaluateIntelligenceRules(input: IntelligenceRuleInput): Intelli
 
 	if (!input.albumDiscovery?.length) suppress(result, 'discovery_friction', 'Per-album eligible exposure and later-open cohorts are not available.');
 	else for (const row of input.albumDiscovery) {
-		const target: Finding['target'] = { kind: 'album', id: row.albumKey };
+		const target: Finding['target'] = { kind: 'album', albumKey: row.albumKey };
 		if (!nonnegative(row.exposures, row.opens, row.directEntries) || row.opens > row.exposures || row.exposures < minimumSample) { suppress(result, 'discovery_friction', 'The eligible album-observation denominator is too small or incomplete.', target); continue; }
 		if (row.opens / row.exposures < 0.08 && row.directEntries < row.opens) result.findings.push(finding(input, 'discovery_friction', `discovery-friction-${row.albumKey}`, 'People see an album but rarely open it', `${row.opens} later opens followed ${row.exposures} eligible exposures for this album. Direct-entry opens are excluded from this interpretation.`, 'Test one cover, title, or card-placement change and record it before comparing the same measure.', evidence(input, 'eligible album observations', { numerator: row.opens, denominator: row.exposures }, 'exploratory'), target, row.evidenceLinks));
 		else suppress(result, 'discovery_friction', 'The measured album open rate does not cross the review threshold.', target);
 	}
 
+	if (input.rendering && nonnegative(input.rendering.observedTerminal, input.rendering.failed) && input.rendering.observedTerminal! >= minimumSample && input.rendering.failed >= 2 && input.rendering.failed <= input.rendering.observedTerminal!) result.findings.push(finding(input, 'rendering_download_reliability', 'render-failures', 'Observed photo views include rendering failures', `${input.rendering.failed} photo-view outcomes included a load failure among ${input.rendering.observedTerminal} photo views with an observed render or failure outcome. A retry may also render successfully; missing outcomes are excluded.`, 'Inspect the affected image flow before treating this as a visitor abandonment rate.', evidence(input, 'photo views with an observed outcome', { numerator: input.rendering.failed, denominator: input.rendering.observedTerminal! }, 'exploratory')));
 	if (input.rendering && input.rendering.failed > 0 && input.rendering.observedTerminal === null) suppress(result, 'rendering_download_reliability', `${input.rendering.failed} failed render observations and ${input.rendering.rendered} rendered observations were recorded, but the source does not provide a deduplicated observed-terminal denominator. A render failure rate is unavailable.`);
 	if (!input.download || !nonnegative(input.download.requests, input.download.failed, input.download.unknownTerminal, input.download.handedOff)) suppress(result, 'rendering_download_reliability', 'Eligible download request outcomes are unavailable.');
 	else if (input.download.requests < minimumSample) suppress(result, 'rendering_download_reliability', `Fewer than ${minimumSample} eligible download requests are available.`);
@@ -148,19 +151,8 @@ export function evaluateIntelligenceRules(input: IntelligenceRuleInput): Intelli
 	else if (input.followUp.coverage !== 'complete' || input.followUp.previousCoverage !== 'complete') suppress(result, 'follow_up', 'The declared before or after window is incomplete.');
 	else if (input.followUp.concurrentChanges > 0) suppress(result, 'follow_up', `${input.followUp.concurrentChanges} other recorded changes overlap the observation window.`);
 	else if (input.followUp.before < minimumSample || input.followUp.after < minimumSample || Math.abs(input.followUp.after - input.followUp.before) < meaningfulAbsoluteChange) suppress(result, 'follow_up', 'The declared measure has too little volume or too small a change for a follow-up finding.');
-	else result.findings.push(finding(input, 'follow_up', `follow-up-${input.followUp.actionId}`, 'A recorded action has a clean follow-up comparison', `The declared ${input.followUp.measure} measure was ${input.followUp.before} in ${input.followUp.window.before.start} to ${input.followUp.window.before.end} and ${input.followUp.after} in ${input.followUp.window.after.start} to ${input.followUp.window.after.end}. This is an observation, not a causal claim.`, 'Review the declared target and measure before deciding whether to repeat the action.', evidence(input, `declared ${input.followUp.measure} measure`, { current: input.followUp.after, previous: input.followUp.before }, 'limited')));
+	else { const item = finding(input, 'follow_up', `follow-up-${input.followUp.actionId}`, 'A recorded action has a clean follow-up comparison', `The declared ${input.followUp.measure} measure was ${input.followUp.before} in ${input.followUp.window.before.start} to ${input.followUp.window.before.end} and ${input.followUp.after} in ${input.followUp.window.after.start} to ${input.followUp.window.after.end}. This is an observation, not a causal claim.`, 'Review the declared target and measure before deciding whether to repeat the action.', evidence(input, `declared ${input.followUp.measure} measure`, { current: input.followUp.after, previous: input.followUp.before }, 'limited')); item.target = input.followUp.target ?? item.target; item.evidence.windows = { current: input.followUp.window.after, previous: input.followUp.window.before }; result.findings.push(item); }
 	return result;
 }
 
 export function validRuleScope(scope: IntelligenceScope): boolean { return scope.kind === 'sites' || scope.query.start <= scope.query.end; }
-export function privateFollowUp(input: IntelligenceRuleInput, actions: IntelligenceAction[], now = new Date()): IntelligenceRuleInput['followUp'] | undefined {
-	if (!completeComparison(input) || !nonnegative(input.current, input.previous) || input.current === null || input.previous === null || input.scope.kind !== 'gallery') return undefined;
-	const query = input.scope.query;
-	const comparison = comparisonWindow(query);
-	if (!comparison) return undefined;
-	const measure = query.measure;
-	const action = actions.find((item) => item.kind === 'record' && item.primaryMeasure === measure && item.actualAt && item.followUpAt && Date.parse(item.followUpAt) <= now.getTime() && Date.parse(item.actualAt) >= Date.parse(`${comparison.start}T00:00:00Z`) && Date.parse(item.actualAt) <= Date.parse(`${query.start}T23:59:59Z`));
-	if (!action?.actualAt || !action.followUpAt) return undefined;
-	const concurrentChanges = actions.filter((item) => item.kind === 'record' && item.id !== action.id && item.actualAt && Date.parse(item.actualAt) >= Date.parse(action.actualAt!) && Date.parse(item.actualAt) <= Date.parse(action.followUpAt!)).length;
-	return { actionId: action.id, before: input.previous, after: input.current, coverage: input.coverage, previousCoverage: input.previousCoverage ?? null, concurrentChanges, measure, window: { before: comparison, after: { start: query.start, end: query.end } } };
-}

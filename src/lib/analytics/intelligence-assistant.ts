@@ -12,7 +12,7 @@ const OPERATIONS: Record<IntelligenceOperation, { rules: readonly string[]; need
 const normalized = (value: string) => value.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const has = (value: string, ...terms: string[]) => terms.some((term) => value.includes(term));
 const unsafeRequest = (value: string) => /\b(sql|select|insert|update|delete|drop|table|raw event|visitor|email address|credential|token|ignore previous|system prompt)\b/.test(value);
-function unsupportedProviderScope(scope: IntelligenceScope): string | null {
+export function unsupportedProviderScope(scope: IntelligenceScope): string | null {
 	if (scope.kind !== 'gallery') return null;
 	const query = scope.query;
 	if (query.traffic !== 'conservative') return 'Linked provider evidence currently supports conservative traffic only; inclusive traffic is not silently substituted.';
@@ -41,7 +41,7 @@ export function answerIntelligenceQuestion(scope: IntelligenceScope, question: s
 	const generatedAt = new Date().toISOString();
 	if (!operation) return { scope, question, operation: 'unsupported', status: 'unsupported', summary: 'That question is outside the report’s supported calculations.', findings: [], evidenceLinks: [], limitations: ['Choose a visible explanation, album comparison, photo response, download reliability, recorded-change follow-up, or reader/demo question.'], generatedAt };
 	const config = OPERATIONS[operation];
-	const scopeLimit = operation === 'explain_report' || operation === 'action_follow_up' ? null : unsupportedProviderScope(scope);
+	const scopeLimit = operation === 'explain_report' || operation === 'action_follow_up' || operation === 'album_comparison' ? null : unsupportedProviderScope(scope);
 	if (scopeLimit) return { scope, question, operation, status: 'unavailable', summary: 'This question needs linked evidence that does not support the selected report scope.', findings: [], evidenceLinks: [], limitations: [scopeLimit, config.limit], generatedAt, requestId };
 	if (config.needsJob && !requestId) return { scope, question, operation, status: 'pending', summary: 'This calculation is pending against the fixed report scope.', findings: [], evidenceLinks: [], limitations: [config.limit, 'The request stores only operation and scope, never question text.'], generatedAt };
 	const findings = config.rules.length ? report.findings.filter((item) => config.rules.includes(item.rule)) : report.findings;

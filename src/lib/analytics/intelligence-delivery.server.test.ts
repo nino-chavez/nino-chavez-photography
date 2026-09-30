@@ -39,12 +39,23 @@ test('a thrown send is ambiguous and reconciliation failures remain unresolved',
 test('the configured owned adapter sends the stored verified destination and idempotency key', async () => {
 	let request: RequestInit | undefined;
 	const provider = createOwnedIntelligenceDeliveryProvider({
-		enabled: true, endpoint: 'https://delivery.example.invalid/intelligence/', token: 'synthetic-token',
-		fetcher: async (_url, init) => { request = init; return Response.json({ providerMessageId: 'synthetic-1' }, { status: 202 }); }
+		enabled: true, from: 'Reports <reports@example.invalid>', token: 'synthetic-token',
+		fetcher: async (_url, init) => { request = init; return Response.json({ id: 'synthetic-1' }, { status: 200 }); }
 	});
 	assert.ok(provider);
 	const sent = await provider.send({ id: 'delivery', channel: 'email', sender: 'owned', destinationVerified: true, preferenceEnabled: true, idempotencyKey: 'stable-key', destination, payload: { subject: 'Synthetic', body: 'Synthetic' } });
 	assert.deepEqual(sent, { state: 'accepted', providerMessageId: 'synthetic-1' });
 	assert.equal((request?.headers as Record<string, string>)['idempotency-key'], 'stable-key');
 	assert.match(String(request?.body), /owner@example\.invalid/);
+});
+
+for (const [status, body, expected] of [
+ [409, {name: 'invalid_idempotent_request'}, 'failed'],
+ [409, {name: 'concurrent_idempotent_requests'}, 'ambiguous'],
+ [200, {}, 'ambiguous'], [500, {}, 'ambiguous'], [401, {}, 'failed']
+] as const) test(`canonical sender does not invent acceptance for HTTP ${status} ${JSON.stringify(body)}`, async () => {
+ const provider = createOwnedIntelligenceDeliveryProvider({enabled: true, from: 'Reports <reports@example.invalid>', token: 'synthetic', fetcher: async () => Response.json(body, {status})});
+ assert.ok(provider);
+ assert.equal((await provider.send({id:'delivery',channel:'email',sender:'owned',destinationVerified:true,preferenceEnabled:true,idempotencyKey:'stable',destination,payload:{subject:'Synthetic',body:'Synthetic'}})).state,expected);
+ assert.deepEqual(await provider.reconcile('delivery'), {state:'unavailable'});
 });

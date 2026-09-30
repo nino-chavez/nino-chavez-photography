@@ -9,7 +9,7 @@
   "outerMigrationTransactionRemoved": true,
   "passed": true,
   "proof": "analytics-intelligence-local-sql",
-  "ranAt": "2026-09-30T05:58:30+00:00",
+  "ranAt": "2026-09-30T06:07:27+00:00",
   "rolledBack": true,
   "source": {
     "loopbackRuntime": true,

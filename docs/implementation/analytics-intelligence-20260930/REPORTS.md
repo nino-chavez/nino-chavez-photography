@@ -35,10 +35,10 @@ snapshot and schedules a retry; it is not changed to zero.
 
 ## Required storage contract
 
-The current forward migration
-`20260930040614_analytics_intelligence_storage.sql` was empty when this jobs
-revision was written. The RPCs below are therefore an exact handoff to the
-engine/SQL owner, not a claim that storage now exists.
+The forward migrations provide the RPCs below. Local functional SQL and API
+rehearsals are recorded in `evidence/sql-local-proof.json` and
+`evidence/api-local-proof.json`. Production application requires a separate
+deployment receipt.
 
 | RPC | Exact input | Required behavior |
 | --- | --- | --- |
@@ -63,7 +63,7 @@ the jobs layer must not mark a pending request complete without a stored result.
 The dashboard works with no external provider. When the owner activates the
 owned sender, the endpoint requires all three configuration values:
 `ANALYTICS_INTELLIGENCE_DELIVERY_ENABLED=true`,
-`ANALYTICS_INTELLIGENCE_DELIVERY_ENDPOINT`, and
+`ANALYTICS_INTELLIGENCE_EMAIL_FROM`, and
 `ANALYTICS_INTELLIGENCE_DELIVERY_TOKEN`. This code creates no credential,
 recipient, billing setting, or actual send.
 

@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-09-30T06:25:18.132Z",
+  "passed": true,
+  "environment": "local synthetic Supabase and actual SvelteKit routes",
+  "productionTouched": false,
+  "checks": [
+    "anonymous private preferences rejected",
+    "cross-origin private write rejected",
+    "unknown preference fields rejected",
+    "explicit synthetic retention saved",
+    "scope calculation requires authenticated owner",
+    "wrong scheduler credential rejected",
+    "actual scheduler refreshes stored snapshots with no provider in loopback",
+    "owner reads exact stored scope",
+    "standalone action persists its public target and zero outcome count",
+    "anonymous snapshot contains no private history or briefs",
+    "magic link establishes a verified session in a fresh browser without PKCE cookies",
+    "wrong magic-link token does not authenticate"
+  ],
+  "limits": "Does not prove production mail templates, delivery, or provider collection."
+}

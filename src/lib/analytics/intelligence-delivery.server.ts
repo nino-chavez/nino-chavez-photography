@@ -38,55 +38,45 @@ function isDelivery(value: unknown): value is IntelligenceDelivery {
 	return delivery.channel === 'dashboard' ? delivery.destination === null : !!resolved && (!delivery.destinationVerified || !!resolved.verifiedAt);
 }
 
-function providerMessageId(value: unknown): string | undefined {
-	const row = object(value);
-	return typeof row?.providerMessageId === 'string' && row.providerMessageId.length <= 300 ? row.providerMessageId : undefined;
-}
 function deliveryId(value: unknown): string | null {
 	const row = object(value);
 	return typeof row?.id === 'string' ? row.id : null;
 }
 
 /**
- * The owned adapter is activated only by an owner-provisioned endpoint and token.
- * It sends the stored verified destination and idempotency key unchanged; it never
- * chooses a recipient or treats provider acceptance as inbox delivery.
+ * Canonical Resend transport; no recipient or verified sender is invented.
+ * Acceptance requires a provider message ID. An uncertain submission remains
+ * held for operator reconciliation, rather than being resent after the
+ * provider's 24-hour idempotency window.
  */
 export function createOwnedIntelligenceDeliveryProvider(config: {
 	enabled: boolean;
-	endpoint: string | undefined;
+	from: string | undefined;
 	token: string | undefined;
 	fetcher?: typeof fetch;
 }): IntelligenceDeliveryProvider | null {
-	if (!config.enabled || !config.endpoint || !config.token) return null;
-	let endpoint: URL;
-	try {
-		endpoint = new URL(config.endpoint);
-		if (endpoint.protocol !== 'https:') return null;
-	} catch { return null; }
+	if (!config.enabled || !config.from || !config.token || /[\r\n]/.test(config.from)) return null;
 	const fetcher = config.fetcher ?? fetch;
-	const request = async (path: string, init: RequestInit) => fetcher(new URL(path, endpoint), init);
 	return {
 		async send(delivery) {
-			if (!delivery.destination || !delivery.destinationVerified || !delivery.preferenceEnabled) return { state: 'failed' };
+			if (!delivery.destination || !delivery.destinationVerified || !delivery.preferenceEnabled
+				|| !destination(delivery.destination) || !delivery.idempotencyKey || delivery.idempotencyKey.length > 256) return { state: 'failed' };
 			try {
-				const response = await request('deliveries', {
-					method: 'POST',
+				const response = await fetcher('https://api.resend.com/emails', {
+					method: 'POST', signal: AbortSignal.timeout(7_000),
 					headers: { authorization: `Bearer ${config.token}`, 'content-type': 'application/json', 'idempotency-key': delivery.idempotencyKey },
-					body: JSON.stringify({ deliveryId: delivery.id, destination: delivery.destination, payload: delivery.payload })
+					body: JSON.stringify({ from: config.from, to: [delivery.destination.address], subject: delivery.payload.subject, text: delivery.payload.body })
 				});
-				if (response.status === 200 || response.status === 201 || response.status === 202 || response.status === 409) {
-					return { state: 'accepted', providerMessageId: providerMessageId(await response.json().catch(() => null)) };
-				}
-				return { state: response.status >= 400 && response.status < 500 ? 'failed' : 'ambiguous' };
+				const body = object(await response.json().catch(() => null));
+				if (response.ok && typeof body?.id === 'string' && body.id.length > 0 && body.id.length <= 300) return { state: 'accepted', providerMessageId: body.id };
+				if (response.status === 409 && body?.name === 'concurrent_idempotent_requests') return { state: 'ambiguous' };
+				return { state: response.ok || response.status >= 500 ? 'ambiguous' : 'failed' };
 			} catch { return { state: 'ambiguous' }; }
 		},
-		async reconcile(deliveryId) {
-			const response = await request(`deliveries/${encodeURIComponent(deliveryId)}`, { headers: { authorization: `Bearer ${config.token}` } });
-			if (response.status === 404) return { state: 'missing' };
-			if (!response.ok) return { state: 'unavailable' };
-			const body = object(await response.json().catch(() => null));
-			return body?.state === 'accepted' ? { state: 'accepted', providerMessageId: providerMessageId(body) } : { state: 'unavailable' };
+		async reconcile() {
+			// Resend cannot look up a message by our local delivery ID. Without
+			// the provider ID, missing is unproven and must never authorize resend.
+			return { state: 'unavailable' };
 		}
 	};
 }

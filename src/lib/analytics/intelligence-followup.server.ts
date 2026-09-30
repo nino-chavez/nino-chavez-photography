@@ -41,7 +41,7 @@ export async function loadPersistedActionFollowUp(client: SupabaseClient, action
 	return {
 		status: 'ready',
 		followUp: {
-			actionId: action.id, before, after, coverage: currentCoverage, previousCoverage,
+			actionId: action.id, target: action.target, before, after, coverage: currentCoverage, previousCoverage,
 			concurrentChanges: 0, measure,
 			window: { before: { start: beforeWindow.start, end: beforeWindow.end }, after: { start: afterWindow.start, end: afterWindow.end } }
 		}

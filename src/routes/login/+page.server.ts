@@ -8,7 +8,7 @@ import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { SITE_URL } from '$lib/site-url';
-import { analyticsAuthCallbackUrl } from '$lib/server/analytics-auth-redirect';
+import { analyticsAuthCallbackUrl, authReturnPath } from '$lib/server/analytics-auth-redirect';
 
 /**
  * Keep the callback on the initiating analytics host so its verifier cookie
@@ -21,14 +21,14 @@ function getCallbackUrl(url: URL, next?: string): string {
 }
 
 // Check if already logged in
-export const load: PageServerLoad = async ({ cookies }) => {
+export const load: PageServerLoad = async ({ cookies, url }) => {
 	const supabase = createSupabaseServerClient(cookies);
 	const {
 		data: { user }
 	} = await supabase.auth.getUser();
 
 	if (user) {
-		throw redirect(302, `${base}/admin/tags`);
+		throw redirect(302, authReturnPath(url.searchParams.get('next'), url.hostname === 'analytics.ninochavez.co' ? '/gallery' : `${base}/admin/tags`));
 	}
 
 	return {};

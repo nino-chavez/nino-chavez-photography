@@ -1,3 +1,4 @@
+import { unsupportedProviderScope } from './intelligence-assistant';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { JourneyAggregate } from './posthog.types';
 import type { GalleryDecisionEvidence } from './posthog-queries.server';
@@ -8,7 +9,7 @@ import type { IntelligenceRuleInput } from './intelligence-rules';
 export type IntelligenceJourneyContext = { gallery?: JourneyAggregate[]; site?: SiteJourneyRow[]; decision?: GalleryDecisionEvidence };
 type GalleryReport = { dataAsOf: string | null; coverage: IntelligenceRuleInput['coverage']; previousCoverage: IntelligenceRuleInput['coverage']; total: number | null; previousTotal: number | null; photos: unknown[]; publicationAge: { missingAlbumKeys: string[] }; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null }> };
 type SiteReport = Awaited<ReturnType<typeof import('./site-actions.server').loadSiteActions>>;
-type EvidenceLoaders = { galleryReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryReport>; siteReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>) => Promise<SiteReport> };
+type EvidenceLoaders = { diagnostics?: (client: SupabaseClient, now: Date) => Promise<IntelligenceRuleInput['diagnostics']>; galleryReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryReport>; siteReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>) => Promise<SiteReport> };
 async function scheduledGalleryReport(client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>): Promise<GalleryReport> {
 	const { fetchScheduledGalleryReport } = await import('./scheduled-gallery-report.server');
 	return fetchScheduledGalleryReport(client, scope.query, { publicOnly: true, includeToday: false, photoWindow: { page: 0, pageSize: 100, rank: 'popular' } });
@@ -16,6 +17,16 @@ async function scheduledGalleryReport(client: SupabaseClient, scope: Extract<Int
 async function scheduledSiteReport(client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>): Promise<SiteReport> {
 	const { loadSiteActions } = await import('./site-actions.server');
 	return loadSiteActions(client, scope.period, scope.section, 0);
+}
+
+async function collectionDiagnostics(client: SupabaseClient, now: Date): Promise<IntelligenceRuleInput['diagnostics']> {
+ const {data,error} = await client.rpc('analytics_posthog_delivery_health');
+ if (error || !data || typeof data !== 'object' || Array.isArray(data)) return [{type:'delivery_health_unavailable',status:'failed',count:1}];
+ const row=data as Record<string,unknown>; const diagnostics: NonNullable<IntelligenceRuleInput['diagnostics']>=[];
+ const failed=count(row.failed); if(failed !== null && failed > 0) diagnostics.push({type:'provider_delivery_failures',status:'failed',count:failed});
+ const pending=count(row.pending); const oldest=typeof row.oldest_pending_at === 'string' ? Date.parse(row.oldest_pending_at) : NaN;
+ if(pending !== null && pending > 0 && Number.isFinite(oldest) && now.getTime()-oldest > 30*60_000) diagnostics.push({type:'provider_delivery_overdue',status:'failed',count:pending});
+ return diagnostics;
 }
 const count = (value: unknown): number | null => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 const totals = (journeys: JourneyAggregate[] | undefined, name: JourneyAggregate['report']): Record<string, number | null> | null => journeys?.find((journey) => journey.report === name && journey.available)?.totals ?? null;
@@ -45,7 +56,10 @@ const albumLink = (scope: Extract<IntelligenceScope, { kind: 'gallery' }>, album
 
 /** Converts stored reports and fixed provider aggregates into decision-rule inputs. */
 export async function loadIntelligenceEvidence(client: SupabaseClient, scope: IntelligenceScope, now = new Date(), journeys: IntelligenceJourneyContext = {}, loaders: EvidenceLoaders = {}): Promise<IntelligenceRuleInput> {
+	const diagnostics = await (loaders.diagnostics ?? collectionDiagnostics)(client, now);
 	if (scope.kind === 'gallery') {
+		const providerLimitation = unsupportedProviderScope(scope);
+		if (providerLimitation) journeys = {};
 		const report = await (loaders.galleryReport ?? scheduledGalleryReport)(client, scope);
 		const searchJourney = totals(journeys.gallery, 'search_usefulness');
 		const downloadJourney = totals(journeys.gallery, 'download_reliability');
@@ -64,13 +78,14 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 		const taggedArrivals = number(distributionJourney, 'tagged_arrival_visits');
 		const favoriteVisits = number(distributionJourney, 'subsequent_favorite_visits');
 		return {
-			scope, generatedAt: now.toISOString(), cutoff: report.dataAsOf, coverage: report.coverage, previousCoverage: report.previousCoverage,
+			scope, diagnostics, generatedAt: now.toISOString(), cutoff: report.dataAsOf, coverage: report.coverage, previousCoverage: report.previousCoverage,
 			current: report.total, previous: report.previousTotal,
-			eligibility: 'public eligible gallery actions; conservative traffic excludes known non-audience traffic',
+			eligibility: scope.query.traffic === 'conservative' ? 'public eligible gallery actions; conservative traffic excludes known non-audience traffic' : 'public eligible gallery actions; inclusive traffic retains unclassified and suspected automation as requested',
+			...(providerLimitation ? { providerLimitation } : {}),
 			...(payload.albums.length ? { albumMomentum: payload.albums.map((row) => ({ albumKey: row.albumKey, current: row.count, previous: row.previousCount, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
 			...(decision?.albumDiscovery.length ? { albumDiscovery: decision.albumDiscovery.map((row) => ({ ...row, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
 			...(decision?.photoResponses.length ? { linkedPhotoResponse: decision.photoResponses.map((row) => ({ photoId: row.photoId, albumKey: row.albumKey, exposures: row.exposures, responses: row.responses, evidenceLinks: [`/photo/${encodeURIComponent(row.photoId)}`] })) } : {}),
-			...(decision?.rendering ? { rendering: { rendered: decision.rendering.rendered, failed: decision.rendering.failed, observedTerminal: null } } : {}),
+			...(decision?.rendering ? { rendering: { rendered: decision.rendering.rendered, failed: decision.rendering.failed, observedTerminal: decision.rendering.observedTerminal } } : {}),
 			...(submitted !== null || shown !== null ? { search: { submitted, resultsShown: shown, emptyResults: empty, failures, selections } } : {}),
 			...(requests !== null && failed !== null && unknownTerminal !== null && handedOff !== null ? { download: { requests, failed, unknownTerminal, handedOff } } : {}),
 			...(taggedArrivals !== null && favoriteVisits !== null ? { distribution: { taggedArrivals, laterNamedAction: favoriteVisits, actionName: 'favorite-added' } } : {}),
@@ -79,7 +94,7 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 	}
 
 	const report = await (loaders.siteReport ?? scheduledSiteReport)(client, scope);
-	if (!report.available) return { scope, generatedAt: now.toISOString(), cutoff: null, coverage: 'unavailable', previousCoverage: 'unavailable', current: null, previous: null, eligibility: 'identifier-free stored site action summaries' };
+	if (!report.available) return { scope, diagnostics, generatedAt: now.toISOString(), cutoff: null, coverage: 'unavailable', previousCoverage: 'unavailable', current: null, previous: null, eligibility: 'identifier-free stored site action summaries' };
 	const previous = priorWindow(report.start, report.end);
 	const firstRecordedDate = report.firstRecordedAt?.slice(0, 10) ?? null;
 	const cutoffDate = report.freshness.summaryCutoffAt.slice(0, 10);
@@ -91,7 +106,7 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 		return [{ kind: section, views: section === 'profile' ? row.views : section === 'writing' ? row.articleViews : row.demoViews, actions: section === 'profile' ? row.contactViews : 0, completed: section === 'profile' ? 0 : section === 'writing' ? row.progressViews : row.lastSectionViews, evidenceLinks: [siteLink(scope.period, section)] }];
 	});
 	return {
-		scope, generatedAt: now.toISOString(), cutoff: report.freshness.summaryCutoffAt,
+		scope, diagnostics, generatedAt: now.toISOString(), cutoff: report.freshness.summaryCutoffAt,
 		coverage: currentComplete ? 'complete' : 'partial', previousCoverage: previousComplete ? 'complete' : 'partial',
 		current: count(report.totals.page_views), previous: count(report.previousTotals.page_views),
 		eligibility: 'identifier-free UTC complete-day page views; same-view journeys require opted-in linked page-view evidence',

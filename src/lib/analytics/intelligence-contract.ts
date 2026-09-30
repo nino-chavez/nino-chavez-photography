@@ -1,5 +1,7 @@
 import { assertReportDateBounds, comparisonWindow, dateOnly, type ReportQuery } from './report-contract';
 import type { SiteSection } from './site-traffic';
+import { isPublicSitePath } from './events-v2';
+import type { AlbumComparison } from './intelligence-comparison.server';
 
 export type IntelligenceScope =
 	| { kind: 'gallery'; query: ReportQuery }
@@ -61,16 +63,12 @@ export interface IntelligenceAction {
 	observationDays?: number | null;
 	followUpAt?: string | null;
 	followUpStatus?: 'pending' | 'ready' | 'inconclusive' | null;
+	followUp?: { before: number; after: number; concurrentChanges: number; measure: string; window: { before: { start: string; end: string }; after: { start: string; end: string } } };
 	note?: string | null;
 	createdAt: string;
 }
 
 export type PublicIntelligenceTarget = NonNullable<IntelligenceAction['target']>;
-
-const PUBLIC_PAGE_PATHS = new Set([
-	'/', '/about', '/contact', '/demos', '/photography', '/photography/volleyball',
-	'/writing', '/work', '/now'
-]);
 
 /** Parses only the public, identifier-free target form accepted by action writes. */
 export function parsePublicIntelligenceTarget(value: unknown): PublicIntelligenceTarget | null {
@@ -84,7 +82,7 @@ export function parsePublicIntelligenceTarget(value: unknown): PublicIntelligenc
 		return typeof row.id === 'string' && /^[a-z0-9][a-z0-9_-]{0,179}$/i.test(row.id.trim()) ? { kind: 'photo', id: row.id.trim() } : null;
 	}
 	if (row.kind === 'page' && Object.keys(row).every((key) => key === 'kind' || key === 'id')) {
-		return typeof row.id === 'string' && PUBLIC_PAGE_PATHS.has(row.id) ? { kind: 'page', id: row.id } : null;
+		return typeof row.id === 'string' && isPublicSitePath(row.id) ? { kind: 'page', id: row.id } : null;
 	}
 	return null;
 }
@@ -101,6 +99,8 @@ export interface IntelligenceReport {
 	briefs: Array<{ id: string; periodKey: string; kind: 'daily' | 'weekly' | 'operational'; createdAt: string; body?: string; findings?: Finding[]; snapshotIds?: string[] }>;
 	page: number;
 	pageCount: number;
+	actionsPage?: number;
+	actionsPageCount?: number;
 	owner: boolean;
 }
 
@@ -115,6 +115,7 @@ export interface AssistantAnswer {
 	limitations: string[];
 	generatedAt: string;
 	requestId?: string;
+	comparison?: AlbumComparison;
 }
 
 export const INTELLIGENCE_RULE_VERSION = 2;

@@ -1,5 +1,6 @@
+import { calculateAlbumComparison } from './intelligence-comparison.server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { answerIntelligenceQuestion } from './intelligence-assistant';
+import { answerIntelligenceQuestion, unsupportedProviderScope } from './intelligence-assistant';
 import { intelligenceScopeKey, parseIntelligenceScope, standardIntelligenceScopes, type IntelligenceReport, type IntelligenceScope } from './intelligence-contract';
 import type { IntelligenceJourneyContext } from './intelligence-source.server';
 import { dueIntelligencePeriods, type ScheduledIntelligencePeriod } from './intelligence-schedule';
@@ -88,6 +89,11 @@ async function completeRequest(client: SupabaseClient, job: IntelligenceJob, rep
 	// Question text is intentionally not retained. The request row already owns its
 	// scope and operation; the stored answer is only the calculated evidence result.
 	const { question: _question, ...answer } = calculated;
+	if (job.operation === 'album_comparison') {
+		answer.comparison = await calculateAlbumComparison(client, job.scope);
+		answer.status = answer.comparison.available ? 'complete' : 'unavailable';
+		answer.summary = answer.comparison.available ? 'Compare the selected album and its public peers below. The calendar and publication-age windows stay separate.' : answer.comparison.reason ?? 'Comparable album evidence is unavailable.';
+	}
 	const { data, error } = await client.from('analytics_intelligence_requests')
 		.update({ status: 'complete', report_id: reportId(report), answer })
 		.eq('id', job.requestId)
@@ -202,6 +208,7 @@ export async function loadFixedIntelligenceJourneys(
 	}
 ): Promise<IntelligenceJourneyLoad> {
 	if (scope.kind === 'gallery') {
+		if (unsupportedProviderScope(scope)) return { journeys: {}, providerQueries: 0, providerPending: false };
 		const [gallery, decision] = await Promise.all([mapWithConcurrency(FIXED_INTELLIGENCE_JOURNEYS, 3, (name) => loaders.gallery(name, scope)), loaders.decision?.(scope)]);
 		return { journeys: { gallery, ...(decision ? { decision } : {}) }, providerQueries: gallery.length + (decision ? 1 : 0), providerPending: gallery.some((journey) => journey.error === 'provider_query_pending') };
 	}

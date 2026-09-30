@@ -12,9 +12,9 @@ test('missing linked cohorts suppresses behavior rules instead of manufacturing 
 	assert.match(result.suppressions.find((item) => item.rule === 'strong_photo_response')?.reason ?? '', /exposures/i);
 });
 
-test('partial coverage produces health only and blocks behavioral claims', () => {
+test('partial coverage suppresses behavior without inventing an outage', () => {
 	const result = evaluateIntelligenceRules(input({ coverage: 'partial' }));
-	assert.deepEqual(result.findings.map((item) => item.rule), ['collection_health']);
+	assert.deepEqual(result.findings, []);
 	assert.ok(result.suppressions.some((item) => item.rule === 'momentum'));
 });
 
@@ -33,9 +33,9 @@ test('per-album discovery and momentum keep targets, calendar counts, and exact 
 	}));
 	const discovery = result.findings.find((item) => item.rule === 'discovery_friction');
 	const momentum = result.findings.find((item) => item.rule === 'momentum');
-	assert.equal(discovery?.target.id, 'album-1');
+	assert.equal(discovery?.target.albumKey, 'album-1');
 	assert.deepEqual(discovery?.evidence, { ...discovery?.evidence, numerator: 4, denominator: 100 });
-	assert.equal(momentum?.target.id, 'album-1');
+	assert.equal(momentum?.target.albumKey, 'album-1');
 	assert.match(momentum?.reportHref ?? '', /scope=album/);
 });
 
@@ -71,4 +71,14 @@ test('small or missing history cannot become an outage or a follow-up result', (
 	const result = evaluateIntelligenceRules(input({ current: 4, previous: 2, followUp: { actionId: 'action-1', before: 2, after: 4, coverage: 'complete', previousCoverage: 'complete', concurrentChanges: 0, measure: 'photo_opens', window: { before: { start: '2026-08-01', end: '2026-08-30' }, after: { start: '2026-09-01', end: '2026-09-30' } } } }));
 	assert.equal(result.findings.some((item) => item.rule === 'follow_up'), false);
 	assert.match(result.suppressions.find((item) => item.rule === 'follow_up')?.reason ?? '', /little volume/i);
+});
+
+test('real delivery diagnostic is visible even when the selected history is partial', () => {
+ const result=evaluateIntelligenceRules(input({coverage:'partial',diagnostics:[{type:'provider_delivery_failures',status:'failed',count:2}]}));
+ assert.deepEqual(result.findings.map(row=>row.id), ['collection-health-provider_delivery_failures']);
+ assert.equal(result.findings[0].evidence.numerator,2);
+});
+test('render union measures failed views without summing retry successes and failures',()=>{
+ const result=evaluateIntelligenceRules(input({rendering:{rendered:98,failed:4,observedTerminal:100}}));
+ const finding=result.findings.find(row=>row.id==='render-failures');assert.equal(finding?.evidence.denominator,100);assert.equal(finding?.evidence.numerator,4);
 });
