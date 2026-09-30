@@ -8,14 +8,7 @@ const actionA = '22222222-2222-4222-8222-222222222222';
 const actionB = '33333333-3333-4333-8333-333333333333';
 
 function clientFor(rows: unknown[], calls: Array<{ method: string; args: unknown[] }>) {
-	const chain = {
-		select: (...args: unknown[]) => { calls.push({ method: 'select', args }); return chain; },
-		eq: (...args: unknown[]) => { calls.push({ method: 'eq', args }); return chain; },
-		in: (...args: unknown[]) => { calls.push({ method: 'in', args }); return chain; },
-		order: (...args: unknown[]) => { calls.push({ method: 'order', args }); return chain; },
-		then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve)
-	};
-	return { from: (table: string) => { calls.push({ method: 'from', args: [table] }); return chain; } } as never;
+ return { rpc: async (...args: unknown[]) => { calls.push({ method:'rpc', args }); return {data:rows,error:null}; } } as never;
 }
 
 test('latest outcome loader is owner-scoped, bounded, and preserves a zero count', async () => {
@@ -28,8 +21,7 @@ test('latest outcome loader is owner-scoped, bounded, and preserves a zero count
 	assert.equal(outcomes.get(actionA)?.outcome, 'booking');
 	assert.equal(outcomes.get(actionA)?.outcomeCount, 0);
 	assert.equal(outcomes.get(actionB)?.note, 'Observed later');
-	assert.deepEqual(calls.find((call) => call.method === 'eq'), { method: 'eq', args: ['owner_id', ownerId] });
-	assert.deepEqual(calls.find((call) => call.method === 'in'), { method: 'in', args: ['action_id', [actionA, actionB]] });
+	assert.deepEqual(calls[0], { method:'rpc', args:['analytics_latest_intelligence_outcomes',{p_owner_id:ownerId,p_action_ids:[actionA,actionB]}] });
 });
 
 test('latest outcome loader rejects cross-owner or over-limit input before querying', async () => {

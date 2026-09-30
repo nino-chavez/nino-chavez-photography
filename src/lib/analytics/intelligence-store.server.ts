@@ -221,18 +221,10 @@ export async function recordIntelligenceAction(client: SupabaseClient, ownerId: 
 
 export async function createIntelligenceRequest(client: SupabaseClient, ownerId: string, scope: IntelligenceScope, operation: string): Promise<string> {
 	const checked = parseIntelligenceScope(scope); if (!checked || !uuid(ownerId) || !['album_comparison', 'site_retention'].includes(operation)) throw new Error('invalid intelligence request');
-	const report = await loadIntelligence(client, checked, { ownerId, page: 0 });
-	if (!report.snapshotId) throw new Error('intelligence request snapshot unavailable');
-	const scopeKey = intelligenceScopeKey(checked);
-	const active = await client.from('analytics_intelligence_requests').select('id').eq('owner_id', ownerId).eq('scope_key', scopeKey).eq('operation', operation).in('status', ['pending', 'leased']).maybeSingle();
-	if (active.data && uuid(active.data.id)) return active.data.id;
-	const inserted = await client.from('analytics_intelligence_requests').insert({ owner_id: ownerId, scope_key: scopeKey, operation, status: 'pending', report_id: report.snapshotId, expires_at: new Date(Date.now() + 10 * 60_000).toISOString() }).select('id').single();
-	if (inserted.error || !inserted.data || !uuid(inserted.data.id)) {
-		const raced = await client.from('analytics_intelligence_requests').select('id').eq('owner_id', ownerId).eq('scope_key', scopeKey).eq('operation', operation).in('status', ['pending', 'leased']).maybeSingle();
-		if (raced.data && uuid(raced.data.id)) return raced.data.id;
-		throw new Error('intelligence request storage unavailable');
-	}
-	return inserted.data.id;
+	await allowedTargets(client, checked, [], []);
+ const {data,error}=await client.rpc('analytics_queue_intelligence_request',{p_owner_id:ownerId,p_scope:checked,p_operation:operation,p_now:new Date().toISOString()});
+ if(error || !uuid(data)) throw new Error('intelligence request storage unavailable');
+ return data;
 }
 
 export async function loadIntelligenceRequest(client: SupabaseClient, ownerId: string, scope: IntelligenceScope, requestId: string): Promise<{ status: 'pending' | 'complete' | 'unavailable'; answer: unknown | null }> {

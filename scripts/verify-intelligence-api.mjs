@@ -45,7 +45,7 @@ const albumScope={...scope,query:{...scope.query,scope:'album',albumKeys:['alpha
 const question=await request('',{scope:albumScope,question:'How is this album doing compared with similar albums?'});
 assert.equal(question.response.status,202);const requestId=question.result.requestId;assert.ok(requestId);
 let answer;
-for(let i=0;i<15;i++){await runJobs('local-intelligence-scheduler-only-fixture-token'); answer=await request('?requestId='+requestId); if(answer.result?.status!=='pending')break;}
+for(let i=0;i<15;i++){await runJobs('local-intelligence-scheduler-only-fixture-token'); answer=await request('?requestId='+requestId+'&scope='+encodeURIComponent(JSON.stringify(albumScope))); if(answer.result?.status!=='pending')break;}
 assert.equal(answer.result.status,'complete');assert.ok(answer.result.answer.comparison);
 assert.ok(['complete','unavailable'].includes(answer.result.answer.status));checks.push('actual album comparison request completes through the bounded background worker');
 

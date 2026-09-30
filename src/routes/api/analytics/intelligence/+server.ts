@@ -2,7 +2,7 @@ import { dev } from '$app/environment';
 import { json, error } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { answerIntelligenceQuestion, recognizeIntelligenceOperation } from '$lib/analytics/intelligence-assistant';
-import { parseIntelligenceScope } from '$lib/analytics/intelligence-contract';
+import { parseIntelligenceScope, type IntelligenceReport } from '$lib/analytics/intelligence-contract';
 import { createIntelligenceRequest, intelligenceOwner, loadIntelligence, loadIntelligenceRequest } from '$lib/analytics/intelligence-store.server';
 import type { RequestHandler } from './$types';
 
@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		const report = await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page, actionsPage });
 		if (!owner.owner) { report.actions = []; report.briefs = []; report.findings = report.findings.map(({ status: _status, ...finding }) => ({ ...finding, status: 'open' })); }
 		return json(report, { headers: { 'cache-control': 'no-store' } });
-	} catch { return plain(503, 'analytics report unavailable'); }
+	} catch (failure) { if (dev) console.error('[intelligence local report]', failure instanceof Error ? failure.message : 'unavailable'); return plain(503, 'analytics report unavailable'); }
 };
 
 export const POST: RequestHandler = async ({ request, cookies, url }) => {
@@ -61,7 +61,9 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 	if (!owner.owner && operation !== 'explain_report') plain(403, 'owner authorization required');
 	const admin = createSupabaseAdminClient();
 	try {
-		const report = await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page: 0 });
+		const report: IntelligenceReport = operation === 'album_comparison' || operation === 'site_retention'
+   ? {scope,generatedAt:new Date().toISOString(),cutoff:null,coverage:'unavailable',findings:[],suppressions:[],actions:[],briefs:[],page:0,pageCount:1,owner:owner.owner}
+   : await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page: 0 });
 		const draft = answerIntelligenceQuestion(scope, question, report);
 		if (draft.status !== 'pending') return json(draft, { headers: { 'cache-control': 'no-store' } });
 		if (!owner.userId) plain(403, 'owner authorization required');

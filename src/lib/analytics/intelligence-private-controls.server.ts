@@ -39,13 +39,7 @@ export async function loadLatestIntelligenceOutcomes(
 	const ids = [...new Set(actionIds)];
 	if (!UUID.test(ownerId) || ids.length > MAX_ACTION_IDS || ids.some((id) => !UUID.test(id))) return new Map();
 	if (ids.length === 0) return new Map();
-	const { data, error } = await client
-		.from('analytics_intelligence_outcomes')
-		.select('id, action_id, outcome, outcome_count, note, created_at')
-		.eq('owner_id', ownerId)
-		.in('action_id', ids)
-		.order('created_at', { ascending: false })
-		.order('id', { ascending: false });
+	const { data, error } = await client.rpc('analytics_latest_intelligence_outcomes', { p_owner_id: ownerId, p_action_ids: ids });
 	if (error) throw new Error('intelligence outcomes unavailable');
 	const latest = new Map<string, IntelligenceOutcome>();
 	for (const row of data ?? []) {

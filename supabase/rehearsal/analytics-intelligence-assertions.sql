@@ -276,3 +276,15 @@ BEGIN
     RAISE EXCEPTION 'UTC site follow-up completion boundary is incorrect';
   END IF;
 END $$;
+
+-- A first-use album request must queue before a snapshot exists, without retaining free text.
+DO $$
+DECLARE owner uuid:='11111111-1111-4111-8111-111111111111'; v_scope jsonb:='{"kind":"gallery","query":{"start":"2026-07-01","end":"2026-07-14","measure":"downloads","scope":"album","albumKeys":["alpha"],"compare":"previous","traffic":"conservative"}}'; rid uuid; again uuid;
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.analytics_intelligence_snapshot_current WHERE scope_key=public.analytics_intelligence_scope_key(v_scope)) THEN RAISE EXCEPTION 'first-use fixture already has a snapshot'; END IF;
+ rid:=public.analytics_queue_intelligence_request(owner,v_scope,'album_comparison',clock_timestamp());
+ again:=public.analytics_queue_intelligence_request(owner,v_scope,'album_comparison',clock_timestamp());
+ IF rid IS DISTINCT FROM again OR (SELECT count(*) FROM public.analytics_intelligence_jobs WHERE request_id=rid AND kind='request' AND analytics_intelligence_jobs.scope=v_scope)<>1 THEN RAISE EXCEPTION 'first-scope request is not atomically deduplicated'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_intelligence_requests WHERE id=rid AND report_id IS NOT NULL) THEN RAISE EXCEPTION 'first-scope request fabricated a snapshot'; END IF;
+ IF has_function_privilege('authenticated','public.analytics_queue_intelligence_request(uuid,jsonb,text,timestamptz)','EXECUTE') THEN RAISE EXCEPTION 'first-scope request bypasses owner server'; END IF;
+END $$;

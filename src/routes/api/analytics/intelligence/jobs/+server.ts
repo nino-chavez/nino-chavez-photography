@@ -1,3 +1,4 @@
+import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
@@ -42,6 +43,7 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 	}
 	try {
 		const client = createSupabaseAdminClient();
+  const cleanup = await client.rpc('analytics_cleanup_intelligence_private', {p_now:new Date().toISOString()}); if(cleanup.error) throw new Error('private retention cleanup unavailable');
 		const now = new Date();
 		const transport = createPostHogQueryTransport(env, { totalDeadlineMs: 7_000 });
 		let catalogue: Promise<string[]> | undefined;
@@ -75,7 +77,8 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 		});
 		const delivery = await deliverIntelligenceBriefs(client, provider);
 		return json({ ok: true, jobs, delivery });
-	} catch {
+	} catch (failure) {
+  if(dev) console.error('[intelligence local jobs]',failure instanceof Error ? failure.message : 'unavailable');
 		return json({ ok: false, error: 'intelligence_jobs_unavailable' }, { status: 503 });
 	}
 };

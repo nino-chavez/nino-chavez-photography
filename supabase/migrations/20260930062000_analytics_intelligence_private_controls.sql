@@ -116,11 +116,14 @@ BEGIN
   DELETE FROM public.analytics_intelligence_actions a
   USING public.analytics_intelligence_preferences p
   WHERE p.owner_id = a.owner_id AND p.retention_policy = 'days'
-    AND a.created_at < p_now - make_interval(days => p.retention_days)
-    AND NOT EXISTS (
-      SELECT 1 FROM public.analytics_intelligence_actions child
-      WHERE child.reverses_action_id = a.id
-    );
+    AND a.created_at < p_now - make_interval(days => p.retention_days);
+  DELETE FROM public.analytics_intelligence_finding_lifecycle l USING public.analytics_intelligence_preferences p
+  WHERE p.owner_id=l.owner_id AND p.retention_policy='days' AND l.updated_at < p_now-make_interval(days=>p.retention_days);
+  DELETE FROM public.analytics_intelligence_jobs j USING public.analytics_intelligence_requests r
+  WHERE j.request_id=r.id AND r.expires_at<p_now;
+  DELETE FROM public.analytics_intelligence_requests WHERE expires_at<p_now;
+  DELETE FROM public.analytics_intelligence_jobs j USING public.analytics_intelligence_preferences p
+  WHERE p.owner_id=j.owner_id AND p.retention_policy='days' AND j.created_at < p_now-make_interval(days=>p.retention_days);
   DELETE FROM public.analytics_intelligence_briefs b
   USING public.analytics_intelligence_preferences p
   WHERE p.owner_id = b.owner_id AND p.retention_policy = 'days'
