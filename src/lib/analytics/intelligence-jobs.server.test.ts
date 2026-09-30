@@ -1,43 +1,85 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { runIntelligenceJobs } from './intelligence-jobs.server';
+import { loadFixedIntelligenceJourneys, runIntelligenceJobs } from './intelligence-jobs.server';
 
 const scope = { kind: 'sites' as const, period: 7 as const, section: 'all' as const };
-test('jobs claim once, keep an incomplete result explicit, and record lifecycle separately', async () => {
+const report = (current = scope, snapshotId = 'snapshot-a') => ({ snapshotId, scope: current, generatedAt: '2026-09-30T14:00:00.000Z', cutoff: '2026-09-29T23:59:59.000Z', coverage: 'complete', findings: [], suppressions: [], actions: [], briefs: [], page: 0, pageCount: 1, owner: false });
+const refreshJob = (id: string, current = scope) => ({ id, kind: 'refresh', scope: current, ownerId: null, intendedPeriod: null, late: false, requestId: null, operation: null });
+
+test('separate snapshots sharing a timestamp finish and record lifecycle by report id', async () => {
+	const calls: Array<{ name: string; args?: Record<string, unknown> }> = [];
+	const otherScope = { kind: 'sites' as const, period: 30 as const, section: 'all' as const };
+	const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
+		calls.push({ name, args });
+		if (name === 'analytics_claim_intelligence_jobs') return { data: [refreshJob('job-a'), refreshJob('job-b', otherScope)], error: null };
+		return { data: null, error: null };
+	} } as never;
+	const result = await runIntelligenceJobs(client, { refreshIntelligence: async (_client, current) => report(current, current.kind === 'sites' && current.period === 7 ? 'snapshot-a' : 'snapshot-b') }, async () => ({ journeys: {}, providerQueries: 0, providerPending: false }), { now: new Date('2026-09-30T15:00:00.000Z'), concurrency: 1 });
+	assert.deepEqual(result, { prepared: 2, claimed: 2, refreshed: 2, retried: 0, providerQueries: 0, deferred: 0 });
+	assert.deepEqual(calls.filter((call) => call.name === 'analytics_finish_intelligence_job').map((call) => call.args?.p_report_id), ['snapshot-a', 'snapshot-b']);
+	assert.deepEqual(calls.filter((call) => call.name === 'analytics_record_intelligence_lifecycle').map((call) => call.args?.p_report_id), ['snapshot-a', 'snapshot-b']);
+});
+
+test('request work stores a calculated result only after the refreshed snapshot exists', async () => {
+	const requestScope = { kind: 'sites' as const, period: 30 as const, section: 'writing' as const };
+	const updates: Array<Record<string, unknown>> = [];
+	const client = {
+		rpc: async (name: string) => name === 'analytics_claim_intelligence_jobs'
+			? { data: [{ id: 'request-job', kind: 'request', scope: requestScope, ownerId: 'owner-1', intendedPeriod: null, late: false, requestId: 'request-1', operation: 'site_retention' }], error: null }
+			: { data: null, error: null },
+		from: () => ({ update: (value: Record<string, unknown>) => { updates.push(value); return { eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ select: () => ({ maybeSingle: async () => ({ data: { id: 'request-1' }, error: null }) }) })) })) })) }) }; } })
+	} as never;
+	await runIntelligenceJobs(client, { refreshIntelligence: async () => report(requestScope, 'request-snapshot') }, async () => ({ journeys: { site: [] }, providerQueries: 1, providerPending: false }), { now: new Date('2026-09-30T15:00:00.000Z') });
+	assert.equal(updates.length, 1);
+	assert.equal(updates[0].status, 'complete');
+	assert.equal((updates[0].answer as { operation: string }).operation, 'site_retention');
+});
+
+test('malformed claimed scopes are rejected before any refresh', async () => {
+	let refreshed = 0;
+	const client = { rpc: async (name: string) => name === 'analytics_claim_intelligence_jobs'
+		? { data: [{ ...refreshJob('bad'), scope: { kind: 'sites', period: 7, section: 'all', injected: true } }], error: null }
+		: { data: null, error: null } } as never;
+	await assert.rejects(runIntelligenceJobs(client, { refreshIntelligence: async () => { refreshed += 1; return report(); } }, async () => ({ journeys: {}, providerQueries: 0, providerPending: false }), { now: new Date('2026-09-30T15:00:00.000Z') }));
+	assert.equal(refreshed, 0);
+});
+
+test('a provider-pending refresh stores truthful evidence and retries with the report id', async () => {
 	const calls: Array<{ name: string; args?: Record<string, unknown> }> = [];
 	const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
 		calls.push({ name, args });
-		if (name === 'analytics_claim_intelligence_jobs') return { data: [{ id: 'job-1', kind: 'refresh', scope, ownerId: null, intendedPeriod: null }], error: null };
-		return { data: null, error: null };
+		return name === 'analytics_claim_intelligence_jobs' ? { data: [refreshJob('pending')], error: null } : { data: null, error: null };
 	} } as never;
-	const report = { scope, generatedAt: '2026-09-30T14:00:00.000Z', cutoff: '2026-09-29T23:59:59.000Z', coverage: 'partial', findings: [], suppressions: [], actions: [], briefs: [], page: 0, pageCount: 1, owner: false } as never;
-	const result = await runIntelligenceJobs(client, { refreshIntelligence: async () => report }, async () => [], { now: new Date('2026-09-30T15:00:00.000Z') });
-	assert.deepEqual(result, { prepared: 1, claimed: 1, refreshed: 1, retried: 0, providerQueries: 0 });
-	assert.deepEqual(calls.map((call) => call.name), ['analytics_prepare_intelligence_periods', 'analytics_claim_intelligence_jobs', 'analytics_record_intelligence_lifecycle', 'analytics_finish_intelligence_job']);
-});
-
-test('a failed refresh records a retry, rather than claiming an empty report', async () => {
-	const calls: string[] = [];
-	const client = { rpc: async (name: string) => {
-		calls.push(name);
-		if (name === 'analytics_claim_intelligence_jobs') return { data: [{ id: 'job-2', kind: 'request', scope, ownerId: 'owner', intendedPeriod: null }], error: null };
-		return { data: null, error: null };
-	} } as never;
-	const result = await runIntelligenceJobs(client, { refreshIntelligence: async () => { throw new Error('synthetic provider outage'); } }, async () => [], { now: new Date('2026-09-30T15:00:00.000Z') });
+	const result = await runIntelligenceJobs(client, { refreshIntelligence: async () => report(scope, 'pending-snapshot') }, async () => ({ journeys: {}, providerQueries: 1, providerPending: true }), { now: new Date('2026-09-30T15:00:00.000Z') });
 	assert.equal(result.retried, 1);
-	assert.equal(calls.at(-1), 'analytics_finish_intelligence_job');
+	const finish = calls.find((call) => call.name === 'analytics_finish_intelligence_job');
+	assert.deepEqual(finish?.args, { p_job_id: 'pending', p_status: 'retry', p_report_id: 'pending-snapshot', p_error_code: 'provider_query_pending' });
 });
 
-test('a repeated scheduler claim cannot rerun an acknowledged or recovered incident', async () => {
-	let claims = 0; let refreshes = 0; const lifecycle: unknown[] = [];
-	const client = { rpc: async (name: string) => {
-		if (name === 'analytics_claim_intelligence_jobs') return { data: claims++ === 0 ? [{ id: 'job-3', kind: 'daily', scope, ownerId: 'owner', intendedPeriod: '2026-09-30' }] : [], error: null };
-		if (name === 'analytics_record_intelligence_lifecycle') lifecycle.push('recorded');
-		return { data: null, error: null };
-	} } as never;
-	const report = { scope, generatedAt: '2026-09-30T14:00:00.000Z', cutoff: '2026-09-29T23:59:59.000Z', coverage: 'complete', findings: [{ status: 'acknowledged' }, { status: 'recovered' }], suppressions: [], actions: [], briefs: [], page: 0, pageCount: 1, owner: true } as never;
-	const engine = { refreshIntelligence: async () => { refreshes += 1; return report; } };
-	await runIntelligenceJobs(client, engine, async () => [], { now: new Date('2026-09-30T15:00:00.000Z') });
-	await runIntelligenceJobs(client, engine, async () => [], { now: new Date('2026-09-30T15:05:00.000Z') });
-	assert.equal(refreshes, 1); assert.deepEqual(lifecycle, ['recorded']);
+test('deadline leaves claimed work for its lease instead of starting another slow scope', async () => {
+	const originalNow = Date.now;
+	const ticks = [0, 0, 2_000];
+	Date.now = () => ticks.shift() ?? 2_000;
+	try {
+		const client = { rpc: async (name: string) => name === 'analytics_claim_intelligence_jobs' ? { data: [refreshJob('first'), refreshJob('second')], error: null } : { data: null, error: null } } as never;
+		const result = await runIntelligenceJobs(client, { refreshIntelligence: async () => report() }, async () => ({ journeys: {}, providerQueries: 0, providerPending: false }), { now: new Date('2026-09-30T15:00:00.000Z'), deadlineMs: 1_000, concurrency: 1 });
+		assert.equal(result.refreshed, 1);
+		assert.equal(result.deferred, 1);
+	} finally { Date.now = originalNow; }
+});
+
+test('fixed gallery and site loaders preserve their respective provider shapes', async () => {
+	const galleryScope = { kind: 'gallery' as const, query: { start: '2026-09-01', end: '2026-09-30', measure: 'photo_opens' as const, scope: 'all' as const, albumKeys: [], compare: 'previous' as const, traffic: 'conservative' as const } };
+	const gallery = await loadFixedIntelligenceJourneys(galleryScope, {
+		gallery: async (name) => ({ report: name, available: true, asOf: null, coverage: { start: '2026-09-01', end: '2026-09-30', timezone: 'America/Chicago', definitionVersion: 2 as const, cohort: 'synthetic', excluded: 'synthetic', metadata: 'synthetic' }, totals: {}, breakdown: [] }),
+		site: async () => ({ available: true, rows: [] })
+	});
+	const site = await loadFixedIntelligenceJourneys(scope, {
+		gallery: async () => { throw new Error('not used'); },
+		site: async () => ({ available: true, rows: [] })
+	});
+	assert.equal(gallery.journeys.gallery?.length, 7);
+	assert.equal(gallery.providerQueries, 7);
+	assert.deepEqual(site.journeys, { site: [] });
+	assert.equal(site.providerQueries, 1);
 });

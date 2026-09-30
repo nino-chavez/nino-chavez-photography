@@ -1,3 +1,5 @@
+import { standardIntelligenceScopes } from './intelligence-contract';
+
 /** Local reporting periods. 08:00 is deliberately away from DST transition hours. */
 export const INTELLIGENCE_TIME_ZONE = 'America/Chicago';
 export type IntelligenceBriefKind = 'daily' | 'weekly';
@@ -42,25 +44,23 @@ export function chicagoWallTimeToUtc(day: string, hour = 8, minute = 0): string 
  */
 export function dueIntelligencePeriods(now = new Date(), lateAfterMinutes = 15): ScheduledIntelligencePeriod[] {
 	const local = chicagoParts(now);
-	if (local.hour < 8) return [];
-	const intendedPeriod = dateKey(local);
+	const day = new Date(Date.UTC(local.year, local.month - 1, local.day));
+	// A wake-up before 08:00 may still be the first successful run after an
+	// outage. It can only recover yesterday; it never creates today's future brief.
+	if (local.hour < 8) day.setUTCDate(day.getUTCDate() - 1);
+	const intendedPeriod = day.toISOString().slice(0, 10);
 	const dueAt = chicagoWallTimeToUtc(intendedPeriod);
 	const late = now.getTime() - Date.parse(dueAt) > lateAfterMinutes * 60_000;
 	const daily: ScheduledIntelligencePeriod = { kind: 'daily', intendedPeriod, dueAt, late };
-	return local.weekday === 'Mon' ? [daily, { kind: 'weekly', intendedPeriod, dueAt, late }] : [daily];
+	// A weekly period is keyed to the Monday in the daily period's week. Passing
+	// it on later days lets persistence recover a missed Monday without ever
+	// moving the intended period forward.
+	const weeklyDay = new Date(`${intendedPeriod}T12:00:00Z`);
+	weeklyDay.setUTCDate(weeklyDay.getUTCDate() - ((weeklyDay.getUTCDay() + 6) % 7));
+	const weeklyPeriod = weeklyDay.toISOString().slice(0, 10);
+	const weeklyDueAt = chicagoWallTimeToUtc(weeklyPeriod);
+	return [daily, { kind: 'weekly', intendedPeriod: weeklyPeriod, dueAt: weeklyDueAt, late: now.getTime() - Date.parse(weeklyDueAt) > lateAfterMinutes * 60_000 }];
 }
 
-export function standardIntelligenceScopes(now = new Date()): Array<{ kind: 'gallery'; query: Record<string, unknown> } | { kind: 'sites'; period: 7 | 30 | 90; section: 'all' }> {
-	const local = chicagoParts(now);
-	const end = new Date(Date.UTC(local.year, local.month - 1, local.day));
-	end.setUTCDate(end.getUTCDate() - 1);
-	const endDay = end.toISOString().slice(0, 10);
-	const start = new Date(`${endDay}T12:00:00Z`);
-	start.setUTCDate(start.getUTCDate() - 29);
-	return [
-		{ kind: 'gallery', query: { start: start.toISOString().slice(0, 10), end: endDay, measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } },
-		{ kind: 'sites', period: 7, section: 'all' },
-		{ kind: 'sites', period: 30, section: 'all' },
-		{ kind: 'sites', period: 90, section: 'all' }
-	];
-}
+/** The engine contract owns the complete, typed gallery and site refresh set. */
+export { standardIntelligenceScopes };

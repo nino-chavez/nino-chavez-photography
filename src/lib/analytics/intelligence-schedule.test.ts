@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chicagoWallTimeToUtc, dueIntelligencePeriods, standardIntelligenceScopes } from './intelligence-schedule';
 
-test('daily schedule uses Chicago time through DST and does not run before 08:00', () => {
-	assert.deepEqual(dueIntelligencePeriods(new Date('2026-03-08T12:59:00.000Z')), []);
+test('daily schedule uses Chicago time through DST and recovers yesterday before 08:00', () => {
+	const recovery = dueIntelligencePeriods(new Date('2026-03-08T12:59:00.000Z'));
+	assert.equal(recovery[0]?.intendedPeriod, '2026-03-07');
+	assert.equal(recovery[0]?.late, true);
 	const due = dueIntelligencePeriods(new Date('2026-03-08T13:00:00.000Z'));
 	assert.equal(due[0]?.intendedPeriod, '2026-03-08');
 	assert.equal(due[0]?.dueAt, '2026-03-08T13:00:00.000Z');
@@ -17,6 +19,13 @@ test('Monday has a deduplicable daily and weekly intended period, including late
 	]);
 });
 
+test('a pre-08 Monday never creates that Monday weekly brief early', () => {
+	const due = dueIntelligencePeriods(new Date('2026-11-02T12:30:00.000Z'));
+	assert.deepEqual(due.map((period) => [period.kind, period.intendedPeriod]), [
+		['daily', '2026-11-01'], ['weekly', '2026-10-26']
+	]);
+});
+
 test('repeated and delayed checks retain the same intended daily period', () => {
 	const first = dueIntelligencePeriods(new Date('2026-07-15T13:02:00.000Z'));
 	const delayed = dueIntelligencePeriods(new Date('2026-07-15T19:00:00.000Z'));
@@ -24,8 +33,11 @@ test('repeated and delayed checks retain the same intended daily period', () => 
 	assert.equal(first[0]?.late, false); assert.equal(delayed[0]?.late, true);
 });
 
-test('standard refresh scopes use a last complete Chicago gallery day', () => {
+test('the engine contract owns 30/90 gallery and every site section/window', () => {
 	const scopes = standardIntelligenceScopes(new Date('2026-03-09T13:00:00.000Z'));
 	assert.deepEqual(scopes[0], { kind: 'gallery', query: { start: '2026-02-07', end: '2026-03-08', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } });
-	assert.deepEqual(scopes.slice(1).map((scope) => scope.kind === 'sites' ? scope.period : 0), [7, 30, 90]);
+	assert.deepEqual(scopes[1], { kind: 'gallery', query: { start: '2025-12-09', end: '2026-03-08', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } });
+	const sites = scopes.filter((scope) => scope.kind === 'sites');
+	assert.equal(sites.length, 18);
+	assert.deepEqual(new Set(sites.map((scope) => `${scope.section}/${scope.period}`)).size, 18);
 });

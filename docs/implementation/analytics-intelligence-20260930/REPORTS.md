@@ -1,64 +1,74 @@
 # Analytics intelligence reports
 
 The dashboard is the primary delivery surface. Daily and weekly briefs use the
-same stored findings. External delivery stays off until an owner verifies a
-destination and enables that channel.
+same immutable report snapshots. External delivery remains off until the owner
+both verifies a destination and enables that channel.
 
 ## What runs
 
-The intelligence Worker calls the protected jobs endpoint every five minutes.
-The Worker is disabled by default. The endpoint works with the existing scoped
-analytics relay secret; it does not accept a browser session or public request.
+The intelligence Worker wakes the protected jobs endpoint every five minutes.
+It is disabled until production activation is approved. The endpoint accepts
+only the existing scheduler token, never a browser session.
 
-At or after 08:00 America/Chicago, the job records one intended daily period
-for that local date. On Monday it also records one weekly period. The database
-deduplicates by report kind, owner, and intended local period, so retries,
-overlapping invocations, late execution, and DST changes cannot create another
-brief. A late run keeps its intended period and is marked late; it does not
-silently become a report for a different day.
+The scheduler uses America/Chicago. At 08:00 it creates that local day's daily
+brief and that week's Monday-keyed weekly brief. Before 08:00 it can recover
+only yesterday's daily period and the matching prior Monday weekly period. A
+later day can also carry the same week's weekly key. The database must dedupe
+these candidates and make catch-up bounded. No call may create a future period.
+Late work keeps its intended local period and has `late = true`.
 
-Gallery evidence uses Chicago complete days. Site evidence uses UTC complete
-days. A brief must show those source windows separately. A current operational
-window is partial and is never compared with a complete period as though they
-were alike. Missing or partial coverage remains a gap, not a zero.
+The engine contract owns the standard refresh scopes:
 
-## Storage RPC contract for the engine migration
+- Gallery: 30 and 90 completed Chicago days.
+- Site: every `all`, `profile`, `writing`, `demos`, `photography`, and `other`
+  section for 7, 30, and 90 completed UTC days.
 
-This worker deliberately contains no migration. The engine migration must add
-these RPCs. Each claim is atomic, has a lease, and returns only non-identifying
-aggregate scope or delivery metadata.
+Gallery provider reads first resolve the current public catalogue through
+`analytics_read_scheduled_gallery_report(... p_public_only = true)`. The
+result is capped at 500 album keys. If the scope is larger, it fails explicitly;
+it never drops albums. Unlisted albums never reach the provider. Site reads use
+their own UTC windows. The provider cache lasts 12 minutes, each gallery scope
+runs at most three fixed queries at once, the endpoint processes at most two
+jobs at once, claims at most four jobs, and provider reads have a seven-second
+deadline. A pending provider result writes the truthful partial/unavailable
+snapshot and schedules a retry; it is not changed to zero.
 
-| RPC | Input | Result / rule |
+## Required storage contract
+
+The current forward migration
+`20260930040614_analytics_intelligence_storage.sql` was empty when this jobs
+revision was written. The RPCs below are therefore an exact handoff to the
+engine/SQL owner, not a claim that storage now exists.
+
+| RPC | Exact input | Required behavior |
 | --- | --- | --- |
-| `analytics_claim_intelligence_jobs` | `p_limit`, `p_lease_seconds`, `p_now` | Lease pending scheduled, refresh, and on-demand work. A scheduled run is unique on `(owner_id, kind, intended_period)`. |
-| `analytics_finish_intelligence_job` | `p_job_id`, `p_status`, `p_error_code`, `p_report_generated_at` | Finish or retry a job. Error codes are stable categories, never provider text. |
-| `analytics_prepare_intelligence_periods` | `p_daily_period`, `p_weekly_period`, `p_standard_scopes`, `p_now` | Insert due daily/weekly work once, queue all fixed gallery/site refresh scopes, calculate late state, and queue in-dashboard briefs. |
-| `analytics_record_intelligence_lifecycle` | `p_report_generated_at`, `p_now` | Upsert finding lifecycle from stored evidence: one incident per cause, acknowledgement cooldown, recovery, and due follow-up reminders. It must not send. |
-| `analytics_claim_intelligence_deliveries` | `p_limit`, `p_lease_seconds` | Lease dashboard or external delivery records. An external row includes `destination_verified`, `preference_enabled`, `sender`, and a stable idempotency key. |
-| `analytics_finish_intelligence_delivery` | `p_delivery_id`, `p_status`, `p_error_code`, `p_provider_message_id` | Persist accepted, suppressed, failed, or ambiguous state. Accepted is not inbox delivery. |
-| `analytics_list_ambiguous_intelligence_deliveries` | `p_limit` | Return only external rows requiring provider reconciliation. They are never eligible for resend until reconciliation says missing. |
-| `analytics_reconcile_intelligence_delivery` | `p_delivery_id`, `p_state`, `p_provider_message_id` | Resolve an ambiguous submission as accepted, missing, or unavailable. Only `missing` may requeue the original idempotency key. |
+| `analytics_prepare_intelligence_periods` | `p_daily_period date`, `p_weekly_period date`, `p_standard_scopes jsonb`, `p_refresh_cadence_seconds integer`, `p_provider_pending_retry_seconds integer`, `p_max_catchup_periods integer`, `p_now timestamptz` | Insert only due, non-future daily/weekly candidates; catch up at most the supplied bound; queue the full typed standard set only when its cadence/backoff permits. Create in-dashboard brief work after all eligible scoped snapshot references are available. |
+| `analytics_claim_intelligence_jobs` | `p_limit integer`, `p_lease_seconds integer`, `p_now timestamptz` | Atomically lease at most four jobs. Return strict camel-case rows: `id`, `kind`, `scope`, `ownerId`, `intendedPeriod`, `late`, `requestId`, `operation`. A request row includes only `album_comparison` or `site_retention`, its owner, and its request id. |
+| `analytics_finish_intelligence_job` | `p_job_id uuid`, `p_status text`, `p_report_id uuid null`, `p_error_code text null` | Store the immutable snapshot reference, never `generated_at`. `provider_query_pending` gets the configured backoff. |
+| `analytics_record_intelligence_lifecycle` | `p_report_id uuid`, `p_now timestamptz` | Read exactly that snapshot. Keep one incident per cause and a recovery on that same incident; it does not send. |
+| `analytics_claim_intelligence_deliveries` | `p_limit integer`, `p_lease_seconds integer` | Return delivery rows with `destination` (`channel`, `address`, `verifiedAt`) as well as verification/preference/sender/idempotency metadata. A daily or weekly owner brief aggregates eligible same-snapshot references, source windows/timezones, and suppressions. |
+| `analytics_finish_intelligence_delivery` | `p_delivery_id uuid`, `p_status text`, `p_error_code text null`, `p_provider_message_id text null` | `accepted` means provider acceptance, not inbox delivery. |
+| `analytics_list_ambiguous_intelligence_deliveries` | `p_limit integer` | Return only rows requiring reconciliation; ambiguous rows never return to normal claim. |
+| `analytics_reconcile_intelligence_delivery` | `p_delivery_id uuid`, `p_state text`, `p_provider_message_id text null` | `missing` alone may reopen the original idempotency key. `unavailable` leaves the row unresolved. |
 
-`refreshIntelligence(client, scope, { ownerId, now, journeys })` writes immutable
-evidence/versioned findings. `loadIntelligence` reads those results. The jobs
-layer passes only fixed PostHog report names and aggregate results as
-`journeys`; it never gives the engine raw events or an arbitrary query string.
+Request completion uses the existing engine table, after a fresh report refresh:
+update the still-pending row matching request id, owner id, scope key, and
+operation to `status = 'complete'` with the calculated answer. The answer does
+not retain free-text question content. If the engine migration gives the table a
+different update contract, it must add an equivalent owned RPC before release;
+the jobs layer must not mark a pending request complete without a stored result.
 
-## Delivery rules
+## Delivery activation contract
 
-```text
-stored finding -> in-dashboard brief -> optional delivery record
-                         |                 |
-                         |                 +-- verified destination + preference + one sender
-                         |
-                         +-- dashboard works even when external delivery is muted
-```
+The dashboard works with no external provider. When the owner activates the
+owned sender, the endpoint requires all three configuration values:
+`ANALYTICS_INTELLIGENCE_DELIVERY_ENABLED=true`,
+`ANALYTICS_INTELLIGENCE_DELIVERY_ENDPOINT`, and
+`ANALYTICS_INTELLIGENCE_DELIVERY_TOKEN`. This code creates no credential,
+recipient, billing setting, or actual send.
 
-If PostHog owns a compatible notification, its delivery row has
-`sender = posthog_native`; this code records the state and does not send a
-second message. An owned sender may submit only after both destination and
-preference checks pass. A timeout after submission is `ambiguous`, then a
-provider reconciliation task; it is not retried as a new send.
-
-No production activation, recipient, token, billing setting, or external send
-is part of this code. Synthetic tests use plainly synthetic records only.
+The endpoint receives the durable verified destination and stable idempotency
+key from storage. It does not guess an email address. A provider throw or
+uncertain response becomes `ambiguous`; it is never blindly resent. A failed
+reconciliation remains unresolved. Native PostHog delivery remains a distinct
+single sender and is suppressed here to prevent a duplicate notification.
