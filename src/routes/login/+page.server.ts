@@ -66,7 +66,7 @@ export const actions = {
 		const supabase = createSupabaseServerClient(cookies);
 		const { error: authError } = await supabase.auth.signInWithOtp({
 			email,
-			options: { emailRedirectTo: getCallbackUrl(url, '/analytics/operator'), shouldCreateUser: false }
+			options: { emailRedirectTo: getCallbackUrl(url, authReturnPath(url.searchParams.get('next'), '/analytics/operator')), shouldCreateUser: false }
 		});
 
 		if (authError) {

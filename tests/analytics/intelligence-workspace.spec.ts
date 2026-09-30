@@ -181,3 +181,21 @@ test('keeps stored brief provenance private, compact, and paged', async ({ page 
 	await expect.poll(() => requestedBriefPage).toBe('1');
 	await expect(page.getByText('Morning review 11')).toBeVisible();
 });
+
+
+test('owner can ask a supported question when no recommendation exists', async ({ page }) => {
+ await addOwnerFixture(page);
+ let posted = false;
+ await page.route('**/api/analytics/intelligence**', async route => {
+  if(route.request().method()==='POST') {
+   posted = true;
+   return route.fulfill({contentType:'application/json',body:JSON.stringify({scope:report.scope,question:'What does this support?',operation:'explain_report',status:'unavailable',summary:'History is still incomplete.',findings:[],evidenceLinks:[],limitations:['No invented recommendation.'],generatedAt:report.generatedAt})});
+  }
+  return route.fulfill({contentType:'application/json',body:JSON.stringify({...report,owner:true,findings:[],coverage:'partial'})});
+ });
+ await page.goto(galleryRoute);
+ await expect(page.getByText('No actionable findings for this scope')).toBeVisible();
+ await page.getByRole('button',{name:'What does this support?',exact:true}).click();
+ await expect(page.getByText('History is still incomplete.')).toBeVisible();
+ expect(posted).toBe(true);
+});
