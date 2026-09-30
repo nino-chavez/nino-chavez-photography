@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildV2ReportProjection, type V2ArchivedTotal, type V2ReportEvent } from './v2-report-projection.server';
+import { buildV2ReportProjection, fetchLatestV2Classifications, type V2ArchivedTotal, type V2ReportEvent } from './v2-report-projection.server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ReportQuery } from './report-contract';
 
 const query: ReportQuery = {
@@ -78,4 +79,35 @@ test('a current raw classification changes aggregation while archived classifica
 
 	assert.equal(current.counts.find((count) => count.event === 'photo_opened')?.count, 4);
 	assert.equal(JSON.stringify(current).includes('20000000-0000-4000-8000-000000000099'), false);
+});
+
+test('classification cannot promote originally excluded collection context into audience traffic', () => {
+	const projection = buildV2ReportProjection([
+		event({ traffic_context: 'operator', classification: 'audience' }),
+		event({ traffic_context: 'test', classification: 'unclassified' }),
+		event({ traffic_context: 'audience', classification: 'known_crawler' })
+	], [], query, { publicAlbumKeys: ['public-album'] }, bounds);
+	assert.equal(projection.counts.find((count) => count.event === 'photo_opened')?.count, 0);
+});
+
+test('classification lookup is limited to selected event ids in batches of 100', async () => {
+	const requested: string[][] = [];
+	const client = {
+		from() {
+			let ids: string[] = [];
+			const queryBuilder = {
+				select() { return queryBuilder; },
+				in(_field: string, values: string[]) { ids = values; requested.push(values); return queryBuilder; },
+				order() { return queryBuilder; },
+				range() { return queryBuilder; },
+				then(resolve: (value: unknown) => unknown) { return Promise.resolve({ data: ids.slice(0, 1).map((event_id) => ({ event_id, classification: 'audience', classification_version: 1 })), error: null }).then(resolve); }
+			};
+			return queryBuilder;
+		}
+	} as unknown as SupabaseClient;
+	const ids = Array.from({ length: 205 }, (_, index) => `event-${index}`);
+	const latest = await fetchLatestV2Classifications(client, ids);
+	assert.deepEqual(requested.map((batch) => batch.length).sort((a, b) => b - a), [100, 100, 5]);
+	assert.equal(latest.size, 3);
+	assert.equal(requested.flat().includes('not-selected'), false);
 });

@@ -1,0 +1,15 @@
+[
+  "src/lib/analytics/bounded-singleflight-cache.server.test.ts",
+  "src/lib/analytics/bounded-singleflight-cache.server.ts",
+  "src/lib/analytics/gallery-performance.server.test.ts",
+  "src/lib/analytics/gallery-performance.server.ts",
+  "src/lib/analytics/operator-report.server.ts",
+  "src/lib/analytics/operator-report.test.ts",
+  "src/lib/analytics/report-contract.test.ts",
+  "src/lib/analytics/report-contract.ts",
+  "src/lib/analytics/v2-report-projection.server.ts",
+  "src/lib/analytics/v2-report-projection.test.ts",
+  "src/routes/analytics/operator/+page.server.ts",
+  "src/routes/analytics/operator/+page.svelte",
+  "src/routes/analytics/operator/export.csv/+server.ts"
+]

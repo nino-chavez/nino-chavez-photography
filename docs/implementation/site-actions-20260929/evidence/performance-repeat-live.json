@@ -1,0 +1,348 @@
+{
+  "measuredAt": "2026-09-29T22:59:07.916Z",
+  "kind": "Lab measurements; mobile simulates 150ms RTT, 1.6Mbps down, 4x CPU. Not real-user INP or field Core Web Vitals.",
+  "results": [
+    {
+      "device": "desktop",
+      "run": 1,
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 224,
+      "cls": 0,
+      "longTasks": [
+        321
+      ],
+      "responseStartMs": 76.40000009536743,
+      "responseEndMs": 158.90000009536743,
+      "domContentLoadedMs": 221.30000007152557,
+      "loadMs": 221.30000007152557,
+      "documentBytes": 6766,
+      "resourceBytes": 113090,
+      "resourceCount": 24,
+      "scriptBytes": 91248,
+      "controlsReadyMs": null,
+      "interactions": [],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 1759
+    },
+    {
+      "device": "desktop",
+      "run": 2,
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 332,
+      "cls": 0,
+      "longTasks": [],
+      "responseStartMs": 157.60000002384186,
+      "responseEndMs": 218.90000009536743,
+      "domContentLoadedMs": 328.2000000476837,
+      "loadMs": 328.3000000715256,
+      "documentBytes": 6741,
+      "resourceBytes": 113090,
+      "resourceCount": 24,
+      "scriptBytes": 91248,
+      "controlsReadyMs": null,
+      "interactions": [],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 1870
+    },
+    {
+      "device": "desktop",
+      "run": 3,
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 172,
+      "cls": 0,
+      "longTasks": [],
+      "responseStartMs": 52.89999997615814,
+      "responseEndMs": 109.5,
+      "domContentLoadedMs": 264.39999997615814,
+      "loadMs": 264.5,
+      "documentBytes": 6745,
+      "resourceBytes": 112490,
+      "resourceCount": 22,
+      "scriptBytes": 91248,
+      "controlsReadyMs": null,
+      "interactions": [],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 1784
+    },
+    {
+      "device": "desktop",
+      "run": 1,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 3252,
+      "cls": 0,
+      "longTasks": [],
+      "responseStartMs": 51,
+      "responseEndMs": 3173.7999999523163,
+      "domContentLoadedMs": 3494.6999999284744,
+      "loadMs": 3494.899999976158,
+      "documentBytes": 75047,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": 3529.2999999523163,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 38.10000002384186
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 14.800000071525574
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 5126
+    },
+    {
+      "device": "desktop",
+      "run": 2,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 3264,
+      "cls": 0,
+      "longTasks": [],
+      "responseStartMs": 154.89999997615814,
+      "responseEndMs": 3202.1999999284744,
+      "domContentLoadedMs": 3572.899999976158,
+      "loadMs": 3573.1999999284744,
+      "documentBytes": 75086,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": 3630.399999976158,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 41
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 14.700000047683716
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 5226
+    },
+    {
+      "device": "desktop",
+      "run": 3,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 4112,
+      "cls": 0,
+      "longTasks": [],
+      "responseStartMs": 52.699999928474426,
+      "responseEndMs": 4038.5,
+      "domContentLoadedMs": 4186.699999928474,
+      "loadMs": 4196,
+      "documentBytes": 75091,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": 4240.799999952316,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 49.39999997615814
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 17
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 5853
+    },
+    {
+      "device": "mobile",
+      "run": 1,
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 1076,
+      "cls": 0,
+      "longTasks": [
+        74,
+        71
+      ],
+      "responseStartMs": 55.299999952316284,
+      "responseEndMs": 229.10000002384186,
+      "domContentLoadedMs": 1091.5,
+      "loadMs": 1091.5,
+      "documentBytes": 6757,
+      "resourceBytes": 113090,
+      "resourceCount": 24,
+      "scriptBytes": 91248,
+      "controlsReadyMs": null,
+      "interactions": [],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 2713
+    },
+    {
+      "device": "mobile",
+      "run": 2,
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 1072,
+      "cls": 0,
+      "longTasks": [
+        67,
+        95
+      ],
+      "responseStartMs": 48.699999928474426,
+      "responseEndMs": 229.19999992847443,
+      "domContentLoadedMs": 1099.2999999523163,
+      "loadMs": 1099.3999999761581,
+      "documentBytes": 6737,
+      "resourceBytes": 113090,
+      "resourceCount": 24,
+      "scriptBytes": 91248,
+      "controlsReadyMs": null,
+      "interactions": [],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 2721
+    },
+    {
+      "device": "mobile",
+      "run": 3,
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 1108,
+      "cls": 0,
+      "longTasks": [
+        64,
+        51,
+        79
+      ],
+      "responseStartMs": 90.70000004768372,
+      "responseEndMs": 267.89999997615814,
+      "domContentLoadedMs": 1124.2999999523163,
+      "loadMs": 1124.7000000476837,
+      "documentBytes": 6744,
+      "resourceBytes": 113090,
+      "resourceCount": 24,
+      "scriptBytes": 91248,
+      "controlsReadyMs": null,
+      "interactions": [],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 2759
+    },
+    {
+      "device": "mobile",
+      "run": 1,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 3948,
+      "cls": 0,
+      "longTasks": [
+        61,
+        85,
+        80
+      ],
+      "responseStartMs": 67.39999997615814,
+      "responseEndMs": 4136.899999976158,
+      "domContentLoadedMs": 4425.699999928474,
+      "loadMs": 4426.399999976158,
+      "documentBytes": 75231,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": null,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 71.89999997615814
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 27.700000047683716
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 6185
+    },
+    {
+      "device": "mobile",
+      "run": 2,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 4644,
+      "cls": 0,
+      "longTasks": [
+        58,
+        79,
+        79
+      ],
+      "responseStartMs": 48.199999928474426,
+      "responseEndMs": 4826.199999928474,
+      "domContentLoadedMs": 5112.699999928474,
+      "loadMs": 5112.699999928474,
+      "documentBytes": 75091,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": null,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 88.70000004768372
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 31
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 6900
+    },
+    {
+      "device": "mobile",
+      "run": 3,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 4808,
+      "cls": 0,
+      "longTasks": [
+        58,
+        84,
+        87
+      ],
+      "responseStartMs": 67.19999992847443,
+      "responseEndMs": 5000.699999928474,
+      "domContentLoadedMs": 5280,
+      "loadMs": 5280.5,
+      "documentBytes": 75092,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": null,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 83.60000002384186
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 31.100000023841858
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 7052
+    }
+  ]
+}

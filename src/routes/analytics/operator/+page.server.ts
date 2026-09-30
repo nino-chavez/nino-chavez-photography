@@ -3,8 +3,9 @@ import { base } from '$app/paths';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { buildOperatorReport } from '$lib/analytics/operator-report.server';
-import { parseReportQuery, chicagoDayStart } from '$lib/analytics/report-contract';
-import { fetchV2ReportProjection } from '$lib/analytics/v2-report-projection.server';
+import type { PhotoRank } from '$lib/analytics/gallery-performance.server';
+import { assertReportDateBounds, parseReportQuery, chicagoDayStart } from '$lib/analytics/report-contract';
+import { fetchV2ReportProjection, unavailableV2ReportProjection } from '$lib/analytics/v2-report-projection.server';
 import { createPostHogQueryTransport, queryGalleryJourneys } from '$lib/analytics/posthog-queries.server';
 import { POSTHOG_JOURNEY_REPORTS } from '$lib/analytics/posthog.types';
 import { env } from '$env/dynamic/private';
@@ -14,7 +15,7 @@ import type { Actions, PageServerLoad } from './$types';
 type CatalogueEntry = {album_key:string;album_name:string;photo_count:number};
 type AlbumSetting = {album_key:string;visibility:string|null;published_at:string|null};
 type AlbumFact = {album_key:string;sport:string|null;event_date:string|null;event_type?:string|null};
-type CategoryFact = {photo_id:string;album_key:string;photo_category:string|null};
+type CategoryFact = {album_key:string;photo_category:string|null};
 type V2EvidenceEvent = {event_id:string;event_name:string;occurred_at:string;album_key:string|null;photo_id:string|null;traffic_context:string};
 type MeasurementHealth = {
 	available:boolean; schemaVersion:number | null; pending:number | null; submitted:number | null; confirmed:number | null; failed:number | null;
@@ -22,6 +23,16 @@ type MeasurementHealth = {
 	accepted:number | null; rejected:number | null; duplicate:number | null; quotaBillingState:'unknown'; eligibleObservations:number | null; eligibleDays:number | null;
 	forecast30Days:number | null; forecastLimit:string;
 };
+const REPORT_SECTIONS = ['overview', 'albums', 'photos', 'sources', 'measurement', 'analytics-preferences'] as const;
+type ReportSection = (typeof REPORT_SECTIONS)[number];
+
+function reportSection(value: string | null): ReportSection {
+	return REPORT_SECTIONS.includes(value as ReportSection) ? value as ReportSection : 'overview';
+}
+
+function boundedPage(value: string | null): number {
+	return Math.max(0, Math.min(10_000, Number.parseInt(value ?? '0', 10) || 0));
+}
 async function readAll<T>(page:(from:number)=>PromiseLike<{data:T[]|null;error:unknown}>) {
  const data:T[]=[];
  for(let from=0;;from+=1000){const result=await page(from);if(result.error)return {data:[] as T[],error:result.error};data.push(...(result.data??[]));if((result.data??[]).length<1000)return {data,error:null};}
@@ -83,28 +94,43 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 	const { data: { user: signedInUser } } = await createSupabaseServerClient(cookies).auth.getUser();
 	const user = signedInUser && isAllowedAdmin(signedInUser.email) ? signedInUser : null;
 	const query = parseReportQuery(url.searchParams);
+	try {
+		assertReportDateBounds(query);
+	} catch (cause) {
+		if (cause instanceof RangeError) throw error(400, cause.message);
+		throw cause;
+	}
+	const section = reportSection(url.searchParams.get('section'));
+	const requestedRank = url.searchParams.get('photo_rank');
+	const photoRank: PhotoRank = requestedRank === 'rising' || requestedRank === 'recent' ? requestedRank : 'popular';
+	const photoWindow = section === 'overview'
+		? { page: 0, pageSize: 4, rank: 'popular' as const }
+		: section === 'photos'
+			? { page: boundedPage(url.searchParams.get('photo_page')), pageSize: 12, rank: photoRank }
+			: { page: 0, pageSize: 0, rank: 'popular' as const };
 	const admin = createSupabaseAdminClient();
- const eventPage=Math.max(0,Math.min(10000,Number.parseInt(url.searchParams.get('event_page')??'0',10)||0));
+	 const eventPage=boundedPage(url.searchParams.get('event_page'));
  const dayAfter=new Date(`${query.end}T12:00:00Z`);dayAfter.setUTCDate(dayAfter.getUTCDate()+1);
  let retainedQuery=admin.from('engagement_events').select('id, album_key, photo_id, event_type, source, created_at, traffic_context').gte('created_at',chicagoDayStart(query.start)).lt('created_at',chicagoDayStart(dayAfter.toISOString().slice(0,10))).order('created_at',{ascending:false}).order('id',{ascending:false});
 	let v2EvidenceQuery=admin.from('analytics_events_v2').select('event_id,event_name,occurred_at,album_key,photo_id,traffic_context').gte('occurred_at',chicagoDayStart(query.start)).lt('occurred_at',chicagoDayStart(dayAfter.toISOString().slice(0,10))).order('occurred_at',{ascending:false}).order('event_id',{ascending:false});
  let noteQuery=admin.from('analytics_sharing_annotations').select('id, album_key, activity_date, channel, note, updated_at').eq('created_by',user?.id ?? '').gte('activity_date',query.start).lte('activity_date',query.end).order('activity_date',{ascending:false});
 	if(query.scope!=='all'){retainedQuery=retainedQuery.in('album_key',query.albumKeys);v2EvidenceQuery=v2EvidenceQuery.in('album_key',query.albumKeys);noteQuery=noteQuery.in('album_key',query.albumKeys);}
+	const measurementSection = section === 'measurement';
 	const [report, saved, annotations, albumCatalogue, albumSettings, albumFacets, categoryFacets, correctionLog, retainedEvents, v2CorrectionLog, v2EvidenceEvents, measurementHealthResult] = await Promise.all([
-		buildOperatorReport(admin, query, { publicOnly: true }),
-		user ? admin.from('analytics_saved_reports').select('id, name, query, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false }) : { data: [], error: null },
-		user ? readAll(from=>noteQuery.range(from,from+999)) : { data: [], error: null }
+			buildOperatorReport(admin, query, { publicOnly: true, photoWindow, includeDiagnostics: measurementSection, includeVisitorEstimate: section === 'overview', includeToday: section === 'overview', cacheRole: 'service_role' }),
+			user && section === 'sources' ? admin.from('analytics_saved_reports').select('id, name, query, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false }) : { data: [], error: null },
+			user && section === 'overview' ? readAll(from=>noteQuery.range(from,from+999)) : { data: [], error: null }
 		,
 		readAll<CatalogueEntry>(from=>admin.from('albums_summary').select('album_key, album_name, photo_count').order('album_key').range(from,from+999)),
 		readAll<AlbumSetting>(from=>admin.from('album_settings').select('album_key, visibility, published_at').order('album_key').range(from,from+999)),
 		readAll<AlbumFact>(from=>admin.from('albums').select('album_key, sport, event_date').order('album_key').range(from,from+999)),
-		readAll<CategoryFact>(from=>admin.from('photo_metadata').select('photo_id, album_key, photo_category').order('photo_id').range(from,from+999)),
-		user ? admin.from('engagement_classification_corrections').select('id, engagement_event_id, classification, reason_flags, classification_version, note, corrected_at').order('corrected_at', { ascending: false }).limit(30) : { data: [], error: null },
-		user ? retainedQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null }
-		,
-		user ? admin.from('analytics_event_v2_classifications').select('event_id,classification,classification_version,note,corrected_at,reversed').order('corrected_at',{ascending:false}).limit(30) : { data: [], error: null },
-		user ? v2EvidenceQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null },
-		user ? admin.rpc('analytics_posthog_delivery_health') : { data: null, error: null }
+		admin.rpc('analytics_category_facets') as PromiseLike<{data:CategoryFact[]|null;error:unknown}>,
+			user && measurementSection ? admin.from('engagement_classification_corrections').select('id, engagement_event_id, classification, reason_flags, classification_version, note, corrected_at').order('corrected_at', { ascending: false }).limit(30) : { data: [], error: null },
+			user && measurementSection ? retainedQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null }
+			,
+			user && measurementSection ? admin.from('analytics_event_v2_classifications').select('event_id,classification,classification_version,note,corrected_at,reversed').order('corrected_at',{ascending:false}).limit(30) : { data: [], error: null },
+			user && measurementSection ? v2EvidenceQuery.range(eventPage*50,eventPage*50+50) : { data: [], error: null },
+			user && measurementSection ? admin.rpc('analytics_posthog_delivery_health') : { data: null, error: null }
 	]);
 	if (albumSettings.error) throw error(503, 'Album visibility could not be verified.');
 	const publicAlbum = (key: string) => !!user || !(albumSettings.data ?? []).some(row => row.album_key === key && row.visibility === 'unlisted');
@@ -126,11 +152,13 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		&& (!query.season || (album.event_date?.slice(0, 4) ?? 'unknown') === query.season)
 		&& (!query.albumEventType || (album.event_type ?? 'unknown') === query.albumEventType);
 	const publicScopedAlbumKeys = catalogue.filter(matchesAlbumScope).map((album) => album.album_key);
-	const v2Options = { publicAlbumKeys: catalogue.map((album) => album.album_key) };
-	const [v2Report, journeys] = await Promise.all([
-		fetchV2ReportProjection(admin, query, v2Options),
-		Promise.all(POSTHOG_JOURNEY_REPORTS.map((report) => queryGalleryJourneys(
-			createPostHogQueryTransport(env),
+		const v2Options = { publicAlbumKeys: catalogue.map((album) => album.album_key) };
+		const requestedJourneys = section === 'measurement' ? POSTHOG_JOURNEY_REPORTS : section === 'sources' ? ['sources_return' as const] : [];
+		const journeyTransport = requestedJourneys.length ? createPostHogQueryTransport(env) : null;
+		const [v2Report, journeys] = await Promise.all([
+			measurementSection ? fetchV2ReportProjection(admin, query, v2Options) : Promise.resolve(unavailableV2ReportProjection(query, 'Version-2 evidence was not loaded for this section.')),
+			Promise.all(requestedJourneys.map((report) => queryGalleryJourneys(
+				journeyTransport!,
 			{ report, start: query.start, end: query.end, ...(query.scope === 'all' && !query.sport && !query.eventDate && !query.season && !query.albumEventType ? {} : {albumKeys: publicScopedAlbumKeys}), source: query.source, sport: query.sport, category: query.category },
 			{ publicOnly: true, allowedAlbumKeys: publicScopedAlbumKeys }
 		)))
@@ -153,8 +181,9 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		seenCorrectionEvents.add(eventId);
 		return { ...correction, event: eventById.get(eventId) ?? null, canReverse };
 	});
-	return {
-		user: user ? { id: user.id, email: user.email } : null,
+		return {
+			user: user ? { id: user.id, email: user.email } : null,
+			section,
 		report,
 		v2Report,
 		journeys,

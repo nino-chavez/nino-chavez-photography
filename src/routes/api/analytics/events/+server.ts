@@ -1,3 +1,5 @@
+import { SITE_ORIGIN } from '$lib/site-url';
+import { dev } from '$app/environment';
 import { json, error as httpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
@@ -8,7 +10,11 @@ import { ANALYTICS_IDENTITY_COOKIE, hasLinkedAnalyticsConsent, verifiedAnalytics
 import { env } from '$env/dynamic/private';
 
 /** V2 has no legacy fingerprint. One accepted event and eligible outbox row are inserted atomically by the RPC. */
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request, cookies, url }) => {
+	// Reject cross-site browser writes. Signed server rehearsals may omit Origin.
+	const origin = request.headers.get('origin');
+	if (origin && origin !== (dev ? url.origin : SITE_ORIGIN)) throw httpError(403, 'cross-origin collection rejected');
+	if (Number(request.headers.get('content-length') ?? 0) > 8192) throw httpError(413, 'event too large');
 	const admin = createSupabaseAdminClient();
 	const recordOutcome = async (outcome: 'accepted' | 'rejected' | 'duplicate') => {
 		const { error } = await admin.rpc('analytics_record_collection_delivery', { p_schema_version: 2, p_outcome: outcome });

@@ -1,12 +1,16 @@
+import { SITE_ORIGIN } from '$lib/site-url';
 import { randomUUID } from 'node:crypto';
 import { dev } from '$app/environment';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { env } from '$env/dynamic/private';
-import { ANALYTICS_EXCLUSION_COOKIE, ANALYTICS_IDENTITY_COOKIE, ANALYTICS_LINKED_COOKIE, verifiedAnalyticsIdentityBinding, issueAnalyticsIdentityBinding } from '$lib/analytics/preferences-contract';
+import { hasAnalyticsBrowserExclusion, hasLinkedAnalyticsConsent, ANALYTICS_EXCLUSION_COOKIE, ANALYTICS_IDENTITY_COOKIE, ANALYTICS_LINKED_COOKIE, verifiedAnalyticsIdentityBinding, issueAnalyticsIdentityBinding } from '$lib/analytics/preferences-contract';
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const GET: RequestHandler = async ({ cookies }) => json({ linkedAnalytics: hasLinkedAnalyticsConsent(cookies), excludeThisBrowser: hasAnalyticsBrowserExclusion(cookies) }, { headers: { 'cache-control': 'no-store' } });
+
+export const POST: RequestHandler = async ({ request, cookies, url }) => {
+	if (request.headers.get('origin') !== (dev ? url.origin : SITE_ORIGIN)) throw error(403, 'cross-origin preferences rejected');
 	let body: { linkedAnalytics?: unknown; excludeThisBrowser?: unknown };
 	try { body = await request.json(); } catch { throw error(400, 'invalid JSON'); }
 	if (!body || typeof body !== 'object' || typeof body.linkedAnalytics !== 'boolean' || typeof body.excludeThisBrowser !== 'boolean') {

@@ -1,0 +1,25 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "fixturePhotos": 50000,
+  "analyzedFixture": true,
+  "limit": "Local PostgreSQL benchmark; not production latency or capacity.",
+  "results": [
+    {
+      "name": "original",
+      "photoRows": 0,
+      "decodedBytes": 30039284,
+      "evidenceRows": 50000,
+      "milliseconds": 549.917,
+      "observedTotal": null
+    },
+    {
+      "name": "scheduled",
+      "photoRows": 12,
+      "decodedBytes": 4952,
+      "evidenceRows": 0,
+      "milliseconds": 365.199,
+      "observedTotal": 50000
+    }
+  ]
+}

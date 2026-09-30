@@ -1,0 +1,37 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "fixtureEvents": 100000,
+  "totalsEqual": true,
+  "limit": "Local PostgreSQL benchmark; not production latency or capacity.",
+  "results": [
+    {
+      "name": "original",
+      "totals": {
+        "page_views": 100000
+      },
+      "pageRows": 8,
+      "pageCount": 13,
+      "decodedBytes": 951,
+      "milliseconds": 190.243
+    },
+    {
+      "name": "refresh",
+      "totals": null,
+      "pageRows": 0,
+      "pageCount": null,
+      "decodedBytes": 64,
+      "milliseconds": 217.724
+    },
+    {
+      "name": "scheduled",
+      "totals": {
+        "page_views": 100000
+      },
+      "pageRows": 8,
+      "pageCount": 13,
+      "decodedBytes": 1193,
+      "milliseconds": 1.226
+    }
+  ]
+}

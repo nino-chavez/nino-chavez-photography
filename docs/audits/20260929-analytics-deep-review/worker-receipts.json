@@ -1,0 +1,173 @@
+[
+  {
+    "role": "backend",
+    "id": "df1f79c4-3924-452a-abe9-819b17642173",
+    "receipt": {
+      "artifacts": {
+        "events": "/Users/nino/.local/state/nino-operator/dispatch/df1f79c4-3924-452a-abe9-819b17642173/events.jsonl",
+        "last_message": "/Users/nino/.local/state/nino-operator/dispatch/df1f79c4-3924-452a-abe9-819b17642173/last-message.txt",
+        "receipt": "/Users/nino/.local/state/nino-operator/dispatch/df1f79c4-3924-452a-abe9-819b17642173/receipt.json",
+        "stderr": "/Users/nino/.local/state/nino-operator/dispatch/df1f79c4-3924-452a-abe9-819b17642173/stderr.txt"
+      },
+      "classifier": {
+        "confidence": 1.0,
+        "error": null,
+        "latency_ms": 235,
+        "provider": "typesafe",
+        "tier": "deep"
+      },
+      "completed_at": "2026-09-29T23:20:42.534159Z",
+      "created_at": "2026-09-29T23:07:20.763036Z",
+      "cwd": "/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics",
+      "dispatch_id": "df1f79c4-3924-452a-abe9-819b17642173",
+      "exit_code": 0,
+      "experiment_id": null,
+      "observation_schema": 1,
+      "prompt_sha256": "b291d69cf02c4e17f12098e9f54ab5f9b466fc72b7b36dee19f9773f8b4b9afd",
+      "read_only": true,
+      "routing_mode": "balance",
+      "runtime_evidence": {
+        "child_thread_id": "01a0ef6c-3793-74b1-9677-6f8c0f7860e0",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "sandbox": {
+        "mode": "read-only",
+        "network": "off"
+      },
+      "schema_version": 1,
+      "selected_route": {
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "high",
+        "tier": "deep"
+      },
+      "stage": "completed",
+      "stopping_advice": {
+        "decision": "allow",
+        "mode": "observe",
+        "reason": "task_record_missing"
+      },
+      "task_id": null,
+      "task_record_path": null,
+      "timeout_seconds": 1200.0,
+      "updated_at": "2026-09-29T23:20:42.534135Z",
+      "work_kind": "routine"
+    }
+  },
+  {
+    "role": "data",
+    "id": "88b6928e-927a-4d81-8b46-e959311befe7",
+    "receipt": {
+      "artifacts": {
+        "events": "/Users/nino/.local/state/nino-operator/dispatch/88b6928e-927a-4d81-8b46-e959311befe7/events.jsonl",
+        "last_message": "/Users/nino/.local/state/nino-operator/dispatch/88b6928e-927a-4d81-8b46-e959311befe7/last-message.txt",
+        "receipt": "/Users/nino/.local/state/nino-operator/dispatch/88b6928e-927a-4d81-8b46-e959311befe7/receipt.json",
+        "stderr": "/Users/nino/.local/state/nino-operator/dispatch/88b6928e-927a-4d81-8b46-e959311befe7/stderr.txt"
+      },
+      "classifier": {
+        "confidence": 1.0,
+        "error": null,
+        "latency_ms": 489,
+        "provider": "typesafe",
+        "tier": "deep"
+      },
+      "completed_at": "2026-09-29T23:18:26.688645Z",
+      "created_at": "2026-09-29T23:07:22.152204Z",
+      "cwd": "/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics",
+      "dispatch_id": "88b6928e-927a-4d81-8b46-e959311befe7",
+      "exit_code": 0,
+      "experiment_id": null,
+      "observation_schema": 1,
+      "prompt_sha256": "30524a1444d792b33da44824acc05e1b3a94f8cbe1281daa56d33ba0507cae9e",
+      "read_only": true,
+      "routing_mode": "balance",
+      "runtime_evidence": {
+        "child_thread_id": "01a0ef6c-38e7-7630-99fe-559f119d1076",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "sandbox": {
+        "mode": "read-only",
+        "network": "off"
+      },
+      "schema_version": 1,
+      "selected_route": {
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "high",
+        "tier": "deep"
+      },
+      "stage": "completed",
+      "stopping_advice": {
+        "decision": "allow",
+        "mode": "observe",
+        "reason": "task_record_missing"
+      },
+      "task_id": null,
+      "task_record_path": null,
+      "timeout_seconds": 1200.0,
+      "updated_at": "2026-09-29T23:18:26.688612Z",
+      "work_kind": "routine"
+    }
+  },
+  {
+    "role": "frontend",
+    "id": "c14e84f0-c17a-497f-a4f6-fb645beb0e52",
+    "receipt": {
+      "artifacts": {
+        "events": "/Users/nino/.local/state/nino-operator/dispatch/c14e84f0-c17a-497f-a4f6-fb645beb0e52/events.jsonl",
+        "last_message": "/Users/nino/.local/state/nino-operator/dispatch/c14e84f0-c17a-497f-a4f6-fb645beb0e52/last-message.txt",
+        "receipt": "/Users/nino/.local/state/nino-operator/dispatch/c14e84f0-c17a-497f-a4f6-fb645beb0e52/receipt.json",
+        "stderr": "/Users/nino/.local/state/nino-operator/dispatch/c14e84f0-c17a-497f-a4f6-fb645beb0e52/stderr.txt"
+      },
+      "classifier": {
+        "confidence": 0.99,
+        "error": null,
+        "latency_ms": 198,
+        "provider": "typesafe",
+        "tier": "deep"
+      },
+      "completed_at": "2026-09-29T23:19:55.955643Z",
+      "created_at": "2026-09-29T23:07:23.017476Z",
+      "cwd": "/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics",
+      "dispatch_id": "c14e84f0-c17a-497f-a4f6-fb645beb0e52",
+      "exit_code": 0,
+      "experiment_id": null,
+      "observation_schema": 1,
+      "prompt_sha256": "c8a04cafa0922b08bf0d647b959819d034fa57e198a288e5c70b956510ebe43c",
+      "read_only": true,
+      "routing_mode": "balance",
+      "runtime_evidence": {
+        "child_thread_id": "01a0ef6c-3c4c-77f3-938f-4cfd8a7c83e9",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "sandbox": {
+        "mode": "read-only",
+        "network": "off"
+      },
+      "schema_version": 1,
+      "selected_route": {
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "high",
+        "tier": "deep"
+      },
+      "stage": "completed",
+      "stopping_advice": {
+        "decision": "allow",
+        "mode": "observe",
+        "reason": "task_record_missing"
+      },
+      "task_id": null,
+      "task_record_path": null,
+      "timeout_seconds": 1200.0,
+      "updated_at": "2026-09-29T23:19:55.955622Z",
+      "work_kind": "routine"
+    }
+  }
+]

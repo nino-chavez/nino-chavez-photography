@@ -49,9 +49,8 @@
   Its vault reference is `op://Developer Secrets/Cloudflare photography/analytics_api_token`.
   Set it as a Pages secret; new deployments receive the updated value. Images and account-ops
   credentials must not be used for this report. The report at
-  `/photography/analytics/sites` reads Cloudflare Web Analytics page-load groups for
-  `ninochavez.co`. It groups the profile, writing, demos, and photography paths, without
-  adding a browser tracker or joining people across sections. Gallery actions remain in
+  `/sites` reads Cloudflare Web Analytics page-load groups for
+  `ninochavez.co`. It groups the profile, writing, demos, and photography paths, as a separate traffic source. The opt-in first-party tracker measures actions and linked views across public sections. Gallery actions remain in
   the separate gallery report. Missing or invalid access shows an explicit unavailable state.
 
 ## Domains
@@ -60,7 +59,7 @@
   `analytics` CNAME points to `nino-chavez-photography.pages.dev`, and the hostname is attached
   as a Pages custom domain. Cloudflare Page Rules `4abee86fac06ab509ec6e74a93c4019e` and
   `49cd0626a9c5fe0e70031b988f948c2c` forward the subdomain root and root with query
-  to `/photography/analytics/sites` because SvelteKit is built with the `/photography` base path.
+  to `/sites`. SvelteKit reroutes `/sites`, `/gallery`, and `/gallery/export.csv` internally while keeping clean public URLs. The gallery build base remains `/photography`.
 - Old analytics GET/HEAD URLs redirect to this hostname. Old-host analytics writes return 404.
   The report remains public; the hostname is an access-control boundary for a future
   Cloudflare Access policy, not authentication by itself.
@@ -73,7 +72,7 @@
 - `curl -fsSL https://ninochavez.co/photography` returns 200
 - `curl -I https://analytics.ninochavez.co/` redirects to the report. The report returns 200,
   while the old gallery analytics URL redirects to the new host.
-- Check `/photography/analytics/sites` on the analytics subdomain for nonzero page loads,
+- Check `/sites` on the analytics subdomain for nonzero page loads,
   a section-specific trend, and a paginated page list. Private share paths must not appear.
 - Spot-check an album page loads
 

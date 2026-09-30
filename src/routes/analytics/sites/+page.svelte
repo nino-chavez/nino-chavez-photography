@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import SiteActions from '$lib/components/analytics/SiteActions.svelte';
+	import { page } from '$app/state';
+ import { reportPath } from '$lib/analytics/report-paths';
 	import { SITE_SECTIONS } from '$lib/analytics/site-traffic';
 	import type { PageData } from './$types';
 
@@ -20,11 +22,11 @@
 		? (selected?.referrers ?? report.referrers).filter((item) => item.entryVisits > 0 && item.host !== 'ninochavez.co').slice(0, 6) : []);
 	const visibleDevices = $derived(report.available ? selected?.devices ?? report.devices : []);
 
-	function reportHref(period: number, section: string, page = 0) {
-		const params = new URLSearchParams({ period: String(period) });
+	function reportHref(period: number, section: string, pageIndex = 0) {
+		const params = new URLSearchParams({ period: String(period), view: data.view });
 		if (section !== 'all') params.set('section', section);
-		if (page > 0) params.set('page', String(page));
-		return `${base}/analytics/sites?${params}`;
+		if (pageIndex > 0) params.set('page', String(pageIndex));
+		return `${reportPath(page.url.hostname, 'sites')}?${params}`;
 	}
 	function pageLabel(path: string) {
 		if (path === '/') return 'Home';
@@ -45,6 +47,7 @@
 </svelte:head>
 
 <div class="site-report">
+	{#if data.localReview}<p class="measurement-note">Local review — synthetic data. These counts are invented; do not quote them as site traffic.</p>{/if}
 	<header class="masthead">
 		<div class="identity"><span class="mark">NC</span><span>Nino Chavez <span class="slash">/</span> Reports</span></div>
 		<a class="gallery-link" href="https://ninochavez.co/">View site ↗</a>
@@ -58,8 +61,8 @@
 		<p class="availability">Available by direct link</p>
 	</div>
 	<nav class="workspace-nav" aria-label="Report workspaces">
-		<a aria-current="page" href={`${base}/analytics/sites`}>Sites</a>
-		<a href={`${base}/analytics/operator`}>Gallery report</a>
+		<a aria-current="page" href={`${reportPath(page.url.hostname, 'sites')}`}>Sites</a>
+		<a href={`${reportPath(page.url.hostname, 'gallery')}`}>Gallery report</a>
 	</nav>
 	<div class="controls" aria-label="Traffic filters">
 		<div class="control-group"><span class="control-label">Period</span><div class="segmented" aria-label="Reporting period">
@@ -75,7 +78,9 @@
 		</div></div>
 	</div>
 
-	{#if !report.available}
+	<nav class="workspace-nav" aria-label="Measurement type"><a aria-current={data.view === 'reach' ? 'page' : undefined} href={`${reportPath(page.url.hostname, 'sites')}?period=${data.period}&section=${data.section}&view=reach`}>Reach</a><a aria-current={data.view === 'actions' ? 'page' : undefined} href={`${reportPath(page.url.hostname, 'sites')}?period=${data.period}&section=${data.section}&view=actions`}>Actions</a></nav>
+	{#if data.view === 'actions' && data.actions}<SiteActions report={data.actions} period={data.period} section={data.section} currentPage={data.actionsPage} journeys={data.journeys} />
+	{:else if !report.available}
 		<section class="unavailable" role="status"><h2>Traffic report unavailable</h2><p>{report.reason}</p><p>The gallery report remains available.</p></section>
 	{:else}
 		<div class="report-meta"><span>Cloudflare Web Analytics · bot-filtered page loads</span><span>{report.start} to {report.end} · complete UTC days</span></div>
@@ -111,7 +116,7 @@
 				</section>
 			</div>
 		</div>
-		<section class="handoff"><div><p class="eyebrow">More specific evidence</p><h2>What happened inside the gallery?</h2><p>Open the gallery report for album opens, photo opens, favorites, downloads, and shares. Those events have different definitions from these page loads.</p></div><a href={`${base}/analytics/operator`}>Open gallery report →</a></section>
+		<section class="handoff"><div><p class="eyebrow">More specific evidence</p><h2>What happened inside the gallery?</h2><p>Open the gallery report for album opens, photo opens, favorites, downloads, and shares. Those events have different definitions from these page loads.</p></div><a href={`${reportPath(page.url.hostname, 'gallery')}`}>Open gallery report →</a></section>
 		<p class="footnote">Measured at {new Date(report.measuredAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' })} CDT. Cloudflare adapts sampling to the query, so totals may be estimates and may differ from the gallery report. Profile, writing, and demos are sections of one site; separate business properties are not included.</p>
 	{/if}
 </div>

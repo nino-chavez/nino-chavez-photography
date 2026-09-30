@@ -1,0 +1,5161 @@
+{
+  "synthetic": true,
+  "cases": 28,
+  "passed": true,
+  "acceptedDifferences": [
+    "audience: catalogue publication date",
+    "inclusive: catalogue publication date",
+    "action category: catalogue publication date",
+    "action category: catalogue publication date",
+    "unknown category: catalogue publication date",
+    "unknown category: catalogue publication date",
+    "unknown category: catalogue publication date",
+    "source: catalogue publication date",
+    "source: catalogue publication date",
+    "source: catalogue publication date",
+    "unavailable dates: catalogue publication date",
+    "unavailable dates: catalogue publication date",
+    "unavailable dates: catalogue publication date",
+    "previous: catalogue publication date",
+    "unequal custom: catalogue publication date",
+    "photo_opens: catalogue publication date",
+    "album_opens: catalogue publication date",
+    "album_opens: catalogue publication date",
+    "album_opens: catalogue publication date",
+    "downloads: catalogue publication date",
+    "downloads: catalogue publication date",
+    "favorites: catalogue publication date",
+    "favorites: catalogue publication date",
+    "favorites: catalogue publication date",
+    "shares: catalogue publication date",
+    "shares: catalogue publication date",
+    "bulk recent 0: chronological recency verified",
+    "bulk recent 1: chronological recency verified",
+    "bulk recent 999: chronological recency verified"
+  ],
+  "differences": [],
+  "results": [
+    {
+      "name": "audience",
+      "elapsedMs": 58.09741699999998,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 4,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 4
+          }
+        ],
+        "observedTotal": 4,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 4
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-legacy-1/thumbnail",
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "legacy-1",
+            "photoSegment": "fixture-legacy-1",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 4,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          },
+          {
+            "classification": "unclassified",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          },
+          {
+            "albumKey": "legacy",
+            "conservative": 1,
+            "conservativeRank": 2,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "inclusive",
+      "elapsedMs": 44.01708399999998,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 5,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 5,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 6,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 6
+          }
+        ],
+        "observedTotal": 6,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 4
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T04:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-legacy-1/thumbnail",
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "legacy-1",
+            "photoSegment": "fixture-legacy-1",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "operator-check"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            },
+            {
+              "count": 1,
+              "source": "rehearsal"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 6,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          },
+          {
+            "classification": "unclassified",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          },
+          {
+            "albumKey": "legacy",
+            "conservative": 1,
+            "conservativeRank": 2,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "action category",
+      "elapsedMs": 44.84087499999998,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 3,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 3
+          }
+        ],
+        "observedTotal": 3,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 3
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 3,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown category",
+      "elapsedMs": 40.750958000000026,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 0,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 0
+          }
+        ],
+        "observedTotal": 0,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 0,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 0
+        },
+        "photos": [],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [],
+          "unknown": 0
+        },
+        "total": 0,
+        "traffic": [],
+        "trafficImpact": []
+      }
+    },
+    {
+      "name": "source",
+      "elapsedMs": 41.181375,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 0,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 0
+          }
+        ],
+        "observedTotal": 0,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 0,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 0
+        },
+        "photos": [],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [],
+          "unknown": 0
+        },
+        "total": 0,
+        "traffic": [],
+        "trafficImpact": []
+      }
+    },
+    {
+      "name": "sport zero",
+      "elapsedMs": 39.62404200000003,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 0,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 0
+          }
+        ],
+        "observedTotal": 0,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 0,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 0
+        },
+        "photos": [],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [],
+          "unknown": 0
+        },
+        "total": 0,
+        "traffic": [],
+        "trafficImpact": []
+      }
+    },
+    {
+      "name": "event date",
+      "elapsedMs": 40.871542000000034,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 3,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 3
+          }
+        ],
+        "observedTotal": 3,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 3
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 3,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown season",
+      "elapsedMs": 41.95308299999999,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 1
+          }
+        ],
+        "observedTotal": 1,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 1
+        },
+        "photos": [
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-legacy-1/thumbnail",
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "legacy-1",
+            "photoSegment": "fixture-legacy-1",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1,
+        "traffic": [
+          {
+            "classification": "unclassified",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "legacy",
+            "conservative": 1,
+            "conservativeRank": 1,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "selected album",
+      "elapsedMs": 39.72591699999998,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 3,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 3
+          }
+        ],
+        "observedTotal": 3,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 3
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 3,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "hidden album",
+      "elapsedMs": 39.26920800000005,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 0,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 0
+          }
+        ],
+        "observedTotal": 0,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 0,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 0
+        },
+        "photos": [],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [],
+          "unknown": 0
+        },
+        "total": 0,
+        "traffic": [],
+        "trafficImpact": []
+      }
+    },
+    {
+      "name": "unavailable dates",
+      "elapsedMs": 37.636082999999985,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": null,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": null,
+              "downloads": null,
+              "favorites": null,
+              "photo_opens": null,
+              "shares": null
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": null,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": null,
+              "downloads": null,
+              "favorites": null,
+              "photo_opens": null,
+              "shares": null
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": null,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": null,
+              "downloads": null,
+              "favorites": null,
+              "photo_opens": null,
+              "shares": null
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "unavailable",
+        "daily": [
+          {
+            "count": null,
+            "coverage": "unavailable",
+            "date": "2026-01-01",
+            "observed": null
+          },
+          {
+            "count": null,
+            "coverage": "unavailable",
+            "date": "2026-01-02",
+            "observed": null
+          }
+        ],
+        "observedTotal": 0,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 0,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 0
+        },
+        "photos": [],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 2,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [],
+          "unknown": 0
+        },
+        "total": null,
+        "traffic": [],
+        "trafficImpact": []
+      }
+    },
+    {
+      "name": "previous",
+      "elapsedMs": 41.682290999999964,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": 3,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": 0,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 3
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": 1,
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": 0,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": 1
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": 0,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": 0,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": 0
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 4,
+          "label": "New activity"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 4,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 4
+          }
+        ],
+        "observedTotal": 4,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 4
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-legacy-1/thumbnail",
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "legacy-1",
+            "photoSegment": "fixture-legacy-1",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 0,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 4,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          },
+          {
+            "classification": "unclassified",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          },
+          {
+            "albumKey": "legacy",
+            "conservative": 1,
+            "conservativeRank": 2,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "unequal custom",
+      "elapsedMs": 42.799082999999996,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": 3,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": 0,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 3
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": 1,
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": 0,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": 1
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": 0,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": 0,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": 0
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 4,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 4
+          }
+        ],
+        "observedTotal": 4,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 4
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-legacy-1/thumbnail",
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "legacy-1",
+            "photoSegment": "fixture-legacy-1",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 0,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 4,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          },
+          {
+            "classification": "unclassified",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          },
+          {
+            "albumKey": "legacy",
+            "conservative": 1,
+            "conservativeRank": 2,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "publication age",
+      "elapsedMs": 56.36770799999999,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 3,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 3
+          }
+        ],
+        "observedTotal": 3,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 3
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [
+            {
+              "albumKey": "alpha",
+              "coverage": "complete",
+              "publishedAt": "2026-09-19T18:00:00.000Z",
+              "series": [
+                0
+              ],
+              "total": 0
+            }
+          ],
+          "available": true,
+          "days": 1,
+          "label": "Each album uses its first 1 calendar day after the recorded publication time. Albums with missing daily history remain unavailable.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 3,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "photo_opens",
+      "elapsedMs": 44.83970800000009,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 3,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 4,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 4
+          }
+        ],
+        "observedTotal": 4,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 4
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T01:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": "2026-09-28T02:00:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": "2026-09-28T04:41:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": null,
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-legacy-1/thumbnail",
+            "lastActivity": "2026-09-28T02:30:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "legacy-1",
+            "photoSegment": "fixture-legacy-1",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 4,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 3
+          },
+          {
+            "classification": "operator",
+            "count": 1
+          },
+          {
+            "classification": "test",
+            "count": 1
+          },
+          {
+            "classification": "unclassified",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 3,
+            "conservativeRank": 1,
+            "excluded": 2,
+            "inclusive": 5,
+            "inclusiveRank": 1
+          },
+          {
+            "albumKey": "legacy",
+            "conservative": 1,
+            "conservativeRank": 2,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "album_opens",
+      "elapsedMs": 41.93866700000001,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 0,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 0
+          }
+        ],
+        "observedTotal": 0,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 0,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 0
+        },
+        "photos": [],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 0,
+        "traffic": [],
+        "trafficImpact": []
+      }
+    },
+    {
+      "name": "downloads",
+      "elapsedMs": 40.99645799999996,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:59:30.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 1
+          }
+        ],
+        "observedTotal": 1,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 1
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": "2026-09-28T04:59:30.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1,
+            "conservativeRank": 1,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "favorites",
+      "elapsedMs": 40.13629100000003,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 0,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 0
+          }
+        ],
+        "observedTotal": 0,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 0,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 0
+        },
+        "photos": [],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 0,
+        "traffic": [],
+        "trafficImpact": []
+      }
+    },
+    {
+      "name": "shares",
+      "elapsedMs": 41.69733300000007,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "lastActivity": "2026-09-28T04:40:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 3,
+              "shares": 1
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "gamma",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-21T15:00:00.000Z",
+            "risingValue": null
+          },
+          {
+            "albumKey": "legacy",
+            "count": 0,
+            "difference": null,
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "previousCount": null,
+            "publicationAt": "2026-09-20T15:00:00.000Z",
+            "risingValue": null
+          }
+        ],
+        "available": true,
+        "change": null,
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1,
+            "coverage": "complete",
+            "date": "2026-09-27",
+            "observed": 1
+          }
+        ],
+        "observedTotal": 1,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 1,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 1
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": null,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-correction/thumbnail",
+            "lastActivity": "2026-09-28T04:40:00.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 1
+            },
+            "photoId": "alpha-correction",
+            "photoSegment": "fixture-alpha-correction",
+            "previousCount": null,
+            "risingValue": null
+          }
+        ],
+        "previousCoverage": "unavailable",
+        "previousTotal": null,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [
+            {
+              "count": 1,
+              "source": "instagram"
+            }
+          ],
+          "openLocations": [
+            {
+              "count": 1,
+              "source": "gallery-grid"
+            },
+            {
+              "count": 1,
+              "source": "legacy-gallery"
+            },
+            {
+              "count": 1,
+              "source": "lightbox"
+            },
+            {
+              "count": 1,
+              "source": "photo-detail"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1,
+            "conservativeRank": 1,
+            "excluded": 0,
+            "inclusive": 1,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk popular 0",
+      "elapsedMs": 51.82587499999988,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.001Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1",
+            "photoSegment": "fixture-alpha-bulk-1",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-10/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.010Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-10",
+            "photoSegment": "fixture-alpha-bulk-10",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-100/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.100Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-100",
+            "photoSegment": "fixture-alpha-bulk-100",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1000/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1000",
+            "photoSegment": "fixture-alpha-bulk-1000",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1001/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.001Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1001",
+            "photoSegment": "fixture-alpha-bulk-1001",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1002/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.002Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1002",
+            "photoSegment": "fixture-alpha-bulk-1002",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1003/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.003Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1003",
+            "photoSegment": "fixture-alpha-bulk-1003",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1004/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.004Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1004",
+            "photoSegment": "fixture-alpha-bulk-1004",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1005/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.005Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1005",
+            "photoSegment": "fixture-alpha-bulk-1005",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1006/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.006Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1006",
+            "photoSegment": "fixture-alpha-bulk-1006",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1007/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.007Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1007",
+            "photoSegment": "fixture-alpha-bulk-1007",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1008/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.008Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1008",
+            "photoSegment": "fixture-alpha-bulk-1008",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk popular 1",
+      "elapsedMs": 52.887833,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 1,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1009/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.009Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1009",
+            "photoSegment": "fixture-alpha-bulk-1009",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-101/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.101Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-101",
+            "photoSegment": "fixture-alpha-bulk-101",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1010/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.010Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1010",
+            "photoSegment": "fixture-alpha-bulk-1010",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1011/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.011Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1011",
+            "photoSegment": "fixture-alpha-bulk-1011",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1012/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.012Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1012",
+            "photoSegment": "fixture-alpha-bulk-1012",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1013/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.013Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1013",
+            "photoSegment": "fixture-alpha-bulk-1013",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1014/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.014Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1014",
+            "photoSegment": "fixture-alpha-bulk-1014",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1015/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.015Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1015",
+            "photoSegment": "fixture-alpha-bulk-1015",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1016/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.016Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1016",
+            "photoSegment": "fixture-alpha-bulk-1016",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1017/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.017Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1017",
+            "photoSegment": "fixture-alpha-bulk-1017",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1018/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.018Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1018",
+            "photoSegment": "fixture-alpha-bulk-1018",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1019/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.019Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1019",
+            "photoSegment": "fixture-alpha-bulk-1019",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk popular 999",
+      "elapsedMs": 51.611875000000055,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 92,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "popular",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-999/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.999Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-999",
+            "photoSegment": "fixture-alpha-bulk-999",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": 1,
+            "risingValue": -1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": 1,
+            "risingValue": -1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": 1,
+            "risingValue": -1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk rising 0",
+      "elapsedMs": 52.68337499999984,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "rising",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.001Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1",
+            "photoSegment": "fixture-alpha-bulk-1",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-10/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.010Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-10",
+            "photoSegment": "fixture-alpha-bulk-10",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-100/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.100Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-100",
+            "photoSegment": "fixture-alpha-bulk-100",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1000/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.000Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1000",
+            "photoSegment": "fixture-alpha-bulk-1000",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1001/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.001Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1001",
+            "photoSegment": "fixture-alpha-bulk-1001",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1002/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.002Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1002",
+            "photoSegment": "fixture-alpha-bulk-1002",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1003/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.003Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1003",
+            "photoSegment": "fixture-alpha-bulk-1003",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1004/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.004Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1004",
+            "photoSegment": "fixture-alpha-bulk-1004",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1005/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.005Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1005",
+            "photoSegment": "fixture-alpha-bulk-1005",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1006/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.006Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1006",
+            "photoSegment": "fixture-alpha-bulk-1006",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1007/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.007Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1007",
+            "photoSegment": "fixture-alpha-bulk-1007",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1008/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.008Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1008",
+            "photoSegment": "fixture-alpha-bulk-1008",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk rising 1",
+      "elapsedMs": 52.68925000000013,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 1,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "rising",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1009/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.009Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1009",
+            "photoSegment": "fixture-alpha-bulk-1009",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-101/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.101Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-101",
+            "photoSegment": "fixture-alpha-bulk-101",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1010/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.010Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1010",
+            "photoSegment": "fixture-alpha-bulk-1010",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1011/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.011Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1011",
+            "photoSegment": "fixture-alpha-bulk-1011",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1012/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.012Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1012",
+            "photoSegment": "fixture-alpha-bulk-1012",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1013/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.013Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1013",
+            "photoSegment": "fixture-alpha-bulk-1013",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1014/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.014Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1014",
+            "photoSegment": "fixture-alpha-bulk-1014",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1015/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.015Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1015",
+            "photoSegment": "fixture-alpha-bulk-1015",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1016/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.016Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1016",
+            "photoSegment": "fixture-alpha-bulk-1016",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1017/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.017Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1017",
+            "photoSegment": "fixture-alpha-bulk-1017",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1018/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.018Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1018",
+            "photoSegment": "fixture-alpha-bulk-1018",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1019/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.019Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1019",
+            "photoSegment": "fixture-alpha-bulk-1019",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk rising 999",
+      "elapsedMs": 54.03616699999998,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 92,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "rising",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-999/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.999Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-999",
+            "photoSegment": "fixture-alpha-bulk-999",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": 1,
+            "risingValue": -1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": 1,
+            "risingValue": -1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": 1,
+            "risingValue": -1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk recent 0",
+      "elapsedMs": 58.94287499999996,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 0,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "recent",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1105/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1105",
+            "photoSegment": "fixture-alpha-bulk-1105",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1104/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.104Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1104",
+            "photoSegment": "fixture-alpha-bulk-1104",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1103/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.103Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1103",
+            "photoSegment": "fixture-alpha-bulk-1103",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1102/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.102Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1102",
+            "photoSegment": "fixture-alpha-bulk-1102",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1101/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.101Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1101",
+            "photoSegment": "fixture-alpha-bulk-1101",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1100/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.100Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1100",
+            "photoSegment": "fixture-alpha-bulk-1100",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1099/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.099Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1099",
+            "photoSegment": "fixture-alpha-bulk-1099",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1098/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.098Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1098",
+            "photoSegment": "fixture-alpha-bulk-1098",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1097/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.097Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1097",
+            "photoSegment": "fixture-alpha-bulk-1097",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1096/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.096Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1096",
+            "photoSegment": "fixture-alpha-bulk-1096",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1095/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.095Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1095",
+            "photoSegment": "fixture-alpha-bulk-1095",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1094/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.094Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1094",
+            "photoSegment": "fixture-alpha-bulk-1094",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk recent 1",
+      "elapsedMs": 54.91029200000003,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 1,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "recent",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1093/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.093Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1093",
+            "photoSegment": "fixture-alpha-bulk-1093",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1092/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.092Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1092",
+            "photoSegment": "fixture-alpha-bulk-1092",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1091/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.091Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1091",
+            "photoSegment": "fixture-alpha-bulk-1091",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1090/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.090Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1090",
+            "photoSegment": "fixture-alpha-bulk-1090",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1089/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.089Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1089",
+            "photoSegment": "fixture-alpha-bulk-1089",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1088/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.088Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1088",
+            "photoSegment": "fixture-alpha-bulk-1088",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1087/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.087Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1087",
+            "photoSegment": "fixture-alpha-bulk-1087",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1086/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.086Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1086",
+            "photoSegment": "fixture-alpha-bulk-1086",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1085/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.085Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1085",
+            "photoSegment": "fixture-alpha-bulk-1085",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1084/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.084Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1084",
+            "photoSegment": "fixture-alpha-bulk-1084",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1083/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.083Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1083",
+            "photoSegment": "fixture-alpha-bulk-1083",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1082/thumbnail",
+            "lastActivity": "2026-09-28T18:00:01.082Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1082",
+            "photoSegment": "fixture-alpha-bulk-1082",
+            "previousCount": 0,
+            "risingValue": 1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk recent 999",
+      "elapsedMs": 51.19504199999983,
+      "report": {
+        "albumOnlyActions": [],
+        "albums": [
+          {
+            "albumKey": "alpha",
+            "count": 1105,
+            "difference": 1102,
+            "lastActivity": "2026-09-28T18:00:01.105Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 1,
+              "favorites": 0,
+              "photo_opens": 1105,
+              "shares": 0
+            },
+            "previousCount": 3,
+            "publicationAt": "2026-09-19T18:00:00.000Z",
+            "risingValue": 1102
+          }
+        ],
+        "available": true,
+        "change": {
+          "difference": 1102,
+          "label": "+1102 actions"
+        },
+        "coverage": "complete",
+        "daily": [
+          {
+            "count": 1105,
+            "coverage": "complete",
+            "date": "2026-09-28",
+            "observed": 1105
+          }
+        ],
+        "observedTotal": 1105,
+        "photoPagination": {
+          "page": 92,
+          "pageCount": 93,
+          "pageSize": 12,
+          "rank": "recent",
+          "total": 1108
+        },
+        "photos": [
+          {
+            "albumKey": "alpha",
+            "count": 1,
+            "difference": 1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-bulk-1/thumbnail",
+            "lastActivity": "2026-09-28T18:00:00.001Z",
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 1,
+              "shares": 0
+            },
+            "photoId": "alpha-bulk-1",
+            "photoSegment": "fixture-alpha-bulk-1",
+            "previousCount": 0,
+            "risingValue": 1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-1/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-1",
+            "photoSegment": "fixture-alpha-1",
+            "previousCount": 1,
+            "risingValue": -1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-2/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-2",
+            "photoSegment": "fixture-alpha-2",
+            "previousCount": 1,
+            "risingValue": -1
+          },
+          {
+            "albumKey": "alpha",
+            "count": 0,
+            "difference": -1,
+            "imageUrl": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/fixture-alpha-control/thumbnail",
+            "lastActivity": null,
+            "measures": {
+              "album_opens": 0,
+              "downloads": 0,
+              "favorites": 0,
+              "photo_opens": 0,
+              "shares": 0
+            },
+            "photoId": "alpha-control",
+            "photoSegment": "fixture-alpha-control",
+            "previousCount": 1,
+            "risingValue": -1
+          }
+        ],
+        "previousCoverage": "complete",
+        "previousTotal": 3,
+        "publicationAge": {
+          "albums": [],
+          "available": false,
+          "days": 1,
+          "label": "Choose publication-age comparison to align albums from their recorded publication dates.",
+          "missingAlbumKeys": []
+        },
+        "sources": {
+          "arrivals": [],
+          "openLocations": [
+            {
+              "count": 1105,
+              "source": "gallery-grid"
+            }
+          ],
+          "unknown": 0
+        },
+        "total": 1105,
+        "traffic": [
+          {
+            "classification": "audience",
+            "count": 1105
+          },
+          {
+            "classification": "suspected_automation",
+            "count": 501
+          }
+        ],
+        "trafficImpact": [
+          {
+            "albumKey": "alpha",
+            "conservative": 1105,
+            "conservativeRank": 1,
+            "excluded": 501,
+            "inclusive": 1606,
+            "inclusiveRank": 1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "countAfter": 50000,
+  "rolledBack": true,
+  "countBefore": 50000,
+  "fixtureRows": 50000,
+  "compactBytes": 11589534,
+  "coverageEqual": true,
+  "originalBytes": 31289284,
+  "rowDifferences": 0,
+  "anonymousExecutionDenied": true
+}

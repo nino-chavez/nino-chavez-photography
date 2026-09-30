@@ -1,0 +1,24 @@
+{
+  "analyticsTests": {
+    "passed": 130,
+    "failed": 0
+  },
+  "browserChecks": {
+    "passed": 6,
+    "failed": 0,
+    "data": "synthetic local rehearsal",
+    "viewports": [
+      1440,
+      390
+    ]
+  },
+  "typeCheck": "passed",
+  "productionBuild": "passed with nonsecret placeholder public configuration",
+  "diffCheck": "passed",
+  "productionMigrationApplied": false,
+  "deployed": false,
+  "branchTipsChanged": false,
+  "workersCompleted": 2,
+  "workerRuntimeModel": "unverified",
+  "validationServerStopped": true
+}

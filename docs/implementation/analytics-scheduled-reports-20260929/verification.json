@@ -1,0 +1,36 @@
+{
+  "verifiedAt": "2026-09-30T01:26:27.267502+00:00",
+  "productionChanged": false,
+  "committed": false,
+  "pushed": false,
+  "localSyntheticSchemaInstalled": true,
+  "sourceSha256": {
+    "src/lib/analytics/operator-report.server.ts": "fe6fea47dd54d83fd8036ca876da5f778c1a109732749993445da043c347a7f7",
+    "src/lib/analytics/operator-report.test.ts": "68567c1021ae44e2262d7c01f6c70817d69c7338cc18bc4dce67cb8a4cd5ed95",
+    "src/lib/analytics/scheduled-gallery-report.server.ts": "24715c88c12a1bb54ab754c9cc32587ac16b39f9290dc3871950ababf9a9d399",
+    "src/lib/analytics/site-actions.ts": "67e44ee06e994fe24ba8eb0ee49ec60a53b63d2593d28b11a515a4040a2f9a42",
+    "src/lib/analytics/site-actions.server.ts": "1237ae8279e7377929938adeaec1e0fddbd50e67512a89a2b04293a560eaab76",
+    "src/lib/analytics/site-actions.server.test.ts": "47a332133794a34a956ef32dd5fc8c8319f333a72eb979665c75bff1e1637f77",
+    "src/lib/components/analytics/SiteActions.svelte": "e6432c75707a6760e0dd6246e6258db426959e6444e0b61e94bc7fa217f62597",
+    "supabase/migrations/20260930004554_analytics_scheduled_gallery_reports.sql": "f399d7a966649b6934ace4c22f42f5a8928f7b6e68cbfb1901e8e3b80c7eac7b",
+    "supabase/migrations/20260930005003_analytics_scheduled_site_reports.sql": "4b070fa99b2c6d6d73ecace5df9d37f361ec06f189d6dff74df07356d40f4d36",
+    "supabase/rehearsal/scheduled-gallery-assertions.sql": "884dc81d2e9f81a452f0635b75d210e92c119d3a00369ef720dd1c734640e09b",
+    "supabase/rehearsal/scheduled-site-assertions.sql": "826228f7149608e4b68fa8b5f9a18c9f3a77a429e272ff163b7d5fcc581267ea",
+    "tests/analytics/scheduled.spec.ts": "8d59cea50ebb10e72de304d83f139b5363779456bc866174542e0133e7c876d7"
+  },
+  "checks": {
+    "reportComparisonCases": 28,
+    "reportComparisonPassed": true,
+    "sqlPassed": true,
+    "typeCheck": true,
+    "build": true,
+    "focusedAnalyticsTests": true,
+    "desktopMobileTestsPassed": 4,
+    "coldVisualRecheck": "pass",
+    "ownServerStopped": true
+  },
+  "branchRefs": [
+    "refs/heads/codex/analytics-scheduled-reports 628dccff6d0df40a2c61bbc9b05dd001c502c71c",
+    "refs/heads/codex/analytics-site-summaries 628dccff6d0df40a2c61bbc9b05dd001c502c71c"
+  ]
+}

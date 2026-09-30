@@ -24,6 +24,10 @@ compatibility_flags = ["nodejs_compat"]
 # an empty or missing value denies everyone, on purpose.
 ADMIN_EMAILS = "admin@ninochavez.co,nino@ninochavez.co"
 CLOUDFLARE_ACCOUNT_ID = "b6ffcf200d56bab5749e243f024658d2"
+POSTHOG_ENABLED = "true"
+POSTHOG_TARGET_ENVIRONMENT = "production"
+POSTHOG_HOST = "https://us.i.posthog.com"
+POSTHOG_PROJECT_ID = "635866"
 
 # Web-sized Ultra HDR (gain-map) JPEGs, read by src/routes/api/hdr/[id]/+server.ts and written by
 # scripts/ingest-album.ts (via `wrangler r2 object put ... --remote`, not this binding — the CLI

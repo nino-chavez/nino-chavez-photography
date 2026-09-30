@@ -1,0 +1,18 @@
+{
+  "workerChanges": [
+    "docs/implementation/analytics-scheduled-reports-20260929/GALLERY.md",
+    "src/lib/analytics/scheduled-gallery-report.server.ts",
+    "supabase/migrations/20260930004554_analytics_scheduled_gallery_reports.sql",
+    "supabase/rehearsal/scheduled-gallery-assertions.sql",
+    "src/lib/analytics/operator-report.server.ts",
+    "src/lib/analytics/operator-report.test.ts"
+  ],
+  "ownedIntegrationFiles": [
+    "src/lib/analytics/operator-report.server.ts",
+    "src/lib/analytics/operator-report.test.ts",
+    "src/lib/analytics/scheduled-gallery-report.server.ts",
+    "supabase/migrations/20260930004554_analytics_scheduled_gallery_reports.sql",
+    "supabase/rehearsal/scheduled-gallery-assertions.sql",
+    "docs/implementation/analytics-scheduled-reports-20260929/GALLERY.md"
+  ]
+}

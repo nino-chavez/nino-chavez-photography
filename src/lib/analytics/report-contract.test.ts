@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chicagoDayStart, comparisonWindow, coverageFor, coverageFromStates, datesInclusive, parseReportQuery, previousWindow, rising, risingComparison, risingValue, sumMeasure, type DailyActionRow } from './report-contract';
+import { assertReportDateBounds, chicagoDayStart, comparisonWindow, coverageFor, coverageFromStates, datesInclusive, parseReportQuery, previousWindow, rising, risingComparison, risingValue, sumMeasure, type DailyActionRow } from './report-contract';
 
 const row = (overrides: Partial<DailyActionRow> = {}): DailyActionRow => ({
 	bucket_date: '2026-09-14', album_key: 'a', photo_id: 'p', event_type: 'view', source: 'direct', source_kind: 'internal_open_location',
@@ -24,6 +24,15 @@ test('invalid dates cannot expand a report beyond its bounded fallback', () => {
 	const query = parseReportQuery(new URLSearchParams('period=custom&start=not-a-date&end=2026-02-30'), new Date('2026-09-28T17:00:00Z'));
 	assert.equal(query.end, '2026-09-27');
 	assert.equal(query.start, '2026-08-29');
+});
+
+test('long history stays available while extreme ranges fail before work begins', () => {
+	const long = parseReportQuery(new URLSearchParams('period=custom&start=2025-01-01&end=2026-09-28&compare=none'));
+	assert.doesNotThrow(() => assertReportDateBounds(long));
+	assert.doesNotThrow(() => assertReportDateBounds(long, 'export'));
+	const excessive = parseReportQuery(new URLSearchParams('period=custom&start=2010-01-01&end=2026-09-28&compare=none'));
+	assert.throws(() => assertReportDateBounds(excessive), /Interactive reports allow at most 3650 days/i);
+	assert.throws(() => assertReportDateBounds(excessive, 'export'), /Export reports allow at most 3650 days/i);
 });
 
 test('previous comparison window is equal-sized and immediately preceding', () => {

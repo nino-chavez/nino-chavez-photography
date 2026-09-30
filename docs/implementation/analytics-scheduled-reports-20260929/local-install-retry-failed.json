@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "rolledBack": false,
+  "negativeControl": false,
+  "passed": false,
+  "migrations": [
+    "supabase/migrations/20260930004554_analytics_scheduled_gallery_reports.sql",
+    "supabase/migrations/20260930005003_analytics_scheduled_site_reports.sql"
+  ],
+  "assertions": [],
+  "output": "t\n279",
+  "diagnostics": "ERROR:  column \"updated_at\" of relation \"analytics_v2_archived_totals\" already exists\n"
+}

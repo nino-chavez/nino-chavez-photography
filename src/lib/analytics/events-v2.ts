@@ -4,7 +4,8 @@ export const EVENT_V2_NAMES = [
 	'photo_rendered', 'photo_load_failed', 'favorite_added', 'favorite_removed', 'share_action',
 	'download_requested', 'download_item_requested', 'download_item_prepared', 'download_prepared',
 	'download_handed_off', 'download_failed', 'download_cancelled', 'search_submitted',
-	'search_results_shown', 'search_failed', 'search_result_selected', 'filters_applied', 'experiment_exposed'
+	'search_results_shown', 'search_failed', 'search_result_selected', 'filters_applied', 'experiment_exposed',
+	'site_page_viewed', 'site_link_clicked', 'content_progressed', 'content_active_time', 'demo_section_viewed'
 ] as const;
 
 export type EventV2Name = (typeof EVENT_V2_NAMES)[number];
@@ -31,6 +32,11 @@ type PropertyRule = { required: readonly string[]; optional?: readonly string[];
 
 /** The only event property keys the collector will accept. */
 export const EVENT_V2_CONTRACT: Record<EventV2Name, PropertyRule> = {
+	site_page_viewed: { required: ['site_section', 'canonical_path', 'view_id', 'layout_class', 'content_kind'], targets: 'none' },
+	site_link_clicked: { required: ['site_section', 'canonical_path', 'view_id', 'target_kind'], optional: ['target_path'], targets: 'none' },
+	content_progressed: { required: ['site_section', 'canonical_path', 'view_id', 'threshold'], targets: 'none' },
+	content_active_time: { required: ['site_section', 'canonical_path', 'view_id', 'threshold'], targets: 'none' },
+	demo_section_viewed: { required: ['site_section', 'canonical_path', 'view_id', 'position', 'section_count'], targets: 'none' },
 	gallery_page_viewed: { required: ['route_kind', 'canonical_path', 'view_id', 'layout_class'], targets: 'none' },
 	album_exposed: { required: ['album_key', 'position', 'result_set_id'], targets: 'album' },
 	album_opened: { required: ['album_key', 'view_id', 'entry_surface'], targets: 'album' },
@@ -75,6 +81,17 @@ export function eventPropertiesMatchContract(eventName: EventV2Name, properties:
 	if (rule.targets === 'photo' && !properties.photo_id) return false;
 	if (rule.targets === 'album' && !properties.album_key) return false;
 	if (rule.targets === 'subject' && properties.mode !== 'saved_photo_zip' && !properties.photo_id && !properties.album_key) return false;
+	if (eventName.startsWith('site_') || eventName.startsWith('content_') || eventName === 'demo_section_viewed') {
+		if (!isPublicSitePath(properties.canonical_path) || sectionForPath(String(properties.canonical_path)) !== properties.site_section) return false;
+		if (eventName === 'site_page_viewed' && (!['page','article','demo_story'].includes(String(properties.content_kind)) || !['wide','narrow'].includes(String(properties.layout_class)))) return false;
+		if (properties.album_key || properties.photo_id || properties.surface || properties.tagged_source) return false;
+		if (eventName.startsWith('content_') && properties.site_section !== 'writing') return false;
+		if (eventName === 'content_progressed' && ![50, 90].includes(Number(properties.threshold))) return false;
+		if (eventName === 'content_active_time' && ![30, 60, 120].includes(Number(properties.threshold))) return false;
+		if (eventName === 'demo_section_viewed' && (properties.site_section !== 'demos' || !Number.isInteger(properties.section_count) || Number(properties.section_count) < 1 || Number(properties.section_count) > 100 || Number(properties.position) < 1 || Number(properties.position) > Number(properties.section_count))) return false;
+		if (properties.target_path !== undefined && !isPublicSitePath(properties.target_path)) return false;
+		if (eventName === 'site_link_clicked' && !['email', 'phone', 'external', 'internal'].includes(String(properties.target_kind))) return false;
+	}
 	return validPropertyValues(properties);
 }
 
@@ -98,3 +115,12 @@ function validPropertyValues(properties: EventV2Properties): boolean {
 	return true;
 }
 import { isValidAnalyticsFilter } from './search-contract';
+
+import { sectionForPath } from './site-traffic';
+/** Public content only. Queries, encoded values, drafts, shared galleries and accounts never enter site reports. */
+export function isPublicSitePath(value: unknown): value is string {
+	if (typeof value !== 'string' || value.length > 160) return false;
+	return value === '/' || value === '/photography' || value === '/photography/coverage' || /^\/(?:about|now|links|learn|work)(?:\/[a-z0-9-]+)?$/.test(value) ||
+		/^\/demos(?:\/(?:applied\/)?[a-z0-9-]+)?$/.test(value) ||
+		/^\/blog(?:\/(?!draft(?:\/|$)|private(?:\/|$)|api(?:\/|$)|search(?:\/|$))[a-z0-9-]+){0,2}$/.test(value);
+}

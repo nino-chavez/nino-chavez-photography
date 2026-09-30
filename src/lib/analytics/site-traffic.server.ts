@@ -1,5 +1,6 @@
 /** Cloudflare Web Analytics traffic for the public ninochavez.co property. */
 import { SITE_SECTIONS, sectionForPath, type SitePeriod, type SiteSection } from './site-traffic';
+import { createProviderCache, credentialIdentity, type ProviderCache } from './provider-cache.server';
 
 type CloudflareRow = {
 	count: number;
@@ -39,7 +40,12 @@ const PUBLIC_PATH = /^\/(?:$|(?:work|about|now|links|learn|search|blog|demos|pri
 function includedPath(path: string): boolean {
 	return PUBLIC_PATH.test(path) && !/%(?:20|2f|5c)/i.test(path);
 }
-const cached = new Map<SitePeriod, { until: number; result: SiteTrafficReport }>();
+export const siteTrafficCache = createProviderCache({
+	ttlMs: 10 * 60_000,
+	maxEntries: 32,
+	maxInFlight: 4,
+	maxBytes: 4 * 1024 * 1024
+});
 
 function validRow(value: unknown): value is CloudflareRow {
 	if (!value || typeof value !== 'object') return false;
@@ -116,10 +122,11 @@ export function summarizeSiteTraffic(rows: CloudflareRow[], period: SitePeriod, 
 	};
 }
 
-async function queryRows(accountId: string, token: string, start: string, end: string, fetcher: typeof fetch): Promise<CloudflareRow[]> {
+async function queryRows(accountId: string, token: string, start: string, end: string, fetcher: typeof fetch, signal: AbortSignal): Promise<CloudflareRow[]> {
 	const response = await fetcher('https://api.cloudflare.com/client/v4/graphql', {
 		method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-		body: JSON.stringify({ query: GRAPHQL, variables: { account: accountId, start, end } })
+		body: JSON.stringify({ query: GRAPHQL, variables: { account: accountId, start, end } }),
+		signal
 	});
 	if (!response.ok) throw new Error(`Cloudflare GraphQL HTTP ${response.status}`);
 	const payload = await response.json() as { errors?: { message: string }[]; data?: { viewer?: { accounts?: { rumPageloadEventsAdaptiveGroups?: unknown[] }[] } } };
@@ -129,19 +136,49 @@ async function queryRows(accountId: string, token: string, start: string, end: s
 	return rows;
 }
 
-export async function loadSiteTraffic(period: SitePeriod, accountId: string | undefined, token: string | undefined, fetcher: typeof fetch = fetch): Promise<SiteTrafficResult> {
+export async function loadSiteTraffic(
+	period: SitePeriod,
+	accountId: string | undefined,
+	token: string | undefined,
+	fetcher: typeof fetch = fetch,
+	options: {
+		cache?: ProviderCache | null;
+		now?: () => number;
+		fetchTimeoutMs?: number;
+		signalFactory?: (milliseconds: number) => AbortSignal;
+	} = {}
+): Promise<SiteTrafficResult> {
 	if (!accountId || !ACCOUNT_ID.test(accountId) || !token?.trim()) return { available: false, period, reason: 'Cloudflare Web Analytics access is not configured for this report.' };
-	const hit = cached.get(period);
-	if (hit && hit.until > Date.now()) return hit.result;
-	const { start, end, previousStart, previousEnd } = periodBounds(period);
+	const now = options.now ?? Date.now;
+	const bounds = periodBounds(period, new Date(now()));
+	const { start, end, previousStart, previousEnd } = bounds;
+	const fetchTimeoutMs = Math.min(Math.max(options.fetchTimeoutMs ?? 5_000, 1), 15_000);
+	const signalFactory = options.signalFactory ?? ((milliseconds: number) => AbortSignal.timeout(milliseconds));
+	const load = async () => {
+		const [currentResult, previousResult] = await Promise.allSettled([
+			queryRows(accountId, token, start, end, fetcher, signalFactory(fetchTimeoutMs)),
+			queryRows(accountId, token, previousStart, previousEnd, fetcher, signalFactory(fetchTimeoutMs))
+		]);
+		if (currentResult.status === 'rejected') throw currentResult.reason;
+		const previous = previousResult.status === 'fulfilled' ? previousResult.value : null;
+		if (previousResult.status === 'rejected') console.warn('[site-traffic] Comparison unavailable', previousResult.reason);
+		return {
+			result: summarizeSiteTraffic(currentResult.value, period, start, end, previous, new Date(now()).toISOString()),
+			complete: previousResult.status === 'fulfilled'
+		};
+	};
 	try {
-		const current = await queryRows(accountId, token, start, end, fetcher);
-		let previous: CloudflareRow[] | null = null;
-		try { previous = await queryRows(accountId, token, previousStart, previousEnd, fetcher); }
-		catch (cause) { console.warn('[site-traffic] Comparison unavailable', cause); }
-		const result = summarizeSiteTraffic(current, period, start, end, previous, new Date().toISOString());
-		cached.set(period, { until: Date.now() + 10 * 60_000, result });
-		return result;
+		const cache = options.cache === undefined ? (fetcher === fetch ? siteTrafficCache : null) : options.cache;
+		const snapshot = cache ? await cache.getOrLoad({
+			provider: 'cloudflare',
+			origin: 'https://api.cloudflare.com',
+			account: accountId,
+			credential: await credentialIdentity(token),
+			operation: 'site-traffic',
+			query: GRAPHQL,
+			variables: bounds
+		}, load, { cacheWhen: (value) => value.complete }) : await load();
+		return snapshot.result;
 	} catch (cause) {
 		console.error('[site-traffic] Report unavailable', cause);
 		return { available: false, period, reason: 'Cloudflare Web Analytics could not be read. No traffic total is shown.' };

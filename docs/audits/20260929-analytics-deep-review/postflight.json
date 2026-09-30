@@ -1,0 +1,133 @@
+{
+  "photography": {
+    "sourceFilesChecked": 1045,
+    "changedOrMissing": [],
+    "headUnchanged": true,
+    "statusUnchangedOutsideAudit": true,
+    "unhashedInventoryPaths": [
+      {
+        "path": ".cursorrules",
+        "symlink": true,
+        "tracked": true
+      }
+    ]
+  },
+  "profile": {
+    "sourceFilesChecked": 580,
+    "changedOrMissing": [],
+    "headUnchanged": true,
+    "statusUnchangedOutsideAudit": true,
+    "unhashedInventoryPaths": [
+      {
+        "path": ".cursorrules",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/_pre-stage-3/design-implementation-proposal.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/competitive/brand-strategy-prior.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/competitive/brand-stress-test.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/competitive/domain-analysis.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/competitive/seo-multi-app.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/agency-audit-v2-report.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/agency-audit-v2.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/agency-design-audit.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/animation-system.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/code-architecture.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/completion-checklist.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/copy-assessment.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/design-notes-current.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/phase-1.5-audit.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/remediation-checklist.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/remediation-history.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/validation-history.md",
+        "symlink": true,
+        "tracked": true
+      },
+      {
+        "path": "_archive/blueprint-ninochavez-2026-05-25/research/current-state/visual-review-checklist.md",
+        "symlink": true,
+        "tracked": true
+      }
+    ]
+  },
+  "blog": {
+    "sourceFilesChecked": 1343,
+    "changedOrMissing": [],
+    "headUnchanged": true,
+    "statusUnchangedOutsideAudit": true,
+    "unhashedInventoryPaths": [
+      {
+        "path": ".cursorrules",
+        "symlink": true,
+        "tracked": true
+      }
+    ]
+  },
+  "branchRefsUnchanged": true,
+  "ownedBrowserTabClosed": true
+}
