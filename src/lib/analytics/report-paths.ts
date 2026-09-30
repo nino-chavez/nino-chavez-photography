@@ -3,6 +3,10 @@ export const ANALYTICS_HOST = 'analytics.ninochavez.co';
 export function isReportHost(hostname: string) {
 	return hostname === ANALYTICS_HOST;
 }
+export function isAnalyticsWorkspace(routeId: string | null, hostname: string, pathname: string) {
+	return routeId === '/analytics/operator' || routeId === '/analytics/sites'
+		|| (isReportHost(hostname) && (pathname === '/sites' || pathname === '/gallery'));
+}
 export function reportPath(hostname: string, report: 'sites' | 'gallery', suffix = '') {
 	const path = report === 'sites' ? '/sites' : '/gallery';
 	return `${isReportHost(hostname) ? path : `/photography/analytics/${report === 'sites' ? 'sites' : 'operator'}`}${suffix}`;

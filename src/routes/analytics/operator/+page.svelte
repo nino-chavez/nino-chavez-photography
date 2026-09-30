@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
  import { page, navigating } from '$app/state';
- import { reportPath } from '$lib/analytics/report-paths';
+ import { reportPath, isReportHost } from '$lib/analytics/report-paths';
 	import { Download, Filter, Images, List, Save, Search, Share2, ShieldCheck, TrendingUp, X } from 'lucide-svelte';
 	import { tick, untrack, onMount } from 'svelte';
 	import AnalyticsTrend from '$lib/components/analytics/AnalyticsTrend.svelte';
@@ -29,8 +29,19 @@
 	function sectionHref(section: Section) {
 		return `${reportHref({ section })}#${section}`;
 	}
+	function navigateReport(href: string, options: Parameters<typeof goto>[1] = {}) {
+		const destination = new URL(href, page.url);
+		// Clean report URLs sit outside this application's fixed /photography base.
+		// SvelteKit treats them as external before applying the host reroute.
+		if (isReportHost(destination.hostname) && !destination.pathname.startsWith(base)) {
+			if (options.replaceState) location.replace(destination.href);
+			else location.assign(destination.href);
+			return;
+		}
+		void goto(href, options);
+	}
 	function openSection(section: Section) {
-		void goto(sectionHref(section), { keepFocus: true, noScroll: false });
+		navigateReport(sectionHref(section), { keepFocus: true, noScroll: false });
 	}
 
 	const report = $derived(data.report);
@@ -50,9 +61,9 @@
 			}
 			const legacySection = sectionFromHash(location.hash);
 			if (!page.url.searchParams.has('section') && legacySection !== 'overview') {
-				void goto(sectionHref(legacySection), { replaceState: true, keepFocus: true, noScroll: true });
+				navigateReport(sectionHref(legacySection), { replaceState: true, keepFocus: true, noScroll: true });
 			} else if (data.section === 'photos' && page.url.searchParams.get('photo_page') !== String(data.report.photoPagination?.page ?? 0)) {
-				void goto(`${reportHref({ section: 'photos', photo_page: String(data.report.photoPagination?.page ?? 0), photo_rank: data.report.photoPagination?.rank ?? 'popular' })}#photos`, { replaceState: true, keepFocus: true, noScroll: true });
+				navigateReport(`${reportHref({ section: 'photos', photo_page: String(data.report.photoPagination?.page ?? 0), photo_rank: data.report.photoPagination?.rank ?? 'popular' })}#photos`, { replaceState: true, keepFocus: true, noScroll: true });
 			}
 		});
 	let shortlist = $state<string[]>([]);
@@ -358,7 +369,7 @@
 		{#if activeSection === 'albums'}
 		<section id="albums" class="panel mt-6 min-w-0 scroll-mt-20"><div class="panel-heading"><div><p class="eyebrow">Albums</p><h2>Compare albums</h2><p class="mt-1 text-xs text-charcoal-400">Compare the same activity dates. Select an album for a quick summary or open its photos.</p></div><label class="relative min-w-0 sm:w-72"><span class="sr-only">Search album table</span><Search class="absolute left-3 top-3 size-4 text-charcoal-500" /><input disabled={!interactive} class="control pl-9" bind:value={albumTableSearch} placeholder="Find an album" /></label></div>
 			{#if report.query.compare === 'publication_age'}<div class="mt-5"><h3 class="text-lg font-semibold text-charcoal-100">First {report.publicationAge.days} days after publication</h3><p class="mt-1 text-sm text-charcoal-400">{report.publicationAge.label}</p>{#if report.publicationAge.albums.length}<p class="table-hint">Scroll sideways for every column. The first column stays visible.</p><div tabindex="-1" role="region" aria-label="Scrollable analytics table" class="table-wrap mt-3"><table><thead><tr><th>Album</th><th>Published</th><th class="numeric">Equal-age total</th><th>Coverage</th></tr></thead><tbody>{#each report.publicationAge.albums as album}<tr><td>{data.albumCatalogue.find((item) => item.album_key === album.albumKey)?.album_name ?? album.albumKey}</td><td>{formatDate(album.publishedAt)}</td><td class="numeric">{album.total ?? '—'}</td><td class="capitalize">{album.coverage}</td></tr>{/each}</tbody></table></div>{/if}{#if report.publicationAge.albums.length}<details class="mt-3"><summary class="text-link cursor-pointer">Daily comparison from publication</summary><p class="table-hint">Scroll sideways for every column. The first column stays visible.</p><div tabindex="-1" role="region" aria-label="Scrollable analytics table" class="table-wrap mt-3"><table><thead><tr><th>Day after publication</th>{#each report.publicationAge.albums as album}<th>{data.albumCatalogue.find(a=>a.album_key===album.albumKey)?.album_name??album.albumKey}</th>{/each}</tr></thead><tbody>{#each Array.from({length:report.publicationAge.days},(_,i)=>i) as day}<tr><td>Day {day+1}</td>{#each report.publicationAge.albums as album}<td class="numeric">{album.series[day]??'Unavailable'}</td>{/each}</tr>{/each}</tbody></table></div></details>{/if}{#if report.publicationAge.missingAlbumKeys.length}<p class="mt-2 text-xs text-charcoal-400">{report.publicationAge.missingAlbumKeys.length} selected album{report.publicationAge.missingAlbumKeys.length === 1 ? '' : 's'} lack a recorded publication time and are excluded.</p>{/if}</div>{/if}
-			{#if data.albumCatalogueAvailable && albumRows.length}<div class="album-workspace mt-4"><AlbumComparisonTable rows={visibleAlbumRows} selectedKey={selectedAlbumKey} measure={report.query.measure} measureLabel={displayMeasure(report.query.measure)} risingAvailable={report.rising.available} onselect={selectAlbum} reportHref={(albumKey) => reportHref({ scope: 'album', albums: albumKey }) + '#albums'} /><AlbumInspector row={selectedAlbumDetail} reportHref={(albumKey) => reportHref({ scope: 'album', albums: albumKey })} /></div>{:else}<p class="empty-copy">{data.albumCatalogueAvailable?'No albums match this report.':'The album catalogue is unavailable. Missing albums are not being shown as zero activity.'}</p>{/if}
+			{#if data.albumCatalogueAvailable && albumRows.length}<div class="album-workspace mt-4"><AlbumComparisonTable rows={visibleAlbumRows} selectedKey={selectedAlbumKey} measure={report.query.measure} measureLabel={displayMeasure(report.query.measure)} risingAvailable={report.rising.available} onselect={selectAlbum} reportHref={(albumKey) => reportHref({ scope: 'album', albums: albumKey }) + '#albums'} /><AlbumInspector row={selectedAlbumDetail} reportHref={(albumKey, section) => reportHref({ scope: 'album', albums: albumKey, section, photo_page: '0' })} /></div>{:else}<p class="empty-copy">{data.albumCatalogueAvailable?'No albums match this report.':'The album catalogue is unavailable. Missing albums are not being shown as zero activity.'}</p>{/if}
 			{#if albumRows.length > albumPageSize}
 				<nav class="result-pager" aria-label="Album pages">
 					<p>Showing {albumPage * albumPageSize + 1}–{Math.min((albumPage + 1) * albumPageSize, albumRows.length)} of {albumRows.length} matching albums</p>

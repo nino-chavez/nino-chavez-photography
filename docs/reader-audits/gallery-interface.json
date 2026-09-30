@@ -1,14 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-30T01:22:39.944Z",
+  "reviewedAt": "2026-09-30T02:00:49.208Z",
   "reviewedBy": "Codex parent rendered review",
-  "method": "Reviewed synthetic desktop and mobile gallery Photos and All-sites Actions captures. Observed server pagination, UTC cutoffs, stale-refresh notices and today counts separate from complete-day totals. A cold visual reviewer found ambiguous partial labels; the labels were corrected and new captures inspected. Prior unchanged sections retain their earlier review evidence. No live speed or real-user result is claimed.",
-  "sourceDigest": "sha256:3061e2eb77306829f11db8b8a519213ca1cacdc090f5569302e22a4369f59faa",
+  "method": "Inspected local synthetic dashboard render and observed album selection followed by View album photos opening the selected album photo section. Reviewed the live clean URL frame before correction and checked fixed-base routing source. The host-based shell correction will also be checked on production after deployment. Prior unchanged presentation retains earlier desktop/mobile and cold review evidence.",
+  "sourceDigest": "sha256:1fcc231a17d791539adc2b4452527a925516a462dd83b054c9a1c48ec1faee00",
   "sourceFiles": 151,
   "scope": [
-    "Gallery report pagination",
-    "Site report UTC freshness and separate today counts",
-    "Desktop and mobile changed presentation"
+    "Standalone report shell on clean analytics URLs",
+    "Album selection and photo drill-down",
+    "Prior reviewed report presentation"
   ]
 }

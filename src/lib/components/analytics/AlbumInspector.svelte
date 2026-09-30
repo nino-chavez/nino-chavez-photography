@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { AlbumRow } from './AlbumComparisonTable.svelte';
-	interface Props { row: AlbumRow | null; reportHref: (albumKey: string) => string; }
+	interface Props { row: AlbumRow | null; reportHref: (albumKey: string, section: 'albums' | 'photos') => string; }
 	let { row, reportHref }: Props = $props();
 	const measures = $derived(row ? [
 		['Album opens', row.measures.album_opens], ['Photo opens', row.measures.photo_opens], ['Download actions', row.measures.downloads], ['Favorite additions', row.measures.favorites], ['Share actions', row.measures.shares]
@@ -12,8 +12,8 @@
 		<p class="label">Selected album</p><h2 id="inspector-title">{row.name}</h2><p class="context">{row.photoCount.toLocaleString()} photos{row.publishedAt ? ` · published ${row.publishedAt.slice(0, 10)}` : ''}</p>
 		<dl>{#each measures as [label, value]}<div><dt>{label}</dt><dd>{value === null ? 'Unavailable' : value.toLocaleString()}</dd></div>{/each}</dl>
 		<p class="note">Download actions are requests or handoffs, not confirmed file saves. Shares are handoffs, not confirmed posts.</p>
-		<a class="open" href={reportHref(row.key)+'#albums'} data-sveltekit-preload="tap">Open album report</a>
-		<a class="open photos" href={reportHref(row.key)+'#photos'}>View album photos</a>
+		<a class="open" href={reportHref(row.key, 'albums')+'#albums'} data-sveltekit-preload="tap">Open album report</a>
+		<a class="open photos" href={reportHref(row.key, 'photos')+'#photos'}>View album photos</a>
 	{:else}
 		<p class="label">Album inspector</p><h2 id="inspector-title">Select an album</h2><p class="note">Selecting a row only changes this inspector. Open album report changes the report scope.</p>
 	{/if}

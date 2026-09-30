@@ -1,8 +1,8 @@
-# Analytics performance changes are ready for release review
+# Analytics reports now read scheduled summaries
 
 Gallery and site-action reports now read stored PostgreSQL summaries. Counts refresh every 30 minutes. Filtering, comparisons, ranking and photo pagination happen in the database. The existing report features and full exports remain available. DuckDB and a real-time subscription were not added.
 
-The changes are integrated in the `codex/site-action-analytics` worktree. They are uncommitted and have not been pushed or deployed. Production behavior is unchanged. The next release needs the two database migrations reviewed and applied before the application is deployed.
+PR #170 was pushed, merged and deployed on September 29, 2026. Cloudflare Pages completed production deployment `2a9b5fb0-b8cd-4b82-b1c8-8bd9dfafdb67` for commit `7ebddff0722541607202db1be3dcd6db04f71afa` at 01:43 UTC on September 30. The four pending analytics migrations were applied before the application deployment. Gallery and site summaries were initialized successfully. Production SQL checks independently matched the 30-day and 90-day gallery totals, bounded photo pages to 12 rows, and confirmed anonymous and authenticated users cannot call the protected report functions.
 
 ## The local measurements support the change
 
@@ -31,11 +31,16 @@ Today is separate from complete-day totals. Its timestamp identifies the stored 
 
 Exact browser estimates remain a separate protected retained-data query. They are not a verified people count and are not calculated by adding daily unique counts. Public totals, ranks, pages, exports and browser estimates apply current album visibility and current photo membership. No visitor identifiers enter report responses.
 
-## Release order
+## Production checks and follow-up
 
-1. Review migrations `20260930004554_analytics_scheduled_gallery_reports.sql` and `20260930005003_analytics_scheduled_site_reports.sql`.
-2. Apply the migrations and run each private refresh once. Verify counts, cutoffs and permissions before changing the application reader.
-3. Deploy the verified application build.
-4. Measure the live report and confirm the next scheduled refresh completes.
+The 30-day photo-open report returned 2,167 recorded actions with complete coverage. The SQL check counts photo opens only when a photo ID exists; album-only view records are separate. The initialized site-action summary was current but had no recorded first-party history yet. Missing history is not evidence of no interest.
 
-No production migration, refresh or deployment ran. The candidate schema was installed only on the marked synthetic local database. The owned test server was stopped. Dirty source worktrees were preserved. Both worker branch refs remain at their starting commit. Dispatch receipts establish completion; their runtime model and effort fields were not exposed, so those details remain unverified.
+An initial live HTTP check returned the 90-day gallery response in 0.756 seconds. Earlier live checks took 14.48–18.35 seconds. This is one request, not a median or a browser paint measurement. External provider responses can still take longer; they are separate from the stored first-party totals.
+
+The gallery refresh runs every 30 minutes. Site summaries run at minutes 7 and 37. Both schedules are active; initialization was observed. The first automatic run had not yet been observed when this receipt was written.
+
+The relay deployment workflow succeeded after its invalid GitHub credential was replaced with the existing Cloudflare deployment credential from 1Password. That credential has account-wide deployment access. PostHog delivery remains disabled in the relay configuration; deploying the relay does not activate collection.
+
+Live inspection found a clean-URL regression after hydration: the photography header returned because the client route ID was absent. The follow-up keeps the report shell based on its host and path, and uses native navigation for report URLs outside the gallery application's fixed base. The album inspector's photo link also now requests the Photos section explicitly. Local rendered inspection verified album selection and the photo drill-down. A separate read-only reviewer inspected the dashboard screenshot and passed its standalone layout, field alignment and comprehension. Dispatch `56dcbddb-07e7-412a-a748-637abcbf77f0` completed; the host did not expose the child runtime model or effort. Exact clean-URL behavior must be checked on the follow-up production deployment.
+
+Dirty worker worktrees and unrelated site changes were preserved.
