@@ -1,0 +1,36 @@
+{
+  "observedAt": "2026-09-30T09:14:32Z",
+  "worker": "photography-analytics-intelligence",
+  "initialRuntimeFailure": [
+    {
+      "outcome": "exception",
+      "timestamp": 1790759287550,
+      "scheduled": "* * * * *",
+      "exceptions": [
+        {
+          "stack": "    at runIntelligenceWorker (index.js:10:26)\n    at Object.scheduled (index.js:24:38)",
+          "name": "TypeError",
+          "message": "Invalid redirect value, must be one of \"follow\" or \"manual\" (\"error\" won't be implemented since it does not make sense at the edge; use \"manual\" and check the response status code).",
+          "timestamp": 1790759287551
+        }
+      ],
+      "logs": []
+    }
+  ],
+  "scheduledRuns": [
+    {
+      "outcome": "ok",
+      "timestamp": 1790759647550,
+      "scheduled": "* * * * *",
+      "exceptions": [],
+      "logs": [
+        {
+          "level": "log",
+          "message": [
+            "{\"state\":\"ran\"}"
+          ]
+        }
+      ]
+    }
+  ]
+}

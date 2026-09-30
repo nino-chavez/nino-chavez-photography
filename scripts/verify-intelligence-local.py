@@ -3,7 +3,7 @@
 
 The source database is read-only to this helper. Its schema and fixtures are
 dumped into one new, randomly named localhost database. Old intelligence
-objects are removed only from that copy, then both final migrations (without
+objects are removed only from that copy, then all three final migrations (without
 their outer transactions) and SQL assertions run inside one transaction and
 ROLLBACK.
 """
