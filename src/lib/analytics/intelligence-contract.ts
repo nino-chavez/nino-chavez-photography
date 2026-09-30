@@ -56,10 +56,37 @@ export interface IntelligenceAction {
 	release?: string | null;
 	variant?: string | null;
 	outcome?: 'unknown' | 'inquiry' | 'booking' | 'other' | null;
+	/** A deliberately coarse private count. It never represents a visitor or customer record. */
+	outcomeCount?: number | null;
 	observationDays?: number | null;
 	followUpAt?: string | null;
+	followUpStatus?: 'pending' | 'ready' | 'inconclusive' | null;
 	note?: string | null;
 	createdAt: string;
+}
+
+export type PublicIntelligenceTarget = NonNullable<IntelligenceAction['target']>;
+
+const PUBLIC_PAGE_PATHS = new Set([
+	'/', '/about', '/contact', '/demos', '/photography', '/photography/volleyball',
+	'/writing', '/work', '/now'
+]);
+
+/** Parses only the public, identifier-free target form accepted by action writes. */
+export function parsePublicIntelligenceTarget(value: unknown): PublicIntelligenceTarget | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const row = value as Record<string, unknown>;
+	if (row.kind === 'gallery' || row.kind === 'site') return Object.keys(row).length === 1 ? { kind: row.kind } : null;
+	if (row.kind === 'album' && Object.keys(row).every((key) => key === 'kind' || key === 'albumKey')) {
+		return typeof row.albumKey === 'string' && /^[a-z0-9][a-z0-9_-]{0,179}$/i.test(row.albumKey.trim()) ? { kind: 'album', albumKey: row.albumKey.trim() } : null;
+	}
+	if (row.kind === 'photo' && Object.keys(row).every((key) => key === 'kind' || key === 'id')) {
+		return typeof row.id === 'string' && /^[a-z0-9][a-z0-9_-]{0,179}$/i.test(row.id.trim()) ? { kind: 'photo', id: row.id.trim() } : null;
+	}
+	if (row.kind === 'page' && Object.keys(row).every((key) => key === 'kind' || key === 'id')) {
+		return typeof row.id === 'string' && PUBLIC_PAGE_PATHS.has(row.id) ? { kind: 'page', id: row.id } : null;
+	}
+	return null;
 }
 
 export interface IntelligenceReport {

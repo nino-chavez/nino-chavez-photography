@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { intelligenceScopeKey, parseIntelligenceScope, standardIntelligenceScopes, type IntelligenceScope } from './intelligence-contract';
+import { intelligenceScopeKey, parseIntelligenceScope, parsePublicIntelligenceTarget, standardIntelligenceScopes, type IntelligenceScope } from './intelligence-contract';
 
 const gallery: IntelligenceScope = { kind: 'gallery', query: { start: '2026-03-01', end: '2026-03-30', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } };
 test('scope validation rejects impossible dates, huge windows, extra fields, and invalid custom comparisons', () => {
@@ -21,4 +21,12 @@ test('scheduled gallery scope uses the last complete Chicago day through DST', (
 	const scopes = standardIntelligenceScopes(new Date('2026-03-09T13:00:00.000Z'));
 	const first = scopes.find((scope) => scope.kind === 'gallery');
 	assert.deepEqual(first, { kind: 'gallery', query: { start: '2026-02-07', end: '2026-03-08', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } });
+});
+
+test('standalone action targets accept only a small public target contract', () => {
+	assert.deepEqual(parsePublicIntelligenceTarget({ kind: 'album', albumKey: 'fall-classic' }), { kind: 'album', albumKey: 'fall-classic' });
+	assert.deepEqual(parsePublicIntelligenceTarget({ kind: 'page', id: '/photography' }), { kind: 'page', id: '/photography' });
+	assert.equal(parsePublicIntelligenceTarget({ kind: 'page', id: '/admin' }), null);
+	assert.equal(parsePublicIntelligenceTarget({ kind: 'album', albumKey: 'fall', id: 'ignored' }), null);
+	assert.equal(parsePublicIntelligenceTarget({ kind: 'photo', id: '../private' }), null);
 });

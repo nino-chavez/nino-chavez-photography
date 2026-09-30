@@ -12,9 +12,15 @@ function plain(status: number, message: string): never { throw error(status, mes
 function trustedOrigin(request: Request, url: URL): boolean { return request.headers.get('origin') === (dev ? url.origin : ANALYTICS_ORIGIN); }
 function parseScopeParam(value: string | null) { try { return value ? parseIntelligenceScope(JSON.parse(value)) : null; } catch { return null; } }
 async function bodyObject(request: Request): Promise<Record<string, unknown>> {
-	const length = Number(request.headers.get('content-length') ?? '0');
-	if (!Number.isSafeInteger(length) || length < 0 || length > BODY_LIMIT) plain(413, 'analytics request body is too large');
-	let value: unknown; try { value = await request.json(); } catch { plain(400, 'invalid JSON'); }
+	const reader = request.body?.getReader(); if (!reader) plain(400, 'invalid JSON');
+	const chunks: Uint8Array[] = []; let total = 0;
+	for (;;) {
+		const next = await reader.read(); if (next.done) break;
+		total += next.value.byteLength; if (total > BODY_LIMIT) plain(413, 'analytics request body is too large');
+		chunks.push(next.value);
+	}
+	const bytes = new Uint8Array(total); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+	let value: unknown; try { value = JSON.parse(new TextDecoder().decode(bytes)); } catch { plain(400, 'invalid JSON'); }
 	if (!value || typeof value !== 'object' || Array.isArray(value)) plain(400, 'invalid analytics request');
 	return value as Record<string, unknown>;
 }
