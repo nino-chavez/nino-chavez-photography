@@ -59,6 +59,7 @@
     "analytics:dev:local": "node scripts/dev-analytics-local.mjs",
     "analytics:verify:local": "node --import tsx scripts/verify-analytics-local.mjs",
     "analytics:ui:local": "playwright test --config playwright.analytics.config.ts",
+    "analytics:site:test": "playwright test --config playwright.site-activity.config.ts --workers=1",
     "analytics:setup:local": "node scripts/rehearse-analytics-local.mjs --setup"
   },
   "devDependencies": {

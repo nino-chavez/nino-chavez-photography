@@ -6,6 +6,7 @@
   const endpoint = '/photography/api/analytics';
   const prefKey = 'gallery-analytics-preferences-v2';
   let preferences = { linkedAnalytics: false, excludeThisBrowser: true };
+  let preferencesLoaded = false;
   let view = null, timer = null, observer = null, activeSeconds = 0, lastTick = 0;
   let sent = new Set();
   const safePath = path => path === '/' || path === '/photography' || path === '/photography/coverage' || /^\/(?:about|now|links|learn|work)(?:\/[a-z0-9-]+)?$/.test(path) || /^\/demos(?:\/(?:applied\/)?[a-z0-9-]+)?$/.test(path) || /^\/blog(?:\/(?!draft(?:\/|$)|private(?:\/|$)|api(?:\/|$)|search(?:\/|$))[a-z0-9-]+){0,2}$/.test(path);
@@ -44,6 +45,7 @@
     }
   }
   function start() {
+    if (!preferencesLoaded) return;
     if (document.visibilityState !== 'visible') return;
     const path = location.pathname.replace(/\/$/, '') || '/';
     if (reactNavigation && (document.documentElement.dataset.analyticsPath?.replace(/\/$/, '') || '/') !== path) return;
@@ -94,6 +96,7 @@
   addEventListener('storage', event => { if (event.key === prefKey) preferences = storage(prefKey) || preferences; });
   fetch(endpoint + '/preferences', { cache: 'no-store' }).then(r => { if (!r.ok) throw Error('unavailable'); return r.json(); }).then(value => {
     preferences = { linkedAnalytics: value.linkedAnalytics === true, excludeThisBrowser: value.excludeThisBrowser === true };
+    preferencesLoaded = true;
     try { localStorage.setItem(prefKey, JSON.stringify(preferences)); if (!preferences.linkedAnalytics) { localStorage.removeItem('gallery-analytics-browser-v2'); localStorage.removeItem('gallery-analytics-visit-v2'); } } catch {}
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
   }).catch(() => {});
