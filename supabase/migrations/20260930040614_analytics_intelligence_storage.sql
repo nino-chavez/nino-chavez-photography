@@ -221,6 +221,30 @@ BEGIN
   ) SELECT c.id, c.kind, c.scope, c.owner_id, c.intended_period, c.request_id, c.operation FROM claimed c;
 END $$;
 
+CREATE OR REPLACE FUNCTION public.analytics_record_intelligence_action(
+  p_owner_id uuid,p_scope_key text,p_kind text,p_finding_id text,p_target jsonb,p_actual_at timestamptz,p_hypothesis text,p_primary_measure text,p_follow_up_at timestamptz,p_note text,p_reverses_action_id uuid,p_change_type text,p_channel text,p_campaign text,p_release text,p_variant text,p_outcome text,p_observation_days integer,p_target_context jsonb)
+RETURNS public.analytics_intelligence_actions LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+DECLARE original public.analytics_intelligence_actions%ROWTYPE; result public.analytics_intelligence_actions%ROWTYPE; policy text;
+BEGIN
+  SELECT retention_policy INTO policy FROM public.analytics_intelligence_preferences WHERE owner_id=p_owner_id FOR UPDATE;
+  IF coalesce(policy,'undecided')='undecided' THEN RAISE EXCEPTION 'retention decision required before private intelligence writes'; END IF;
+  IF p_kind NOT IN ('record','dismiss','snooze','undo') OR NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_snapshot_current WHERE scope_key=p_scope_key) THEN RAISE EXCEPTION 'invalid intelligence action'; END IF;
+  IF p_kind='undo' THEN
+    SELECT * INTO original FROM public.analytics_intelligence_actions WHERE id=p_reverses_action_id AND owner_id=p_owner_id FOR UPDATE;
+    IF NOT FOUND OR original.kind NOT IN ('dismiss','snooze') THEN RAISE EXCEPTION 'undo action is not owned or reversible'; END IF;
+    SELECT * INTO result FROM public.analytics_intelligence_actions WHERE owner_id=p_owner_id AND reverses_action_id=p_reverses_action_id AND kind='undo'; IF FOUND THEN RETURN result; END IF;
+    INSERT INTO public.analytics_intelligence_actions(owner_id,scope_key,kind,finding_id,target,reverses_action_id) VALUES(p_owner_id,p_scope_key,'undo',original.finding_id,original.target,p_reverses_action_id) RETURNING * INTO result;
+    INSERT INTO public.analytics_intelligence_finding_lifecycle(owner_id,scope_key,finding_id,status,snoozed_until,updated_at) VALUES(p_owner_id,p_scope_key,original.finding_id,'open',NULL,clock_timestamp()) ON CONFLICT(owner_id,scope_key,finding_id) DO UPDATE SET status='open',snoozed_until=NULL,updated_at=excluded.updated_at;
+    RETURN result;
+  END IF;
+  IF p_finding_id IS NULL OR p_target IS NULL OR jsonb_typeof(p_target)<>'object' THEN RAISE EXCEPTION 'public finding target required'; END IF;
+  IF p_kind='record' AND (p_actual_at IS NULL OR p_hypothesis IS NULL OR p_primary_measure IS NULL OR p_follow_up_at IS NULL OR p_change_type IS NULL OR p_observation_days IS NULL) THEN RAISE EXCEPTION 'record action context required'; END IF;
+  INSERT INTO public.analytics_intelligence_actions(owner_id,scope_key,kind,finding_id,target,actual_at,hypothesis,primary_measure,follow_up_at,note,change_type,channel,campaign,release,variant,outcome,observation_days,target_context)
+  VALUES(p_owner_id,p_scope_key,p_kind,p_finding_id,p_target,p_actual_at,p_hypothesis,p_primary_measure,p_follow_up_at,p_note,p_change_type,p_channel,p_campaign,p_release,p_variant,p_outcome,p_observation_days,p_target_context) RETURNING * INTO result;
+  IF p_kind IN ('dismiss','snooze') THEN INSERT INTO public.analytics_intelligence_finding_lifecycle(owner_id,scope_key,finding_id,status,snoozed_until,updated_at) VALUES(p_owner_id,p_scope_key,p_finding_id,p_kind,CASE WHEN p_kind='snooze' THEN clock_timestamp()+interval '7 days' END,clock_timestamp()) ON CONFLICT(owner_id,scope_key,finding_id) DO UPDATE SET status=excluded.status,snoozed_until=excluded.snoozed_until,updated_at=excluded.updated_at; END IF;
+  RETURN result;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.analytics_finish_intelligence_job(p_job_id uuid, p_status text, p_error_code text, p_report_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
 DECLARE v_job public.analytics_intelligence_jobs%ROWTYPE;
@@ -307,14 +331,163 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'intelligence delivery is not ambiguous'; END IF;
 END $$;
 
+-- Final report-worker storage contract. The provisional functions above are
+-- replaced below so a fresh migration exposes only this interface.
+ALTER TABLE public.analytics_intelligence_preferences
+  ADD COLUMN retention_policy text NOT NULL DEFAULT 'undecided' CHECK (retention_policy IN ('undecided','until_deleted','days'));
+ALTER TABLE public.analytics_intelligence_actions
+  ADD COLUMN change_type text CHECK (change_type IS NULL OR change_type IN ('promotion','cover','headline','cta','search_fix','download_repair','shooting','editing','other')),
+  ADD COLUMN channel text CHECK (channel IS NULL OR length(channel) <= 80),
+  ADD COLUMN campaign text CHECK (campaign IS NULL OR length(campaign) <= 120),
+  ADD COLUMN release text CHECK (release IS NULL OR length(release) <= 120),
+  ADD COLUMN variant text CHECK (variant IS NULL OR length(variant) <= 120),
+  ADD COLUMN outcome text CHECK (outcome IS NULL OR outcome IN ('unknown','inquiry','booking','other')),
+  ADD COLUMN observation_days integer CHECK (observation_days IS NULL OR observation_days BETWEEN 1 AND 365),
+  ADD COLUMN target_context jsonb CHECK (target_context IS NULL OR jsonb_typeof(target_context) = 'object');
+CREATE UNIQUE INDEX analytics_intelligence_actions_undo_once_uniq
+  ON public.analytics_intelligence_actions(owner_id, reverses_action_id) WHERE kind = 'undo';
+ALTER TABLE public.analytics_intelligence_briefs
+  ADD COLUMN body text NOT NULL DEFAULT '' CHECK (octet_length(body) <= 12000),
+  ADD COLUMN findings jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(findings) = 'array'),
+  ADD COLUMN snapshot_ids jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(snapshot_ids) = 'array'),
+  ADD COLUMN source_windows jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(source_windows) = 'array'),
+  ADD COLUMN suppressions jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(suppressions) = 'array');
+ALTER TABLE public.analytics_intelligence_briefs ALTER COLUMN scope_key DROP NOT NULL;
+DO $$
+DECLARE constraint_name text;
+BEGIN
+  SELECT conname INTO constraint_name
+  FROM pg_constraint
+  WHERE conrelid = 'public.analytics_intelligence_briefs'::regclass
+    AND contype = 'u'
+    AND conkey = ARRAY[
+      (SELECT attnum FROM pg_attribute WHERE attrelid='public.analytics_intelligence_briefs'::regclass AND attname='owner_id'),
+      (SELECT attnum FROM pg_attribute WHERE attrelid='public.analytics_intelligence_briefs'::regclass AND attname='scope_key'),
+      (SELECT attnum FROM pg_attribute WHERE attrelid='public.analytics_intelligence_briefs'::regclass AND attname='period_key'),
+      (SELECT attnum FROM pg_attribute WHERE attrelid='public.analytics_intelligence_briefs'::regclass AND attname='kind')
+    ];
+  IF constraint_name IS NOT NULL THEN EXECUTE format('ALTER TABLE public.analytics_intelligence_briefs DROP CONSTRAINT %I', constraint_name); END IF;
+END $$;
+CREATE UNIQUE INDEX analytics_intelligence_briefs_owner_period_kind_uniq ON public.analytics_intelligence_briefs(owner_id, period_key, kind);
+DROP INDEX public.analytics_intelligence_jobs_scheduled_uniq;
+CREATE UNIQUE INDEX analytics_intelligence_jobs_scheduled_scope_uniq
+  ON public.analytics_intelligence_jobs(owner_id, kind, intended_period, scope_key)
+  WHERE kind IN ('daily','weekly') AND status NOT IN ('expired','unavailable');
+
+CREATE OR REPLACE FUNCTION public.analytics_intelligence_scope_key(p_scope jsonb)
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path = pg_catalog AS $$ SELECT p_scope::text $$;
+
+CREATE OR REPLACE FUNCTION public.analytics_set_intelligence_preferences(
+  p_owner_id uuid, p_retention_policy text, p_retention_days integer,
+  p_daily_enabled boolean, p_weekly_enabled boolean)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF auth.uid() IS DISTINCT FROM p_owner_id THEN RAISE EXCEPTION 'owner authorization required'; END IF;
+  IF p_retention_policy NOT IN ('undecided','until_deleted','days')
+     OR (p_retention_policy = 'days' AND (p_retention_days IS NULL OR p_retention_days NOT BETWEEN 1 AND 3650))
+     OR (p_retention_policy <> 'days' AND p_retention_days IS NOT NULL) THEN RAISE EXCEPTION 'invalid intelligence retention preference'; END IF;
+  INSERT INTO public.analytics_intelligence_preferences(owner_id, retention_policy, retention_days)
+  VALUES (p_owner_id, p_retention_policy, p_retention_days)
+  ON CONFLICT(owner_id) DO UPDATE SET retention_policy=excluded.retention_policy, retention_days=excluded.retention_days, updated_at=clock_timestamp();
+  INSERT INTO public.analytics_intelligence_schedules(owner_id, daily_enabled, weekly_enabled)
+  VALUES (p_owner_id, p_daily_enabled, p_weekly_enabled)
+  ON CONFLICT(owner_id) DO UPDATE SET daily_enabled=excluded.daily_enabled, weekly_enabled=excluded.weekly_enabled, updated_at=clock_timestamp();
+END $$;
+
+DROP FUNCTION IF EXISTS public.analytics_finish_intelligence_job(uuid,text,text,uuid);
+DROP FUNCTION IF EXISTS public.analytics_claim_intelligence_jobs(integer,integer,timestamptz);
+DROP FUNCTION IF EXISTS public.analytics_prepare_intelligence_periods(date,date,timestamptz);
+
+CREATE OR REPLACE FUNCTION public.analytics_claim_intelligence_jobs(p_limit integer, p_lease_seconds integer, p_now timestamptz)
+RETURNS TABLE("id" uuid,"kind" text,"scope" jsonb,"ownerId" uuid,"intendedPeriod" date,"late" boolean,"requestId" uuid,"operation" text)
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF p_limit NOT BETWEEN 1 AND 4 OR p_lease_seconds NOT BETWEEN 30 AND 900 OR p_now IS NULL THEN RAISE EXCEPTION 'invalid intelligence job claim'; END IF;
+  UPDATE public.analytics_intelligence_jobs SET status='unavailable',error_code='attempts_exhausted',leased_until=NULL,updated_at=p_now
+    WHERE status IN ('pending','retry','leased') AND attempts >= 20;
+  RETURN QUERY WITH candidates AS (
+    SELECT j.id FROM public.analytics_intelligence_jobs j
+    WHERE ((j.status IN ('pending','retry') AND j.available_at <= p_now) OR (j.status='leased' AND j.leased_until < p_now)) AND j.attempts < 20
+    ORDER BY j.available_at,j.created_at FOR UPDATE SKIP LOCKED LIMIT p_limit
+  ), claimed AS (
+    UPDATE public.analytics_intelligence_jobs j SET status='leased',leased_until=p_now+make_interval(secs=>p_lease_seconds),attempts=j.attempts+1,updated_at=p_now
+    FROM candidates c WHERE j.id=c.id RETURNING j.*
+  ), request_leases AS (
+    UPDATE public.analytics_intelligence_requests r SET status='leased',updated_at=p_now FROM claimed c WHERE r.id=c.request_id AND r.status='pending'
+  ) SELECT c.id,c.kind,c.scope,c.owner_id,c.intended_period,
+    (c.intended_period IS NOT NULL AND p_now > (c.intended_period::timestamp AT TIME ZONE 'America/Chicago')+interval '8 hours'),c.request_id,c.operation FROM claimed c;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.analytics_finish_intelligence_job(p_job_id uuid, p_status text, p_report_id uuid, p_error_code text)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+DECLARE j public.analytics_intelligence_jobs%ROWTYPE; snapshot_scope text; delay_seconds integer; brief_id uuid;
+BEGIN
+  IF p_status NOT IN ('complete','retry') OR p_job_id IS NULL THEN RAISE EXCEPTION 'invalid intelligence job finish'; END IF;
+  SELECT * INTO j FROM public.analytics_intelligence_jobs WHERE id=p_job_id FOR UPDATE;
+  IF NOT FOUND OR j.status <> 'leased' THEN RAISE EXCEPTION 'intelligence job is not leased'; END IF;
+  SELECT scope_key INTO snapshot_scope FROM public.analytics_intelligence_snapshots WHERE snapshot_id=p_report_id;
+  IF p_status='complete' AND (p_report_id IS NULL OR snapshot_scope IS DISTINCT FROM j.scope_key) THEN RAISE EXCEPTION 'immutable report does not match job scope'; END IF;
+  delay_seconds:=CASE WHEN p_error_code='provider_query_pending' THEN 300 ELSE least(3600,30*(2^least(j.attempts,6))) END;
+  UPDATE public.analytics_intelligence_jobs SET status=CASE WHEN p_status='complete' THEN 'complete' WHEN attempts>=20 THEN 'unavailable' ELSE 'retry' END,
+    report_id=coalesce(p_report_id,report_id),error_code=CASE WHEN p_status='complete' THEN NULL ELSE coalesce(p_error_code,'intelligence_refresh_unavailable') END,
+    leased_until=NULL,available_at=CASE WHEN p_status='complete' THEN available_at ELSE clock_timestamp()+make_interval(secs=>delay_seconds) END,updated_at=clock_timestamp() WHERE id=p_job_id;
+  IF p_status='complete' AND j.kind IN ('daily','weekly') AND j.owner_id IS NOT NULL THEN
+    INSERT INTO public.analytics_intelligence_briefs(owner_id,scope_key,snapshot_id,period_key,kind,late,body,findings,snapshot_ids,source_windows,suppressions)
+    SELECT j.owner_id,NULL,p_report_id,j.intended_period,j.kind,
+      clock_timestamp() > (j.intended_period::timestamp AT TIME ZONE 'America/Chicago')+interval '8 hours',
+      'Open the dashboard brief for the saved aggregate evidence.',snapshot.findings,jsonb_build_array(p_report_id),
+      jsonb_build_array(jsonb_build_object('scope',snapshot.scope,'cutoff',snapshot.cutoff_at,'timezone',CASE WHEN snapshot.scope->>'kind'='gallery' THEN 'America/Chicago' ELSE 'UTC' END)),snapshot.suppressions
+    FROM public.analytics_intelligence_snapshots snapshot WHERE snapshot.snapshot_id=p_report_id
+    ON CONFLICT(owner_id,period_key,kind) DO UPDATE SET snapshot_id=excluded.snapshot_id,late=analytics_intelligence_briefs.late OR excluded.late,
+      findings=analytics_intelligence_briefs.findings || excluded.findings,snapshot_ids=analytics_intelligence_briefs.snapshot_ids || excluded.snapshot_ids,
+      source_windows=analytics_intelligence_briefs.source_windows || excluded.source_windows,suppressions=analytics_intelligence_briefs.suppressions || excluded.suppressions,created_at=clock_timestamp()
+    RETURNING id INTO brief_id;
+    INSERT INTO public.analytics_intelligence_deliveries(brief_id,channel,sender,destination_verified,preference_enabled,idempotency_key,payload)
+    VALUES(brief_id,'dashboard','owned',false,true,'dashboard:'||brief_id::text,jsonb_build_object('subject','Analytics brief','body','Open the dashboard brief for the saved aggregate evidence.')) ON CONFLICT(idempotency_key) DO NOTHING;
+  END IF;
+  IF j.request_id IS NOT NULL AND p_status='retry' AND j.attempts>=20 THEN UPDATE public.analytics_intelligence_requests SET status='unavailable',updated_at=clock_timestamp() WHERE id=j.request_id AND status IN ('pending','leased'); END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.analytics_prepare_intelligence_periods(p_daily_period date,p_weekly_period date,p_standard_scopes jsonb,p_refresh_cadence_seconds integer,p_provider_pending_retry_seconds integer,p_max_catchup_periods integer,p_now timestamptz)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+DECLARE s jsonb; k text; d date; today date; inserted integer:=0;
+BEGIN
+  IF p_now IS NULL OR jsonb_typeof(p_standard_scopes)<>'array' OR p_refresh_cadence_seconds NOT BETWEEN 60 AND 86400 OR p_provider_pending_retry_seconds NOT BETWEEN 30 AND 86400 OR p_max_catchup_periods NOT BETWEEN 1 AND 31 THEN RAISE EXCEPTION 'invalid intelligence period'; END IF;
+  FOR s IN SELECT value FROM jsonb_array_elements(p_standard_scopes) LOOP
+    k:=public.analytics_intelligence_scope_key(s);
+    IF NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='refresh' AND scope_key=k AND status IN ('pending','leased','retry'))
+      AND NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_snapshot_current WHERE scope_key=k AND updated_at > p_now-make_interval(secs=>p_refresh_cadence_seconds)) THEN
+      INSERT INTO public.analytics_intelligence_jobs(kind,scope_key,scope,available_at) VALUES('refresh',k,s,p_now) ON CONFLICT DO NOTHING;
+    END IF;
+  END LOOP;
+  UPDATE public.analytics_intelligence_requests SET status='expired',updated_at=p_now WHERE status IN ('pending','leased') AND expires_at < p_now;
+  today := (p_now AT TIME ZONE 'America/Chicago')::date;
+  FOR d IN SELECT value::date FROM generate_series(today-p_max_catchup_periods,today,interval '1 day') LOOP
+    EXIT WHEN inserted >= p_max_catchup_periods;
+    IF p_daily_period IS NOT NULL AND d <= least(p_daily_period,today) THEN
+      INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,available_at)
+      SELECT 'daily',schedule.owner_id,current.scope_key,snapshot.scope,d,p_now FROM public.analytics_intelligence_schedules schedule CROSS JOIN public.analytics_intelligence_snapshot_current current JOIN public.analytics_intelligence_snapshots snapshot ON snapshot.snapshot_id=current.snapshot_id WHERE schedule.daily_enabled ON CONFLICT DO NOTHING;
+      inserted:=inserted+1;
+    END IF;
+    IF p_weekly_period IS NOT NULL AND extract(isodow FROM d)=1 AND d <= least(p_weekly_period,today) THEN
+      INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,available_at)
+      SELECT 'weekly',schedule.owner_id,current.scope_key,snapshot.scope,d,p_now FROM public.analytics_intelligence_schedules schedule CROSS JOIN public.analytics_intelligence_snapshot_current current JOIN public.analytics_intelligence_snapshots snapshot ON snapshot.snapshot_id=current.snapshot_id WHERE schedule.weekly_enabled ON CONFLICT DO NOTHING;
+    END IF;
+  END LOOP;
+END $$;
+
 REVOKE ALL ON FUNCTION public.analytics_claim_intelligence_jobs(integer,integer,timestamptz) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.analytics_finish_intelligence_job(uuid,text,text,uuid) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.analytics_prepare_intelligence_periods(date,date,timestamptz) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.analytics_finish_intelligence_job(uuid,text,uuid,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.analytics_prepare_intelligence_periods(date,date,jsonb,integer,integer,integer,timestamptz) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.analytics_record_intelligence_action(uuid,text,text,text,jsonb,timestamptz,text,text,timestamptz,text,uuid,text,text,text,text,text,text,integer,jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.analytics_intelligence_scope_key(jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.analytics_set_intelligence_preferences(uuid,text,integer,boolean,boolean) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.analytics_record_intelligence_lifecycle(uuid,timestamptz) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.analytics_claim_intelligence_deliveries(integer,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.analytics_finish_intelligence_delivery(uuid,text,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.analytics_list_ambiguous_intelligence_deliveries(integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.analytics_reconcile_intelligence_delivery(uuid,text,text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.analytics_claim_intelligence_jobs(integer,integer,timestamptz), public.analytics_finish_intelligence_job(uuid,text,text,uuid), public.analytics_prepare_intelligence_periods(date,date,timestamptz), public.analytics_record_intelligence_lifecycle(uuid,timestamptz), public.analytics_claim_intelligence_deliveries(integer,integer), public.analytics_finish_intelligence_delivery(uuid,text,text,text), public.analytics_list_ambiguous_intelligence_deliveries(integer), public.analytics_reconcile_intelligence_delivery(uuid,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.analytics_claim_intelligence_jobs(integer,integer,timestamptz), public.analytics_finish_intelligence_job(uuid,text,uuid,text), public.analytics_prepare_intelligence_periods(date,date,jsonb,integer,integer,integer,timestamptz), public.analytics_record_intelligence_lifecycle(uuid,timestamptz), public.analytics_record_intelligence_action(uuid,text,text,text,jsonb,timestamptz,text,text,timestamptz,text,uuid,text,text,text,text,text,text,integer,jsonb), public.analytics_claim_intelligence_deliveries(integer,integer), public.analytics_finish_intelligence_delivery(uuid,text,text,text), public.analytics_list_ambiguous_intelligence_deliveries(integer), public.analytics_reconcile_intelligence_delivery(uuid,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.analytics_set_intelligence_preferences(uuid,text,integer,boolean,boolean) TO authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
 COMMIT;

@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseIntelligenceScope, standardIntelligenceScopes } from './intelligence-contract';
+import { intelligenceScopeKey, parseIntelligenceScope, standardIntelligenceScopes, type IntelligenceScope } from './intelligence-contract';
 
-const gallery = { kind: 'gallery', query: { start: '2026-03-01', end: '2026-03-30', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } };
+const gallery: IntelligenceScope = { kind: 'gallery', query: { start: '2026-03-01', end: '2026-03-30', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } };
 test('scope validation rejects impossible dates, huge windows, extra fields, and invalid custom comparisons', () => {
 	assert.ok(parseIntelligenceScope(gallery));
 	assert.equal(parseIntelligenceScope({ ...gallery, extra: true }), null);
 	assert.equal(parseIntelligenceScope({ ...gallery, query: { ...gallery.query, start: '2026-02-30' } }), null);
 	assert.equal(parseIntelligenceScope({ ...gallery, query: { ...gallery.query, start: '2000-01-01' } }), null);
 	assert.equal(parseIntelligenceScope({ ...gallery, query: { ...gallery.query, compare: 'custom', compareStart: '2026-02-01' } }), null);
+});
+
+test('scope keys use PostgreSQL jsonb-stable field ordering rather than caller insertion order', () => {
+	const reordered: IntelligenceScope = { kind: 'gallery', query: { traffic: 'conservative', compare: 'previous', albumKeys: [], scope: 'all', measure: 'photo_opens', end: '2026-03-30', start: '2026-03-01' } };
+	assert.equal(intelligenceScopeKey(gallery), intelligenceScopeKey(reordered));
+	assert.equal(intelligenceScopeKey(gallery), '{"kind": "gallery", "query": {"end": "2026-03-30", "scope": "all", "start": "2026-03-01", "compare": "previous", "measure": "photo_opens", "traffic": "conservative", "albumKeys": []}}');
 });
 
 test('scheduled gallery scope uses the last complete Chicago day through DST', () => {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { IntelligenceReport, IntelligenceScope } from './intelligence-contract';
 import { loadFixedIntelligenceJourneys, runIntelligenceJobs } from './intelligence-jobs.server';
+import type { IntelligenceReport, IntelligenceScope } from './intelligence-contract';
 
 const scope = { kind: 'sites' as const, period: 7 as const, section: 'all' as const };
 const report = (current: IntelligenceScope = scope, snapshotId = 'snapshot-a'): IntelligenceReport => ({ snapshotId, scope: current, generatedAt: '2026-09-30T14:00:00.000Z', cutoff: '2026-09-29T23:59:59.000Z', coverage: 'complete', findings: [], suppressions: [], actions: [], briefs: [], page: 0, pageCount: 1, owner: false });
@@ -30,7 +30,7 @@ test('request work stores a calculated result only after the refreshed snapshot 
 			: { data: null, error: null },
 		from: () => ({ update: (value: Record<string, unknown>) => {
 			updates.push(value);
-			const chain = { eq: () => chain, in: () => chain, select: () => chain, maybeSingle: async () => ({ data: { id: 'request-1' }, error: null }) };
+			const chain = { eq: () => chain, select: () => chain, maybeSingle: async () => ({ data: { id: 'request-1' }, error: null }) };
 			return chain;
 		} })
 	} as never;

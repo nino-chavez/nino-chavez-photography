@@ -16,12 +16,15 @@ const has = (value: string, ...terms: string[]) => terms.some((term) => value.in
 export function recognizeIntelligenceOperation(question: string): IntelligenceOperation | null {
 	const value = normalized(question);
 	if (!value || value.length > 500) return null;
+	// Exact public presets stay explanations even when they happen to contain a
+	// word such as “changed”; free-form state-changing instructions are rejected.
+	if (value.startsWith('explain ') || value === 'help' || value === 'what does this evidence support' || value === 'what should i inspect before acting') return 'explain_report';
 	if (has(value, 'download', 'render', 'struggling', 'reliability', 'failed')) return 'download_reliability';
 	if ((has(value, 'album') && has(value, 'compare', 'comparison', 'comparable', 'similar')) || value === 'compare this album') return 'album_comparison';
 	if (has(value, 'photo') && has(value, 'promot', 'response', 'shortlist')) return 'promote_photos';
 	if (has(value, 'cover', 'follow up', 'after', 'recorded change') || (has(value, 'what changed') && has(value, 'action', 'change'))) return 'action_follow_up';
 	if (has(value, 'reader', 'demo', 'retention', 'losing interest', 'progression', 'site section')) return 'site_retention';
-	if (value === 'help' || has(value, 'explain', 'report', 'what changed', 'support', 'uncertain', 'inspect before', 'inspect this')) return 'explain_report';
+	if (has(value, 'explain', 'report', 'support', 'uncertain', 'inspect before', 'inspect this')) return 'explain_report';
 	return null;
 }
 

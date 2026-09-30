@@ -69,7 +69,7 @@ function parseJob(value: unknown): IntelligenceJob | null {
 		|| intendedPeriod === undefined || requestId === undefined || operation === undefined || typeof row.late !== 'boolean'
 		|| (intendedPeriod !== null && !validDate(intendedPeriod))) return null;
 	if (kind === 'request' ? !ownerId || !requestId || !operation : requestId !== null || operation !== null) return null;
-	return { id, kind, scope, ownerId, intendedPeriod, late: row.late, requestId, operation };
+	return { id, kind: kind as IntelligenceJob['kind'], scope, ownerId, intendedPeriod, late: row.late, requestId, operation };
 }
 
 function reportId(report: IntelligenceReport): string {
@@ -89,12 +89,12 @@ async function completeRequest(client: SupabaseClient, job: IntelligenceJob, rep
 	// scope and operation; the stored answer is only the calculated evidence result.
 	const { question: _question, ...answer } = calculated;
 	const { data, error } = await client.from('analytics_intelligence_requests')
-		.update({ status: 'complete', answer })
+		.update({ status: 'complete', report_id: reportId(report), answer })
 		.eq('id', job.requestId)
 		.eq('owner_id', job.ownerId)
 		.eq('scope_key', intelligenceScopeKey(job.scope))
 		.eq('operation', job.operation)
-		.in('status', ['pending', 'leased'])
+		.eq('status', 'leased')
 		.select('id')
 		.maybeSingle();
 	if (error || !data || typeof data.id !== 'string') throw new Error('intelligence request result storage unavailable');

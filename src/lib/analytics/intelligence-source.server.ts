@@ -6,7 +6,15 @@ import type { SiteJourneyRow } from './site-journeys.server';
 import type { IntelligenceScope } from './intelligence-contract';
 import type { IntelligenceRuleInput } from './intelligence-rules';
 
-export type IntelligenceJourneyContext = { gallery?: JourneyAggregate[]; site?: SiteJourneyRow[] };
+export type GalleryDecisionEvidence = {
+	available: boolean;
+	asOf: string | null;
+	photoResponses: Array<{ photoId: string; albumKey: string; exposures: number; favorites: number; downloadItems: number; responses: number }>;
+	albumDiscovery: Array<{ albumKey: string; exposures: number; opens: number; directEntries: number }>;
+	rendering: { rendered: number; failed: number };
+	search: { submitted: number; failed: number };
+};
+export type IntelligenceJourneyContext = { gallery?: JourneyAggregate[]; site?: SiteJourneyRow[]; decision?: GalleryDecisionEvidence };
 const count = (value: unknown): number | null => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 const totals = (journeys: JourneyAggregate[] | undefined, name: JourneyAggregate['report']): Record<string, number | null> | null => {
 	const match = journeys?.find((journey) => journey.report === name && journey.available);
@@ -34,6 +42,7 @@ export async function loadIntelligenceEvidence(
 		const search = totals(journeys.gallery, 'search_usefulness');
 		const download = totals(journeys.gallery, 'download_reliability');
 		const response = totals(journeys.gallery, 'photo_response');
+		const decision = journeys.decision?.available ? journeys.decision : undefined;
 		const distributionJourney = journeys.gallery?.find((journey) => journey.report === 'sources_return' && journey.available);
 		const exposed = number(discovery, 'album_exposed_visits'); const opened = number(discovery, 'album_opened_after_exposure'); const direct = number(discovery, 'direct_album_open_visits');
 		const searches = number(search, 'searches_shown'); const empty = number(search, 'zero_result_searches'); const selections = number(search, 'selected_searches');
@@ -47,12 +56,11 @@ export async function loadIntelligenceEvidence(
 			scope, generatedAt: now.toISOString(), cutoff: report.dataAsOf, coverage: report.coverage, previousCoverage: report.previousCoverage,
 			current: report.total, previous: report.previousTotal,
 			eligibility: 'public eligible gallery actions; conservative traffic excludes known non-audience traffic',
-			...(allCounts(exposed, opened, direct) ? { discovery: { exposures: exposed as number, opens: opened as number, directEntries: direct as number } } : {}),
-			...(allCounts(searches, empty, selections) ? { search: { searches: searches as number, empty: empty as number, errors: 0, selections: selections as number } } : {}),
+			...(decision?.albumDiscovery.length ? { discovery: decision.albumDiscovery.reduce((total, row) => ({ exposures: total.exposures + row.exposures, opens: total.opens + row.opens, directEntries: total.directEntries + row.directEntries }), { exposures: 0, opens: 0, directEntries: 0 }) } : allCounts(exposed, opened, direct) ? { discovery: { exposures: exposed as number, opens: opened as number, directEntries: direct as number } } : {}),
+			// Search failure remains unknown unless the fixed decision query reports it.
+			...(decision && empty !== null && selections !== null ? { search: { searches: decision.search.submitted, empty, errors: decision.search.failed, selections } } : allCounts(searches, empty, selections) ? { search: { searches: searches as number, empty: empty as number, errors: 0, selections: selections as number } } : {}),
 			...(allCounts(requests, failed, unknownTerminal, handedOff) ? { download: { requests: requests as number, failed: failed as number, unknownTerminal: unknownTerminal as number, handedOff: handedOff as number } } : {}),
-			// The fixed query provides an aggregate denominator. It never attributes
-			// that denominator to a particular photo unless a future fixed query does.
-			...(allCounts(exposures, responses) ? { linkedPhotoResponse: [{ exposures: exposures as number, responses: responses as number }] } : {}),
+			...(decision?.photoResponses.length ? { linkedPhotoResponse: decision.photoResponses.map((row) => ({ photoId: row.photoId, albumKey: row.albumKey, exposures: row.exposures, responses: row.responses, evidenceLinks: [`/photos/${encodeURIComponent(row.photoId)}`] })) } : allCounts(exposures, responses) ? { linkedPhotoResponse: [{ exposures: exposures as number, responses: responses as number }] } : {}),
 			...(sourceRows.length > 0 ? { distribution: { taggedArrivals, laterActions, sources: sourceRows.length } } : {}),
 			catalogue: { eligibleAlbums: payload.albums.length, eligiblePhotos: payload.photos.length, missingAlbumFacts: payload.publicationAge.missingAlbumKeys.length }
 		};

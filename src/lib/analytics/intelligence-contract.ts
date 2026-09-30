@@ -50,6 +50,13 @@ export interface IntelligenceAction {
 	actualAt?: string | null;
 	hypothesis?: string | null;
 	primaryMeasure?: string | null;
+	changeType?: 'promotion' | 'cover' | 'headline' | 'cta' | 'search_fix' | 'download_repair' | 'shooting' | 'editing' | 'other' | null;
+	channel?: string | null;
+	campaign?: string | null;
+	release?: string | null;
+	variant?: string | null;
+	outcome?: 'unknown' | 'inquiry' | 'booking' | 'other' | null;
+	observationDays?: number | null;
 	followUpAt?: string | null;
 	note?: string | null;
 	createdAt: string;
@@ -64,7 +71,7 @@ export interface IntelligenceReport {
 	findings: Finding[];
 	suppressions: IntelligenceSuppression[];
 	actions: IntelligenceAction[];
-	briefs: Array<{ id: string; periodKey: string; kind: 'daily' | 'weekly' | 'operational'; createdAt: string }>;
+	briefs: Array<{ id: string; periodKey: string; kind: 'daily' | 'weekly' | 'operational'; createdAt: string; body?: string; findings?: Finding[]; snapshotIds?: string[] }>;
 	page: number;
 	pageCount: number;
 	owner: boolean;
@@ -150,7 +157,19 @@ export function parseIntelligenceScope(value: unknown): IntelligenceScope | null
 export function intelligenceScopeKey(scope: IntelligenceScope): string {
 	const normalized = parseIntelligenceScope(scope);
 	if (!normalized) throw new Error('invalid intelligence scope');
-	return JSON.stringify(normalized);
+	// PostgreSQL jsonb orders object keys by length then byte order and renders
+	// punctuation with spaces.  This gives the database and server the same key
+	// without relying on a caller's property insertion order.
+	return jsonbStableText(normalized);
+}
+
+function jsonbStableText(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(jsonbStableText).join(', ')}]`;
+	if (value && typeof value === 'object') {
+		const row = value as Record<string, unknown>;
+		return `{${Object.keys(row).sort((a, b) => a.length - b.length || a.localeCompare(b)).map((key) => `${JSON.stringify(key)}: ${jsonbStableText(row[key])}`).join(', ')}}`;
+	}
+	return JSON.stringify(value);
 }
 
 /** Scheduler scopes end at the last completed Chicago gallery day, including across DST. */
