@@ -64,3 +64,13 @@ for (const [name, health, failure, expected] of [
  const result=await loadIntelligenceEvidence(client,galleryScope,new Date('2026-10-01T03:00:00Z'),{}, {galleryReport:async()=>({dataAsOf:null,coverage:'partial',previousCoverage:'partial',total:0,previousTotal:0,photos:[],publicationAge:{missingAlbumKeys:[]},albums:[]})});
  assert.deepEqual(result.diagnostics?.map(row=>row.type), expected);
 });
+
+
+test('current gallery summary is overdue without treating an old custom report as an outage',async()=>{
+ const report={dataAsOf:'2026-10-01T01:00:00Z',coverage:'partial' as const,previousCoverage:'partial' as const,total:null,previousTotal:null,photos:[],publicationAge:{missingAlbumKeys:[]},albums:[]};
+ const loaders={diagnostics:async()=>[],galleryReport:async()=>report};
+ const current=await loadIntelligenceEvidence({} as any,galleryScope,new Date('2026-10-01T13:00:00Z'),{},loaders);
+ assert.equal(current.diagnostics?.[0]?.type,'gallery_summary_overdue');
+ const old=await loadIntelligenceEvidence({} as any,{...galleryScope,query:{...galleryScope.query,end:'2026-09-29'}},new Date('2026-10-01T13:00:00Z'),{},loaders);
+ assert.deepEqual(old.diagnostics,[]);
+});

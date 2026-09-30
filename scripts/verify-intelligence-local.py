@@ -245,6 +245,7 @@ def main() -> int:
     migrations = [
         ROOT / 'supabase/migrations/20260930040614_analytics_intelligence_storage.sql',
         ROOT / 'supabase/migrations/20260930062000_analytics_intelligence_private_controls.sql',
+        ROOT / 'supabase/migrations/20260930084000_analytics_intelligence_refresh_health.sql',
     ]
     assertions = ROOT / 'supabase/rehearsal/analytics-intelligence-assertions.sql'
     receipt_path = arguments.receipt.resolve()

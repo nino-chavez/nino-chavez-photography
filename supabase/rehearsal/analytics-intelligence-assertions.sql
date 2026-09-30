@@ -434,3 +434,13 @@ BEGIN
  PERFORM public.analytics_prepare_intelligence_periods(NULL,NULL,'[]',900,300,4,clock_timestamp());
  IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE id=job AND status='unavailable') OR NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='daily' AND period_key=current_date-77 AND jsonb_array_length(suppressions)>0) THEN RAISE EXCEPTION 'exhausted crashed job left its period hanging'; END IF;
 END $$;
+
+DO $$
+DECLARE owner uuid:='11111111-1111-4111-8111-111111111111'; scope jsonb:='{"kind":"sites","period":7,"section":"all"}'; snap uuid;
+BEGIN
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version) VALUES(public.analytics_intelligence_scope_key(scope),scope,clock_timestamp(),'partial','[{"id":"collection-health-site_summary_overdue","rule":"collection_health","title":"Refresh overdue"}]','{"diagnostics":[{"type":"site_summary_overdue","status":"failed","count":1}]}',3) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version) VALUES(public.analytics_intelligence_scope_key(scope),scope,clock_timestamp(),'partial','[]','{"diagnostics":[]}',3) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE finding_id='collection-health-site_summary_overdue' AND status='recovered') THEN RAISE EXCEPTION 'verified refresh recovery was blocked by unrelated partial audience history'; END IF;
+END $$;

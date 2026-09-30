@@ -62,6 +62,10 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 		const providerLimitation = unsupportedProviderScope(scope);
 		if (providerLimitation) journeys = {};
 		const report = await (loaders.galleryReport ?? scheduledGalleryReport)(client, scope);
+		const parts=Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+		const today=`${parts.find(p=>p.type==='year')!.value}-${parts.find(p=>p.type==='month')!.value}-${parts.find(p=>p.type==='day')!.value}`;
+		const yesterday=new Date(`${today}T12:00:00Z`); yesterday.setUTCDate(yesterday.getUTCDate()-1);
+		if(scope.query.end===yesterday.toISOString().slice(0,10) && report.dataAsOf && now.getTime()-Date.parse(report.dataAsOf)>75*60_000) diagnostics?.push({type:'gallery_summary_overdue',status:'failed',count:1});
 		const searchJourney = totals(journeys.gallery, 'search_usefulness');
 		const downloadJourney = totals(journeys.gallery, 'download_reliability');
 		const distributionJourney = totals(journeys.gallery, 'sources_return');
@@ -96,6 +100,7 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 
 	const report = await (loaders.siteReport ?? scheduledSiteReport)(client, scope);
 	if (!report.available) return { scope, diagnostics, generatedAt: now.toISOString(), cutoff: null, coverage: 'unavailable', previousCoverage: 'unavailable', current: null, previous: null, eligibility: 'identifier-free stored site action summaries' };
+	if(report.freshness.status==='stale') diagnostics?.push({type:'site_summary_overdue',status:'failed',count:1});
 	const previous = priorWindow(report.start, report.end);
 	const firstRecordedDate = report.firstRecordedAt?.slice(0, 10) ?? null;
 	const cutoffDate = report.freshness.summaryCutoffAt.slice(0, 10);
