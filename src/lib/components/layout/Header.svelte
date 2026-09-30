@@ -27,7 +27,9 @@
 	let menuButton: HTMLButtonElement;
 	let siteMenuOpen = $state(false);
 	let menuHistoryEntry = false;
+	let pendingNavigation: string | null = null;
 	let bodyOverflow = '';
+	let rootOverflow = '';
 
 	function isActive(path: string): boolean {
 		if (path === base || path === `${base}/`) {
@@ -38,11 +40,14 @@
 
 	function lockBackground() {
 		bodyOverflow = document.body.style.overflow;
+		rootOverflow = document.documentElement.style.overflow;
 		document.body.style.overflow = 'hidden';
+		document.documentElement.style.overflow = 'hidden';
 	}
 
 	function unlockBackground() {
 		document.body.style.overflow = bodyOverflow;
+		document.documentElement.style.overflow = rootOverflow;
 	}
 
 	async function openMenu() {
@@ -51,7 +56,7 @@
 		siteMenuOpen = true;
 		menuHistoryEntry = true;
 		lockBackground();
-		history.pushState({ ...history.state, siteMenuOpen: true }, '');
+		history.pushState({ ...history.state, siteNavigationDialog: true }, '', window.location.href);
 		await tick();
 		menuDialog.showModal();
 	}
@@ -65,18 +70,19 @@
 
 	function closeMenu() {
 		if (!siteMenuOpen) return;
-		if (menuHistoryEntry) {
-			history.back();
-			return;
-		}
-
 		menuDialog.close();
+		if (menuHistoryEntry) {
+			menuHistoryEntry = false;
+			history.back();
+		}
 	}
 
 	function handleMenuPopState() {
-		if (!siteMenuOpen) return;
+		const destination = pendingNavigation;
+		pendingNavigation = null;
 		menuHistoryEntry = false;
-		menuDialog.close();
+		if (siteMenuOpen) menuDialog.close();
+		if (destination) window.location.assign(destination);
 	}
 
 	function handleDialogClose() {
@@ -90,9 +96,35 @@
 
 	function handleMenuLink(event: MouseEvent) {
 		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		event.preventDefault();
+		pendingNavigation = (event.currentTarget as HTMLAnchorElement).href;
+		closeMenu();
+	}
 
-		menuHistoryEntry = false;
-		menuDialog.close();
+	function handleMenuSearch(event: SubmitEvent) {
+		event.preventDefault();
+		const form = new FormData(event.currentTarget as HTMLFormElement);
+		const query = form.get('q');
+		const destination = new URL('/search', window.location.origin);
+		if (typeof query === 'string' && query) destination.searchParams.set('q', query);
+		pendingNavigation = destination.href;
+		closeMenu();
+	}
+
+	function handleMenuKeys(event: KeyboardEvent) {
+		if (event.key !== 'Tab') return;
+		const controls = Array.from(menuDialog.querySelectorAll<HTMLElement>(
+			'a[href], button:not([disabled]), input:not([disabled])'
+		)).filter((element) => element.getClientRects().length > 0);
+		const first = controls[0];
+		const last = controls[controls.length - 1];
+		if (event.shiftKey && document.activeElement === first) {
+			event.preventDefault();
+			last?.focus();
+		} else if (!event.shiftKey && document.activeElement === last) {
+			event.preventDefault();
+			first?.focus();
+		}
 	}
 </script>
 
@@ -120,6 +152,7 @@
 			class="open-practice-shell__menu"
 			type="button"
 			aria-expanded={siteMenuOpen}
+			aria-haspopup="dialog"
 			aria-controls="site-menu-dialog"
 			onclick={openMenu}
 		>
@@ -163,13 +196,21 @@
 	aria-labelledby="site-menu-title"
 	oncancel={handleDialogCancel}
 	onclose={handleDialogClose}
+	onkeydown={handleMenuKeys}
 >
 	<div class="site-menu-dialog__header">
-		<h2 id="site-menu-title">Menu</h2>
+		<p id="site-menu-title">Navigate</p>
 		<button type="button" class="site-menu-dialog__close" onclick={closeMenu}>Close</button>
 	</div>
+	<form class="site-menu-dialog__search" action="/search" role="search" onsubmit={handleMenuSearch}>
+		<label for="site-menu-query">Search this site</label>
+		<div>
+			<input id="site-menu-query" name="q" type="search" placeholder="Project, topic, or page…" />
+			<button type="submit">Search</button>
+		</div>
+	</form>
 	<nav class="site-menu-dialog__links" aria-label="Nino Chavez site">
-		{#each MENU_NAVIGATION as item}
+		{#each GLOBAL_NAVIGATION as item}
 			<a
 				href={item.href}
 				data-sveltekit-reload
@@ -178,6 +219,11 @@
 			>
 				{item.label}
 			</a>
+		{/each}
+	</nav>
+	<nav class="site-menu-dialog__secondary" aria-label="More pages">
+		{#each MENU_NAVIGATION.filter((item) => item.href === '/now' || item.href === '/links') as item}
+			<a href={item.href} data-sveltekit-reload onclick={handleMenuLink}>{item.label}</a>
 		{/each}
 	</nav>
 </dialog>
@@ -228,7 +274,7 @@
 		position: sticky;
 		top: 0;
 		z-index: 60;
-		height: 60px;
+		height: 64px;
 		border-bottom: 1px solid var(--shell-rule);
 		background: var(--shell-ground);
 		color: var(--shell-text);
@@ -247,27 +293,30 @@
 	.open-practice-shell a,
 	.open-practice-shell__menu {
 		color: inherit;
-		font-size: 0.875rem;
-		font-weight: 650;
+		font-size: 0.85rem;
+		font-weight: 620;
 		text-decoration: none;
 	}
 
 	.open-practice-shell__identity {
 		justify-self: start;
+		font-size: 0.95rem !important;
+		font-weight: 800 !important;
+		letter-spacing: -0.01em;
 	}
 
 	.open-practice-shell__desktop {
 		display: flex;
 		align-self: stretch;
 		align-items: center;
-		gap: 30px;
+		gap: clamp(18px, 2.6vw, 36px);
 	}
 
 	.open-practice-shell__desktop a {
 		display: inline-flex;
 		height: 100%;
 		align-items: center;
-		border-bottom: 2px solid transparent;
+		border-bottom: 3px solid transparent;
 		color: var(--shell-muted);
 	}
 
@@ -290,9 +339,12 @@
 
 	.open-practice-shell__menu {
 		display: none;
-		min-height: 44px;
-		padding: 8px 12px;
+		min-height: 42px;
+		padding: 8px 13px;
 		border: 1px solid var(--shell-rule);
+		border-radius: 3px;
+		font-size: 1rem;
+		font-weight: 700;
 		background: transparent;
 		cursor: pointer;
 	}
@@ -304,7 +356,7 @@
 	}
 
 	.gallery-subnav {
-		top: 60px;
+		top: 64px;
 		height: 50px;
 		border-bottom: 1px solid rgb(255 255 255 / 0.08);
 		background: rgb(17 17 20 / 0.96);
@@ -395,41 +447,46 @@
 		--shell-rule: #b9bec6;
 		--shell-action: #14679e;
 		--shell-action-quiet: #d9e5ef;
-		width: min(390px, calc(100% - 32px));
-		max-height: calc(100dvh - 32px);
-		margin: auto;
+		width: min(520px, calc(100% - 24px));
+		max-height: calc(100dvh - 24px);
+		margin: 12px 12px 12px auto;
 		padding: 0;
-		border: 1px solid var(--shell-rule);
-		background: var(--shell-ground);
+		overflow: auto;
+		border: 1px solid var(--shell-text);
+		border-radius: 0;
+		background: #f7f8fa;
 		color: var(--shell-text);
 	}
 
 	.site-menu-dialog::backdrop {
-		background: rgb(14 25 40 / 0.5);
+		background: rgb(14 25 40 / 0.55);
 	}
 
 	.site-menu-dialog__header {
 		display: flex;
 		min-height: 64px;
-		padding: 12px 16px;
+		padding: 12px 18px;
 		align-items: center;
 		justify-content: space-between;
 		border-bottom: 1px solid var(--shell-rule);
 	}
 
-	.site-menu-dialog__header h2 {
+	.site-menu-dialog__header p {
 		margin: 0;
 		font-size: 1rem;
+		font-weight: 760;
 	}
 
-	.site-menu-dialog__close {
-		min-height: 44px;
-		padding: 8px 12px;
-		border: 1px solid var(--shell-action);
-		background: transparent;
+	.site-menu-dialog__close,
+	.site-menu-dialog__search button {
+		min-height: 42px;
+		padding: 8px 13px;
+		border: 1px solid var(--shell-rule);
+		border-radius: 0;
+		background: #f7f8fa;
 		color: inherit;
 		font: inherit;
-		font-weight: 650;
+		font-weight: 700;
 		cursor: pointer;
 	}
 
@@ -439,13 +496,13 @@
 
 	.site-menu-dialog__links a {
 		display: flex;
-		min-height: 54px;
-		padding: 12px 16px;
+		min-height: 58px;
+		padding: 14px 18px;
 		align-items: center;
 		border-bottom: 1px solid var(--shell-rule);
 		color: inherit;
-		font-size: 1rem;
-		font-weight: 650;
+		font-size: 1.05rem;
+		font-weight: 680;
 		text-decoration: none;
 	}
 
@@ -454,13 +511,65 @@
 	.site-menu-dialog__links a[aria-current] {
 		background: var(--shell-action-quiet);
 	}
+	.site-menu-dialog__links a[aria-current] {
+		background: #0e1928;
+		color: #f0f1f4;
+		box-shadow: inset 4px 0 0 var(--shell-action);
+	}
 
 	.site-menu-dialog__links a[aria-current]::after {
 		margin-left: auto;
-		color: var(--shell-muted);
+		color: rgb(240 241 244 / 0.62);
 		content: 'Current section';
-		font-size: 0.75rem;
+		font-size: 0.72rem;
 		font-weight: 500;
+	}
+
+	.site-menu-dialog__search {
+		padding: 20px 18px;
+		border-bottom: 1px solid var(--shell-rule);
+	}
+	.site-menu-dialog__search label {
+		display: block;
+		margin-bottom: 7px;
+		color: var(--shell-muted);
+		font-size: 0.78rem;
+		font-weight: 700;
+	}
+	.site-menu-dialog__search > div { display: flex; gap: 8px; }
+	.site-menu-dialog__search input {
+		width: 100%;
+		min-width: 0;
+		min-height: 46px;
+		padding: 9px 11px;
+		border: 1px solid var(--shell-rule);
+		border-radius: 0;
+		background: #f7f8fa;
+		color: var(--shell-text);
+		font: inherit;
+	}
+	.site-menu-dialog__secondary {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		padding: 14px 18px;
+		gap: 8px;
+	}
+	.site-menu-dialog__secondary a {
+		display: flex;
+		min-height: 42px;
+		padding: 8px;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid var(--shell-rule);
+		color: inherit;
+		font-size: 0.82rem;
+		text-decoration: none;
+	}
+	@media (max-width: 680px) {
+		.open-practice-shell { height: 60px; }
+		.open-practice-shell__inner { width: calc(100% - 30px); }
+		.gallery-subnav { top: 60px; }
+		.site-menu-dialog__secondary { grid-template-columns: 1fr; }
 	}
 
 	@media (max-width: 920px) {

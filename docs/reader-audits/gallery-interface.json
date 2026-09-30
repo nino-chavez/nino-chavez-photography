@@ -1,12 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-29T21:21:45.316Z",
-  "reviewedBy": "Codex credential cleanup review",
-  "method": "Reviewed the credential-only server loader change against the read-only Account Analytics token contract; no rendered UI source changed. Prior desktop and phone visual review remains the UI baseline.",
-  "sourceDigest": "sha256:1ed8a05dc99ad9eeaf857466a5b7eacbaba70ca7693ff10517963ebc8cbd6342",
+  "reviewedAt": "2026-09-30T01:52:16.688Z",
+  "reviewedBy": "Codex frontend refit review",
+  "method": "Parent opened desktop and phone Events with real published photos, an album and next-photo lightbox; observed global Menu, Escape, Back, forward and reverse Tab containment and focus return; checked phone breadcrumb overflow before and after correction. Separate origins were reviewed independently; a single-host cross-runtime traversal remains unverified.",
+  "sourceDigest": "sha256:92f660dcb34ad56eddaa24fb38be0ec7e773a3f1f45a220edae6be55d424b5a2",
   "sourceFiles": 148,
   "scope": [
-    "Cross-site server credential selection; prior desktop and phone report review preserved"
+    "Global shell and menu",
+    "Events and album entry",
+    "Photo lightbox preserve check",
+    "Phone breadcrumb containment"
   ]
 }

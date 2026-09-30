@@ -279,8 +279,8 @@
 					<li aria-hidden="true">
 						<ChevronRight class="w-3 h-3" />
 					</li>
-					<li>
-						<span class="text-white font-medium truncate max-w-[200px] md:max-w-none" aria-current="page">
+					<li class="min-w-0 flex-1">
+						<span class="block text-white font-medium truncate max-w-[200px] md:max-w-none" aria-current="page">
 							{data.albumName}
 						</span>
 					</li>
