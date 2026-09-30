@@ -133,4 +133,27 @@ Re-roll 1 was run from seed `c32c21da`. Its generic instruction to discard previ
 
 The generated comps are composition references. Do not ship invented side captions, generated photographs, a six-album count inferred from six visible rows, or any other generated detail as product facts. The report supplies recorded counts, dates, coverage, and actual photographs. Measure labels and derived insights must also satisfy the measurement review above.
 
-No production direction is selected yet. The decision page serves the mockups in `.impeccable/mocks/decision/`. These are proposals, not working report screens or a new source of analytics truth. Full-size image expansion was checked in the browser. The page initially opened before its image files existed; after all four images were saved, a reload made every preview visible.
+## Intelligence completion, September 30
+
+Keep the approved light slate, ink, and restrained blue hybrid inside the report
+workspace. Intelligence is a report tool, not a separate dashboard or a new
+brand direction. The initial finding list carries up to three saved findings and their
+evidence links. The contextual inspector sits beside those findings on desktop
+and follows them in document order on a phone.
+
+The owner workflow is one connected path: inspect evidence, record a real change,
+declare one outcome and an observation window, then return to a labeled pending,
+ready, inconclusive, or returned follow-up. A standalone record may start from
+the selected album, photo, report context, or a validated page path; it does not
+need a finding when the change really happened. Dismissal and snooze collect a
+private reason. Private settings are visible independently of whether a report
+has findings so the required retention choice is never hidden behind an empty
+state.
+
+Briefs use their stored title, body, finding references, and source windows. Do
+not manufacture a summary when a stored body is absent. Owner records, questions,
+briefs, settings, destinations, and outcomes stay off the anonymous surface.
+External delivery remains an explanation of a verified-and-activated state, never
+a send control or an assumption based on an email or browser session.
+
+The earlier decision page served the mockups in `.impeccable/mocks/decision/`. Those proposals remain composition references. The implemented report uses the light hybrid workflow described above; actual report data remains authoritative. Full-size image expansion was checked in the browser. The page initially opened before its image files existed; after all four images were saved, a reload made every preview visible.

@@ -1,5 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
+import {resolve,sep} from 'node:path';
 const tracker=readFileSync('static/site-activity.js','utf8');
 type Preferences={linkedAnalytics:boolean;excludeThisBrowser:boolean};
 async function fixture(page:Page,options:{linked?:boolean;excluded?:boolean;webdriver?:boolean;path?:string;react?:boolean;demo?:boolean;preferences?:Promise<Preferences>}={}) {
@@ -95,4 +96,49 @@ test('active article time requires the article on screen',async({page})=>{
  await page.evaluate(()=>{const spacer=document.createElement('footer');spacer.style.height='2000px';document.body.append(spacer);scrollTo(0,document.body.scrollHeight);});
  await page.clock.runFor(31000);
  expect(events.filter(e=>e.event_name==='content_active_time'&&e.properties.threshold===60)).toHaveLength(0);
+});
+
+test('deployed main-site adapter records rendered navigation and uses the first-party collector', async ({page}) => {
+ const siteBase=process.env.ANALYTICS_MAIN_TEST_BASE_URL;
+ test.skip(!siteBase,'main-site production-build rehearsal supplies its loopback URL');
+ const events:any[]=[];
+ await page.addInitScript(()=>Object.defineProperty(navigator,'webdriver',{get:()=>false}));
+ await page.route('https://ninochavez.co/**',async route=>{
+  if(new URL(route.request().url()).pathname === '/photography/site-activity.js') return route.fulfill({body:tracker,contentType:'application/javascript'});
+  if(route.request().url().includes('/api/analytics/preferences')) return route.fulfill({json:{linkedAnalytics:true,excludeThisBrowser:false}});
+  if(route.request().url().includes('/api/analytics/events')) {events.push(route.request().postDataJSON());return route.fulfill({json:{accepted:true}});}
+  const url=new URL(route.request().url());
+  const response=await fetch(siteBase!+url.pathname+url.search,{headers:{accept:route.request().headers()['accept'] ?? '*/*'}});
+  return route.fulfill({status:response.status,contentType:response.headers.get('content-type') ?? 'text/plain',body:Buffer.from(await response.arrayBuffer())});
+ });
+ await page.goto('https://ninochavez.co/');
+ await expect.poll(()=>events.filter(e=>e.event_name==='site_page_viewed').length).toBe(1);
+ expect(events[0].properties.canonical_path).toBe('/');
+ await page.locator('a[href="/work"]').first().click();
+ await expect.poll(()=>events.filter(e=>e.event_name==='site_page_viewed').length).toBe(2);
+ expect(events.filter(e=>e.event_name==='site_page_viewed')[1].properties.canonical_path).toBe('/work');
+ expect(events[0].visit_id).toBe(events.filter(e=>e.event_name==='site_page_viewed')[1].visit_id);
+ expect(await page.locator('script[data-site-navigation="react"][src^="/photography/site-activity.js"]').count()).toBe(1);
+});
+
+
+test('built blog article loads the owned tracker and sends linked progression without production requests',async({page})=>{
+ const dist=process.env.ANALYTICS_BLOG_TEST_DIST;test.skip(!dist,'built blog rehearsal provides its dist folder');
+ const root=resolve(dist!);const article='/blog/22gb-to-2gb-video-compression-as-agentic-collaboration';
+ const events:any[]=[];await page.addInitScript(()=>Object.defineProperty(navigator,'webdriver',{get:()=>false}));
+ await page.route('https://ninochavez.co/**',async route=>{
+  const path=new URL(route.request().url()).pathname;
+  if(path==='/photography/site-activity.js')return route.fulfill({body:tracker,contentType:'application/javascript'});
+  if(path.includes('/api/analytics/preferences'))return route.fulfill({json:{linkedAnalytics:true,excludeThisBrowser:false}});
+  if(path.includes('/api/analytics/events')){events.push(route.request().postDataJSON());return route.fulfill({json:{accepted:true}});}
+  const file=resolve(root,'.'+decodeURIComponent(path)+(path===article?'.html':''));
+  if(!file.startsWith(root+sep)||!existsSync(file))return route.fulfill({status:404});
+  return route.fulfill({body:readFileSync(file),contentType:path===article?'text/html':path.endsWith('.js')?'application/javascript':path.endsWith('.css')?'text/css':'application/octet-stream'});
+ });
+ await page.goto('https://ninochavez.co'+article);
+ await expect.poll(()=>events.some(e=>e.event_name==='site_page_viewed')).toBe(true);
+ expect(events.find(e=>e.event_name==='site_page_viewed').properties.content_kind).toBe('article');
+ await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));
+ await expect.poll(()=>events.some(e=>e.event_name==='content_progressed'&&e.properties.threshold===90)).toBe(true);
+ expect(events[0].anonymous_browser_id).toBeTruthy();
 });

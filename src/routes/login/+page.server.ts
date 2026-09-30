@@ -8,37 +8,27 @@ import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { SITE_URL } from '$lib/site-url';
+import { analyticsAuthCallbackUrl, authReturnPath } from '$lib/server/analytics-auth-redirect';
 
 /**
- * Build the auth callback URL from the gallery's public address, NOT `url.origin`.
- *
- * The router refetches this app from nino-chavez-photography.pages.dev, so inside
- * here `url.origin` IS the Pages origin — the same trap already annotated in
- * `albums/[slug]/+page.server.ts` and `+layout.svelte`. This is the one place it
- * was still live, and it broke sign-in outright rather than cosmetically.
- *
- * Supabase ignores a `redirectTo` that is not on the project's Redirect URLs
- * allowlist and silently falls back to the Site URL — no error, on either side.
- * So every magic link carried the unlisted pages.dev callback, got swapped for
- * the Site URL, and landed on the gallery home page holding a `?code=` that no
- * route exchanges. The visitor sees the landing page and stays signed out.
- *
- * `SITE_URL` already ends in the `/photography` base path — see $lib/site-url.
+ * Keep the callback on the initiating analytics host so its verifier cookie
+ * can complete sign-in. Routed gallery requests use the canonical gallery URL;
+ * the upstream pages.dev origin must never become an email destination.
+ * Supabase's redirect allowlist must include both supported callbacks.
  */
-function getCallbackUrl(next?: string): string {
-	const callback = `${SITE_URL}/auth/callback`;
-	return next ? `${callback}?next=${encodeURIComponent(next)}` : callback;
+function getCallbackUrl(url: URL, next?: string): string {
+	return analyticsAuthCallbackUrl(url.hostname, SITE_URL, next);
 }
 
 // Check if already logged in
-export const load: PageServerLoad = async ({ cookies }) => {
+export const load: PageServerLoad = async ({ cookies, url }) => {
 	const supabase = createSupabaseServerClient(cookies);
 	const {
 		data: { user }
 	} = await supabase.auth.getUser();
 
 	if (user) {
-		throw redirect(302, `${base}/admin/tags`);
+		throw redirect(302, authReturnPath(url.searchParams.get('next'), url.hostname === 'analytics.ninochavez.co' ? '/gallery' : `${base}/admin/tags`));
 	}
 
 	return {};
@@ -65,7 +55,7 @@ export const actions = {
 		throw redirect(303, `${base}/admin/tags`);
 	},
 
-	magicLink: async ({ request, cookies }) => {
+	magicLink: async ({ request, cookies, url }) => {
 		const data = await request.formData();
 		const email = data.get('email')?.toString();
 
@@ -76,7 +66,7 @@ export const actions = {
 		const supabase = createSupabaseServerClient(cookies);
 		const { error: authError } = await supabase.auth.signInWithOtp({
 			email,
-			options: { emailRedirectTo: getCallbackUrl('/analytics/operator'), shouldCreateUser: false }
+			options: { emailRedirectTo: getCallbackUrl(url, '/analytics/operator'), shouldCreateUser: false }
 		});
 
 		if (authError) {
@@ -87,7 +77,7 @@ export const actions = {
 		return { success: true, action: 'magicLink' };
 	},
 
-	forgotPassword: async ({ request, cookies }) => {
+	forgotPassword: async ({ request, cookies, url }) => {
 		const data = await request.formData();
 		const email = data.get('email')?.toString();
 
@@ -97,7 +87,7 @@ export const actions = {
 
 		const supabase = createSupabaseServerClient(cookies);
 		const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-			redirectTo: getCallbackUrl('/reset-password')
+			redirectTo: getCallbackUrl(url, '/reset-password')
 		});
 
 		if (authError) {
