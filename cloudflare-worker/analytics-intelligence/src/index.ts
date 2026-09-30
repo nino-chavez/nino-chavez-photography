@@ -7,7 +7,7 @@ export async function runIntelligenceWorker(env: Env, fetcher: typeof fetch = fe
 	const token = env.ANALYTICS_POSTHOG_SCHEDULE_TOKEN;
 	if (!token || token.length < 32) throw new Error('analytics_intelligence_secret_missing');
 	const response = await fetcher(ENDPOINT, {
-		method: 'POST', redirect: 'error', headers: { 'x-analytics-posthog-schedule-token': token }, signal: AbortSignal.timeout(90_000)
+		method: 'POST', redirect: 'manual', headers: { 'x-analytics-posthog-schedule-token': token }, signal: AbortSignal.timeout(90_000)
 	});
 	if (!response.ok) throw new Error(`analytics_intelligence_http_${response.status}`);
 	const result = await response.json() as { ok?: boolean };

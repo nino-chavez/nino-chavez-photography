@@ -9,7 +9,7 @@ export async function runRelay(env: Env, fetcher: typeof fetch = fetch): Promise
  let batches=0;
  // Bound work per invocation. Database leases prevent concurrent double claims.
  for (;batches<4;) {
-  const response=await fetcher(ENDPOINT,{method:'POST',redirect:'error',headers:{'x-analytics-posthog-schedule-token':token},signal:AbortSignal.timeout(90000)});
+  const response=await fetcher(ENDPOINT,{method:'POST',redirect:'manual',headers:{'x-analytics-posthog-schedule-token':token},signal:AbortSignal.timeout(90000)});
   if(!response.ok)throw Error(`analytics_relay_http_${response.status}`);
   const result=await response.json() as {ok?:boolean;health?:{pending?:number};delivery?:{claimed?:number}};
   if(result.ok!==true)throw Error('analytics_relay_unavailable');

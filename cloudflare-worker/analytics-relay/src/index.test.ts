@@ -10,9 +10,18 @@ test('relay fails closed, disallows redirects, and bounds backlog work',async()=
  await assert.rejects(runRelay({ANALYTICS_RELAY_ENABLED:'true'}),/secret_missing/);
  let calls=0;
  const result=await runRelay({ANALYTICS_RELAY_ENABLED:'true',ANALYTICS_POSTHOG_SCHEDULE_TOKEN:'x'.repeat(32)},async(url,init)=>{
-  calls++;assert.equal(url,'https://ninochavez.co/photography/api/internal/analytics-posthog');assert.equal(init?.redirect,'error');
+  calls++;assert.equal(url,'https://ninochavez.co/photography/api/internal/analytics-posthog');assert.equal(init?.redirect,'manual');
   return Response.json({ok:true,delivery:{claimed:100},health:{pending:1000}});
  });
  assert.equal(calls,4);assert.equal(result.batches,4);
  await assert.rejects(runRelay({ANALYTICS_RELAY_ENABLED:'true',ANALYTICS_POSTHOG_SCHEDULE_TOKEN:'x'.repeat(32)},async()=>new Response('',{status:403})),/http_403/);
+});
+
+
+test('relay rejects manual redirects before another request', async () => {
+ let calls=0;
+ await assert.rejects(runRelay({ANALYTICS_RELAY_ENABLED:'true',ANALYTICS_POSTHOG_SCHEDULE_TOKEN:'x'.repeat(32)}, async (_url, init) => {
+  calls++;assert.equal(init?.redirect,'manual');return new Response(null,{status:302,headers:{location:'https://untrusted.example/'}});
+ }),/http_302/);
+ assert.equal(calls,1);
 });
