@@ -19,10 +19,12 @@
 		measure: keyof MeasureTotals;
 		measureLabel: string;
 		risingAvailable: boolean;
+		comparisonLabel?: string;
+		risingBasis?: string;
 		onselect: (row: AlbumRow) => void;
 		reportHref: (albumKey: string) => string;
 	}
-	let { rows, selectedKey, measure, measureLabel, risingAvailable, onselect, reportHref }: Props = $props();
+	let { rows, selectedKey, measure, measureLabel, risingAvailable, comparisonLabel = '', risingBasis = 'absolute', onselect, reportHref }: Props = $props();
 
 	function metric(total: number | null): string { return total === null ? '—' : total.toLocaleString(); }
 	const measures = $derived([
@@ -34,17 +36,17 @@
 	].filter((item) => item.key !== measure));
 </script>
 
-<div class="comparison"><p class="scroll-help">Scroll sideways to compare every measure. Album names stay visible.</p>
+<div class="comparison">{#if comparisonLabel}<p class="scroll-help">{comparisonLabel}</p>{/if}<p class="scroll-help">Scroll sideways to compare every measure. Album names stay visible.</p>
 <div class="table-region" role="region" aria-label="Album comparison table">
 	<table>
 		<thead>
-			<tr><th scope="col">Album</th><th scope="col" class="number">{measureLabel}</th>{#each measures as measure}<th scope="col" class="number">{measure.label}</th>{/each}<th scope="col">Last recorded activity</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+			<tr><th scope="col">Album</th><th scope="col" class="number">Current · {measureLabel}</th><th scope="col" class="number">Previous</th><th scope="col" class="number">Change{risingBasis==='daily_rate' ? ' per day' : ''}</th>{#each measures as measure}<th scope="col" class="number">{measure.label}</th>{/each}<th scope="col">Last recorded activity</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
 		</thead>
 		<tbody>
 			{#each rows as row}
 				<tr class:selected={row.key === selectedKey} aria-selected={row.key === selectedKey}>
 					<td><button type="button" onclick={() => onselect(row)} aria-pressed={row.key === selectedKey}><strong>{row.name}</strong><small>{row.photoCount.toLocaleString()} photos</small></button></td>
-					<td class="number">{metric(row.count)}{#if risingAvailable && row.risingValue !== null}<small>{row.risingValue >= 0 ? '+' : ''}{row.risingValue.toLocaleString(undefined, { maximumFractionDigits: 1 })} rising</small>{/if}</td>
+					<td class="number">{metric(row.count)}</td><td class="number">{metric(row.previousCount)}</td><td class="number">{#if risingAvailable && row.risingValue !== null}{row.risingValue >= 0 ? '+' : ''}{row.risingValue.toLocaleString(undefined, {maximumFractionDigits:1})}{:else}Unavailable{/if}</td>
 					{#each measures as measure}<td class="number">{metric(row.measures[measure.key])}</td>{/each}
 					<td>{row.lastActivity ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' }).format(new Date(row.lastActivity)) : '—'}</td>
 					<td><a href={reportHref(row.key)} data-sveltekit-preload="hover">Compare</a></td>

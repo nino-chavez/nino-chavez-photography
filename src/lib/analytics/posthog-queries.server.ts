@@ -135,7 +135,7 @@ function scopedEvents(query: PostHogJourneyQuery, albumKeys: string[]): string {
 		: '1 = 1';
 	const sitewide = SITEWIDE_EVENTS.map(quoted).join(', ');
 	const downloadLifecycle = DOWNLOAD_LIFECYCLE_EVENTS.map(quoted).join(', ');
-	return `WITH activity_candidates AS (SELECT toString(uuid) AS event_id, event, timestamp, ${localDate} AS local_date, coalesce(toString(${eventProperty('visit_id')}), '') AS visit_id, coalesce(toString(${eventProperty('album_key')}), '') AS album_key, coalesce(toString(${eventProperty('photo_id')}), '') AS photo_id, coalesce(toString(${eventProperty('search_id')}), '') AS search_id, coalesce(toString(${eventProperty('result_set_id')}), '') AS result_set_id, coalesce(toString(${eventProperty('download_request_id')}), '') AS download_request_id, coalesce(toString(${eventProperty('tagged_source')}), '') AS tagged_source, coalesce(toString(${eventProperty('album_sport')}), '') AS album_sport, coalesce(toString(${eventProperty('photo_category')}), '') AS photo_category, distinct_id AS browser_id, coalesce(toString(${eventProperty('mode')}), '') AS mode, toIntOrZero(toString(${eventProperty('result_count')})) AS result_count, coalesce(toString(${eventProperty('experiment_key')}), '') AS experiment_key, coalesce(toString(${eventProperty('variant')}), '') AS variant FROM events WHERE ${activityFilters.join(' AND ')}), latest_classifications AS (SELECT toString(properties.target_event_id) AS target_event_id, argMax(toString(properties.classification), toIntOrZero(toString(properties.classification_version))) AS classification FROM events WHERE event = 'analytics_classification_changed' AND toIntOrZero(toString(properties.classification_version)) > 0 GROUP BY target_event_id), base AS (SELECT activity_candidates.* FROM activity_candidates LEFT JOIN latest_classifications ON activity_candidates.event_id = latest_classifications.target_event_id WHERE coalesce(latest_classifications.classification, 'audience') IN ('audience', 'unclassified')), tagged_arrivals AS (SELECT visit_id, tagged_source AS source, min(timestamp) AS arrived_at FROM base WHERE event = 'gallery_page_viewed' AND tagged_source != '' GROUP BY visit_id, source), source_scoped AS (SELECT * FROM base WHERE ${sourceVisitPredicate}), target_events AS (SELECT * FROM source_scoped WHERE ${targetPredicate}), visible_search_selections AS (SELECT * FROM target_events WHERE event = 'search_result_selected' AND search_id != '' AND result_set_id != ''), visible_download_keys AS (SELECT visit_id, download_request_id FROM target_events WHERE event IN ('download_item_requested', 'download_item_prepared') AND download_request_id != '' GROUP BY visit_id, download_request_id), scoped AS (SELECT * FROM source_scoped WHERE ${targetPredicate} OR (${hasTargetSlice ? '1 = 0' : `event IN (${sitewide}) AND album_key = ''`}) OR (event IN (${downloadLifecycle}) AND album_key = '' AND (visit_id, download_request_id) IN (SELECT visit_id, download_request_id FROM visible_download_keys))), sequenced AS (SELECT *, minOrNull(if(event = 'album_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_exposed_at, minOrNull(if(event = 'album_opened', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_opened_at, minOrNull(if(event = 'photo_rendered', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS photo_rendered_at, minOrNull(if(event = 'photo_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key, photo_id) AS photo_exposed_at, minOrNull(if(event = 'search_results_shown', timestamp, NULL)) OVER (PARTITION BY visit_id, search_id, result_set_id) AS search_results_at, minOrNull(if(event = 'download_requested', timestamp, NULL)) OVER (PARTITION BY visit_id, download_request_id) AS download_requested_at FROM scoped)`;
+	return `WITH activity_candidates AS (SELECT toString(uuid) AS event_id, event, timestamp, ${localDate} AS local_date, coalesce(toString(${eventProperty('visit_id')}), '') AS visit_id, coalesce(toString(${eventProperty('view_id')}), '') AS view_id, coalesce(toString(${eventProperty('album_key')}), '') AS album_key, coalesce(toString(${eventProperty('photo_id')}), '') AS photo_id, coalesce(toString(${eventProperty('search_id')}), '') AS search_id, coalesce(toString(${eventProperty('result_set_id')}), '') AS result_set_id, coalesce(toString(${eventProperty('download_request_id')}), '') AS download_request_id, coalesce(toString(${eventProperty('tagged_source')}), '') AS tagged_source, coalesce(toString(${eventProperty('album_sport')}), '') AS album_sport, coalesce(toString(${eventProperty('photo_category')}), '') AS photo_category, distinct_id AS browser_id, coalesce(toString(${eventProperty('mode')}), '') AS mode, toIntOrZero(toString(${eventProperty('result_count')})) AS result_count, coalesce(toString(${eventProperty('experiment_key')}), '') AS experiment_key, coalesce(toString(${eventProperty('variant')}), '') AS variant FROM events WHERE ${activityFilters.join(' AND ')}), latest_classifications AS (SELECT toString(properties.target_event_id) AS target_event_id, argMax(toString(properties.classification), toIntOrZero(toString(properties.classification_version))) AS classification FROM events WHERE event = 'analytics_classification_changed' AND toIntOrZero(toString(properties.classification_version)) > 0 GROUP BY target_event_id), base AS (SELECT activity_candidates.* FROM activity_candidates LEFT JOIN latest_classifications ON activity_candidates.event_id = latest_classifications.target_event_id WHERE coalesce(latest_classifications.classification, 'audience') IN ('audience', 'unclassified')), tagged_arrivals AS (SELECT visit_id, tagged_source AS source, min(timestamp) AS arrived_at FROM base WHERE event = 'gallery_page_viewed' AND tagged_source != '' GROUP BY visit_id, source), source_scoped AS (SELECT * FROM base WHERE ${sourceVisitPredicate}), target_events AS (SELECT * FROM source_scoped WHERE ${targetPredicate}), visible_search_selections AS (SELECT * FROM target_events WHERE event = 'search_result_selected' AND search_id != '' AND result_set_id != ''), visible_download_keys AS (SELECT visit_id, download_request_id FROM target_events WHERE event IN ('download_item_requested', 'download_item_prepared') AND download_request_id != '' GROUP BY visit_id, download_request_id), scoped AS (SELECT * FROM source_scoped WHERE ${targetPredicate} OR (${hasTargetSlice ? '1 = 0' : `event IN (${sitewide}) AND album_key = ''`}) OR (event IN (${downloadLifecycle}) AND album_key = '' AND (visit_id, download_request_id) IN (SELECT visit_id, download_request_id FROM visible_download_keys))), sequenced AS (SELECT *, minOrNull(if(event = 'album_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_exposed_at, minOrNull(if(event = 'album_opened', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS album_opened_at, minOrNull(if(event = 'photo_rendered', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key) AS photo_rendered_at, minOrNull(if(event = 'photo_exposed', timestamp, NULL)) OVER (PARTITION BY visit_id, album_key, photo_id) AS photo_exposed_at, minOrNull(if(event = 'search_results_shown', timestamp, NULL)) OVER (PARTITION BY visit_id, search_id, result_set_id) AS search_results_at, minOrNull(if(event = 'download_requested', timestamp, NULL)) OVER (PARTITION BY visit_id, download_request_id) AS download_requested_at FROM scoped)`;
 }
 
 function reportSql(query: PostHogJourneyQuery): string {
@@ -555,6 +555,97 @@ export async function queryGalleryJourneys(
 	} catch (cause) {
 		return { ...base, available: false, error: cause instanceof PostHogQueryPendingError ? 'provider_query_pending' : 'provider_query_failed' };
 	}
+}
+
+export interface GalleryDecisionEvidence {
+	available: boolean;
+	asOf: string | null;
+	photoResponses: Array<{ photoId: string; albumKey: string; exposures: number; favorites: number; downloadItems: number; responses: number }>;
+	albumDiscovery: Array<{ albumKey: string; exposures: number; opens: number; directEntries: number }>;
+	rendering: { rendered: number; failed: number; observedTerminal: number } | null;
+	search: { submitted: number; failed: number } | null;
+	truncated: boolean;
+}
+
+/** One fixed aggregate query. Strong response excludes opens and ZIP requests. */
+export function buildGalleryDecisionQuery(query: Omit<PostHogJourneyQuery, 'report'>, allowedAlbumKeys: string[]) {
+	const fixed = { ...query, report: 'photo_response' as const };
+	const validated = validatedQuery(fixed, allowedAlbumKeys);
+	if (!validated) return null;
+	const cte = scopedEvents(validated.value, validated.albumKeys);
+	const columns = (kind: string, values: Record<string, string>) => [
+		`${quoted(kind)} AS row_kind`,
+		...['album_key', 'photo_id', 'exposures', 'favorites', 'download_items', 'responses', 'opens', 'direct_entries', 'rendered', 'failed', 'observed_terminal', 'submitted', 'search_failed'].map(name => `${values[name] ?? (name.endsWith('_key') || name === 'photo_id' ? "''" : '0')} AS ${name}`)
+	].join(', ');
+	const afterExposure = "photo_exposed_at IS NOT NULL AND timestamp > photo_exposed_at";
+	return { kind: 'HogQLQuery' as const, query: `${cte}, photo_rows AS (
+	 SELECT ${columns('photo', {
+		album_key: 'album_key', photo_id: 'photo_id',
+		exposures: "uniqExactIf(visit_id, event = 'photo_exposed')",
+		favorites: `uniqExactIf(visit_id, event = 'favorite_added' AND ${afterExposure})`,
+		download_items: `uniqExactIf(visit_id, event = 'download_item_requested' AND ${afterExposure})`,
+		responses: `uniqExactIf(visit_id, event IN ('favorite_added','download_item_requested') AND ${afterExposure})`
+	 })} FROM sequenced WHERE photo_id != '' GROUP BY album_key, photo_id HAVING exposures > 0 ORDER BY responses DESC, exposures DESC, photo_id LIMIT 201
+	), album_rows AS (
+	 SELECT ${columns('album', {
+		album_key: 'album_key', exposures: "uniqExactIf(visit_id, event = 'album_exposed')",
+		opens: "uniqExactIf(visit_id, event = 'album_opened' AND album_exposed_at IS NOT NULL AND timestamp > album_exposed_at)",
+		direct_entries: "uniqExactIf(visit_id, event = 'album_opened' AND (album_exposed_at IS NULL OR timestamp <= album_exposed_at))"
+	 })} FROM sequenced WHERE album_key != '' GROUP BY album_key HAVING exposures > 0 ORDER BY album_key LIMIT 2001
+	), diagnostic_rows AS (
+	 SELECT ${columns('diagnostics', {
+		rendered: "uniqExactIf((visit_id,view_id,photo_id), event = 'photo_rendered' AND view_id != '')", failed: "uniqExactIf((visit_id,view_id,photo_id), event = 'photo_load_failed' AND view_id != '')",
+        observed_terminal: "uniqExactIf((visit_id,view_id,photo_id), event IN ('photo_rendered','photo_load_failed') AND view_id != '')",
+		submitted: "uniqExactIf((visit_id,search_id), event = 'search_submitted' AND search_id != '')",
+		search_failed: "uniqExactIf((visit_id,search_id), event = 'search_failed' AND search_id != '')"
+	 })} FROM sequenced
+	) SELECT * FROM photo_rows UNION ALL SELECT * FROM album_rows UNION ALL SELECT * FROM diagnostic_rows` };
+}
+
+export function parseGalleryDecisionEvidence(value: unknown, asOf: string, sliced: boolean): GalleryDecisionEvidence | null {
+	if (!value || typeof value !== 'object') return null;
+	const payload = value as { columns?: unknown; results?: unknown };
+	if (!Array.isArray(payload.columns) || !Array.isArray(payload.results) || payload.results.length > 2203) return null;
+	const columns = payload.columns;
+	const empty: GalleryDecisionEvidence = { available: true, asOf, photoResponses: [], albumDiscovery: [], rendering: null, search: null, truncated: false };
+	for (const row of payload.results) {
+		if (!Array.isArray(row) || row.length !== columns.length) return null;
+		const get = (key: string) => row[columns.indexOf(key)];
+		const counts = ['exposures', 'favorites', 'download_items', 'responses', 'opens', 'direct_entries', 'rendered', 'failed', 'observed_terminal', 'submitted', 'search_failed'];
+		if (counts.some(key => !Number.isSafeInteger(get(key)) || get(key) < 0)) return null;
+		const albumKey = get('album_key'), photoId = get('photo_id');
+		if (get('row_kind') === 'photo') {
+			if (typeof albumKey !== 'string' || !boundedText(albumKey) || typeof photoId !== 'string' || !boundedText(photoId) || get('responses') > get('exposures')) return null;
+			empty.photoResponses.push({ photoId, albumKey, exposures: get('exposures'), favorites: get('favorites'), downloadItems: get('download_items'), responses: get('responses') });
+		} else if (get('row_kind') === 'album') {
+			if (typeof albumKey !== 'string' || !boundedText(albumKey) || get('opens') > get('exposures')) return null;
+			empty.albumDiscovery.push({ albumKey, exposures: get('exposures'), opens: get('opens'), directEntries: get('direct_entries') });
+		} else if (get('row_kind') === 'diagnostics') {
+			if (get('failed') > get('observed_terminal') || get('rendered') > get('observed_terminal') || get('observed_terminal') > get('rendered') + get('failed')) return null;
+			empty.rendering = { rendered: get('rendered'), failed: get('failed'), observedTerminal: get('observed_terminal') };
+			// Failed searches have no album target. A target slice cannot assign them.
+			empty.search = sliced ? null : { submitted: get('submitted'), failed: get('search_failed') };
+		} else return null;
+	}
+	empty.truncated = empty.photoResponses.length > 200 || empty.albumDiscovery.length > 2000;
+	empty.photoResponses = empty.photoResponses.slice(0, 200);
+	empty.albumDiscovery = empty.albumDiscovery.slice(0, 2000);
+	return empty.rendering ? empty : null;
+}
+
+export async function queryGalleryDecisionEvidence(client: PostHogQueryTransport | null, query: Omit<PostHogJourneyQuery, 'report'>, allowedAlbumKeys: string[], options: { cache?: ProviderCache } = {}): Promise<GalleryDecisionEvidence> {
+	const unavailable: GalleryDecisionEvidence = { available: false, asOf: null, photoResponses: [], albumDiscovery: [], rendering: null, search: null, truncated: false };
+	const fixed = buildGalleryDecisionQuery(query, allowedAlbumKeys);
+	if (!client || !fixed) return unavailable;
+	try {
+		const load = async () => {
+			const value = await client.query({ query: fixed });
+			const result = parseGalleryDecisionEvidence(value, new Date().toISOString(), query.albumKeys !== undefined || !!query.sport || !!query.category);
+			if (!result) throw new Error('invalid decision evidence');
+			return result;
+		};
+		return client.providerCache ? await (options.cache ?? galleryJourneyCache).getOrLoad({ provider: 'posthog', origin: client.providerCache.origin, account: client.providerCache.account, credential: await client.providerCache.credentialIdentity, operation: 'gallery-decision-evidence', visibility: [...new Set(allowedAlbumKeys)].sort(), query: fixed }, load) : await load();
+	} catch { return unavailable; }
 }
 
 /** Query credentials are separate from capture credentials and never leave server code. */

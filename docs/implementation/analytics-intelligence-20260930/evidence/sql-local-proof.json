@@ -1,0 +1,22 @@
+{
+  "assertions": "supabase/rehearsal/analytics-intelligence-assertions.sql",
+  "disposableDatabase": {
+    "created": true,
+    "droppedAfterSuccess": true,
+    "prefix": "analytics_intelligence_proof_"
+  },
+  "migrations": [
+    "supabase/migrations/20260930040614_analytics_intelligence_storage.sql",
+    "supabase/migrations/20260930062000_analytics_intelligence_private_controls.sql"
+  ],
+  "outerMigrationTransactionRemoved": true,
+  "passed": true,
+  "proof": "analytics-intelligence-local-sql",
+  "ranAt": "2026-09-30T08:27:02+00:00",
+  "rolledBack": true,
+  "source": {
+    "loopbackRuntime": true,
+    "schemaAndFixturesDumped": true,
+    "syntheticIdentity": "photography-analytics-synthetic-v1"
+  }
+}
