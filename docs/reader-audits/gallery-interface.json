@@ -1,17 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-30T08:39:45.854Z",
+  "reviewedAt": "2026-09-30T08:45:04.813Z",
   "reviewedBy": "Codex parent and independent cold worker",
-  "method": "Parent opened loaded synthetic desktop and mobile screens. Actual local API and browser checks passed. Independent cold capture review found no P1 or P2 blockers. Freshness and partial-history incident recovery passed focused source and actual SQL checks. Production identity and real audience outcomes are not proven by these fixtures.",
+  "method": "Parent opened loaded synthetic desktop and mobile screens. Local API and browser checks passed. Cold capture review found no P1 or P2 blockers. Actual SQL proved incident lifecycle. Explicit Buffer imports and a missing-global regression test fix the observed production scheduler failure. Production owner sign-in remains unverified.",
   "sourceDigest": "sha256:9219628543730a7b4449f1209bb809228a022914871c08292bc342a43df79a42",
   "sourceFiles": 162,
   "scope": [
-    "Loaded gallery and sites overview",
-    "Album selection and comparison",
-    "Photography detail",
+    "Loaded report and inspectors",
     "Owner actions and briefs",
     "Mobile measurement",
-    "Freshness and recovery evidence"
+    "Runtime authentication and collection contracts"
   ]
 }

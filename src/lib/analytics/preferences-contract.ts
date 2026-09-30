@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export const ANALYTICS_EXCLUSION_COOKIE = 'gallery_analytics_excluded_v2';
