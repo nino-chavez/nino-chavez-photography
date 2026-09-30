@@ -9,10 +9,10 @@ No P0 confidentiality breach was found. I found no source path that exposes visi
 ### AUTH-01 — P1 — The report-host move breaks the normal magic-link operator session
 
 - **Evidence:** source-confirmed; live not verified.
-- **Paths:**  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/report-paths.ts:2-14`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/supabase/server-ssr.ts:19-27`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/login/+page.server.ts:28-30,68-80`  
+- **Paths:**
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/report-paths.ts:2-14`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/supabase/server-ssr.ts:19-27`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/login/+page.server.ts:28-30,68-80`
   `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/auth/callback/+server.ts:6-22`
 - **Mechanism:** reports now live on `analytics.ninochavez.co`, but Supabase’s default session cookie has no `Domain`, so it is host-only. Magic links are hard-coded to callback on `ninochavez.co`; that callback sets an apex-host cookie and redirects through the old report route, which then redirects to the analytics subdomain without the cookie.
 - **User job / blast radius:** the operator can view public aggregates but cannot reach saved reports, private notes, corrections, or delivery health through the normal magic-link flow. Manual password login directly on the analytics hostname may work, but the UI does not establish that route.
@@ -26,9 +26,9 @@ No P0 confidentiality breach was found. I found no source path that exposes visi
 ### COL-01 — P1 — Public collectors have no enforceable abuse budget
 
 - **Evidence:** source-confirmed; live edge controls not verified.
-- **Paths:**  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/api/engagement/+server.ts:18-28,67-78`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/api/analytics/diagnostics/+server.ts:10-31`  
+- **Paths:**
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/api/engagement/+server.ts:18-28,67-78`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/api/analytics/diagnostics/+server.ts:10-31`
   `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/api/analytics/events/+server.ts:13-27,46-59`
 - **Mechanism:** legacy engagement and diagnostics accept cross-origin public writes and parse the body before any byte bound. The pending v2 guard rejects only a present wrong `Origin`; an omitted `Origin` is accepted as audience traffic. Its 8 KiB check trusts `Content-Length`, which chunked or non-browser callers can omit. UUID idempotency stops replay of one UUID, not high-volume unique events.
 - **User job / blast radius:** attackers can pollute views, downloads, favorites, shares, diagnostics, popular/rising decisions, collection-health counters, and service-role database capacity.
@@ -42,8 +42,8 @@ No P0 confidentiality breach was found. I found no source path that exposes visi
 ### REP-01 — P1 — A public query can request an effectively unbounded date interval
 
 - **Evidence:** source-confirmed and locally reproduced.
-- **Paths:**  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/report-contract.ts:89-131,134-158`  
+- **Paths:**
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/report-contract.ts:89-131,134-158`
   `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/analytics/operator/+page.server.ts:77-137`
 - **Mechanism:** valid custom dates are normalized but never span-limited. `datesInclusive` materializes every day, while the loader starts database aggregation, v2 projection, previews, and seven PostHog reports.
 - **User job / blast radius:** one unauthenticated request can consume Pages memory/time, Supabase work, and provider query quota; repeated requests threaten public report availability.
@@ -55,10 +55,10 @@ No P0 confidentiality breach was found. I found no source path that exposes visi
 ### REP-02 — P1 — Anonymous refreshes fan out to provider work without application caching
 
 - **Evidence:** source-confirmed; production credentials and quota impact live not verified.
-- **Paths:**  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/analytics/operator/+page.server.ts:77-82,130-137`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog.types.ts:38-46`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog-queries.server.ts:495-563`  
+- **Paths:**
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/routes/analytics/operator/+page.server.ts:77-82,130-137`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog.types.ts:38-46`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog-queries.server.ts:495-563`
   `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/site-traffic.server.ts:119-148`
 - **Mechanism:** `/gallery` is `private, no-store` and launches seven fixed PostHog queries for every request. Each query may poll twelve times. `/sites` caches successful results, but its Cloudflare GraphQL requests have no `AbortSignal`, so a cold miss can wait for the platform timeout.
 - **User job / blast radius:** public report latency, Pages concurrency, PostHog query quota, and Cloudflare API availability. This becomes acute when the pending PostHog activation lands.
@@ -70,9 +70,9 @@ No P0 confidentiality breach was found. I found no source path that exposes visi
 ### REP-03 — P2 — Pagination happens after the server loads every photo preview
 
 - **Evidence:** source-confirmed; supplied performance evidence is candidate evidence, not independently rerun.
-- **Paths:**  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/operator-report.server.ts:298-313`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/v2-report-projection.server.ts:196-219`  
+- **Paths:**
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/operator-report.server.ts:298-313`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/v2-report-projection.server.ts:196-219`
   `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/docs/implementation/site-actions-20260929/PERFORMANCE.md:28-48`
 - **Mechanism:** the report groups every matching photo and then runs sequential 100-ID preview queries before returning the first page. Separately, every v2 report downloads the complete classification history rather than classifications for the selected raw events.
 - **User job / blast radius:** current 90-day reports are slow; the classification scan is a future-scale risk. Candidate evidence reports 3,097 photos, 31 sequential preview calls, and 14–25 second results.
@@ -86,9 +86,9 @@ No P0 confidentiality breach was found. I found no source path that exposes visi
 ### DEL-01 — P1 — Full-scope linked journeys deploy in a permanently disabled state
 
 - **Evidence:** source-confirmed; candidate provider inventory says the Worker and schedule return 404, but live state was not verified here.
-- **Paths:**  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/cloudflare-worker/analytics-relay/wrangler.toml:7-11`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/cloudflare-worker/analytics-relay/src/index.ts:5-18`  
+- **Paths:**
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/cloudflare-worker/analytics-relay/wrangler.toml:7-11`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/cloudflare-worker/analytics-relay/src/index.ts:5-18`
   `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/.github/workflows/deploy-analytics-relay.yml:18-45`
 - **Mechanism:** the deploy workflow publishes `ANALYTICS_RELAY_ENABLED=false`. There is no activation or secret-provisioning step, nor a post-deploy scheduled-delivery check.
 - **User job / blast radius:** first-party actions continue recording, but eligible outbox rows never reach PostHog; linked journeys remain unavailable. This is a release blocker because full feature scope was requested.
@@ -100,9 +100,9 @@ No P0 confidentiality breach was found. I found no source path that exposes visi
 ### DEL-02 — P2 — Batch, lease, and network deadlines are internally inconsistent
 
 - **Evidence:** source-confirmed; future-scale/provider-latency risk.
-- **Paths:**  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog-delivery.server.ts:15-54`  
-  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog.server.ts:27-47`  
+- **Paths:**
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog-delivery.server.ts:15-54`
+  `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/src/lib/analytics/posthog.server.ts:27-47`
   `/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/site-action-analytics/cloudflare-worker/analytics-relay/src/index.ts:9-18`
 - **Mechanism:** a default claim leases 50 events for 60 seconds, then delivers serially with a 5-second timeout per event. The theoretical batch bound is 250 seconds, while the relay request aborts at 90 seconds. Expired leases can be reclaimed while the first request is still sending.
 - **User job / blast radius:** backlog recovery, delivery receipts, retries, and scheduler reliability. Provider UUIDs reduce downstream duplicate counts but do not prevent local state races.
