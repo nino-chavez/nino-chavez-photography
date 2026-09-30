@@ -21,7 +21,7 @@ export type EmailIntelligenceDeliveryChange = {
 };
 
 function validEmail(value: unknown): value is string {
-	return typeof value === 'string' && value.length > 3 && value.length <= 320 && !/[\r\n]/.test(value);
+	return typeof value === 'string' && value.length > 3 && value.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function validInstant(value: unknown): value is string {
@@ -61,7 +61,7 @@ export function emailIntelligenceDeliveryState(
 	return {
 		enabled,
 		configured,
-		retentionChosen: typeof current.retention_policy === 'string' && current.retention_policy !== 'undecided',
+		retentionChosen: current.retention_policy === 'days' || current.retention_policy === 'until_deleted',
 		destination,
 		emailVerified: destination !== null
 	};

@@ -37,7 +37,7 @@ async function ownerWithConfirmedEmail(cookies: Parameters<RequestHandler>[0]['c
 	const owner = await intelligenceOwner(cookies);
 	if (!owner.owner || !owner.userId) throw error(403, 'Owner sign-in is required.');
 	const { data: { user }, error: userError } = await createSupabaseServerClient(cookies).auth.getUser();
-	if (userError || !user) throw error(403, 'Owner sign-in is required.');
+	if (userError || !user || user.id !== owner.userId) throw error(403, 'Owner sign-in is required.');
 	return { owner, user };
 }
 
@@ -70,10 +70,10 @@ export const POST: RequestHandler = async ({ cookies, request, url }) => {
 	const { data: preference, error: readError } = await client.from('analytics_intelligence_preferences').select('retention_policy').eq('owner_id', owner.userId).maybeSingle();
 	if (readError) throw error(503, 'Private retention settings are unavailable.');
 	if (!preference || preference.retention_policy === 'undecided') throw error(409, 'Choose private record retention before activating email delivery.');
-	const { error: saveError } = await client.from('analytics_intelligence_preferences').upsert({
-		owner_id: owner.userId, external_enabled: true, destination_verified: true,
+	const { data: saved, error: saveError } = await client.from('analytics_intelligence_preferences').update({
+		external_enabled: true, destination_verified: true,
 		destination_verified_at: user.email_confirmed_at, destination: user.email, sender: 'owned'
-	}, { onConflict: 'owner_id' });
-	if (saveError) throw error(503, 'Email delivery was not activated.');
+	}).eq('owner_id', owner.userId).in('retention_policy', ['days', 'until_deleted']).select('owner_id').maybeSingle();
+	if (saveError || !saved) throw error(503, 'Email delivery was not activated.');
 	return json({ saved: true }, { headers: { 'cache-control': 'private, no-store' } });
 };

@@ -108,7 +108,7 @@ BEGIN
   UPDATE public.analytics_intelligence_snapshot_current SET updated_at=clock_timestamp()-interval '1 hour' WHERE scope_key IN (key_one,key_two);
   PERFORM public.analytics_prepare_intelligence_periods((clock_timestamp() AT TIME ZONE 'America/Chicago')::date,(clock_timestamp() AT TIME ZONE 'America/Chicago')::date,jsonb_build_array(scope_one,scope_two),900,300,4,clock_timestamp());
   IF (SELECT count(DISTINCT scope_key) FROM public.analytics_intelligence_jobs WHERE kind='refresh' AND scope_key IN(key_one,key_two)) <> 2 THEN RAISE EXCEPTION 'scheduled scopes collapsed'; END IF;
-  IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind IN('daily','weekly') AND intended_period >= (clock_timestamp() AT TIME ZONE 'America/Chicago')::date) THEN RAISE EXCEPTION 'future catchup was scheduled'; END IF;
+  IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind IN('daily','weekly') AND (intended_period::timestamp+interval '8 hours') AT TIME ZONE 'America/Chicago' > clock_timestamp()) THEN RAISE EXCEPTION 'future catchup was scheduled'; END IF;
   UPDATE public.analytics_intelligence_snapshot_current SET updated_at=clock_timestamp() WHERE scope_key=key_one;
   PERFORM public.analytics_prepare_intelligence_periods(NULL,NULL,jsonb_build_array(scope_one),900,300,4,clock_timestamp());
   IF (SELECT count(*) FROM public.analytics_intelligence_jobs WHERE kind='refresh' AND scope_key=key_one AND status IN('pending','leased','retry')) > 1 THEN RAISE EXCEPTION 'refresh cadence created duplicate work'; END IF;
@@ -196,6 +196,42 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='daily' AND period_key=current_date-10000 AND jsonb_array_length(snapshot_ids)=2) THEN RAISE EXCEPTION 'multi-scope final brief did not await all snapshots'; END IF;
   SELECT to_jsonb(c) INTO delivery FROM public.analytics_claim_intelligence_deliveries(1,120) c;
   IF delivery IS NOT NULL AND (NOT (delivery ? 'destinationVerified') OR NOT (delivery ? 'preferenceEnabled') OR NOT (delivery ? 'idempotencyKey') OR NOT (delivery ? 'destination')) THEN RAISE EXCEPTION 'delivery claim lost camel-case or snapshotted destination fields'; END IF;
+END $$;
+
+-- Due dates and one-off refreshes preserve the scheduling contract.
+DO $$
+DECLARE n bigint; owner uuid := '11111111-1111-4111-8111-111111111111'; scope jsonb := '{"kind":"gallery","query":{"start":"2026-08-31","end":"2026-09-29","measure":"photo_opens","scope":"all","albumKeys":[],"compare":"previous","traffic":"conservative"}}';
+BEGIN
+ SELECT count(*) INTO n FROM public.analytics_intelligence_jobs WHERE kind IN ('daily','weekly');
+ PERFORM public.analytics_prepare_intelligence_periods(NULL,NULL,jsonb_build_array(scope),900,300,4,'2026-09-30T14:00:00Z');
+ IF (SELECT count(*) FROM public.analytics_intelligence_jobs WHERE kind IN ('daily','weekly'))<>n THEN RAISE EXCEPTION 'one-off refresh manufactured a scheduled brief'; END IF;
+ PERFORM public.analytics_prepare_intelligence_periods('2026-09-30','2026-09-28',jsonb_build_array(scope),900,300,4,'2026-09-30T12:59:00Z');
+ IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE owner_id=owner AND intended_period='2026-09-30') THEN RAISE EXCEPTION 'daily brief scheduled before 08:00 Chicago'; END IF;
+ PERFORM public.analytics_prepare_intelligence_periods('2026-09-30','2026-09-28',jsonb_build_array(scope),900,300,4,'2026-09-30T13:00:00Z');
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs job WHERE owner_id=owner AND kind='daily' AND intended_period='2026-09-30' AND job.scope#>>'{query,start}'='2026-08-31' AND job.scope#>>'{query,end}'='2026-09-29') THEN RAISE EXCEPTION 'daily report uses wrong due date or completed calendar window'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='weekly' AND extract(isodow FROM intended_period)<>1 AND intended_period>'2026-09-01') THEN RAISE EXCEPTION 'weekly report lost its Monday key'; END IF;
+END $$;
+
+-- A known failed diagnostic may open under partial history; repeated causes
+-- share one episode across report scopes, and only verified recovery closes it.
+DO $$
+DECLARE owner uuid := '11111111-1111-4111-8111-111111111111'; scope jsonb := '{"kind":"sites","period":7,"section":"all"}'; snap uuid; before_count bigint;
+BEGIN
+ SELECT count(*) INTO before_count FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational';
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(public.analytics_intelligence_scope_key(scope),scope,clock_timestamp(),'partial','[{"id":"collection-health-provider_delivery_failures","rule":"collection_health","title":"Delivery needs attention","explanation":"Two synthetic failures","action":"Inspect delivery."}]','{"diagnostics":[{"type":"provider_delivery_failures","status":"failed","count":2}]}',2) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF (SELECT count(*) FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational')<>before_count+1 THEN RAISE EXCEPTION 'health cause was lost or duplicate operational alerts were created'; END IF;
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(public.analytics_intelligence_scope_key(scope),scope,clock_timestamp(),'complete','[]','{"diagnostics":[{"type":"delivery_health_unavailable","status":"failed","count":1}]}',2) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE finding_id='collection-health-provider_delivery_failures' AND status='open') THEN RAISE EXCEPTION 'unknown health source falsely recovered incident'; END IF;
+ INSERT INTO public.analytics_intelligence_snapshots(scope_key,scope,generated_at,coverage,findings,evidence,rule_version)
+ VALUES(public.analytics_intelligence_scope_key(scope),scope,clock_timestamp(),'complete','[]','{"diagnostics":[]}',2) RETURNING snapshot_id INTO snap;
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ PERFORM public.analytics_record_intelligence_lifecycle(snap,clock_timestamp());
+ IF (SELECT count(*) FROM public.analytics_intelligence_briefs WHERE owner_id=owner AND kind='operational')<>before_count+2 OR NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_incidents WHERE finding_id='collection-health-provider_delivery_failures' AND status='recovered') THEN RAISE EXCEPTION 'verified recovery was lost or repeatedly alerted'; END IF;
 END $$;
 
 -- Deliberate negative controls prove that these gates can fail.
@@ -324,4 +360,15 @@ BEGIN
  IF rid IS DISTINCT FROM again OR (SELECT count(*) FROM public.analytics_intelligence_jobs WHERE request_id=rid AND kind='request' AND analytics_intelligence_jobs.scope=v_scope)<>1 THEN RAISE EXCEPTION 'first-scope request is not atomically deduplicated'; END IF;
  IF EXISTS(SELECT 1 FROM public.analytics_intelligence_requests WHERE id=rid AND report_id IS NOT NULL) THEN RAISE EXCEPTION 'first-scope request fabricated a snapshot'; END IF;
  IF has_function_privilege('authenticated','public.analytics_queue_intelligence_request(uuid,jsonb,text,timestamptz)','EXECUTE') THEN RAISE EXCEPTION 'first-scope request bypasses owner server'; END IF;
+END $$;
+
+-- Queued email must respect an opt-out made after its brief was created.
+DO $$
+DECLARE owner uuid:='11111111-1111-4111-8111-111111111111'; bid uuid; did uuid;
+BEGIN
+ INSERT INTO public.analytics_intelligence_briefs(owner_id,period_key,kind,incident_key,body) VALUES(owner,'2026-09-30','operational','opt-out-proof','Synthetic private brief') RETURNING id INTO bid;
+ UPDATE public.analytics_intelligence_preferences SET external_enabled=false,destination_verified=true,destination_verified_at='2026-09-30T00:00:00Z',destination='fixture@example.invalid',sender='owned' WHERE owner_id=owner;
+ INSERT INTO public.analytics_intelligence_deliveries(brief_id,channel,sender,destination_verified,preference_enabled,idempotency_key,payload,destination) VALUES(bid,'email','owned',true,true,'opt-out-proof','{}','{"channel":"email","address":"fixture@example.invalid","verifiedAt":"2026-09-30T00:00:00Z"}') RETURNING id INTO did;
+ PERFORM public.analytics_claim_intelligence_deliveries(20,120);
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_deliveries WHERE id=did AND status='suppressed' AND error_code='preference_changed') THEN RAISE EXCEPTION 'queued email ignored owner opt-out'; END IF;
 END $$;

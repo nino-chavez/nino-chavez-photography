@@ -18,7 +18,7 @@ test('separate snapshots sharing a timestamp finish and record lifecycle by repo
 	const result = await runIntelligenceJobs(client, { refreshIntelligence: async (_client, current) => report(current, current.kind === 'sites' && current.period === 7 ? 'snapshot-a' : 'snapshot-b') }, async () => ({ journeys: {}, providerQueries: 0, providerPending: false }), { now: new Date('2026-09-30T15:00:00.000Z'), concurrency: 1 });
 	assert.deepEqual(result, { prepared: 2, claimed: 2, refreshed: 2, retried: 0, providerQueries: 0, deferred: 0 });
 	const prepared = calls.find((call) => call.name === 'analytics_prepare_intelligence_periods')?.args;
-	assert.equal(prepared?.p_refresh_cadence_seconds, 300);
+	assert.equal(prepared?.p_refresh_cadence_seconds, 900);
 	assert.equal(prepared?.p_provider_pending_retry_seconds, 300);
 	assert.equal(prepared?.p_max_catchup_periods, 4);
 	assert.deepEqual(calls.filter((call) => call.name === 'analytics_finish_intelligence_job').map((call) => call.args?.p_report_id), ['snapshot-a', 'snapshot-b']);

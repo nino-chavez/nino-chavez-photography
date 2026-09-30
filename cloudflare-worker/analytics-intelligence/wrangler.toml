@@ -8,7 +8,7 @@ preview_urls = false
 ANALYTICS_INTELLIGENCE_ENABLED = "false"
 
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["* * * * *"]
 
 [observability]
 enabled = true

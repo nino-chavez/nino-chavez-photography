@@ -1,5 +1,5 @@
 {
-  "observedAt": "2026-09-30T06:25:18.132Z",
+  "observedAt": "2026-09-30T07:38:25.164Z",
   "passed": true,
   "environment": "local synthetic Supabase and actual SvelteKit routes",
   "productionTouched": false,
@@ -14,6 +14,10 @@
     "owner reads exact stored scope",
     "standalone action persists its public target and zero outcome count",
     "anonymous snapshot contains no private history or briefs",
+    "later observed result updates the private read without rewriting its original action",
+    "private history deletion requires owner and explicit confirmation",
+    "private email controls reject client recipients, require configured sender, and save explicit disable",
+    "actual album comparison request completes through the bounded background worker",
     "magic link establishes a verified session in a fresh browser without PKCE cookies",
     "wrong magic-link token does not authenticate"
   ],

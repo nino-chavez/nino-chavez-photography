@@ -41,6 +41,11 @@ assert.equal(updated.result.actions.find(a=>a.id===actionId)?.outcome,'booking')
 assert.equal(updated.result.actions.find(a=>a.id===actionId)?.outcomeCount,0);checks.push('later observed result updates the private read without rewriting its original action');
 assert.equal((await request('/history',{confirm:'delete_private_history'},false,base,'DELETE')).response.status,403);
 assert.equal((await request('/history',{confirm:'wrong'},true,base,'DELETE')).response.status,400);checks.push('private history deletion requires owner and explicit confirmation');
+assert.equal((await request('/delivery',undefined,false)).response.status,403);
+assert.equal((await request('/delivery',{enabled:true,confirm:'activate_verified_email',destination:'attacker@example.invalid'})).response.status,400);
+assert.equal((await request('/delivery',{enabled:true,confirm:'activate_verified_email'})).response.status,409);
+assert.equal((await request('/delivery',{enabled:false,confirm:'disable_email'})).response.status,200);
+assert.equal((await request('/delivery')).result.enabled,false);checks.push('private email controls reject client recipients, require configured sender, and save explicit disable');
 const albumScope={...scope,query:{...scope.query,scope:'album',albumKeys:['alpha']}};
 const question=await request('',{scope:albumScope,question:'How is this album doing compared with similar albums?'});
 assert.equal(question.response.status,202);const requestId=question.result.requestId;assert.ok(requestId);

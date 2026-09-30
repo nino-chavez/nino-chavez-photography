@@ -6,23 +6,13 @@ both verifies a destination and enables that channel.
 
 ## What runs
 
-The intelligence Worker wakes the protected jobs endpoint every five minutes.
-It is disabled until production activation is approved. The endpoint accepts
+The intelligence Worker wakes the protected jobs endpoint every minute.
+It starts disabled; activation follows the migrations and a successful protected endpoint check. Standard snapshot refresh remains every fifteen minutes. The endpoint accepts
 only the existing scheduler token, never a browser session.
 
-The scheduler uses America/Chicago. At 08:00 it creates that local day's daily
-brief and that week's Monday-keyed weekly brief. Before 08:00 it can recover
-only yesterday's daily period and the matching prior Monday weekly period. A
-later day can also carry the same week's weekly key. The database must dedupe
-these candidates and make catch-up bounded. No call may create a future period.
-Late work keeps its intended local period and has `late = true`.
+The scheduler uses America/Chicago. At 08:00 it creates that local day's daily brief. Weekly briefs keep a Monday period key and use seven-day scopes. Gallery windows end the day before the intended morning; site sources retain their actual complete UTC windows. Late site catch-up uses the available rolling source at calculation time, not an invented historical reconstruction. Each brief preserves its actual source dates and cutoff.
 
-Interactive requests expire after ten minutes and claim ahead of all scheduled
-work. A claim leases no more than four jobs. Current standard refreshes claim
-ahead of older daily or weekly catch-up, so an old backlog cannot indefinitely
-delay current dashboard evidence. Each tick creates only the newest missing
-period in the bounded catch-up horizon, not a job set for every stored custom
-snapshot.
+Interactive requests expire after ten minutes and claim first. Each claim leases at most four jobs. Current due briefs claim next, routine refresh follows, and older catch-up follows that. A wake adds at most four missing periods per schedule from the fixed standard scopes, never custom snapshot scopes. One-off refresh does not create scheduled briefs. Dashboard briefs persist even when quiet. Outbound briefs are suppressed if no finding is newly actionable or their intended period is obsolete.
 
 The engine contract owns the standard refresh scopes:
 
@@ -49,7 +39,7 @@ deployment receipt.
 
 | RPC | Exact input | Required behavior |
 | --- | --- | --- |
-| `analytics_prepare_intelligence_periods` | `p_daily_period date`, `p_weekly_period date`, `p_standard_scopes jsonb`, `p_refresh_cadence_seconds integer`, `p_provider_pending_retry_seconds integer`, `p_max_catchup_periods integer`, `p_now timestamptz` | Insert only due, non-future daily/weekly candidates from the fixed standard scopes. Gallery jobs use the intended completed Chicago window; site source windows stay explicitly UTC. Catch up only the newest missing bounded period; never copy custom snapshot windows. |
+| `analytics_prepare_intelligence_periods` | `p_daily_period date`, `p_weekly_period date`, `p_standard_scopes jsonb`, `p_refresh_cadence_seconds integer`, `p_provider_pending_retry_seconds integer`, `p_max_catchup_periods integer`, `p_now timestamptz` | Insert only due, non-future daily/weekly candidates from the fixed standard scopes. Gallery jobs use the intended completed Chicago window; site source windows stay explicitly UTC. Catch up at most four missing periods per schedule per wake; never copy custom snapshot windows. |
 | `analytics_claim_intelligence_jobs` | `p_limit integer`, `p_lease_seconds integer`, `p_now timestamptz` | Atomically lease at most four jobs. Return strict camel-case rows: `id`, `kind`, `scope`, `ownerId`, `intendedPeriod`, `late`, `requestId`, `operation`. A request row includes only `album_comparison` or `site_retention`, its owner, and its request id. |
 | `analytics_finish_intelligence_job` | `p_job_id uuid`, `p_status text`, `p_report_id uuid null`, `p_error_code text null` | Store the immutable snapshot reference, never `generated_at`. `provider_query_pending` gets the configured backoff. A final brief waits for every scoped job, or records terminal unavailable scopes and their limits rather than hanging. |
 | `analytics_record_intelligence_lifecycle` | `p_report_id uuid`, `p_now timestamptz` | Read exactly that snapshot. Keep one incident per cause and a recovery on that same incident; it does not send. |
@@ -73,6 +63,8 @@ owned sender, the endpoint requires all three configuration values:
 `ANALYTICS_INTELLIGENCE_EMAIL_FROM`, and
 `ANALYTICS_INTELLIGENCE_DELIVERY_TOKEN`. This code creates no credential,
 recipient, billing setting, or actual send.
+
+Owner email controls use the freshly confirmed account address. The browser cannot choose a recipient. Turning email off suppresses queued emails at claim time; a message already submitted cannot be recalled.
 
 The endpoint receives the durable verified destination and stable idempotency
 key from storage. It does not guess an email address. A provider throw or

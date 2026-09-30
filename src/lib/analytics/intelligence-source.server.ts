@@ -23,6 +23,7 @@ async function collectionDiagnostics(client: SupabaseClient, now: Date): Promise
  const {data,error} = await client.rpc('analytics_posthog_delivery_health');
  if (error || !data || typeof data !== 'object' || Array.isArray(data)) return [{type:'delivery_health_unavailable',status:'failed',count:1}];
  const row=data as Record<string,unknown>; const diagnostics: NonNullable<IntelligenceRuleInput['diagnostics']>=[];
+ if(count(row.failed)===null || count(row.pending)===null) return [{type:'delivery_health_unavailable',status:'failed',count:1}];
  const failed=count(row.failed); if(failed !== null && failed > 0) diagnostics.push({type:'provider_delivery_failures',status:'failed',count:failed});
  const pending=count(row.pending); const oldest=typeof row.oldest_pending_at === 'string' ? Date.parse(row.oldest_pending_at) : NaN;
  if(pending !== null && pending > 0 && Number.isFinite(oldest) && now.getTime()-oldest > 30*60_000) diagnostics.push({type:'provider_delivery_overdue',status:'failed',count:pending});

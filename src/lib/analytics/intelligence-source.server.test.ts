@@ -57,6 +57,7 @@ for (const [name, health, failure, expected] of [
  ['failed delivery', {failed:2,pending:0}, null, ['provider_delivery_failures']],
  ['late pending delivery', {failed:0,pending:3,oldest_pending_at:'2026-09-30T00:00:00Z'}, null, ['provider_delivery_overdue']],
  ['fresh pending delivery', {failed:0,pending:3,oldest_pending_at:'2026-10-01T02:59:00Z'}, null, []],
+ ['malformed health', {failed:-1,pending:'unknown'}, null, ['delivery_health_unavailable']],
  ['unreadable health', null, {message:'unavailable'}, ['delivery_health_unavailable']]
 ] as const) test(`actual collection health input: ${name}`, async()=>{
  const client={rpc:async()=>({data:health,error:failure})} as any;

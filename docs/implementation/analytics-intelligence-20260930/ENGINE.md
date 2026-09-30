@@ -27,11 +27,7 @@ health, and action follow-up. A fixed journey is used only for its matching
 rule. Missing, partial, or too-small evidence produces a suppression. It does
 not become zero, an outage, an audience claim, a quality rating, or causality.
 
-Photo response uses its eligible exposure denominator. The current fixed query
-is aggregate-only, so it does not claim that a particular photo caused that
-response until a fixed per-photo denominator exists. A future per-photo input
-may include a public visual link; public projection rechecks that photo before
-returning the link.
+Photo response uses its eligible exposure denominator. The fixed query returns linked exposure and response counts for each public photo. Album discovery has its own eligible exposure count. These are observed responses, not proof of artistic quality or causality. Public projection rechecks each photo before returning its visual link.
 
 ## Storage and privacy
 
@@ -77,5 +73,4 @@ local development uses the request origin. Bodies, unknown fields, dates,
 filters, ranges, finding references, timestamps, and action ownership are all
 validated at the route boundary.
 
-The migration is source only until the parent rehearses it against the local
-database. No hosted migration or external delivery is claimed here.
+The final forward migrations have passed isolated SQL and actual local API rehearsals. See the evidence receipts for the tested boundaries. Hosted migration and deployment require their own release receipt. External delivery remains disabled.
