@@ -7,7 +7,7 @@ both verifies a destination and enables that channel.
 ## What runs
 
 The intelligence Worker wakes the protected jobs endpoint every minute.
-It starts disabled; activation follows the migrations and a successful protected endpoint check. Standard snapshot refresh remains every fifteen minutes. The endpoint accepts
+It is enabled after the migrations and a successful protected endpoint check. Standard snapshot refresh remains every fifteen minutes. The endpoint accepts
 only the existing scheduler token, never a browser session.
 
 The scheduler uses America/Chicago. At 08:00 it creates that local day's daily brief. Weekly briefs keep a Monday period key and use seven-day scopes. Gallery windows end the day before the intended morning; site sources retain their actual complete UTC windows. Late site catch-up uses the available rolling source at calculation time, not an invented historical reconstruction. Each brief preserves its actual source dates and cutoff.
@@ -72,4 +72,4 @@ uncertain response becomes `ambiguous`; it is never blindly resent. A failed
 reconciliation remains unresolved. Native PostHog delivery remains a distinct
 single sender and is suppressed here to prevent a duplicate notification.
 
-Operational failures group by stable cause and eligible flow filters rather than moving date windows. Acknowledge pauses an incident for 30 days; snooze pauses it for 7 days. Undo reopens the incident. Neither acknowledgement nor missing provider evidence claims a repair. Recovery requires complete compatible evidence and a window at least as recent as the last failure. Exhausted crashed jobs finalize their period as unavailable instead of leaving a brief waiting forever.
+Operational failures group by stable cause and eligible flow filters rather than moving date windows. Acknowledge pauses an incident for 30 days; snooze pauses it for 7 days. Undo reopens the incident. Neither acknowledgement nor missing provider evidence claims a repair. Flow recovery requires complete compatible evidence and a window at least as recent as the last failure. Collection-health recovery requires explicit healthy diagnostics; missing behavioral history does not block a confirmed infrastructure recovery. Exhausted crashed jobs finalize their period as unavailable instead of leaving a brief waiting forever.
