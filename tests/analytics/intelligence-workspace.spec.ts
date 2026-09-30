@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 
 const galleryRoute = '/photography/analytics/operator?period=7';
 const report = {
@@ -13,6 +13,21 @@ const ownerPreferences = {
 	retention: 'undecided', daily: true, weekly: true,
 	externalEnabled: false, destination: null, destinationVerified: false
 };
+
+test.afterEach(async ({ page }, info) => {
+	if (info.status !== 'passed') return;
+	const panel = page.locator('section.intelligence').first();
+	if (!(await panel.count())) return;
+	await panel.evaluate((element) => {
+		const label = document.createElement('p');
+		label.textContent = 'Synthetic local rehearsal — every number here is invented; do not quote it.';
+		label.style.cssText = 'padding:12px;background:#fff5cf;color:#232323;font:14px sans-serif';
+		element.prepend(label);
+	});
+	const folder = 'docs/implementation/analytics-intelligence-20260930/evidence';
+	mkdirSync(folder, { recursive: true });
+	await panel.screenshot({ path: `${folder}/state-${info.title.replace(/[^a-z0-9]+/gi, '-').slice(0, 70)}.png` });
+});
 
 async function mockReport(page: Page, next = report) {
 	await page.route('**/api/analytics/intelligence**', async (route) => {
