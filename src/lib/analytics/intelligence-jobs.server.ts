@@ -4,6 +4,7 @@ import { intelligenceScopeKey, parseIntelligenceScope, standardIntelligenceScope
 import type { IntelligenceJourneyContext } from './intelligence-source.server';
 import { dueIntelligencePeriods, type ScheduledIntelligencePeriod } from './intelligence-schedule';
 import { POSTHOG_JOURNEY_REPORTS, type JourneyAggregate } from './posthog.types';
+import type { GalleryDecisionEvidence } from './posthog-queries.server';
 import type { SiteJourneys } from './site-journeys.server';
 
 export type IntelligenceJob = {
@@ -45,7 +46,7 @@ function object(value: unknown): Record<string, unknown> | null {
 }
 function text(value: unknown): string | null { return typeof value === 'string' && value.length > 0 ? value : null; }
 function nullableText(value: unknown): string | null | undefined { return value === null ? null : text(value) ?? undefined; }
-function validDate(value: string): boolean { return DATE.test(value) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value; }
+function validDate(value: string): boolean { const date = new Date(`${value}T12:00:00Z`); return DATE.test(value) && !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value; }
 function requestOperation(value: unknown): IntelligenceJob['operation'] | undefined {
 	if (value === null) return null;
 	if (value === 'album_comparison' || value === 'site_retention') return value;
@@ -58,6 +59,7 @@ function parseJob(value: unknown): IntelligenceJob | null {
 	if (!row) return null;
 	const id = text(row.id);
 	const kind = row.kind;
+	if (kind !== 'refresh' && kind !== 'request' && kind !== 'daily' && kind !== 'weekly') return null;
 	const scope = parseIntelligenceScope(row.scope);
 	const ownerId = nullableText(row.ownerId);
 	const intendedPeriod = nullableText(row.intendedPeriod);
@@ -92,7 +94,7 @@ async function completeRequest(client: SupabaseClient, job: IntelligenceJob, rep
 		.eq('owner_id', job.ownerId)
 		.eq('scope_key', intelligenceScopeKey(job.scope))
 		.eq('operation', job.operation)
-		.eq('status', 'pending')
+		.in('status', ['pending', 'leased'])
 		.select('id')
 		.maybeSingle();
 	if (error || !data || typeof data.id !== 'string') throw new Error('intelligence request result storage unavailable');
@@ -152,7 +154,7 @@ export async function runIntelligenceJobs(
 			const loaded = await journeys(job.scope);
 			result.providerQueries += loaded.providerQueries;
 			const report = await engine.refreshIntelligence(client, job.scope, { ownerId: job.ownerId ?? undefined, now, journeys: loaded.journeys });
-			await completeRequest(client, job, report);
+			if (!loaded.providerPending) await completeRequest(client, job, report);
 			await store.lifecycle(report, now);
 			await store.finish(job, loaded.providerPending ? 'retry' : 'complete', report, loaded.providerPending ? 'provider_query_pending' : null);
 			result.refreshed += 1;
@@ -164,7 +166,12 @@ export async function runIntelligenceJobs(
 	};
 	const worker = async () => {
 		while (next < jobs.length) {
-			if (Date.now() >= deadline) { result.deferred += jobs.length - next; return; }
+			if (Date.now() >= deadline) {
+				const remaining = jobs.slice(next); next = jobs.length;
+				result.deferred += remaining.length;
+				for (const deferred of remaining) await store.finish(deferred, 'retry', null, 'worker_deadline');
+				return;
+			}
 			const job = jobs[next++];
 			await process(job);
 		}
@@ -191,11 +198,12 @@ export async function loadFixedIntelligenceJourneys(
 	loaders: {
 		gallery: (name: (typeof FIXED_INTELLIGENCE_JOURNEYS)[number], scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<JourneyAggregate>;
 		site: (scope: Extract<IntelligenceScope, { kind: 'sites' }>) => Promise<SiteJourneys>;
+		decision?: (scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryDecisionEvidence>;
 	}
 ): Promise<IntelligenceJourneyLoad> {
 	if (scope.kind === 'gallery') {
-		const gallery = await mapWithConcurrency(FIXED_INTELLIGENCE_JOURNEYS, 3, (name) => loaders.gallery(name, scope));
-		return { journeys: { gallery }, providerQueries: gallery.length, providerPending: gallery.some((journey) => journey.error === 'provider_query_pending') };
+		const [gallery, decision] = await Promise.all([mapWithConcurrency(FIXED_INTELLIGENCE_JOURNEYS, 3, (name) => loaders.gallery(name, scope)), loaders.decision?.(scope)]);
+		return { journeys: { gallery, ...(decision ? { decision } : {}) }, providerQueries: gallery.length + (decision ? 1 : 0), providerPending: gallery.some((journey) => journey.error === 'provider_query_pending') };
 	}
 	const site = await loaders.site(scope);
 	return {

@@ -3,10 +3,9 @@ import { json } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { createOwnedIntelligenceDeliveryProvider, deliverIntelligenceBriefs } from '$lib/analytics/intelligence-delivery.server';
 import { loadFixedIntelligenceJourneys, runIntelligenceJobs } from '$lib/analytics/intelligence-jobs.server';
-import { createPostHogQueryTransport, queryGalleryJourneys } from '$lib/analytics/posthog-queries.server';
+import { createPostHogQueryTransport, queryGalleryJourneys, queryGalleryDecisionEvidence } from '$lib/analytics/posthog-queries.server';
 import { hasPostHogScheduleAuthorization } from '$lib/analytics/posthog-delivery.server';
 import { createProviderCache } from '$lib/analytics/provider-cache.server';
-import { fetchScheduledGalleryReport } from '$lib/analytics/scheduled-gallery-report.server';
 import { loadSiteJourneys } from '$lib/analytics/site-journeys.server';
 import { refreshIntelligence } from '$lib/analytics/intelligence-store.server';
 import type { IntelligenceScope } from '$lib/analytics/intelligence-contract';
@@ -15,17 +14,16 @@ import type { RequestHandler } from './$types';
 const providerCache = createProviderCache({ ttlMs: 12 * 60_000, maxEntries: 96, maxInFlight: 10, maxBytes: 2 * 1024 * 1024 });
 const MAX_PUBLIC_ALBUM_KEYS = 500;
 
-/** Uses the current public scheduled-report projection, so unlisted albums never reach PostHog. */
-async function publicGalleryAlbumKeys(client: ReturnType<typeof createSupabaseAdminClient>, scope: Extract<IntelligenceScope, { kind: 'gallery' }>): Promise<string[]> {
-	const report = await fetchScheduledGalleryReport(client, scope.query, {
-		publicOnly: true,
-		includeToday: false,
-		photoWindow: { page: 0, pageSize: 0, rank: 'popular' }
-	});
-	const keys = [...new Set(report.albums.map((album) => album.albumKey))].sort();
-	if (keys.length > MAX_PUBLIC_ALBUM_KEYS) throw new Error('public gallery provider scope exceeds its bounded album limit');
-	if (scope.query.scope !== 'all' && scope.query.albumKeys.some((key) => !keys.includes(key))) throw new Error('requested gallery scope is not currently public');
-	return keys;
+/** Current public catalogue includes albums with no recorded opens. Never infer visibility from activity. */
+async function publicGalleryAlbumKeys(client: ReturnType<typeof createSupabaseAdminClient>): Promise<string[]> {
+ const [albums, settings] = await Promise.all([
+  client.from('albums').select('album_key').order('album_key').limit(MAX_PUBLIC_ALBUM_KEYS + 1),
+  client.from('album_settings').select('album_key, visibility').order('album_key').limit(MAX_PUBLIC_ALBUM_KEYS + 1)
+ ]);
+ if (albums.error || settings.error) throw new Error('public catalogue unavailable');
+ if ((albums.data?.length ?? 0) > MAX_PUBLIC_ALBUM_KEYS || (settings.data?.length ?? 0) > MAX_PUBLIC_ALBUM_KEYS) throw new Error('public catalogue exceeds the bounded limit');
+ const hidden = new Set((settings.data ?? []).filter(row => row.visibility === 'unlisted').map(row => row.album_key));
+ return (albums.data ?? []).map(row => row.album_key).filter(key => !hidden.has(key));
 }
 
 function utcCompletedWindow(period: 7 | 30 | 90, now: Date): { start: string; end: string } {
@@ -46,14 +44,24 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 		const client = createSupabaseAdminClient();
 		const now = new Date();
 		const transport = createPostHogQueryTransport(env, { totalDeadlineMs: 7_000 });
+		let catalogue: Promise<string[]> | undefined;
+		const keysFor = async (scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => {
+			const keys = await (catalogue ??= publicGalleryAlbumKeys(client));
+			if (scope.query.albumKeys.some(key => !keys.includes(key))) throw new Error('requested album is not public');
+			return keys;
+		};
 		const jobs = await runIntelligenceJobs(client, { refreshIntelligence }, async (scope) => loadFixedIntelligenceJourneys(scope, {
 			gallery: async (report, current) => {
-				const albumKeys = await publicGalleryAlbumKeys(client, current);
+				const albumKeys = await keysFor(current);
 				const query = current.query;
 				return queryGalleryJourneys(transport, {
-					report, start: query.start, end: query.end, albumKeys,
+					report, start: query.start, end: query.end, ...(query.scope === 'all' ? {} : { albumKeys: query.albumKeys }),
 					source: query.source ?? null, sport: query.sport ?? null, category: query.category ?? null
 				}, { publicOnly: true, allowedAlbumKeys: albumKeys, cache: providerCache });
+			},
+			decision: async (current) => {
+				const allowed = await keysFor(current); const query = current.query;
+				return queryGalleryDecisionEvidence(transport, { start: query.start, end: query.end, ...(query.scope === 'all' ? {} : { albumKeys: query.albumKeys }), source: query.source ?? null, sport: query.sport ?? null, category: query.category ?? null }, allowed, { cache: providerCache });
 			},
 			site: (current) => {
 				const window = utcCompletedWindow(current.period, now);

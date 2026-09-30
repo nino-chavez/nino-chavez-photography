@@ -11,20 +11,10 @@ import { SITE_URL } from '$lib/site-url';
 import { analyticsAuthCallbackUrl } from '$lib/server/analytics-auth-redirect';
 
 /**
- * Build the auth callback URL from the gallery's public address, NOT `url.origin`.
- *
- * The router refetches this app from nino-chavez-photography.pages.dev, so inside
- * here `url.origin` IS the Pages origin — the same trap already annotated in
- * `albums/[slug]/+page.server.ts` and `+layout.svelte`. This is the one place it
- * was still live, and it broke sign-in outright rather than cosmetically.
- *
- * Supabase ignores a `redirectTo` that is not on the project's Redirect URLs
- * allowlist and silently falls back to the Site URL — no error, on either side.
- * So every magic link carried the unlisted pages.dev callback, got swapped for
- * the Site URL, and landed on the gallery home page holding a `?code=` that no
- * route exchanges. The visitor sees the landing page and stays signed out.
- *
- * `SITE_URL` already ends in the `/photography` base path — see $lib/site-url.
+ * Keep the callback on the initiating analytics host so its verifier cookie
+ * can complete sign-in. Routed gallery requests use the canonical gallery URL;
+ * the upstream pages.dev origin must never become an email destination.
+ * Supabase's redirect allowlist must include both supported callbacks.
  */
 function getCallbackUrl(url: URL, next?: string): string {
 	return analyticsAuthCallbackUrl(url.hostname, SITE_URL, next);

@@ -557,6 +557,95 @@ export async function queryGalleryJourneys(
 	}
 }
 
+export interface GalleryDecisionEvidence {
+	available: boolean;
+	asOf: string | null;
+	photoResponses: Array<{ photoId: string; albumKey: string; exposures: number; favorites: number; downloadItems: number; responses: number }>;
+	albumDiscovery: Array<{ albumKey: string; exposures: number; opens: number; directEntries: number }>;
+	rendering: { rendered: number; failed: number } | null;
+	search: { submitted: number; failed: number } | null;
+	truncated: boolean;
+}
+
+/** One fixed aggregate query. Strong response excludes opens and ZIP requests. */
+export function buildGalleryDecisionQuery(query: Omit<PostHogJourneyQuery, 'report'>, allowedAlbumKeys: string[]) {
+	const fixed = { ...query, report: 'photo_response' as const };
+	const validated = validatedQuery(fixed, allowedAlbumKeys);
+	if (!validated) return null;
+	const cte = scopedEvents(validated.value, validated.albumKeys);
+	const columns = (kind: string, values: Record<string, string>) => [
+		`${quoted(kind)} AS row_kind`,
+		...['album_key', 'photo_id', 'exposures', 'favorites', 'download_items', 'responses', 'opens', 'direct_entries', 'rendered', 'failed', 'submitted', 'search_failed'].map(name => `${values[name] ?? (name.endsWith('_key') || name === 'photo_id' ? "''" : '0')} AS ${name}`)
+	].join(', ');
+	const afterExposure = "photo_exposed_at IS NOT NULL AND timestamp > photo_exposed_at";
+	return { kind: 'HogQLQuery' as const, query: `${cte}, photo_rows AS (
+	 SELECT ${columns('photo', {
+		album_key: 'album_key', photo_id: 'photo_id',
+		exposures: "uniqExactIf(visit_id, event = 'photo_exposed')",
+		favorites: `uniqExactIf(visit_id, event = 'favorite_added' AND ${afterExposure})`,
+		download_items: `uniqExactIf(visit_id, event = 'download_item_requested' AND ${afterExposure})`,
+		responses: `uniqExactIf(visit_id, event IN ('favorite_added','download_item_requested') AND ${afterExposure})`
+	 })} FROM sequenced WHERE photo_id != '' GROUP BY album_key, photo_id HAVING exposures > 0 ORDER BY responses DESC, exposures DESC, photo_id LIMIT 201
+	), album_rows AS (
+	 SELECT ${columns('album', {
+		album_key: 'album_key', exposures: "uniqExactIf(visit_id, event = 'album_exposed')",
+		opens: "uniqExactIf(visit_id, event = 'album_opened' AND album_exposed_at IS NOT NULL AND timestamp > album_exposed_at)",
+		direct_entries: "uniqExactIf(visit_id, event = 'album_opened' AND (album_exposed_at IS NULL OR timestamp <= album_exposed_at))"
+	 })} FROM sequenced WHERE album_key != '' GROUP BY album_key HAVING exposures > 0 ORDER BY album_key LIMIT 2001
+	), diagnostic_rows AS (
+	 SELECT ${columns('diagnostics', {
+		rendered: "countIf(event = 'photo_rendered')", failed: "countIf(event = 'photo_load_failed')",
+		submitted: "uniqExactIf((visit_id,search_id), event = 'search_submitted' AND search_id != '')",
+		search_failed: "uniqExactIf((visit_id,search_id), event = 'search_failed' AND search_id != '')"
+	 })} FROM sequenced
+	) SELECT * FROM photo_rows UNION ALL SELECT * FROM album_rows UNION ALL SELECT * FROM diagnostic_rows` };
+}
+
+export function parseGalleryDecisionEvidence(value: unknown, asOf: string, sliced: boolean): GalleryDecisionEvidence | null {
+	if (!value || typeof value !== 'object') return null;
+	const payload = value as { columns?: unknown; results?: unknown };
+	if (!Array.isArray(payload.columns) || !Array.isArray(payload.results) || payload.results.length > 2203) return null;
+	const columns = payload.columns;
+	const empty: GalleryDecisionEvidence = { available: true, asOf, photoResponses: [], albumDiscovery: [], rendering: null, search: null, truncated: false };
+	for (const row of payload.results) {
+		if (!Array.isArray(row) || row.length !== columns.length) return null;
+		const get = (key: string) => row[columns.indexOf(key)];
+		const counts = ['exposures', 'favorites', 'download_items', 'responses', 'opens', 'direct_entries', 'rendered', 'failed', 'submitted', 'search_failed'];
+		if (counts.some(key => !Number.isSafeInteger(get(key)) || get(key) < 0)) return null;
+		const albumKey = get('album_key'), photoId = get('photo_id');
+		if (get('row_kind') === 'photo') {
+			if (typeof albumKey !== 'string' || !boundedText(albumKey) || typeof photoId !== 'string' || !boundedText(photoId) || get('responses') > get('exposures')) return null;
+			empty.photoResponses.push({ photoId, albumKey, exposures: get('exposures'), favorites: get('favorites'), downloadItems: get('download_items'), responses: get('responses') });
+		} else if (get('row_kind') === 'album') {
+			if (typeof albumKey !== 'string' || !boundedText(albumKey) || get('opens') > get('exposures')) return null;
+			empty.albumDiscovery.push({ albumKey, exposures: get('exposures'), opens: get('opens'), directEntries: get('direct_entries') });
+		} else if (get('row_kind') === 'diagnostics') {
+			empty.rendering = { rendered: get('rendered'), failed: get('failed') };
+			// Failed searches have no album target. A target slice cannot assign them.
+			empty.search = sliced ? null : { submitted: get('submitted'), failed: get('search_failed') };
+		} else return null;
+	}
+	empty.truncated = empty.photoResponses.length > 200 || empty.albumDiscovery.length > 2000;
+	empty.photoResponses = empty.photoResponses.slice(0, 200);
+	empty.albumDiscovery = empty.albumDiscovery.slice(0, 2000);
+	return empty.rendering ? empty : null;
+}
+
+export async function queryGalleryDecisionEvidence(client: PostHogQueryTransport | null, query: Omit<PostHogJourneyQuery, 'report'>, allowedAlbumKeys: string[], options: { cache?: ProviderCache } = {}): Promise<GalleryDecisionEvidence> {
+	const unavailable: GalleryDecisionEvidence = { available: false, asOf: null, photoResponses: [], albumDiscovery: [], rendering: null, search: null, truncated: false };
+	const fixed = buildGalleryDecisionQuery(query, allowedAlbumKeys);
+	if (!client || !fixed) return unavailable;
+	try {
+		const load = async () => {
+			const value = await client.query({ query: fixed });
+			const result = parseGalleryDecisionEvidence(value, new Date().toISOString(), query.albumKeys !== undefined || !!query.sport || !!query.category);
+			if (!result) throw new Error('invalid decision evidence');
+			return result;
+		};
+		return client.providerCache ? await (options.cache ?? galleryJourneyCache).getOrLoad({ provider: 'posthog', origin: client.providerCache.origin, account: client.providerCache.account, credential: await client.providerCache.credentialIdentity, operation: 'gallery-decision-evidence', visibility: [...new Set(allowedAlbumKeys)].sort(), query: fixed }, load) : await load();
+	} catch { return unavailable; }
+}
+
 /** Query credentials are separate from capture credentials and never leave server code. */
 export function createPostHogQueryTransport(source: Record<string, string | undefined>, options: {
 	fetcher?: typeof fetch;

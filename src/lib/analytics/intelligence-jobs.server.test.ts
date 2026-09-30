@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type { IntelligenceReport, IntelligenceScope } from './intelligence-contract';
 import { loadFixedIntelligenceJourneys, runIntelligenceJobs } from './intelligence-jobs.server';
 
 const scope = { kind: 'sites' as const, period: 7 as const, section: 'all' as const };
-const report = (current = scope, snapshotId = 'snapshot-a') => ({ snapshotId, scope: current, generatedAt: '2026-09-30T14:00:00.000Z', cutoff: '2026-09-29T23:59:59.000Z', coverage: 'complete', findings: [], suppressions: [], actions: [], briefs: [], page: 0, pageCount: 1, owner: false });
-const refreshJob = (id: string, current = scope) => ({ id, kind: 'refresh', scope: current, ownerId: null, intendedPeriod: null, late: false, requestId: null, operation: null });
+const report = (current: IntelligenceScope = scope, snapshotId = 'snapshot-a'): IntelligenceReport => ({ snapshotId, scope: current, generatedAt: '2026-09-30T14:00:00.000Z', cutoff: '2026-09-29T23:59:59.000Z', coverage: 'complete', findings: [], suppressions: [], actions: [], briefs: [], page: 0, pageCount: 1, owner: false });
+const refreshJob = (id: string, current: IntelligenceScope = scope) => ({ id, kind: 'refresh', scope: current, ownerId: null, intendedPeriod: null, late: false, requestId: null, operation: null });
 
 test('separate snapshots sharing a timestamp finish and record lifecycle by report id', async () => {
 	const calls: Array<{ name: string; args?: Record<string, unknown> }> = [];
@@ -27,7 +28,11 @@ test('request work stores a calculated result only after the refreshed snapshot 
 		rpc: async (name: string) => name === 'analytics_claim_intelligence_jobs'
 			? { data: [{ id: 'request-job', kind: 'request', scope: requestScope, ownerId: 'owner-1', intendedPeriod: null, late: false, requestId: 'request-1', operation: 'site_retention' }], error: null }
 			: { data: null, error: null },
-		from: () => ({ update: (value: Record<string, unknown>) => { updates.push(value); return { eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ select: () => ({ maybeSingle: async () => ({ data: { id: 'request-1' }, error: null }) }) })) })) })) }) }; } })
+		from: () => ({ update: (value: Record<string, unknown>) => {
+			updates.push(value);
+			const chain = { eq: () => chain, in: () => chain, select: () => chain, maybeSingle: async () => ({ data: { id: 'request-1' }, error: null }) };
+			return chain;
+		} })
 	} as never;
 	await runIntelligenceJobs(client, { refreshIntelligence: async () => report(requestScope, 'request-snapshot') }, async () => ({ journeys: { site: [] }, providerQueries: 1, providerPending: false }), { now: new Date('2026-09-30T15:00:00.000Z') });
 	assert.equal(updates.length, 1);
@@ -56,7 +61,7 @@ test('a provider-pending refresh stores truthful evidence and retries with the r
 	assert.deepEqual(finish?.args, { p_job_id: 'pending', p_status: 'retry', p_report_id: 'pending-snapshot', p_error_code: 'provider_query_pending' });
 });
 
-test('deadline leaves claimed work for its lease instead of starting another slow scope', async () => {
+test('deadline releases unstarted work for retry instead of starting another slow scope', async () => {
 	const originalNow = Date.now;
 	const ticks = [0, 0, 2_000];
 	Date.now = () => ticks.shift() ?? 2_000;

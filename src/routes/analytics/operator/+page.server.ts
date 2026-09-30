@@ -183,6 +183,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 	});
 		return {
 			user: user ? { id: user.id, email: user.email } : null,
+			intelligenceOwner: !!user,
 			section,
 		report,
 		v2Report,
