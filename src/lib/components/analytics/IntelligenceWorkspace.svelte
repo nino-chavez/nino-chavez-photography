@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import EmailIntelligenceControls from './EmailIntelligenceControls.svelte';
 	import PrivateIntelligenceControls from './PrivateIntelligenceControls.svelte';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
@@ -341,7 +342,7 @@
 				<fieldset><legend>Keep private records for</legend><label><input type="radio" name="retention" value="until_deleted" checked={preferences.retention === 'until_deleted'} /> Until I delete them</label><label><input type="radio" name="retention" value="90_days" checked={preferences.retention === '90_days'} /> 90 days</label><label><input type="radio" name="retention" value="one_year" checked={preferences.retention === 'one_year'} /> One year</label></fieldset>
 				<fieldset><legend>In-dashboard briefs</legend><label><input type="checkbox" name="daily" checked={preferences.daily} /> Daily review</label><label><input type="checkbox" name="weekly" checked={preferences.weekly} /> Weekly review</label></fieldset>
 				<button type="submit" disabled={preferencesLoading}>Save private settings</button>
-				{#if preferences.externalEnabled && preferences.destinationVerified}<p class="delivery-note">External delivery is active only because this stored destination is verified. This page does not send a message.</p>{:else}<p class="delivery-note">External delivery requires a verified destination and an explicit activation. An email account or browser profile does not activate it.</p>{/if}
+				<EmailIntelligenceControls />
 			</form>{:else}<div class="state unavailable"><p>{preferencesError ?? 'Private settings are unavailable.'}</p><button type="button" onclick={() => void loadPreferences()}>Try settings again</button></div>{/if}
 			{#if preferencesError && preferences}<p class="answer-error" role="alert">{preferencesError}</p>{/if}{#if preferencesMessage}<p class="action-message" role="status">{preferencesMessage}</p>{/if}
 		</section></details>
