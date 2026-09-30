@@ -1,89 +1,102 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fetchScheduledGalleryReport } from './scheduled-gallery-report.server';
-import { loadSiteActions } from './site-actions.server';
 import type { JourneyAggregate } from './posthog.types';
+import type { GalleryDecisionEvidence } from './posthog-queries.server';
 import type { SiteJourneyRow } from './site-journeys.server';
 import type { IntelligenceScope } from './intelligence-contract';
 import type { IntelligenceRuleInput } from './intelligence-rules';
 
-export type GalleryDecisionEvidence = {
-	available: boolean;
-	asOf: string | null;
-	photoResponses: Array<{ photoId: string; albumKey: string; exposures: number; favorites: number; downloadItems: number; responses: number }>;
-	albumDiscovery: Array<{ albumKey: string; exposures: number; opens: number; directEntries: number }>;
-	rendering: { rendered: number; failed: number };
-	search: { submitted: number; failed: number };
-};
 export type IntelligenceJourneyContext = { gallery?: JourneyAggregate[]; site?: SiteJourneyRow[]; decision?: GalleryDecisionEvidence };
+type GalleryReport = { dataAsOf: string | null; coverage: IntelligenceRuleInput['coverage']; previousCoverage: IntelligenceRuleInput['coverage']; total: number | null; previousTotal: number | null; photos: unknown[]; publicationAge: { missingAlbumKeys: string[] }; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null }> };
+type SiteReport = Awaited<ReturnType<typeof import('./site-actions.server').loadSiteActions>>;
+type EvidenceLoaders = { galleryReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryReport>; siteReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>) => Promise<SiteReport> };
+async function scheduledGalleryReport(client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>): Promise<GalleryReport> {
+	const { fetchScheduledGalleryReport } = await import('./scheduled-gallery-report.server');
+	return fetchScheduledGalleryReport(client, scope.query, { publicOnly: true, includeToday: false, photoWindow: { page: 0, pageSize: 100, rank: 'popular' } });
+}
+async function scheduledSiteReport(client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>): Promise<SiteReport> {
+	const { loadSiteActions } = await import('./site-actions.server');
+	return loadSiteActions(client, scope.period, scope.section, 0);
+}
 const count = (value: unknown): number | null => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
-const totals = (journeys: JourneyAggregate[] | undefined, name: JourneyAggregate['report']): Record<string, number | null> | null => {
-	const match = journeys?.find((journey) => journey.report === name && journey.available);
-	return match?.totals ?? null;
-};
+const totals = (journeys: JourneyAggregate[] | undefined, name: JourneyAggregate['report']): Record<string, number | null> | null => journeys?.find((journey) => journey.report === name && journey.available)?.totals ?? null;
 const number = (values: Record<string, number | null> | null, name: string) => values ? count(values[name]) : null;
-function allCounts(...values: Array<number | null>): boolean { return values.every((value) => value !== null); }
+const date = (value: string): Date | null => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T12:00:00Z`)) ? new Date(`${value}T12:00:00Z`) : null;
+const priorWindow = (start: string, end: string): { start: string; end: string } | null => {
+	const first = date(start); const last = date(end);
+	if (!first || !last || first > last) return null;
+	const days = Math.round((last.getTime() - first.getTime()) / 86_400_000) + 1;
+	first.setUTCDate(first.getUTCDate() - days); last.setUTCDate(last.getUTCDate() - days);
+	return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
+};
+const siteLink = (period: number, section: string) => `/photography/analytics/sites?period=${period}&section=${encodeURIComponent(section)}`;
+const albumLink = (scope: Extract<IntelligenceScope, { kind: 'gallery' }>, albumKey: string) => {
+	const query = scope.query;
+	const params = new URLSearchParams({ period: 'custom', start: query.start, end: query.end, measure: query.measure, scope: 'album', albums: albumKey, compare: query.compare, traffic: query.traffic });
+	if (query.compareStart) params.set('compare_start', query.compareStart);
+	if (query.compareEnd) params.set('compare_end', query.compareEnd);
+	if (query.sport) params.set('sport', query.sport);
+	if (query.category) params.set('category', query.category);
+	if (query.source) params.set('source', query.source);
+	if (query.eventDate) params.set('event_date', query.eventDate);
+	if (query.season) params.set('season', query.season);
+	if (query.albumEventType) params.set('event_type', query.albumEventType);
+	return `/analytics/operator?${params.toString()}`;
+};
 
-/**
- * Converts fixed, aggregate report payloads into rule inputs. This boundary is
- * deliberately provider-free: scheduled jobs pass validated bounded journeys and
- * this function only reads their stored report counterparts.
- */
-export async function loadIntelligenceEvidence(
-	client: SupabaseClient,
-	scope: IntelligenceScope,
-	now = new Date(),
-	journeys: IntelligenceJourneyContext = {}
-): Promise<IntelligenceRuleInput> {
+/** Converts stored reports and fixed provider aggregates into decision-rule inputs. */
+export async function loadIntelligenceEvidence(client: SupabaseClient, scope: IntelligenceScope, now = new Date(), journeys: IntelligenceJourneyContext = {}, loaders: EvidenceLoaders = {}): Promise<IntelligenceRuleInput> {
 	if (scope.kind === 'gallery') {
-		const report = await fetchScheduledGalleryReport(client, scope.query, {
-			publicOnly: true, includeToday: false, photoWindow: { page: 0, pageSize: 100, rank: 'popular' }
-		});
-		const discovery = totals(journeys.gallery, 'discovery');
-		const search = totals(journeys.gallery, 'search_usefulness');
-		const download = totals(journeys.gallery, 'download_reliability');
-		const response = totals(journeys.gallery, 'photo_response');
+		const report = await (loaders.galleryReport ?? scheduledGalleryReport)(client, scope);
+		const searchJourney = totals(journeys.gallery, 'search_usefulness');
+		const downloadJourney = totals(journeys.gallery, 'download_reliability');
+		const distributionJourney = totals(journeys.gallery, 'sources_return');
 		const decision = journeys.decision?.available ? journeys.decision : undefined;
-		const distributionJourney = journeys.gallery?.find((journey) => journey.report === 'sources_return' && journey.available);
-		const exposed = number(discovery, 'album_exposed_visits'); const opened = number(discovery, 'album_opened_after_exposure'); const direct = number(discovery, 'direct_album_open_visits');
-		const searches = number(search, 'searches_shown'); const empty = number(search, 'zero_result_searches'); const selections = number(search, 'selected_searches');
-		const requests = number(download, 'requests'); const failed = number(download, 'failed'); const unknownTerminal = number(download, 'unknown_terminal_outcome'); const handedOff = number(download, 'handed_off');
-		const exposures = number(response, 'eligible_photo_exposures'); const responses = number(response, 'later_photo_actions');
-		const sourceRows = distributionJourney?.breakdown ?? [];
-		const taggedArrivals = sourceRows.reduce((total, row) => total + row.tagged_arrival_visits, 0);
-		const laterActions = sourceRows.reduce((total, row) => total + row.subsequent_album_open_visits + row.subsequent_photo_open_visits + row.subsequent_download_request_visits + row.subsequent_favorite_visits, 0);
-		const payload = report as unknown as { albums: Array<{ albumKey: string }>; photos: Array<{ photoId: string; albumKey: string; imageUrl?: string | null }>; publicationAge: { missingAlbumKeys: string[] } };
+		const payload = report as unknown as { publicationAge: { missingAlbumKeys: string[] }; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null }> };
+		const submitted = decision?.search ? count(decision.search.submitted) : null;
+		const failures = decision?.search ? count(decision.search.failed) : null;
+		const shown = number(searchJourney, 'searches_shown');
+		const empty = number(searchJourney, 'zero_result_searches');
+		const selections = number(searchJourney, 'selected_searches');
+		const requests = number(downloadJourney, 'requests');
+		const failed = number(downloadJourney, 'failed');
+		const unknownTerminal = number(downloadJourney, 'unknown_terminal_outcome');
+		const handedOff = number(downloadJourney, 'handed_off');
+		const taggedArrivals = number(distributionJourney, 'tagged_arrival_visits');
+		const favoriteVisits = number(distributionJourney, 'subsequent_favorite_visits');
 		return {
 			scope, generatedAt: now.toISOString(), cutoff: report.dataAsOf, coverage: report.coverage, previousCoverage: report.previousCoverage,
 			current: report.total, previous: report.previousTotal,
 			eligibility: 'public eligible gallery actions; conservative traffic excludes known non-audience traffic',
-			...(decision?.albumDiscovery.length ? { discovery: decision.albumDiscovery.reduce((total, row) => ({ exposures: total.exposures + row.exposures, opens: total.opens + row.opens, directEntries: total.directEntries + row.directEntries }), { exposures: 0, opens: 0, directEntries: 0 }) } : allCounts(exposed, opened, direct) ? { discovery: { exposures: exposed as number, opens: opened as number, directEntries: direct as number } } : {}),
-			// Search failure remains unknown unless the fixed decision query reports it.
-			...(decision && empty !== null && selections !== null ? { search: { searches: decision.search.submitted, empty, errors: decision.search.failed, selections } } : allCounts(searches, empty, selections) ? { search: { searches: searches as number, empty: empty as number, errors: 0, selections: selections as number } } : {}),
-			...(allCounts(requests, failed, unknownTerminal, handedOff) ? { download: { requests: requests as number, failed: failed as number, unknownTerminal: unknownTerminal as number, handedOff: handedOff as number } } : {}),
-			...(decision?.photoResponses.length ? { linkedPhotoResponse: decision.photoResponses.map((row) => ({ photoId: row.photoId, albumKey: row.albumKey, exposures: row.exposures, responses: row.responses, evidenceLinks: [`/photos/${encodeURIComponent(row.photoId)}`] })) } : allCounts(exposures, responses) ? { linkedPhotoResponse: [{ exposures: exposures as number, responses: responses as number }] } : {}),
-			...(sourceRows.length > 0 ? { distribution: { taggedArrivals, laterActions, sources: sourceRows.length } } : {}),
-			catalogue: { eligibleAlbums: payload.albums.length, eligiblePhotos: payload.photos.length, missingAlbumFacts: payload.publicationAge.missingAlbumKeys.length }
+			...(payload.albums.length ? { albumMomentum: payload.albums.map((row) => ({ albumKey: row.albumKey, current: row.count, previous: row.previousCount, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
+			...(decision?.albumDiscovery.length ? { albumDiscovery: decision.albumDiscovery.map((row) => ({ ...row, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
+			...(decision?.photoResponses.length ? { linkedPhotoResponse: decision.photoResponses.map((row) => ({ photoId: row.photoId, albumKey: row.albumKey, exposures: row.exposures, responses: row.responses, evidenceLinks: [`/photo/${encodeURIComponent(row.photoId)}`] })) } : {}),
+			...(decision?.rendering ? { rendering: { rendered: decision.rendering.rendered, failed: decision.rendering.failed, observedTerminal: null } } : {}),
+			...(submitted !== null || shown !== null ? { search: { submitted, resultsShown: shown, emptyResults: empty, failures, selections } } : {}),
+			...(requests !== null && failed !== null && unknownTerminal !== null && handedOff !== null ? { download: { requests, failed, unknownTerminal, handedOff } } : {}),
+			...(taggedArrivals !== null && favoriteVisits !== null ? { distribution: { taggedArrivals, laterNamedAction: favoriteVisits, actionName: 'favorite-added' } } : {}),
+			catalogue: { eligibleAlbums: payload.albums.length, eligiblePhotos: report.photos.length, missingAlbumFacts: payload.publicationAge.missingAlbumKeys.length }
 		};
 	}
-	const report = await loadSiteActions(client, scope.period, scope.section, 0);
+
+	const report = await (loaders.siteReport ?? scheduledSiteReport)(client, scope);
 	if (!report.available) return { scope, generatedAt: now.toISOString(), cutoff: null, coverage: 'unavailable', previousCoverage: 'unavailable', current: null, previous: null, eligibility: 'identifier-free stored site action summaries' };
-	const complete = report.freshness.status === 'current' && !!report.firstRecordedAt && report.start <= report.end;
-	const row = scope.section === 'all' ? undefined : journeys.site?.find((item) => item.section === scope.section);
-	const siteJourney = row && (scope.section === 'profile'
-		? { views: row.views, actions: row.contactViews, completed: 0, kind: 'profile' as const }
-		: scope.section === 'writing'
-			? { views: row.articleViews, actions: 0, completed: row.progressViews, kind: 'writing' as const }
-			: scope.section === 'demos'
-				? { views: row.demoViews, actions: 0, completed: row.lastSectionViews, kind: 'demos' as const }
-				: undefined);
+	const previous = priorWindow(report.start, report.end);
+	const firstRecordedDate = report.firstRecordedAt?.slice(0, 10) ?? null;
+	const cutoffDate = report.freshness.summaryCutoffAt.slice(0, 10);
+	const currentComplete = report.freshness.status === 'current' && report.freshness.completedThrough >= report.end && cutoffDate > report.end && !!firstRecordedDate && firstRecordedDate <= report.start;
+	const previousComplete = !!previous && report.freshness.status === 'current' && report.freshness.completedThrough >= report.end && cutoffDate > report.end && !!firstRecordedDate && firstRecordedDate <= previous.start;
+	const rows = (scope.section === 'all' ? ['profile', 'writing', 'demos'] as const : [scope.section]).flatMap((section) => {
+		const row = journeys.site?.find((item) => item.section === section);
+		if (!row || (section !== 'profile' && section !== 'writing' && section !== 'demos')) return [];
+		return [{ kind: section, views: section === 'profile' ? row.views : section === 'writing' ? row.articleViews : row.demoViews, actions: section === 'profile' ? row.contactViews : 0, completed: section === 'profile' ? 0 : section === 'writing' ? row.progressViews : row.lastSectionViews, evidenceLinks: [siteLink(scope.period, section)] }];
+	});
 	return {
 		scope, generatedAt: now.toISOString(), cutoff: report.freshness.summaryCutoffAt,
-		coverage: complete ? 'complete' : 'partial', previousCoverage: complete ? 'complete' : 'partial',
-		// Site metrics have different units. Momentum deliberately uses page views
-		// only; it never adds clicks, progress, and demo events together.
+		coverage: currentComplete ? 'complete' : 'partial', previousCoverage: previousComplete ? 'complete' : 'partial',
 		current: count(report.totals.page_views), previous: count(report.previousTotals.page_views),
 		eligibility: 'identifier-free UTC complete-day page views; same-view journeys require opted-in linked page-view evidence',
-		...(siteJourney ? { siteJourney } : {}),
+		...(rows.length ? { siteJourneys: rows } : {}),
+		...(previous ? { siteWindows: { current: { start: report.start, end: report.end }, previous } } : {}),
 		catalogue: { eligibleAlbums: 0, eligiblePhotos: 0, missingAlbumFacts: 0 }
 	};
 }
