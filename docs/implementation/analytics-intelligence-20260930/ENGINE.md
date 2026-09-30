@@ -1,36 +1,81 @@
 # Analytics intelligence engine
 
-## What this adds
-
-The intelligence engine turns already stored aggregate reports into a short list of evidence-bound findings. It can explain a saved report, record Nino’s private follow-up action, and queue a small set of additional calculations. It does not call PostHog or another provider while a page is loading.
-
-The reader sees the finding, its exact date window, cutoff, coverage, unit and report link. Missing exposure, comparison, consent-compatible journey, or action history produces a suppression. It does not become a zero or a confident recommendation.
-
-## Flow
+The dashboard reads saved, aggregate evidence. It never waits for PostHog or
+another provider. A scheduled job reads only fixed queries, validates their
+bounded result shape, and writes a new immutable evidence version.
 
 ```text
-scheduled aggregate report
-  -> refreshIntelligence
-  -> versioned snapshot + suppressions
-  -> public aggregate GET / owner assistant and action endpoints
+fixed gallery/site reports + fixed journeys
+  -> immutable snapshot
+  -> current pointer
+  -> visibility-checked public projection
+  -> owner-only actions, requests, briefs
 ```
 
-`refreshIntelligence(client, scope, { ownerId?, now?, journeys? })` is the scheduled-worker seam. `loadIntelligence(client, scope, { ownerId?, page? })` reads the snapshot. The finite scheduler set is `standardIntelligenceScopes()`.
+`refreshIntelligence(client, scope, { now, journeys })` accepts a normalized
+gallery or site scope. Gallery reports use complete Chicago calendar days. Site
+reports use complete UTC days. The engine keeps the two windows separate and
+does not add page views, clicks, progress events, and demo events into one
+number. Every finding names its unit, current and previous coverage, cutoff,
+and eligible cohort.
 
-## Privacy and authorization
+## What each rule can use
 
-Public GET responses contain aggregate finding evidence only. They never contain actions, briefs, question history, identities, raw searches, raw events, provider responses, or private notes. Owner routes require a valid Supabase user and the existing exact-email `ADMIN_EMAILS` allowlist. All private POST requests require same-origin protection.
+The rule set covers momentum, photo response, discovery, download reliability,
+search, profile response, writing/demo progression, distribution, collection
+health, and action follow-up. A fixed journey is used only for its matching
+rule. Missing, partial, or too-small evidence produces a suppression. It does
+not become zero, an outage, an audience claim, a quality rating, or causality.
 
-Question text is deliberately not stored. Deterministic text recognition chooses an allowlisted operation. A queued request stores only owner, scope, operation, status and expiry. It cannot execute SQL or query a provider directly.
+Photo response uses its eligible exposure denominator. The current fixed query
+is aggregate-only, so it does not claim that a particular photo caused that
+response until a fixed per-photo denominator exists. A future per-photo input
+may include a public visual link; public projection rechecks that photo before
+returning the link.
 
-## Rule limits
+## Storage and privacy
 
-The rule catalogue covers momentum, strong photo response, discovery friction, rendering/download reliability, search, profile, writing/demos, distribution, collection health and follow-up. Only collection health and complete aggregate comparisons can be evaluated from the current scheduled payload. The other rules remain explicitly suppressed until their required, consent-compatible aggregate cohort is materialized.
+`analytics_intelligence_snapshots` is append-only. The current result is a
+pointer in `analytics_intelligence_snapshot_current`; no scope-key upsert can
+destroy prior evidence. Public reads recheck selected albums, photo targets,
+suppression targets, scope filters, titles' target context, and evidence links
+against current public visibility. A hidden or missing selected target makes
+the projection unavailable rather than returning stale metadata.
 
-Known album sport, event, team and date remain catalogue facts. No rule assigns athlete identity, aesthetic quality, sales, an inquiry, a completed file save, a person, or causality.
+The migration provides these service-only RPCs:
 
-## Scheduler handoff
+- `analytics_claim_intelligence_jobs`
+- `analytics_finish_intelligence_job`
+- `analytics_prepare_intelligence_periods`
+- `analytics_record_intelligence_lifecycle`
+- `analytics_claim_intelligence_deliveries`
+- `analytics_finish_intelligence_delivery`
+- `analytics_list_ambiguous_intelligence_deliveries`
+- `analytics_reconcile_intelligence_delivery`
 
-The scheduler should call `refreshIntelligence` after its successful report refresh, once for each standard scope. It must not use GET to refresh. Provider-backed journey cohorts need a separate bounded job that stores validated aggregate results before a rule may use them.
+Each claim is an atomic lease. Retry backoff is bounded. A job completes only
+against the immutable `snapshot_id` for the matching normalized scope. Late
+daily and weekly periods keep their intended Chicago date. Dashboard briefs do
+not need an external sender. External rows require a verified destination,
+enabled preference, one sender, and idempotency; an ambiguous submission is
+reconciled before any resend.
 
-The Supabase CLI could not create this worker’s migration in the restricted sandbox because it writes telemetry under `~/.supabase`, outside the allowed filesystem. No hand-named migration was created. Before database deployment, run `supabase migration new analytics_intelligence_engine` in an environment that can write its CLI state, then create the tables and service-only RPCs described by these server modules with RLS and explicit revokes.
+Private actions and requests are owner-bound by RLS and server checks. A
+request stores only scope, operation, status, expiry, and report reference —
+never question text. Dismiss, snooze, and undo change the private lifecycle.
+A recorded action computes its follow-up date from its actual time. A follow-up
+finding requires the declared measure, matching complete before/after windows,
+and no overlapping recorded change.
+
+## Boundary checks
+
+The assistant accepts only deterministic, supported operations. The contextual
+preset questions and ordinary equivalent wording map to a fixed operation;
+arbitrary SQL, raw data, new provider queries, and free text from public callers
+are rejected. The analytics host is the production same-origin authority;
+local development uses the request origin. Bodies, unknown fields, dates,
+filters, ranges, finding references, timestamps, and action ownership are all
+validated at the route boundary.
+
+The migration is source only until the parent rehearses it against the local
+database. No hosted migration or external delivery is claimed here.
