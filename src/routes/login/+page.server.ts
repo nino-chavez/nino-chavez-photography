@@ -8,6 +8,7 @@ import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { SITE_URL } from '$lib/site-url';
+import { analyticsAuthCallbackUrl } from '$lib/server/analytics-auth-redirect';
 
 /**
  * Build the auth callback URL from the gallery's public address, NOT `url.origin`.
@@ -25,9 +26,8 @@ import { SITE_URL } from '$lib/site-url';
  *
  * `SITE_URL` already ends in the `/photography` base path — see $lib/site-url.
  */
-function getCallbackUrl(next?: string): string {
-	const callback = `${SITE_URL}/auth/callback`;
-	return next ? `${callback}?next=${encodeURIComponent(next)}` : callback;
+function getCallbackUrl(url: URL, next?: string): string {
+	return analyticsAuthCallbackUrl(url.hostname, SITE_URL, next);
 }
 
 // Check if already logged in
@@ -65,7 +65,7 @@ export const actions = {
 		throw redirect(303, `${base}/admin/tags`);
 	},
 
-	magicLink: async ({ request, cookies }) => {
+	magicLink: async ({ request, cookies, url }) => {
 		const data = await request.formData();
 		const email = data.get('email')?.toString();
 
@@ -76,7 +76,7 @@ export const actions = {
 		const supabase = createSupabaseServerClient(cookies);
 		const { error: authError } = await supabase.auth.signInWithOtp({
 			email,
-			options: { emailRedirectTo: getCallbackUrl('/analytics/operator'), shouldCreateUser: false }
+			options: { emailRedirectTo: getCallbackUrl(url, '/analytics/operator'), shouldCreateUser: false }
 		});
 
 		if (authError) {
@@ -87,7 +87,7 @@ export const actions = {
 		return { success: true, action: 'magicLink' };
 	},
 
-	forgotPassword: async ({ request, cookies }) => {
+	forgotPassword: async ({ request, cookies, url }) => {
 		const data = await request.formData();
 		const email = data.get('email')?.toString();
 
@@ -97,7 +97,7 @@ export const actions = {
 
 		const supabase = createSupabaseServerClient(cookies);
 		const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-			redirectTo: getCallbackUrl('/reset-password')
+			redirectTo: getCallbackUrl(url, '/reset-password')
 		});
 
 		if (authError) {
