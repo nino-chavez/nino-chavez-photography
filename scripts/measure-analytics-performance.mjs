@@ -2,10 +2,10 @@
 import {chromium} from '@playwright/test';
 import {writeFile} from 'node:fs/promises';
 const origin=process.env.ANALYTICS_MEASURE_ORIGIN ?? 'https://analytics.ninochavez.co';
-const paths=(process.env.ANALYTICS_MEASURE_PATHS ?? '/photography/analytics/sites,/photography/analytics/operator').split(',');
+const paths=(process.env.ANALYTICS_MEASURE_PATHS ?? '/sites,/gallery').split(',');
 const runs=Number(process.env.ANALYTICS_MEASURE_RUNS ?? 3);
 if(!Number.isInteger(runs)||runs<1||runs>5)throw new Error('Use 1–5 runs per page and device.');
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH} : {})});
 const results=[];
 try {
  for(const device of ['desktop','mobile']) for(const path of paths) for(let run=1;run<=runs;run++){
@@ -38,17 +38,15 @@ try {
   const interactions=[];
   const unavailable=await page.getByRole('heading',{name:/report unavailable/i}).count();
   if(!unavailable&&await page.getByRole('link',{name:'Albums',exact:true}).count()){
-   // Start in the browser click handler so automation polling is not part of the timing.
-   await page.evaluate(()=>document.addEventListener('click',()=>{
-    window.__labClick=performance.now();window.__labPaint=undefined;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>window.__labPaint=performance.now()-window.__labClick));
-   },{capture:true}));
    for(const [name,heading] of [['Albums','Compare albums'],['Photos','Popular, rising, and recently active']]){
     try {
-    await page.getByRole('link',{name,exact:true}).click();
-    await page.getByRole('heading',{name:heading,exact:true}).waitFor();
-    await page.waitForFunction(()=>window.__labPaint!==undefined);
-    interactions.push({name,clickToTwoFramesMs:await page.evaluate(()=>window.__labPaint),clickToReportReadyMs:await page.evaluate(()=>performance.now()-window.__labClick)});
+     const before=await page.evaluate(()=>performance.timeOrigin);
+     const clickedAt=Date.now();
+     await page.getByRole('link',{name,exact:true}).click();
+     await page.getByRole('heading',{name:heading,exact:true}).waitFor();
+     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+     const after=await page.evaluate(()=>performance.timeOrigin);
+     interactions.push({name,clickToReportReadyMs:Date.now()-clickedAt,nativeNavigation:before!==after});
     } catch(error){errors.push(`${name}: ${error.message}`);break;}
    }
   }

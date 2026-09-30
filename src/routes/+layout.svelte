@@ -11,13 +11,14 @@
 	import { canonicalUrl as buildCanonical } from '$lib/seo/canonical';
 	import { canPublishRouteUrl, chatEnabledForRoute } from '$lib/routes';
 	import { trackVisibleGalleryPage } from '$lib/analytics/client';
+	import { isAnalyticsWorkspace as usesAnalyticsWorkspace } from '$lib/analytics/report-paths';
 
 	let { children } = $props();
 
 	// Client navigation is the only reliable page-view boundary: SSR and hover prefetch are not views.
 	$effect(() => {
 		const routeId = $page.route.id;
-		if (!routeId || /^\/(analytics|analytics-preferences|admin|login|auth)(\/|$)/.test(routeId)) return;
+		if (!routeId || usesAnalyticsWorkspace(routeId, $page.url.hostname, $page.url.pathname) || /^\/(analytics|analytics-preferences|admin|login|auth)(\/|$)/.test(routeId)) return;
 		trackVisibleGalleryPage(routeId.replace(/[^a-z0-9_]/gi, '_').replace(/^_+|_+$/g, '') || 'gallery', $page.url.pathname, $page.url.searchParams.get('src'));
 	});
 
@@ -33,7 +34,7 @@
 
 	// Navigation loading state
 	let isNavigating = $derived($navigating !== null);
-	let isAnalyticsWorkspace = $derived($page.route.id === '/analytics/operator' || $page.route.id === '/analytics/sites');
+	let isAnalyticsWorkspace = $derived(usesAnalyticsWorkspace($page.route.id, $page.url.hostname, $page.url.pathname));
 
 	// Kill switch: chat is OFF unless VITE_CHAT_ENABLED === 'true' (disabled in prod for now,
 	// pending the v5 stream-contract fix + a verifiable output guardrail). Re-enable by setting
