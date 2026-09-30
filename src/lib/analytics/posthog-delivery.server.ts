@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { timingSafeEqual } from 'node:crypto';
 import { preparePostHogDelivery } from './posthog-contract';
 import type { PostHogCaptureClient, PostHogOutboxClient } from './posthog.types';

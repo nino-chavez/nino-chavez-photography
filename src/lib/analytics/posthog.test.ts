@@ -95,6 +95,17 @@ test('scheduled delivery authorization fails closed for missing and wrong tokens
 	assert.equal(hasPostHogScheduleAuthorization(makeRequest('correct'), 'correct'), true);
 });
 
+test('scheduler authorization works without the Node global Buffer', () => {
+	const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer');
+	Reflect.deleteProperty(globalThis, 'Buffer');
+	try {
+		const request = new Request('https://gallery.test/api/internal/analytics-posthog', { headers: { 'x-analytics-posthog-schedule-token': 'correct' } });
+		assert.equal(hasPostHogScheduleAuthorization(request, 'correct'), true);
+		assert.equal(hasPostHogScheduleAuthorization(request, 'incorrect'), false);
+	} finally { if (descriptor) Object.defineProperty(globalThis, 'Buffer', descriptor); }
+});
+
+
 test('outbox RPC adapter rejects malformed leases instead of delivering an invented event', async () => {
 	const calls: string[] = [];
 	const outbox = createPostHogOutboxClient({ rpc: async (name) => {

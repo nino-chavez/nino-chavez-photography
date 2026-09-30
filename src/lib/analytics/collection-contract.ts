@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { ID_PATTERN, eventPropertiesMatchContract, isEventV2Name, isSafeEventProperty, type AcceptedEventV2, type EventV2Properties } from './events-v2';
 
