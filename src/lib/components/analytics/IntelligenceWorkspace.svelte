@@ -12,6 +12,7 @@
 		type FindingEvidence,
 		type IntelligenceAction,
 		type IntelligenceReport,
+		type IntelligenceBriefSourceWindow,
 		type IntelligenceScope
 	} from '$lib/analytics/intelligence-contract';
 
@@ -94,6 +95,7 @@
 	const scopeChanged = $derived(answer !== null && scopeKey !== answerScopeKey);
 	const visibleFindings = $derived(expandedFindings ? (report?.findings ?? []) : (report?.findings ?? []).slice(0, firstViewportLimit));
 	const actions = $derived((report?.actions ?? []) as ActionRecord[]);
+	const requestedSnapshot = $derived(page.url.searchParams.get('intelligence_snapshot'));
 	const briefs = $derived((report?.briefs ?? []) as BriefRecord[]);
 	const visibleBriefs = $derived(expandedBriefs ? briefs : briefs.slice(0, firstBriefLimit));
 	const visibleActions = $derived(expandedHistory ? actions : actions.slice(0, 5));
@@ -103,6 +105,13 @@
 	function validWindow(value: unknown): value is { start: string; end: string } { return object(value) && typeof value.start === 'string' && typeof value.end === 'string'; }
 	function safeHref(value: unknown): value is string {
 		return typeof value === 'string' && intelligenceEvidenceHref(page.url.hostname, value) !== null;
+	}
+	function savedSourceHref(window: IntelligenceBriefSourceWindow) {
+		if (!window.snapshotId) return null;
+		const params = new URLSearchParams({ intelligence_snapshot: window.snapshotId });
+		if (window.scope.kind === 'sites') { params.set('period', String(window.scope.period)); params.set('section', window.scope.section); return evidenceHref(`/photography/analytics/sites?${params}`); }
+		for (const [key,value] of Object.entries(window.scope.query)) { if (value !== undefined) params.set(({albumKeys:'albums',compareStart:'compare_start',compareEnd:'compare_end',eventDate:'event_date',albumEventType:'event_type'} as Record<string,string>)[key] ?? key, Array.isArray(value) ? value.join(',') : String(value)); }
+		params.set('period','custom'); return evidenceHref(`/analytics/operator?${params}`);
 	}
 	function evidenceHref(value: string) { return intelligenceEvidenceHref(page.url.hostname, value) ?? '#'; }
 	function validEvidence(value: unknown): value is FindingEvidence {
@@ -235,6 +244,8 @@
 		loading = true; reportError = null;
 		try {
 			const params = new URLSearchParams({ scope: scopeKey, page: String(page), actionsPage: String(actionsPage), briefsPage: String(briefsPage) });
+			const savedId = requestedSnapshot;
+			if (savedId) params.set('snapshotId', savedId);
 			const response = await fetch(`${endpoint}?${params}`, { signal: controller.signal, headers: { accept: 'application/json' }, cache: 'no-store' });
 			const payload = await json(response); if (!response.ok || !validReport(payload)) throw new Error('report');
 			if (version !== reportRequestVersion) return;
@@ -344,7 +355,7 @@
 	}
 
 	$effect(() => {
-		scopeKey; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; expandedBriefs = false; untrack(() => { stopPolling(); answerAbort?.abort(); void loadReport(0, 0, 0); });
+		scopeKey; requestedSnapshot; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; expandedBriefs = false; untrack(() => { stopPolling(); answerAbort?.abort(); void loadReport(0, 0, 0); });
 		return () => { reportAbort?.abort(); answerAbort?.abort(); stopPolling(); };
 	});
 	$effect(() => { if (owner) untrack(() => void loadPreferences()); else preferences = null; });
@@ -352,7 +363,7 @@
 
 <section class={`intelligence ${className}`} aria-labelledby={`${kind}-intelligence-heading`}>
 	<div class="heading">
-		<div><p class="kicker">Report intelligence</p><h2 id={`${kind}-intelligence-heading`}>Worth your attention</h2><p>Short evidence-led observations for this report. They do not rate photographic quality or prove a business result.</p></div>
+		<div><p class="kicker">Report intelligence</p><h2 id={`${kind}-intelligence-heading`}>Worth your attention</h2>{#if requestedSnapshot}<p class="context-note">You are reading saved evidence. The cutoff below belongs to that saved calculation.</p>{/if}<p>Short evidence-led observations for this report. They do not rate photographic quality or prove a business result.</p></div>
 		{#if report}<p class="freshness">Cutoff: {formatTime(report.cutoff)}<br />Saved: {formatTime(report.generatedAt)}</p>{/if}
 	</div>
 
@@ -383,7 +394,7 @@
 				<div class="finding-list" aria-label="Prioritized findings">
 					{#each visibleFindings as finding}
 						<article class:selected={selectedFinding?.id === finding.id} class="finding">
-							<div class="finding-topline"><span>{finding.status.replaceAll('_', ' ')}</span><span>{targetLabel(finding.target)}</span></div><h3>{finding.title}</h3><p>{finding.explanation}</p><p class="proposal"><strong>Next step:</strong> {finding.action}</p>
+							<div class="finding-topline"><span>{finding.severity === 'high' ? 'Repair first' : finding.severity === 'medium' ? 'Review next' : 'Consider'} · {finding.status.replaceAll('_', ' ')}</span><span>{targetLabel(finding.target)}</span></div><h3>{finding.title}</h3><p>{finding.explanation}</p><p class="proposal"><strong>Next step:</strong> {finding.action}</p>
 							{#each actionsForFinding(finding) as item}<div class="follow-up"><p><strong>Recorded hypothesis:</strong> {item.hypothesis ?? 'Not supplied'}</p><p>{followUpState(item)}</p></div>{/each}
 							<details class="evidence"><summary>Read exact evidence</summary><dl><div><dt>Window</dt><dd>{evidenceWindows(finding.evidence)}</dd></div><div><dt>Unit</dt><dd>{finding.evidence.units}</dd></div><div><dt>Coverage</dt><dd>{finding.evidence.coverage}</dd></div><div><dt>Strength</dt><dd>{finding.evidence.strength}</dd></div><div><dt>Current</dt><dd>{number(finding.evidence.current)}</dd></div><div><dt>Previous</dt><dd>{number(finding.evidence.previous)}</dd></div><div><dt>Numerator</dt><dd>{number(finding.evidence.numerator)}</dd></div><div><dt>Denominator</dt><dd>{number(finding.evidence.denominator)}</dd></div><div><dt>Cutoff</dt><dd>{formatTime(finding.evidence.cutoff)}</dd></div>{#if finding.evidence.eligibility}<div><dt>Eligible group</dt><dd>{finding.evidence.eligibility}</dd></div>{/if}</dl>{#if findingLimitations(finding).length}<p><strong>Limitations:</strong></p><ul>{#each findingLimitations(finding) as limitation}<li>{limitation}</li>{/each}</ul>{/if}<p class="links"><a href={evidenceHref(finding.reportHref)}>Open exact report evidence</a>{#each finding.evidenceLinks ?? [] as href}<a href={evidenceHref(href)}>Open linked evidence</a>{/each}</p></details>
 							<div class="finding-actions"><button type="button" onclick={() => { selectedFinding = finding; void ask('Explain this finding using the captured report evidence.', finding); }}>Explain evidence</button><a href={evidenceHref(finding.reportHref)}>Open report</a>{#if owner}<button type="button" onclick={() => { actionFinding = finding; actionMode = 'record'; }}>I did this</button><button type="button" onclick={() => { actionFinding = finding; actionMode = 'dismiss'; }}>Dismiss</button><button type="button" onclick={() => { actionFinding = finding; actionMode = 'snooze'; }}>Snooze</button>{:else}<button type="button" onclick={() => { selectedFinding = finding; answer = localExplanation(finding, 'Explain this finding using the captured report evidence.'); }}>Public explanation</button>{/if}</div>
@@ -418,8 +429,8 @@
 								{#if brief.snapshotHref && safeHref(brief.snapshotHref)}<p class="links"><a href={evidenceHref(brief.snapshotHref)}>Open exact saved snapshot</a></p>{/if}
 								{#if brief.sourceWindows?.length || brief.suppressions?.length || brief.late !== undefined}
 									<details class="brief-evidence"><summary>Read stored brief evidence</summary>
-										{#if brief.sourceWindows?.length}<dl>{#each brief.sourceWindows as window}<div><dt>Source scope</dt><dd>{scopeLabel(window.scope)}</dd></div><div><dt>Current window</dt><dd>{briefWindowLabel(window.current)}</dd></div><div><dt>Previous window</dt><dd>{briefWindowLabel(window.previous)}</dd></div><div><dt>Timezone</dt><dd>{window.timezone}</dd></div><div><dt>Cutoff</dt><dd>{formatTime(window.cutoff)}</dd></div>{/each}</dl>{/if}
-										{#if brief.suppressions?.length}<p><strong>Stored limits</strong></p><ul>{#each brief.suppressions as suppression}<li>{suppression.rule}: {suppression.reason}</li>{/each}</ul>{/if}
+										{#if brief.sourceWindows?.length}<dl>{#each brief.sourceWindows as window}<div><dt>Source scope</dt><dd>{scopeLabel(window.scope)}</dd></div><div><dt>Current window</dt><dd>{briefWindowLabel(window.current)}</dd></div><div><dt>Previous window</dt><dd>{briefWindowLabel(window.previous)}</dd></div><div><dt>Timezone</dt><dd>{window.timezone}</dd></div><div><dt>Cutoff</dt><dd>{formatTime(window.cutoff)}</dd></div>{#if savedSourceHref(window)}<div><dt>Saved evidence</dt><dd><a href={savedSourceHref(window)}>Open saved source report</a></dd></div>{/if}{/each}</dl>{/if}
+										{#if brief.suppressions?.length}<p><strong>Stored limits</strong> · up to 50 shown; open the saved source reports for their full evidence.</p><ul>{#each brief.suppressions as suppression}<li>{suppression.rule}: {suppression.reason}</li>{/each}</ul>{/if}
 										{#if brief.late !== undefined}<p><strong>Delivery timing:</strong> {brief.late ? 'Late delivery was recorded.' : 'No late delivery was recorded.'}</p>{/if}
 									</details>
 								{/if}

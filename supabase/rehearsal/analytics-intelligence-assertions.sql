@@ -372,3 +372,8 @@ BEGIN
  PERFORM public.analytics_claim_intelligence_deliveries(20,120);
  IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_deliveries WHERE id=did AND status='suppressed' AND error_code='preference_changed') THEN RAISE EXCEPTION 'queued email ignored owner opt-out'; END IF;
 END $$;
+
+DO $$ BEGIN
+ IF EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='weekly' AND scope->>'kind'='gallery' AND (scope#>>'{query,end}')::date-(scope#>>'{query,start}')::date<>6)
+ OR EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE kind='weekly' AND scope->>'kind'='sites' AND scope->>'period'<>'7') THEN RAISE EXCEPTION 'weekly brief used a monthly source window'; END IF;
+END $$;

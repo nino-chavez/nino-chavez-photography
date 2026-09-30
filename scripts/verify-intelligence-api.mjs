@@ -62,5 +62,10 @@ assert.equal(callback.status,303);const setCookies=callback.headers.getSetCookie
 const freshCookie=setCookies.map(v=>v.split(';')[0]).join('; ');
 const verify=await fetch(endpoint+'/preferences',{headers:{cookie:freshCookie}});assert.equal(verify.status,200);checks.push('magic link establishes a verified session in a fresh browser without PKCE cookies');
 const invalid=await fetch(base+'/photography/auth/callback?token_hash=wrong-token&type=magiclink',{redirect:'manual'});assert.equal(invalid.status,303);assert.match(invalid.headers.get('location')??'',/auth_callback_failed/);checks.push('wrong magic-link token does not authenticate');
+const savedSnapshot=report.result.snapshotId;assert.ok(savedSnapshot);
+const exact=await request('?scope='+encodeURIComponent(JSON.stringify(scope))+'&snapshotId='+savedSnapshot);assert.equal(exact.response.status,200);assert.equal(exact.result.snapshotId,savedSnapshot);checks.push('immutable saved evidence remains directly readable with its validated scope');
+assert.equal((await request('/history',{confirm:'delete_private_history'},true,base,'DELETE')).response.status,200);
+const afterDelete=await request('?scope='+encodeURIComponent(JSON.stringify(scope)));assert.equal(afterDelete.response.status,200);assert.deepEqual(afterDelete.result.actions,[]);assert.deepEqual(afterDelete.result.briefs,[]);
+assert.equal(afterDelete.result.snapshotId,savedSnapshot);checks.push('explicit owner deletion removes private history while preserving public evidence');
 const receipt={observedAt:new Date().toISOString(),passed:true,environment:'local synthetic Supabase and actual SvelteKit routes',productionTouched:false,checks,limits:'Does not prove production mail templates, delivery, or provider collection.'};
 mkdirSync('docs/implementation/analytics-intelligence-20260930/evidence',{recursive:true});writeFileSync('docs/implementation/analytics-intelligence-20260930/evidence/api-local-proof.json',JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt));

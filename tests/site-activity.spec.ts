@@ -104,7 +104,7 @@ test('deployed main-site adapter records rendered navigation and uses the first-
  const events:any[]=[];
  await page.addInitScript(()=>Object.defineProperty(navigator,'webdriver',{get:()=>false}));
  await page.route('https://ninochavez.co/**',async route=>{
-  if(route.request().url().endsWith('/photography/site-activity.js')) return route.fulfill({body:tracker,contentType:'application/javascript'});
+  if(new URL(route.request().url()).pathname === '/photography/site-activity.js') return route.fulfill({body:tracker,contentType:'application/javascript'});
   if(route.request().url().includes('/api/analytics/preferences')) return route.fulfill({json:{linkedAnalytics:true,excludeThisBrowser:false}});
   if(route.request().url().includes('/api/analytics/events')) {events.push(route.request().postDataJSON());return route.fulfill({json:{accepted:true}});}
   const url=new URL(route.request().url());
@@ -118,7 +118,7 @@ test('deployed main-site adapter records rendered navigation and uses the first-
  await expect.poll(()=>events.filter(e=>e.event_name==='site_page_viewed').length).toBe(2);
  expect(events.filter(e=>e.event_name==='site_page_viewed')[1].properties.canonical_path).toBe('/work');
  expect(events[0].visit_id).toBe(events.filter(e=>e.event_name==='site_page_viewed')[1].visit_id);
- expect(await page.locator('script[data-nino-site-activity]').count()).toBe(1);
+ expect(await page.locator('script[data-site-navigation="react"][src^="/photography/site-activity.js"]').count()).toBe(1);
 });
 
 

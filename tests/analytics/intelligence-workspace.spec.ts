@@ -173,10 +173,10 @@ test('keeps stored brief provenance private, compact, and paged', async ({ page 
 	await page.getByRole('button', { name: 'Show all on this brief page' }).click();
 	await expect(page.getByText('Morning review 4')).toBeVisible();
 	await page.getByText('Read stored brief evidence').first().click();
-	await expect(page.getByText('2026-09-01 to 2026-09-07')).toBeVisible();
-	await expect(page.getByText('America/Chicago')).toBeVisible();
-	await expect(page.getByText('Comparable history is still limited.')).toHaveCount(2);
-	await expect(page.getByText('Late delivery was recorded.')).toBeVisible();
+	await expect(page.locator('.brief-list article').first().getByText('2026-09-01 to 2026-09-07',{exact:true})).toBeVisible();
+	await expect(page.locator('.brief-list article').first().getByText('America/Chicago',{exact:true})).toBeVisible();
+	await expect(page.locator('.brief-list article').first().getByText('album_momentum: Comparable history is still limited.',{exact:true})).toBeVisible();
+	await expect(page.locator('.brief-list article').first().getByText('Delivery timing: Late delivery was recorded.',{exact:true})).toBeVisible();
 	await page.getByRole('button', { name: 'Next briefs' }).click();
 	await expect.poll(() => requestedBriefPage).toBe('1');
 	await expect(page.getByText('Morning review 11')).toBeVisible();

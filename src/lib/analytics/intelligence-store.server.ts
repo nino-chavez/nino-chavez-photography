@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { INTELLIGENCE_BRIEF_PAGE_SIZE, INTELLIGENCE_PAGE_SIZE, INTELLIGENCE_RULE_VERSION, intelligenceScopeKey, parseIntelligenceBriefSourceWindow, parseIntelligenceScope, type Finding, type IntelligenceAction, type IntelligenceBrief, type IntelligenceBriefSourceWindow, type IntelligenceReport, type IntelligenceScope, type IntelligenceSuppression } from './intelligence-contract';
-import { evaluateIntelligenceRules, type IntelligenceRuleInput } from './intelligence-rules';
+import { evaluateIntelligenceRules, findingSeverity, prioritizeFindings, type IntelligenceRuleInput } from './intelligence-rules';
 import { loadIntelligenceEvidence, type IntelligenceJourneyContext } from './intelligence-source.server';
 import { answerIntelligenceQuestion } from './intelligence-assistant';
 import { projectAlbumComparison } from './intelligence-comparison.server';
@@ -39,7 +39,7 @@ function decodeInput(value: unknown, scope: IntelligenceScope): IntelligenceRule
 function decodeFinding(value: unknown): Finding | null {
 	const row = safeObject(value); const target = safeObject(row?.target); const evidence = safeObject(row?.evidence);
 	if (!row || !target || !evidence || typeof row.id !== 'string' || typeof row.rule !== 'string' || typeof row.title !== 'string' || typeof row.explanation !== 'string' || typeof row.action !== 'string' || typeof row.reportHref !== 'string' || !['gallery', 'album', 'photo', 'site', 'page'].includes(String(target.kind))) return null;
-	return { ...row, target: { kind: target.kind as Finding['target']['kind'], id: typeof target.id === 'string' ? target.id : null, albumKey: typeof target.albumKey === 'string' ? target.albumKey : null }, evidence: evidence as unknown as Finding['evidence'], status: 'open', ...(Array.isArray(row.evidenceLinks) ? { evidenceLinks: row.evidenceLinks.filter((link): link is string => typeof link === 'string' && link.startsWith('/')).slice(0, 6) } : {}) } as Finding;
+	return { ...row, severity: ['high','medium','low'].includes(String(row.severity)) ? row.severity : findingSeverity(row.rule,row.id), target: { kind: target.kind as Finding['target']['kind'], id: typeof target.id === 'string' ? target.id : null, albumKey: typeof target.albumKey === 'string' ? target.albumKey : null }, evidence: evidence as unknown as Finding['evidence'], status: 'open', ...(Array.isArray(row.evidenceLinks) ? { evidenceLinks: row.evidenceLinks.filter((link): link is string => typeof link === 'string' && link.startsWith('/')).slice(0, 6) } : {}) } as Finding;
 }
 function decodeSuppression(value: unknown): IntelligenceSuppression | null {
 	const row = safeObject(value); if (!row || typeof row.rule !== 'string' || typeof row.reason !== 'string') return null;
@@ -56,10 +56,10 @@ export function decodeIntelligenceBrief(row: Record<string, unknown>): Intellige
 		createdAt: safeInstant(row.created_at)!,
 		...(typeof row.title === 'string' ? { title: row.title } : {}),
 		...(typeof row.body === 'string' ? { body: row.body } : {}),
-		...(Array.isArray(row.findings) ? { findings: row.findings.map(decodeFinding).filter((item): item is Finding => !!item) } : {}),
+		...(Array.isArray(row.findings) ? { findings: row.findings.map(decodeFinding).filter((item): item is Finding => !!item).slice(0, 6) } : {}),
 		...(Array.isArray(row.snapshot_ids) ? { snapshotIds: row.snapshot_ids.filter((id): id is string => uuid(id)) } : {}),
 		...(Array.isArray(row.source_windows) ? { sourceWindows: row.source_windows.map(parseIntelligenceBriefSourceWindow).filter((item): item is IntelligenceBriefSourceWindow => !!item) } : {}),
-		...(Array.isArray(row.suppressions) ? { suppressions: row.suppressions.map(decodeSuppression).filter((item): item is IntelligenceSuppression => !!item) } : {}),
+		...(Array.isArray(row.suppressions) ? { suppressions: row.suppressions.map(decodeSuppression).filter((item): item is IntelligenceSuppression => !!item).slice(0, 50) } : {}),
 		...(typeof row.late === 'boolean' ? { late: row.late } : {})
 	};
 }
@@ -175,13 +175,14 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 	if (options.ownerId) {
 		const [{ data: actionRows, count: actionCount, error: actionError }, { data: briefRows, count: briefCount, error: briefError }, { data: lifecycleRows }] = await Promise.all([
 			client.from('analytics_intelligence_actions').select('id, kind, finding_id, target, actual_at, hypothesis, primary_measure, follow_up_at, note, created_at, reverses_action_id, change_type, channel, campaign, release, variant, outcome, outcome_count, observation_days', { count: 'exact' }).eq('owner_id', options.ownerId).in('target->>kind', checked.kind === 'gallery' ? ['gallery', 'album', 'photo'] : ['site', 'page']).order('created_at', { ascending: false }).order('id', { ascending: false }).range(actionsPage * ACTION_PAGE_SIZE, (actionsPage + 1) * ACTION_PAGE_SIZE - 1),
-			client.from('analytics_intelligence_briefs').select('id, period_key, kind, title, created_at, body, findings, snapshot_ids, source_windows, suppressions, late', { count: 'exact' }).eq('owner_id', options.ownerId).order('created_at', { ascending: false }).order('id', { ascending: false }).range(briefsPage * INTELLIGENCE_BRIEF_PAGE_SIZE, (briefsPage + 1) * INTELLIGENCE_BRIEF_PAGE_SIZE - 1),
+			client.from('analytics_intelligence_briefs').select('id, period_key, kind, created_at, body, findings, snapshot_ids, source_windows, suppressions, late', { count: 'exact' }).eq('owner_id', options.ownerId).order('created_at', { ascending: false }).order('id', { ascending: false }).range(briefsPage * INTELLIGENCE_BRIEF_PAGE_SIZE, (briefsPage + 1) * INTELLIGENCE_BRIEF_PAGE_SIZE - 1),
 			client.from('analytics_intelligence_finding_lifecycle').select('finding_id, status, snoozed_until').eq('owner_id', options.ownerId).eq('scope_key', scopeKey)
 		]);
 		if (actionError) throw new Error('private action history unavailable');
 		if (briefError) throw new Error('private brief history unavailable');
 		actionsPageCount = Math.max(1, Math.ceil((actionCount ?? 0) / ACTION_PAGE_SIZE));
 		briefsPageCount = Math.max(1, Math.ceil((briefCount ?? 0) / INTELLIGENCE_BRIEF_PAGE_SIZE));
+		if (briefsPage >= briefsPageCount) throw new Error('private brief page unavailable');
 		actions = safeArray<Record<string, unknown>>(actionRows).map(decodeAction).filter((item): item is IntelligenceAction => !!item).filter((item) => targetMatchesScope(item.target, checked));
 		const latestOutcomes = await loadLatestIntelligenceOutcomes(client, options.ownerId, actions.filter((item) => item.kind === 'record').map((item) => item.id));
 		actions = actions.map((item) => { const latest = latestOutcomes.get(item.id); return latest ? { ...item, outcome: latest.outcome, outcomeCount: latest.outcomeCount } : item; });
@@ -207,9 +208,10 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 			}
 		}
 	}
+	prioritizeFindings(visible.findings);
 	const pageCount = Math.max(1, Math.ceil(visible.findings.length / INTELLIGENCE_PAGE_SIZE));
 	const currentPage = Math.min(page, pageCount - 1);
-	return { snapshotId: snapshot.snapshot_id, scope: checked, generatedAt: snapshot.generated_at, cutoff: snapshot.cutoff_at, coverage: snapshot.coverage, findings: visible.findings.slice(currentPage * INTELLIGENCE_PAGE_SIZE, (currentPage + 1) * INTELLIGENCE_PAGE_SIZE), suppressions: visible.suppressions, actions, briefs, page: currentPage, pageCount, actionsPage, actionsPageCount, briefsPage: Math.min(briefsPage, briefsPageCount - 1), briefsPageCount, owner: !!options.ownerId };
+	return { snapshotId: snapshot.snapshot_id, scope: checked, generatedAt: snapshot.generated_at, cutoff: snapshot.cutoff_at, coverage: snapshot.coverage, findings: visible.findings.slice(currentPage * INTELLIGENCE_PAGE_SIZE, (currentPage + 1) * INTELLIGENCE_PAGE_SIZE), suppressions: visible.suppressions, actions, briefs, page: currentPage, pageCount, actionsPage, actionsPageCount, briefsPage, briefsPageCount, owner: !!options.ownerId };
 }
 
 export async function recordIntelligenceAction(client: SupabaseClient, ownerId: string, scope: IntelligenceScope, action: Omit<IntelligenceAction, 'id' | 'createdAt' | 'followUpAt'> & { actionId?: string | null }): Promise<IntelligenceAction> {

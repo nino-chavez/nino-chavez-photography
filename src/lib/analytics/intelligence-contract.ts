@@ -9,6 +9,7 @@ export type IntelligenceScope =
 
 export type IntelligenceCoverage = 'complete' | 'partial' | 'unavailable';
 export type FindingStatus = 'open' | 'dismissed' | 'snoozed' | 'recorded' | 'recovered';
+export type FindingSeverity = 'high' | 'medium' | 'low';
 export type EvidenceStrength = 'strong' | 'exploratory' | 'limited';
 
 export interface FindingEvidence {
@@ -29,6 +30,7 @@ export interface FindingEvidence {
 export interface Finding {
 	id: string;
 	rule: string;
+	severity?: FindingSeverity;
 	target: { kind: 'gallery' | 'album' | 'photo' | 'site' | 'page'; id?: string | null; albumKey?: string | null };
 	title: string;
 	explanation: string;
@@ -53,6 +55,7 @@ export interface IntelligenceBriefWindow {
  * Older rows may not have persisted the actual current or previous dates.
  */
 export interface IntelligenceBriefSourceWindow {
+	snapshotId?: string;
 	scope: IntelligenceScope;
 	cutoff: string | null;
 	timezone: string;
@@ -94,7 +97,7 @@ export function parseIntelligenceBriefSourceWindow(value: unknown): Intelligence
 	const current = row.current === undefined || row.current === null ? null : parseBriefWindow(row.current);
 	const previous = row.previous === undefined || row.previous === null ? null : parseBriefWindow(row.previous);
 	if ((row.current !== undefined && row.current !== null && !current) || (row.previous !== undefined && row.previous !== null && !previous)) return null;
-	return { scope, cutoff: row.cutoff as string | null, timezone: row.timezone, ...(row.current !== undefined ? { current } : {}), ...(row.previous !== undefined ? { previous } : {}) };
+	return { scope, ...(typeof row.snapshotId === 'string' && /^[0-9a-f-]{36}$/i.test(row.snapshotId) ? { snapshotId: row.snapshotId } : {}), cutoff: row.cutoff as string | null, timezone: row.timezone, ...(row.current !== undefined ? { current } : {}), ...(row.previous !== undefined ? { previous } : {}) };
 }
 
 export interface IntelligenceAction {
@@ -175,7 +178,7 @@ export interface AssistantAnswer {
 	comparison?: AlbumComparison;
 }
 
-export const INTELLIGENCE_RULE_VERSION = 2;
+export const INTELLIGENCE_RULE_VERSION = 3;
 export const INTELLIGENCE_PAGE_SIZE = 20;
 export const INTELLIGENCE_BRIEF_PAGE_SIZE = 10;
 export const STANDARD_SITE_INTELLIGENCE_SCOPES: readonly IntelligenceScope[] = [

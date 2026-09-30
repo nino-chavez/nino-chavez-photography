@@ -14,5 +14,5 @@
     "events missing view IDs excluded",
     "sliced searches withheld"
   ],
-  "limits": "Read-only synthetic provider acceptance; does not prove live audience behavior or collection on deployed sites."
+  "limits": "Dedicated test-project synthetic capture and query acceptance; does not prove live audience behavior or collection on deployed sites."
 }

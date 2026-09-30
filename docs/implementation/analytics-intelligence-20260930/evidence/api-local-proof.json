@@ -1,5 +1,5 @@
 {
-  "observedAt": "2026-09-30T07:38:25.164Z",
+  "observedAt": "2026-09-30T07:50:17.376Z",
   "passed": true,
   "environment": "local synthetic Supabase and actual SvelteKit routes",
   "productionTouched": false,
@@ -19,7 +19,9 @@
     "private email controls reject client recipients, require configured sender, and save explicit disable",
     "actual album comparison request completes through the bounded background worker",
     "magic link establishes a verified session in a fresh browser without PKCE cookies",
-    "wrong magic-link token does not authenticate"
+    "wrong magic-link token does not authenticate",
+    "immutable saved evidence remains directly readable with its validated scope",
+    "explicit owner deletion removes private history while preserving public evidence"
   ],
   "limits": "Does not prove production mail templates, delivery, or provider collection."
 }

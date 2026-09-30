@@ -58,9 +58,18 @@ function windows(input: IntelligenceRuleInput): FindingEvidence['windows'] {
 function evidence(input: IntelligenceRuleInput, units: string, values: Partial<Pick<FindingEvidence, 'numerator' | 'denominator' | 'current' | 'previous'>>, strength: FindingEvidence['strength']): FindingEvidence {
 	return { windows: windows(input), cutoff: input.cutoff, coverage: input.coverage, previousCoverage: input.previousCoverage ?? null, units, eligibility: input.eligibility, strength, ...values };
 }
+export function findingSeverity(rule: string, id: string): 'high' | 'medium' | 'low' {
+	if (rule === 'collection_health' || (rule === 'rendering_download_reliability' && id !== 'download-unknown-terminal') || id === 'search-failures') return 'high';
+	return rule === 'momentum' || rule === 'strong_photo_response' || rule === 'distribution' ? 'low' : 'medium';
+}
+export function prioritizeFindings(findings: Finding[]): Finding[] {
+	const rank = { high: 0, medium: 1, low: 2 };
+	return findings.sort((a, b) => rank[a.severity ?? findingSeverity(a.rule,a.id)] - rank[b.severity ?? findingSeverity(b.rule,b.id)] || a.id.localeCompare(b.id));
+}
+
 function finding(input: IntelligenceRuleInput, rule: string, id: string, title: string, explanation: string, action: string, data: FindingEvidence, target: Finding['target'] = { kind: input.scope.kind === 'gallery' ? 'gallery' : 'site' }, evidenceLinks?: string[]): Finding {
 	const albumKey = target.kind === 'album' ? target.albumKey ?? target.id ?? undefined : target.albumKey ?? undefined;
-	return { id, rule, target, title, explanation, action, evidence: data, reportHref: reportHref(input.scope, albumKey), ...(evidenceLinks?.length ? { evidenceLinks: [...new Set(evidenceLinks)].filter((link) => link.startsWith('/')).slice(0, 6) } : {}), status: 'open' };
+	return { id, rule, severity: findingSeverity(rule, id), target, title, explanation, action, evidence: data, reportHref: reportHref(input.scope, albumKey), ...(evidenceLinks?.length ? { evidenceLinks: [...new Set(evidenceLinks)].filter((link) => link.startsWith('/')).slice(0, 6) } : {}), status: 'open' };
 }
 function suppress(result: IntelligenceRuleResult, rule: string, reason: string, target?: Finding['target']): void { result.suppressions.push({ rule, reason, target }); }
 
@@ -152,6 +161,7 @@ export function evaluateIntelligenceRules(input: IntelligenceRuleInput): Intelli
 	else if (input.followUp.concurrentChanges > 0) suppress(result, 'follow_up', `${input.followUp.concurrentChanges} other recorded changes overlap the observation window.`);
 	else if (input.followUp.before < minimumSample || input.followUp.after < minimumSample || Math.abs(input.followUp.after - input.followUp.before) < meaningfulAbsoluteChange) suppress(result, 'follow_up', 'The declared measure has too little volume or too small a change for a follow-up finding.');
 	else { const item = finding(input, 'follow_up', `follow-up-${input.followUp.actionId}`, 'A recorded action has a clean follow-up comparison', `The declared ${input.followUp.measure} measure was ${input.followUp.before} in ${input.followUp.window.before.start} to ${input.followUp.window.before.end} and ${input.followUp.after} in ${input.followUp.window.after.start} to ${input.followUp.window.after.end}. This is an observation, not a causal claim.`, 'Review the declared target and measure before deciding whether to repeat the action.', evidence(input, `declared ${input.followUp.measure} measure`, { current: input.followUp.after, previous: input.followUp.before }, 'limited')); item.target = input.followUp.target ?? item.target; item.evidence.windows = { current: input.followUp.window.after, previous: input.followUp.window.before }; result.findings.push(item); }
+	prioritizeFindings(result.findings);
 	return result;
 }
 
