@@ -73,3 +73,41 @@ reconciliation remains unresolved. Native PostHog delivery remains a distinct
 single sender and is suppressed here to prevent a duplicate notification.
 
 Operational failures group by stable cause and eligible flow filters rather than moving date windows. Acknowledge pauses an incident for 30 days; snooze pauses it for 7 days. Undo reopens the incident. Neither acknowledgement nor missing provider evidence claims a repair. Flow recovery requires complete compatible evidence and a window at least as recent as the last failure. Collection-health recovery requires explicit healthy diagnostics; missing behavioral history does not block a confirmed infrastructure recovery. Exhausted crashed jobs finalize their period as unavailable instead of leaving a brief waiting forever.
+
+## Production release and remaining acceptance
+
+The full dashboard build and all three forward migrations are deployed. The
+intelligence Worker completed an observed scheduled production run after the
+Cloudflare redirect fix. Stored snapshots advanced across all twenty standard
+scopes. The relay also completed an observed five-minute production cron run
+with no exception. These are operating checks; improved photography or business outcomes
+have not yet been measured.
+
+The public dashboard preserves album inspection, real photo previews, paging,
+filters and exports. Desktop and mobile frames were inspected directly. Saved
+intelligence returned in 135–434 milliseconds in three live checks. Gallery
+median largest-content paint was 968 milliseconds on desktop and 1,708
+milliseconds under simulated mobile conditions. Sites medians were 1,584 and
+1,208 milliseconds respectively; the first cold desktop site run took 4,604
+milliseconds. These lab observations are not field guarantees. The exact runs
+and settings are in `evidence/performance-live.json`.
+
+The release has real limits:
+
+- Anonymous saved-report responses returned no private actions or briefs.
+- Production PostHog receipt parity remains unproven: no consent-eligible
+  events were waiting in the checked outbox. The dedicated synthetic project
+  proves the controlled query contract, not production audience delivery.
+- Owner actions, outcomes, retention and requests passed local SQL, API and
+  browser rehearsals. Production magic-link verification remains pending. Both
+  existing owner email accounts are confirmed, but the Supabase account open
+  in Chrome cannot access the photography project to inspect its email template.
+- The owner must choose private-record retention before storing private history.
+- External email stays off. No sender was configured and no external brief was
+  sent. Destination verification and activation require the owner's choice.
+
+Receipts: `evidence/release-live.json`, `evidence/scheduler-live.json`,
+`evidence/relay-live.json` and `evidence/public-intelligence-live.json`. Each
+receipt states what was observed. An empty scheduled-run list is not proof of
+a working cron. The release remains unaccepted for production private access,
+external delivery and production provider parity until those checks are complete.
