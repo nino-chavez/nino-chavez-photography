@@ -1,0 +1,9 @@
+[
+  "docs/implementation/analytics-scheduled-reports-20260929/SITES.md",
+  "src/lib/analytics/site-actions.server.test.ts",
+  "src/lib/analytics/site-actions.server.ts",
+  "src/lib/analytics/site-actions.ts",
+  "src/lib/components/analytics/SiteActions.svelte",
+  "supabase/migrations/20260930005003_analytics_scheduled_site_reports.sql",
+  "supabase/rehearsal/scheduled-site-assertions.sql"
+]

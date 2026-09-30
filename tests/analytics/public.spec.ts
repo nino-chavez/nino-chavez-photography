@@ -9,10 +9,32 @@ test('the retired analytics address keeps report filters and opens the workspace
 
 test('photo results use pages inside the photo view',async({page})=>{
  await page.goto(route+'?period=7#photos');
- await expect(page.getByRole('button',{name:'Next',exact:true})).toBeEnabled();
+ await expect(page.getByRole('link',{name:'Next',exact:true})).toBeEnabled();
  await expect(page.locator('.photo-card')).toHaveCount(12);
- await page.getByRole('button',{name:'Next',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Shortlist',exact:true}).first().check();
+ let release!: ()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve});
+ const dataRequest=(url:URL)=>url.pathname.endsWith('/__data.json');
+ await page.route(dataRequest, async route=>{await held;await route.continue()});
+ const change=page.getByRole('link',{name:'Next',exact:true}).click();
+ try {
+  await expect(page.getByRole('status').filter({hasText:'Loading report'})).toBeVisible();
+  await expect(page.locator('.photo-inspect').first()).toBeDisabled();
+ } finally {release();}
+ await change;
+ await page.unroute(dataRequest);
+
  await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
+ await expect.poll(()=>new URL(page.url()).searchParams.get('photo_page')).toBe('1');
+ await page.goBack();
+ await expect(page.getByText(/Page 1 of \d+/)).toBeVisible();
+ await expect(page.getByRole('checkbox',{name:'Shortlist',exact:true}).first()).toBeChecked();
+ await expect(page.getByRole('link',{name:/Shortlist CSV \(1\)/})).toBeVisible();
+ await page.getByRole('link',{name:'Next',exact:true}).click();
+ await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
+ await page.locator('.photo-inspect').first().click();
+ await expect(page.getByRole('dialog')).toBeVisible();
+ await page.getByRole('button',{name:'Return to photos',exact:true}).click();
  await expect(page.locator('.photo-card')).toHaveCount(12);
 });
 

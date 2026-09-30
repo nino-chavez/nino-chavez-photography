@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadSiteTraffic, periodBounds, summarizeSiteTraffic } from './site-traffic.server';
 import { sectionForPath } from './site-traffic';
+import { createProviderCache } from './provider-cache.server';
 
 function row(date: string, requestPath: string, count: number, visits: number, refererHost = '') {
 	return { count, dimensions: { date, requestPath, refererHost, deviceType: 'desktop' }, sum: { visits } };
@@ -54,4 +55,51 @@ test('missing credentials and incomplete provider responses never display zero t
 	assert.equal(missing.available, false);
 	const invalid = await loadSiteTraffic(7, 'a'.repeat(32), 'test-token', async () => new Response(JSON.stringify({ data: { viewer: { accounts: [{ rumPageloadEventsAdaptiveGroups: [{ count: 1 }] }] } } }), { status: 200 }));
 	assert.equal(invalid.available, false);
+});
+
+test('reach cache deduplicates exact provider scopes, expires, and retries errors', async () => {
+	let now = Date.parse('2026-09-29T20:00:00Z');
+	let calls = 0;
+	const cache = createProviderCache({ ttlMs: 100, maxEntries: 8, maxInFlight: 4, maxBytes: 50_000, now: () => now });
+	const validPayload = { data: { viewer: { accounts: [{ rumPageloadEventsAdaptiveGroups: [] }] } } };
+	const fetcher = async () => { calls += 1; await Promise.resolve(); return new Response(JSON.stringify(validPayload), { status: 200 }); };
+	const options = { cache, now: () => now };
+	await Promise.all([
+		loadSiteTraffic(7, 'a'.repeat(32), 'token-a', fetcher, options),
+		loadSiteTraffic(7, 'a'.repeat(32), 'token-a', fetcher, options)
+	]);
+	assert.equal(calls, 2);
+	await loadSiteTraffic(7, 'b'.repeat(32), 'token-a', fetcher, options);
+	await loadSiteTraffic(7, 'a'.repeat(32), 'token-b', fetcher, options);
+	await loadSiteTraffic(30, 'a'.repeat(32), 'token-a', fetcher, options);
+	assert.equal(calls, 8);
+	now += 101;
+	await loadSiteTraffic(7, 'a'.repeat(32), 'token-a', fetcher, options);
+	assert.equal(calls, 10);
+
+	let retryCalls = 0;
+	const retryCache = createProviderCache({ ttlMs: 100, maxEntries: 2, maxInFlight: 2, maxBytes: 10_000 });
+	const retryFetcher = async () => {
+		retryCalls += 1;
+		return new Response(JSON.stringify(retryCalls <= 2 ? { data: { viewer: { accounts: [{ rumPageloadEventsAdaptiveGroups: [{ count: 1 }] }] } } } : validPayload), { status: 200 });
+	};
+	assert.equal((await loadSiteTraffic(7, 'a'.repeat(32), 'retry-token', retryFetcher, { cache: retryCache, now: () => now })).available, false);
+	assert.equal((await loadSiteTraffic(7, 'a'.repeat(32), 'retry-token', retryFetcher, { cache: retryCache, now: () => now })).available, true);
+	assert.equal(retryCalls, 4);
+});
+
+test('Cloudflare reads receive an abort signal and report timeout as unavailable', async () => {
+	let abortedRequests = 0;
+	const controller = new AbortController();
+	controller.abort();
+	const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {
+		if (init?.signal?.aborted) abortedRequests += 1;
+		throw new DOMException('aborted', 'AbortError');
+	};
+	const result = await loadSiteTraffic(7, 'a'.repeat(32), 'test-token', fetcher, {
+		cache: null,
+		signalFactory: () => controller.signal
+	});
+	assert.equal(result.available, false);
+	assert.equal(abortedRequests, 2);
 });

@@ -1,8 +1,16 @@
 <script lang="ts">
 	import { getAnalyticsPreferences, saveAnalyticsPreferences, subscribeAnalyticsPreferences, type AnalyticsPreferenceState } from '$lib/analytics/visit';
+	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 
 	let preferences = $state<AnalyticsPreferenceState>(getAnalyticsPreferences());
+	let onReportHost = $state(false);
+	onMount(() => {
+		onReportHost = location.hostname === 'analytics.ninochavez.co';
+		if (onReportHost) return;
+		fetch(`${base}/api/analytics/preferences`, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(next => { saveAnalyticsPreferences(next); savedPreferences = getAnalyticsPreferences(); preferences = { ...savedPreferences }; reading = false; }).catch(() => { message = 'Could not read your saved choices. Please reload before changing them.'; });
+	});
+	let reading = $state(true);
 	let saving = $state(false);
 	let message = $state('');
 	let savedPreferences = $state<AnalyticsPreferenceState>(getAnalyticsPreferences());
@@ -34,8 +42,10 @@
 	<p class="eyebrow">Your choice</p>
 	<h2 id="analytics-preferences-title">Analytics preferences</h2>
 	<p>Linked analytics is optional. It uses random browser and visit IDs. Turning it off stops new linked collection and cancels queued exports. Records already being sent or stored by the provider are not automatically deleted.</p>
-	<label><input type="checkbox" bind:checked={preferences.linkedAnalytics} onchange={persist} disabled={saving} /> <span>Allow linked analytics</span></label>
-	<label><input type="checkbox" bind:checked={preferences.excludeThisBrowser} onchange={persist} disabled={saving} /> <span>Exclude this browser from audience analytics</span></label>
+	{#if onReportHost}<p><a href="https://ninochavez.co/photography/analytics-preferences" target="_blank" rel="noopener noreferrer">Set choices for ninochavez.co in this browser</a>. The report subdomain has separate cookies.</p>{:else}
+	<label><input type="checkbox" bind:checked={preferences.linkedAnalytics} onchange={persist} disabled={saving || reading} /> <span>Allow linked analytics</span></label>
+	<label><input type="checkbox" bind:checked={preferences.excludeThisBrowser} onchange={persist} disabled={saving || reading} /> <span>Exclude this browser from audience analytics</span></label>
+	{/if}
 	{#if message}<p class="status" aria-live="polite">{message}</p>{/if}
 </section>
 

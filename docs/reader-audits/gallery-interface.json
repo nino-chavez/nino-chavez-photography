@@ -1,12 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-29T21:21:45.316Z",
-  "reviewedBy": "Codex credential cleanup review",
-  "method": "Reviewed the credential-only server loader change against the read-only Account Analytics token contract; no rendered UI source changed. Prior desktop and phone visual review remains the UI baseline.",
-  "sourceDigest": "sha256:1ed8a05dc99ad9eeaf857466a5b7eacbaba70ca7693ff10517963ebc8cbd6342",
-  "sourceFiles": 148,
+  "reviewedAt": "2026-09-30T01:22:39.944Z",
+  "reviewedBy": "Codex parent rendered review",
+  "method": "Reviewed synthetic desktop and mobile gallery Photos and All-sites Actions captures. Observed server pagination, UTC cutoffs, stale-refresh notices and today counts separate from complete-day totals. A cold visual reviewer found ambiguous partial labels; the labels were corrected and new captures inspected. Prior unchanged sections retain their earlier review evidence. No live speed or real-user result is claimed.",
+  "sourceDigest": "sha256:3061e2eb77306829f11db8b8a519213ca1cacdc090f5569302e22a4369f59faa",
+  "sourceFiles": 151,
   "scope": [
-    "Cross-site server credential selection; prior desktop and phone report review preserved"
+    "Gallery report pagination",
+    "Site report UTC freshness and separate today counts",
+    "Desktop and mobile changed presentation"
   ]
 }

@@ -6,6 +6,8 @@
  */
 export const REPORT_TIME_ZONE = 'America/Chicago';
 export const REPORT_MEASURES = ['photo_opens', 'album_opens', 'downloads', 'favorites', 'shares'] as const;
+export const MAX_INTERACTIVE_REPORT_DAYS = 3_650;
+export const MAX_EXPORT_REPORT_DAYS = 3_650;
 export type ReportMeasure = (typeof REPORT_MEASURES)[number];
 export type MeasureTotals = Record<ReportMeasure, number | null>;
 export type TrafficMode = 'inclusive' | 'conservative';
@@ -146,6 +148,22 @@ export function comparisonWindow(query: ReportQuery): { start: string; end: stri
 	const start = query.compareStart ?? previousWindow(query).start;
 	const end = query.compareEnd ?? previousWindow(query).end;
 	return start <= end ? { start, end } : { start: end, end: start };
+}
+
+export type ReportRangeMode = 'interactive' | 'export' | 'evidence';
+
+/** Validate date work before any loop, RPC, or provider call begins. */
+export function assertReportDateBounds(query: ReportQuery, mode: ReportRangeMode = 'interactive'): void {
+	const limit = mode === 'interactive' ? MAX_INTERACTIVE_REPORT_DAYS : mode === 'export' ? MAX_EXPORT_REPORT_DAYS : MAX_EXPORT_REPORT_DAYS * 2;
+	const ranges = [{ label: 'primary', start: query.start, end: query.end }];
+	const comparison = comparisonWindow(query);
+	if (comparison) ranges.push({ label: 'comparison', ...comparison });
+	for (const range of ranges) {
+		const days = Math.floor((Date.parse(`${range.end}T12:00:00Z`) - Date.parse(`${range.start}T12:00:00Z`)) / 86_400_000) + 1;
+		if (!Number.isSafeInteger(days) || days < 1 || days > limit) {
+			throw new RangeError(`${range.label[0].toUpperCase()}${range.label.slice(1)} report range is ${days} days; ${mode} reports allow at most ${limit} days.`);
+		}
+	}
 }
 
 export function datesInclusive(start: string, end: string): string[] {

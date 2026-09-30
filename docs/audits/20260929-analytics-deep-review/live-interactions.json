@@ -1,0 +1,30 @@
+{
+  "scope": "Read-only live dashboard inspection; no preference or data writes",
+  "gallery": {
+    "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+    "mobileClientWidth": 378,
+    "mobileScrollWidth": 378,
+    "albumTableWidth": 315,
+    "albumTableScrollWidth": 992,
+    "initialRows": 12,
+    "matchingAlbums": 254,
+    "pageCount": 22,
+    "nextPageObserved": 2,
+    "searchResetsPage": true,
+    "browserBackRestoresAlbumsSection": true,
+    "albumRegionProgrammaticallyFocusableInCurrentChrome": true
+  },
+  "preferences": {
+    "host": "analytics.ninochavez.co",
+    "controlsEditable": true,
+    "mainDomainChoicesLinkPresent": false,
+    "browserWebdriver": false,
+    "publishedCookieDomain": "host-only; determined from deployed-commit source, no preference POST was performed"
+  },
+  "limits": [
+    "Mobile emulation, not a physical device or screen reader",
+    "Programmatic focus does not prove keyboard Tab reachability",
+    "Cloudflare reach may count these inspection visits; no preference was changed to conceal the review"
+  ],
+  "recordedAt": "2026-09-29T23:30:21.716692+00:00"
+}

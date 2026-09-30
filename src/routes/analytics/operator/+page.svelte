@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { goto } from '$app/navigation';
+ import { page, navigating } from '$app/state';
+ import { reportPath } from '$lib/analytics/report-paths';
 	import { Download, Filter, Images, List, Save, Search, Share2, ShieldCheck, TrendingUp, X } from 'lucide-svelte';
 	import { tick, untrack, onMount } from 'svelte';
 	import AnalyticsTrend from '$lib/components/analytics/AnalyticsTrend.svelte';
@@ -17,43 +20,48 @@
 		{ id: 'photos', label: 'Photos' }, { id: 'sources', label: 'Sources' },
 		{ id: 'measurement', label: 'Measurement' }, { id: 'analytics-preferences', label: 'Preferences' }
 	];
-	let activeSection = $state<Section>('overview');
+	let activeSection = $state<Section>(untrack(() => data.section));
 	let mobileFiltersOpen = $state(false);
 	function sectionFromHash(hash: string): Section {
 		const requested = hash.slice(1);
 		return sections.find((section) => section.id === requested)?.id ?? 'overview';
 	}
+	function sectionHref(section: Section) {
+		return `${reportHref({ section })}#${section}`;
+	}
 	function openSection(section: Section) {
-		activeSection = section;
-		history.pushState(null, '', `${location.pathname}${location.search}#${section}`);
-		window.scrollTo({ top: 0, behavior: 'instant' });
+		void goto(sectionHref(section), { keepFocus: true, noScroll: false });
 	}
 
 	const report = $derived(data.report);
 	const sourceJourney = $derived(data.journeys.find((journey) => journey.report === 'sources_return'));
-	let interactive = $state(false);
+	let hydrated = $state(false);
+	const interactive = $derived(hydrated && !navigating.to);
 	let selectedAlbumKey = $state<string | null>(null);
 	onMount(()=>{
-		interactive=true;
+		hydrated=true;
 		selectedAlbumKey = sessionStorage.getItem('analytics:selected-album');
 		photoView = (sessionStorage.getItem('analytics:photo-view') as 'images' | 'table' | null) ?? 'images';
-		const syncSection = () => { activeSection = sectionFromHash(location.hash); };
-		syncSection();
-		window.addEventListener('hashchange', syncSection);
-		window.addEventListener('popstate', syncSection);
-		return () => {
-			window.removeEventListener('hashchange', syncSection);
-			window.removeEventListener('popstate', syncSection);
-		};
-	});
+			try {
+				const storedShortlist = JSON.parse(sessionStorage.getItem('analytics:photo-shortlist') ?? '[]');
+				shortlist = Array.isArray(storedShortlist) ? storedShortlist.filter((value): value is string => typeof value === 'string').slice(0, 500) : [];
+			} catch {
+				shortlist = [];
+			}
+			const legacySection = sectionFromHash(location.hash);
+			if (!page.url.searchParams.has('section') && legacySection !== 'overview') {
+				void goto(sectionHref(legacySection), { replaceState: true, keepFocus: true, noScroll: true });
+			} else if (data.section === 'photos' && page.url.searchParams.get('photo_page') !== String(data.report.photoPagination?.page ?? 0)) {
+				void goto(`${reportHref({ section: 'photos', photo_page: String(data.report.photoPagination?.page ?? 0), photo_rank: data.report.photoPagination?.rank ?? 'popular' })}#photos`, { replaceState: true, keepFocus: true, noScroll: true });
+			}
+		});
 	let shortlist = $state<string[]>([]);
-	let photoPage = $state(0);
-	const photoPageSize = 12;
+	let photoPage = $state(untrack(() => data.report.photoPagination?.page ?? 0));
 	let albumPage = $state(0);
 	const albumPageSize = 12;
 	let impactPage = $state(0);
 	const impactPageSize = 12;
-	let photoRank = $state<'popular' | 'rising' | 'recent'>('popular');
+	let photoRank = $state<'popular' | 'rising' | 'recent'>(untrack(() => data.report.photoPagination?.rank ?? 'popular'));
 	let photoView = $state<'images' | 'table'>('images');
 	let selectedPhoto = $state<PhotoResult | null>(null);
 	let photoTrigger: HTMLElement | null = null;
@@ -65,7 +73,15 @@
 	let compareMode = $state(untrack(()=>data.report.query.compare));
 	let columns = $state({ album: true, current: true, previous: true, change: true, latest: true, identity: true });
 
-	$effect(()=>{const query=data.report.query;selectedAlbums=query.scope==='all'?[]:[...query.albumKeys];period=initialPeriod(query.start,query.end);compareMode=query.compare;photoPage=0;selectedPhoto=null;shortlist=[];if (!data.report.rising.available && photoRank === 'rising') photoRank='popular';});
+	$effect(()=>{
+		const query=data.report.query;
+		const requestedPage=Math.max(0,Number.parseInt(page.url.searchParams.get('photo_page')??'0',10)||0);
+		const requestedRank=page.url.searchParams.get('photo_rank');
+		selectedAlbums=query.scope==='all'?[]:[...query.albumKeys];period=initialPeriod(query.start,query.end);compareMode=query.compare;activeSection=data.section;
+		photoPage=data.section==='photos' ? data.report.photoPagination?.page??0 : requestedPage;
+		photoRank=data.section==='photos' ? data.report.photoPagination?.rank??'popular' : requestedRank==='rising'||requestedRank==='recent'?requestedRank:'popular';
+		selectedPhoto=null;
+	});
 	const filteredAlbumChoices = $derived(data.albumCatalogue.filter((album) =>
 		!albumSearch.trim() || (album.album_name ?? album.album_key).toLowerCase().includes(albumSearch.trim().toLowerCase())
 	).slice(0, 80));
@@ -84,15 +100,14 @@
 		...(report.query.albumEventType ? { event_type: report.query.albumEventType } : {}),
 		compare: report.query.compare,
 		...(report.query.compareStart ? { compare_start: report.query.compareStart } : {}),
-		...(report.query.compareEnd ? { compare_end: report.query.compareEnd } : {})
-	}).toString());
-	const sortedPhotos = $derived([...report.photos].sort((a, b) => photoRank === 'recent'
-		? (b.lastActivity ?? '').localeCompare(a.lastActivity ?? '') || (b.count ?? -1) - (a.count ?? -1)
-		: photoRank === 'rising'
-			? (b.risingValue ?? Number.NEGATIVE_INFINITY) - (a.risingValue ?? Number.NEGATIVE_INFINITY) || (b.count ?? -1) - (a.count ?? -1)
-			: (b.count ?? -1) - (a.count ?? -1)));
-	const visiblePhotos = $derived(sortedPhotos.slice(photoPage * photoPageSize, (photoPage + 1) * photoPageSize));
-	const photoPageCount = $derived(Math.max(1, Math.ceil(sortedPhotos.length / photoPageSize)));
+			...(report.query.compareEnd ? { compare_end: report.query.compareEnd } : {}),
+			section: data.section,
+			photo_page: String(data.section === 'photos' ? data.report.photoPagination?.page ?? 0 : Math.max(0, Number.parseInt(page.url.searchParams.get('photo_page') ?? '0', 10) || 0)),
+			photo_rank: data.section === 'photos' ? data.report.photoPagination?.rank ?? 'popular' : page.url.searchParams.get('photo_rank') === 'rising' || page.url.searchParams.get('photo_rank') === 'recent' ? page.url.searchParams.get('photo_rank')! : 'popular'
+		}).toString());
+		const visiblePhotos = $derived(report.photos);
+		const photoPageCount = $derived(Math.max(1, report.photoPagination?.pageCount ?? 0));
+		const photoTotal = $derived(report.photoPagination?.total ?? report.photos.length);
  const albumRows = $derived(report.albums.map(current=>{
   const album=data.albumCatalogue.find(album=>album.album_key===current.albumKey);
   return {key:current.albumKey,name:album?.album_name ?? current.albumKey,photoCount:Number(album?.photo_count ?? 0),visibility:album?.visibility ?? 'unknown',publishedAt:album?.published_at ?? null,...current};
@@ -137,9 +152,10 @@
 	}
 	function toggleShortlist(photoId: string) {
 		shortlist = shortlist.includes(photoId) ? shortlist.filter((id) => id !== photoId) : [...shortlist, photoId];
+		if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('analytics:photo-shortlist', JSON.stringify(shortlist));
 	}
 	function shortlistExportUrl() {
-		return `${base}/analytics/operator/export.csv?${queryString}&shortlist=${encodeURIComponent(shortlist.join(','))}`;
+		return `${reportPath(page.url.hostname, 'gallery', '/export.csv')}?${queryString}&shortlist=${encodeURIComponent(shortlist.join(','))}`;
 	}
 	function reportHref(overrides: Record<string, string>) {
 		const params = new URLSearchParams(queryString);
@@ -166,7 +182,8 @@
 			if (Array.isArray(value)) params.set(key, value.join(','));
 			else if (typeof value === 'string') params.set(key, value);
 		}
-		return `?${params.toString()}#sources`;
+			params.set('section', 'sources');
+			return `?${params.toString()}#sources`;
 	}
 	function formatDate(value: string | null | undefined) {
 		if (!value) return 'No recorded activity';
@@ -220,10 +237,11 @@
 </svelte:head>
 
 
-<div aria-label="Gallery analytics workspace" class="analytics-workspace mx-auto min-w-0 max-w-[96rem] overflow-x-clip px-4 py-2 sm:py-5 sm:px-6 lg:px-8">
+{#if navigating.to}<p class="report-loading" role="status">Loading report…</p>{/if}
+<div aria-busy={!!navigating.to} aria-label="Gallery analytics workspace" class="analytics-workspace mx-auto min-w-0 max-w-[96rem] overflow-x-clip px-4 py-2 sm:py-5 sm:px-6 lg:px-8">
 	<div class="workspace-masthead">
 		<div class="workspace-identity"><span class="workspace-mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="workspace-divider">/</span> Photography reports</span></div>
-		<div class="flex items-center gap-2"><a class="gallery-return" href={`${base}/analytics/sites`}>All sites</a><a class="gallery-return" href="https://ninochavez.co/photography/">View gallery <span aria-hidden="true">↗</span></a></div>
+		<div class="flex items-center gap-2"><a class="gallery-return" href={`${reportPath(page.url.hostname, 'sites')}`}>All sites</a><a class="gallery-return" href="https://ninochavez.co/photography/">View gallery <span aria-hidden="true">↗</span></a></div>
 	</div>
 	<header class="border-b border-charcoal-700 pb-2">
 		<div class="flex flex-wrap items-start justify-between gap-3">
@@ -236,14 +254,17 @@
 		</div>
 	</header>
 
-	<nav class="analytics-nav sticky top-0 z-20 -mx-4 flex flex-wrap gap-1 border-b border-charcoal-800 bg-charcoal-950/95 px-4 py-1 backdrop-blur sm:mx-0 sm:px-0" aria-label="Analytics sections">
-		{#each sections as section}
-			<button class="section-link" class:section-active={activeSection === section.id} type="button" aria-current={activeSection === section.id ? 'page' : undefined} onclick={() => openSection(section.id)}>{section.label}</button>
-		{/each}
-	</nav>
+		<nav class="analytics-nav sticky top-0 z-20 -mx-4 flex flex-wrap gap-1 border-b border-charcoal-800 bg-charcoal-950/95 px-4 py-1 backdrop-blur sm:mx-0 sm:px-0" aria-label="Analytics sections">
+			{#each sections as section}
+				<a class="section-link" class:section-active={activeSection === section.id} href={sectionHref(section.id)} aria-current={activeSection === section.id ? 'page' : undefined}>{section.label}</a>
+			{/each}
+		</nav>
 
 	<div class="mobile-filter-bar"><span>{report.query.scope === 'all' ? 'All albums' : report.query.albumKeys.length === 1 ? 'One album' : `${report.query.albumKeys.length} albums`} · {displayMeasure(report.query.measure)}{activeFilterCount ? ` · ${activeFilterCount} active` : ''}</span><button type="button" aria-expanded={mobileFiltersOpen} aria-controls="report-filters" onclick={() => (mobileFiltersOpen = !mobileFiltersOpen)}>{mobileFiltersOpen ? 'Hide filters' : 'Filters'}</button></div>
-	<form id="report-filters" method="GET" action={`#${activeSection}`} class="report-controls mt-2" class:mobile-open={mobileFiltersOpen} aria-label="Report filters">
+		<form id="report-filters" method="GET" action={`#${activeSection}`} class="report-controls mt-2" class:mobile-open={mobileFiltersOpen} aria-label="Report filters">
+			<input disabled={!interactive} type="hidden" name="section" value={activeSection} />
+			<input disabled={!interactive} type="hidden" name="photo_page" value="0" />
+			<input disabled={!interactive} type="hidden" name="photo_rank" value={photoRank} />
 		<div class="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-[minmax(14rem,1.4fr)_minmax(9rem,.7fr)_minmax(10rem,.8fr)_auto]">
 			<div class="album-picker-wrap report-field col-span-2 min-w-0 md:col-span-1">
 				<span class="filter-label">Albums</span>
@@ -286,7 +307,7 @@
 				{#if compareMode === 'custom'}<label class="report-field">Comparison starts<input disabled={!interactive} class="control" type="date" name="compare_start" value={report.query.compareStart ?? report.previous.start} /></label><label class="report-field">Comparison ends<input disabled={!interactive} class="control" type="date" name="compare_end" value={report.query.compareEnd ?? report.previous.end} /></label>{/if}
 			</div>
 		</details>
-		<div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-charcoal-400"><span>America/Chicago</span><a class="text-link" href={`${base}/analytics/operator`}>Reset all filters</a></div>
+		<div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-charcoal-400"><span>America/Chicago</span><a class="text-link" href={`${reportPath(page.url.hostname, 'gallery')}`}>Reset all filters</a></div>
 	</form>
  {#if activeFilters}<p class="mt-3 text-sm text-charcoal-300">{activeFilters}</p>{/if}
 
@@ -309,7 +330,7 @@
 
 			<div class="overview-trend">
 				<AnalyticsTrend points={report.daily} measureLabel={displayMeasure(report.query.measure)} />
-				<section class="legacy-trend panel min-w-0"><div class="panel-heading"><div><p class="eyebrow">Trend</p><h3>Daily activity</h3></div><button class="text-link" type="button" onclick={() => openSection('albums')}>See contributing albums</button></div>
+				<section class="legacy-trend panel min-w-0"><div class="panel-heading"><div><p class="eyebrow">Trend</p><h3>Daily activity</h3></div><a class="text-link" href={sectionHref('albums')}>See contributing albums</a></div>
 					{#if report.daily.length}<div class="chart-wrap"><ol class="daily-chart" style={`grid-template-columns:repeat(${report.daily.length},minmax(1.8rem,1fr))}`} aria-label="Daily activity chart">{#each report.daily as day}<li class="min-w-0"><div class="flex h-32 items-end" title={`${day.date}: ${day.count === null ? `${day.coverage} coverage` : day.count}`}><div class:opacity-30={day.count === null} class="w-full rounded-t bg-gold-500/70" style={`height:${day.count === null ? 6 : Math.max(6, Math.round((day.count / Math.max(1, ...report.daily.map((item) => item.count ?? 0))) * 100))}%`}></div></div><span class="mt-1 block truncate text-[10px] text-charcoal-400">{day.date.slice(5)}</span><span class="block text-xs text-charcoal-200">{day.count === null ? '—' : day.count}</span></li>{/each}</ol></div>
 						<details class="mt-4"><summary class="text-link cursor-pointer">Read as a table</summary><p class="table-hint">Scroll sideways for every column. The first column stays visible.</p><div tabindex="-1" role="region" aria-label="Scrollable analytics table" class="table-wrap mt-2"><table><thead><tr><th>Date</th><th class="numeric">Count</th><th>Coverage</th><th>Sharing context</th></tr></thead><tbody>{#each report.daily as day}<tr><td>{formatDate(day.date)}</td><td class="numeric">{day.count ?? '—'}</td><td class="capitalize">{day.coverage}</td><td>{data.annotations.filter(note=>note.activity_date===day.date).map(note=>`${note.channel}: ${note.note}`).join('; ') || '—'}</td></tr>{/each}</tbody></table></div></details>
 					{:else}<p class="empty-copy">No daily source is available for this report.</p>{/if}
@@ -321,14 +342,14 @@
 			</div></div>
 			<div class="overview-next">
 				<section class="panel overview-ranking" aria-labelledby="leading-albums-title">
-					<div class="panel-heading"><div><p class="eyebrow">Compare</p><h3 id="leading-albums-title">Albums getting attention</h3></div><button class="text-link" type="button" onclick={() => openSection('albums')}>All albums</button></div>
+					<div class="panel-heading"><div><p class="eyebrow">Compare</p><h3 id="leading-albums-title">Albums getting attention</h3></div><a class="text-link" href={sectionHref('albums')}>All albums</a></div>
 					<p class="overview-caption">Ranked by recorded {displayMeasure(report.query.measure).toLowerCase()} in this period.</p>
 					{#if leadingAlbums.length}<ol class="overview-albums">{#each leadingAlbums as album, index}<li><span class="rank-number">{index + 1}</span><button type="button" onclick={() => { selectAlbum(album); openSection('albums'); }}><strong>{album.name}</strong><span>{album.photoCount.toLocaleString()} photos · inspect album</span></button><strong class="rank-count">{album.count?.toLocaleString()}</strong></li>{/each}</ol>{:else}<p class="empty-copy">No album activity is available for this selection.</p>{/if}
 				</section>
 				<section class="panel overview-ranking" aria-labelledby="leading-photos-title">
-					<div class="panel-heading"><div><p class="eyebrow">Discover</p><h3 id="leading-photos-title">Photos drawing attention</h3></div><button class="text-link" type="button" onclick={() => openSection('photos')}>Explore photos</button></div>
+					<div class="panel-heading"><div><p class="eyebrow">Discover</p><h3 id="leading-photos-title">Photos drawing attention</h3></div><a class="text-link" href={sectionHref('photos')}>Explore photos</a></div>
 					<p class="overview-caption">These are response signals, not a rating of photographic quality.</p>
-					{#if leadingPhotos.length}<div class="overview-photos">{#each leadingPhotos as photo}<button type="button" onclick={() => { photoRank = 'popular'; photoPage = Math.max(0, Math.floor(sortedPhotos.findIndex((item) => item.photoId === photo.photoId) / photoPageSize)); openSection('photos'); }}><span class="overview-thumb">{#if photo.imageUrl}<img src={photo.imageUrl} alt="" />{:else}<span>No preview</span>{/if}</span><span class="overview-photo-copy"><strong>{data.albumCatalogue.find((album) => album.album_key === photo.albumKey)?.album_name ?? 'Gallery photo'}</strong><span>{photo.count?.toLocaleString()} recorded {displayMeasure(report.query.measure).toLowerCase()}</span></span></button>{/each}</div>{:else}<p class="empty-copy">No photo activity is available for this selection.</p>{/if}
+					{#if leadingPhotos.length}<div class="overview-photos">{#each leadingPhotos as photo}<a href={`${reportHref({ section: 'photos', photo_page: '0', photo_rank: 'popular' })}#photos`}><span class="overview-thumb">{#if photo.imageUrl}<img src={photo.imageUrl} alt="" />{:else}<span>No preview</span>{/if}</span><span class="overview-photo-copy"><strong>{data.albumCatalogue.find((album) => album.album_key === photo.albumKey)?.album_name ?? 'Gallery photo'}</strong><span>{photo.count?.toLocaleString()} recorded {displayMeasure(report.query.measure).toLowerCase()}</span></span></a>{/each}</div>{:else}<p class="empty-copy">No photo activity is available for this selection.</p>{/if}
 				</section>
 			</div>
 		</section>
@@ -349,13 +370,13 @@
 
 		{#if activeSection === 'photos'}
 		<section id="photos" class="panel mt-6 min-w-0 scroll-mt-20"><div class="panel-heading"><div><p class="eyebrow">Photos</p><h2>Popular, rising, and recently active</h2><p class="mt-1 text-sm text-charcoal-400">Ranked by {displayMeasure(report.query.measure).toLowerCase()} in the selected dates. Popularity measures audience response, not photography quality.</p></div><div class="flex flex-wrap gap-2"><button class="icon-toggle" class:active={photoView === 'images'} type="button" onclick={() => setPhotoView('images')}><Images class="size-4" /> Images</button><button class="icon-toggle" class:active={photoView === 'table'} type="button" onclick={() => setPhotoView('table')}><List class="size-4" /> Table</button></div></div>
-			<div class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="segmented" role="group" aria-label="Photo ranking"><button type="button" aria-pressed={photoRank === 'popular'} onclick={() => { photoRank = 'popular'; photoPage = 0; }}>Popular</button><button type="button" disabled={!report.rising.available} aria-pressed={photoRank === 'rising'} onclick={() => { photoRank = 'rising'; photoPage = 0; }}>Rising</button><button type="button" aria-pressed={photoRank === 'recent'} onclick={() => { photoRank = 'recent'; photoPage = 0; }}>Recently active</button></div><details><summary class="text-link cursor-pointer">Choose table columns</summary><div class="column-menu">{#each Object.entries(columns) as [key, shown]}<label><input disabled={!interactive} type="checkbox" checked={shown} onchange={() => (columns[key as keyof typeof columns] = !columns[key as keyof typeof columns])} /> {key}</label>{/each}</div></details></div>
+				<div class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="segmented" role="group" aria-label="Photo ranking"><a aria-current={photoRank === 'popular' ? 'page' : undefined} href={`${reportHref({ section: 'photos', photo_page: '0', photo_rank: 'popular' })}#photos`}>Popular</a>{#if report.rising.available}<a aria-current={photoRank === 'rising' ? 'page' : undefined} href={`${reportHref({ section: 'photos', photo_page: '0', photo_rank: 'rising' })}#photos`}>Rising</a>{:else}<span aria-disabled="true">Rising</span>{/if}<a aria-current={photoRank === 'recent' ? 'page' : undefined} href={`${reportHref({ section: 'photos', photo_page: '0', photo_rank: 'recent' })}#photos`}>Recently active</a></div><details><summary class="text-link cursor-pointer">Choose table columns</summary><div class="column-menu">{#each Object.entries(columns) as [key, shown]}<label><input disabled={!interactive} type="checkbox" checked={shown} onchange={() => (columns[key as keyof typeof columns] = !columns[key as keyof typeof columns])} /> {key}</label>{/each}</div></details></div>
 			{#if !report.rising.available}<p class="coverage-note">{report.rising.label}</p>{:else if report.rising.basis === 'daily_rate'}<p class="coverage-note">{report.rising.label}</p>{/if}
 			{#if visiblePhotos.length}
 				{#if photoView === 'images'}<div class="photo-grid mt-4">{#each visiblePhotos as photo}<article class:selected={shortlist.includes(photo.photoId)} class="photo-card"><button type="button" class="photo-inspect" disabled={!interactive} onclick={(event) => void openPhoto(photo, event.currentTarget)}>{#if photo.imageUrl}<img src={photo.imageUrl} alt={`Gallery preview for photo ${photo.photoId}`} />{:else}<span>No image available</span>{/if}<span class="photo-count">{countLabel(photo.count)}</span></button><div class="photo-card-details p-3"><div class="min-w-0"><p class="truncate text-sm text-charcoal-100">{data.albumCatalogue.find((album) => album.album_key === photo.albumKey)?.album_name ?? 'Album'}</p><p class="text-xs text-charcoal-400">{photoRank==='recent'?formatTime(photo.lastActivity):`${changeLabel(photo)} · previous ${photo.previousCount??'unavailable'}`}</p></div><label class="shortlist-check"><input disabled={!interactive} type="checkbox" checked={shortlist.includes(photo.photoId)} onchange={() => toggleShortlist(photo.photoId)} /><span>Shortlist</span></label></div></article>{/each}</div>
 				{:else}<p class="table-hint">Scroll sideways for every column. The first column stays visible.</p><div tabindex="-1" role="region" aria-label="Scrollable analytics table" class="table-wrap mt-4"><table><thead><tr><th>Photo</th>{#if columns.album}<th>Album</th>{/if}{#if columns.current}<th class="numeric">Current</th>{/if}{#if columns.previous}<th class="numeric">Previous</th>{/if}{#if columns.change}<th class="numeric">Change</th>{/if}{#if columns.latest}<th>Latest activity</th>{/if}</tr></thead><tbody>{#each visiblePhotos as photo}<tr class:selected={shortlist.includes(photo.photoId)}><td><button class="thumbnail-button" disabled={!interactive} type="button" aria-label={`Inspect ${photo.photoId}`} onclick={(event) => void openPhoto(photo, event.currentTarget)}>{#if photo.imageUrl}<img src={photo.imageUrl} alt="" />{:else}Inspect{/if}</button>{#if columns.identity}<p class="mt-1 font-mono text-xs">{photo.photoId}</p>{/if}<label class="shortlist-check"><input disabled={!interactive} type="checkbox" aria-label={`Add ${photo.photoId} to shortlist`} checked={shortlist.includes(photo.photoId)} onchange={() => toggleShortlist(photo.photoId)} /><span>Shortlist</span></label></td>{#if columns.album}<td>{data.albumCatalogue.find((album) => album.album_key === photo.albumKey)?.album_name ?? photo.albumKey}</td>{/if}{#if columns.current}<td class="numeric">{countLabel(photo.count)}</td>{/if}{#if columns.previous}<td class="numeric">{photo.previousCount??"Unavailable"}</td>{/if}{#if columns.change}<td class="numeric">{changeLabel(photo)}</td>{/if}{#if columns.latest}<td>{formatTime(photo.lastActivity)}</td>{/if}</tr>{/each}</tbody></table></div>{/if}
 			{:else}<p class="empty-copy">No photo actions match this report. Album-only actions are available in the album report and full export.</p>{/if}
-			<div class="mt-4 flex flex-wrap items-center gap-2"><button class="action-secondary" type="button" disabled={photoPage === 0} onclick={() => (photoPage -= 1)}>Previous</button><span class="text-sm text-charcoal-400">Page {photoPage + 1} of {photoPageCount}</span><button class="action-secondary" type="button" disabled={photoPage + 1 >= photoPageCount} onclick={() => (photoPage += 1)}>Next</button><a class="action-primary" href={`${base}/analytics/operator/export.csv?${queryString}`}><Download class="size-4" /> Export CSV · {report.query.measure==='album_opens'?report.albums.length.toLocaleString(): (report.photos.length+report.albumOnlyActions.length).toLocaleString()} rows</a>{#if shortlist.length}<a class="action-secondary" href={shortlistExportUrl()}><Download class="size-4" /> Shortlist CSV ({shortlist.length})</a>{/if}</div>
+				<div class="mt-4 flex flex-wrap items-center gap-2">{#if photoPage > 0}<a class="action-secondary" href={`${reportHref({ section: 'photos', photo_page: String(photoPage - 1), photo_rank: photoRank })}#photos`}>Previous</a>{:else}<span class="action-secondary" aria-disabled="true">Previous</span>{/if}<span class="text-sm text-charcoal-400">Page {photoPage + 1} of {photoPageCount}</span>{#if photoPage + 1 < photoPageCount}<a class="action-secondary" href={`${reportHref({ section: 'photos', photo_page: String(photoPage + 1), photo_rank: photoRank })}#photos`}>Next</a>{:else}<span class="action-secondary" aria-disabled="true">Next</span>{/if}<a class="action-primary" href={`${reportPath(page.url.hostname, 'gallery', '/export.csv')}?${queryString}`}><Download class="size-4" /> Export CSV · {report.query.measure==='album_opens'?report.albums.length.toLocaleString(): (photoTotal+report.albumOnlyActions.length).toLocaleString()} rows</a>{#if shortlist.length}<a class="action-secondary" href={shortlistExportUrl()}><Download class="size-4" /> Shortlist CSV ({shortlist.length})</a>{/if}</div>
 		</section>
 		{/if}
 
@@ -422,7 +443,8 @@
 <style>
 	/* Analytics is intentionally a light, data-first workspace. These local overrides do not alter the gallery theme. */
 	.analytics-workspace { background: #edf2f7; color: #172033; margin-inline: auto; min-height: 100%; }
-	.workspace-masthead { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .35rem 0 1.1rem; }
+	.report-loading {position:fixed;right:1rem;top:1rem;z-index:60;margin:0;padding:.6rem 1rem;border:1px solid #aab7c8;border-radius:.5rem;background:#fff;color:#174ea6;box-shadow:0 2px 8px #17203322;}
+	.workspace-masthead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: .35rem 0 1.1rem; }
 	.workspace-identity { display: inline-flex; align-items: center; gap: .6rem; min-width: 0; font-size: .82rem; font-weight: 700; color: #172033; }
 	.workspace-mark { display: inline-grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: .45rem; background: #174ea6; color: #fff; font-size: .7rem; letter-spacing: .02em; }
 	.workspace-divider { padding: 0 .2rem; color: #8c99aa; }
@@ -449,9 +471,9 @@
 	.analytics-workspace .answer-grid .answer-primary strong { color: #174ea6; }
 	.analytics-workspace .coverage-note { border-color: #1769e0; background: #e9f2ff; color: #243b5a; }
 	.analytics-workspace .segmented { border-color: #d8e0ea; }
-	.analytics-workspace .segmented button { color: #526176; }
-	.analytics-workspace .segmented button[aria-pressed='true'] { border-color: #1769e0; color: #174ea6; }
-	.analytics-workspace .segmented button:disabled { color: #8c99aa; cursor: not-allowed; }
+	.analytics-workspace .segmented :is(a,span) { color: #526176; }
+	.analytics-workspace .segmented a[aria-current='page'] { border-color: #1769e0; color: #174ea6; }
+	.analytics-workspace .segmented span[aria-disabled='true'] { color: #8c99aa; cursor: not-allowed; }
 	.analytics-workspace .photo-card, .analytics-workspace .table-wrap { background: #fff; border-color: #d8e0ea; }
 	.analytics-workspace .photo-inspect { background: #e8edf3; color: #526176; }
 	.analytics-workspace .photo-count { background: rgb(23 32 51 / .9); color: #fff; }
@@ -476,7 +498,7 @@
 	.control.pl-9 { padding-left:2.25rem; }
 	.report-field { display: grid; gap: .3rem; min-width: 0; font-size: .78rem; color: #b7beca; }
 	.eyebrow { font-size: .7rem; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; color: #e3b444; }
-	.section-link { min-height: 2.5rem; display: inline-flex; align-items: center; white-space: nowrap; border: 0; border-radius: .4rem; padding: 0 .7rem; background: transparent; color: #b7beca; cursor: pointer; font: inherit; font-size: .82rem; }
+	.section-link { min-height: 2.5rem; display: inline-flex; align-items: center; white-space: nowrap; border: 0; border-radius: .4rem; padding: 0 .7rem; background: transparent; color: #b7beca; cursor: pointer; font: inherit; font-size: .82rem; text-decoration: none; }
 	.section-link:hover, .section-link:focus-visible { background: #252a33; color: #f1f3f5; }
 	.analytics-workspace .section-link.section-active { background: #dce9fa; color: #174ea6; font-weight: 700; }
 	.result-pager { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; color: #526176; font-size: .875rem; }
@@ -510,8 +532,8 @@
 	.error-panel h2 { font-size: 1.1rem; font-weight: 650; }
 	.error-panel p { margin-top: .35rem; font-size: .85rem; }
 	.segmented { display: flex; overflow-x: auto; border-bottom: 1px solid #3d444f; }
-	.segmented button { min-height: 2.75rem; white-space: nowrap; border-bottom: 2px solid transparent; padding: .55rem .8rem; color: #9ea7b5; font-size: .82rem; }
-	.segmented button[aria-pressed='true'] { border-color: #e1ad36; color: #f1f3f5; }
+	.segmented :is(a,span) { display: inline-flex; min-height: 2.75rem; align-items: center; white-space: nowrap; border-bottom: 2px solid transparent; padding: .55rem .8rem; color: #9ea7b5; font-size: .82rem; text-decoration: none; }
+	.segmented a[aria-current='page'] { border-color: #e1ad36; color: #f1f3f5; }
 	.icon-toggle.active { border-color: #e1ad36; color: #efc65d; }
 	.column-menu { position: absolute; right: 1rem; z-index: 10; display: grid; gap: .5rem; margin-top: .4rem; border: 1px solid #49505c; border-radius: .55rem; background: #171a20; padding: .75rem; box-shadow: 0 14px 35px rgb(0 0 0 / .35); }
 	.photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
@@ -618,8 +640,8 @@
 	.analytics-workspace .overview-albums button span, .analytics-workspace .overview-photo-copy span { display: block; color: #526176; font-size: .72rem; }
 	.analytics-workspace .rank-count { color: #174ea6; font-size: .85rem; font-variant-numeric: tabular-nums; }
 	.analytics-workspace .overview-photos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .6rem; margin-top: .8rem; }
-	.analytics-workspace .overview-photos button { display: flex; min-width: 0; align-items: center; gap: .6rem; border: 1px solid #e8edf3; border-radius: .55rem; background: #fff; padding: .4rem; color: #172033; text-align: left; cursor: pointer; }
-	.analytics-workspace .overview-photos button:hover, .analytics-workspace .overview-photos button:focus-visible { border-color: #1769e0; background: #f4f8ff; }
+	.analytics-workspace .overview-photos a { display: flex; min-width: 0; align-items: center; gap: .6rem; border: 1px solid #e8edf3; border-radius: .55rem; background: #fff; padding: .4rem; color: #172033; text-align: left; text-decoration: none; cursor: pointer; }
+	.analytics-workspace .overview-photos a:hover, .analytics-workspace .overview-photos a:focus-visible { border-color: #1769e0; background: #f4f8ff; }
 	.analytics-workspace .overview-thumb { width: 3.6rem; height: 3.6rem; flex: none; overflow: hidden; border-radius: .35rem; background: #e8edf3; font-size: .65rem; color: #526176; }
 	.analytics-workspace .overview-thumb img { width: 100%; height: 100%; object-fit: cover; }
 	.analytics-workspace .overview-photo-copy { min-width: 0; }

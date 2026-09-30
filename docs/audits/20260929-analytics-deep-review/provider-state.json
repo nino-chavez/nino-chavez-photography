@@ -1,0 +1,127 @@
+{
+  "checkedAt": "2026-09-29T23:09:25.027393+00:00",
+  "cloudflare": {
+    "pages": {
+      "status": 200,
+      "success": true,
+      "source": {
+        "type": "github",
+        "config": {
+          "owner": "nino-chavez",
+          "owner_id": "12718755",
+          "repo_name": "nino-chavez-photography",
+          "repo_id": "1079305678",
+          "production_branch": "main",
+          "pr_comments_enabled": true,
+          "deployments_enabled": true,
+          "production_deployments_enabled": true,
+          "preview_deployment_setting": "custom",
+          "preview_branch_includes": [],
+          "preview_branch_excludes": [
+            "*"
+          ],
+          "path_includes": [
+            "*"
+          ],
+          "path_excludes": []
+        }
+      },
+      "production_branch": "main",
+      "domains": [
+        "nino-chavez-photography.pages.dev",
+        "analytics.ninochavez.co"
+      ],
+      "bindingNames": [
+        "ADMIN_EMAILS",
+        "ANALYTICS_IDENTITY_BINDING_SECRET",
+        "ANALYTICS_POSTHOG_SCHEDULE_TOKEN",
+        "CF_IMAGES_API_TOKEN",
+        "CF_STREAM_API_TOKEN",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "CLOUDFLARE_ANALYTICS_TOKEN",
+        "GOOGLE_API_KEY",
+        "NODE_VERSION",
+        "OPENROUTER_API_KEY",
+        "POSTHOG_PROJECT_API_KEY",
+        "POSTHOG_QUERY_API_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "VITE_CF_STREAM_SUBDOMAIN",
+        "VITE_SUPABASE_ANON_KEY",
+        "VITE_SUPABASE_URL",
+        "ZIP_SIGNING_SECRET"
+      ]
+    },
+    "deployments": {
+      "status": 200,
+      "success": true,
+      "deployments": [
+        {
+          "id": "ba2c47f6-cd97-40af-a603-8e85bd0e10c7",
+          "created_on": "2026-09-29T21:34:49.635378Z",
+          "status": "success",
+          "commit": "628dccff6d0df40a2c61bbc9b05dd001c502c71c"
+        },
+        {
+          "id": "0b9b28c3-9658-412e-aec7-77a810ba35a5",
+          "created_on": "2026-09-29T21:33:45.785673Z",
+          "status": "idle",
+          "commit": "c1f65decfbf43cdaa955c1fe8272a592580e386f"
+        },
+        {
+          "id": "8a39c89f-b369-4534-bfdb-4a90a6e74357",
+          "created_on": "2026-09-29T20:34:59.83881Z",
+          "status": "success",
+          "commit": "500cab5bd5727c3d2daec83432874b4a5a1f3b02"
+        }
+      ]
+    },
+    "relay": {
+      "status": 404
+    },
+    "relay_schedules": {
+      "status": 404
+    },
+    "profile_worker": {
+      "status": 200,
+      "success": true,
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets",
+          "text": null
+        },
+        {
+          "name": "COVERAGE_DB",
+          "type": "d1",
+          "text": null
+        },
+        {
+          "name": "COVERAGE_EMAIL",
+          "type": "send_email",
+          "text": null
+        },
+        {
+          "name": "COVERAGE_LIMIT",
+          "type": "ratelimit",
+          "text": null
+        },
+        {
+          "name": "COVERAGE_NOTIFY_TO",
+          "type": "plain_text",
+          "text": null
+        },
+        {
+          "name": "IMAGES",
+          "type": "images",
+          "text": null
+        },
+        {
+          "name": "SITE_VISIBILITY",
+          "type": "plain_text",
+          "text": null
+        }
+      ],
+      "placement": {}
+    }
+  }
+}

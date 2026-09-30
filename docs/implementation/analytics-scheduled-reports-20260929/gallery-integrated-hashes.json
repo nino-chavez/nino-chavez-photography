@@ -1,0 +1,8 @@
+{
+  "src/lib/analytics/operator-report.server.ts": "0eab690cf30f6ccab669f29f604e82ae283dd7123753dfa11cbeb8832f34f108",
+  "src/lib/analytics/operator-report.test.ts": "390fdb4ee1eb3a3944b030a5029d5746696eb9566a89cc833caa9b7b499be146",
+  "src/lib/analytics/scheduled-gallery-report.server.ts": "24715c88c12a1bb54ab754c9cc32587ac16b39f9290dc3871950ababf9a9d399",
+  "supabase/migrations/20260930004554_analytics_scheduled_gallery_reports.sql": "d29cb6f0f8dc001be5ed7e35921aa08cbb4d58137974dbada1fb7e3ffcfe4577",
+  "supabase/rehearsal/scheduled-gallery-assertions.sql": "3d3ec142b24791a6f9ee06dbe4c227b2280b3a9e3c6083d7a0043bffcb451fc6",
+  "docs/implementation/analytics-scheduled-reports-20260929/GALLERY.md": "d3bc233074439ee408e7418853f3d42d1d196be15c5c16468fb2315a6ab624e1"
+}

@@ -1,0 +1,1 @@
+{"localOnly": true, "rolledBack": true, "expiredRawEvent": true, "orphanedIdentifyingOutboxRows": 1, "negativeControl": "queued export existed before pruning"}

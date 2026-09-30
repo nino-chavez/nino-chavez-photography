@@ -32,6 +32,7 @@
  */
 
 import type { Handle } from '@sveltejs/kit';
+import { ANALYTICS_HOST, cleanReportPath, isReportHost } from '$lib/analytics/report-paths';
 
 const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
@@ -46,14 +47,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// No manual session handling needed
 	const { hostname, pathname, search } = event.url;
 	const analyticsPath = '/photography/analytics';
-	const analyticsHome = `${analyticsPath}/operator`;
 	const isAnalyticsRoute = pathname === analyticsPath || pathname.startsWith(`${analyticsPath}/`);
-	const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+	const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost');
 	let response: Response;
-	if (isAnalyticsRoute && hostname !== 'analytics.ninochavez.co' && !isLocal) {
-		const destination = pathname === analyticsPath ? analyticsHome : pathname;
+	const cleanPath = cleanReportPath(pathname);
+	if (isReportHost(hostname) && pathname === '/') {
+		response = analyticsRedirect(`/sites${search}`);
+	} else if (isAnalyticsRoute && ((!isLocal && hostname !== ANALYTICS_HOST) || (isReportHost(hostname) && cleanPath))) {
+		const destination = cleanPath ?? pathname;
 		response = event.request.method === 'GET' || event.request.method === 'HEAD'
-			? analyticsRedirect(`https://analytics.ninochavez.co${destination}${search}`)
+			? analyticsRedirect(`${isLocal ? event.url.origin : `https://${ANALYTICS_HOST}`}${destination}${search}`)
 			: new Response('Analytics actions must use analytics.ninochavez.co.', { status: 404 });
 	} else {
 		response = await resolve(event);

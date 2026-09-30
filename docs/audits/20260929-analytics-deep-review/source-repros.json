@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "movedUnlistedPhoto": {
+    "negativeControlVisible": 1,
+    "hiddenCurrentAlbumStillExposed": 1,
+    "previewStillExposed": true
+  },
+  "immutableContext": {
+    "operatorCorrectedToAudienceCount": 1
+  },
+  "collector": {
+    "preferencesBeforeReadyPageViews": 1,
+    "readyBeforePreferencesPageViews": 0
+  },
+  "unboundedCustomRangeDays": 2463
+}

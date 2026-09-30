@@ -10,7 +10,7 @@ if (!runtime.API_URL || !runtime.ANON_KEY || !runtime.SERVICE_ROLE_KEY) throw ne
 if (!['127.0.0.1', 'localhost'].includes(new URL(runtime.API_URL).hostname)) throw new Error('refusing non-loopback Supabase API');
 const host = process.env.ANALYTICS_DEV_HOST ?? '127.0.0.1';
 const port = process.env.ANALYTICS_DEV_PORT ?? '5187';
-if (!['127.0.0.1', 'localhost', 'analytics-review.localhost'].includes(host)) throw new Error('refusing non-loopback dev host');
+if (!['127.0.0.1', 'localhost', 'analytics-review.localhost', 'site-actions.localhost'].includes(host)) throw new Error('refusing non-loopback dev host');
 if (!/^\d{4,5}$/.test(port) || Number(port) > 65535) throw new Error('invalid dev port');
 const child = spawn('npm', ['run', 'dev', '--', '--host', host, '--port', port, '--strictPort'], {
 	cwd: root,

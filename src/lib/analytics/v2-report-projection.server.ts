@@ -56,6 +56,7 @@ export interface V2CoverageBounds {
 }
 
 const labels: Record<PostHogEventName, string> = {
+	site_page_viewed: 'Site pages viewed', site_link_clicked: 'Site links clicked', content_progressed: 'Reading progress signals', content_active_time: 'Active reading time signals', demo_section_viewed: 'Demo sections reached',
 	gallery_page_viewed: 'Gallery pages viewed', album_exposed: 'Albums exposed', album_opened: 'Albums opened',
 	photo_exposed: 'Photos exposed', photo_opened: 'Photos opened', photo_rendered: 'Photos rendered', photo_load_failed: 'Photo loads failed',
 	favorite_added: 'Favorites added', favorite_removed: 'Favorites removed', share_action: 'Share actions (all outcomes)',
@@ -87,9 +88,13 @@ type CountableObservation = {
 };
 
 function rawObservation(row: V2ReportEvent): CountableObservation {
+	const original = row.traffic_context;
+	const effective = original === 'audience'
+		? row.classification ?? original
+		: original;
 	return {
 		eventName: row.event_name, date: dateOnly(new Date(row.occurred_at)), albumKey: row.album_key,
-		photoId: row.photo_id, trafficContext: (row.classification ?? row.traffic_context) as CountableObservation['trafficContext'], dimensions: row.properties, count: 1
+		photoId: row.photo_id, trafficContext: effective as CountableObservation['trafficContext'], dimensions: row.properties, count: 1
 	};
 }
 
@@ -105,6 +110,7 @@ function dimension(row: CountableObservation, key: string): string | null {
 }
 
 function matchesScope(row: CountableObservation, query: ReportQuery, publicAlbumKeys: Set<string>): boolean {
+	if (row.eventName.startsWith('site_') || row.eventName.startsWith('content_') || row.eventName === 'demo_section_viewed') return false;
 	// A photo without an album cannot be checked against current visibility, so it cannot enter public output.
 	if (row.photoId && !row.albumKey) return false;
 	if (row.albumKey && !publicAlbumKeys.has(row.albumKey)) return false;
@@ -166,16 +172,16 @@ export function buildV2ReportProjection(
 	return {
 		available: true,
 		coverage: { start: query.start, end: query.end, ...bounds, label: coverageLabel(bounds) },
-		counts: [...POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: counts.get(event) ?? 0 })), ...[...shareOutcomes.values()].map((outcome) => ({event: 'share_action' as const, ...outcome}))]
+		counts: [...POSTHOG_EVENT_NAMES.filter((event) => !event.startsWith('site_') && !event.startsWith('content_') && event !== 'demo_section_viewed').map((event) => ({ event, label: labels[event], count: counts.get(event) ?? 0 })), ...[...shareOutcomes.values()].map((outcome) => ({event: 'share_action' as const, ...outcome}))]
 	};
 }
 
-export function unavailableV2ReportProjection(query: ReportQuery): V2ReportProjection {
+export function unavailableV2ReportProjection(query: ReportQuery, label = 'Version-2 observations could not be read. This is not a zero-result or complete-coverage report.'): V2ReportProjection {
 	return {
 		available: false,
 		coverage: {
 			start: query.start, end: query.end, firstRecordedAt: null, rawRetainedFrom: null, archivedFrom: null, archivedThrough: null,
-			label: 'Version-2 observations could not be read. This is not a zero-result or complete-coverage report.'
+			label
 		},
 		counts: POSTHOG_EVENT_NAMES.map((event) => ({ event, label: labels[event], count: 0 }))
 	};
@@ -189,6 +195,27 @@ async function readAll<T>(page: (from: number) => PromiseLike<{ data: T[] | null
 		rows.push(...(data ?? []));
 		if ((data ?? []).length < 1000) return rows;
 	}
+}
+
+/** Classification history is private and identifier-bearing; read it only for raw events already selected for this projection. */
+export async function fetchLatestV2Classifications(client: SupabaseClient, eventIds: readonly string[]): Promise<Map<string, string>> {
+	const ids = [...new Set(eventIds.filter(Boolean))];
+	const batches = Array.from({ length: Math.ceil(ids.length / 100) }, (_, index) => ids.slice(index * 100, index * 100 + 100));
+	const rows: Array<{ event_id: string; classification: string; classification_version?: number }> = [];
+	let next = 0;
+	await Promise.all(Array.from({ length: Math.min(4, batches.length) }, async () => {
+		while (next < batches.length) {
+			const batch = batches[next++];
+			rows.push(...await readAll((from) => client.from('analytics_event_v2_classifications')
+				.select('event_id, classification, classification_version').in('event_id', batch)
+				.order('event_id').order('classification_version', { ascending: false }).range(from, from + 999)));
+		}
+	}));
+	const latest = new Map<string, string>();
+	for (const row of rows.sort((a, b) => a.event_id.localeCompare(b.event_id) || Number(b.classification_version ?? 0) - Number(a.classification_version ?? 0))) {
+		if (!latest.has(row.event_id)) latest.set(row.event_id, row.classification);
+	}
+	return latest;
 }
 
 /** Reads raw and archive sources server-side; raw and archive buckets are disjoint by migration contract. */
@@ -210,10 +237,7 @@ export async function fetchV2ReportProjection(client: SupabaseClient, query: Rep
 			client.from('analytics_v2_archived_totals').select('bucket_date').order('bucket_date', { ascending: false }).limit(1)
 		]);
 		if (rawStart.error || archiveStart.error || archiveEnd.error) throw rawStart.error ?? archiveStart.error ?? archiveEnd.error;
-		const classificationRows = await readAll<{ event_id: string; classification: string }>((from) => client.from('analytics_event_v2_classifications')
-			.select('event_id, classification').order('event_id').order('classification_version', { ascending: false }).range(from, from + 999));
-		const latestClassification = new Map<string, string>();
-		for (const row of classificationRows) if (!latestClassification.has(row.event_id)) latestClassification.set(row.event_id, row.classification);
+		const latestClassification = await fetchLatestV2Classifications(client, rawRows.flatMap((row) => row.event_id ? [row.event_id] : []));
 		for (const row of rawRows) row.classification = row.event_id ? latestClassification.get(row.event_id) ?? null : null;
 		const rawRetainedFrom = rawStart.data?.[0]?.occurred_at ?? null;
 		const archivedFrom = archiveStart.data?.[0]?.bucket_date ?? null;

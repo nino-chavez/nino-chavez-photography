@@ -1,0 +1,48 @@
+[
+  {
+    "dispatch_id": "245da7f0-a890-4102-9249-84a2b66ea412",
+    "cwd": "/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/analytics-performance-providers",
+    "stage": "completed",
+    "selected_route": {
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high",
+      "tier": "deep"
+    },
+    "runtime_evidence": {
+      "child_thread_id": "01a0ef89-af0f-7862-a03a-cd4ddc0eeb90",
+      "executable": "/opt/homebrew/bin/codex",
+      "reported_model": null,
+      "reported_reasoning_effort": null,
+      "status": "completed"
+    },
+    "artifacts": {
+      "events": "/Users/nino/.local/state/nino-operator/dispatch/245da7f0-a890-4102-9249-84a2b66ea412/events.jsonl",
+      "last_message": "/Users/nino/.local/state/nino-operator/dispatch/245da7f0-a890-4102-9249-84a2b66ea412/last-message.txt",
+      "receipt": "/Users/nino/.local/state/nino-operator/dispatch/245da7f0-a890-4102-9249-84a2b66ea412/receipt.json",
+      "stderr": "/Users/nino/.local/state/nino-operator/dispatch/245da7f0-a890-4102-9249-84a2b66ea412/stderr.txt"
+    }
+  },
+  {
+    "dispatch_id": "9f6c81bd-cc88-4683-a3bc-4ef1a7e11ece",
+    "cwd": "/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/analytics-performance-gallery",
+    "stage": "completed",
+    "selected_route": {
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high",
+      "tier": "deep"
+    },
+    "runtime_evidence": {
+      "child_thread_id": "01a0ef89-adcf-7c41-95c1-e9ab8dbab8f6",
+      "executable": "/opt/homebrew/bin/codex",
+      "reported_model": null,
+      "reported_reasoning_effort": null,
+      "status": "completed"
+    },
+    "artifacts": {
+      "events": "/Users/nino/.local/state/nino-operator/dispatch/9f6c81bd-cc88-4683-a3bc-4ef1a7e11ece/events.jsonl",
+      "last_message": "/Users/nino/.local/state/nino-operator/dispatch/9f6c81bd-cc88-4683-a3bc-4ef1a7e11ece/last-message.txt",
+      "receipt": "/Users/nino/.local/state/nino-operator/dispatch/9f6c81bd-cc88-4683-a3bc-4ef1a7e11ece/receipt.json",
+      "stderr": "/Users/nino/.local/state/nino-operator/dispatch/9f6c81bd-cc88-4683-a3bc-4ef1a7e11ece/stderr.txt"
+    }
+  }
+]

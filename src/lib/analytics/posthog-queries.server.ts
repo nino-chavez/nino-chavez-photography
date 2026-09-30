@@ -9,6 +9,7 @@ import type {
 import type { SourceReturnBreakdownRow } from './posthog.types';
 import { POSTHOG_EVENT_NAMES, POSTHOG_JOURNEY_REPORTS } from './posthog.types';
 import { isPostHogProductionRuntime } from './posthog-contract';
+import { createProviderCache, credentialIdentity, type ProviderCache } from './provider-cache.server';
 
 const CHICAGO = 'America/Chicago' as const;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -19,6 +20,19 @@ const SITEWIDE_EVENTS: readonly PostHogEventName[] = [
 const DOWNLOAD_LIFECYCLE_EVENTS: readonly PostHogEventName[] = [
 	'download_requested', 'download_prepared', 'download_handed_off', 'download_failed', 'download_cancelled'
 ];
+const galleryJourneyCache = createProviderCache({
+	ttlMs: 60_000,
+	maxEntries: 128,
+	maxInFlight: 16,
+	maxBytes: 2 * 1024 * 1024
+});
+
+class PostHogQueryPendingError extends Error {
+	constructor() {
+		super('PostHog query did not finish before the report deadline');
+		this.name = 'PostHogQueryPendingError';
+	}
+}
 
 export interface PostHogFixtureEvent {
 	event: PostHogEventName | 'analytics_classification_changed';
@@ -495,7 +509,7 @@ function sourceReturnBreakdownFromResponse(response: unknown): SourceReturnBreak
 export async function queryGalleryJourneys(
 	client: PostHogQueryTransport | null,
 	query: PostHogJourneyQuery,
-	options: { publicOnly: boolean; allowedAlbumKeys: string[] }
+	options: { publicOnly: boolean; allowedAlbumKeys: string[]; cache?: ProviderCache | null; now?: () => Date }
 ): Promise<JourneyAggregate> {
 	const base = {
 		report: query.report,
@@ -509,23 +523,50 @@ export async function queryGalleryJourneys(
 	if (!fixed) return { ...base, available: false, error: 'invalid_query' };
 	if (!client) return { ...base, available: false, error: 'provider_unavailable' };
 	try {
-		const response = await client.query({ query: fixed });
-		const totals = aggregateFromResponse(query.report, response);
-		if (!totals) return { ...base, available: false, error: 'provider_query_failed' };
+		const load = async () => {
+			const response = await client.query({ query: fixed });
+			const totals = aggregateFromResponse(query.report, response);
+			if (!totals) throw new Error('PostHog returned an invalid journey response');
+			return {
+				asOf: (options.now?.() ?? new Date()).toISOString(),
+				totals,
+				breakdown: query.report === 'sources_return' ? sourceReturnBreakdownFromResponse(response) : []
+			};
+		};
+		const cache = options.cache === undefined ? galleryJourneyCache : options.cache;
+		const snapshot = cache && client.providerCache
+			? await cache.getOrLoad({
+				provider: 'posthog',
+				origin: client.providerCache.origin,
+				account: client.providerCache.account,
+				credential: await client.providerCache.credentialIdentity,
+				operation: 'gallery-journey',
+				visibility: [...new Set(options.allowedAlbumKeys)].sort(),
+				query: fixed
+			}, load)
+			: await load();
+		const totals = { ...snapshot.totals };
 		// A target slice can link a search only through a matching selection. It cannot attribute failed/zero-result searches.
 		if (query.report === 'search_usefulness' && (query.albumKeys !== undefined || query.sport || query.category)) {
 			totals.zero_result_searches = null;
 			base.coverage.metadata = 'This slice includes only search result sets with a matching selection. Zero-result searches cannot be attributed to an album or photo category. Do not interpret this subset as a search success rate.';
 		}
-
-		return { ...base, available: true, asOf: new Date().toISOString(), totals, breakdown: query.report === 'sources_return' ? sourceReturnBreakdownFromResponse(response) : [] };
-	} catch {
-		return { ...base, available: false, error: 'provider_query_failed' };
+		return { ...base, available: true, ...snapshot, totals, breakdown: snapshot.breakdown.map((row) => ({ ...row })) };
+	} catch (cause) {
+		return { ...base, available: false, error: cause instanceof PostHogQueryPendingError ? 'provider_query_pending' : 'provider_query_failed' };
 	}
 }
 
 /** Query credentials are separate from capture credentials and never leave server code. */
-export function createPostHogQueryTransport(source: Record<string, string | undefined>): PostHogQueryTransport | null {
+export function createPostHogQueryTransport(source: Record<string, string | undefined>, options: {
+	fetcher?: typeof fetch;
+	now?: () => number;
+	totalDeadlineMs?: number;
+	pollIntervalMs?: number;
+	sleep?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
+	scheduleAbort?: (callback: () => void, milliseconds: number) => unknown;
+	cancelAbort?: (handle: unknown) => void;
+} = {}): PostHogQueryTransport | null {
 	if (!isPostHogProductionRuntime(source)) return null;
 	const apiKey = source.POSTHOG_QUERY_API_KEY?.trim();
 	const projectId = source.POSTHOG_PROJECT_ID?.trim();
@@ -537,28 +578,63 @@ export function createPostHogQueryTransport(source: Record<string, string | unde
 		if (parsed.protocol !== 'https:') return null;
 		origin = parsed.origin.replace('.i.posthog.com', '.posthog.com');
 	} catch { return null; }
+	const fetcher = options.fetcher ?? fetch;
+	const now = options.now ?? Date.now;
+	const totalDeadlineMs = Math.min(Math.max(options.totalDeadlineMs ?? 10_000, 1), 30_000);
+	const pollIntervalMs = Math.min(Math.max(options.pollIntervalMs ?? 600, 1), 5_000);
+	const scheduleAbort = options.scheduleAbort ?? ((callback, milliseconds) => setTimeout(callback, milliseconds));
+	const cancelAbort = options.cancelAbort ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
+	const sleep = options.sleep ?? ((milliseconds: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+		if (signal.aborted) return reject(new PostHogQueryPendingError());
+		const timer = setTimeout(finish, milliseconds);
+		function finish() {
+			signal.removeEventListener('abort', aborted);
+			resolve();
+		}
+		function aborted() {
+			clearTimeout(timer);
+			reject(new PostHogQueryPendingError());
+		}
+		signal.addEventListener('abort', aborted, { once: true });
+	}));
 	return {
+		providerCache: { origin, account: projectId, credentialIdentity: credentialIdentity(apiKey) },
 		async query(body) {
 			const headers = { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' };
 			const endpoint = `${origin}/api/projects/${projectId}/query/`;
-			const response = await fetch(endpoint, {
-				method: 'POST', headers,
-				body: JSON.stringify({ refresh: 'async', ...(body as object) }), signal: AbortSignal.timeout(10000)
-			});
-			if (!response.ok) throw new Error(`PostHog query failed with ${response.status}`);
-			let result = await response.json() as {results?: unknown; query_status?: {id?: string; complete?: boolean; error?: boolean; results?: unknown}};
-			if (Array.isArray(result.results)) return result;
-			const id = result.query_status?.id;
-			if (!id) throw new Error('PostHog query status unavailable');
-			for (let attempt = 0; attempt < 12; attempt++) {
-				await new Promise((resolve) => setTimeout(resolve, 600));
-				const poll = await fetch(`${endpoint}${encodeURIComponent(id)}/`, {headers, signal: AbortSignal.timeout(10000)});
-				if (!poll.ok) throw new Error(`PostHog query status failed with ${poll.status}`);
-				result = await poll.json() as typeof result;
+			const controller = new AbortController();
+			const deadline = now() + totalDeadlineMs;
+			const abortHandle = scheduleAbort(() => controller.abort(), totalDeadlineMs);
+			try {
+				const response = await fetcher(endpoint, {
+					method: 'POST', headers,
+					body: JSON.stringify({ refresh: 'async', ...(body as object) }), signal: controller.signal
+				});
+				if (!response.ok) throw new Error(`PostHog query failed with ${response.status}`);
+				let result = await response.json() as {results?: unknown; query_status?: {id?: string; complete?: boolean; error?: boolean; results?: unknown}};
+				if (Array.isArray(result.results)) return result;
 				if (result.query_status?.error) throw new Error('PostHog query failed');
 				if (result.query_status?.complete) return result.query_status.results;
+				const id = result.query_status?.id;
+				if (!id) throw new Error('PostHog query status unavailable');
+				for (let attempt = 0; attempt < 12; attempt++) {
+					const remaining = deadline - now();
+					if (remaining <= 0 || controller.signal.aborted) throw new PostHogQueryPendingError();
+					await sleep(Math.min(pollIntervalMs, remaining), controller.signal);
+					if (deadline - now() <= 0 || controller.signal.aborted) throw new PostHogQueryPendingError();
+					const poll = await fetcher(`${endpoint}${encodeURIComponent(id)}/`, { headers, signal: controller.signal });
+					if (!poll.ok) throw new Error(`PostHog query status failed with ${poll.status}`);
+					result = await poll.json() as typeof result;
+					if (result.query_status?.error) throw new Error('PostHog query failed');
+					if (result.query_status?.complete) return result.query_status.results;
+				}
+				throw new PostHogQueryPendingError();
+			} catch (cause) {
+				if (controller.signal.aborted) throw new PostHogQueryPendingError();
+				throw cause;
+			} finally {
+				cancelAbort(abortHandle);
 			}
-			throw new Error('PostHog query pending');
 		}
 	};
 }

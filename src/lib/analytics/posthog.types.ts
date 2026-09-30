@@ -59,6 +59,8 @@ export interface PostHogJourneyQuery {
 
 export interface PostHogQueryTransport {
 	query(body: { refresh?: 'force_async' | 'async'; query: { kind: 'HogQLQuery'; query: string } }): Promise<unknown>;
+	/** Opaque server-only cache scope. It never contains the credential itself. */
+	providerCache?: { origin: string; account: string; credentialIdentity: Promise<string> };
 }
 
 export interface JourneyAggregate {
@@ -77,7 +79,7 @@ export interface JourneyAggregate {
 	totals: Record<string, number | null>;
 	/** Bounded aggregate rows. They contain source tags, never browser or visit identifiers. */
 	breakdown: SourceReturnBreakdownRow[];
-	error?: 'provider_unavailable' | 'provider_query_failed' | 'invalid_query';
+	error?: 'provider_unavailable' | 'provider_query_failed' | 'provider_query_pending' | 'invalid_query';
 }
 
 export interface SourceReturnBreakdownRow {

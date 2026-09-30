@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "negativeControl": true,
+  "passed": true,
+  "migrations": [
+    "supabase/migrations/20260930004554_analytics_scheduled_gallery_reports.sql"
+  ],
+  "assertions": [
+    "supabase/rehearsal/scheduled-gallery-assertions.sql"
+  ],
+  "output": "t\n281",
+  "diagnostics": "ERROR:  scheduled-report-negative-control\nCONTEXT:  PL/pgSQL function inline_code_block line 1 at RAISE\n"
+}

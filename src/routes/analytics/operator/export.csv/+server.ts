@@ -25,24 +25,21 @@ export const GET: RequestHandler = async ({ cookies, url, setHeaders }) => {
 	const { data: { user } } = await createSupabaseServerClient(cookies).auth.getUser();
 	const query = parseReportQuery(url.searchParams);
 	const admin = createSupabaseAdminClient();
-	const report = await buildOperatorReport(admin, query, { publicOnly: true });
+	let report;
+	try {
+		report = await buildOperatorReport(admin, query, { publicOnly: true, rangeMode: 'export', includeDiagnostics: false, includeToday: false, cacheRole: 'service_role' });
+	} catch (cause) {
+		if (cause instanceof RangeError) throw error(400, cause.message);
+		throw cause;
+	}
 	if (!report.available) throw error(503, report.error ?? 'Analytics report unavailable');
-	const [settings, albums, categories] = await Promise.all([
+	const [settings, albums] = await Promise.all([
 		readAll<{ album_key: string; visibility: string | null }>((from) => admin.from('album_settings').select('album_key, visibility').order('album_key').range(from, from + 999)),
-		readAll<{ album_key: string; sport: string | null; event_date: string | null }>((from) => admin.from('albums').select('album_key, sport, event_date').order('album_key').range(from, from + 999)),
-		query.category
-			? readAll<{ photo_id: string; photo_category: string | null }>((from) => admin.from('photo_metadata').select('photo_id, photo_category').eq('photo_category', query.category!).order('photo_id').range(from, from + 999))
-			: Promise.resolve({ data: [] as Array<{ photo_id: string; photo_category: string | null }>, error: null })
+		readAll<{ album_key: string; sport: string | null; event_date: string | null }>((from) => admin.from('albums').select('album_key, sport, event_date').order('album_key').range(from, from + 999))
 	]);
 	const settingsByAlbum = new Map(settings.data.map((setting) => [setting.album_key, setting.visibility]));
 	const publicAlbums = albums.data.filter((album) => settingsByAlbum.get(album.album_key) !== 'unlisted');
-	const publicScopedAlbumKeys = publicAlbums.filter((album) =>
-		(query.scope === 'all' || query.albumKeys.includes(album.album_key))
-		&& (!query.sport || (album.sport ?? 'unknown') === query.sport)
-		&& (!query.eventDate || album.event_date === query.eventDate)
-		&& (!query.season || (album.event_date?.slice(0, 4) ?? 'unknown') === query.season)
-	).map((album) => album.album_key);
-	const v2 = settings.error || albums.error || categories.error
+	const v2 = settings.error || albums.error
 		? unavailableV2ReportProjection(query)
 		: await fetchV2ReportProjection(admin, query, {
 			publicAlbumKeys: publicAlbums.map((album) => album.album_key)

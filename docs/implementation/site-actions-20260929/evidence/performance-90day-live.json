@@ -1,0 +1,75 @@
+{
+  "measuredAt": "2026-09-29T23:01:30.094Z",
+  "kind": "Lab measurements; mobile simulates 150ms RTT, 1.6Mbps down, 4x CPU. Not real-user INP or field Core Web Vitals.",
+  "results": [
+    {
+      "device": "desktop",
+      "run": 1,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator?period=90&measure=photo_opens",
+      "status": 200,
+      "lcp": 25544,
+      "cls": 0,
+      "longTasks": [
+        307
+      ],
+      "responseStartMs": 63.799999952316284,
+      "responseEndMs": 25478.699999928474,
+      "domContentLoadedMs": 25580.699999928474,
+      "loadMs": 26126.600000023842,
+      "documentBytes": 121929,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": 26164.799999952316,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 34.200000047683716
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 14.600000023841858
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 27759
+    },
+    {
+      "device": "mobile",
+      "run": 1,
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator?period=90&measure=photo_opens",
+      "status": 200,
+      "lcp": 19328,
+      "cls": 0,
+      "longTasks": [
+        67,
+        51,
+        100,
+        81
+      ],
+      "responseStartMs": 61,
+      "responseEndMs": 19744,
+      "domContentLoadedMs": 20039.300000071526,
+      "loadMs": 20040.100000023842,
+      "documentBytes": 122018,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "controlsReadyMs": null,
+      "interactions": [
+        {
+          "name": "Albums",
+          "clickToTwoFramesMs": 71.89999997615814
+        },
+        {
+          "name": "Photos",
+          "clickToTwoFramesMs": 31.299999952316284
+        }
+      ],
+      "unavailable": 0,
+      "errors": [],
+      "elapsedMs": 21815
+    }
+  ]
+}

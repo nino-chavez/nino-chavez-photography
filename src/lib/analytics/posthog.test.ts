@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { deliverPostHogBatch, hasPostHogScheduleAuthorization } from './posthog-delivery.server';
-import { buildPostHogDashboardQuery, buildPostHogJourneyQuery, evaluatePostHogJourneyFixtures, queryGalleryJourneys, reconcilePostHogEventIds, reconcileSubmittedPostHogEvents, type PostHogFixtureEvent } from './posthog-queries.server';
+import { buildPostHogDashboardQuery, buildPostHogJourneyQuery, createPostHogQueryTransport, evaluatePostHogJourneyFixtures, queryGalleryJourneys, reconcilePostHogEventIds, reconcileSubmittedPostHogEvents, type PostHogFixtureEvent } from './posthog-queries.server';
 import { scrubPostHogProperties } from './posthog-contract';
 import { createPostHogFlagClient, evaluatePhotographyExperiment, postHogRuntimeConfig } from './posthog.server';
 import { createPostHogOutboxClient } from './posthog-outbox.server';
 import { EVENT_V2_NAMES } from './events-v2';
 import { POSTHOG_EVENT_NAMES, type PostHogEnvelope, type PostHogOutboxClient, type PostHogOutboxRow } from './posthog.types';
+import { createProviderCache } from './provider-cache.server';
 
 const eventId = '550e8400-e29b-41d4-a716-446655440000';
 const envelope: PostHogEnvelope = {
@@ -412,4 +413,64 @@ test('content-sliced search cannot claim zero-result coverage or an unbiased den
 test('source overall totals do not depend on UNION response order',async()=>{
  const result=await queryGalleryJourneys({query:async()=>({columns:['row_kind','source','measured_browsers'],results:[['source','instagram',1],['overall','',4]]})}, {report:'sources_return',start:'2026-09-01',end:'2026-09-02'}, {publicOnly:true,allowedAlbumKeys:['Album A']});
  assert.equal(result.totals.measured_browsers,4);
+});
+
+test('public journey reads deduplicate only identical provider and visibility scopes', async () => {
+	let now = 1_000;
+	let calls = 0;
+	const cache = createProviderCache({ ttlMs: 100, maxEntries: 8, maxInFlight: 4, maxBytes: 20_000, now: () => now });
+	const response = { columns: ['eligible_photo_exposures', 'later_photo_actions'], results: [[12, 3]] };
+	const client = (account: string, credential: string) => ({
+		providerCache: { origin: 'https://us.posthog.com', account, credentialIdentity: Promise.resolve(credential) },
+		query: async () => { calls += 1; await Promise.resolve(); return response; }
+	});
+	const query = { report: 'photo_response' as const, start: '2026-09-01', end: '2026-09-30' };
+	const options = { publicOnly: true, allowedAlbumKeys: ['album-a'], cache, now: () => new Date(now) };
+	await Promise.all([
+		queryGalleryJourneys(client('1', 'credential-a'), query, options),
+		queryGalleryJourneys(client('1', 'credential-a'), query, options)
+	]);
+	assert.equal(calls, 1);
+	await queryGalleryJourneys(client('2', 'credential-a'), query, options);
+	await queryGalleryJourneys(client('1', 'credential-b'), query, options);
+	await queryGalleryJourneys(client('1', 'credential-a'), { ...query, category: 'action' }, options);
+	await queryGalleryJourneys(client('1', 'credential-a'), query, { ...options, allowedAlbumKeys: ['album-b'] });
+	assert.equal(calls, 5);
+	now += 101;
+	await queryGalleryJourneys(client('1', 'credential-a'), query, options);
+	assert.equal(calls, 6);
+});
+
+test('PostHog transport uses one total deadline across polling and aborts unfinished requests', async () => {
+	const source = {
+		POSTHOG_ENABLED: 'true', POSTHOG_TARGET_ENVIRONMENT: 'production',
+		POSTHOG_QUERY_API_KEY: 'query-key', POSTHOG_PROJECT_ID: '42', POSTHOG_HOST: 'https://us.i.posthog.com'
+	};
+	let now = 0;
+	let fetchCalls = 0;
+	const pending = () => new Response(JSON.stringify({ query_status: { id: 'job', complete: false } }), { status: 200 });
+	const transport = createPostHogQueryTransport(source, {
+		fetcher: async () => { fetchCalls += 1; return pending(); },
+		now: () => now,
+		totalDeadlineMs: 1_000,
+		pollIntervalMs: 600,
+		sleep: async (milliseconds) => { now += milliseconds; },
+		scheduleAbort: () => 1,
+		cancelAbort: () => {}
+	});
+	await assert.rejects(transport!.query({ query: { kind: 'HogQLQuery', query: 'SELECT 1' } }), { name: 'PostHogQueryPendingError' });
+	assert.equal(now, 1_000);
+	assert.equal(fetchCalls, 2);
+
+	let sawAbort = false;
+	const unfinished = createPostHogQueryTransport(source, {
+		fetcher: async (_url, init) => {
+			sawAbort = init?.signal?.aborted === true;
+			throw new DOMException('aborted', 'AbortError');
+		},
+		scheduleAbort: (abort) => { abort(); return 1; },
+		cancelAbort: () => {}
+	});
+	await assert.rejects(unfinished!.query({ query: { kind: 'HogQLQuery', query: 'SELECT 1' } }), { name: 'PostHogQueryPendingError' });
+	assert.equal(sawAbort, true);
 });

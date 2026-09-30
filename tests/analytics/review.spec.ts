@@ -26,21 +26,21 @@ for(const width of [1440,390]) test(`operator ${width}`,async({page,context,base
  if(width===390){await page.getByRole('button',{name:'Filters',exact:true}).click();await expect(page.getByRole('combobox',{name:'Measure',exact:true})).toBeVisible();await page.getByRole('button',{name:'Hide filters'}).click();}
  await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-top.png`});
  const nav=page.getByRole('navigation',{name:'Analytics sections'});
- await nav.getByRole('button',{name:'Albums'}).click();
+ await nav.getByRole('link',{name:'Albums'}).click();
  await expect(page.getByRole('heading',{name:'Compare albums'})).toBeVisible();
  await expect(page.locator('#overview')).toHaveCount(0);
  await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-albums.png`});
  if(width===390){const table=page.getByRole('region',{name:'Album comparison table',exact:true});const before=await table.locator('tbody td').first().boundingBox();await table.evaluate(e=>e.scrollLeft=9999);expect(await table.evaluate(e=>e.scrollLeft)).toBeGreaterThan(0);const after=await table.locator('tbody td').first().boundingBox();expect(Math.abs(before!.x-after!.x)).toBeLessThan(2);}
- await nav.getByRole('button',{name:'Photos'}).click();
+ await nav.getByRole('link',{name:'Photos'}).click();
  await expect(page.getByRole('heading',{name:'Popular, rising, and recently active'})).toBeVisible();
  await expect.poll(()=>page.locator('.photo-card').count()).toBeGreaterThan(0);
  expect(await page.locator('.photo-card').count()).toBeLessThanOrEqual(12);
  await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-photos.png`});
- for(const label of ['Rising','Recently active']){await page.getByRole('button',{name:label,exact:true}).click();await expect(page.getByRole('button',{name:label,exact:true})).toHaveAttribute('aria-pressed','true');}
+ for(const label of ['Rising','Recently active']){await page.getByRole('link',{name:label,exact:true}).click();await expect(page.getByRole('link',{name:label,exact:true})).toHaveAttribute('aria-current','page');}
  await page.getByRole('button',{name:'Table',exact:true}).click();await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-photo-table.png`});
  await page.getByRole('button',{name:'Images',exact:true}).click();await page.locator('.photo-inspect').first().click();await expect(page.getByRole('dialog')).toBeInViewport();await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-inspection.png`});await page.getByRole('button',{name:'Return to photos',exact:true}).click();
- await nav.getByRole('button',{name:'Sources'}).click();await expect(page.getByRole('heading',{name:'What happened after a tagged arrival'})).toBeVisible();await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-sources.png`});
- await nav.getByRole('button',{name:'Measurement'}).click();await expect(page.getByRole('heading',{name:'Collection and provider delivery'})).toBeVisible();await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-measurement.png`});
+ await nav.getByRole('link',{name:'Sources'}).click();await expect(page.getByRole('heading',{name:'What happened after a tagged arrival'})).toBeVisible();await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-sources.png`});
+ await nav.getByRole('link',{name:'Measurement'}).click();await expect(page.getByRole('heading',{name:'Collection and provider delivery'})).toBeVisible();await page.screenshot({animations:'disabled',path:`.temp/parent-ui-review/operator-${width}-measurement.png`});
  const overflow=await page.evaluate(()=>{window.scrollTo({left:999,top:window.scrollY,behavior:'instant'});const moved=window.scrollX;window.scrollTo({left:0,top:window.scrollY,behavior:'instant'});return Math.max(moved,document.documentElement.scrollWidth-document.documentElement.clientWidth);});
  expect(overflow).toBe(0);
 });

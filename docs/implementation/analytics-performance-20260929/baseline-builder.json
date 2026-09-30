@@ -1,0 +1,292 @@
+{
+  "measuredAt": "2026-09-29T23:41:05.393Z",
+  "kind": "Read-only production data with current local report builder, running on this Mac. Not Cloudflare Worker CPU timing.",
+  "results": [
+    {
+      "period": 90,
+      "run": 1,
+      "elapsedMs": 15030.661541000001,
+      "available": true,
+      "total": 7218,
+      "photos": 3097,
+      "albums": 254,
+      "requests": [
+        {
+          "resource": "album_settings",
+          "status": 200,
+          "milliseconds": 212.90649999999982,
+          "bytes": 1770
+        },
+        {
+          "resource": "albums",
+          "status": 200,
+          "milliseconds": 301.506834,
+          "bytes": 19167
+        },
+        {
+          "resource": "analytics_diagnostic_coverage",
+          "status": 200,
+          "milliseconds": 182.88770799999998,
+          "bytes": 2
+        },
+        {
+          "resource": "analytics_daily_coverage",
+          "status": 200,
+          "milliseconds": 183.6339170000001,
+          "bytes": 30
+        },
+        {
+          "resource": "analytics_collection_diagnostics",
+          "status": 200,
+          "milliseconds": 185.69370800000002,
+          "bytes": 2
+        },
+        {
+          "resource": "rpc/analytics_read_report_evidence",
+          "status": 200,
+          "milliseconds": 8114.534334,
+          "bytes": 28723880
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 385.24504200000047,
+          "bytes": 6986
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 445.00916700000016,
+          "bytes": 6708
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 137.02695800000038,
+          "bytes": 6716
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 123.65537499999846,
+          "bytes": 6696
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 120.97245799999837,
+          "bytes": 6854
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 130.98695899999984,
+          "bytes": 6571
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 235.75600000000122,
+          "bytes": 6874
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 287.3768749999999,
+          "bytes": 5960
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 224.54929200000151,
+          "bytes": 6701
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 296.85770799999955,
+          "bytes": 6626
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 198.95654099999956,
+          "bytes": 6911
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 189.2340830000012,
+          "bytes": 6413
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 187.84933300000012,
+          "bytes": 5916
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 178.92220899999847,
+          "bytes": 6168
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 281.3912909999999,
+          "bytes": 4998
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 82.78237500000068,
+          "bytes": 5627
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 85.81966699999975,
+          "bytes": 6857
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 143.58229199999914,
+          "bytes": 5926
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 89.49333300000035,
+          "bytes": 5867
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 118.94475000000057,
+          "bytes": 6255
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 70.01891700000124,
+          "bytes": 5745
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 79.0107079999998,
+          "bytes": 6181
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 72.15741700000035,
+          "bytes": 5540
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 72.79270799999904,
+          "bytes": 4998
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 85.79299999999967,
+          "bytes": 5382
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 134.74083299999984,
+          "bytes": 6024
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 66.80725000000166,
+          "bytes": 4998
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 74.48091700000077,
+          "bytes": 4998
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 66.83670800000073,
+          "bytes": 4998
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 68.35824999999932,
+          "bytes": 4998
+        },
+        {
+          "resource": "photo_metadata",
+          "status": 200,
+          "milliseconds": 63.85320800000045,
+          "bytes": 5184
+        },
+        {
+          "resource": "rpc/analytics_count_distinct_visitors",
+          "status": 200,
+          "milliseconds": 82.152250000001,
+          "bytes": 4
+        }
+      ]
+    },
+    {
+      "period": 90,
+      "run": 2,
+      "elapsedMs": 10443.481417,
+      "available": false,
+      "total": null,
+      "photos": 0,
+      "albums": 0,
+      "requests": [
+        {
+          "resource": "album_settings",
+          "status": 200,
+          "milliseconds": 153.348833,
+          "bytes": 1770
+        },
+        {
+          "resource": "albums",
+          "status": 200,
+          "milliseconds": 154.08937499999956,
+          "bytes": 19167
+        },
+        {
+          "resource": "analytics_diagnostic_coverage",
+          "status": 200,
+          "milliseconds": 81.5822500000013,
+          "bytes": 2
+        },
+        {
+          "resource": "analytics_collection_diagnostics",
+          "status": 200,
+          "milliseconds": 87.16941599999882,
+          "bytes": 2
+        },
+        {
+          "resource": "analytics_daily_coverage",
+          "status": 200,
+          "milliseconds": 91.62287500000093,
+          "bytes": 30
+        },
+        {
+          "resource": "rpc/analytics_read_report_evidence",
+          "status": 500,
+          "milliseconds": 10281.352916999998,
+          "bytes": 100
+        }
+      ]
+    }
+  ]
+}

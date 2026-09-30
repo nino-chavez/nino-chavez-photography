@@ -26,7 +26,11 @@ const CACHE_DURATION_MS = 30 * 60 * 1000;
 
 let facetsCache: { data: BaseFacets; timestamp: number } | null = null;
 
-export const load: LayoutServerLoad = async () => {
+export const load: LayoutServerLoad = async ({ route }) => {
+  // Reports use their own catalogue; gallery navigation facets are never rendered here.
+  if (route.id === '/analytics/sites' || route.id === '/analytics/operator') {
+    return { sports: [], categories: [], baseFilterCounts: { sports: [], categories: [], playTypes: [] } };
+  }
   const now = Date.now();
 
   if (!facetsCache || now - facetsCache.timestamp > CACHE_DURATION_MS) {
