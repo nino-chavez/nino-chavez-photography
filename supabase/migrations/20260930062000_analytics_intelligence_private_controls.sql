@@ -66,6 +66,43 @@ BEGIN
 END;
 $$;
 
+-- This returns at most one newest append for each explicitly supplied action.
+-- It is service-only: the calling route already verified p_owner_id, and the
+-- explicit predicate remains necessary because service_role bypasses RLS.
+CREATE FUNCTION public.analytics_latest_intelligence_outcomes(
+  p_owner_id uuid,
+  p_action_ids uuid[]
+)
+RETURNS TABLE(
+  id uuid,
+  action_id uuid,
+  outcome text,
+  outcome_count integer,
+  note text,
+  created_at timestamptz
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF p_owner_id IS NULL
+    OR coalesce(cardinality(p_action_ids), 0) NOT BETWEEN 1 AND 20
+    OR EXISTS (SELECT 1 FROM unnest(p_action_ids) AS requested(id) WHERE requested.id IS NULL) THEN
+    RAISE EXCEPTION 'invalid intelligence outcome query';
+  END IF;
+
+  RETURN QUERY
+  SELECT DISTINCT ON (stored.action_id)
+    stored.id, stored.action_id, stored.outcome, stored.outcome_count,
+    stored.note, stored.created_at
+  FROM public.analytics_intelligence_outcomes AS stored
+  WHERE stored.owner_id = p_owner_id
+    AND stored.action_id = ANY(p_action_ids)
+  ORDER BY stored.action_id, stored.created_at DESC, stored.id DESC;
+END;
+$$;
+
 -- Keep the established action and brief retention behavior, while giving
 -- appended outcomes their own creation-time retention boundary.
 CREATE OR REPLACE FUNCTION public.analytics_cleanup_intelligence_private(p_now timestamptz)
@@ -140,6 +177,8 @@ $$;
 
 REVOKE ALL ON FUNCTION public.analytics_record_intelligence_outcome(uuid,uuid,text,integer,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.analytics_record_intelligence_outcome(uuid,uuid,text,integer,text) TO service_role;
+REVOKE ALL ON FUNCTION public.analytics_latest_intelligence_outcomes(uuid,uuid[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.analytics_latest_intelligence_outcomes(uuid,uuid[]) TO service_role;
 REVOKE ALL ON FUNCTION public.analytics_delete_intelligence_private_history(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.analytics_delete_intelligence_private_history(uuid) TO service_role;
 REVOKE ALL ON FUNCTION public.analytics_cleanup_intelligence_private(timestamptz) FROM PUBLIC, anon, authenticated;

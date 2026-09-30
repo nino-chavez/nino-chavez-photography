@@ -168,3 +168,111 @@ DO $$ BEGIN
 EXCEPTION WHEN OTHERS THEN
   IF SQLERRM <> 'invalid intelligence job claim' THEN RAISE EXCEPTION 'expected invalid job limit rejection, got: %', SQLERRM; END IF;
 END $$;
+
+-- Private outcome acceptance: appends are owner-bound, the database returns a
+-- bounded latest row per requested action, and deletion never reaches public
+-- aggregate summaries or another owner's retained private history.
+DO $$
+DECLARE
+  v_owner_id uuid := '11111111-1111-4111-8111-111111111111';
+  v_other_owner_id uuid := '22222222-2222-4222-8222-222222222222';
+  v_scope_key text := public.analytics_intelligence_scope_key('{"kind":"gallery","query":{"end":"2026-09-28","scope":"all","start":"2026-08-30","compare":"previous","measure":"photo_opens","traffic":"conservative","albumKeys":[]}}');
+  v_owner_action uuid;
+  v_other_action uuid;
+  v_old_outcome uuid;
+  v_latest_outcome uuid;
+  v_cleanup_at timestamptz := clock_timestamp();
+  v_follow_up jsonb;
+BEGIN
+  IF to_regprocedure('public.analytics_record_intelligence_outcome(uuid,uuid,text,integer,text)') IS NULL
+    OR to_regprocedure('public.analytics_latest_intelligence_outcomes(uuid,uuid[])') IS NULL
+    OR to_regprocedure('public.analytics_delete_intelligence_private_history(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'private outcome controls are missing';
+  END IF;
+  IF has_function_privilege('authenticated','public.analytics_latest_intelligence_outcomes(uuid,uuid[])'::regprocedure,'EXECUTE')
+    OR NOT has_function_privilege('service_role','public.analytics_latest_intelligence_outcomes(uuid,uuid[])'::regprocedure,'EXECUTE') THEN
+    RAISE EXCEPTION 'latest outcome RPC has the wrong caller privilege';
+  END IF;
+
+  SELECT id INTO v_owner_action
+  FROM public.analytics_record_intelligence_action(
+    v_owner_id, v_scope_key, 'record', NULL, '{"kind":"album","albumKey":"alpha"}',
+    '2026-09-01T12:00:00Z', 'outcome acceptance', 'album_opens', '2026-09-09T05:00:00Z',
+    NULL, NULL, 'promotion', NULL, NULL, NULL, NULL, 'unknown', 0, 7, '{}'
+  );
+  SELECT id INTO v_other_action
+  FROM public.analytics_record_intelligence_action(
+    v_other_owner_id, v_scope_key, 'record', NULL, '{"kind":"album","albumKey":"alpha"}',
+    '2026-09-01T12:00:00Z', 'other owner outcome', 'album_opens', '2026-09-09T05:00:00Z',
+    NULL, NULL, 'promotion', NULL, NULL, NULL, NULL, 'unknown', 0, 7, '{}'
+  );
+
+  BEGIN
+    PERFORM public.analytics_record_intelligence_outcome(v_owner_id, v_other_action, 'booking', 1, NULL);
+    RAISE EXCEPTION 'cross-owner outcome unexpectedly wrote';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'recorded intelligence action not found for owner' THEN
+      RAISE EXCEPTION 'expected owner outcome rejection, got: %', SQLERRM;
+    END IF;
+  END;
+
+  SELECT id INTO v_old_outcome
+  FROM public.analytics_record_intelligence_outcome(v_owner_id, v_owner_action, 'inquiry', 3, 'earlier append');
+  SELECT id INTO v_latest_outcome
+  FROM public.analytics_record_intelligence_outcome(v_owner_id, v_owner_action, 'booking', 0, NULL);
+  PERFORM public.analytics_record_intelligence_outcome(v_other_owner_id, v_other_action, 'other', 2, 'other owner retained');
+  IF NOT EXISTS (
+    SELECT 1 FROM public.analytics_latest_intelligence_outcomes(v_owner_id, ARRAY[v_owner_action]) outcome
+    WHERE outcome.id = v_latest_outcome AND outcome.outcome = 'booking' AND outcome.outcome_count = 0
+  ) OR (SELECT count(*) FROM public.analytics_latest_intelligence_outcomes(v_owner_id, ARRAY[v_owner_action])) <> 1 THEN
+    RAISE EXCEPTION 'latest outcome RPC did not return one zero-count latest append';
+  END IF;
+  BEGIN
+    PERFORM public.analytics_latest_intelligence_outcomes(v_owner_id, array_fill(v_owner_action, ARRAY[21]));
+    RAISE EXCEPTION 'over-limit outcome query unexpectedly succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'invalid intelligence outcome query' THEN
+      RAISE EXCEPTION 'expected bounded outcome query rejection, got: %', SQLERRM;
+    END IF;
+  END;
+
+  UPDATE public.analytics_intelligence_outcomes
+  SET created_at = v_cleanup_at - interval '91 days'
+  WHERE id = v_old_outcome;
+  PERFORM public.analytics_cleanup_intelligence_private(v_cleanup_at);
+  IF EXISTS (SELECT 1 FROM public.analytics_intelligence_outcomes WHERE id = v_old_outcome)
+    OR NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_outcomes WHERE id = v_latest_outcome) THEN
+    RAISE EXCEPTION 'outcome retention did not prune only the expired append';
+  END IF;
+
+  PERFORM public.analytics_delete_intelligence_private_history(v_owner_id);
+  IF EXISTS (SELECT 1 FROM public.analytics_intelligence_outcomes WHERE owner_id = v_owner_id)
+    OR EXISTS (SELECT 1 FROM public.analytics_intelligence_actions WHERE owner_id = v_owner_id)
+    OR EXISTS (SELECT 1 FROM public.analytics_intelligence_briefs WHERE owner_id = v_owner_id)
+    OR NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_outcomes WHERE owner_id = v_other_owner_id)
+    OR NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_actions WHERE owner_id = v_other_owner_id)
+    OR NOT EXISTS (SELECT 1 FROM public.analytics_intelligence_snapshots WHERE scope_key = v_scope_key)
+    OR NOT EXISTS (
+      SELECT 1 FROM public.analytics_intelligence_preferences preference
+      WHERE preference.owner_id = v_owner_id AND preference.retention_policy = 'days' AND preference.retention_days = 90 AND NOT preference.external_enabled
+    )
+    OR NOT EXISTS (
+      SELECT 1 FROM public.analytics_intelligence_schedules schedule
+      WHERE schedule.owner_id = v_owner_id AND NOT schedule.daily_enabled AND NOT schedule.weekly_enabled
+    ) THEN
+    RAISE EXCEPTION 'owner-only private deletion did not preserve required boundaries';
+  END IF;
+
+  SELECT public.analytics_intelligence_action_follow_up(
+    '{"kind":"album","albumKey":"alpha"}', 'album_opens', '2026-03-08T06:30:00Z', 1
+  ) INTO v_follow_up;
+  IF (v_follow_up->>'availableAt')::timestamptz <> '2026-03-10T05:00:00Z'::timestamptz THEN
+    RAISE EXCEPTION 'Chicago follow-up completion boundary is not DST-safe';
+  END IF;
+  SELECT public.analytics_intelligence_action_follow_up(
+    '{"kind":"site"}', 'page_views', '2026-03-08T23:30:00Z', 1
+  ) INTO v_follow_up;
+  IF (v_follow_up->>'availableAt')::timestamptz <> '2026-03-10T00:00:00Z'::timestamptz THEN
+    RAISE EXCEPTION 'UTC site follow-up completion boundary is incorrect';
+  END IF;
+END $$;

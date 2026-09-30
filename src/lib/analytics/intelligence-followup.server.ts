@@ -14,6 +14,9 @@ function count(value: unknown): number | null {
 function coverage(value: unknown): 'complete' | 'partial' | 'unavailable' | null {
 	return value === 'complete' || value === 'partial' || value === 'unavailable' ? value : null;
 }
+function instant(value: unknown): string | null {
+	return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null;
+}
 
 /**
  * Reads only persisted, identifier-free daily summaries. The database owns the
@@ -22,7 +25,6 @@ function coverage(value: unknown): 'complete' | 'partial' | 'unavailable' | null
  */
 export async function loadPersistedActionFollowUp(client: SupabaseClient, action: IntelligenceAction, now = new Date()): Promise<{ status: FollowUpStatus; followUp?: FollowUp }> {
 	if (action.kind !== 'record' || !action.target || !action.actualAt || !action.primaryMeasure || !action.observationDays || !action.followUpAt) return { status: 'inconclusive' };
-	if (Date.parse(action.followUpAt) > now.getTime()) return { status: 'pending' };
 	const { data, error } = await client.rpc('analytics_intelligence_action_follow_up', {
 		p_target: action.target,
 		p_primary_measure: action.primaryMeasure,
@@ -30,11 +32,14 @@ export async function loadPersistedActionFollowUp(client: SupabaseClient, action
 		p_observation_days: action.observationDays
 	});
 	const row = record(data);
+	const availableAt = instant(row?.availableAt);
+	if (error || !availableAt) return { status: 'inconclusive' };
+	if (Date.parse(availableAt) > now.getTime()) return { status: 'pending' };
 	const before = count(row?.before); const after = count(row?.after);
 	const currentCoverage = coverage(row?.coverage); const previousCoverage = coverage(row?.previousCoverage);
 	const measure = typeof row?.measure === 'string' ? row.measure : null;
 	const window = record(row?.window); const beforeWindow = record(window?.before); const afterWindow = record(window?.after);
-	if (error || before === null || after === null || !currentCoverage || !previousCoverage || !measure
+	if (before === null || after === null || !currentCoverage || !previousCoverage || !measure
 		|| typeof beforeWindow?.start !== 'string' || typeof beforeWindow.end !== 'string'
 		|| typeof afterWindow?.start !== 'string' || typeof afterWindow.end !== 'string') return { status: 'inconclusive' };
 	if (currentCoverage !== 'complete' || previousCoverage !== 'complete') return { status: 'inconclusive' };

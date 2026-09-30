@@ -3,8 +3,9 @@
 
 The source database is read-only to this helper. Its schema and fixtures are
 dumped into one new, randomly named localhost database. Old intelligence
-objects are removed only from that copy, then the final migration (without its
-outer transaction) and SQL assertions run inside one transaction and ROLLBACK.
+objects are removed only from that copy, then both final migrations (without
+their outer transactions) and SQL assertions run inside one transaction and
+ROLLBACK.
 """
 
 from __future__ import annotations
@@ -187,6 +188,7 @@ DROP TABLE IF EXISTS public.analytics_intelligence_jobs CASCADE;
 DROP TABLE IF EXISTS public.analytics_intelligence_requests CASCADE;
 DROP TABLE IF EXISTS public.analytics_intelligence_incidents CASCADE;
 DROP TABLE IF EXISTS public.analytics_intelligence_finding_lifecycle CASCADE;
+DROP TABLE IF EXISTS public.analytics_intelligence_outcomes CASCADE;
 DROP TABLE IF EXISTS public.analytics_intelligence_actions CASCADE;
 DROP TABLE IF EXISTS public.analytics_intelligence_schedules CASCADE;
 DROP TABLE IF EXISTS public.analytics_intelligence_preferences CASCADE;
@@ -206,15 +208,18 @@ def strip_outer_transaction(path: pathlib.Path) -> str:
     return ''.join(lines[:begins[0]] + lines[begins[0] + 1:commits[0]])
 
 
-def run_transaction(target: Connection, migration: pathlib.Path, assertions: pathlib.Path, directory: pathlib.Path) -> None:
-    migration_without_transaction = directory / 'migration-without-outer-transaction.sql'
-    migration_without_transaction.write_text(strip_outer_transaction(migration))
+def run_transaction(target: Connection, migrations: list[pathlib.Path], assertions: pathlib.Path, directory: pathlib.Path) -> None:
+    stripped_migrations: list[pathlib.Path] = []
+    for index, migration in enumerate(migrations, start=1):
+        stripped = directory / f'migration-{index}-without-outer-transaction.sql'
+        stripped.write_text(strip_outer_transaction(migration))
+        stripped_migrations.append(stripped)
     proof = directory / 'proof.sql'
     proof.write_text(
         'BEGIN;\n'
-        f"\\i '{migration_without_transaction}'\n"
-        f"\\i '{assertions}'\n"
-        'ROLLBACK;\n'
+        + ''.join(f"\\i '{migration}'\n" for migration in stripped_migrations)
+        + f"\\i '{assertions}'\n"
+        + 'ROLLBACK;\n'
     )
     result = run(
         [
@@ -237,7 +242,10 @@ def main() -> int:
     parser.add_argument('--runtime', required=True, type=pathlib.Path, help='Local synthetic runtime JSON; never printed.')
     parser.add_argument('--receipt', type=pathlib.Path, default=ROOT / 'docs/implementation/analytics-intelligence-20260930/evidence/sql-local-proof.json')
     arguments = parser.parse_args()
-    migration = ROOT / 'supabase/migrations/20260930040614_analytics_intelligence_storage.sql'
+    migrations = [
+        ROOT / 'supabase/migrations/20260930040614_analytics_intelligence_storage.sql',
+        ROOT / 'supabase/migrations/20260930062000_analytics_intelligence_private_controls.sql',
+    ]
     assertions = ROOT / 'supabase/rehearsal/analytics-intelligence-assertions.sql'
     receipt_path = arguments.receipt.resolve()
     if not receipt_path.is_relative_to(ROOT):
@@ -254,7 +262,7 @@ def main() -> int:
             'loopbackRuntime': True,
             'schemaAndFixturesDumped': False,
         },
-        'migration': str(migration.relative_to(ROOT)),
+        'migrations': [str(migration.relative_to(ROOT)) for migration in migrations],
         'assertions': str(assertions.relative_to(ROOT)),
         'outerMigrationTransactionRemoved': True,
         'rolledBack': False,
@@ -275,7 +283,7 @@ def main() -> int:
         if scalar(target, "SELECT identity FROM public.analytics_rehearsal_identity;") != IDENTITY:
             raise ProofError('restored database lost the local synthetic identity')
         remove_old_intelligence_objects(target)
-        run_transaction(target, migration, assertions, temp_directory)
+        run_transaction(target, migrations, assertions, temp_directory)
         receipt['rolledBack'] = True
         drop_database(source, database)
         receipt['disposableDatabase'] = {'prefix': DATABASE_PREFIX, 'created': True, 'droppedAfterSuccess': True}

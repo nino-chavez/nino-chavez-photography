@@ -5,11 +5,14 @@
     "droppedAfterSuccess": true,
     "prefix": "analytics_intelligence_proof_"
   },
-  "migration": "supabase/migrations/20260930040614_analytics_intelligence_storage.sql",
+  "migrations": [
+    "supabase/migrations/20260930040614_analytics_intelligence_storage.sql",
+    "supabase/migrations/20260930062000_analytics_intelligence_private_controls.sql"
+  ],
   "outerMigrationTransactionRemoved": true,
   "passed": true,
   "proof": "analytics-intelligence-local-sql",
-  "ranAt": "2026-09-30T06:07:27+00:00",
+  "ranAt": "2026-09-30T06:28:10+00:00",
   "rolledBack": true,
   "source": {
     "loopbackRuntime": true,

@@ -424,7 +424,7 @@ END $$;
 -- dates are UTC days and are complete only through their saved refresh cutoff.
 CREATE FUNCTION public.analytics_intelligence_action_follow_up(p_target jsonb,p_primary_measure text,p_actual_at timestamptz,p_observation_days integer)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
-DECLARE gallery_target boolean; tz text; action_day date; before_start date; before_end date; after_start date; after_end date; before_coverage text; after_coverage text; before_count bigint; after_count bigint; site_complete_through date;
+DECLARE gallery_target boolean; tz text; action_day date; before_start date; before_end date; after_start date; after_end date; after_complete_at timestamptz; before_coverage text; after_coverage text; before_count bigint; after_count bigint; site_complete_through date;
 BEGIN
   IF p_target IS NULL OR jsonb_typeof(p_target)<>'object' OR p_target->>'kind' NOT IN ('gallery','album','photo','site','page') OR p_primary_measure NOT IN ('photo_opens','album_opens','downloads','favorites','shares','page_views') OR p_actual_at IS NULL OR p_observation_days NOT BETWEEN 1 AND 365 THEN RAISE EXCEPTION 'invalid action follow-up'; END IF;
   gallery_target := p_target->>'kind' IN ('gallery','album','photo');
@@ -434,6 +434,9 @@ BEGIN
   action_day := (p_actual_at AT TIME ZONE tz)::date;
   before_start := action_day-p_observation_days; before_end := action_day-1;
   after_start := action_day+1; after_end := action_day+p_observation_days;
+  -- The action day is excluded. A follow-up becomes eligible only after the
+  -- final complete local calendar day in the after window, including DST.
+  after_complete_at := ((after_end + 1)::timestamp AT TIME ZONE tz);
   IF gallery_target THEN
     SELECT CASE WHEN bool_or(coverage_state IS NULL OR coverage_state<>'complete') THEN CASE WHEN bool_or(coverage_state='partial') THEN 'partial' ELSE 'unavailable' END ELSE 'complete' END INTO before_coverage FROM generate_series(before_start,before_end,'1 day') d LEFT JOIN public.analytics_daily_coverage c ON c.bucket_date=d::date;
     SELECT CASE WHEN bool_or(coverage_state IS NULL OR coverage_state<>'complete') THEN CASE WHEN bool_or(coverage_state='partial') THEN 'partial' ELSE 'unavailable' END ELSE 'complete' END INTO after_coverage FROM generate_series(after_start,after_end,'1 day') d LEFT JOIN public.analytics_daily_coverage c ON c.bucket_date=d::date;
@@ -446,7 +449,7 @@ BEGIN
     IF before_coverage='complete' THEN SELECT coalesce(sum(page_views),0) INTO before_count FROM public.analytics_site_action_daily d WHERE d.bucket_date BETWEEN before_start AND before_end AND (p_target->>'kind'='site' OR d.path=p_target->>'id'); END IF;
     IF after_coverage='complete' THEN SELECT coalesce(sum(page_views),0) INTO after_count FROM public.analytics_site_action_daily d WHERE d.bucket_date BETWEEN after_start AND after_end AND (p_target->>'kind'='site' OR d.path=p_target->>'id'); END IF;
   END IF;
-  RETURN jsonb_build_object('before',CASE WHEN before_coverage='complete' THEN before_count END,'after',CASE WHEN after_coverage='complete' THEN after_count END,'coverage',coalesce(after_coverage,'unavailable'),'previousCoverage',coalesce(before_coverage,'unavailable'),'measure',p_primary_measure,'window',jsonb_build_object('before',jsonb_build_object('start',before_start,'end',before_end),'after',jsonb_build_object('start',after_start,'end',after_end),'timezone',tz));
+  RETURN jsonb_build_object('before',CASE WHEN before_coverage='complete' THEN before_count END,'after',CASE WHEN after_coverage='complete' THEN after_count END,'coverage',coalesce(after_coverage,'unavailable'),'previousCoverage',coalesce(before_coverage,'unavailable'),'measure',p_primary_measure,'availableAt',after_complete_at,'window',jsonb_build_object('before',jsonb_build_object('start',before_start,'end',before_end),'after',jsonb_build_object('start',after_start,'end',after_end),'timezone',tz));
 END $$;
 
 CREATE OR REPLACE FUNCTION public.analytics_record_intelligence_lifecycle(p_report_id uuid, p_now timestamptz)
