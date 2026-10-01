@@ -16,7 +16,7 @@
   import { base } from '$app/paths';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { Calendar, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-svelte';
   import PhotoGrid from '$lib/components/gallery/PhotoGrid.svelte';
   import Lightbox from '$lib/components/gallery/Lightbox.svelte';
   import Pagination from '$lib/components/ui/Pagination.svelte';
@@ -141,13 +141,13 @@
 </script>
 
 
-<div class="min-h-screen bg-charcoal-950">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="month-page">
+  <header class="month-opening">
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-sm text-charcoal-400 mb-6">
+    <div class="month-back">
       <a
         href="{base}/timeline"
-        class="flex items-center gap-1 hover:text-gold-400 transition-colors"
+        class="month-back__link"
       >
         <ArrowLeft class="w-4 h-4" />
         Timeline
@@ -159,44 +159,39 @@
     </div>
 
     <!-- Month Header -->
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-6 md:mb-8 pb-4 md:pb-6 border-b border-charcoal-800">
-      <div class="flex items-center gap-3 md:gap-4">
-        <!-- Calendar Icon -->
-        <div class="h-10 w-10 md:h-16 md:w-16 rounded-full bg-gold-500 flex items-center justify-center shadow-lg">
-          <Calendar class="w-5 h-5 md:w-8 md:h-8 text-charcoal-950" />
-        </div>
+    <div class="month-title-row">
+		<div>
+		  <p class="month-eyebrow">By date</p>
+		  <Typography variant="h1" class="month-title">
+			{data.monthName} {data.year}
+		  </Typography>
+		  <Typography variant="body" class="month-count">
+			{data.photoCount.toLocaleString()} {data.photoCount === 1 ? 'photo' : 'photos'}
+		  </Typography>
+		</div>
 
-        <!-- Title -->
-        <div>
-          <Typography variant="h1" class="text-white mb-0.5 md:mb-1 text-xl md:text-3xl">
-            {data.monthName} {data.year}
-          </Typography>
-          <Typography variant="body" class="text-charcoal-400 text-sm">
-            {data.photoCount.toLocaleString()} {data.photoCount === 1 ? 'photo' : 'photos'}
-          </Typography>
-        </div>
-      </div>
-
-      <!-- Sort Dropdown -->
-      <div class="flex items-center gap-2">
-        <select
-          value={data.sortBy}
-          onchange={(e) => handleSortChange(e.currentTarget.value as any)}
-          class="px-3 py-2 bg-charcoal-800 text-charcoal-200 border border-charcoal-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
-        >
+	  <!-- Sort Dropdown -->
+	  <div class="month-sort">
+		<label for="month-sort">Sort photographs</label>
+		<select
+		  id="month-sort"
+		  value={data.sortBy}
+		  onchange={(e) => handleSortChange(e.currentTarget.value as any)}
+		>
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
           <option value="quality">Best Quality</option>
         </select>
       </div>
-    </div>
+	</div>
+  </header>
 
-    <!-- Month Navigation -->
-    <div class="flex items-center justify-between mb-6 md:mb-8">
+  <main class="month-results">
+    <nav class="month-navigation" aria-label="Adjacent months">
       {#if data.prevMonth}
         <button
           onclick={() => navigateToMonth(data.prevMonth!.year, data.prevMonth!.month)}
-          class="flex items-center gap-2 px-4 py-2.5 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-200 rounded-lg transition-colors"
+		  class="month-navigation__button"
         >
           <ChevronLeft class="w-4 h-4" />
           <div class="text-left">
@@ -211,7 +206,7 @@
       {#if data.nextMonth}
         <button
           onclick={() => navigateToMonth(data.nextMonth!.year, data.nextMonth!.month)}
-          class="flex items-center gap-2 px-4 py-2.5 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-200 rounded-lg transition-colors"
+		  class="month-navigation__button"
         >
           <div class="text-right">
             <div class="text-xs text-charcoal-400">Next</div>
@@ -222,7 +217,7 @@
       {:else}
         <div></div>
       {/if}
-    </div>
+    </nav>
 
     <!-- Photo Grid -->
     <PhotoGrid photos={data.photos} loading={false} favoriteSurface="archive_month" onclick={handlePhotoClick} />
@@ -254,14 +249,43 @@
     />
 
     <!-- Bottom Navigation -->
-    <div class="flex items-center justify-center mt-12 pt-8 border-t border-charcoal-800">
+    <div class="month-return">
       <a
         href="{base}/timeline"
-        class="inline-flex items-center gap-2 px-6 py-3 bg-charcoal-800 hover:bg-charcoal-700 text-charcoal-200 rounded-lg transition-colors"
+		class="month-return__link"
       >
         <ArrowLeft class="w-4 h-4" />
         Back to Timeline
       </a>
     </div>
-  </div>
+  </main>
 </div>
+
+<style>
+  .month-page { min-height: 100vh; background: var(--color-charcoal-950); color: var(--color-charcoal-50); }
+  .month-opening, .month-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+  .month-opening { padding-block: 20px 28px; }
+  .month-back { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; color: var(--color-charcoal-400); font-size: 14px; }
+  .month-back__link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+  .month-back__link:hover { color: var(--color-gold-400); }
+  .month-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+  .month-eyebrow { margin-bottom: 12px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .month-title-row :global(.month-title) { color: white; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+  .month-title-row :global(.month-count) { margin-top: 12px; color: var(--color-charcoal-300); font-size: 14px; }
+  .month-sort label { display: block; margin-bottom: 7px; color: var(--color-charcoal-300); font-size: 12px; }
+  .month-sort select { min-height: 44px; padding: 9px 12px; border: 1px solid var(--color-charcoal-700); border-radius: 0; background: var(--color-charcoal-950); color: var(--color-charcoal-50); }
+  .month-sort select:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
+  .month-results { padding-block: 20px 72px; border-top: 1px solid var(--color-charcoal-800); }
+  .month-navigation { display: flex; align-items: stretch; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .month-navigation__button { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--color-charcoal-700); border-radius: 0; color: var(--color-charcoal-200); text-align: left; }
+  .month-navigation__button:hover { border-color: var(--color-gold-500); }
+  .month-return { display: flex; justify-content: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--color-charcoal-800); }
+  .month-return__link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--color-charcoal-200); }
+  .month-return__link:hover { color: var(--color-gold-400); }
+  @media (max-width: 640px) {
+    .month-opening, .month-results { width: calc(100% - 40px); }
+    .month-title-row { align-items: stretch; flex-direction: column; }
+    .month-sort select { width: 100%; }
+    .month-navigation__button { max-width: 48%; padding: 8px; }
+  }
+</style>

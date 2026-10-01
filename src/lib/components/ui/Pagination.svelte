@@ -195,3 +195,8 @@
 	</Typography>
 </div>
 {/if}
+
+<style>
+	nav { flex-wrap: wrap; }
+	nav button { min-width: 44px; min-height: 44px; }
+</style>

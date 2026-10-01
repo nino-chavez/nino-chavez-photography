@@ -26,9 +26,7 @@
   import Typography from '$lib/components/ui/Typography.svelte';
   import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
   import Lightbox from '$lib/components/gallery/Lightbox.svelte';
-  import { Calendar, ChevronDown, ChevronUp, Filter, X } from 'lucide-svelte';
-  import SportFilter from '$lib/components/filters/SportFilter.svelte';
-  import CategoryFilter from '$lib/components/filters/CategoryFilter.svelte';
+  import { Calendar, ChevronDown } from 'lucide-svelte';
   import type { Photo } from '$types/photo';
 
   interface TimelineEntry {
@@ -55,11 +53,6 @@
   let {
     timelineData,
     hasMore = false,
-    currentPage = 1,
-    selectedSport = null,
-    selectedCategory = null,
-    sports = [],
-    categories = [],
     allAvailablePeriods = [],
     onLoadMore
   }: Props = $props();
@@ -67,26 +60,6 @@
   // Lazy loading state
   let isLoadingMore = $state(false);
   let hasMorePeriods = $derived(hasMore);
-  let currentPageNum = $state(1);
-
-  // Navigation state
-  let selectedYear: number | null = $state(null);
-  let selectedMonth: number | null = $state(null);
-  let showPeriodSelector = $state(false);
-
-  // Sync currentPage prop to local state
-  $effect(() => {
-    currentPageNum = currentPage;
-  });
-
-  // Animation state for period transitions
-  let currentVisiblePeriod = $state<{ year: number; month?: number } | null>(null);
-  let isTransitioning = $state(false);
-  let transitionType = $state<'same-year' | 'new-year' | null>(null);
-
-  // Intersection observer for period visibility and animations
-  let periodObservers = $state<Map<string, IntersectionObserver>>(new Map());
-
   // Group periods by year for sticky year headers
   let periodsByYear = $derived.by(() => {
     const grouped: Record<number, TimelineEntry[]> = {};
@@ -107,20 +80,6 @@
       }));
   });
 
-  // Get unique years and months for navigation
-  let availableYears = $derived.by(() => {
-    const years = new Set(timelineData.map(entry => entry.year));
-    return Array.from(years).sort((a, b) => b - a); // Newest first
-  });
-
-  let availableMonths = $derived.by(() => {
-    if (!selectedYear) return [];
-    return timelineData
-      .filter(entry => entry.year === selectedYear && entry.month)
-      .map(entry => ({ month: entry.month!, monthName: entry.monthName! }))
-      .sort((a, b) => b.month - a.month); // Newest first
-  });
-
   // Combined periods for single dropdown
   let availablePeriods = $derived.by(() => {
     return allAvailablePeriods
@@ -137,15 +96,6 @@
         if (a.year !== b.year) return b.year - a.year;
         return b.month - a.month;
       });
-  });
-
-  // Filter state
-  let showFilters = $state(false);
-  let activeFilterCount = $derived.by(() => {
-    let count = 0;
-    if (selectedSport) count++;
-    if (selectedCategory) count++;
-    return count;
   });
 
   // Lightbox state - collect all photos from timeline for full navigation
@@ -211,34 +161,27 @@
     }
   }
 
-  // Filter handlers
-  function handleSportSelect(sport: string | null) {
-    selectedSport = sport;
-    // Reset to first page when filtering
-    currentPageNum = 1;
-    // Note: Filtering should be handled by parent component via URL changes
-  }
-
-  function handleCategorySelect(category: string | null) {
-    selectedCategory = category;
-    // Reset to first page when filtering
-    currentPageNum = 1;
-    // Note: Filtering should be handled by parent component via URL changes
-  }
-
-  function clearAllFilters() {
-    selectedSport = null;
-    selectedCategory = null;
-    currentPageNum = 1;
-    // Note: Filtering should be handled by parent component via URL changes
-  }
-
   // Scroll to period function
-  function scrollToPeriod(year: number, month?: number) {
+  async function scrollToPeriod(year: number, month?: number) {
     const periodId = month ? `month-${year}-${month}` : `year-${year}`;
-    const element = document.getElementById(periodId);
+    let element = document.getElementById(periodId);
+    if (!element && onLoadMore && hasMorePeriods && !isLoadingMore) {
+      isLoadingMore = true;
+      try {
+        for (let attempt = 0; attempt < 10 && hasMorePeriods; attempt++) {
+          await onLoadMore();
+          await tick();
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          element = document.getElementById(periodId);
+          if (element) break;
+        }
+      } finally {
+        isLoadingMore = false;
+      }
+    }
     if (element) {
-      const offset = getScrollOffset();
+      const yearHeight = document.getElementById(`year-${year}`)?.getBoundingClientRect().height || 0;
+      const offset = getScrollOffset() + yearHeight + 8;
       const elementPosition = element.getBoundingClientRect().top + window.scrollY;
       const offsetPosition = elementPosition - offset;
 
@@ -246,9 +189,6 @@
         top: offsetPosition,
         behavior: 'smooth'
       });
-      selectedYear = year;
-      selectedMonth = month || null;
-      showPeriodSelector = false;
     }
   }
 
@@ -270,51 +210,12 @@
     return photos || [];
   }
 
-  // Click outside handler for dropdowns
-  function handleClickOutside(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('[data-dropdown]')) {
-      showPeriodSelector = false;
-    }
-  }
-
-  // Close dropdowns on escape
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      showPeriodSelector = false;
-    }
-  }
-
-  // Visual Timeline Navigator State
-  let hoveredPeriod = $state<{ year: number; month: number; monthName: string } | null>(null);
-
-  // Calculate scroll offset for sticky headers
-  // Header: h-16 (64px) + Timeline navigator: top-16 (64px offset) + height (~108px) = ~172px
+  // The date rail remains below both shared navigation bars while browsing.
   function getScrollOffset(): number {
-    // Measure actual timeline navigator height dynamically
     const timelineNav = document.querySelector('[data-timeline-nav]');
-    if (timelineNav) {
-      const navHeight = timelineNav.getBoundingClientRect().height;
-      // Header (64px) + Navigator height + padding (20px)
-      return 64 + navHeight + 20;
-    }
-    // Fallback: Header (64px) + Navigator estimated (~108px) + padding (20px)
-    return 192;
-  }
-
-  function scrollToNavPeriod(year: number, month: number) {
-    const periodId = `month-${year}-${month}`;
-    const element = document.getElementById(periodId);
-    if (element) {
-      const offset = getScrollOffset();
-      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = elementPosition - offset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-    }
+    if (!timelineNav) return 242;
+    const top = parseFloat(getComputedStyle(timelineNav).top) || 114;
+    return top + timelineNav.getBoundingClientRect().height + 20;
   }
 
   // Calculate timeline positions (0-100%) for each period
@@ -331,7 +232,7 @@
 
     return availablePeriods.map(period => {
       const periodDate = new Date(period.year, period.month - 1, 1);
-      const position = ((periodDate.getTime() - minDate.getTime()) / totalRange) * 100;
+      const position = totalRange ? ((periodDate.getTime() - minDate.getTime()) / totalRange) * 100 : 50;
       return {
         ...period,
         position: 100 - position // Reverse so newest is on the right
@@ -358,7 +259,7 @@
       const yearDate = new Date(year, 0, 1); // January 1st
       // Clamp to min/max range
       const clampedDate = yearDate < minDate ? minDate : yearDate > maxDate ? maxDate : yearDate;
-      const position = ((clampedDate.getTime() - minDate.getTime()) / totalRange) * 100;
+      const position = totalRange ? ((clampedDate.getTime() - minDate.getTime()) / totalRange) * 100 : 50;
       return {
         year,
         position: 100 - position // Reverse so newest is on the right
@@ -369,6 +270,7 @@
   // Track currently visible year and month based on scroll position
   let currentVisibleYear = $state<number | null>(null);
   let currentVisibleMonth = $state<{ year: number; month: number } | null>(null);
+  let hoveredPeriod = $state<{ year: number; month: number; monthName: string } | null>(null);
 
   // Update visible year and month based on scroll position
   // NOTE: Year headers are position:sticky so getBoundingClientRect returns stuck position.
@@ -396,12 +298,7 @@
     if (closestMonth) {
       const closest = closestMonth as { year: number; month: number; distance: number };
       currentVisibleYear = closest.year;
-      const newMonth = { year: closest.year, month: closest.month };
-      if (!currentVisibleMonth ||
-          currentVisibleMonth.year !== newMonth.year ||
-          currentVisibleMonth.month !== newMonth.month) {
-        currentVisibleMonth = newMonth;
-      }
+      currentVisibleMonth = { year: closest.year, month: closest.month };
     }
   }
 
@@ -427,15 +324,11 @@
     const target = findYearScrollTarget(year);
     if (target) {
       scrollToElement(target);
-      selectedYear = year;
-      selectedMonth = null;
       return;
     }
 
     // Year not in DOM — load more data until it appears
     if (!onLoadMore || !hasMorePeriods) return;
-    selectedYear = year;
-    selectedMonth = null;
 
     // Keep loading batches until the year section appears or no more data
     isLoadingMore = true;
@@ -479,18 +372,6 @@
   function handleScroll() {
     // Scroll handler is now just a trigger for updateVisibleYear
   }
-
-  // Effects for event listeners
-  $effect(() => {
-    if (showPeriodSelector) {
-      document.addEventListener('click', handleClickOutside);
-      document.addEventListener('keydown', handleKeydown);
-      return () => {
-        document.removeEventListener('click', handleClickOutside);
-        document.removeEventListener('keydown', handleKeydown);
-      };
-    }
-  });
 
   // Scroll tracking effect
   $effect(() => {
@@ -568,9 +449,9 @@
   });
 </script>
 
-<div class="relative w-full bg-charcoal-950">
+<div class="timeline-shell">
   <!-- Visual Timeline Navigator -->
-  <div class="sticky top-16 z-40 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50 shadow-lg" data-timeline-nav>
+  <div class="sticky top-16 z-40 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50 shadow-lg" data-timeline-nav role="navigation" aria-label="Photo timeline">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <!-- Timeline Label -->
       <div class="flex items-center gap-3 mb-3">
@@ -584,12 +465,12 @@
         <div class="absolute top-8 left-0 right-0 h-0.5 bg-charcoal-800"></div>
 
         <!-- Year milestones (clickable, positioned above timeline) -->
-        {#each yearMilestones as milestone}
+        {#each yearMilestones as milestone, index}
           {@const isActive = currentVisibleYear === milestone.year}
           <button
             onclick={() => scrollToYear(milestone.year)}
             class="absolute top-0 transform -translate-x-1/2 group cursor-pointer transition-all"
-            style="left: {milestone.position}%"
+            style="left: {milestone.position}%; --phone-position: {yearMilestones.length > 1 ? index / (yearMilestones.length - 1) * 100 : 50}%"
             aria-label="Jump to {milestone.year}"
           >
             <!-- Year marker -->
@@ -605,7 +486,7 @@
               >
                 <Typography 
                   variant="caption" 
-                  class={`text-sm font-semibold whitespace-nowrap ${isActive ? 'text-white' : 'text-charcoal-300'}`}
+                  class={`text-sm font-semibold whitespace-nowrap ${isActive ? 'text-charcoal-950' : 'text-charcoal-300'}`}
                 >
                   {milestone.year}
                 </Typography>
@@ -627,10 +508,10 @@
             {@const yearShortStr = String(period.year).slice(-2)}
 
             <button
-              onclick={() => scrollToNavPeriod(period.year, period.month)}
+              onclick={() => scrollToPeriod(period.year, period.month)}
               onmouseenter={() => hoveredPeriod = { year: period.year, month: period.month, monthName: period.monthName }}
               onmouseleave={() => hoveredPeriod = null}
-              class="absolute top-7 transform -translate-x-1/2 group cursor-pointer z-20"
+              class="timeline-month-marker absolute top-7 transform -translate-x-1/2 group cursor-pointer z-20"
               style="left: {period.position}%"
               aria-label="Jump to {period.monthName} {period.year}"
             >
@@ -685,21 +566,15 @@
   </div>
 
   <!-- Timeline Content -->
-  <div class="relative max-w-7xl mx-auto pt-8 pb-20">
+  <div class="timeline-content">
     {#each periodsByYear as yearGroup}
       <!-- Sticky Year Header -->
       <div
         id="year-{yearGroup.year}"
-        class="sticky top-[88px] z-30 mb-8"
+        class="year-heading"
       >
-        <div class="bg-charcoal-950 border-b border-charcoal-800/50 -mx-4 px-4 pb-6 md:-mx-8 md:px-8 lg:-mx-10 lg:px-10">
-          <div class="flex items-center gap-4">
-            <!-- Year Marker -->
-            <div class="h-12 w-12 rounded-full bg-gold-500 flex items-center justify-center shadow-lg">
-              <Calendar class="w-6 h-6 text-charcoal-950" />
-            </div>
-
-            <!-- Year Title -->
+        <div class="year-heading__inner">
+          <div>
             <div>
               <Typography variant="h2" class="text-white">
                 {yearGroup.year}
@@ -713,21 +588,13 @@
       </div>
 
       <!-- Months within this year -->
-      {#each yearGroup.periods as entry, monthIndex}
+      {#each yearGroup.periods as entry}
         <div
           id="month-{entry.year}-{entry.month}"
-          class="mb-12"
+          class="month-section"
         >
           <!-- Month Header -->
-          <div class="flex items-center gap-4 mb-6">
-            <!-- Month Marker -->
-            <div class="h-8 w-8 rounded-full bg-gold-400 flex items-center justify-center shadow-md">
-              <span class="text-charcoal-950 text-sm font-bold">
-                {entry.month}
-              </span>
-            </div>
-
-            <!-- Month Title -->
+          <div class="month-heading">
             <div>
               <Typography variant="h3" class="text-white">
                 {entry.monthName}
@@ -739,7 +606,7 @@
           </div>
 
           <!-- Month Content -->
-          <div class="ml-0 md:ml-12">
+          <div>
             <!-- Diversity Indicators -->
             {#if entry.featuredPhotos && entry.featuredPhotos.length > 0}
               {@const diversity = getContentDiversity(entry.featuredPhotos)}
@@ -751,20 +618,20 @@
                       {diversity.sportCount} sports
                     </span>
                   {/if}
-                  {#if diversity.categoryCount > 1}
-                    <span class="flex items-center gap-1">
-                      <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
-                      {diversity.categoryCount} categories
-                    </span>
-                  {/if}
-                </div>
-              {/if}
+				  {#if diversity.categoryCount > 1}
+					<span class="flex items-center gap-1">
+					  <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+					  {diversity.categoryCount} categories
+					</span>
+				  {/if}
+				</div>
+			  {/if}
             {/if}
 
             <!-- Photo Grid or Empty State -->
             {#if getFeaturedPhotos(entry.featuredPhotos).length > 0}
               {@const featuredPhotos = getFeaturedPhotos(entry.featuredPhotos)}
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-6">
+              <div class="timeline-photo-grid">
                 {#each featuredPhotos as photo, photoIndex (photo.id)}
                   <PhotoCard
                     {photo}
@@ -776,7 +643,7 @@
               </div>
             {:else}
               <!-- Empty State for periods with no featured photos -->
-              <div class="bg-charcoal-900/50 border border-charcoal-800 rounded-lg p-6 mb-6 text-center">
+              <div class="timeline-empty">
                 <Calendar class="w-10 h-10 text-charcoal-600 mx-auto mb-3" />
                 <Typography variant="body" class="text-charcoal-400 mb-1">
                   Featured photos coming soon
@@ -821,10 +688,6 @@
       {/if}
     {/each}
 
-    <!-- Progress Line (desktop only) -->
-    <div class="hidden md:block absolute left-4 md:left-6 top-0 w-0.5 bg-gradient-to-b from-transparent via-gold-500/50 to-transparent">
-      <div class="w-full bg-gradient-to-b from-gold-400 to-gold-600 rounded-full h-full"></div>
-    </div>
   </div>
 
   <!-- Lightbox - consistent with other pages, shows all timeline photos. hasMore/onLoadMore
@@ -843,3 +706,29 @@
   />
 
 </div>
+
+<style>
+  .timeline-shell { width: min(1320px, calc(100% - 64px)); margin-inline: auto; color: var(--color-charcoal-50); }
+  .timeline-shell [data-timeline-nav] { top: var(--gallery-header-height); height: 125px; background: var(--color-charcoal-950); backdrop-filter: none; box-shadow: none; border-color: var(--color-charcoal-800); }
+  .timeline-shell [data-timeline-nav] > div { padding-inline: 30px; }
+  .timeline-shell [data-timeline-nav] button { min-width: 44px; min-height: 44px; }
+  .timeline-shell [data-timeline-nav] .timeline-month-marker { top: 20px; display: flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; }
+  .timeline-shell [data-timeline-nav] button:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
+  .timeline-content { padding-block: 28px 80px; }
+  .year-heading { position: sticky; top: calc(var(--gallery-header-height) + 125px); z-index: 30; margin-block: 18px 28px; background: var(--color-charcoal-950); }
+  .year-heading__inner { padding-bottom: 16px; border-bottom: 1px solid var(--color-charcoal-800); }
+  .year-heading :global(h2) { font-family: Montserrat, sans-serif; font-size: 24px; }
+  .month-section { margin-bottom: 48px; }
+  .month-heading { margin-bottom: 18px; }
+  .month-heading :global(h3) { font-family: Montserrat, sans-serif; font-size: 20px; }
+  .timeline-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 18px; }
+  .timeline-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
+  .timeline-empty { margin-bottom: 18px; padding: 28px; border-block: 1px solid var(--color-charcoal-800); text-align: center; }
+  @media (max-width: 900px) { .timeline-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 640px) {
+    .timeline-shell { width: calc(100% - 40px); }
+    .timeline-shell [data-timeline-nav] > div { padding-inline: 26px; }
+    .timeline-shell [data-timeline-nav] button[aria-label^="Jump to "] { left: var(--phone-position) !important; }
+    .timeline-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  }
+</style>

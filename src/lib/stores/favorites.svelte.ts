@@ -5,6 +5,7 @@
  */
 
 import type { Photo } from '$types/photo';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { toast } from './toast.svelte';
 import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
 import { favoriteTransition } from '$lib/analytics/favorite-transaction';
@@ -20,8 +21,8 @@ interface FavoritesState {
 function createFavoritesStore() {
 	// Initialize from localStorage (browser-only)
 	const initialState: FavoritesState = {
-		photoIds: new Set(),
-		photos: new Map()
+		photoIds: new SvelteSet(),
+		photos: new SvelteMap()
 	};
 
 	if (typeof window !== 'undefined') {
@@ -29,8 +30,8 @@ function createFavoritesStore() {
 			const stored = localStorage.getItem(STORAGE_KEY);
 			if (stored) {
 				const parsed = JSON.parse(stored);
-				initialState.photoIds = new Set(parsed.photoIds || []);
-				initialState.photos = new Map(
+				initialState.photoIds = new SvelteSet(parsed.photoIds || []);
+				initialState.photos = new SvelteMap(
 					(parsed.photos || []).map((photo: Photo) => [photo.image_key, photo])
 				);
 			}

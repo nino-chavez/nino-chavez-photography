@@ -1,56 +1,35 @@
-<!--
-  Header Component - Site navigation header
-
-  Features:
-  - Logo/brand name
-  - Navigation links
-  - Active route highlighting
-  - Responsive mobile menu (future)
-  - Sticky positioning
-
-  Usage:
-  <Header />
--->
-
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
 	import { Grid, Folder, Heart, Calendar } from 'lucide-svelte';
 	import GlobalSearch from '$lib/components/ui/GlobalSearch.svelte';
 	import { cn } from '$lib/utils';
 	import { favorites } from '$lib/stores/favorites.svelte';
+	import { GLOBAL_NAVIGATION, MENU_NAVIGATION } from '$lib/navigation-contract';
 
 	interface NavItem {
 		label: string;
 		path: string;
 		icon: typeof Folder;
-		badge?: () => number; // Optional badge count function
+		badge?: () => number;
 	}
 
-	// IA: Albums (event discovery) is the primary job and leads the nav. Search is the GlobalSearch
-	// box (right side), which is the entry to /explore results — so "Explore" is no longer a nav item.
 	const navItems: NavItem[] = [
 		{ label: 'Events', path: `${base}/albums`, icon: Folder },
 		{ label: 'By date', path: `${base}/timeline`, icon: Calendar },
 		{ label: 'Collections', path: `${base}/collections`, icon: Grid },
-		{ label: 'Saved', path: `${base}/favorites`, icon: Heart, badge: () => favorites.count },
+		{ label: 'Saved', path: `${base}/favorites`, icon: Heart, badge: () => favorites.count }
 	];
 
-	const practiceLinks = [
-		{ href: '/work', label: 'Work' },
-		{ href: '/demos', label: 'How I work' },
-		{ href: '/learn', label: 'Learn' },
-		{ href: '/blog', label: 'Writing' },
-		{ href: '/photography', label: 'Photography' },
-		{ href: '/about', label: 'About' },
-	] as const;
-
-	// Derived from page store
 	let currentPath = $derived($page.url.pathname);
-
-	// Site Menu panel is rendered outside the sticky shell — a fixed sheet nested inside
-	// position:sticky is clipped / loses hit-testing over page content on mobile.
+	let menuDialog: HTMLDialogElement;
+	let menuButton: HTMLButtonElement;
 	let siteMenuOpen = $state(false);
+	let menuHistoryEntry = false;
+	let pendingNavigation: string | null = null;
+	let bodyOverflow = '';
+	let rootOverflow = '';
 
 	function isActive(path: string): boolean {
 		if (path === base || path === `${base}/`) {
@@ -58,110 +37,201 @@
 		}
 		return currentPath.startsWith(path);
 	}
+
+	function lockBackground() {
+		bodyOverflow = document.body.style.overflow;
+		rootOverflow = document.documentElement.style.overflow;
+		document.body.style.overflow = 'hidden';
+		document.documentElement.style.overflow = 'hidden';
+	}
+
+	function unlockBackground() {
+		document.body.style.overflow = bodyOverflow;
+		document.documentElement.style.overflow = rootOverflow;
+	}
+
+	async function openMenu() {
+		if (siteMenuOpen) return;
+
+		siteMenuOpen = true;
+		menuHistoryEntry = true;
+		lockBackground();
+		history.pushState({ ...history.state, siteNavigationDialog: true }, '', window.location.href);
+		await tick();
+		menuDialog.showModal();
+	}
+
+	function finishClosingMenu() {
+		siteMenuOpen = false;
+		menuHistoryEntry = false;
+		unlockBackground();
+		menuButton?.focus();
+	}
+
+	function closeMenu() {
+		if (!siteMenuOpen) return;
+		menuDialog.close();
+		if (menuHistoryEntry) {
+			menuHistoryEntry = false;
+			history.back();
+		}
+	}
+
+	function handleMenuPopState() {
+		const destination = pendingNavigation;
+		pendingNavigation = null;
+		menuHistoryEntry = false;
+		if (siteMenuOpen) menuDialog.close();
+		if (destination) window.location.assign(destination);
+	}
+
+	function handleDialogClose() {
+		if (siteMenuOpen) finishClosingMenu();
+	}
+
+	function handleDialogCancel(event: Event) {
+		event.preventDefault();
+		closeMenu();
+	}
+
+	function handleMenuLink(event: MouseEvent) {
+		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		event.preventDefault();
+		pendingNavigation = (event.currentTarget as HTMLAnchorElement).href;
+		closeMenu();
+	}
+
+	function handleMenuSearch(event: SubmitEvent) {
+		event.preventDefault();
+		const form = new FormData(event.currentTarget as HTMLFormElement);
+		const query = form.get('q');
+		const destination = new URL('/search', window.location.origin);
+		if (typeof query === 'string' && query) destination.searchParams.set('q', query);
+		pendingNavigation = destination.href;
+		closeMenu();
+	}
+
+	function handleMenuKeys(event: KeyboardEvent) {
+		if (event.key !== 'Tab') return;
+		const controls = Array.from(menuDialog.querySelectorAll<HTMLElement>(
+			'a[href], button:not([disabled]), input:not([disabled])'
+		)).filter((element) => element.getClientRects().length > 0);
+		const first = controls[0];
+		const last = controls[controls.length - 1];
+		if (event.shiftKey && document.activeElement === first) {
+			event.preventDefault();
+			last?.focus();
+		} else if (!event.shiftKey && document.activeElement === last) {
+			event.preventDefault();
+			first?.focus();
+		}
+	}
 </script>
 
-<!-- PERFORMANCE: CSS animation instead of svelte-motion (loads on every page) -->
-<div class="header-animate">
-	<div class="open-practice-shell">
-		<div class="open-practice-shell__inner">
-			<a class="open-practice-shell__identity" href="/" data-sveltekit-reload aria-label="Nino Chavez, home">
-				Nino Chavez
-			</a>
-			<nav class="open-practice-shell__desktop" aria-label="Nino Chavez site">
-				{#each practiceLinks as item}
-					<a
-						href={item.href}
-						data-sveltekit-reload
-						aria-current={item.href === '/photography' ? 'location' : undefined}
-					>
-						{item.label}
-					</a>
-				{/each}
-			</nav>
-			<a class="open-practice-shell__search" href="/search" data-sveltekit-reload>Search site</a>
-			<details class="open-practice-shell__mobile" bind:open={siteMenuOpen}>
-				<summary>Menu</summary>
-			</details>
-		</div>
+<svelte:window onpopstate={handleMenuPopState} />
+
+<div class="open-practice-shell">
+	<div class="open-practice-shell__inner">
+		<a class="open-practice-shell__identity" href="/" data-sveltekit-reload aria-label="Nino Chavez, home">
+			Nino Chavez
+		</a>
+		<nav class="open-practice-shell__desktop" aria-label="Nino Chavez site">
+			{#each GLOBAL_NAVIGATION as item}
+				<a
+					href={item.href}
+					data-sveltekit-reload
+					aria-current={item.href === '/photography' ? 'location' : undefined}
+				>
+					{item.label}
+				</a>
+			{/each}
+		</nav>
+		<a class="open-practice-shell__search" href="/search" data-sveltekit-reload>Search site</a>
+		<button
+			bind:this={menuButton}
+			class="open-practice-shell__menu"
+			type="button"
+			aria-expanded={siteMenuOpen}
+			aria-haspopup="dialog"
+			aria-controls="site-menu-dialog"
+			onclick={openMenu}
+		>
+			Menu
+		</button>
 	</div>
-
-	<header class="gallery-subnav sticky z-50 w-full">
-		<div class="gallery-subnav__inner">
-			<a
-				class="gallery-subnav__section"
-				href="{base}/"
-				data-sveltekit-reload
-				aria-label="Photography home"
-			>
-				<span aria-hidden="true"></span>
-				<strong>Photography</strong>
-			</a>
-
-			<nav class="gallery-subnav__routes" aria-label="Photography navigation">
-				{#each navItems as item}
-					{@const active = isActive(item.path)}
-					{@const badgeCount = item.badge?.() || 0}
-					<a
-						href={item.path}
-						data-sveltekit-preload="tap"
-						class:active
-						aria-current={active ? 'page' : undefined}
-					>
-						{item.label}
-						{#if badgeCount > 0}
-							<span class="gallery-subnav__badge" aria-label="{badgeCount} saved photos">
-								{badgeCount > 99 ? '99+' : badgeCount}
-							</span>
-						{/if}
-					</a>
-				{/each}
-			</nav>
-
-			<div class="gallery-subnav__search">
-				<GlobalSearch />
-			</div>
-		</div>
-	</header>
 </div>
 
-{#if siteMenuOpen}
-	<!-- Outside sticky shell so the sheet isn't clipped and stacks above album chrome -->
-	<button
-		type="button"
-		class="site-menu-backdrop"
-		aria-label="Close menu"
-		onclick={() => {
-			siteMenuOpen = false;
-		}}
-	></button>
-	<nav class="site-menu-sheet" aria-label="Nino Chavez site">
-		{#each practiceLinks as item}
+<header class="gallery-subnav sticky z-50 w-full">
+	<div class="gallery-subnav__inner">
+		<a class="gallery-subnav__section" href="{base}/" data-sveltekit-reload aria-label="Photography home">
+			<span aria-hidden="true"></span>
+			<strong>Photography</strong>
+		</a>
+
+		<nav class="gallery-subnav__routes" aria-label="Photography navigation">
+			{#each navItems as item}
+				{@const active = isActive(item.path)}
+				{@const badgeCount = item.badge?.() || 0}
+				<a href={item.path} data-sveltekit-preload="tap" class:active aria-current={active ? 'page' : undefined}>
+					{item.label}
+					{#if badgeCount > 0}
+						<span class="gallery-subnav__badge" aria-label="{badgeCount} saved photos">
+							{badgeCount > 99 ? '99+' : badgeCount}
+						</span>
+					{/if}
+				</a>
+			{/each}
+		</nav>
+
+		<div class="gallery-subnav__search">
+			<GlobalSearch />
+		</div>
+	</div>
+</header>
+
+<dialog
+	bind:this={menuDialog}
+	id="site-menu-dialog"
+	class="site-menu-dialog"
+	aria-labelledby="site-menu-title"
+	oncancel={handleDialogCancel}
+	onclose={handleDialogClose}
+	onkeydown={handleMenuKeys}
+>
+	<div class="site-menu-dialog__header">
+		<p id="site-menu-title">Navigate</p>
+		<button type="button" class="site-menu-dialog__close" onclick={closeMenu}>Close</button>
+	</div>
+	<form class="site-menu-dialog__search" action="/search" role="search" onsubmit={handleMenuSearch}>
+		<label for="site-menu-query">Search this site</label>
+		<div>
+			<input id="site-menu-query" name="q" type="search" placeholder="Project, topic, or page…" />
+			<button type="submit">Search</button>
+		</div>
+	</form>
+	<nav class="site-menu-dialog__links" aria-label="Nino Chavez site">
+		{#each GLOBAL_NAVIGATION as item}
 			<a
 				href={item.href}
 				data-sveltekit-reload
 				aria-current={item.href === '/photography' ? 'location' : undefined}
-				onclick={() => {
-					siteMenuOpen = false;
-				}}
+				onclick={handleMenuLink}
 			>
 				{item.label}
 			</a>
 		{/each}
-		<a
-			href="/search"
-			data-sveltekit-reload
-			onclick={() => {
-				siteMenuOpen = false;
-			}}>Search site</a
-		>
 	</nav>
-{/if}
+	<nav class="site-menu-dialog__secondary" aria-label="More pages">
+		{#each MENU_NAVIGATION.filter((item) => item.href === '/now' || item.href === '/links') as item}
+			<a href={item.href} data-sveltekit-reload onclick={handleMenuLink}>{item.label}</a>
+		{/each}
+	</nav>
+</dialog>
 
-<!-- Mobile Bottom Navigation - outside .header-animate so position:fixed is viewport-relative -->
 <nav
 	class="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-charcoal-950/95 backdrop-blur-lg border-t border-charcoal-800"
 	style="padding-bottom: env(safe-area-inset-bottom, 0);"
-	aria-label="Mobile navigation"
+	aria-label="Mobile photography navigation"
 >
 	<div class="flex justify-around py-2">
 		{#each navItems as item}
@@ -194,15 +264,23 @@
 </nav>
 
 <style>
+	:global(:root) { --gallery-header-height: 114px; }
+	@media (max-width: 680px) { :global(:root) { --gallery-header-height: 110px; } }
+	@media (max-width: 639px) { :global(:root) { --gallery-header-height: 108px; } }
 	.open-practice-shell {
-		--practice-shell-height: 64px;
+		--shell-ground: #07131d;
+		--shell-text: #f4f0e8;
+		--shell-muted: #b8c2ca;
+		--shell-rule: #3a4a56;
+		--shell-action: #e3c358;
+		--shell-action-quiet: #263d4e;
 		position: sticky;
 		top: 0;
 		z-index: 60;
-		height: var(--practice-shell-height);
-		border-bottom: 1px solid rgb(241 234 223 / 0.22);
-		background: #091426;
-		color: #f1eadf;
+		height: 64px;
+		border-bottom: 1px solid var(--shell-rule);
+		background: var(--shell-ground);
+		color: var(--shell-text);
 	}
 
 	.open-practice-shell__inner {
@@ -215,22 +293,26 @@
 		gap: 24px;
 	}
 
-	.open-practice-shell a {
+	.open-practice-shell a,
+	.open-practice-shell__menu {
 		color: inherit;
-		font-size: 0.875rem;
-		font-weight: 650;
+		font-size: 0.85rem;
+		font-weight: 620;
 		text-decoration: none;
 	}
 
 	.open-practice-shell__identity {
 		justify-self: start;
+		font-size: 0.95rem !important;
+		font-weight: 800 !important;
+		letter-spacing: -0.01em;
 	}
 
 	.open-practice-shell__desktop {
 		display: flex;
 		align-self: stretch;
 		align-items: center;
-		gap: 34px;
+		gap: clamp(18px, 2.6vw, 36px);
 	}
 
 	.open-practice-shell__desktop a {
@@ -238,36 +320,42 @@
 		height: 100%;
 		align-items: center;
 		border-bottom: 3px solid transparent;
-		color: rgb(241 234 223 / 0.62);
+		color: var(--shell-muted);
 	}
 
 	.open-practice-shell__desktop a:hover,
 	.open-practice-shell__desktop a:focus-visible,
 	.open-practice-shell__desktop a[aria-current] {
-		color: #f1eadf;
-	}
-
-	.open-practice-shell__desktop a[aria-current] {
-		border-bottom-color: #d07a4e;
+		border-bottom-color: var(--shell-action);
+		color: var(--shell-text);
 	}
 
 	.open-practice-shell__search {
 		justify-self: end;
-		color: rgb(241 234 223 / 0.62) !important;
+		color: var(--shell-muted) !important;
 	}
 
 	.open-practice-shell__search:hover,
 	.open-practice-shell__search:focus-visible {
-		color: #f1eadf !important;
+		color: var(--shell-text) !important;
 	}
 
-	.open-practice-shell :global(:focus-visible) {
-		outline: 3px solid #d07a4e;
-		outline-offset: 3px;
-	}
-
-	.open-practice-shell__mobile {
+	.open-practice-shell__menu {
 		display: none;
+		min-height: 42px;
+		padding: 8px 13px;
+		border: 1px solid var(--shell-rule);
+		border-radius: 3px;
+		font-size: 1rem;
+		font-weight: 700;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.open-practice-shell :global(:focus-visible),
+	.site-menu-dialog :global(:focus-visible) {
+		outline: 2px solid var(--shell-action);
+		outline-offset: 3px;
 	}
 
 	.gallery-subnav {
@@ -324,7 +412,6 @@
 		font-size: 0.8rem;
 		font-weight: 620;
 		text-decoration: none;
-		transition: border-color 160ms ease, color 160ms ease;
 	}
 
 	.gallery-subnav__routes > a:hover,
@@ -356,39 +443,139 @@
 		justify-self: end;
 	}
 
-	/* PERFORMANCE: opacity-only — a transform here creates a containing block that
-	   breaks position:fixed (bottom nav) and makes sticky/absolute menu stacking fight
-	   the gallery subnav on mobile. */
-	@keyframes header-slide-in {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
+	.site-menu-dialog {
+		--shell-ground: #f4f0e8;
+		--shell-text: #122a3c;
+		--shell-muted: #536373;
+		--shell-rule: #bbc0bf;
+		--shell-action: #0d5a93;
+		--shell-action-quiet: #e0e9ed;
+		width: min(520px, calc(100% - 24px));
+		max-height: calc(100dvh - 24px);
+		margin: 12px 12px 12px auto;
+		padding: 0;
+		overflow: auto;
+		border: 1px solid var(--shell-text);
+		border-radius: 0;
+		background: #f4f0e8;
+		color: var(--shell-text);
 	}
 
-	.header-animate {
-		animation: header-slide-in 0.3s ease-out forwards;
+	.site-menu-dialog::backdrop {
+		background: rgb(14 25 40 / 0.55);
 	}
 
+	.site-menu-dialog__header {
+		display: flex;
+		min-height: 64px;
+		padding: 12px 18px;
+		align-items: center;
+		justify-content: space-between;
+		border-bottom: 1px solid var(--shell-rule);
+	}
 
-	/* Reduce motion for accessibility */
-	@media (prefers-reduced-motion: reduce) {
-		.header-animate {
-			animation: none;
-		}
+	.site-menu-dialog__header p {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 760;
+	}
+
+	.site-menu-dialog__close,
+	.site-menu-dialog__search button {
+		min-height: 42px;
+		padding: 8px 13px;
+		border: 1px solid var(--shell-rule);
+		border-radius: 0;
+		background: #f4f0e8;
+		color: inherit;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.site-menu-dialog__links {
+		display: grid;
+	}
+
+	.site-menu-dialog__links a {
+		display: flex;
+		min-height: 58px;
+		padding: 14px 18px;
+		align-items: center;
+		border-bottom: 1px solid var(--shell-rule);
+		color: inherit;
+		font-size: 1.05rem;
+		font-weight: 680;
+		text-decoration: none;
+	}
+
+	.site-menu-dialog__links a:hover,
+	.site-menu-dialog__links a:focus-visible,
+	.site-menu-dialog__links a[aria-current] {
+		background: var(--shell-action-quiet);
+	}
+	.site-menu-dialog__links a[aria-current] {
+		background: #0e1928;
+		color: #f0f1f4;
+		box-shadow: inset 4px 0 0 var(--shell-action);
+	}
+
+	.site-menu-dialog__links a[aria-current]::after {
+		margin-left: auto;
+		color: rgb(240 241 244 / 0.62);
+		content: 'Current section';
+		font-size: 0.72rem;
+		font-weight: 500;
+	}
+
+	.site-menu-dialog__search {
+		padding: 20px 18px;
+		border-bottom: 1px solid var(--shell-rule);
+	}
+	.site-menu-dialog__search label {
+		display: block;
+		margin-bottom: 7px;
+		color: var(--shell-muted);
+		font-size: 0.78rem;
+		font-weight: 700;
+	}
+	.site-menu-dialog__search > div { display: flex; gap: 8px; }
+	.site-menu-dialog__search input {
+		width: 100%;
+		min-width: 0;
+		min-height: 46px;
+		padding: 9px 11px;
+		border: 1px solid var(--shell-rule);
+		border-radius: 0;
+		background: #f4f0e8;
+		color: #122a3c;
+		font: inherit;
+	}
+	.site-menu-dialog__secondary {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		padding: 14px 18px;
+		gap: 8px;
+	}
+	.site-menu-dialog__secondary a {
+		display: flex;
+		min-height: 42px;
+		padding: 8px;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid var(--shell-rule);
+		color: inherit;
+		font-size: 0.82rem;
+		text-decoration: none;
+	}
+	@media (max-width: 680px) {
+		.open-practice-shell { height: 60px; }
+		.open-practice-shell__inner { width: calc(100% - 30px); }
+		.gallery-subnav { top: 60px; }
+		.site-menu-dialog__secondary { grid-template-columns: 1fr; }
 	}
 
 	@media (max-width: 920px) {
-		.open-practice-shell {
-			--practice-shell-height: 56px;
-		}
-
-		.gallery-subnav {
-			top: 56px;
-		}
-
 		.open-practice-shell__inner {
 			width: calc(100% - 32px);
 			grid-template-columns: 1fr auto;
@@ -399,77 +586,15 @@
 			display: none;
 		}
 
-		.open-practice-shell__mobile {
-			position: relative;
-			display: block;
-			justify-self: end;
-		}
-
-		.open-practice-shell__mobile summary {
-			min-height: 44px;
-			padding: 10px 12px;
-			border: 1px solid rgb(241 234 223 / 0.34);
-			border-radius: 2px;
-			cursor: pointer;
-			font-size: 0.82rem;
-			font-weight: 700;
-			list-style: none;
-		}
-
-		.open-practice-shell__mobile summary::-webkit-details-marker {
-			display: none;
-		}
-
-		.site-menu-backdrop {
-			position: fixed;
-			inset: 0;
-			top: 56px;
-			z-index: 70;
-			padding: 0;
-			border: none;
-			background: rgb(0 0 0 / 0.45);
-			cursor: pointer;
-		}
-
-		/* Full-width sheet under the site shell; sibling of sticky chrome so it is not
-		   clipped and stacks above album page content. */
-		.site-menu-sheet {
-			position: fixed;
-			top: 56px;
-			left: 0;
-			right: 0;
-			z-index: 71;
-			display: grid;
-			width: 100%;
-			max-height: calc(100dvh - 56px);
-			overflow: auto;
-			padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0));
-			border-bottom: 1px solid rgb(241 234 223 / 0.22);
-			background: #091426;
-			box-shadow: 0 20px 44px rgb(0 0 0 / 0.42);
-			color: #f1eadf;
-		}
-
-		.site-menu-sheet a {
-			min-height: 44px;
-			padding: 10px 12px;
-			border-left: 3px solid transparent;
-			color: inherit;
-			font-size: 0.875rem;
-			font-weight: 650;
-			text-decoration: none;
-		}
-
-		.site-menu-sheet a[aria-current] {
-			border-left-color: #d07a4e;
-			background: rgb(64 81 237 / 0.16);
+		.open-practice-shell__menu {
+			display: inline-flex;
+			align-items: center;
 		}
 	}
 
 	@media (max-width: 639px) {
-
 		.gallery-subnav {
-			top: 56px;
+			top: 60px;
 			height: 48px;
 		}
 

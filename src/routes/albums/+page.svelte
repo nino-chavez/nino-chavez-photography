@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { FolderOpen, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-svelte';
+	import { FolderOpen, ChevronLeft, ChevronRight } from 'lucide-svelte';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createAlbumSlug } from '$lib/utils';
@@ -122,44 +122,35 @@
 
 <svelte:window onkeydown={handleKeyDown} />
 
-<!-- Minimal Header - Content First Design (Browse Mode: Traditionalist) -->
-<!-- PERFORMANCE: Removed Motion wrapper - using CSS animations instead for better render performance -->
-<div class="animate-fade-in">
-	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-			<!-- Single Row: Title + Count + Search (Explore Page Pattern) -->
-			<div class="flex items-center justify-between gap-4">
-				<div class="flex items-center gap-2">
-					<Typography variant="h1" class="text-xl lg:text-2xl">Events</Typography>
-					<!-- Bare count on purpose: the h1 beside it is the unit. "Albums 249 albums"
-					     was tried and reads worse. The album *detail* header needs its units
-					     ("119 photos · 82 videos") because its title is an event name. -->
-					<Typography variant="caption" class="text-charcoal-400 text-xs">
-						{data.totalAlbums.toLocaleString()}
-					</Typography>
-				</div>
 
-				<!-- Sort Dropdown -->
-				<div class="hidden sm:flex items-center gap-2">
-					<ArrowUpDown class="w-4 h-4 text-charcoal-400" />
-					<select
-						value={data.sortBy}
-						onchange={(e) => changeSortOrder(e.currentTarget.value as any)}
-						class="px-3 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white"
-						aria-label="Sort events"
-					>
-						<option value="count">Most Photos</option>
-						<option value="name">Name (A-Z)</option>
-						<option value="date">Latest Photos</option>
-					</select>
-				</div>
+<div class="events-page animate-fade-in">
+	<header class="events-opening">
+		<p class="events-eyebrow">Browse the archive</p>
+		<div class="events-title-row">
+			<div>
+				<h1>Events</h1>
+				<p class="events-deck">Find a match, team, or date, then open the full gallery.</p>
+			</div>
+			<p class="events-count">{data.totalAlbums.toLocaleString()} {data.totalAlbums === 1 ? 'event' : 'events'}</p>
+		</div>
+	</header>
 
-				<!-- Event discovery: search (all albums) + sport + year -->
-				<div class="flex flex-1 max-w-2xl items-center gap-2 justify-end">
+	<section class="events-tools" aria-label="Find an event">
+		<form class="events-search" onsubmit={handleSearch}>
+			<label for="event-search">Find an event</label>
+			<input
+				id="event-search"
+				type="search"
+				placeholder="Team or event name"
+				bind:value={searchInput}
+				aria-label="Search albums by team or event name"
+			/>
+		</form>
+		<div class="events-filters">
 					<select
 						value={data.selectedSport}
 						onchange={(e) => applyParam('sport', e.currentTarget.value)}
-						class="hidden md:block px-3 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white capitalize"
+						class="capitalize"
 						aria-label="Filter by sport"
 					>
 						<option value="">All sports</option>
@@ -170,7 +161,6 @@
 					<select
 						value={data.selectedYear}
 						onchange={(e) => applyParam('year', e.currentTarget.value)}
-						class="hidden md:block px-3 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white"
 						aria-label="Filter by year"
 					>
 						<option value="">All years</option>
@@ -178,61 +168,19 @@
 							<option value={y}>{y}</option>
 						{/each}
 					</select>
-					<form class="flex-1 max-w-md" onsubmit={handleSearch}>
-						<input
-							type="search"
-							placeholder="Search team or event…"
-							bind:value={searchInput}
-							class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
-							aria-label="Search albums by team or event name"
-						/>
-					</form>
+					<select value={data.sortBy} onchange={(e) => changeSortOrder(e.currentTarget.value as any)} aria-label="Sort events">
+						<option value="count">Most photos</option>
+						<option value="name">Name A–Z</option>
+						<option value="date">Latest photos</option>
+					</select>
 					{#if hasActiveFilters}
-						<button type="button" onclick={clearFilters} class="px-3 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-gold-500 text-charcoal-300 transition-colors whitespace-nowrap">Clear</button>
+						<button type="button" onclick={clearFilters}>Clear filters</button>
 					{/if}
-				</div>
-			</div>
-
-			<!-- Mobile Sort + discovery facets -->
-			<div class="md:hidden mt-3 grid grid-cols-3 gap-2">
-				<select
-					value={data.sortBy}
-					onchange={(e) => changeSortOrder(e.currentTarget.value as any)}
-					class="px-2 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 transition-colors text-white"
-					aria-label="Sort albums"
-				>
-					<option value="count">Most Photos</option>
-					<option value="name">Name (A-Z)</option>
-					<option value="date">Latest</option>
-				</select>
-				<select
-					value={data.selectedSport}
-					onchange={(e) => applyParam('sport', e.currentTarget.value)}
-					class="px-2 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 transition-colors text-white capitalize"
-					aria-label="Filter by sport"
-				>
-					<option value="">All sports</option>
-					{#each data.availableSports as s}
-						<option value={s}>{s}</option>
-					{/each}
-				</select>
-				<select
-					value={data.selectedYear}
-					onchange={(e) => applyParam('year', e.currentTarget.value)}
-					class="px-2 py-1.5 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 transition-colors text-white"
-					aria-label="Filter by year"
-				>
-					<option value="">All years</option>
-					{#each data.availableYears as y}
-						<option value={y}>{y}</option>
-					{/each}
-				</select>
-			</div>
 		</div>
-	</div>
+	</section>
 
 	<!-- Album Grid Content -->
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+	<div class="events-results">
 
 		<!-- Discovery results indicator -->
 		{#if hasActiveFilters}
@@ -245,7 +193,7 @@
 
 		<!-- Album Grid -->
 		{#if displayAlbums.length > 0}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			<div class="events-grid">
 				{#each displayAlbums as album, index}
 					<div>
 						<AlbumCard {album} {index} {resultSetId} onclick={handleAlbumClick} priority={index < 4} experiment={index === 0 ? data.experiment : null} />
@@ -350,6 +298,35 @@
 	.animate-fade-in {
 		animation: fade-in 0.3s ease-out forwards;
 	}
+	.events-page { color: var(--color-charcoal-50); }
+	.events-opening, .events-tools, .events-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.events-opening { padding-block: 40px 28px; }
+	.events-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.events-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+	.events-title-row h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; letter-spacing: -.035em; line-height: 1.08; }
+	.events-deck { max-width: 560px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; }
+	.events-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
+	.events-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: end; gap: 16px; padding-block: 18px; border-block: 1px solid var(--color-charcoal-800); }
+	.events-search label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 650; }
+	.events-search input, .events-filters select, .events-filters button { min-height: 44px; border: 1px solid var(--color-charcoal-700); border-radius: 0; background: var(--color-charcoal-950); color: var(--color-charcoal-50); font-size: 14px; }
+	.events-search input { width: 100%; padding: 10px 14px; font-size: 16px; }
+	.events-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+	.events-filters select, .events-filters button { padding: 9px 12px; }
+	.events-filters button { color: var(--color-charcoal-300); cursor: pointer; }
+	.events-search input:focus-visible, .events-filters select:focus-visible, .events-filters button:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
+	.events-results { padding-block: 24px 72px; }
+	.events-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+	@media (max-width: 980px) { .events-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+	@media (max-width: 720px) {
+		.events-opening, .events-tools, .events-results { width: calc(100% - 40px); }
+		.events-opening { padding-block: 24px 22px; }
+		.events-title-row { align-items: start; flex-direction: column; gap: 12px; }
+		.events-tools { grid-template-columns: 1fr; gap: 8px; padding-block: 8px; }
+		.events-filters { display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 3px; }
+		.events-filters select, .events-filters button { flex: 0 0 auto; width: auto; min-width: 0; }
+		.events-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+	}
+	@media (max-width: 480px) { .events-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
 
 	/* Reduce motion for accessibility */
 	@media (prefers-reduced-motion: reduce) {

@@ -35,9 +35,10 @@
 		favoriteSurface?: string;
 		onclick?: (photo: Photo) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images
+		showMetadata?: boolean; // Controls the sport and photo-specific category overlay.
 	}
 
-	let { photo, index = 0, resultSetId = crypto.randomUUID(), searchId, favoriteSurface = 'gallery', onclick, priority = false }: Props = $props();
+	let { photo, index = 0, resultSetId = crypto.randomUUID(), searchId, favoriteSurface = 'gallery', onclick, priority = false, showMetadata = true }: Props = $props();
 
 	// Use image_url for display, thumbnail as blur placeholder
 	// All images now served via Cloudflare proxy with WebP/AVIF conversion
@@ -118,6 +119,7 @@
 	</div>
 
 	<!-- Metadata Overlay - Bottom (Hover Only) -->
+	{#if showMetadata}
 	<div
 		class="absolute bottom-0 left-0 right-0 p-3
 		       opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
@@ -145,6 +147,7 @@
 			{/if}
 		</div>
 	</div>
+	{/if}
 </a>
 
 <style>

@@ -431,22 +431,25 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!--
-	The page had no h1 at all — it renders straight into the filter bar, so there is no visual
-	heading slot. sr-only is the established pattern here (Header, Loading, several routes) and
-	the text matches the <title>. /explore is priority 0.9 in the sitemap; a page this central
-	should announce what it is.
--->
-<h1 class="sr-only">Explore Gallery</h1>
+<header class="explore-opening">
+	<p class="explore-eyebrow">Photography archive</p>
+	<div class="explore-title-row">
+		<div>
+			<h1>Find your photograph</h1>
+			<p>Search what is visible, narrow by event details, then open the image to save, share, or download.</p>
+		</div>
+		<p class="explore-count">{data.totalCount.toLocaleString()} {data.totalCount === 1 ? 'photograph' : 'photographs'}</p>
+	</div>
+</header>
 
-<!-- Minimal Sticky Header -->
-<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
+<!-- Finding tools -->
+<div class="explore-tools">
 	<!-- Loading progress bar -->
 	{#if isLoading}
 		<div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-gold-500 via-gold-400 to-gold-500 animate-shimmer-fast"></div>
 	{/if}
 
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+	<div class="explore-tools__inner">
 		<!-- Filters Header with Actions -->
 		<div class="flex items-center justify-between gap-2 mb-2">
 			<div class="flex items-center gap-2">
@@ -559,7 +562,7 @@
 </div>
 
 <!-- Main Content with Sidebar (Desktop) / Full Width (Mobile) -->
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+<div class="explore-results">
 	<div class="flex gap-6">
 		<!-- Filter Sidebar (Desktop only) - Lazy Loaded -->
 		<div class="hidden lg:block">
@@ -670,7 +673,7 @@
 			<Typography variant="body" class="text-charcoal-400">No results were recorded. Please try your search again.</Typography>
 		</div>
 	{:else if displayPhotos.length > 0}
-		<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-4 lg:gap-6">
+		<div class="explore-photo-grid">
 			{#each displayPhotos as photo, index (photo.image_key)}
 				<PhotoCard {photo} {index} {resultSetId} searchId={data.searchId ?? undefined} favoriteSurface="explore" onclick={handlePhotoClick} priority={index < 4} />
 			{/each}
@@ -745,13 +748,25 @@
 </div>
 
 <style>
-	/* Performance: Use CSS transitions instead of JS animations */
-	:global(.photo-card-link) {
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
-	}
-
-	:global(.photo-card-link:hover) {
-		transform: translateY(-4px) scale(1.02);
+	.explore-opening, .explore-tools__inner, .explore-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.explore-opening { padding-block: 40px 28px; }
+	.explore-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.explore-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+	.explore-title-row h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+	.explore-title-row > div > p { max-width: 680px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; line-height: 1.55; }
+	.explore-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
+	.explore-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); border-block: 1px solid var(--color-charcoal-800); }
+	.explore-tools__inner { padding-block: 16px; }
+	.explore-results { padding-block: 24px 72px; }
+	.explore-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+	.explore-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
+	@media (max-width: 980px) { .explore-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+	@media (max-width: 640px) {
+		.explore-opening, .explore-tools__inner, .explore-results { width: calc(100% - 40px); }
+		.explore-opening { padding-block: 24px 22px; }
+		.explore-title-row { align-items: start; flex-direction: column; gap: 12px; }
+		.explore-count { white-space: normal; }
+		.explore-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 	}
 
 	/* Loading progress bar animation */

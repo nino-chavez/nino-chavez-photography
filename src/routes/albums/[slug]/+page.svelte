@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { base } from '$app/paths';
-	import { goto } from '$app/navigation';
-	import { FolderOpen, ChevronRight } from 'lucide-svelte';
+	import { FolderOpen } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
@@ -13,7 +12,7 @@
 	import LoadMoreButton from '$lib/components/ui/LoadMoreButton.svelte';
 	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
 	import ShareMenu from '$lib/components/social/ShareMenu.svelte';
-	import { cfImageUrl, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { splitAlbumNameForDisplay, albumNameDateLabel } from '$lib/utils/canonical-album-naming';
 	import { trackAnalyticsEventV2, trackEngagement } from '$lib/analytics/client';
 	import { ALBUM_PHOTO_PAGE_SIZE } from '$lib/albums/pagination';
 	import type { PageData } from './$types';
@@ -89,7 +88,7 @@
 	// jump bar + a collapsible videos section to reach photos in one click.
 	let videosCollapsed = $state(false);
 	function scrollToSection(id: string) {
-		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 	}
 
 	// Client-side search filters the full loaded set. When a query goes active we
@@ -108,6 +107,8 @@
 		);
 	});
 
+	const albumDateLabel = $derived(albumNameDateLabel(data.albumName));
+	const albumDisplay = $derived(splitAlbumNameForDisplay(data.albumName));
 	// More album photos exist beyond what's been loaded.
 	const hasMore = $derived(loadedPhotos.length < data.totalCount);
 	const remaining = $derived(data.totalCount - loadedPhotos.length);
@@ -118,11 +119,11 @@
 	// single-album grid, but the rail's list here is scoped to this album too, so either would
 	// work; `id` is used throughout for consistency with the cross-album pages that need it).
 	const lightboxPhotos = $derived(lightboxSource === 'rail' ? railLightboxPhotos : displayPhotos);
-	const lightboxHasMore = $derived(lightboxSource === 'rail' ? false : (searchQuery.trim() ? false : hasMore));
+	const lightboxHasMore = $derived(lightboxSource !== 'rail' && !searchQuery.trim() && hasMore);
 	const lightboxTotalCount = $derived(
 		lightboxSource === 'rail'
 			? railLightboxPhotos.length
-			: (searchQuery.trim() ? undefined : data.totalCount)
+			: (!searchQuery.trim() ? data.totalCount : undefined)
 	);
 	const lightboxOnLoadMore = $derived(lightboxSource === 'rail' ? undefined : loadMore);
 
@@ -227,6 +228,7 @@
 		videoPlayerOpen = true;
 	}
 
+
 	// Share target for album sharing
 	const albumShareTarget = $derived({
 		title: data.albumName,
@@ -234,9 +236,6 @@
 		imageUrl: data.seo.ogImage || ''
 	});
 
-	function goBackToAlbums() {
-		goto(`${base}/albums`);
-	}
 </script>
 
 <!--
@@ -245,116 +244,40 @@
 	here — duplicate og:image tags let crawlers pick the wrong card.
 -->
 
-<!-- Minimal Header - Content First Design -->
-<div style="animation: fade-slide-up 0.3s ease-out forwards">
-	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-
-			<!-- Compact Breadcrumb Navigation -->
-			<nav aria-label="Breadcrumb" class="mb-2">
-				<ol class="flex items-center gap-1 text-xs text-charcoal-400">
-					<li>
-						<button
-							type="button"
-							onclick={() => goto(`${base}/`)}
-							class="hover:text-gold-500 transition-colors"
-							aria-label="Navigate to home"
-						>
-							Home
-						</button>
-					</li>
-					<li aria-hidden="true">
-						<ChevronRight class="w-3 h-3" />
-					</li>
-					<li>
-						<button
-							type="button"
-							onclick={goBackToAlbums}
-							class="hover:text-gold-500 transition-colors"
-							aria-label="Navigate to albums list"
-						>
-							Albums
-						</button>
-					</li>
-					<li aria-hidden="true">
-						<ChevronRight class="w-3 h-3" />
-					</li>
-					<li>
-						<span class="text-white font-medium truncate max-w-[200px] md:max-w-none" aria-current="page">
-							{data.albumName}
-						</span>
-					</li>
-				</ol>
-			</nav>
-
-			<!-- Compact Header: Title + Count + Search -->
-			<div class="flex items-center justify-between gap-4">
-				<div class="flex items-center gap-2 min-w-0 flex-1">
-					<Typography variant="h1" class="text-xl lg:text-2xl truncate">{data.albumName}</Typography>
-					<Typography variant="caption" class="text-charcoal-400 text-xs whitespace-nowrap">
-						{countLabel}
-					</Typography>
-				</div>
-
-				<!-- Desktop search + download -->
-				<div class="hidden md:flex items-center gap-2">
-					<button
-						type="button"
-						onclick={goBackToAlbums}
-						class="px-2 py-1 text-xs text-charcoal-400 hover:text-gold-500 transition-colors whitespace-nowrap"
-						aria-label="Back to albums"
-					>
-						← Back
-					</button>
-					{#if hasPhotos}
-						<div class="flex-1 max-w-md">
-							<input
-								type="search"
-								placeholder="Search photos..."
-								bind:value={searchQuery}
-								class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
-							/>
-						</div>
-						<BulkDownloadButton
-							albumKey={data.albumKey}
-							albumName={data.albumName}
-							photoCount={data.totalCount}
-						/>
-					{/if}
-					{#if albumShareTarget.imageUrl}
-						<ShareMenu target={albumShareTarget} variant="inline" albumKey={data.albumKey} />
-					{/if}
-				</div>
-			</div>
-
-			<!-- Mobile search -->
-			{#if hasPhotos}
-				<div class="md:hidden mt-3">
-					<input
-						type="search"
-						placeholder="Search photos..."
-						bind:value={searchQuery}
-						class="w-full px-4 py-2 text-sm rounded-lg bg-charcoal-900 border border-charcoal-800 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/50 transition-colors text-white placeholder-charcoal-400"
-					/>
-				</div>
-			{/if}
+<!-- Event identity stays compact so a referred visitor can start browsing immediately. -->
+<div class="album-page">
+	<section class="album-opening" aria-labelledby="album-title">
+		<a class="album-back" href="{base}/albums">← All events</a>
+		<h1 id="album-title">{albumDisplay.title}</h1>
+		<div class="album-details">
+			{#if albumDisplay.levelLabel}<span>{albumDisplay.levelLabel}</span>{/if}
+			{#if albumDateLabel}<span>{albumDateLabel}</span>{/if}
 		</div>
-	</div>
+		<div class="album-credits">
+			<span>{countLabel}</span><a href="/about" data-sveltekit-reload>By Nino Chavez</a>
+			{#if albumShareTarget.imageUrl}<span class="album-share"><ShareMenu target={albumShareTarget} variant="inline" albumKey={data.albumKey} /></span>{/if}
+		</div>
+	</section>
 
-	<!-- Photo Grid Content -->
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-
-		<!-- Search results indicator -->
-		{#if searchQuery.trim()}
-			<div class="mb-4">
-				<Typography variant="caption" class="text-charcoal-400 text-xs">
-					{#if loadingAll}
-						Loading all {data.totalCount.toLocaleString()} photos to search…
-					{:else}
-						{displayPhotos.length.toLocaleString()} {displayPhotos.length === 1 ? 'photo' : 'photos'} found
-					{/if}
-				</Typography>
+	<section class="album-collection" id="album-content" aria-labelledby="album-content-title">
+		<div class="collection-heading sr-only">
+			<h2 id="album-content-title">{hasPhotos && hasVideos ? 'Photos and videos' : hasPhotos ? 'All photographs' : 'All videos'}</h2>
+			<p>{countLabel}</p>
+		</div>
+		{#if hasPhotos}
+			<div class="collection-tools">
+				<div class="album-search">
+					<label for="album-photo-search">Photo number or description</label>
+					<input id="album-photo-search" type="search" placeholder="Search this album" bind:value={searchQuery} />
+				</div>
+				<BulkDownloadButton albumKey={data.albumKey} albumName={data.albumName} photoCount={data.totalCount} />
 			</div>
+			{#if searchQuery.trim()}
+				<p class="search-status" aria-live="polite">
+					{#if loadingAll}Loading all {data.totalCount.toLocaleString()} photos to search…
+					{:else}{displayPhotos.length.toLocaleString()} {displayPhotos.length === 1 ? 'photo' : 'photos'} found{/if}
+				</p>
+			{/if}
 		{/if}
 
 		<!-- Section jump bar (only when both videos and photos exist) -->
@@ -421,7 +344,7 @@
 					Photos
 				</Typography>
 			{/if}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			<div class="album-photo-grid">
 				{#each displayPhotos as photo, index (photo.image_key)}
 					<PhotoCard {photo} {index} favoriteSurface="album" onclick={handlePhotoClick} priority={index < 4} />
 				{/each}
@@ -452,7 +375,9 @@
 					</Card>
 				</div>
 		{/if}
-	</div>
+
+
+	</section>
 </div>
 
 <!-- Lightbox (same component as explore page). Walks the grid's full loaded list, pulling
@@ -482,3 +407,46 @@
 		onclose={() => { activeVideo = null; }}
 	/>
 {/if}
+
+
+<style>
+	.album-page { color: var(--color-charcoal-50); }
+	.album-opening, .album-collection { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.album-opening { padding-block: 8px 16px; }
+	.album-back { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-charcoal-300); font-size: 14px; margin-bottom: 8px; }
+	.album-back:hover, .album-credits a:hover { color: var(--color-gold-500); }
+	h1 { margin: 0; color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: clamp(28px, 2.5vw, 36px); font-weight: 750; line-height: 1.12; letter-spacing: -.025em; overflow-wrap: anywhere; }
+	.album-details { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 10px; color: var(--color-charcoal-300); font-size: 14px; }
+	.album-credits { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; margin-top: 8px; min-height: 44px; font-size: 14px; }
+	.album-credits a { color: inherit; text-underline-offset: 4px; }
+	.album-share { margin-left: auto; }
+	.album-share :global(button) { min-height: 44px; }
+	.album-collection { padding-block: 16px 72px; border-top: 1px solid var(--color-charcoal-800); scroll-margin-top: 116px; }
+	.collection-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; }
+	.collection-heading h2 { font-family: Montserrat, sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -.025em; }
+	.collection-heading p { color: var(--color-charcoal-300); font-size: 14px; }
+	.collection-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin-block: 12px 20px; padding-block: 12px; border-block: 1px solid var(--color-charcoal-800); }
+	.collection-tools :global(.bulk-download-container > button) { min-height: 44px; }
+	.collection-tools :global(.bulk-download-container > button > span) { display: inline; }
+	.album-search { flex: 1 1 300px; min-width: 0; }
+	.album-search label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 650; }
+	.album-search input { display: block; width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--color-charcoal-700); background: var(--color-charcoal-950); color: var(--color-charcoal-50); border-radius: 0; font-size: 16px; }
+	.album-search input::placeholder { color: var(--color-charcoal-300); }
+	.search-status { margin-bottom: 18px; color: var(--color-charcoal-300); font-size: 14px; }
+	.album-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+	.album-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
+	.album-collection :global(.photo-card:focus-visible), .album-page :global(a:focus-visible), .album-page :global(button:focus-visible), .album-search input:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 4px; }
+	@media (max-width: 900px) {
+		.album-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+	}
+	@media (max-width: 640px) {
+		.album-opening, .album-collection { width: calc(100% - 40px); }
+		.album-back { font-size: 13px; }
+		.album-credits { gap: 8px 16px; }
+		.collection-heading h2 { font-size: 22px; }
+		.album-search { flex: 1 1 120px; }
+		.collection-tools { gap: 8px; }
+		.collection-tools :global(.bulk-download-menu) { left: 0; right: auto; max-width: calc(100vw - 40px); }
+		.album-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+	}
+</style>

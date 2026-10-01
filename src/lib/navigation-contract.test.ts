@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { GLOBAL_NAVIGATION, MENU_NAVIGATION } from './navigation-contract';
 
 const root = new URL('../../', import.meta.url);
 
@@ -8,33 +9,35 @@ async function source(path: string) {
 	return readFile(new URL(path, root), 'utf8');
 }
 
-test('global navigation names Photography as the current top-level section', async () => {
+test('global navigation uses the shared labels and destinations', () => {
+	assert.deepEqual(GLOBAL_NAVIGATION, [
+								{ href: '/blog', label: 'Writing' },
+	{ href: '/work', label: 'Building' },
+		{ href: '/photography', label: 'Photography' },
+		{ href: '/about', label: 'About' }
+	]);
+	assert.deepEqual(MENU_NAVIGATION, [
+		{ href: '/search', label: 'Search site' },
+		...GLOBAL_NAVIGATION,
+		{ href: '/now', label: 'Now' },
+		{ href: '/links', label: 'Links' }
+	]);
+});
+
+test('gallery shell uses an accessible global-menu dialog without replacing gallery navigation', async () => {
 	const header = await source('src/lib/components/layout/Header.svelte');
-	assert.match(
-		header,
-		/Work'[\s\S]*How I work'[\s\S]*Learn'[\s\S]*Writing'[\s\S]*Photography'[\s\S]*About'/
-	);
-	assert.doesNotMatch(header, /label: 'Demos'/);
-	assert.match(header, /open-practice-shell__identity[\s\S]*data-sveltekit-reload/);
-	assert.match(header, /item\.href === '\/photography' \? 'location'/);
-	assert.match(
-		header,
-		/href="\{base\}\/"[\s\S]*data-sveltekit-reload[\s\S]*aria-label="Photography home"/
-	);
+	assert.match(header, /GLOBAL_NAVIGATION/);
+	assert.match(header, /MENU_NAVIGATION/);
+	assert.match(header, /<dialog[\s\S]*id="site-menu-dialog"[\s\S]*aria-labelledby="site-menu-title"/);
+	assert.match(header, /menuDialog\.showModal\(\)/);
+	assert.match(header, /<svelte:window onpopstate=\{handleMenuPopState\}/);
+	assert.match(header, /oncancel=\{handleDialogCancel\}/);
+	assert.match(header, /aria-expanded=\{siteMenuOpen\}/);
+	assert.match(header, /data-sveltekit-reload/);
 	assert.match(header, /label: 'Saved'/);
-	assert.match(header, /<summary>Menu<\/summary>/);
-	assert.doesNotMatch(header, />Site menu<\/summary>/);
-	// Mobile bottom nav + site Menu sheet must sit outside .header-animate / sticky
-	// shell so position:fixed is viewport-relative and not clipped by sticky.
-	assert.match(header, /class="site-menu-sheet"/);
-	assert.match(
-		header,
-		/<\/div>\s*\n\s*\{#if siteMenuOpen\}[\s\S]*<!-- Mobile Bottom Navigation[\s\S]*aria-label="Mobile navigation"/
-	);
-	assert.doesNotMatch(
-		header,
-		/header-animate[\s\S]*aria-label="Mobile navigation"[\s\S]*<\/div>\s*\n\s*<style>/
-	);
+	assert.match(header, /aria-label="Mobile photography navigation"/);
+	assert.doesNotMatch(header, /<details class="open-practice-shell__mobile"/);
+	assert.doesNotMatch(header, /How I work/);
 });
 
 test('retired About and Privacy routes point to their canonical owners', async () => {
