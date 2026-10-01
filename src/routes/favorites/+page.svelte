@@ -5,7 +5,6 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import FavoritesDownloadButton from '$lib/components/favorites/FavoritesDownloadButton.svelte';
@@ -98,18 +97,16 @@
 	<meta name="robots" content="noindex, follow" />
 </svelte:head>
 
-<div class="p-8" style="animation: fade-slide-up 0.3s ease-out forwards">
-		<div class="max-w-7xl mx-auto">
+	<div class="saved-page" style="animation: fade-slide-up 0.3s ease-out forwards">
+		<div class="saved-inner">
 			<!-- Header Section -->
-			<div class="mb-8">
+			<header class="saved-opening">
 				<!-- Title & Icon -->
-				<div class="flex items-center gap-4 mb-6">
-					<div class="p-3 rounded-full bg-red-500/10" aria-hidden="true">
-						<Heart class="w-8 h-8 text-red-500 fill-red-500" />
-					</div>
-					<div class="flex-1">
-						<Typography variant="h1" class="text-4xl">Your saved photos</Typography>
-						<Typography variant="body" class="text-charcoal-300 mt-1">
+				<div class="saved-title-row">
+					<div>
+						<p class="saved-eyebrow">This browser</p>
+						<Typography variant="h1" class="saved-title">Saved photos</Typography>
+						<Typography variant="body" class="saved-description">
 							{favoriteCount} {favoriteCount === 1 ? 'photo' : 'photos'} saved in this browser
 						</Typography>
 					</div>
@@ -117,7 +114,7 @@
 
 				<!-- Action Buttons -->
 				{#if favoriteCount > 0}
-					<div class="flex flex-wrap gap-3">
+					<div class="saved-actions">
 						<!-- Download all (ZIP) — client-side, cross-album -->
 						<FavoritesDownloadButton photos={favoritePhotos} />
 
@@ -136,9 +133,7 @@
 								class="hidden"
 								aria-label="Import saved photos"
 							/>
-							<div
-								class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-charcoal-900 border border-charcoal-800 hover:border-gold-500/50 hover:bg-charcoal-800 text-white font-medium transition-colors cursor-pointer"
-							>
+							<div class="saved-import">
 								<Upload class="w-4 h-4" />
 								Import saved photos
 							</div>
@@ -177,29 +172,25 @@
 						</div>
 					{/if}
 				{/if}
-			</div>
+			</header>
 
 			<!-- Photo Grid -->
 			{#if favoriteCount > 0}
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+				<div class="saved-grid">
 					{#each favoritePhotos as photo, index}
 						<PhotoCard {photo} {index} favoriteSurface="favorites" onclick={handlePhotoClick} />
 					{/each}
 				</div>
 			{:else}
 				<!-- Empty State -->
-				<div style="animation: fade-in 0.3s ease-out forwards">
-						<Card padding="lg" class="text-center py-16">
-							<Heart class="w-24 h-24 text-charcoal-600 mx-auto mb-6" aria-hidden="true" />
+				<div class="saved-empty" style="animation: fade-in 0.3s ease-out forwards">
+							<Heart class="w-12 h-12 text-charcoal-600 mx-auto mb-6" aria-hidden="true" />
 							<Typography variant="h2" class="text-2xl mb-3">No saved photos yet</Typography>
 							<Typography variant="body" class="text-charcoal-400 mb-8 max-w-md mx-auto">
 								Use the heart on any photo to save it in this browser. Saved photos do not sync
 								between browsers or devices.
 							</Typography>
-							<Button variant="primary" onclick={() => (window.location.href = `${base}/explore`)}>
-								Explore Photos
-							</Button>
-						</Card>
+							<a class="saved-browse" href="{base}/explore">Browse photos</a>
 				</div>
 			{/if}
 		</div>
@@ -214,3 +205,25 @@
 	onNavigate={handleLightboxNavigate}
 	viewSource="favorites"
 />
+
+<style>
+	.saved-page { color: var(--color-charcoal-50); }
+	.saved-inner { width: min(1320px, calc(100% - 64px)); margin-inline: auto; padding-block: 40px 72px; }
+	.saved-opening { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--color-charcoal-800); }
+	.saved-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+	.saved-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.saved-title-row :global(.saved-title) { font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+	.saved-title-row :global(.saved-description) { margin-top: 12px; color: var(--color-charcoal-300); font-size: 14px; }
+	.saved-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+	.saved-import, .saved-browse { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-charcoal-700); border-radius: 0; color: var(--color-charcoal-50); font-weight: 650; cursor: pointer; }
+	.saved-import:hover, .saved-browse:hover { border-color: var(--color-gold-500); }
+	.saved-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+	.saved-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
+	.saved-empty { padding-block: 72px; border-block: 1px solid var(--color-charcoal-800); text-align: center; }
+	@media (max-width: 900px) { .saved-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+	@media (max-width: 640px) {
+		.saved-inner { width: calc(100% - 40px); padding-block: 24px 56px; }
+		.saved-title-row { align-items: start; flex-direction: column; }
+		.saved-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+	}
+</style>

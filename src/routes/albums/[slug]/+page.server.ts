@@ -152,6 +152,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 	return {
 		albumKey,
 		albumName,
+		coverImageId: album?.cover_cf_image_id ?? null,
 		slug: correctSlug,
 		photos,
 		videos,

@@ -15,6 +15,7 @@
 	import { base } from '$app/paths';
 	import { Camera, Mail, Instagram } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
+	import { GLOBAL_NAVIGATION } from '$lib/navigation-contract';
 
 	interface SocialLink {
 		label: string;
@@ -39,15 +40,6 @@
 
 	const currentYear = new Date().getFullYear();
 
-	const practicePrimary = [
-		['Work', '/work'],
-		['How I work', '/demos'],
-		['Learn', '/learn'],
-		['Writing', '/blog'],
-		['Photography', '/photography'],
-		['About', '/about'],
-	] as const;
-
 	const practiceSecondary = [
 		['Now', '/now'],
 		['Links', '/links'],
@@ -63,8 +55,8 @@
 		</div>
 
 		<nav aria-label="Site navigation">
-			{#each practicePrimary as item}
-				<a href={item[1]} data-sveltekit-reload>{item[0]}</a>
+			{#each GLOBAL_NAVIGATION as item}
+				<a href={item.href} data-sveltekit-reload>{item.label}</a>
 			{/each}
 		</nav>
 

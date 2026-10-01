@@ -46,33 +46,23 @@
 	{/each}
 </svelte:head>
 
-<!-- PERFORMANCE: CSS animation instead of svelte-motion -->
-<div class="collections-animate">
-	<!-- Minimal Header - Content First Design -->
-	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-			<!-- Compact Header with Inline Stats -->
-			<div class="flex items-center gap-3 flex-wrap">
-				<Typography variant="h1" class="text-xl lg:text-2xl">Collections</Typography>
-
-				<!-- Inline stats -->
-				<div class="flex items-center gap-3 text-xs text-charcoal-400">
-					<span class="flex items-center gap-1">
-						<Sparkles class="w-3 h-3 text-gold-500" />
-						<span class="text-gold-500 font-medium">{data.stats.totalCollections}</span>
-					</span>
-					<span>·</span>
-					<span>{data.stats.totalPhotos} curated photos</span>
-				</div>
+<div class="collections-page collections-animate">
+	<header class="collections-opening">
+		<p class="collections-eyebrow">Selected work</p>
+		<div class="collections-title-row">
+			<div>
+				<h1>Collections</h1>
+				<p>Browse photographs grouped by a shared moment, style, or point of view.</p>
 			</div>
+			<p class="collections-count">{data.stats.totalCollections} collections · {data.stats.totalPhotos} photos</p>
 		</div>
-	</div>
+	</header>
 
 	<!-- Collections Content -->
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+	<div class="collections-content">
 
 		<!-- Collections Grid - 3x3 on desktop -->
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+		<div class="collections-grid">
 			{#each data.collections as collection, index}
 				<div class="collection-card-animate" style="--delay: {index * 0.05}s">
 					<CollectionCard
@@ -129,6 +119,23 @@
 		animation: card-slide-in 0.3s ease-out forwards;
 		animation-delay: var(--delay, 0s);
 		opacity: 0;
+	}
+	.collections-opening, .collections-content { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.collections-opening { padding-block: 40px 30px; border-bottom: 1px solid var(--color-charcoal-800); }
+	.collections-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.collections-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+	.collections-title-row h1 { margin: 0; color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+	.collections-title-row > div > p { max-width: 620px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; }
+	.collections-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
+	.collections-content { padding-block: 24px 72px; }
+	.collections-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+	@media (max-width: 860px) { .collections-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+	@media (max-width: 600px) {
+		.collections-opening, .collections-content { width: calc(100% - 40px); }
+		.collections-opening { padding-block: 24px 22px; }
+		.collections-title-row { align-items: start; flex-direction: column; gap: 12px; }
+		.collections-count { white-space: normal; }
+		.collections-grid { grid-template-columns: 1fr; gap: 8px; }
 	}
 
 	/* Reduce motion for accessibility */

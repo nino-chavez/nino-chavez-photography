@@ -448,15 +448,42 @@
 		isDragging = false;
 	}
 
-	// Lock body scroll when lightbox is open
-	$effect(() => {
-		if (open) {
-			document.body.style.overflow = 'hidden';
-			return () => {
-				document.body.style.overflow = '';
-			};
+	// Keep keyboard users in the viewer and return them to the photo they opened.
+	// Read the controls on each Tab so download/share menus can change while open.
+	function manageDialogFocus(node: HTMLElement) {
+		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		node.querySelector<HTMLButtonElement>('[aria-label="Close lightbox"]')?.focus({ preventScroll: true });
+
+		function trapTab(event: KeyboardEvent) {
+			if (event.key !== 'Tab' || event.defaultPrevented) return;
+			const controls = Array.from(node.querySelectorAll<HTMLElement>(
+				'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]'
+			)).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
+			const first = controls[0];
+			const last = controls[controls.length - 1];
+			if (!first || !last) {
+				event.preventDefault();
+				node.focus();
+			} else if (event.shiftKey && (document.activeElement === first || !node.contains(document.activeElement))) {
+				event.preventDefault();
+				last.focus();
+			} else if (!event.shiftKey && (document.activeElement === last || !node.contains(document.activeElement))) {
+				event.preventDefault();
+				first.focus();
+			}
 		}
-	});
+
+		node.addEventListener('keydown', trapTab);
+		return {
+			destroy() {
+				node.removeEventListener('keydown', trapTab);
+				document.body.style.overflow = previousOverflow;
+				if (opener?.isConnected) opener.focus({ preventScroll: true });
+			}
+		};
+	}
 
 	function recordMediaEvent(event: MediaViewEvent | null) {
 		if (!event) return;
@@ -531,6 +558,7 @@
 {#if open && photo}
 	<!-- Backdrop -->
 	<div
+		use:manageDialogFocus
 		class="fixed inset-0 bg-black/95 flex items-center justify-center animate-lightbox-open"
 		style="z-index: 9999;"
 		onclick={handleBackdropClick}
@@ -538,7 +566,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label="Photo lightbox"
-		tabindex="0"
+		tabindex="-1"
 	>
 				<!-- Top Controls -->
 				<div class="absolute top-0 left-0 right-0 z-10 p-3 md:p-4 bg-gradient-to-b from-black/50 to-transparent">

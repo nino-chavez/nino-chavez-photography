@@ -53,13 +53,13 @@
 	];
 </script>
 
-<div class="mx-auto max-w-md px-4 py-8 sm:py-12">
-	<header class="text-center mb-8">
-		<p class="text-xs font-semibold tracking-widest text-gold-500 uppercase mb-2">
+<div class="links-page">
+	<header class="links-opening">
+		<p class="links-eyebrow">
 			Nino Chavez Photography
 		</p>
-		<h1 class="text-3xl font-semibold text-white">Volleyball action, gallery by gallery</h1>
-		<p class="text-sm text-charcoal-400 mt-2">
+		<h1>Volleyball action, gallery by gallery</h1>
+		<p class="links-deck">
 			Tap in for the newest shoot, or find your event below.
 		</p>
 	</header>
@@ -68,7 +68,7 @@
 		<a
 			href={data.lead.url}
 			data-sveltekit-preload="hover"
-			class="group relative block aspect-[4/3] rounded-xl overflow-hidden border border-charcoal-800 bg-charcoal-900 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 outline-none"
+			class="lead-gallery group"
 		>
 			{#if data.lead.cover_url}
 				<img
@@ -128,7 +128,7 @@
 						<a
 							href={album.url}
 							data-sveltekit-preload="hover"
-							class="group flex items-center gap-3 rounded-lg border border-charcoal-800 bg-charcoal-900 p-3 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 outline-none"
+				class="recent-gallery group"
 						>
 							<span class="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-charcoal-800">
 								{#if album.cover_url}
@@ -177,7 +177,7 @@
 						href={link.href}
 						rel={link.external ? 'noopener' : undefined}
 						data-sveltekit-reload={link.reload ? '' : undefined}
-						class="flex items-center justify-between rounded-lg border border-charcoal-800 bg-charcoal-900 px-4 py-3 text-base font-medium text-white hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 outline-none"
+						class="outbound-link"
 					>
 						<span>{link.label}</span>
 						{#if link.external}
@@ -191,3 +191,17 @@
 		</ul>
 	</section>
 </div>
+
+<style>
+	.links-page { width: min(620px, calc(100% - 40px)); margin-inline: auto; padding-block: 40px 72px; color: var(--color-charcoal-50); }
+	.links-opening { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--color-charcoal-800); text-align: left; }
+	.links-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.links-opening h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(30px, 7vw, 42px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+	.links-deck { margin-top: 12px; color: var(--color-charcoal-300); font-size: 15px; line-height: 1.55; }
+	.lead-gallery { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--color-charcoal-800); border-radius: 0; background: var(--color-charcoal-900); outline: none; }
+	.recent-gallery, .outbound-link { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px; border: 1px solid var(--color-charcoal-800); border-radius: 0; background: transparent; outline: none; }
+	.outbound-link { min-height: 52px; justify-content: space-between; padding-inline: 14px; color: white; font-size: 16px; font-weight: 650; }
+	.lead-gallery:hover, .recent-gallery:hover, .outbound-link:hover { border-color: var(--color-gold-500); }
+	.lead-gallery:focus-visible, .recent-gallery:focus-visible, .outbound-link:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
+	@media (max-width: 480px) { .links-page { padding-block: 24px 56px; } }
+</style>

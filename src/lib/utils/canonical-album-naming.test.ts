@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	albumNamePrefix,
+	albumNameDateLabel,
 	checkAlbumName,
 	composeAlbumName,
 	formatAlbumDate,
@@ -10,6 +11,15 @@ import {
 } from './canonical-album-naming';
 
 const hsGirls = { level: 'high_school', division: 'girls', sport: 'volleyball', earliestDate: '2026-09-22' };
+
+test('a separated album opening preserves every part of the operator name', () => {
+	for (const name of ["College Women's VB - Millikin at North Central - 09-23-2026", 'Club VB - AAU Nationals - 07-10-2026 to 07-12-2026']) {
+		const parts = splitAlbumNameForDisplay(name);
+		assert.equal([parts.levelLabel, parts.title, albumNameDateLabel(name)].filter(Boolean).join(' - '), name);
+	}
+	assert.equal(albumNameDateLabel('Chicago Big Dig 2026 - North Avenue Beach'), null);
+	assert.equal(albumNameDateLabel('Jalapeño Open - July 2026'), null);
+});
 
 test('the standard name passes unchanged', () => {
 	const r = checkAlbumName('HS Girls VB - JCA at ACC - 09-22-2026', hsGirls);
