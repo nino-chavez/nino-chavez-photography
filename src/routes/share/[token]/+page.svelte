@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { FolderOpen, Camera } from 'lucide-svelte';
+	import { FolderOpen } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
@@ -88,33 +88,32 @@
 	<title>{data.albumName} | Shared Album</title>
 </svelte:head>
 
-<!-- Clean Header for Shared Albums -->
-<div style="animation: fade-slide-up 0.3s ease-out forwards">
-	<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-			<div class="flex items-center justify-between gap-4">
-				<div class="flex items-center gap-3 min-w-0">
-					<Camera class="w-5 h-5 text-gold-500 shrink-0" />
-					<div class="min-w-0">
-						<Typography variant="h1" class="text-xl lg:text-2xl truncate">{data.albumName}</Typography>
-						<Typography variant="caption" class="text-charcoal-400 text-xs">
+<div class="shared-page" style="animation: fade-slide-up 0.3s ease-out forwards">
+	<header class="shared-opening">
+		<div class="shared-title-row">
+				<div class="shared-copy">
+					<p class="shared-eyebrow">Shared album</p>
+						<Typography variant="h1" class="shared-title">{data.albumName}</Typography>
+						<Typography variant="caption" class="shared-count">
 							{data.totalCount.toLocaleString()} {data.totalCount === 1 ? 'photo' : 'photos'}
 						</Typography>
-					</div>
 				</div>
+
+		</div>
+	</header>
+
+	<div class="shared-tools">
 				<BulkDownloadButton
 					albumKey={data.albumKey}
 					albumName={data.albumName}
 					photoCount={data.totalCount}
 				/>
-			</div>
-		</div>
 	</div>
 
 	<!-- Photo Grid -->
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+	<div class="shared-results">
 		{#if data.photos.length > 0}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			<div class="shared-grid">
 				{#each data.photos as photo, index}
 					<PhotoCard {photo} {index} favoriteSurface="shared_link" onclick={handlePhotoClick} />
 				{/each}
@@ -165,3 +164,25 @@
 	indexOffset={precedingCount}
 	viewSource="direct"
 />
+
+<style>
+	.shared-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; padding-block: 10px; background: var(--color-charcoal-950); }
+	.shared-page { color: var(--color-charcoal-50); }
+	.shared-opening, .shared-tools, .shared-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.shared-opening { padding-block: 40px 28px; border-bottom: 1px solid var(--color-charcoal-800); }
+	.shared-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+	.shared-copy { min-width: 0; }
+	.shared-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.shared-copy :global(.shared-title) { color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; overflow-wrap: anywhere; }
+	.shared-copy :global(.shared-count) { display: block; margin-top: 12px; color: var(--color-charcoal-300); font-size: 14px; }
+	.shared-results { padding-block: 24px 72px; }
+	.shared-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+	.shared-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
+	@media (max-width: 900px) { .shared-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+	@media (max-width: 640px) {
+		.shared-opening, .shared-tools, .shared-results { width: calc(100% - 40px); }
+		.shared-opening { padding-block: 24px 22px; }
+		.shared-title-row { align-items: stretch; flex-direction: column; }
+		.shared-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+	}
+</style>

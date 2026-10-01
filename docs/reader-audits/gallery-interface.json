@@ -1,15 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-09-30T01:52:16.688Z",
-  "reviewedBy": "Codex frontend refit review",
-  "method": "Parent opened desktop and phone Events with real published photos, an album and next-photo lightbox; observed global Menu, Escape, Back, forward and reverse Tab containment and focus return; checked phone breadcrumb overflow before and after correction. Separate origins were reviewed independently; a single-host cross-runtime traversal remains unverified.",
-  "sourceDigest": "sha256:92f660dcb34ad56eddaa24fb38be0ec7e773a3f1f45a220edae6be55d424b5a2",
-  "sourceFiles": 148,
+  "reviewedAt": "2026-10-01T05:34:40.017Z",
+  "reviewedBy": "Codex parent after independent selected-A cold review, October 1",
+  "method": "Parent opened final desktop and phone album, photography and timeline captures. The independent reviewer inspected seven representative desktop and phone routes. Corrected a clipped album search prompt by moving its scope into the persistent label. Parent inspected the final phone capture and reran four real-content browser journeys: desktop and phone viewer keyboard/focus, saved-photo reload/removal, and JPEG download decoded with sharp. Shared-menu Escape, Back and focus return also passed. Scroll-linked timeline and Popular remain. Production, physical-device, private access and analytics collection remain unverified.",
+  "sourceDigest": "sha256:27cfee67a620d3bbe7598049dc6d148b2b177973f6d848f95b906bf658825057",
+  "sourceFiles": 149,
   "scope": [
-    "Global shell and menu",
-    "Events and album entry",
-    "Photo lightbox preserve check",
-    "Phone breadcrumb containment"
+    "Global and local navigation",
+    "Album search label on phone",
+    "Viewer focus, Saved and JPEG download",
+    "Read-only combined local review"
   ]
 }

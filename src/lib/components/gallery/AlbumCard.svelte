@@ -90,62 +90,6 @@
 		imageError = false;
 	});
 
-	// Sport emojis for badges
-	const sportEmojis: Record<string, string> = {
-		volleyball: '🏐',
-		basketball: '🏀',
-		soccer: '⚽',
-		softball: '🥎',
-		football: '🏈',
-		baseball: '⚾',
-		track: '🏃',
-		portrait: '📸'
-	};
-
-	// Calculate album count tier for visual differentiation (50-photo increments)
-	interface CountTier {
-		label: string;
-		bgColor: string;
-		textColor: string;
-		borderColor: string;
-	}
-
-	function getCountTier(count: number): CountTier | null {
-		if (count < 51) return null;
-		if (count <= 100) return {
-			label: '51-100',
-			bgColor: 'bg-emerald-500/20',
-			textColor: 'text-emerald-400',
-			borderColor: 'border-emerald-500/30'
-		};
-		if (count <= 150) return {
-			label: '101-150',
-			bgColor: 'bg-blue-500/20',
-			textColor: 'text-blue-400',
-			borderColor: 'border-blue-500/30'
-		};
-		if (count <= 200) return {
-			label: '151-200',
-			bgColor: 'bg-purple-500/20',
-			textColor: 'text-purple-400',
-			borderColor: 'border-purple-500/30'
-		};
-		if (count <= 250) return {
-			label: '201-250',
-			bgColor: 'bg-amber-500/20',
-			textColor: 'text-amber-400',
-			borderColor: 'border-amber-500/30'
-		};
-		return {
-			label: '251+',
-			bgColor: 'bg-gold-500/20',
-			textColor: 'text-gold-400',
-			borderColor: 'border-gold-500/30'
-		};
-	}
-
-	let countTier = $derived(getCountTier(album.photoCount));
-	let isVideoOnly = $derived(album.photoCount === 0 && (album.videoCount ?? 0) > 0);
 	let contentLabel = $derived.by(() => {
 		const parts: string[] = [];
 		if (album.photoCount > 0) parts.push(`${album.photoCount.toLocaleString()} ${album.photoCount === 1 ? 'photo' : 'photos'}`);
@@ -159,19 +103,18 @@
 	href={albumUrl}
 	data-sveltekit-preload="hover"
 	style="animation: fade-scale-in 0.3s ease-out {index * 0.05}s both"
-	class="group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 hover:border-gold-500/50 focus-visible:border-gold-500 focus-visible:ring-2 focus-visible:ring-gold-500/50 transition-colors duration-200 cursor-pointer outline-none block"
+	class="album-card"
 	aria-label={`Album: ${album.albumName}, ${contentLabel}`}
 	onclick={handleClick}
 	use:exposure={{ loaded: exposureLoaded, onExpose: recordExposure, identity: exposureIdentity }}
 >
 	<!-- Loading/Fallback State -->
 	{#if !imageLoaded || imageError || !hasCover}
-		<div
-			class="absolute inset-0 bg-gradient-to-br from-charcoal-800 to-charcoal-900 flex items-center justify-center"
+		<div class="album-card__fallback"
 			aria-hidden="true"
 		>
 			{#if !hasCover}
-				<Folder class="w-24 h-24 text-charcoal-700 group-hover:text-gold-500/50 transition-colors" />
+				<Folder class="w-20 h-20 text-charcoal-700" />
 			{:else}
 				<Camera class="w-16 h-16 text-charcoal-600" />
 			{/if}
@@ -190,7 +133,7 @@
 			loading={priority ? 'eager' : 'lazy'}
 			decoding={priority ? 'sync' : 'async'}
 			fetchpriority={priority ? 'high' : 'auto'}
-			class="absolute inset-0 w-full h-full object-cover transition-[opacity,transform] duration-200 ease-out group-hover:scale-105 {imageLoaded ||
+			class="album-card__image {imageLoaded ||
 			priority
 				? 'opacity-100'
 				: 'opacity-0'}"
@@ -201,54 +144,43 @@
 	{/if}
 
 	<!-- Album Info Overlay -->
-	<div
-		class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-between p-4"
-	>
-		<!-- Top Badges -->
-		<div class="flex items-start justify-start gap-2">
-			<!-- Sport Badge -->
+	<div class="album-card__overlay">
+		<div class="album-card__copy">
 			{#if album.primarySport && album.primarySport !== 'unknown'}
-				<div
-					class="px-2 py-1 rounded-full text-xs font-medium bg-charcoal-900/80 text-white border border-charcoal-700 backdrop-blur-sm"
-				>
-					{sportEmojis[album.primarySport] || '🏆'}
-					<span class="capitalize ml-1">{album.primarySport}</span>
-				</div>
+				<p class="album-card__sport">{album.primarySport}</p>
 			{/if}
-		</div>
-
-		<!-- Bottom Info -->
-		<div>
 			<!-- element="h2": album cards are the items under the page h1; h3 skipped a level.
 			     The h3 styling is the design, only the semantics were wrong. -->
-			<Typography variant="h3" element="h2" class="text-xl font-semibold text-white mb-2 line-clamp-2">
+			<Typography variant="h3" element="h2" class="album-card__title line-clamp-2">
 				{album.albumName}
 			</Typography>
-			<div class="flex items-center justify-between gap-2">
-				<Typography variant="caption" class="text-charcoal-300">
+			<div class="album-card__meta">
+				<Typography variant="caption" class="text-charcoal-200">
 					{contentLabel}
 				</Typography>
-				<!-- Count Tier Badge - Visual differentiation by 50-photo increments -->
-				{#if countTier}
-					<div
-						class="px-2 py-0.5 rounded text-xs font-medium {countTier.bgColor} {countTier.textColor} border {countTier.borderColor}"
-						title="Album contains {album.photoCount} photos ({countTier.label} tier)"
-					>
-						{countTier.label}
-					</div>
-				{/if}
 			</div>
 			{#if showExperimentCta}
-				<span class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-gold-300 group-hover:text-gold-200">
+				<span class="album-card__cta">
 					View event <ArrowRight class="h-4 w-4" aria-hidden="true" />
 				</span>
 			{/if}
 		</div>
 	</div>
 
-	<!-- Hover Effect Border -->
-	<div
-		class="absolute inset-0 border-2 border-gold-500/0 group-hover:border-gold-500/30 rounded-lg transition-colors pointer-events-none"
-		aria-hidden="true"
-	></div>
 </a>
+
+<style>
+	.album-card { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--color-charcoal-800); border-radius: 0; background: var(--color-charcoal-900); color: inherit; outline: none; }
+	.album-card:hover { border-color: var(--color-charcoal-700); }
+	.album-card:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 4px; }
+	.album-card__fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--color-charcoal-900); }
+	.album-card__image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .2s ease, transform .2s ease; }
+	.album-card:hover .album-card__image { transform: scale(1.025); }
+	.album-card__overlay { position: absolute; inset: 0; display: flex; align-items: end; padding: 16px; background: linear-gradient(to top, rgba(0,0,0,.94), rgba(0,0,0,.1) 72%); }
+	.album-card__copy { min-width: 0; width: 100%; }
+	.album-card__sport { margin-bottom: 6px; color: var(--color-gold-400); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+	.album-card__copy :global(.album-card__title) { margin-bottom: 8px; color: white; font-family: Montserrat, sans-serif; font-size: 18px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+	.album-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+	.album-card__cta { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; color: var(--color-gold-400); font-size: 13px; font-weight: 650; }
+	@media (max-width: 480px) { .album-card__overlay { padding: 16px; } .album-card__copy :global(.album-card__title) { display: block; font-size: 18px; -webkit-line-clamp: unset; overflow: visible; } }
+</style>

@@ -40,11 +40,12 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       return new Response('Invalid URL - must be from Cloudflare Images', { status: 400 });
     }
 
-    // Fetch the image
+    // Downloads are named .jpg by the single-photo and ZIP callers. Do not
+    // advertise WebP/AVIF here or automatic variants return mismatched bytes.
     const response = await fetch(imageUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+        'Accept': 'image/jpeg',
       },
     });
 

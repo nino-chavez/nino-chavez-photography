@@ -11,10 +11,8 @@ async function source(path: string) {
 
 test('global navigation uses the shared labels and destinations', () => {
 	assert.deepEqual(GLOBAL_NAVIGATION, [
-		{ href: '/work', label: 'Work' },
-		{ href: '/demos', label: 'Sessions' },
-		{ href: '/learn', label: 'Learn' },
-		{ href: '/blog', label: 'Writing' },
+								{ href: '/blog', label: 'Writing' },
+	{ href: '/work', label: 'Building' },
 		{ href: '/photography', label: 'Photography' },
 		{ href: '/about', label: 'About' }
 	]);

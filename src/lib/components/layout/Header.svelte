@@ -264,13 +264,16 @@
 </nav>
 
 <style>
+	:global(:root) { --gallery-header-height: 114px; }
+	@media (max-width: 680px) { :global(:root) { --gallery-header-height: 110px; } }
+	@media (max-width: 639px) { :global(:root) { --gallery-header-height: 108px; } }
 	.open-practice-shell {
-		--shell-ground: #f0f1f4;
-		--shell-text: #14202e;
-		--shell-muted: #5a6472;
-		--shell-rule: #b9bec6;
-		--shell-action: #14679e;
-		--shell-action-quiet: #d9e5ef;
+		--shell-ground: #07131d;
+		--shell-text: #f4f0e8;
+		--shell-muted: #b8c2ca;
+		--shell-rule: #3a4a56;
+		--shell-action: #e3c358;
+		--shell-action-quiet: #263d4e;
 		position: sticky;
 		top: 0;
 		z-index: 60;
@@ -441,12 +444,12 @@
 	}
 
 	.site-menu-dialog {
-		--shell-ground: #f0f1f4;
-		--shell-text: #14202e;
-		--shell-muted: #5a6472;
-		--shell-rule: #b9bec6;
-		--shell-action: #14679e;
-		--shell-action-quiet: #d9e5ef;
+		--shell-ground: #f4f0e8;
+		--shell-text: #122a3c;
+		--shell-muted: #536373;
+		--shell-rule: #bbc0bf;
+		--shell-action: #0d5a93;
+		--shell-action-quiet: #e0e9ed;
 		width: min(520px, calc(100% - 24px));
 		max-height: calc(100dvh - 24px);
 		margin: 12px 12px 12px auto;
@@ -454,7 +457,7 @@
 		overflow: auto;
 		border: 1px solid var(--shell-text);
 		border-radius: 0;
-		background: #f7f8fa;
+		background: #f4f0e8;
 		color: var(--shell-text);
 	}
 
@@ -483,7 +486,7 @@
 		padding: 8px 13px;
 		border: 1px solid var(--shell-rule);
 		border-radius: 0;
-		background: #f7f8fa;
+		background: #f4f0e8;
 		color: inherit;
 		font: inherit;
 		font-weight: 700;
@@ -544,8 +547,8 @@
 		padding: 9px 11px;
 		border: 1px solid var(--shell-rule);
 		border-radius: 0;
-		background: #f7f8fa;
-		color: var(--shell-text);
+		background: #f4f0e8;
+		color: #122a3c;
 		font: inherit;
 	}
 	.site-menu-dialog__secondary {

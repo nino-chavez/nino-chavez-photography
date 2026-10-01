@@ -219,14 +219,17 @@
 
 {#if showModal && data.photo}
 	<!-- CLS Fix: Use scrollable container with fixed structure to prevent layout shifts -->
-	<div class="fixed inset-0 bg-black/90 z-50 overflow-y-auto">
-		<div class="min-h-screen flex flex-col items-center py-8 px-4">
+	<div class="photo-viewer">
+		<div class="photo-viewer__inner">
 			<!-- Main Photo Card -->
-			<div class="bg-charcoal-900 rounded-lg max-w-4xl w-full p-6">
-				<h1 class="text-2xl font-bold text-white mb-4">{data.photo.title}</h1>
+			<article class="photo-stage">
+				<header class="photo-stage__header">
+					<button onclick={handleClose} class="photo-stage__back">← Back</button>
+					<h1>{data.photo.title}</h1>
+				</header>
 				<!-- CLS Fix: Reserve space with aspect-ratio to prevent layout shifts -->
 				<div
-					class="relative w-full rounded-lg overflow-hidden mb-4 bg-charcoal-800"
+					class="photo-stage__image"
 					style="aspect-ratio: {data.photo.exif?.width && data.photo.exif?.height
 						? `${data.photo.exif.width} / ${data.photo.exif.height}`
 						: '4 / 3'};"
@@ -238,7 +241,7 @@
 						srcset={imageSrcSet}
 						sizes="(max-width: 768px) 100vw, 896px"
 						alt={photoAltText(data.photo.alt_text, data.photo.title, data.photo.caption)}
-						class="absolute inset-0 w-full h-full object-cover"
+						class="absolute inset-0 w-full h-full object-contain"
 						loading="eager"
 						decoding="async"
 						fetchpriority="high"
@@ -256,7 +259,7 @@
 				-->
 
 				<!-- Photo Metadata (formatted) -->
-				<div class="flex flex-wrap gap-3 text-sm text-charcoal-400 mb-4">
+				<div class="photo-stage__metadata">
 					{#if data.photo.metadata.sport_type}
 						<span>Sport: {formatSport(data.photo.metadata.sport_type)}</span>
 					{/if}
@@ -267,7 +270,7 @@
 
 				<!-- EXIF Data (technical specs) -->
 				{#if data.photo.exif}
-					<div class="flex flex-wrap gap-4 text-sm text-charcoal-400 mb-4 font-mono">
+					<div class="photo-stage__exif">
 						{#if data.photo.exif.width && data.photo.exif.height}
 							<span>{data.photo.exif.width} × {data.photo.exif.height}</span>
 						{/if}
@@ -288,19 +291,12 @@
 
 				<!-- Player Tags (NEW - Week 3-4) -->
 				{#if data.approvedTags && data.approvedTags.length > 0}
-					<div class="mb-4">
+					<div class="photo-stage__tags">
 						<h3 class="text-sm font-semibold text-charcoal-400 mb-2">Tagged Players:</h3>
 						<TagDisplay tags={data.approvedTags} />
 					</div>
 				{/if}
-				<div class="flex flex-wrap items-center gap-4">
-					<button
-						onclick={handleClose}
-						class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
-					>
-						Close
-					</button>
-
+				<div class="photo-stage__actions">
 					<!-- Download (high-res via CF Images) -->
 					{#if hasCFImage(data.photo.cf_image_id)}
 						<DownloadButton photo={data.photo} variant="default" />
@@ -309,7 +305,7 @@
 					<!-- Copy canonical link -->
 					<button
 						onclick={copyPhotoLink}
-						class="inline-flex items-center gap-2 px-6 py-3 bg-charcoal-800 text-white rounded-md border border-charcoal-700 hover:border-gold-500/50 hover:bg-charcoal-700 transition-colors"
+						class="photo-stage__copy"
 						aria-label="Copy link to this photo"
 					>
 						{#if linkCopied}
@@ -321,10 +317,10 @@
 						{/if}
 					</button>
 				</div>
-			</div>
+			</article>
 
 			<!-- Related Photos Section - Always reserve space to prevent CLS -->
-			<div class="max-w-6xl w-full mt-8">
+			<div class="photo-related">
 				<!-- Related Photos Carousel (NEW - Week 2) -->
 				{#if data.relatedPhotos && data.relatedPhotos.length > 0}
 					<div class="mb-8">
@@ -344,12 +340,39 @@
 		<div class="text-center">
 			<h1 class="text-2xl font-bold text-white mb-4">{data.photo.title}</h1>
 			<!-- No visible caption here either — see the note above the main card. -->
-			<button
-				onclick={() => goto(`${base}/explore`)}
-				class="px-6 py-3 bg-gold-500 text-charcoal-950 rounded-md hover:bg-gold-400 transition-colors"
+			<a
+				href="{base}/explore"
+				class="inline-flex px-6 py-3 bg-gold-500 text-charcoal-950 hover:bg-gold-400 transition-colors"
 			>
 				Back to Gallery
-			</button>
+			</a>
 		</div>
 	</div>
 {/if}
+
+<style>
+	.photo-viewer { position: fixed; inset: 64px 0 0; z-index: 50; overflow-y: auto; background: var(--color-charcoal-950); }
+	.photo-viewer__inner { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 32px 48px; }
+	.photo-stage { width: min(1180px, 100%); }
+	.photo-stage__header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 20px; padding-bottom: 16px; }
+	.photo-stage__header h1 { margin: 0; color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: 20px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+	.photo-stage__back { min-height: 44px; padding: 0; background: transparent; color: var(--color-charcoal-300); font-size: 14px; }
+	.photo-stage__back:hover { color: var(--color-gold-400); }
+	.photo-stage__image { position: relative; width: 100%; height: min(60svh, 720px); overflow: hidden; background: var(--color-charcoal-900); }
+	.photo-stage__metadata, .photo-stage__exif { display: flex; flex-wrap: wrap; gap: 10px 20px; padding-block: 16px; border-bottom: 1px solid var(--color-charcoal-800); color: var(--color-charcoal-300); font-size: 13px; }
+	.photo-stage__exif { padding-top: 0; font-family: ui-monospace, monospace; }
+	.photo-stage__tags { padding-block: 16px; border-bottom: 1px solid var(--color-charcoal-800); }
+	.photo-stage__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 18px; }
+	.photo-stage__copy { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-charcoal-700); border-radius: 0; background: transparent; color: white; }
+	.photo-stage__copy:hover { border-color: var(--color-gold-500); }
+	.photo-stage__back:focus-visible, .photo-stage__copy:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
+	.photo-related { width: min(1180px, 100%); margin-top: 38px; }
+	@media (max-width: 640px) {
+		.photo-viewer__inner { padding: 12px 20px 40px; }
+		.photo-stage__header { grid-template-columns: 1fr; gap: 4px; }
+		.photo-stage__back { justify-self: start; }
+		.photo-stage__header h1 { font-size: 18px; }
+		.photo-stage__actions > :global(*) { flex: 1 1 auto; }
+	}
+	@media (max-width: 680px) { .photo-viewer { top: 60px; } }
+</style>

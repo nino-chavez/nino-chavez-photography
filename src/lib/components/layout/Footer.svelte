@@ -131,7 +131,7 @@
 					>
 						Privacy
 					</a>
-					<a href="{base}/analytics/operator#analytics-preferences" class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm">Analytics preferences</a>
+					<a href="{base}/analytics-preferences" class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm">Analytics preferences</a>
 				</nav>
 
 				<!-- Social Links -->

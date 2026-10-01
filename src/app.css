@@ -407,3 +407,6 @@
       0 0 0 3px rgba(234, 179, 8, 0.16);
   }
 }
+
+/* In the field: a quieter gallery ground; interaction and status colors remain. */
+:root { --color-charcoal-950: #07131d; }

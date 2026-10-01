@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { ArrowLeft, Award, Sparkles } from 'lucide-svelte';
+	import { ArrowLeft, Sparkles } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -101,53 +101,43 @@
 </script>
 
 
-<!-- Page Header -->
-<div class="collection-header-animate bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div class="collection-page">
+	<header class="collection-opening collection-header-animate">
 		<!-- Back Navigation -->
 		<a
 			href="{base}/collections"
-			class="inline-flex items-center gap-2 text-sm text-charcoal-400 hover:text-gold-500 transition-colors mb-4"
+			class="collection-back"
 		>
 			<ArrowLeft class="w-4 h-4" />
 			<span>Back to Collections</span>
 		</a>
 
 		<!-- Collection Header -->
-		<div class="mb-4">
-			<div class="flex items-center gap-3 mb-2">
-				{#if isPortfolio}
-					<div class="bg-gold-500/10 border border-gold-500/20 text-gold-500 px-3 py-1 rounded-full flex items-center gap-2 text-xs font-medium">
-						<Award class="w-3.5 h-3.5" />
-						<span>Excellence</span>
-					</div>
-				{:else}
-					<Sparkles class="w-5 h-5 text-gold-500" />
-				{/if}
-				<Typography variant="caption" class="text-charcoal-400 text-xs">
-					{data.collection.photoCount} photos
-				</Typography>
-			</div>
-
-			<Typography variant="h1" class="text-2xl lg:text-3xl mb-3">
+		<div class="collection-copy">
+			<p class="collection-eyebrow">{isPortfolio ? 'Portfolio collection' : 'Curated collection'}</p>
+			<Typography variant="h1" class="collection-title">
 				{data.collection.title}
 			</Typography>
 
-			<Typography variant="body" class="text-charcoal-400 text-base mb-2 italic">
+			<Typography variant="body" class="collection-narrative">
 				{data.collection.narrative}
 			</Typography>
 
-			<Typography variant="body" class="text-charcoal-400 text-sm max-w-3xl">
+			<Typography variant="body" class="collection-description">
 				{data.collection.description}
 			</Typography>
+			<p class="collection-count">{data.collection.photoCount} photos</p>
 		</div>
-	</div>
-</div>
+	</header>
 
 <!-- Photo Grid -->
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<section class="collection-results" aria-labelledby="collection-results-title">
+	<div class="collection-results-heading">
+		<h2 id="collection-results-title">All photographs</h2>
+		<p>Page {data.currentPage}</p>
+	</div>
 	{#if data.photos.length > 0}
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+		<div class="collection-photo-grid">
 			{#each data.photos as photo, index}
 				<div class="collection-card-animate" style="animation-delay: {index * 50}ms">
 					<PhotoCard {photo} {index} favoriteSurface="collection" onclick={handlePhotoClick} />
@@ -156,7 +146,7 @@
 		</div>
 	{:else}
 		<!-- Empty State -->
-		<div class="collection-header-animate text-center py-16">
+		<div class="collection-empty collection-header-animate">
 			<Sparkles class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
 			<Typography variant="h3" class="mb-2">No Photos Yet</Typography>
 			<Typography variant="body" class="text-charcoal-400 text-sm">
@@ -176,6 +166,7 @@
 			/>
 		</div>
 	{/if}
+</section>
 </div>
 
 <!-- Lightbox — its own growing list past the SSR page; grid/pager above are untouched. -->
@@ -224,6 +215,32 @@
 	.collection-card-animate {
 		animation: collection-card-in 0.3s ease-out forwards;
 		opacity: 0;
+	}
+	.collection-page { color: var(--color-charcoal-50); }
+	.collection-opening, .collection-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.collection-opening { padding-block: 24px 34px; }
+	.collection-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 18px; color: var(--color-charcoal-300); font-size: 14px; }
+	.collection-back:hover { color: var(--color-gold-500); }
+	.collection-copy { max-width: 780px; }
+	.collection-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.collection-copy :global(.collection-title) { margin-bottom: 18px; color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; overflow-wrap: anywhere; }
+	.collection-copy :global(.collection-narrative) { margin-bottom: 8px; color: var(--color-charcoal-200); font-size: 17px; line-height: 1.5; }
+	.collection-copy :global(.collection-description) { max-width: 680px; color: var(--color-charcoal-300); font-size: 14px; line-height: 1.6; }
+	.collection-count { margin-top: 18px; color: var(--color-charcoal-300); font-size: 14px; }
+	.collection-results { padding-block: 26px 72px; border-top: 1px solid var(--color-charcoal-800); }
+	.collection-results-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 20px; margin-bottom: 22px; }
+	.collection-results-heading h2 { font-family: Montserrat, sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -.025em; }
+	.collection-results-heading p { color: var(--color-charcoal-300); font-size: 14px; }
+	.collection-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+	.collection-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
+	.collection-empty { padding-block: 64px; text-align: center; }
+	@media (max-width: 900px) { .collection-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+	@media (max-width: 640px) {
+		.collection-opening, .collection-results { width: calc(100% - 40px); }
+		.collection-opening { padding-block: 8px 28px; }
+		.collection-copy :global(.collection-title) { font-size: 32px; }
+		.collection-results-heading h2 { font-size: 22px; }
+		.collection-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 	}
 
 	/* Reduce motion for accessibility */
