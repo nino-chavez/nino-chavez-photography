@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertReportDateBounds, chicagoDayStart, comparisonWindow, coverageFor, coverageFromStates, datesInclusive, parseReportQuery, previousWindow, rising, risingComparison, risingValue, sumMeasure, type DailyActionRow } from './report-contract';
+import { assertReportDateBounds, chicagoDayStart, comparisonWindow, coverageFor, coverageFromStates, datesInclusive, parseReportQuery, previousWindow, publishedAfterComparison, rising, risingComparison, risingValue, sumMeasure, type DailyActionRow } from './report-contract';
 
 const row = (overrides: Partial<DailyActionRow> = {}): DailyActionRow => ({
 	bucket_date: '2026-09-14', album_key: 'a', photo_id: 'p', event_type: 'view', source: 'direct', source_kind: 'internal_open_location',
@@ -81,3 +81,13 @@ test('tagged arrivals are not counted as photo opens', () => {
  assert.equal(chicagoDayStart('2026-11-01'),'2026-11-01T05:00:00.000Z');
  assert.equal(chicagoDayStart('2026-11-02'),'2026-11-02T06:00:00.000Z');
  });
+
+test('an album published after the comparison window is new, not growth from zero', () => {
+	const query = parseReportQuery(new URLSearchParams('period=custom&start=2026-09-05&end=2026-10-04'));
+	// Previous window ends 2026-09-04 (Chicago).
+	assert.equal(publishedAfterComparison('2026-09-26T15:00:00Z', query), true);
+	assert.equal(publishedAfterComparison('2026-09-05T04:30:00Z', query), false, 'still Sep 4 in Chicago');
+	assert.equal(publishedAfterComparison('2026-08-20T12:00:00Z', query), false);
+	assert.equal(publishedAfterComparison(null, query), false, 'never inferred from other dates');
+	assert.equal(publishedAfterComparison('2026-09-26T15:00:00Z', { ...query, compare: 'none' }), false);
+});

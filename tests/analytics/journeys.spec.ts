@@ -9,15 +9,19 @@ test.beforeEach(async({page,context,baseURL})=>{
  await page.route('https://imagedelivery.net/**',r=>r.fulfill({path:'static/images/hero/hero-1-mobile.webp',contentType:'image/webp'}));
 });
 const query='period=custom&start=2026-09-27&end=2026-09-27&compare=none';
-test('selecting a named album updates the inspector and compare changes report scope',async({page})=>{
+test('selecting a named album updates the inspector and its report link changes report scope',async({page})=>{
 	await page.goto('/photography/analytics/operator?'+query+'#albums');
 	const row=page.locator('#albums tr').filter({hasText:'Alpha Invitational'});
 	await row.getByRole('button',{name:/Alpha Invitational/}).click();
 	await expect(page.locator('.inspector')).toContainText('Alpha Invitational');
-	await row.getByRole('link',{name:'Compare'}).click();
+	await row.getByRole('link',{name:'Open the report for Alpha Invitational'}).click();
  await expect.poll(()=>new URL(page.url()).searchParams.get('scope')).toBe('album');
  await expect.poll(()=>new URL(page.url()).searchParams.get('albums')).toBe('alpha');
 	await expect(page.locator('.inspector')).toContainText('Alpha Invitational');
+	// A one-album report has no peers in the table; it offers the way back instead of a no-op row link.
+	await expect(page.locator('#albums tr').getByRole('link',{name:/Open the report for/})).toHaveCount(0);
+	await expect(page.getByRole('link',{name:'Compare with all albums'})).toBeVisible();
+	await expect(page.locator('#report-filters summary',{hasText:'Advanced filters'})).toHaveText('Advanced filters');
  await page.goBack();
  await expect.poll(()=>new URL(page.url()).searchParams.get('scope')).toBeNull();
  await expect(page.locator('.album-picker summary')).toContainText('All albums');

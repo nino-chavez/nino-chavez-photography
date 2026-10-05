@@ -192,6 +192,19 @@ export function risingComparison(query: ReportQuery, coverage: 'complete' | 'par
 	return { available: true, basis: 'daily_rate', currentDays, previousDays, label: 'Rising compares recorded actions per calendar day because the selected windows have different lengths.' };
 }
 
+/**
+ * An album first published after the comparison window ended had nothing to
+ * open then. Its comparison count is "not yet published", not a measured zero,
+ * so its change is not growth. Albums without a recorded publication time
+ * return false: the event or import date is never substituted.
+ */
+export function publishedAfterComparison(publicationAt: string | null | undefined, query: ReportQuery): boolean {
+	const comparison = comparisonWindow(query);
+	if (!comparison || !publicationAt) return false;
+	const published = new Date(publicationAt);
+	return !Number.isNaN(published.getTime()) && dateOnly(published) > comparison.end;
+}
+
 export function risingValue(current: number, previous: number, comparison: Pick<RisingComparison, 'available' | 'basis' | 'currentDays' | 'previousDays'>): number | null {
 	if (!comparison.available) return null;
 	if (comparison.basis === 'daily_rate') return current / comparison.currentDays - previous / comparison.previousDays;
