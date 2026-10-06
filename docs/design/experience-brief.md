@@ -45,7 +45,7 @@ The overview should fit a summary, a chart under 280px tall, and the start of bo
 
 ## Surfaces
 
-Proposed October 6, pending the concept selection. The September surfaces fold in as noted.
+Selected October 6 ([ADR 0008](../../blueprint/decisions/0008-analytics-launch-layout.md)): Home from concept A, the album report opening with concept C's recap, then concept B's photo grid and launch chart; B's table is the album index. The September surfaces fold in as noted.
 
 - Home: the latest launches and their status, site reach this week, and any open incident. Replaces Overview.
 - Album index: every album, newest first publication first, with first-week reach against earlier launches. Replaces the Albums table.

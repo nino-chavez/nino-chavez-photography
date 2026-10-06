@@ -1,6 +1,6 @@
 # Analytics site rethink: pages, jobs, and verdicts
 
-Status: proposal, 2026-10-06. Two decisions are made ([below](#decisions-nino-2026-10-06)); the page structure is not yet approved. It revises the page structure in [`ANALYTICS_PLAN.md` § 2](../../ANALYTICS_PLAN.md#2-deliver-the-complete-photographer-and-analyst-workspace). It removes no capability; the [coverage table](#every-capability-keeps-a-home) maps each one to its new place. The [Sep 28 scope directive](../../ANALYTICS_PLAN.md) still binds: the full north star is the release.
+Status: proposal, 2026-10-06. Approved by Nino on October 6, with the combined layout ([ADR 0008](../../../blueprint/decisions/0008-analytics-launch-layout.md)); the two earlier decisions are [below](#decisions-nino-2026-10-06). It revises the page structure in [`ANALYTICS_PLAN.md` § 2](../../ANALYTICS_PLAN.md#2-deliver-the-complete-photographer-and-analyst-workspace). It removes no capability; the [coverage table](#every-capability-keeps-a-home) maps each one to its new place. The [Sep 28 scope directive](../../ANALYTICS_PLAN.md) still binds: the full north star is the release.
 
 ## The verdict
 
@@ -195,11 +195,11 @@ The rules have to fit the launch pattern. Proposed rules: launch reach against a
 1. **Album age counts from the first publication.** A republished album keeps its original launch date for every analytics comparison. The "latest gallery" list still ranks by the latest publication, so a republished album can return to the top of that list. These are two different facts, so they need two fields: `published_at` stays the latest publication, and a new first-publication field anchors album age.
 2. **Launch recaps replace the daily and weekly briefs.** A recap goes out on day 3 and day 7 after an album, article or demo first goes public. Incident alerts stay. Recorded in [`ANALYTICS_PLAN.md` workstream E](../../ANALYTICS_PLAN.md#workstream-e-deliver-useful-reports-without-notification-noise). The existing daily and weekly scheduler (`src/lib/analytics/intelligence-schedule.ts`) is replaced during the build, not kept beside the recaps.
 
-The rest of this proposal (the page structure) is not yet approved.
+3. **The page structure and the combined layout are approved.** Recorded in [ADR 0008](../../../blueprint/decisions/0008-analytics-launch-layout.md). Decision 1 is implemented in PR #194, and its migration is applied to production.
 
 ## Next step
 
-Done October 6: [three concepts](../../design/concepts/2026-10-06-launch/README.md) on these cases, awaiting Nino's selection. Original plan: three different whole-screen concepts for Home, the album index, and the album report. They will be compared on the same real cases: JCA at ACC's three-day burst; a trickle album like VLA – Spring 2026; a quiet week with no new album; and unavailable data. Each case uses production numbers, not invented ones. This matches the judged-screen pattern and the concept comparison in [`ANALYTICS_DESIGN_CONCEPTS.md`](../../ANALYTICS_DESIGN_CONCEPTS.md). The Sep 28 comparison used invented cases ("an older photo rising", "a traffic burst") that the real gallery has not produced.
+Done October 6: [three concepts](../../design/concepts/2026-10-06-launch/README.md) on these cases, selected as a combination in ADR 0008. Original plan: three different whole-screen concepts for Home, the album index, and the album report. They will be compared on the same real cases: JCA at ACC's three-day burst; a trickle album like VLA – Spring 2026; a quiet week with no new album; and unavailable data. Each case uses production numbers, not invented ones. This matches the judged-screen pattern and the concept comparison in [`ANALYTICS_DESIGN_CONCEPTS.md`](../../ANALYTICS_DESIGN_CONCEPTS.md). The Sep 28 comparison used invented cases ("an older photo rising", "a traffic burst") that the real gallery has not produced.
 
 ## Sources
 

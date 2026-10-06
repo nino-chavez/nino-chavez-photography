@@ -1,6 +1,6 @@
 # Launch concepts, October 6
 
-Three whole-screen structures for the analytics site, following the [launch rethink](../../../audits/20261006-analytics-site-rethink/README.md). Each draws Home and the album report on the same five cases. Brief: [experience brief, "Launch rethink"](../../experience-brief.md#launch-rethink-october-6). Nino has not selected one yet.
+Three whole-screen structures for the analytics site, following the [launch rethink](../../../audits/20261006-analytics-site-rethink/README.md). Each draws Home and the album report on the same five cases. Brief: [experience brief, "Launch rethink"](../../experience-brief.md#launch-rethink-october-6). Nino chose the combination on October 6: [ADR 0008](../../../../blueprint/decisions/0008-analytics-launch-layout.md).
 
 Open `index.html` through any local static server; `?concept=A|B|C&case=…` selects a frame. Captures of all 15 frames at 1440 × 900 and 390 × 844 are in `captures/`.
 
@@ -34,8 +34,8 @@ Pruned: "completed, with undo", because these screens have no destructive action
 - Works: easiest to read on a phone; one piece of writing serves the dashboard and the recap email; it states what it cannot tell you.
 - Weak: comparison across many launches is thin; browsing all photos or older albums leaves the recap.
 
-## Recommendation, for Nino's selection
+## Recommendation and selection
 
 Take A's Home. Put C's recap at the top of the album report, with B's photo grid and launch chart below it on desktop. B's ranked table becomes the album index. A answers "what is happening" on arrival. C makes the report and the recap email one piece of writing. B gives the comparison and the photos room on a larger screen. Left out: B's chart as Home, because it fails on a phone and leads with analysis. Also left out: C's notes list as Home, because it hides the comparison that gives a number meaning.
 
-This is the agent's recommendation, not a selection. The selection record names the person who chose.
+This was the agent's recommendation. Nino selected it on October 6; ADR 0008 names him as the person who chose.
