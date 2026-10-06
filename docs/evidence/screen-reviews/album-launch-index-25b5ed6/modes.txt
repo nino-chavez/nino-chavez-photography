@@ -1,0 +1,3 @@
+text200: elements outside the 375px viewport: 0; elements spilling out of their panel: 0
+contrast-more: elements outside the 375px viewport: 0; elements spilling out of their panel: 0
+forced-colors: elements outside the 375px viewport: 0; elements spilling out of their panel: 0
