@@ -27,8 +27,8 @@ const extras = (): Json => ({
 	firstPublishedAtEvidence: 'Earliest logged write (personal-Mac session logs only): Agent session log: publish-album.ts unlisted->public (Claude session 505ff78b)',
 	reason: null, window: { start: '2026-09-25', end: '2026-10-02' }, photosInAlbum: 120, photosWithActivity: 2,
 	photos: [
-		{ photoId: 'Re7kho-acc-v-jca-065', opens: 13, downloads: 1, favorites: 0, exposureRecorded: true, exposures: 7, renders: 3 },
-		{ photoId: 'Re7kho-acc-v-jca-08', opens: 13, downloads: 0, favorites: 0, exposureRecorded: true, exposures: 8, renders: 3 }
+		{ photoId: 'Re7kho-acc-v-jca-065', opens: 13, downloads: 1, favorites: 0, exposureRecorded: true, opensInExposureWindow: 6, exposures: 7, renders: 3 },
+		{ photoId: 'Re7kho-acc-v-jca-08', opens: 13, downloads: 0, favorites: 0, exposureRecorded: true, opensInExposureWindow: 5, exposures: 8, renders: 3 }
 	],
 	exposure: { since: '2026-09-29', coverage: 'partial' }
 });
@@ -172,15 +172,21 @@ test('a launch date is never invented for an undated album, and status agrees wi
 test('exposure that was not recorded is null, never a zero', () => {
 	const zero = payload();
 	zero.album.photos[0] = { ...zero.album.photos[0], exposureRecorded: false };
+	const partlyNull = payload();
+	partlyNull.album.photos[0] = { ...partlyNull.album.photos[0], exposureRecorded: false, exposures: null, renders: null };
+	assert.throws(() => decodeLaunchReadModel(partlyNull), /although none was recorded/, 'the opens-in-window count is unknown too');
 	assert.throws(() => decodeLaunchReadModel(zero), /although none was recorded/);
 	const ok = payload();
-	ok.album.photos[0] = { ...ok.album.photos[0], exposureRecorded: false, exposures: null, renders: null };
+	ok.album.photos[0] = { ...ok.album.photos[0], exposureRecorded: false, opensInExposureWindow: null, exposures: null, renders: null };
 	ok.album.exposure = { since: '2026-10-09', coverage: 'none' };
-	ok.album.photos[1] = { ...ok.album.photos[1], exposureRecorded: false, exposures: null, renders: null };
+	ok.album.photos[1] = { ...ok.album.photos[1], exposureRecorded: false, opensInExposureWindow: null, exposures: null, renders: null };
 	assert.equal(decodeLaunchReadModel(ok).album.photos[0].exposures, null);
 	const missing = payload();
 	missing.album.photos[0].exposures = null;
 	assert.throws(() => decodeLaunchReadModel(missing), /no exposure counts/);
+	const more = payload();
+	more.album.photos[0].opensInExposureWindow = 99;
+	assert.throws(() => decodeLaunchReadModel(more), /more opens in the exposure window than in all/);
 });
 
 test('the payload must be internally consistent about its own clock', () => {

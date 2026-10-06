@@ -69,6 +69,8 @@ export interface LaunchPhoto {
 	favorites: number;
 	/** False when version-2 collection had not begun by the end of the window. Then exposures and renders are null. */
 	exposureRecorded: boolean;
+	/** Opens on the days exposures cover (from exposure.since). Compare exposures with this, not with `opens`. Null when exposure was not recorded. */
+	opensInExposureWindow: number | null;
 	exposures: number | null;
 	renders: number | null;
 }
@@ -221,12 +223,13 @@ function decodeLaunchFields(v: Record<string, unknown>, what: string, today: str
 function decodePhotos(value: unknown): LaunchPhoto[] {
 	if (!Array.isArray(value)) fail('album.photos is not an array');
 	return value.map((item, i) => {
-		const v = exact(item, ['photoId', 'opens', 'downloads', 'favorites', 'exposureRecorded', 'exposures', 'renders'], `album.photos[${i}]`);
+		const v = exact(item, ['photoId', 'opens', 'downloads', 'favorites', 'exposureRecorded', 'opensInExposureWindow', 'exposures', 'renders'], `album.photos[${i}]`);
 		if (typeof v.photoId !== 'string' || !isCount(v.opens) || !isCount(v.downloads) || !isCount(v.favorites) || typeof v.exposureRecorded !== 'boolean') fail(`album.photos[${i}]`);
-		if (!isMaybeCount(v.exposures) || !isMaybeCount(v.renders)) fail(`album.photos[${i}] exposure`);
+		if (!isMaybeCount(v.exposures) || !isMaybeCount(v.renders) || !isMaybeCount(v.opensInExposureWindow)) fail(`album.photos[${i}] exposure`);
 		// An exposure that was not recorded is unknown. It must not arrive as a number.
-		if (!v.exposureRecorded && (v.exposures !== null || v.renders !== null)) fail(`album.photos[${i}] has exposure counts although none was recorded`);
-		if (v.exposureRecorded && (v.exposures === null || v.renders === null)) fail(`album.photos[${i}] was recorded but has no exposure counts`);
+		if (!v.exposureRecorded && (v.exposures !== null || v.renders !== null || v.opensInExposureWindow !== null)) fail(`album.photos[${i}] has exposure counts although none was recorded`);
+		if (v.exposureRecorded && (v.exposures === null || v.renders === null || v.opensInExposureWindow === null)) fail(`album.photos[${i}] was recorded but has no exposure counts`);
+		if (typeof v.opensInExposureWindow === 'number' && v.opensInExposureWindow > v.opens) fail(`album.photos[${i}] has more opens in the exposure window than in all`);
 		return v as unknown as LaunchPhoto;
 	});
 }
