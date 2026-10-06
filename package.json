@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "npm run check:head && npm run navigation:contract:test && vite build && npm run reader:check:gallery",

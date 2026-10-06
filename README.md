@@ -48,7 +48,7 @@ docs/                          # technical documentation
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22.22.0 or newer (`.nvmrc` pins 22.22.0, the version Cloudflare Pages builds with)
 - npm
 - A Supabase project ([free tier](https://supabase.com))
 
