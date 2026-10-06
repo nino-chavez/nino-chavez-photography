@@ -125,7 +125,7 @@ test('the quiet gallery on a fresh day reads as quiet, with no open problem exce
 	assert.equal(view.site.reach.value, null);
 	assert.match(view.site.reach.detail, /not configured/);
 	assert.equal(view.site.contacts.value, '4');
-	assert.equal(view.site.contacts.detail, 'Sep 29 – Oct 5, up 100% from 2 in the 7 days before. These are links opened, not messages sent.');
+	assert.equal(view.site.contacts.detail, 'Sep 29 – Oct 5, against 2 in the 7 days before. These are links opened, not messages sent.');
 });
 
 test('Cloudflare page loads are the reach measure, with the week before as the comparison', async () => {
@@ -220,8 +220,8 @@ test('contact link clicks need a full 7 days of history; the week before needs i
 	assert.match(none.view.site.contacts.detail, /not been counted yet.*not zero/);
 	const noPrevious = await run({ actions: actionsPayload({ firstRecordedAt: '2026-09-25T00:00:00Z' }) });
 	assert.equal(noPrevious.view.site.contacts.value, '4');
-	assert.match(noPrevious.view.site.contacts.detail, /nothing to compare it with\.$/);
+	assert.match(noPrevious.view.site.contacts.detail, /nothing to compare it with\. These are links opened, not messages sent\.$/);
 	const stale = await run({ actions: actionsPayload({ freshness: { status: 'stale', refreshedAt: '2026-10-05T03:00:00Z', summaryCutoffAt: '2026-10-05T03:00:00Z', lastFailureAt: null, todayAvailable: false, completedThrough: '2026-10-04' } }) });
 	assert.deepEqual(stale.view.problems.map((problem) => problem.id), ['site-actions-stale']);
-	assert.equal(stale.view.problems[0].href, 'site_actions');
+	assert.equal(stale.view.problems[0].href, 'site-measures');
 });

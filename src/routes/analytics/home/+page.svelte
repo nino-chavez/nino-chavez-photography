@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { albumIndexPath, albumReportPath, reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, albumReportPath, dataPath, reportPath } from '$lib/analytics/report-paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { plural } from '$lib/analytics/launch-recap';
 	import type { HomeProblem } from '$lib/analytics/home';
@@ -14,7 +14,7 @@
 	const trouble = $derived(view.state === 'stale' || view.state === 'unavailable');
 	const dateLine = $derived(new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${view.today}T12:00:00Z`)));
 	const through = $derived(new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${view.lastCompleteDay}T12:00:00Z`)));
-	const problemHref = (problem: HomeProblem) => (problem.href === 'measurement' ? reportPath(hostname, 'gallery', '?section=measurement') : reportPath(hostname, 'sites', '?view=actions'));
+	const problemHref = (problem: HomeProblem) => dataPath(hostname, `#${problem.href}`);
 
 	// A bar chart this small has fixed geometry: 7 bars, each 8 wide with 3 between, 30 tall.
 	const BAR = 8;

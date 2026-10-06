@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { albumIndexPath, homePath, reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, dataPath, homePath, reportPath, settingsPath } from '$lib/analytics/report-paths';
 
 	/**
-	 * The one header of the launch reports: Home, Albums, Site, Gallery report. `current` names the
+	 * The one header of the launch reports: Home, Albums, Site, Data, Settings, Gallery report. `current` names the
 	 * page you are on. An album's own report is inside Albums, so it marks Albums with
 	 * `aria-current="true"` (you are in this section); only the page itself gets `"page"`.
 	 */
-	type Current = 'home' | 'albums' | 'album' | 'site' | 'gallery';
+	type Current = 'home' | 'albums' | 'album' | 'site' | 'data' | 'settings' | 'gallery';
 	let { current }: { current: Current } = $props();
 
 	const hostname = $derived(page.url.hostname);
@@ -15,6 +15,8 @@
 		{ key: 'home', label: 'Home', href: homePath(hostname) },
 		{ key: 'albums', label: 'Albums', href: albumIndexPath(hostname) },
 		{ key: 'site', label: 'Site', href: reportPath(hostname, 'sites') },
+		{ key: 'data', label: 'Data', href: dataPath(hostname) },
+		{ key: 'settings', label: 'Settings', href: settingsPath(hostname) },
 		{ key: 'gallery', label: 'Gallery report', href: reportPath(hostname, 'gallery') }
 	] as const);
 	const mark = (key: string): 'page' | 'true' | undefined => {

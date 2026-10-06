@@ -80,3 +80,14 @@ test('an album address with anything but one key is never redirected into a repo
 		assert.ok(!(response.headers.get('location') ?? '').startsWith('https://analytics.ninochavez.co/albums/'), path);
 	}
 });
+
+test('the data quality page and settings keep their clean addresses and the internal ones redirect to them', async () => {
+	for (const clean of ['/data', '/settings']) {
+		assert.equal((await request(`https://analytics.ninochavez.co${clean}?period=7`)).status, 200);
+		assert.equal((await request(`https://analytics.ninochavez.co/photography/analytics${clean}?period=7`)).headers.get('location'), `https://analytics.ninochavez.co${clean}?period=7`);
+		assert.equal((await request(`https://ninochavez.co/photography/analytics${clean}`)).headers.get('location'), `https://analytics.ninochavez.co${clean}`);
+		assert.equal((await request(`http://127.0.0.1:5189/photography/analytics${clean}`)).status, 200);
+		// Writes (saved views, corrections) are only accepted on the report host.
+		assert.equal((await request(`https://ninochavez.co/photography/analytics${clean}?/anything`, 'POST')).status, 404);
+	}
+});

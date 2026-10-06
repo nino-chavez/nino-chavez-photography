@@ -33,3 +33,12 @@ test('existing owner sessions return to clean gallery or sites addresses', () =>
  assert.equal(signedInReturnPath('analytics.ninochavez.co','/photography',null),'/gallery');
  assert.equal(signedInReturnPath('analytics.ninochavez.co','/photography','//attacker.invalid'),'/gallery');
 });
+
+test('signing in from settings or the data page returns to the same clean address', () => {
+ // The login link passes the internal path without the app base; the owner lands on the clean address.
+ for (const [next, clean] of [['/analytics/settings', '/settings'], ['/analytics/data', '/data']] as const) {
+  assert.equal(authReturnPath(next, '/analytics/operator'), next);
+  assert.equal(signedInReturnPath('analytics.ninochavez.co', '/photography', next), clean);
+  assert.equal(new URL(analyticsAuthCallbackUrl('analytics.ninochavez.co', gallery, next)).searchParams.get('next'), next);
+ }
+});

@@ -151,11 +151,11 @@
 	select, input, textarea { width: 100%; box-sizing: border-box; border: 1px solid #aebfd2; border-radius: .3rem; background: #fff; color: #18243a; font: inherit; font-size: .9rem; padding: .45rem .5rem; }
 	textarea { resize: vertical; }
 	.note-field { grid-column: 1 / -1; }
-	.save { justify-self: start; border: 1px solid #1d4ed8; border-radius: .3rem; background: #245bb6; color: #fff; font: inherit; font-size: .88rem; font-weight: 650; padding: .48rem .7rem; cursor: pointer; }
+	.save { min-height: 2.75rem; justify-self: start; border: 1px solid #1d4ed8; border-radius: .3rem; background: #245bb6; color: #fff; font: inherit; font-size: .88rem; font-weight: 650; padding: .48rem .7rem; cursor: pointer; }
 	.history-divider { border-top: 1px solid #d7e0eb; }
 	.history-control { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
 	.history-control h3 { margin: 0 0 .18rem; font-size: .95rem; }
-	.clear, .quiet, .delete { border-radius: .3rem; font: inherit; font-size: .86rem; padding: .43rem .62rem; cursor: pointer; }
+	.clear, .quiet, .delete { border-radius: .3rem; cursor: pointer; font: inherit; font-size: .86rem; min-height: 2.75rem; padding: .43rem .62rem; }
 	.clear, .quiet { border: 1px solid #9fb1c7; background: #fff; color: #294560; }
 	.confirm-row { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .45rem; color: #7f1d1d; font-size: .85rem; font-weight: 600; }
 	.delete { border: 1px solid #b42318; background: #b42318; color: #fff; }
