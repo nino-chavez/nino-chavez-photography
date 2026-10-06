@@ -8,13 +8,24 @@ import urllib.parse
 
 root = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
-parser.add_argument('--migration', action='append', required=True)
+parser.add_argument('--migration', action='append', default=[])
+parser.add_argument('--migrations-for', metavar='FUNCTION', help='Apply, oldest first, every migration that defines public.FUNCTION')
 parser.add_argument('--assertions', action='append', default=[])
 parser.add_argument('--output', required=True)
 parser.add_argument('--negative-control', action='store_true')
 parser.add_argument('--install-local', action='store_true', help='Install only migrations on the marked synthetic database for browser review')
 args = parser.parse_args()
-runtime = json.loads((root / '.temp/analytics-local-rehearsal/runtime.json').read_text())
+if args.migrations_for:
+    if not re.fullmatch(r'[a-z_][a-z0-9_]*', args.migrations_for):
+        raise SystemExit('--migrations-for takes a bare function name')
+    defines = re.compile(rf'FUNCTION\s+public\.{args.migrations_for}\s*\(', re.I)
+    args.migration += [str(path.relative_to(root)) for path in sorted((root / 'supabase/migrations').glob('*.sql')) if defines.search(path.read_text())]
+if not args.migration:
+    raise SystemExit('No migrations selected; pass --migration or --migrations-for')
+runtime_path = root / '.temp/analytics-local-rehearsal/runtime.json'
+if not runtime_path.exists():
+    raise SystemExit('No local rehearsal runtime; run npm run analytics:setup:local first')
+runtime = json.loads(runtime_path.read_text())
 url = runtime['DB_URL']
 parsed = urllib.parse.urlparse(url)
 if parsed.hostname not in ('127.0.0.1', 'localhost') or parsed.port != 55492:
