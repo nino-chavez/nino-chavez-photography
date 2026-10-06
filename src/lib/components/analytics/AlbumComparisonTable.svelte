@@ -47,7 +47,8 @@
 </script>
 
 <div class="comparison">{#if comparisonLabel}<p class="scroll-help">{comparisonLabel}</p>{/if}{#if overflowing}<p class="scroll-help">Scroll sideways to compare every measure. Album names stay visible.</p>{/if}
-<div class="table-region" role="region" aria-label="Album comparison table" bind:clientWidth={regionWidth}>
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
+<div class="table-region" role="region" aria-label="Album comparison table" tabindex="0" bind:clientWidth={regionWidth}>
 	<table bind:clientWidth={tableWidth}>
 		<thead>
 			<tr><th scope="col">Album</th><th scope="col" class="number">Current · {measureLabel}</th><th scope="col" class="number">Previous</th><th scope="col" class="number">Change{risingBasis==='daily_rate' ? ' per day' : ''}</th>{#each measures as measure}<th scope="col" class="number">{measure.label}</th>{/each}<th scope="col">Last recorded activity</th>{#if !scopedToOneAlbum}<th scope="col"><span class="sr-only">Actions</span></th>{/if}</tr>
@@ -71,6 +72,7 @@
 	.comparison { min-width:0; }
 	.scroll-help { color:#526176; font-size:.75rem; margin:0 0 .6rem; }
 	.table-region { position: relative; border: 1px solid #d8e0ea; border-radius: 14px; overflow: auto; background: #fff; }
+	.table-region:focus-visible { outline: 3px solid #1769e0; outline-offset: 2px; }
 	table { border-collapse: collapse; min-width: 62rem; width: 100%; font-size: .8rem; }
 	th { background: #f4f7fb; color: #526176; font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-align: left; text-transform: uppercase; }
 	th, td { border-bottom: 1px solid #e8edf3; padding: .65rem .75rem; vertical-align: middle; }
