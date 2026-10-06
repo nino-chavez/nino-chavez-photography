@@ -20,7 +20,7 @@ function fakeAlbumSettingsClient(options: {
 } = {}) {
 	const calls: Array<{ type: 'select' | 'upsert' | 'delete'; payload?: Record<string, unknown> }> = [];
 	let row: PublishedRow | null = options.initialRow
-		? { visibility: options.initialRow.visibility, gallery_scope: null, published_at: null, published_at_basis: null }
+		? { visibility: options.initialRow.visibility, gallery_scope: null, published_at: null, published_at_basis: null, first_published_at: null, first_published_at_basis: null }
 		: null;
 	const client = {
 		from(_table: string) {
@@ -50,7 +50,9 @@ function fakeAlbumSettingsClient(options: {
 										visibility: payload.visibility,
 										gallery_scope: payload.gallery_scope,
 										published_at: stamped ? STAMP : (row?.published_at ?? null),
-										published_at_basis: stamped ? 'recorded' : (row?.published_at_basis ?? null)
+										published_at_basis: stamped ? 'recorded' : (row?.published_at_basis ?? null),
+										first_published_at: row?.first_published_at ?? (stamped ? STAMP : null),
+										first_published_at_basis: row?.first_published_at_basis ?? (stamped ? 'recorded' : null)
 									};
 									return { data: row, error: null };
 								}
@@ -94,7 +96,7 @@ test('applyPublishTransition: publishing an unlisted album upserts public, retur
 	assert.equal(result.ok, true);
 	if (result.ok) {
 		assert.equal(result.wentPublic, true);
-		assert.deepEqual(result.after, { visibility: 'public', gallery_scope: null, published_at: STAMP, published_at_basis: 'recorded' });
+		assert.deepEqual(result.after, { visibility: 'public', gallery_scope: null, published_at: STAMP, published_at_basis: 'recorded', first_published_at: STAMP, first_published_at_basis: 'recorded' });
 	}
 	assert.deepEqual(calls.map((c) => c.type), ['select', 'upsert']);
 });

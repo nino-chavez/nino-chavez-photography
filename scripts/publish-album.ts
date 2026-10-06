@@ -35,8 +35,11 @@
  * 'recorded') on the same unlisted -> public write, via the album_settings_stamp_published_at
  * trigger (supabase/migrations/20261005230000_album_settings_publication_provenance.sql). This
  * script does not compute it; it prints the row as written so the stamp is visible in the run's
- * output. It is what the "latest gallery" route (`/latest`, `/api/latest`,
- * `/api/galleries/recent`) and the analytics publication-age comparison read.
+ * output. `published_at` is the LATEST publication and is what the "latest gallery" routes
+ * (`/latest`, `/api/latest`, `/api/galleries/recent`) sort on, so republishing moves an album to
+ * the top. The same trigger sets `first_published_at` once, on the first publication
+ * (20261006120000_album_settings_first_publication.sql). A republish leaves it alone, and the
+ * analytics publication-age comparison and new-album rule count from it.
  *
  * Required env (.env.local): VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
@@ -157,6 +160,9 @@ async function main() {
 	console.log(`after:  ${JSON.stringify({ album_key: ALBUM_KEY, ...result.after })}`);
 	if (result.wentPublic && result.after.published_at_basis !== 'recorded') {
 		console.error('warning: the album went public but the database recorded no published_at — is the album_settings_stamp_published_at trigger installed?');
+	}
+	if (result.wentPublic && !result.after.first_published_at) {
+		console.error('warning: the album went public but the database recorded no first_published_at — is 20261006120000_album_settings_first_publication.sql applied?');
 	}
 	const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || result.wentPublic);
 	console.log(UNPUBLISH
