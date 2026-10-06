@@ -1,6 +1,6 @@
 # Analytics site rethink: pages, jobs, and verdicts
 
-Status: proposal, 2026-10-06. Not approved. It revises the page structure in [`ANALYTICS_PLAN.md` § 2](../../ANALYTICS_PLAN.md#2-deliver-the-complete-photographer-and-analyst-workspace). It removes no capability; the [coverage table](#every-capability-keeps-a-home) maps each one to its new place. The [Sep 28 scope directive](../../ANALYTICS_PLAN.md) still binds: the full north star is the release.
+Status: proposal, 2026-10-06. Two decisions are made ([below](#decisions-nino-2026-10-06)); the page structure is not yet approved. It revises the page structure in [`ANALYTICS_PLAN.md` § 2](../../ANALYTICS_PLAN.md#2-deliver-the-complete-photographer-and-analyst-workspace). It removes no capability; the [coverage table](#every-capability-keeps-a-home) maps each one to its new place. The [Sep 28 scope directive](../../ANALYTICS_PLAN.md) still binds: the full north star is the release.
 
 ## The verdict
 
@@ -53,7 +53,7 @@ analytics.ninochavez.co/                        analytics.ninochavez.co/
    ├─ Measurement  ── becomes ───────────────▶  ├─ /data        Can I trust these numbers?
    └─ Preferences  ── moves to ──────────────▶  └─ /settings    This browser, briefs and alerts, saved views
 gallery/export.csv                              (export stays, from album index and album report)
-daily + weekly briefs, incident alerts          launch recaps + incident alerts (see decision 2)
+daily + weekly briefs, incident alerts          launch recaps + incident alerts (decided)
 ```
 
 ## Page by page
@@ -161,7 +161,7 @@ The rules have to fit the launch pattern. Proposed rules: launch reach against a
 | --- | --- |
 | Job | Tell me without my having to open the site. |
 | Data today | 0 briefs and 0 deliveries. No owner has set up preferences or a verified destination, and no finding has existed to send. |
-| Verdict | **Redesign** around launches: a recap on day 3 and day 7 after an album goes public. Keep incident alerts. See decision 2. |
+| Verdict | **Redesign** around launches: a recap on day 3 and day 7 after an album, article or demo first goes public. Keep incident alerts. Decided 2026-10-06. |
 
 ## Every capability keeps a home
 
@@ -177,13 +177,15 @@ The rules have to fit the launch pattern. Proposed rules: launch reach against a
 | Measurement and operations, traffic impact, provider reconciliation | Measurement tab | `/data` |
 | Durable history | Behind every view | Unchanged |
 | Actionable intelligence, assistant, actions and follow-up | Panel on Overview and Sites | Inline findings on Home and album report; assistant in album report |
-| Daily and weekly reports, incident alerts | Built; never sent | Launch recaps and incident alerts (decision 2) |
+| Daily and weekly reports, incident alerts | Built; never sent | Launch recaps (decided) and incident alerts |
 | Visitor analytics choices | Preferences tab and public page | `/settings` (yours); public page unchanged (visitors) |
 
-## Decisions that are Nino's
+## Decisions (Nino, 2026-10-06)
 
-1. **Album age: first publication or latest?** The launch comparison counts days from publication. Republishing currently replaces the publication time, which would restart an album's age. This choice decides which albums share a cohort.
-2. **Briefs: replace daily and weekly with launch recaps?** The plan calls for daily and weekly reports. On this data a daily brief would almost always say "nothing changed". Replacing them is a scope change against the plan, so it needs your call. The alternative keeps daily and weekly reports and adds launch recaps.
+1. **Album age counts from the first publication.** A republished album keeps its original launch date for every analytics comparison. The "latest gallery" list still ranks by the latest publication, so a republished album can return to the top of that list. These are two different facts, so they need two fields: `published_at` stays the latest publication, and a new first-publication field anchors album age.
+2. **Launch recaps replace the daily and weekly briefs.** A recap goes out on day 3 and day 7 after an album, article or demo first goes public. Incident alerts stay. Recorded in [`ANALYTICS_PLAN.md` workstream E](../../ANALYTICS_PLAN.md#workstream-e-deliver-useful-reports-without-notification-noise). The existing daily and weekly scheduler (`src/lib/analytics/intelligence-schedule.ts`) is replaced during the build, not kept beside the recaps.
+
+The rest of this proposal (the page structure) is not yet approved.
 
 ## Next step
 

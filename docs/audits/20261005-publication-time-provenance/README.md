@@ -170,7 +170,7 @@ With the trigger in place, `resolvePublishTarget` should stop stamping (one owne
 1. Backfill and label column: **approved**, all seven albums labelled `inferred`.
 2. DWdCET and Re7kho: **use the logged times**.
 3. Trigger: **approved**. Ingest always unlisted: **not approved**, unchanged.
-4. Republishing: unanswered. The trigger keeps the current behavior, so republishing replaces the time (latest publication).
+4. Republishing: decided 2026-10-06. Album age counts from the first publication; `published_at` stays the latest publication for the latest-gallery ranking. See [the analytics site rethink](../20261006-analytics-site-rethink/README.md#decisions-nino-2026-10-06).
 5. TRoiyO, rdrsVB and z6uqiQ: unanswered. They stay null unless the other Mac's session logs hold their publish.
 
 ## Where the label shows
