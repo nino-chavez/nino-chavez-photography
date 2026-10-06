@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T01:14:22.948Z",
-  "reviewedBy": "Claude Code session that authored the dead-ranking removal (not a cold reviewer)",
-  "method": "Server-only change on top of main 5320aba, 2026-10-05. The only edit under the fingerprinted roots beyond main is src/routes/analytics/operator/+page.server.ts: PhotoRank now imports from report-contract.ts, and the photo_rank parse uses isPhotoRank with the same three accepted values and the same popular default (a tsx run showed popular/rising/recent accepted, bogus/null/1 rejected). No .svelte file, rendered string, or route changed relative to main. npm run check (0 errors) and the 40 analytics contract tests passed on the merged tree. Not covered: a browser walk, a cold reviewer, a physical device. The 2026-10-06 receipt for PR #184 (f49c126) remains the evidence for the rendered Rising and Overview encounters, and the 2026-10-01 receipt (707a2c8/0fb0231) for gallery routes outside analytics.",
-  "sourceDigest": "sha256:1834a3f905f7076535745b1d2723ff7388b1e880c456e83c7f93305f9b992bc7",
+  "reviewedAt": "2026-10-06T02:03:34.767Z",
+  "reviewedBy": "Claude Code session that authored the hidden-trend removal (not a cold reviewer)",
+  "method": "Markup-only removal on top of main f640e94, 2026-10-05. src/routes/analytics/operator/+page.svelte loses the Overview legacy-trend section (Daily activity bar chart and Read as a table) and the overview traffic-summary section, plus the unconditional rule that hid both with display:none; no other file under the fingerprinted roots changed. Neither block rendered for any visitor before this change. The live AnalyticsTrend figure carries the same daily dates, counts, and coverage, with a Read the daily values table. The Measurement tab's Traffic panel still shows included and excluded activity (seen rendered in the dev server, not gated on sign-in). The hidden table's Sharing context column has no Overview replacement; operators see those notes in the Sources tab's Private note panel. Implementer walked Overview on a local dev server reading production data at 1440px and 390px (Playwright, installed Chrome, plus the in-app browser): trend figure and its 30-row table render, zero legacy nodes, scrollWidth equals clientWidth at both widths. npm run check: 0 errors, no warnings in the touched file. Not covered: a cold reviewer, a physical device, gallery routes outside analytics. The 2026-10-06 receipt for PR #184 (f49c126) remains the evidence for the other analytics encounters.",
+  "sourceDigest": "sha256:bbadba350aa283bb26a1fff301f4b7e0308166acd07176fb730aa69b60cf7408",
   "sourceFiles": 162,
   "scope": [
-    "Analytics Photos rank parameter (server only, no rendered change)"
+    "Analytics Overview trend (hidden duplicate trend and traffic blocks removed)"
   ]
 }
