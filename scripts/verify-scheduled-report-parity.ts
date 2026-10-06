@@ -78,12 +78,12 @@ if(process.argv.includes('--record-original')){
   const original=before.results.find((x:any)=>x.name===result.name);
   const actual=structuredClone(result.report),expected=structuredClone(original.report);
   // Existing zero-activity albums omitted known catalogue publication dates.
-  // SQL now returns those dates; verify each against the authoritative settings.
+  // SQL now returns those dates; verify each against the authoritative settings (first_published_at: album age counts from the first publication).
   for(let i=0;i<actual.albums.length;i++){
    if(actual.albums[i].publicationAt!==expected.albums[i].publicationAt){
     assert.equal(expected.albums[i].publicationAt,null);
-    const read=await client.from('album_settings').select('published_at').eq('album_key',actual.albums[i].albumKey).single();assert.ifError(read.error);
-    assert.equal(actual.albums[i].publicationAt,new Date(read.data!.published_at).toISOString());
+    const read=await client.from('album_settings').select('first_published_at').eq('album_key',actual.albums[i].albumKey).single();assert.ifError(read.error);
+    assert.equal(actual.albums[i].publicationAt,new Date(read.data!.first_published_at).toISOString());
     expected.albums[i].publicationAt=actual.albums[i].publicationAt;acceptedDifferences.push(result.name+': catalogue publication date');
    }
   }

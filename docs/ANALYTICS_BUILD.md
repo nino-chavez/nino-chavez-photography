@@ -8,7 +8,7 @@ The activity summary remains available. At the operator's September 28 request, 
 
 - Choose one album, several albums, or the whole gallery. Find albums by name, including albums with no recorded activity.
 - Select a measure and activity dates. Filter by sport, photo category, source, event date, season, event type, and traffic.
-- Compare a previous equal period, a custom period, or the same number of days after a recorded publication date.
+- Compare a previous equal period, a custom period, or the same number of days after an album's recorded first publication date.
 - Inspect popular, rising, and recently active photos in image or table views. See current and previous counts, change, and latest activity. Shortlist photos and export the complete filtered result.
 - Save, reopen, update, and delete private report views. Add, edit, and delete sharing notes; see those notes beside daily activity in the table.
 - Separate arrival tags from locations inside the gallery. Inspect how traffic exclusions change album counts and rankings.

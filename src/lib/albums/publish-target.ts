@@ -6,7 +6,9 @@
  * Publication time is not decided here. The `album_settings_stamp_published_at` trigger
  * (`supabase/migrations/20261005230000_album_settings_publication_provenance.sql`) stamps
  * `published_at` and `published_at_basis = 'recorded'` on every `unlisted -> public` update,
- * whoever issues it, including a hand-typed REST PATCH. `applyPublishTransition` returns the row
+ * whoever issues it, including a hand-typed REST PATCH, and sets `first_published_at` once, on
+ * the first such update (`20261006120000_album_settings_first_publication.sql`). A republish
+ * moves `published_at` and leaves `first_published_at` alone. `applyPublishTransition` returns the row
  * as written, so a caller can show the stamp the database actually made.
  *
  * "No row = public" is the read-side convention (`getAlbumSettings`, `getUnlistedAlbumKeys`, and
@@ -34,8 +36,12 @@ export interface PublishTarget {
 export interface PublishedRow {
 	visibility: Visibility;
 	gallery_scope: string | null;
+	/** The LATEST unlisted -> public write. Drives the latest-gallery ranking. */
 	published_at: string | null;
 	published_at_basis: 'recorded' | 'inferred' | null;
+	/** The FIRST publication on record. A republish never moves it; analytics album age counts from it. NULL with basis 'unobserved' for an album that was public before anything recorded it. */
+	first_published_at: string | null;
+	first_published_at_basis: 'recorded' | 'inferred' | 'unobserved' | null;
 }
 
 export function resolvePublishTarget({ unpublish, scope }: PublishTargetInput): PublishTarget {
@@ -84,7 +90,7 @@ export async function applyPublishTransition(
 	const { data: after, error: writeErr } = await client
 		.from('album_settings')
 		.upsert({ album_key: albumKey, ...target }, { onConflict: 'album_key' })
-		.select('visibility, gallery_scope, published_at, published_at_basis')
+		.select('visibility, gallery_scope, published_at, published_at_basis, first_published_at, first_published_at_basis')
 		.single();
 	if (writeErr) return { ok: false, error: writeErr.message };
 
