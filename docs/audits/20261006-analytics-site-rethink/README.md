@@ -201,6 +201,20 @@ The rules have to fit the launch pattern. Proposed rules: launch reach against a
 
 Done October 6: [three concepts](../../design/concepts/2026-10-06-launch/README.md) on these cases, selected as a combination in ADR 0008. Original plan: three different whole-screen concepts for Home, the album index, and the album report. They will be compared on the same real cases: JCA at ACC's three-day burst; a trickle album like VLA – Spring 2026; a quiet week with no new album; and unavailable data. Each case uses production numbers, not invented ones. This matches the judged-screen pattern and the concept comparison in [`ANALYTICS_DESIGN_CONCEPTS.md`](../../ANALYTICS_DESIGN_CONCEPTS.md). The Sep 28 comparison used invented cases ("an older photo rising", "a traffic burst") that the real gallery has not produced.
 
+## Build order
+
+One release, built in dependency order. Each step is its own PR with its own checks; no step is accepted as the release on its own.
+
+1. **Launch read model.** One server query returns, for any album with a first publication, its daily opens, downloads and album opens by day since first publication. It also returns the same values for earlier launches at the same age, and photo exposure where it was recorded. It uses the same traffic rule as the report, and the SQL rehearsal covers the burst, trickle, undated and partial-day cases.
+2. **Album report.** The C recap on top, then B's photo grid with a selected-photo panel and the launch chart. Shortlist, CSV export and the assistant move here.
+3. **Album index.** B's ranked table, with every album: launches ranked at the same age, then undated albums by recent activity, including albums with none.
+4. **Home.** A's launch log, the site line and open incidents. `/` stops redirecting to `/sites`.
+5. **Site report, data quality, settings.** `/sites` shrinks to one reach measure plus contact clicks. Measurement, open locations and traffic impact move to data quality. Preferences, recap settings and saved views move to settings.
+6. **Launch rules.** The intelligence rules are rewritten around launches: reach against earlier launches at the same age, launch finished, seen-but-rarely-opened photos, failures during a launch, and collection outage. Findings show inline on Home and the album report.
+7. **Launch recaps.** Day 3 and day 7 recaps replace the daily and weekly scheduler. Email stays off until Nino verifies a destination.
+8. **Old addresses.** `/gallery?section=…` links redirect to their new homes, then the old tabs are removed.
+9. **Acceptance.** A cold review of device captures for every surface, including largest text and increased contrast. Performance is compared with `scripts/measure-analytics-performance.mjs`.
+
 ## Sources
 
 - Live pages walked signed out on 2026-10-06 with browse-tool: `/sites` (Reach and Actions), `/gallery` (all six sections, all albums, last 30 days), and the album-scoped views for `Re7kho`.
