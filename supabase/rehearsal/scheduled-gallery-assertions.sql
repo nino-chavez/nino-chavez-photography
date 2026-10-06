@@ -71,6 +71,60 @@ BEGIN
   IF first_page->'photos'->0->>'photoId'=second_page->'photos'->0->>'photoId' THEN RAISE EXCEPTION 'stable page boundary repeated row'; END IF;
 END $$;
 
+-- Photo ranking contract, checked against the response fields rather than the
+-- function's internals. Each rank orders by its own value (Popular: count, Rising:
+-- risingValue, Recent: lastActivity), largest first with missing values last, then
+-- count, then photo id, then album key. Pages are slices of that one order; an
+-- out-of-range page clamps to the last page; a zero-size page returns no rows.
+-- The fixture must contain what each rule acts on, or the check proves nothing.
+DO $$
+DECLARE c record; v_all jsonb; v_page jsonb; total integer; misordered integer; tied integer; missing_primary integer;
+  page_size constant integer:=7; last_page integer;
+BEGIN
+  FOR c IN SELECT * FROM (VALUES
+    ('popular','custom','2026-09-26'::date,'2026-09-27'::date),('rising','custom','2026-09-26','2026-09-27'),('recent','custom','2026-09-26','2026-09-27'),
+    ('rising','none',NULL,NULL)) v(rank,compare,compare_start,compare_end)
+  LOOP
+    v_all:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,c.compare,c.compare_start,c.compare_end,'inclusive',false,0,0,c.rank,true,false);
+    total:=(v_all->'photoPagination'->>'total')::integer;
+    IF total<=page_size*2 OR jsonb_array_length(v_all->'photos')<>total THEN RAISE EXCEPTION '% (%) ranking fixture too small or truncated: %',c.rank,c.compare,total; END IF;
+    WITH listed AS (
+      SELECT ord,p->>'photoId' photo_id,p->>'albumKey' album_key,(p->>'count')::numeric n,
+        CASE c.rank WHEN 'popular' THEN (p->>'count')::numeric WHEN 'rising' THEN (p->>'risingValue')::numeric END primary_value,
+        CASE WHEN c.rank='recent' THEN (p->>'lastActivity')::timestamptz END primary_time
+      FROM jsonb_array_elements(v_all->'photos') WITH ORDINALITY x(p,ord)),
+    expected AS (
+      SELECT *,row_number()OVER(ORDER BY primary_time DESC NULLS LAST,primary_value DESC NULLS LAST,n DESC NULLS LAST,photo_id,album_key) want,
+        lag(primary_time)OVER(ORDER BY ord) prev_time,lag(primary_value)OVER(ORDER BY ord) prev_value,lag(n)OVER(ORDER BY ord) prev_n
+      FROM listed)
+    SELECT count(*)FILTER(WHERE ord<>want),
+      count(*)FILTER(WHERE ord>1 AND primary_time IS NOT DISTINCT FROM prev_time AND primary_value IS NOT DISTINCT FROM prev_value AND n IS NOT DISTINCT FROM prev_n),
+      count(*)FILTER(WHERE (c.rank='recent' AND primary_time IS NULL) OR (c.rank='rising' AND primary_value IS NULL))
+    INTO misordered,tied,missing_primary FROM expected;
+    IF misordered>0 THEN RAISE EXCEPTION '% (%) photos out of rank order: % row(s)',c.rank,c.compare,misordered; END IF;
+    IF tied=0 THEN RAISE EXCEPTION '% (%) fixture has no ties, so the photo id tie-break is untested',c.rank,c.compare; END IF;
+    IF c.rank='recent' AND missing_primary=0 THEN RAISE EXCEPTION 'recent fixture has no photo without current activity, so missing-last is untested'; END IF;
+    IF c.rank='rising' AND c.compare='none' AND missing_primary<>total THEN RAISE EXCEPTION 'rising without a comparison returned rising values'; END IF;
+
+    v_page:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,c.compare,c.compare_start,c.compare_end,'inclusive',false,1,page_size,c.rank,false,false);
+    IF (SELECT jsonb_agg(p ORDER BY ord) FROM jsonb_array_elements(v_page->'photos') WITH ORDINALITY x(p,ord))
+      IS DISTINCT FROM (SELECT jsonb_agg(p ORDER BY ord) FROM jsonb_array_elements(v_all->'photos') WITH ORDINALITY x(p,ord) WHERE ord>page_size AND ord<=page_size*2)
+    THEN RAISE EXCEPTION '% (%) page 1 is not the matching slice of the full ranking',c.rank,c.compare; END IF;
+
+    last_page:=(total-1)/page_size;
+    v_page:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,c.compare,c.compare_start,c.compare_end,'inclusive',false,1000000,page_size,c.rank,false,false);
+    IF v_page->'photoPagination'<>jsonb_build_object('page',last_page,'pageSize',page_size,'total',total,'pageCount',last_page+1,'rank',c.rank)
+    THEN RAISE EXCEPTION '% (%) out-of-range page did not clamp: %',c.rank,c.compare,v_page->'photoPagination'; END IF;
+    IF (SELECT jsonb_agg(p ORDER BY ord) FROM jsonb_array_elements(v_page->'photos') WITH ORDINALITY x(p,ord))
+      IS DISTINCT FROM (SELECT jsonb_agg(p ORDER BY ord) FROM jsonb_array_elements(v_all->'photos') WITH ORDINALITY x(p,ord) WHERE ord>last_page*page_size)
+    THEN RAISE EXCEPTION '% (%) clamped page is not the last slice of the full ranking',c.rank,c.compare; END IF;
+
+    v_page:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,c.compare,c.compare_start,c.compare_end,'inclusive',false,5,0,c.rank,false,false);
+    IF v_page->'photos'<>'[]'::jsonb OR v_page->'photoPagination'<>jsonb_build_object('page',0,'pageSize',0,'total',total,'pageCount',0,'rank',c.rank)
+    THEN RAISE EXCEPTION '% (%) zero-size page returned rows or wrong metadata: %',c.rank,c.compare,v_page->'photoPagination'; END IF;
+  END LOOP;
+END $$;
+
 DO $$ DECLARE r jsonb; pub jsonb;
 BEGIN
   r:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,20,'rising',false,false);
