@@ -101,6 +101,8 @@ Prerequisites: Docker, the installed Supabase CLI (verified 2.102.0), PostgreSQL
 
 `analytics:rehearse` resets only the dedicated local fixture schema. The ordinary application and other Docker projects are outside its scope. Re-running it resets synthetic notes and corrections, so run it before HTTP/browser acceptance. Generated keys, session cookies, raw audit snapshots, and runtime settings stay outside version control. The owned preview and dedicated local stack were stopped after final verification; local database volumes were preserved. Other running projects were untouched.
 
+`npm run analytics:gallery:rehearse` checks the gallery report function, including Popular, Rising and Recent order and photo paging, against the same local project. It applies every migration that defines `analytics_read_scheduled_gallery_report`, oldest first, then `supabase/rehearsal/scheduled-gallery-assertions.sql`, all in one transaction that rolls back. Its record goes to `.temp/analytics-local-rehearsal/gallery-rehearsal.json`. It needs step 1's local keys. Arguments added after `--` are appended to the script's own, so pass a different assertion file to `scripts/rehearse-analytics-scheduled.py` directly instead.
+
 ## Remaining release evidence
 
 The complete implementation is ready for production review. Hosted migration, access/cache checks, and a cold review using real production report data remain required after authorized application. Synthetic acceptance is not a substitute for that live evidence. No business effect or improvement in photography decisions has been measured yet.

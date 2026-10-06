@@ -59,6 +59,7 @@
     "navigation:contract:test": "tsx --test src/lib/navigation-contract.test.ts",
     "analytics:contract:test": "node --import tsx --test src/lib/analytics/collection-contract.test.ts src/lib/analytics/report-contract.test.ts src/lib/analytics/operator-report.test.ts",
     "analytics:rehearse": "node scripts/rehearse-analytics-local.mjs",
+    "analytics:gallery:rehearse": "python3 scripts/rehearse-analytics-scheduled.py --migrations-for analytics_read_scheduled_gallery_report --assertions supabase/rehearsal/scheduled-gallery-assertions.sql --output .temp/analytics-local-rehearsal/gallery-rehearsal.json",
     "analytics:dev:local": "node scripts/dev-analytics-local.mjs",
     "analytics:verify:local": "node --import tsx scripts/verify-analytics-local.mjs",
     "analytics:ui:local": "playwright test --config playwright.analytics.config.ts",
