@@ -82,3 +82,15 @@ test('public browser estimates use the protected SQL visibility boundary', async
  assert.deepEqual(calls.map(c=>c.name),['analytics_read_scheduled_gallery_report','analytics_count_scheduled_gallery_browsers']);
  assert.equal(calls[1].args.p_public_only,true);
 });
+test('CSV marks rows from an album published after the comparison window', () => {
+	const fresh={albumKey:'fresh',count:12,previousCount:0,difference:12,risingValue:12,measures:{...totals,album_opens:12},lastActivity:null,publicationAt:'2026-09-20T15:00:00Z'};
+	const older={...fresh,albumKey:'older',publicationAt:'2026-07-01T15:00:00Z'};
+	const photo={photoId:'p1',albumKey:'fresh',count:3,previousCount:0,difference:3,risingValue:3,measures:totals,lastActivity:null,imageUrl:null};
+	const lines=reportCsv(completeReport({query:{...query,measure:'album_opens'},albums:[fresh,older],photos:[photo]})).split('\n');
+	assert.match(lines[0],/"comparison_note"$/);
+	assert.match(lines.find((line)=>line.startsWith('"photo","p1"'))!,/"published_after_comparison_window"$/);
+	assert.match(lines.find((line)=>line.includes('"fresh"')&&line.startsWith('"album"'))!,/"published_after_comparison_window"$/);
+	assert.match(lines.find((line)=>line.includes('"older"'))!,/""$/);
+	const width=(line:string)=>line.match(/"(?:[^"]|"")*"/g)!.length;
+	assert.ok(lines.every((line)=>width(line)===width(lines[0])),'every row keeps the header width');
+});

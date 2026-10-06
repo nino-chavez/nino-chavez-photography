@@ -12,6 +12,10 @@
 		measures: MeasureTotals;
 		lastActivity: string | null;
 		publishedAt: string | null;
+		/** Published after the comparison window ended, so "previous" is not a measured zero. */
+		publishedAfterComparison: boolean;
+		/** Position among every album in these dates by the chosen measure; null when only some albums are in the report. */
+		rank: number | null;
 	};
 	interface Props {
 		rows: AlbumRow[];
@@ -23,8 +27,13 @@
 		risingBasis?: string;
 		onselect: (row: AlbumRow) => void;
 		reportHref: (albumKey: string) => string;
+		/** Hide the per-row report link when the report is already scoped to that one album. */
+		scopedToOneAlbum?: boolean;
 	}
-	let { rows, selectedKey, measure, measureLabel, risingAvailable, comparisonLabel = '', risingBasis = 'absolute', onselect, reportHref }: Props = $props();
+	let { rows, selectedKey, measure, measureLabel, risingAvailable, comparisonLabel = '', risingBasis = 'absolute', onselect, reportHref, scopedToOneAlbum = false }: Props = $props();
+	let regionWidth = $state(0);
+	let tableWidth = $state(0);
+	const overflowing = $derived(tableWidth > regionWidth + 1);
 
 	function metric(total: number | null): string { return total === null ? '—' : total.toLocaleString(); }
 	const measures = $derived([
@@ -36,20 +45,20 @@
 	].filter((item) => item.key !== measure));
 </script>
 
-<div class="comparison">{#if comparisonLabel}<p class="scroll-help">{comparisonLabel}</p>{/if}<p class="scroll-help">Scroll sideways to compare every measure. Album names stay visible.</p>
-<div class="table-region" role="region" aria-label="Album comparison table">
-	<table>
+<div class="comparison">{#if comparisonLabel}<p class="scroll-help">{comparisonLabel}</p>{/if}{#if overflowing}<p class="scroll-help">Scroll sideways to compare every measure. Album names stay visible.</p>{/if}
+<div class="table-region" role="region" aria-label="Album comparison table" bind:clientWidth={regionWidth}>
+	<table bind:clientWidth={tableWidth}>
 		<thead>
-			<tr><th scope="col">Album</th><th scope="col" class="number">Current · {measureLabel}</th><th scope="col" class="number">Previous</th><th scope="col" class="number">Change{risingBasis==='daily_rate' ? ' per day' : ''}</th>{#each measures as measure}<th scope="col" class="number">{measure.label}</th>{/each}<th scope="col">Last recorded activity</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+			<tr><th scope="col">Album</th><th scope="col" class="number">Current · {measureLabel}</th><th scope="col" class="number">Previous</th><th scope="col" class="number">Change{risingBasis==='daily_rate' ? ' per day' : ''}</th>{#each measures as measure}<th scope="col" class="number">{measure.label}</th>{/each}<th scope="col">Last recorded activity</th>{#if !scopedToOneAlbum}<th scope="col"><span class="sr-only">Actions</span></th>{/if}</tr>
 		</thead>
 		<tbody>
 			{#each rows as row}
 				<tr class:selected={row.key === selectedKey} aria-selected={row.key === selectedKey}>
 					<td><button type="button" onclick={() => onselect(row)} aria-pressed={row.key === selectedKey}><strong>{row.name}</strong><small>{row.photoCount.toLocaleString()} photos</small></button></td>
-					<td class="number">{metric(row.count)}</td><td class="number">{metric(row.previousCount)}</td><td class="number">{#if risingAvailable && row.risingValue !== null}{row.risingValue >= 0 ? '+' : ''}{row.risingValue.toLocaleString(undefined, {maximumFractionDigits:1})}{:else}Unavailable{/if}</td>
+					<td class="number">{metric(row.count)}</td><td class="number">{#if row.publishedAfterComparison}<span class="state">Not published</span>{:else}{metric(row.previousCount)}{/if}</td><td class="number">{#if row.publishedAfterComparison}<span class="state">New album</span>{:else if risingAvailable && row.risingValue !== null}{row.risingValue >= 0 ? '+' : ''}{row.risingValue.toLocaleString(undefined, {maximumFractionDigits:1})}{:else}Unavailable{/if}</td>
 					{#each measures as measure}<td class="number">{metric(row.measures[measure.key])}</td>{/each}
 					<td>{row.lastActivity ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' }).format(new Date(row.lastActivity)) : '—'}</td>
-					<td><a href={reportHref(row.key)} data-sveltekit-preload="hover">Compare</a></td>
+					{#if !scopedToOneAlbum}<td><a href={reportHref(row.key)} data-sveltekit-preload="hover" aria-label={`Open the report for ${row.name}`}>Open report</a></td>{/if}
 				</tr>
 			{/each}
 		</tbody>
@@ -71,6 +80,7 @@
 	button:focus-visible, a:focus-visible { outline: 2px solid #1769e0; outline-offset: 3px; }
 	strong { font-weight: 700; }
 	small { color: #65748a; display: block; font-size: .7rem; margin-top: .12rem; }
+	.state { color: #526176; font-weight: 600; white-space: nowrap; }
 	.number { font-variant-numeric: tabular-nums; text-align: right; }
 	a { color: #174ea6; font-weight: 700; white-space: nowrap; }
 	.sr-only { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
