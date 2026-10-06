@@ -1,13 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T20:20:25.649Z",
+  "reviewedAt": "2026-10-06T22:12:40.102Z",
   "reviewedBy": "Claude Code implementing agent (Sonnet 5.5) reviewing its own work; not a cold reviewer, not a human",
-  "method": "Branch feat/album-launch-index at 25b5ed6 on a local dev server reading production, 2026-10-06. Opened the final captures in docs/evidence/screen-reviews/album-launch-index-25b5ed6 myself (default, search for JCA, no-activity list open, three launches compared, at 1440x900 and 375x812, plus 200% text, increased contrast, forced colors, and one capture with the as-of day shifted to Sep 29 so launches in progress show). Fixed after viewing: phone card Compare label spilling past its card, one-column phone cards, a repeated Compare word in every desktop row, link and list targets under 44px, a phone compare table that scrolled sideways (now stacked), cards spilling out of their panel at 200% text. Overflow gate compares every element box with the viewport and was forced to fail once on purpose at each width. Keyboard walk covered tab order, focus ring, ticking four launches by Space, the fifth being disabled, the address holding the choice, search, and the no-activity list by Enter. Not covered: the in-progress and gap states on live data (no launch is in progress today; the shifted capture is the only sight of it); signed-in view; real host analytics.ninochavez.co clean URL; physical device or Safari; screen reader; cold reviewer.",
-  "sourceDigest": "sha256:5866a7d295dbe2429f79bc22dcbf6d99babd463ef48ee32963bf4d3ebcd454ab",
-  "sourceFiles": 172,
+  "method": "Branch feat/analytics-home at e98e459 on a local dev server reading production, 2026-10-06. Opened the final captures in docs/evidence/screen-reviews/analytics-home-e98e459 myself: Home today (quiet since Sep 26), Home with a synthetic Cloudflare figure, Home with the as-of day shifted to Sep 27 (two launches running) and Oct 2 (one on day 6, one finished), and simulated stale refresh, gap in the last complete day and site provider unavailable, at 1440x900 and 375x812, plus the header on the album index, album report and site page, 200% text, increased contrast and forced colors. After a coordinator review the week line names a launch's first week and states no percentage when either window holds one, the overlapping headline dropped its counts so it fits two lines at 1440, and the refresh time is the newest reconciled_at on any day. Fixed after viewing earlier captures: a five-line phone headline, sparkline stranded under the cover on phones, problem link leaving a blank line, list bullets in Next, a long footnote. Overflow gate compares every element box with the viewport and was forced to fail once on purpose at each width. Keyboard walk covered tab order, focus ring and the whole-card link ring. Not covered: a launch with a records gap on live data (simulated only); a real Cloudflare figure (CLOUDFLARE variables absent locally; the value shown is synthetic); a real open incident (none exists); the 00:10 Chicago case on live data (unit and loader tests only); signed-in view; clean root address on the real host analytics.ninochavez.co; physical device or Safari; screen reader; cold reviewer. Over the two-phone-screen target at 390x844: simulated stale 1732px and simulated gap 1707px against 1688px.",
+  "sourceDigest": "sha256:438f90489b3e24b287dfb746640be232a01da01cd953e6b86d84fe17135b8517",
+  "sourceFiles": 177,
   "scope": [
-    "album index page: launches table, albums without a launch date, search, compare overlay, no-activity list",
-    "album report All albums link"
+    "Home page: opening sentence, gallery week line, launch cards and sparklines, Next, site line, open problems",
+    "shared report header on Home, album index and album report, plus Home and Albums links on the site page"
   ]
 }
