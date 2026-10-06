@@ -13,6 +13,7 @@
 --   young    Feb 18; two complete days and a partial today
 --   oldpub   public before anything recorded it (basis unobserved): no launch date
 --   draft    unlisted, never published;  noRow  has photos and no album_settings row
+--   hidden   published Feb 6, now unlisted: left out of the comparison set unless p_public_only is false
 BEGIN;
 SET LOCAL statement_timeout = '30s';
 
@@ -23,7 +24,7 @@ DELETE FROM public.analytics_v2_archived_totals;
 
 INSERT INTO public.albums (album_key, album_name, sport, event_date)
 SELECT k, initcap(k) || ' launch', 'volleyball', '2026-01-15'
-FROM unnest(ARRAY['burst','trickle','tie','low','gap','young','oldpub','draft','noRow']) k;
+FROM unnest(ARRAY['burst','trickle','tie','low','gap','young','oldpub','draft','noRow','hidden']) k;
 
 -- draft: the row exists before its photos, as a new --unlisted ingest writes it, so its basis stays NULL.
 INSERT INTO public.album_settings (album_key, visibility) VALUES ('draft', 'unlisted');
@@ -33,13 +34,14 @@ INSERT INTO public.album_settings (album_key, visibility, published_at, publishe
   ('tie',     'public', '2026-02-05T16:00:00Z', 'recorded', '2026-02-05T16:00:00Z', 'recorded'),
   ('low',     'public', '2026-02-09T04:30:00Z', 'recorded', '2026-02-09T04:30:00Z', 'recorded'),
   ('gap',     'public', '2026-02-12T16:00:00Z', 'recorded', '2026-02-12T16:00:00Z', 'recorded'),
-  ('young',   'public', '2026-02-18T16:00:00Z', 'recorded', '2026-02-18T16:00:00Z', 'recorded');
+  ('young',   'public', '2026-02-18T16:00:00Z', 'recorded', '2026-02-18T16:00:00Z', 'recorded'),
+  ('hidden',  'unlisted', '2026-02-06T16:00:00Z', 'recorded', '2026-02-06T16:00:00Z', 'recorded');
 INSERT INTO public.album_settings (album_key, visibility, first_published_at_basis, first_published_at_evidence)
   VALUES ('oldpub', 'public', 'unobserved', 'rehearsal: public before any publication was recorded');
 
 INSERT INTO public.photo_metadata (photo_id, album_key, image_key, album_name, sport_type, photo_category, cf_image_id, sharpness, quality_score)
 SELECT k || '-' || n, k, k || '-' || n, initcap(k) || ' launch', 'volleyball', 'action', 'fixture-' || k || '-' || n, 1, 80
-FROM unnest(ARRAY['burst','trickle','tie','low','gap','young','oldpub','draft','noRow']) k, generate_series(1, 2) n;
+FROM unnest(ARRAY['burst','trickle','tie','low','gap','young','oldpub','draft','noRow','hidden']) k, generate_series(1, 2) n;
 
 INSERT INTO public.analytics_daily_coverage (bucket_date, raw_window_start, raw_window_end, cutoff_at, coverage_state, catalogue_basis)
 SELECT d::date, d, d + interval '1 day', d + interval '1 day',
@@ -79,6 +81,7 @@ SELECT pg_temp.fx('tie', ('2026-02-05'::date + o)::date, 10 - o) FROM generate_s
 SELECT pg_temp.fx('tie', d::date, 1) FROM generate_series('2026-02-12'::date, '2026-02-18'::date, interval '1 day') d;
 SELECT pg_temp.fx('low', d::date, 1) FROM generate_series('2026-02-08'::date, '2026-02-14'::date, interval '1 day') d;
 SELECT pg_temp.fx('gap', d::date, 5) FROM generate_series('2026-02-12'::date, '2026-02-19'::date, interval '1 day') d;
+SELECT pg_temp.fx('hidden', d::date, 1000) FROM generate_series('2026-02-06'::date, '2026-02-12'::date, interval '1 day') d;
 SELECT pg_temp.fx('young', '2026-02-18', 7);
 SELECT pg_temp.fx('young', '2026-02-19', 3);
 SELECT pg_temp.fx('young', '2026-02-20', 15);  -- today, partial
@@ -254,6 +257,7 @@ BEGIN
   IF r->'album'->'exposure'->>'since' <> '2026-02-04' OR r->'album'->'exposure'->>'coverage' <> 'partial' THEN RAISE EXCEPTION 'version-2 began Feb 4, mid-launch: %', r->'album'->'exposure'; END IF;
   IF NOT (p1->>'exposureRecorded')::boolean OR (p1->>'exposures')::int <> 3 OR (p1->>'renders')::int <> 2 THEN RAISE EXCEPTION 'conservative exposure for burst-1 should be 3 exposed, 2 rendered (operator, test, self-excluded and the reclassified crawler out): %', p1; END IF;
   IF (p2->>'exposures')::int <> 7 THEN RAISE EXCEPTION 'archived totals must count: %', p2; END IF;
+  IF (p1->>'opensInExposureWindow')::int <> 134 THEN RAISE EXCEPTION 'opens on the days exposure covers (Feb 4 onward) should be 20 + 90 + 4 + 6 + 14 = 134, not all 854: %', p1; END IF;
   IF (r->'album'->>'photosInAlbum')::int <> 2 OR (r->'album'->>'photosWithActivity')::int <> 2 THEN RAISE EXCEPTION 'photo counts wrong'; END IF;
   IF (SELECT jsonb_agg(x->>'photoId') FROM jsonb_array_elements(r->'album'->'photos') x) <> '["burst-1","burst-2"]'::jsonb THEN RAISE EXCEPTION 'photos should be ordered by opens'; END IF;
   r := public.analytics_read_launch('burst', '2026-02-20T18:00:00Z', 14, 'inclusive');
@@ -263,7 +267,7 @@ BEGIN
   -- A window that ends before version-2 collection began: exposure was not recorded, so it is null, not zero.
   r := public.analytics_read_launch('burst', '2026-02-20T18:00:00Z', 3, 'conservative');
   p1 := (SELECT x FROM jsonb_array_elements(r->'album'->'photos') x WHERE x->>'photoId' = 'burst-1');
-  IF r->'album'->'exposure'->>'coverage' <> 'none' OR (p1->>'exposureRecorded')::boolean OR jsonb_typeof(p1->'exposures') <> 'null' OR jsonb_typeof(p1->'renders') <> 'null' THEN RAISE EXCEPTION 'exposure before collection began must be null with exposureRecorded false: %', p1; END IF;
+  IF r->'album'->'exposure'->>'coverage' <> 'none' OR (p1->>'exposureRecorded')::boolean OR jsonb_typeof(p1->'exposures') <> 'null' OR jsonb_typeof(p1->'renders') <> 'null' OR jsonb_typeof(p1->'opensInExposureWindow') <> 'null' THEN RAISE EXCEPTION 'exposure before collection began must be null with exposureRecorded false: %', p1; END IF;
   IF (p1->>'opens')::int <> 720 THEN RAISE EXCEPTION 'opens are still counted when exposure is not recorded: %', p1; END IF;
   -- A window wholly after collection began, with no exposure rows for the photo: recorded, and zero.
   r := public.analytics_read_launch('oldpub', '2026-02-20T18:00:00Z', 14, 'conservative');
@@ -271,6 +275,27 @@ BEGIN
   -- Today's version-2 rows are not a complete day.
   r := public.analytics_read_launch('young', '2026-02-20T18:00:00Z', 14, 'conservative');
   IF (r->'album'->'photos'->0->>'exposures')::int <> 4 THEN RAISE EXCEPTION 'exposure counts complete days only (4, not 5): %', r->'album'->'photos'->0; END IF;
+END $$;
+
+-- 8b. p_public_only (this function's own rule, on by default): a launch whose album is now unlisted
+-- is left out of the comparison set and out of every rank; with false it is compared like any other.
+DO $$ DECLARE r jsonb; h jsonb; b jsonb;
+BEGIN
+  r := public.analytics_read_launch('burst', '2026-02-20T18:00:00Z', 14, 'conservative');
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(r->'launches') l WHERE l->>'albumKey' = 'hidden') OR jsonb_array_length(r->'launches') <> 6 THEN RAISE EXCEPTION 'an unlisted launch entered the default comparison set'; END IF;
+  IF (r->'album'->'rank'->'day7'->>'rank')::int <> 1 OR (r->'album'->'rank'->'day7'->>'compared')::int <> 4 THEN RAISE EXCEPTION 'an unlisted launch changed the default ranks: %', r->'album'->'rank'; END IF;
+  -- Asking for the unlisted album itself still answers, with a series and totals but no rank.
+  r := public.analytics_read_launch('hidden', '2026-02-20T18:00:00Z', 14, 'conservative');
+  h := r->'album';
+  IF h->>'status' <> 'finished' OR (h->'totals'->'day7'->>'photoOpens')::int <> 7000 THEN RAISE EXCEPTION 'the requested unlisted album should still return its launch: %', h->'totals'; END IF;
+  IF jsonb_typeof(h->'rank'->'day7'->'rank') <> 'null' OR jsonb_typeof(h->'rank'->'day3'->'rank') <> 'null' THEN RAISE EXCEPTION 'an album outside the comparison set must not be ranked: %', h->'rank'; END IF;
+  IF jsonb_array_length(r->'launches') <> 6 THEN RAISE EXCEPTION 'asking for an unlisted album must not add it to the set'; END IF;
+  -- Not public-only: every launch with a first publication, hidden ranks first and pushes the others down.
+  r := public.analytics_read_launch('burst', '2026-02-20T18:00:00Z', 14, 'conservative', false);
+  b := r->'album';
+  h := (SELECT x FROM jsonb_array_elements(r->'launches') x WHERE x->>'albumKey' = 'hidden');
+  IF jsonb_array_length(r->'launches') <> 7 OR h IS NULL THEN RAISE EXCEPTION 'public_only false should compare every launch with a first publication'; END IF;
+  IF (h->'rank'->'day7'->>'rank')::int <> 1 OR (b->'rank'->'day7'->>'rank')::int <> 2 OR (b->'rank'->'day7'->>'compared')::int <> 5 THEN RAISE EXCEPTION 'ranks with the unlisted launch included are wrong: % / %', h->'rank', b->'rank'; END IF;
 END $$;
 
 -- 9. Only the service role may call it, and a bad request fails loudly.

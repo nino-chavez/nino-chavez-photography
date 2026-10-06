@@ -19,12 +19,17 @@
 --     higher. Measured on production 2026-10-06 for Re7kho, days 0-6 (Sep 25 to Oct 1): the daily
 --     table's view rows give 105 577 126 25 100 5 7 (week 1: 945, first three days: 808); this rule,
 --     identical to the live report for every day and every measure, gives 103 575 126 23 98 1 5
---     (week 1: 931, first three days: 804). The 2 to 4 a day that differ are tagged arrivals. The
+--     (week 1: 931, first three days: 804). The 0 to 4 a day that differ are tagged arrivals. The
+--     same holds for fJKdsB: its view rows over its first week sum to 1,263 (first three days
+--     1,118), this rule gives 1,258 (1,117), and the 5 and 1 that differ are its tagged-arrival
+--     views (1 on Aug 29, 2 on Aug 31, 1 on Sep 1, 1 on Sep 2), day by day identical to the report. The
 --     day-7 order of the seven launches under this rule (fJKdsB, Re7kho, 1BlKk4, DWdCET, eqYF0h, jq1Rp7, dKe567)
 --     is the order quoted from the daily table.
 --   * With p_public_only (default true) a photo row counts only while the photo is still in
 --     photo_metadata for that album, as the report does, and the comparison set leaves out
---     albums currently unlisted. The requested album is always returned.
+--     albums currently unlisted. That second part is this function's own rule, added because the
+--     operator report is public-only; pass false to compare every launch with a first publication.
+--     The requested album is always returned, and ranked only if it is in the set.
 --   * Coverage: a day is 'complete', 'partial' or 'unavailable' from analytics_daily_coverage; a
 --     day with no coverage row is 'unavailable'. A count is a number when its day is complete,
 --     the observed number when the day is partial and rows exist, and NULL otherwise: unknown is
@@ -58,7 +63,9 @@
 -- the same traffic words. Version-2 collection began on a known day. exposure.coverage says
 -- whether the window is wholly after it ('complete'), starts before it ('partial') or ends before
 -- it ('none'), and every photo carries exposureRecorded. When it is false its exposures and renders
--- are NULL, not zero.
+-- are NULL, not zero. Opens cover the whole window but exposures only the days from exposure.since,
+-- so a photo also carries opensInExposureWindow: its opens on the days exposures cover (NULL when
+-- exposure was not recorded). Compare exposures with that, never with opens.
 --
 -- NEVER RETURNED: visitor, browser, visit or session identifiers, raw events, and event ids. The
 -- version-2 rows are counted inside the function. Callable by service_role only.
@@ -201,6 +208,7 @@ BEGIN
  pa AS (
   SELECT d.photo_id,
    sum(d.action_count) FILTER (WHERE d.event_type='view')::bigint opens,
+   sum(d.action_count) FILTER (WHERE d.event_type='view' AND v_exp_since IS NOT NULL AND d.bucket_date>=v_exp_since)::bigint opens_exp,
    sum(d.action_count) FILTER (WHERE d.event_type='download')::bigint downloads,
    sum(d.action_count) FILTER (WHERE d.event_type='favorite')::bigint favorites
   FROM public.analytics_daily_actions d JOIN public.analytics_daily_coverage c ON c.bucket_date=d.bucket_date AND c.coverage_state='complete'
@@ -231,7 +239,7 @@ BEGIN
   SELECT photo_id,sum(n) FILTER (WHERE event_name='photo_exposed')::bigint exposures,sum(n) FILTER (WHERE event_name='photo_rendered')::bigint renders FROM v2 GROUP BY photo_id
  ),
  photo_rows AS (
-  SELECT m.photo_id,coalesce(a.opens,0) opens,coalesce(a.downloads,0) downloads,coalesce(a.favorites,0) favorites,
+  SELECT m.photo_id,coalesce(a.opens,0) opens,coalesce(a.opens_exp,0) opens_exp,coalesce(a.downloads,0) downloads,coalesce(a.favorites,0) favorites,
    coalesce(v.exposures,0) exposures,coalesce(v.renders,0) renders
   FROM public.photo_metadata m LEFT JOIN pa a ON a.photo_id=m.photo_id LEFT JOIN v2p v ON v.photo_id=m.photo_id
   WHERE m.album_key=p_album_key AND (a.photo_id IS NOT NULL OR v.photo_id IS NOT NULL)
@@ -240,6 +248,7 @@ BEGIN
   SELECT (SELECT count(*) FROM photo_rows) with_activity,
    coalesce((SELECT jsonb_agg(jsonb_build_object('photoId',q.photo_id,'opens',q.opens,'downloads',q.downloads,'favorites',q.favorites,
      'exposureRecorded',v_exp_since IS NOT NULL AND v_exp_since<=v_we,
+     'opensInExposureWindow',CASE WHEN v_exp_since IS NOT NULL AND v_exp_since<=v_we THEN q.opens_exp END,
      'exposures',CASE WHEN v_exp_since IS NOT NULL AND v_exp_since<=v_we THEN q.exposures END,
      'renders',CASE WHEN v_exp_since IS NOT NULL AND v_exp_since<=v_we THEN q.renders END) ORDER BY q.opens DESC,q.downloads DESC,q.favorites DESC,q.exposures DESC,q.photo_id)
     FROM (SELECT * FROM photo_rows ORDER BY opens DESC,downloads DESC,favorites DESC,exposures DESC,photo_id LIMIT p_photo_limit) q),'[]'::jsonb) photos
