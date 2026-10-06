@@ -234,14 +234,26 @@ BEGIN
      OR r.published_at IS DISTINCT FROM now() OR r.published_at_basis IS DISTINCT FROM 'recorded' THEN RAISE EXCEPTION 'first publication not stamped as recorded at the first write'; END IF;
 END $$;
 
--- Constraints: the pair is set together, in order, and an inferred value names its evidence.
+-- Constraints. A time exists exactly when it was recorded or inferred; 'unobserved' carries none and
+-- must say why; a time never comes after the latest publication.
 DO $$ BEGIN
-  BEGIN UPDATE public.album_settings SET first_published_at=NULL, first_published_at_basis=NULL, first_published_at_evidence=NULL WHERE album_key='gamma'; RAISE EXCEPTION 'a latest publication without a first was accepted';
+  BEGIN UPDATE public.album_settings SET first_published_at_basis=NULL, first_published_at_evidence=NULL WHERE album_key='gamma'; RAISE EXCEPTION 'a first publication time without a basis was accepted';
   EXCEPTION WHEN check_violation THEN NULL; END;
   BEGIN UPDATE public.album_settings SET first_published_at=published_at + interval '1 day' WHERE album_key='gamma'; RAISE EXCEPTION 'a first publication after the latest was accepted';
   EXCEPTION WHEN check_violation THEN NULL; END;
   BEGIN UPDATE public.album_settings SET first_published_at_evidence=NULL WHERE album_key='gamma'; RAISE EXCEPTION 'an inferred first publication without evidence was accepted';
   EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE public.album_settings SET first_published_at_basis='unobserved', first_published_at_evidence='x' WHERE album_key='gamma'; RAISE EXCEPTION 'an unobserved first publication that still carries a time was accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE public.album_settings SET first_published_at=NULL, first_published_at_basis='unobserved', first_published_at_evidence=NULL WHERE album_key='gamma'; RAISE EXCEPTION 'an unobserved first publication without evidence was accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  -- The state this migration exists to allow: a latest publication with no first, and the reason.
+  BEGIN
+    UPDATE public.album_settings SET first_published_at=NULL, first_published_at_basis='unobserved', first_published_at_evidence='rehearsal' WHERE album_key='gamma';
+    RAISE EXCEPTION 'rehearsal-rollback';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'rehearsal-rollback' THEN RAISE; END IF;
+  END;
 END $$;
 
 -- The write the currently deployed code issues (publish-target.ts: INSERT .. ON CONFLICT DO UPDATE
@@ -252,6 +264,9 @@ RESET ROLE;
 ALTER TABLE public.album_settings ADD COLUMN IF NOT EXISTS gallery_scope text;
 INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('deployed-payload', 'Deployed payload replay', 'volleyball', '2026-09-20');
 INSERT INTO public.album_settings (album_key, visibility) VALUES ('deployed-payload', 'unlisted');
+INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('deployed-no-row', 'Deployed payload, legacy album with no row', 'volleyball', '2026-09-20');
+INSERT INTO public.photo_metadata (photo_id, album_key, image_key, album_name, sport_type, photo_category, cf_image_id, sharpness, quality_score)
+  VALUES ('deployed-no-row-1', 'deployed-no-row', 'deployed-no-row-1', 'Deployed payload, legacy album with no row', 'volleyball', 'action', 'fixture-deployed-no-row-1', 1, 80);
 SET LOCAL ROLE service_role;
 DO $$ DECLARE r record;
 BEGIN
@@ -259,11 +274,112 @@ BEGIN
   ON CONFLICT (album_key) DO UPDATE SET album_key=EXCLUDED.album_key, visibility=EXCLUDED.visibility, gallery_scope=EXCLUDED.gallery_scope;
   SELECT * INTO r FROM public.album_settings WHERE album_key='deployed-payload';
   IF r.visibility<>'public' OR r.gallery_scope<>'lpo' OR r.first_published_at IS DISTINCT FROM now() OR r.published_at IS DISTINCT FROM now() THEN RAISE EXCEPTION 'deployed publish payload did not stamp both times'; END IF;
-  -- An album that never had a row is already public by convention: no publication, no stamp.
-  INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('deployed-no-row', 'Deployed payload, no row', 'volleyball', '2026-09-20');
+  -- A legacy album with photos and no row is already public by convention: writing a row for it
+  -- (here the scope) is no publication, and the first publication is recorded as unobserved.
   INSERT INTO public.album_settings (album_key, visibility, gallery_scope) VALUES ('deployed-no-row', 'public', 'lpo')
   ON CONFLICT (album_key) DO UPDATE SET album_key=EXCLUDED.album_key, visibility=EXCLUDED.visibility, gallery_scope=EXCLUDED.gallery_scope;
-  IF EXISTS(SELECT 1 FROM public.album_settings WHERE album_key='deployed-no-row' AND (published_at IS NOT NULL OR first_published_at IS NOT NULL)) THEN RAISE EXCEPTION 'a first insert of a public row stamped a publication'; END IF;
+  SELECT * INTO r FROM public.album_settings WHERE album_key='deployed-no-row';
+  IF r.published_at IS NOT NULL OR r.first_published_at IS NOT NULL OR r.first_published_at_basis IS DISTINCT FROM 'unobserved' OR r.first_published_at_evidence IS NULL THEN RAISE EXCEPTION 'a row inserted for a legacy album stamped a publication or was not marked unobserved'; END IF;
+END $$;
+
+-- A LEGACY album (photos, no album_settings row, public by convention) that is unpublished and
+-- republished must not get a first publication: the republish is not its launch. This is the case
+-- that would otherwise turn a years-old album into a brand-new one in every analytics comparison.
+RESET ROLE;
+INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('legacy-album', 'Legacy album', 'volleyball', '2026-01-10');
+INSERT INTO public.photo_metadata (photo_id, album_key, image_key, album_name, sport_type, photo_category, cf_image_id, sharpness, quality_score)
+  VALUES ('legacy-album-1', 'legacy-album', 'legacy-album-1', 'Legacy album', 'volleyball', 'action', 'fixture-legacy-album-1', 1, 80);
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r record;
+BEGIN
+  -- What the admin toggle and `publish-album.ts --unpublish` write for an album with no row.
+  INSERT INTO public.album_settings (album_key, visibility, gallery_scope) VALUES ('legacy-album', 'unlisted', NULL)
+  ON CONFLICT (album_key) DO UPDATE SET album_key=EXCLUDED.album_key, visibility=EXCLUDED.visibility, gallery_scope=EXCLUDED.gallery_scope;
+  SELECT * INTO r FROM public.album_settings WHERE album_key='legacy-album';
+  IF r.first_published_at IS NOT NULL OR r.first_published_at_basis IS DISTINCT FROM 'unobserved' OR r.first_published_at_evidence IS NULL OR r.published_at IS NOT NULL THEN RAISE EXCEPTION 'legacy album unpublish: expected unobserved with no time, got % / % / %',r.first_published_at,r.first_published_at_basis,r.published_at; END IF;
+  UPDATE public.album_settings SET visibility='public' WHERE album_key='legacy-album';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='legacy-album';
+  IF r.first_published_at IS NOT NULL OR r.first_published_at_basis IS DISTINCT FROM 'unobserved' THEN RAISE EXCEPTION 'legacy album republish got a first publication: % %',r.first_published_at,r.first_published_at_basis; END IF;
+  IF r.published_at IS DISTINCT FROM now() OR r.published_at_basis IS DISTINCT FROM 'recorded' THEN RAISE EXCEPTION 'legacy album republish did not move published_at'; END IF;
+  UPDATE public.album_settings SET visibility='unlisted' WHERE album_key='legacy-album';
+  UPDATE public.album_settings SET visibility='public' WHERE album_key='legacy-album';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='legacy-album';
+  IF r.first_published_at IS NOT NULL OR r.first_published_at_basis IS DISTINCT FROM 'unobserved' THEN RAISE EXCEPTION 'legacy album second republish got a first publication'; END IF;
+END $$;
+
+-- A public row that nothing marked (a row from before this migration that the backfill missed)
+-- going public -> unlisted becomes unobserved, so its republish is not a launch either.
+RESET ROLE;
+INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('legacy-public-row', 'Legacy public row', 'volleyball', '2026-01-10');
+ALTER TABLE public.album_settings DISABLE TRIGGER album_settings_stamp_published_at;
+INSERT INTO public.album_settings (album_key, visibility) VALUES ('legacy-public-row', 'public');
+ALTER TABLE public.album_settings ENABLE TRIGGER album_settings_stamp_published_at;
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r record;
+BEGIN
+  SELECT * INTO r FROM public.album_settings WHERE album_key='legacy-public-row';
+  IF r.first_published_at_basis IS NOT NULL THEN RAISE EXCEPTION 'fixture: the untouched public row should have no basis'; END IF;
+  UPDATE public.album_settings SET visibility='unlisted' WHERE album_key='legacy-public-row';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='legacy-public-row';
+  IF r.first_published_at_basis IS DISTINCT FROM 'unobserved' OR r.first_published_at IS NOT NULL THEN RAISE EXCEPTION 'public -> unlisted with no basis was not marked unobserved: %',r.first_published_at_basis; END IF;
+  UPDATE public.album_settings SET visibility='public' WHERE album_key='legacy-public-row';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='legacy-public-row';
+  IF r.first_published_at IS NOT NULL OR r.first_published_at_basis IS DISTINCT FROM 'unobserved' THEN RAISE EXCEPTION 'republish of an unobserved public row got a first publication'; END IF;
+END $$;
+
+-- A NEW album ingested --unlisted: scripts/ingest-album.ts inserts the unlisted row before it
+-- writes any photo, so it stays NULL (never published) and gets a recorded stamp when published.
+RESET ROLE;
+INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('new-unlisted', 'New unlisted ingest', 'volleyball', '2026-09-20');
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r record;
+BEGIN
+  INSERT INTO public.album_settings (album_key, visibility) VALUES ('new-unlisted', 'unlisted');
+  SELECT * INTO r FROM public.album_settings WHERE album_key='new-unlisted';
+  IF r.first_published_at IS NOT NULL OR r.first_published_at_basis IS NOT NULL OR r.published_at IS NOT NULL THEN RAISE EXCEPTION 'a new unlisted ingest was stamped before it was published'; END IF;
+END $$;
+RESET ROLE;
+INSERT INTO public.photo_metadata (photo_id, album_key, image_key, album_name, sport_type, photo_category, cf_image_id, sharpness, quality_score)
+  VALUES ('new-unlisted-1', 'new-unlisted', 'new-unlisted-1', 'New unlisted ingest', 'volleyball', 'action', 'fixture-new-unlisted-1', 1, 80);
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r record;
+BEGIN
+  -- A re-ingest with --unlisted updates the existing row; nothing is stamped.
+  UPDATE public.album_settings SET visibility='unlisted' WHERE album_key='new-unlisted';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='new-unlisted';
+  IF r.first_published_at_basis IS NOT NULL OR r.published_at IS NOT NULL THEN RAISE EXCEPTION 're-ingest of an unlisted album stamped it'; END IF;
+  UPDATE public.album_settings SET visibility='public' WHERE album_key='new-unlisted';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='new-unlisted';
+  IF r.first_published_at IS DISTINCT FROM now() OR r.first_published_at_basis IS DISTINCT FROM 'recorded' OR r.published_at IS DISTINCT FROM now() THEN RAISE EXCEPTION 'publishing a new unlisted ingest did not stamp a recorded first publication: % %',r.first_published_at,r.first_published_at_basis; END IF;
+END $$;
+
+-- A NEW album ingested public: the row is inserted before any photo, and the INSERT stamps both
+-- times as recorded. Then a re-ingest (the same row, now with photos) must not change them.
+RESET ROLE;
+INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('new-public', 'New public ingest', 'volleyball', '2026-09-20');
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r record;
+BEGIN
+  INSERT INTO public.album_settings (album_key, visibility) VALUES ('new-public', 'public');
+  SELECT * INTO r FROM public.album_settings WHERE album_key='new-public';
+  IF r.first_published_at IS DISTINCT FROM now() OR r.first_published_at_basis IS DISTINCT FROM 'recorded' OR r.first_published_at_evidence IS NOT NULL
+     OR r.published_at IS DISTINCT FROM now() OR r.published_at_basis IS DISTINCT FROM 'recorded' THEN RAISE EXCEPTION 'a new public ingest was not stamped at insert: % % %',r.first_published_at,r.first_published_at_basis,r.published_at; END IF;
+  -- Make both times old and labelled, so a re-ingest that re-stamped them would show.
+  UPDATE public.album_settings SET first_published_at='2026-09-05T15:00:00Z', first_published_at_basis='inferred', first_published_at_evidence='rehearsal seed', published_at='2026-09-06T15:00:00Z' WHERE album_key='new-public';
+END $$;
+RESET ROLE;
+INSERT INTO public.photo_metadata (photo_id, album_key, image_key, album_name, sport_type, photo_category, cf_image_id, sharpness, quality_score)
+  VALUES ('new-public-1', 'new-public', 'new-public-1', 'New public ingest', 'volleyball', 'action', 'fixture-new-public-1', 1, 80);
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r record;
+BEGIN
+  -- Every route a re-ingest can take: the upsert the publish scripts use, then a plain UPDATE.
+  INSERT INTO public.album_settings (album_key, visibility, gallery_scope) VALUES ('new-public', 'public', NULL)
+  ON CONFLICT (album_key) DO UPDATE SET album_key=EXCLUDED.album_key, visibility=EXCLUDED.visibility, gallery_scope=EXCLUDED.gallery_scope;
+  UPDATE public.album_settings SET visibility='public' WHERE album_key='new-public';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='new-public';
+  IF r.first_published_at IS DISTINCT FROM '2026-09-05T15:00:00Z'::timestamptz OR r.first_published_at_basis IS DISTINCT FROM 'inferred' OR r.first_published_at_evidence IS DISTINCT FROM 'rehearsal seed'
+     OR r.published_at IS DISTINCT FROM '2026-09-06T15:00:00Z'::timestamptz THEN RAISE EXCEPTION 're-ingest changed a publication time or basis: % % %',r.first_published_at,r.first_published_at_basis,r.published_at; END IF;
 END $$;
 
 -- New events snapshot the FIRST publication, so one album does not split into two publication_at

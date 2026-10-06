@@ -10,10 +10,20 @@
 --   published_at        latest unlisted -> public write   (latest-gallery ranking, admin list)
 --   first_published_at  earliest publication on record    (every analytics age comparison)
 --
--- first_published_at carries the same provenance discipline as published_at: a basis
--- ('recorded' | 'inferred') and, for inferred values, the evidence, with the same CHECKs. One
--- extra CHECK ties the two together: both are NULL or both are set, and the first is never
--- later than the latest.
+-- first_published_at carries the same provenance discipline as published_at: a basis and, where
+-- the basis needs one, the evidence, with mirrored CHECKs. The basis has one more value than
+-- published_at's:
+--
+--   recorded    stamped by the trigger at the unlisted -> public write (first_published_at set)
+--   inferred    recovered afterwards from a log of that write (first_published_at set, evidence)
+--   unobserved  the album was public before anything recorded it. first_published_at stays NULL,
+--               the evidence says why, and analytics treats it as "no launch date": the album is
+--               neither new nor in the publication-age comparison, and a later republish never
+--               gives it a false one. NULL basis means "no publication seen yet".
+--
+-- The only CHECK that relates the two times is order: when both are set the first is never later
+-- than the latest. published_at may be set while first_published_at is NULL (an unobserved album
+-- that was unpublished and republished).
 --
 -- BACKFILL. Production held 7 non-null published_at rows when this was written (read-only query,
 -- 2026-10-06): jq1Rp7, 1BlKk4, dKe567, eqYF0h, fJKdsB, Re7kho, DWdCET, all basis 'inferred', none
@@ -32,9 +42,25 @@
 -- as the first, which is the only time it kept.
 --
 -- TRIGGER. album_settings_stamp_published_at still stamps published_at (basis 'recorded') on every
--- unlisted -> public write, and now also sets first_published_at, basis 'recorded', when the OLD
--- row had none. It never overwrites an existing first publication. Unpublish and republish
--- therefore moves published_at and leaves first_published_at where it was.
+-- unlisted -> public write. It now also runs BEFORE INSERT and decides first_published_at, only
+-- while first_published_at_basis IS NULL (an existing basis is never overwritten):
+--   INSERT, album already has photo_metadata rows       -> 'unobserved'. A missing row reads as
+--       public everywhere, so creating a row for an album that already has photos publishes
+--       nothing. This covers the admin toggle or `publish-album.ts --unpublish` on a legacy album
+--       (an INSERT of {visibility:'unlisted'}), the gallery_scope insert, and an `--unlisted`
+--       re-ingest of a legacy album.
+--   INSERT, no photos yet, visibility 'public'          -> stamp published_at and first_published_at
+--       ('recorded'). This is a brand-new album ingested public: scripts/ingest-album.ts now
+--       inserts the row before it writes any photo (it already did for --unlisted, which stays NULL
+--       and gets its stamp when the operator publishes).
+--   UPDATE public -> unlisted                           -> 'unobserved'. The album was public with
+--       no publication on record, and unpublishing it must not turn the next republish into a launch.
+--   UPDATE unlisted -> public                           -> stamp first_published_at only while the
+--       basis is NULL; 'unobserved' is left alone. published_at always moves, as before.
+-- A PostgREST upsert fires the BEFORE INSERT trigger on the proposed row even when the row exists
+-- and the statement resolves to an UPDATE. That is harmless: the DO UPDATE SET list is only
+-- album_key, visibility and gallery_scope, so the proposed row's first_published_at_* values are
+-- never applied, and the real UPDATE is what the UPDATE branch sees.
 --
 -- ANALYTICS CONSUMERS switched here (SQL that already shipped is replaced, not edited in place):
 --   * public.analytics_read_scheduled_gallery_report (latest definition: 20261005200000) reads
@@ -80,16 +106,44 @@ SET first_published_at = published_at,
     END
 WHERE published_at IS NOT NULL AND first_published_at IS NULL;
 
+-- Public with no publication on record: public before anything recorded it. Production's five
+-- (read-only query, 2026-10-06): 5M7kNx and j5MfJD (rows created 2026-02-28 by the gallery_scope
+-- migration for albums whose photos date from 2025-10), and rdrsVB, TRoiyO and z6uqiQ (ingested
+-- unlisted in June, public by 2026-07-01 to 07-10 per daily activity, publish write unlogged).
+UPDATE public.album_settings
+SET first_published_at_basis = 'unobserved',
+    first_published_at_evidence = 'Public with no publication recorded when first_published_at was introduced (20261006120000); the time cannot be recovered'
+WHERE visibility = 'public' AND first_published_at IS NULL AND first_published_at_basis IS NULL;
+
+-- Unlisted with no publication on record. Production's thirteen (read-only query, 2026-10-06):
+-- every one has its album_settings row created in the same batch on 2026-06-23 19:20, every one
+-- has ALL of its photos added in 2023-2024, long before that row, and none has any audience or
+-- unclassified activity in the daily history (from 2026-06-30) or in the retained raw events.
+-- Photos that predate the row mean the album read as public by convention until the row hid it, so
+-- a later publish is a republish, not a launch. Decision for each: 'unobserved'. Zero activity
+-- does not show the album was never public: the history starts after the batch. If Nino says
+-- one of them was never public, setting its first_published_at_basis and evidence to NULL makes
+-- the next unlisted -> public write stamp a real first publication.
+--   CN9SCh dHsLFk gd8s5X gQ658D gSd8PV jFRVKj JhbS79 kc3nPX KFk8JC MNNbgk mPjXhj QxZFrN tg2kqd
+-- Any other unlisted row with no first stays NULL: it has not been published yet and gets a
+-- 'recorded' stamp when it is.
+UPDATE public.album_settings
+SET first_published_at_basis = 'unobserved',
+    first_published_at_evidence = 'Hidden by the 2026-06-23 batch although all of its photos date from 2023-2024: it read as public before the row existed, and no publication was recorded'
+WHERE visibility = 'unlisted' AND first_published_at IS NULL AND first_published_at_basis IS NULL
+  AND album_key IN ('CN9SCh','dHsLFk','gd8s5X','gQ658D','gSd8PV','jFRVKj','JhbS79','kc3nPX','KFk8JC','MNNbgk','mPjXhj','QxZFrN','tg2kqd');
+
 ALTER TABLE public.album_settings
   ADD CONSTRAINT album_settings_first_published_at_basis_check
-    CHECK (first_published_at_basis IN ('recorded', 'inferred')),
+    CHECK (first_published_at_basis IN ('recorded', 'inferred', 'unobserved')),
+  -- A time exists exactly when it was recorded or inferred; 'unobserved' and NULL carry none.
   ADD CONSTRAINT album_settings_first_published_at_basis_present
-    CHECK ((first_published_at IS NULL) = (first_published_at_basis IS NULL)),
+    CHECK ((first_published_at IS NOT NULL) = coalesce(first_published_at_basis IN ('recorded', 'inferred'), false)),
+  -- Inferred and unobserved values must say where they came from or why there is none.
   ADD CONSTRAINT album_settings_first_published_at_evidence_present
-    CHECK ((first_published_at_basis = 'inferred') = (first_published_at_evidence IS NOT NULL)),
+    CHECK (coalesce(first_published_at_basis IN ('inferred', 'unobserved'), false) = (first_published_at_evidence IS NOT NULL)),
   ADD CONSTRAINT album_settings_first_published_at_order
-    CHECK ((published_at IS NULL) = (first_published_at IS NULL)
-           AND (first_published_at IS NULL OR first_published_at <= published_at));
+    CHECK (first_published_at IS NULL OR published_at IS NULL OR first_published_at <= published_at);
 
 CREATE OR REPLACE FUNCTION public.album_settings_stamp_published_at()
 RETURNS trigger
@@ -97,22 +151,49 @@ LANGUAGE plpgsql
 SET search_path = ''
 AS $$
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.first_published_at_basis IS NULL THEN
+      IF EXISTS (SELECT 1 FROM public.photo_metadata p WHERE p.album_key = NEW.album_key) THEN
+        NEW.first_published_at_basis := 'unobserved';
+        NEW.first_published_at_evidence := 'Row created for an album that already had photos: it read as public before this row existed, and no publication was recorded';
+      ELSIF NEW.visibility = 'public' AND NEW.published_at IS NULL THEN
+        NEW.published_at := now();
+        NEW.published_at_basis := 'recorded';
+        NEW.published_at_evidence := NULL;
+        NEW.first_published_at := NEW.published_at;
+        NEW.first_published_at_basis := 'recorded';
+        NEW.first_published_at_evidence := NULL;
+      END IF;
+    END IF;
+    RETURN NEW;
+  END IF;
+
   IF OLD.visibility = 'unlisted' AND NEW.visibility = 'public' THEN
     NEW.published_at := now();
     NEW.published_at_basis := 'recorded';
     NEW.published_at_evidence := NULL;
-    -- The first publication is set once. A republish moves published_at and leaves this alone.
-    IF OLD.first_published_at IS NULL THEN
+    -- The first publication is set once, and only while nothing is known about it. A republish
+    -- moves published_at and leaves this alone; 'unobserved' is never turned into a launch.
+    IF NEW.first_published_at_basis IS NULL THEN
       NEW.first_published_at := NEW.published_at;
       NEW.first_published_at_basis := 'recorded';
       NEW.first_published_at_evidence := NULL;
     END IF;
+  ELSIF OLD.visibility = 'public' AND NEW.visibility = 'unlisted' AND NEW.first_published_at_basis IS NULL THEN
+    NEW.first_published_at_basis := 'unobserved';
+    NEW.first_published_at_evidence := 'Unpublished while public with no publication recorded: it was public before anything recorded it';
   END IF;
   RETURN NEW;
 END
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.album_settings_stamp_published_at() FROM PUBLIC, anon, authenticated;
+
+-- The trigger from 20261005230000 fired BEFORE UPDATE OF visibility only; it now also decides at INSERT.
+DROP TRIGGER IF EXISTS album_settings_stamp_published_at ON public.album_settings;
+CREATE TRIGGER album_settings_stamp_published_at
+  BEFORE INSERT OR UPDATE OF visibility ON public.album_settings
+  FOR EACH ROW EXECUTE FUNCTION public.album_settings_stamp_published_at();
 
 COMMENT ON COLUMN public.album_settings.published_at IS
   'When this album LAST went from unlisted to public. Stamped by the album_settings_stamp_published_at '
@@ -122,16 +203,18 @@ COMMENT ON COLUMN public.album_settings.published_at IS
 COMMENT ON COLUMN public.album_settings.first_published_at IS
   'When this album FIRST went from unlisted to public, as far as any record shows. Set once by the '
   'album_settings_stamp_published_at trigger and never moved by a republish. Anchors every analytics '
-  'album-age comparison (new-album rule, publication-age comparison, Rising). NULL exactly when '
-  'published_at is NULL, and never later than published_at. See first_published_at_basis.';
+  'album-age comparison (new-album rule, publication-age comparison, Rising). NULL when no publication '
+  'was seen yet or the album was public before anything recorded it; never later than published_at. '
+  'Analytics treats NULL as "no launch date". See first_published_at_basis.';
 COMMENT ON COLUMN public.album_settings.first_published_at_basis IS
   'How first_published_at was obtained. recorded = stamped by the trigger at the write. inferred = '
   'recovered afterwards from a log of the write (see first_published_at_evidence); an inferred first '
   'publication is the earliest write that log search found, so an earlier unlogged one is possible. '
-  'NULL exactly when first_published_at is NULL.';
+  'unobserved = the album was public before anything recorded it, so there is no time (first_published_at '
+  'is NULL, evidence says why) and a republish never invents one. NULL = no publication seen yet.';
 COMMENT ON COLUMN public.album_settings.first_published_at_evidence IS
-  'For an inferred first_published_at: the log that observed the write. NULL otherwise.';
-
+  'For an inferred first_published_at: the log that observed the write. For unobserved: why there is no '
+  'time. NULL otherwise.';
 
 -- Same body as 20261005200000_analytics_rising_excludes_new_albums.sql. Inside it `published_at`
 -- is the visible_albums CTE column, now aliased from s.first_published_at, so the new-album rule,
