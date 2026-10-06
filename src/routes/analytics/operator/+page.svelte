@@ -375,15 +375,6 @@
 
 			<div class="overview-trend">
 				<AnalyticsTrend points={report.daily} measureLabel={displayMeasure(report.query.measure)} />
-				<section class="legacy-trend panel min-w-0"><div class="panel-heading"><div><p class="eyebrow">Trend</p><h3>Daily activity</h3></div><a class="text-link" href={sectionHref('albums')}>See contributing albums</a></div>
-					{#if report.daily.length}<div class="chart-wrap"><ol class="daily-chart" style={`grid-template-columns:repeat(${report.daily.length},minmax(1.8rem,1fr))}`} aria-label="Daily activity chart">{#each report.daily as day}<li class="min-w-0"><div class="flex h-32 items-end" title={`${day.date}: ${day.count === null ? `${day.coverage} coverage` : day.count}`}><div class:opacity-30={day.count === null} class="w-full rounded-t bg-gold-500/70" style={`height:${day.count === null ? 6 : Math.max(6, Math.round((day.count / Math.max(1, ...report.daily.map((item) => item.count ?? 0))) * 100))}%`}></div></div><span class="mt-1 block truncate text-[10px] text-charcoal-400">{day.date.slice(5)}</span><span class="block text-xs text-charcoal-200">{day.count === null ? '—' : day.count}</span></li>{/each}</ol></div>
-						<details class="mt-4"><summary class="text-link cursor-pointer">Read as a table</summary><p class="table-hint">Scroll sideways for every column. The first column stays visible.</p><!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) --><div class="table-wrap mt-2" role="region" aria-label="Daily activity" tabindex="0"><table><thead><tr><th>Date</th><th class="numeric">Count</th><th>Coverage</th><th>Sharing context</th></tr></thead><tbody>{#each report.daily as day}<tr><td>{formatDate(day.date)}</td><td class="numeric">{day.count ?? '—'}</td><td class="capitalize">{day.coverage}</td><td>{data.annotations.filter(note=>note.activity_date===day.date).map(note=>`${note.channel}: ${note.note}`).join('; ') || '—'}</td></tr>{/each}</tbody></table></div></details>
-					{:else}<p class="empty-copy">No daily source is available for this report.</p>{/if}
-				</section>
-				<section class="traffic-summary panel"><div class="panel-heading"><div><p class="eyebrow">Traffic</p><h3>Included and excluded activity</h3></div><ShieldCheck class="size-5 text-gold-400" /></div>
-					<dl class="mt-4 space-y-3">{#each report.traffic as item}<div class="flex justify-between border-b border-charcoal-800 pb-2"><dt class="capitalize text-charcoal-300">{item.classification==='unclassified'?'Unclassified audience':item.classification.replaceAll('_', ' ')}</dt><dd class="font-medium tabular-nums text-charcoal-100">{item.count.toLocaleString()}</dd></div>{/each}</dl>
-					<p class="mt-4 text-xs text-charcoal-400">The default report excludes operator, test, known crawler, and suspected automated activity. These counts show every class for the same dates, albums, and measure. Unclassified remains visible and is not labeled human.</p>
-				</section>
 			</div></div>
 			<IntelligenceWorkspace
 				kind="gallery"
@@ -652,7 +643,6 @@
 		.analytics-workspace .overview-trend { min-width: 0; }
 		.analytics-workspace :global(.trend) { padding: .8rem; }
 		.analytics-workspace :global(.trend svg) { height: 6rem; margin: .5rem 0; }
-		.analytics-workspace .legacy-trend, .analytics-workspace .traffic-summary { display: none; }
 		.analytics-workspace .table-wrap, .analytics-workspace .photo-card { background: #fff; border-color: #d8e0ea; }
 		.analytics-workspace th { background: #f4f7fb; border-color: #d8e0ea; color: #526176; }
 		.analytics-workspace td { border-color: #e8edf3; color: #172033; }
