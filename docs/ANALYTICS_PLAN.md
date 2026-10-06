@@ -52,7 +52,7 @@ Overview     Albums → Album report     Photos     Sources     Measurement
                       Save view / Export / Shortlist
 ```
 
-Use all albums and the last 30 complete days by default. Show today's activity separately as partial. Store UTC timestamps, group calendar days in America/Chicago, and show the reporting timezone. Comparison windows must disclose missing coverage. Activity dates and album event dates are independent filters. Compare the first days after publication only where actual publication timestamps exist; never substitute import or event dates.
+Use all albums and the last 30 complete days by default. Show today's activity separately as partial. Store UTC timestamps, group calendar days in America/Chicago, and show the reporting timezone. Comparison windows must disclose missing coverage. Activity dates and album event dates are independent filters. Compare the first days after publication only where actual publication timestamps exist, counting from an album's first publication (`album_settings.first_published_at`; `published_at` is the latest publication and only orders the latest-gallery list); never substitute import or event dates.
 
 Use authoritative metadata and retain unknown values in filter choices. Do not infer athlete or team identity to fill missing fields. Show active filters and one clear reset action. Preserve scope, dates and filters across drilldown, Back, reload and report links. Saved reports store query settings, not a frozen claim that the data never changes. Exports include the full filtered result, definitions, timezone, coverage, traffic exclusions and generation time, independently of visible pagination.
 

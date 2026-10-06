@@ -12,6 +12,10 @@ Nino approved the backfill, the label column and the trigger, and chose the logg
 
 Both migrations were tested on a throwaway Postgres 17 seeded with production's rows. The test covered 11 behavior assertions and three negative controls. **Apply both before deploying the code, and do not publish an album in between.** The deployed code sends `published_at` in its payload, and Postgres rejects that row under the new constraint before resolving the conflict.
 
+### Update (2026-10-06): album age counts from the first publication
+
+Nino decided that analytics album age counts from an album's **first** publication, while `published_at` stays the **latest** so the latest-gallery ranking still lets a republished album return to the top. Item 4 under "Republishing" below is answered: `20261006120000_album_settings_first_publication.sql` adds `first_published_at`, `first_published_at_basis` and `first_published_at_evidence` with the same labelling rules, copies the seven backfilled times into them, and extends the trigger to set the first publication once. The new-album rule, the publication-age comparison, Rising and the scheduled gallery report read the first publication. The latest-gallery ranking and the admin list keep `published_at`. Apply the migration before deploying the matching code.
+
 ## Answer
 
 There is no database record of when any album went public before 2026-09-26. Nothing ever wrote one. Agent session logs on this Mac do record the actual publish command, with before/after output, for **7 albums**:
