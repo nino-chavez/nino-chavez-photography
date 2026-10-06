@@ -27,6 +27,8 @@ These cannot be inferred from code -- follow them strictly:
 
 Read [`reader-contract.json`](reader-contract.json) before changing interface copy or AI enrichment prompts. Gallery copy should help a visitor find and act on a photo without exposing the search implementation. Search captions are factual retrieval metadata: one short sentence about visible numbers, colors, action, and scene; never aesthetic filler, guessed identity, or uncertain detection stated as fact. Verify interface copy in the built page and generated captions as actual model output.
 
+**Any edit under `src/routes` or `src/lib/components` fails the production build until a new review receipt is recorded.** `npm run build` ends with `reader:check:gallery`. That check hashes the interface source and compares it with `docs/reader-audits/gallery-interface.json`. `npm run check` does not run it. Walk the changed screens, then record the receipt in the same PR with `node tools/lib/encounter-audit.mjs --root=. --record-manual="gallery interface" --reviewed-by=... --method=... --scope="a|b"`. Run the full `npm run build` before merging. In the method text, say who reviewed and what the walk did not cover. This failed twice on 2026-10-05: #181, fixed by #183, and #184, fixed by #185. Each time the merged change sat undeployed until the receipt PR merged.
+
 ## Off-Limits (Explicit Approval Required)
 
 - `.env*` files
