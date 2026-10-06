@@ -244,7 +244,9 @@
 	}
  const newAlbumKeys = $derived(new Set(report.albums.filter((album) => publishedAfterComparison(album.publicationAt, report.query)).map((album) => album.albumKey)));
  // Rising leaves out photos from new albums (the database applies the same rule), so name them and point to them under Popular.
- const risingLeftOut = $derived(report.photoPagination?.rank === 'rising' ? report.albums.filter((album) => newAlbumKeys.has(album.albumKey) && (album.count ?? 0) > 0).map((album) => ({ key: album.albumKey, name: data.albumCatalogue.find((entry) => entry.album_key === album.albumKey)?.album_name ?? album.albumKey })) : []);
+ // Only albums with photo-level activity had photos to leave out: an album's count also includes album-level actions such as album opens.
+ const albumOnlyCount = $derived(new Map(report.albumOnlyActions.map((row) => [row.albumKey, row.count ?? 0])));
+ const risingLeftOut = $derived(report.photoPagination?.rank === 'rising' ? report.albums.filter((album) => newAlbumKeys.has(album.albumKey) && (album.count ?? 0) - (albumOnlyCount.get(album.albumKey) ?? 0) > 0).map((album) => ({ key: album.albumKey, name: data.albumCatalogue.find((entry) => entry.album_key === album.albumKey)?.album_name ?? album.albumKey })) : []);
  const risingLeftOutHref = $derived(risingLeftOut.length ? `${reportHref({ section: 'photos', photo_page: '0', photo_rank: 'popular', scope: risingLeftOut.length === 1 ? 'album' : 'selected', albums: risingLeftOut.map((album) => album.key).join(',') })}#photos` : '');
  function changeLabel(item:{albumKey?:string;count:number|null;previousCount:number|null;difference:number|null}) {
   if(report.query.compare==='none')return 'No comparison selected';
