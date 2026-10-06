@@ -107,6 +107,28 @@ BEGIN
 	IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(r->'photos')p WHERE (p->>'count')::bigint>0 AND p->'measures'->'photo_opens'='null'::jsonb) THEN RAISE EXCEPTION 'partial group count/measures semantics wrong'; END IF;
 END $$;
 
+-- Rising leaves out photos from albums published after the comparison window
+-- (20261005200000). Same Chicago-date rule as publishedAfterComparison() in
+-- report-contract.ts; Popular and the no-comparison case keep every photo.
+DO $$ DECLARE target text; popular jsonb; rising_r jsonb; target_photos integer;
+BEGIN
+  popular:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'popular',true,false);
+  target:=popular->'photos'->0->>'albumKey';
+  IF target IS NULL THEN RAISE EXCEPTION 'fixture has no photo activity on 2026-09-28'; END IF;
+  SELECT count(*) INTO target_photos FROM jsonb_array_elements(popular->'photos')p WHERE p->>'albumKey'=target;
+  -- 15:00Z on Sep 28 is Sep 28 in Chicago: after the comparison window, so excluded.
+  UPDATE public.album_settings SET published_at='2026-09-28T15:00:00Z' WHERE album_key=target;
+  rising_r:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'rising',true,false);
+  IF EXISTS(SELECT 1 FROM jsonb_array_elements(rising_r->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'rising ranked photos from an album published after the comparison window'; END IF;
+  IF (rising_r->'photoPagination'->>'total')::integer<>(popular->'photoPagination'->>'total')::integer-target_photos THEN RAISE EXCEPTION 'rising total still counts new-album photos'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'popular',true,false)->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'popular dropped new-album photos'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'none',NULL,NULL,'inclusive',false,0,0,'rising',true,false)->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'rising without a comparison dropped photos'; END IF;
+  -- 04:30Z on Sep 28 is still Sep 27 in Chicago: inside the comparison window, so kept.
+  UPDATE public.album_settings SET published_at='2026-09-28T04:30:00Z' WHERE album_key=target;
+  rising_r:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'rising',true,false);
+  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(rising_r->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'rising used the UTC date instead of the Chicago publication date'; END IF;
+END $$;
+
 DO $$ BEGIN
   BEGIN
     SET LOCAL ROLE anon;
