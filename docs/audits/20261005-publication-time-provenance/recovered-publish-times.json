@@ -87,5 +87,5 @@
       "effect": "The logged publish is 14h49m earlier than the stored time and falls on the previous Chicago day (2026-09-25 rather than 2026-09-26). No log on this Mac shows an unpublish between 01:10Z and 15:01Z, and a subagent listed Re7kho as live at 02:30Z. The stored 16:00Z sits near a 15:06Z --announce run, which did not change visibility. Nino has to confirm which moment he meant before the value is replaced."
     }
   ],
-  "corrections_status": "Pending Nino: replace only if the stored times were meant as the moment the album went public."
+  "corrections_status": "Approved by Nino 2026-10-05: replace both with the logged times (migration 20261005230100)."
 }

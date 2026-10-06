@@ -12,7 +12,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 
 type CatalogueEntry = {album_key:string;album_name:string;photo_count:number};
-type AlbumSetting = {album_key:string;visibility:string|null;published_at:string|null};
+type AlbumSetting = {album_key:string;visibility:string|null;published_at:string|null;published_at_basis:'recorded'|'inferred'|null};
 type AlbumFact = {album_key:string;sport:string|null;event_date:string|null;event_type?:string|null};
 type CategoryFact = {album_key:string;photo_category:string|null};
 type V2EvidenceEvent = {event_id:string;event_name:string;occurred_at:string;album_key:string|null;photo_id:string|null;traffic_context:string};
@@ -121,7 +121,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 			user && section === 'overview' ? readAll(from=>noteQuery.range(from,from+999)) : { data: [], error: null }
 		,
 		readAll<CatalogueEntry>(from=>admin.from('albums_summary').select('album_key, album_name, photo_count').order('album_key').range(from,from+999)),
-		readAll<AlbumSetting>(from=>admin.from('album_settings').select('album_key, visibility, published_at').order('album_key').range(from,from+999)),
+		readAll<AlbumSetting>(from=>admin.from('album_settings').select('album_key, visibility, published_at, published_at_basis').order('album_key').range(from,from+999)),
 		readAll<AlbumFact>(from=>admin.from('albums').select('album_key, sport, event_date').order('album_key').range(from,from+999)),
 		admin.rpc('analytics_category_facets') as PromiseLike<{data:CategoryFact[]|null;error:unknown}>,
 			user && measurementSection ? admin.from('engagement_classification_corrections').select('id, engagement_event_id, classification, reason_flags, classification_version, note, corrected_at').order('corrected_at', { ascending: false }).limit(30) : { data: [], error: null },
@@ -142,7 +142,8 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 		event_date:factsByAlbum.get(album.album_key)?.event_date ?? null,
 		event_type:factsByAlbum.get(album.album_key)?.event_type ?? null,
 		visibility: settingsByAlbum.get(album.album_key)?.visibility ?? 'public',
-		published_at: settingsByAlbum.get(album.album_key)?.published_at ?? null
+		published_at: settingsByAlbum.get(album.album_key)?.published_at ?? null,
+		published_at_basis: settingsByAlbum.get(album.album_key)?.published_at_basis ?? null
 	})).sort((a,b)=>a.album_name.localeCompare(b.album_name));
 	const matchesAlbumScope = (album: typeof catalogue[number]) =>
 		(query.scope === 'all' || query.albumKeys.includes(album.album_key))

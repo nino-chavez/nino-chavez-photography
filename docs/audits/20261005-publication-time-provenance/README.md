@@ -2,6 +2,16 @@
 
 Observed 2026-10-05 on `analytics.ninochavez.co/gallery` with `compare=publication_age`: "252 selected albums lack a recorded publication time and are excluded."
 
+## Status (2026-10-05)
+
+Nino approved the backfill, the label column and the trigger, and chose the logged times for DWdCET and Re7kho. The ingest default (always unlisted) was not approved and is unchanged.
+
+- `supabase/migrations/20261005230000_album_settings_publication_provenance.sql`: label columns, constraints, and the stamping trigger. Portable; applies to the synthetic rehearsal database too.
+- `supabase/migrations/20261005230100_album_settings_logged_publication_backfill.sql`: the seven logged times. Production only; it aborts unless it writes exactly seven rows.
+- Code: the trigger is now the only thing that stamps `published_at`. `publish-album.ts` no longer stamps or announces an album with no row, and the operator page marks inferred dates.
+
+Both migrations were tested on a throwaway Postgres 17 seeded with production's rows. The test covered 11 behavior assertions and three negative controls. **Apply both before deploying the code, and do not publish an album in between.** The deployed code sends `published_at` in its payload, and Postgres rejects that row under the new constraint before resolving the conflict.
+
 ## Answer
 
 There is no database record of when any album went public before 2026-09-26. Nothing ever wrote one. Agent session logs on this Mac do record the actual publish command, with before/after output, for **7 albums**:
@@ -155,13 +165,32 @@ With the trigger in place, `resolvePublishTarget` should stop stamping (one owne
 
 **Ingest (code change; it changes Nino's workflow, so proposed rather than made):** always write an `unlisted` row, and remove the opt-in flag. Every publication then becomes an `unlisted → public` update. The trigger stamps it, and `verify-album` gates it.
 
-## Questions for Nino
+## Decisions (2026-10-05)
 
-1. Approve the backfill of the 5 null albums, labelled `inferred`, and the `published_at_basis` column?
-   - 1b. The migration stored DWdCET 19:00Z and Re7kho 16:00Z from your account. The logs show the publish writes at 18:50:36Z and 01:10:52Z. No log shows an unpublish of Re7kho in between, and a subagent listed it as live at 02:30Z. Did 16:00Z mean when it was announced (an `--announce` run happened at 15:06Z)? If the stored times were meant as "went public", should the logged times replace them?
-2. Approve the trigger, and making ingest always unlisted?
-3. For republished albums, should publication-age use the **first** publication or the **latest**? If first, it needs its own column (`first_published_at`), because the latest-gallery ranking needs the latest.
-4. Do you remember publishing TRoiyO, rdrsVB or z6uqiQ from another machine? Its session logs may hold the times.
+1. Backfill and label column: **approved**, all seven albums labelled `inferred`.
+2. DWdCET and Re7kho: **use the logged times**.
+3. Trigger: **approved**. Ingest always unlisted: **not approved**, unchanged.
+4. Republishing: unanswered. The trigger keeps the current behavior, so republishing replaces the time (latest publication).
+5. TRoiyO, rdrsVB and z6uqiQ: unanswered. They stay null unless the other Mac's session logs hold their publish.
+
+## Where the label shows
+
+- **Operator page**, publication-age table and album inspector: shows "(inferred)" next to inferred dates. Dates use the reporting timezone (America/Chicago).
+- **CSV export and intelligence brief**: receive only a derived "published after the comparison window" flag, never the date, so there is nothing to label.
+- **Daily actions and the compact evidence rows**: each new event snapshots `published_at` without its basis, and the snapshot is immutable. From the backfill onward, events for the seven albums carry the inferred time unlabelled. DWdCET and Re7kho rows carry the typed time before the backfill and the logged time after.
+
+## Behavior changes to know
+
+- `publish-album.ts` no longer announces an album that has no `album_settings` row. That includes an album ingested without `--unlisted`, which is already public; the script prints "announce: skipped — the album was already public". Use `--unlisted` at ingest, or pass `--announce`.
+- The local analytics stack returns 503 on the operator page until its database has `20261005230000` applied. Fixture inserts that set `published_at` then also need a `published_at_basis` value.
+
+## Rollout
+
+1. Apply `20261005230000`, then `20261005230100`, each as one run. **Do not publish an album until step 4.** Until then, every unlisted → public publish fails with `album_settings_published_at_basis_present`. That covers the admin toggle (until the deploy is live) and `publish-album.ts` run from any checkout older than this change, including the main checkout.
+2. Read back: seven `inferred` rows with the logged times, no non-null `published_at` without a basis, and the trigger present.
+3. Walk the changed operator screens on production data, record the gallery reader receipt, and run the full `npm run build`. Re-record the receipt if main changes anything under `src/routes` or `src/lib/components` before merge.
+4. Merge, confirm the Cloudflare Pages deploy, and pull the main checkout.
+5. The next real publish's `after:` line is the first live proof of the trigger.
 
 ## What would change this
 

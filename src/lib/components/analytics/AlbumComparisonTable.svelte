@@ -11,7 +11,8 @@
 		risingValue: number | null;
 		measures: MeasureTotals;
 		lastActivity: string | null;
-		publishedAt: string | null;
+		/** Publication date in the reporting timezone, marked "(inferred)" when recovered from a log; null when none is recorded. */
+		publishedLabel: string | null;
 		/** Published after the comparison window ended, so "previous" is not a measured zero. */
 		publishedAfterComparison: boolean;
 		/** Position among every album in these dates by the chosen measure; null when only some albums are in the report. */

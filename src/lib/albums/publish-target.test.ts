@@ -1,23 +1,27 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolvePublishTarget, applyPublishTransition } from './publish-target';
+import { resolvePublishTarget, becomesPublic, applyPublishTransition, type PublishedRow } from './publish-target';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-const NOW = '2026-09-26T19:00:00.000Z';
+const STAMP = '2026-10-05T23:00:00.000Z';
 
 /**
  * A minimal fake matching exactly the chain shapes `applyPublishTransition` calls:
- * `.from(t).select(c).eq(c,v).maybeSingle()` and `.from(t).upsert(row, opts)`. Records every
- * call so a test can assert `applyPublishTransition` never issues a DELETE — the P1 bug this
- * function replaces (the admin action published an album by deleting its settings row).
+ * `.from(t).select(c).eq(c,v).maybeSingle()` and `.from(t).upsert(row, opts).select(c).single()`.
+ * It records every call so a test can assert the writer never DELETEs (the admin action once
+ * published by deleting the row) and never sends `published_at` (the database trigger owns it).
+ * The stamp it returns stands in for the trigger, whose real behavior is checked against
+ * Postgres, not here.
  */
 function fakeAlbumSettingsClient(options: {
 	initialRow?: { visibility: 'public' | 'unlisted' } | null;
 	readError?: string;
 	writeError?: string;
 } = {}) {
-	const calls: Array<{ type: 'select' | 'upsert' | 'delete'; payload?: unknown }> = [];
-	let row = options.initialRow ?? null;
+	const calls: Array<{ type: 'select' | 'upsert' | 'delete'; payload?: Record<string, unknown> }> = [];
+	let row: PublishedRow | null = options.initialRow
+		? { visibility: options.initialRow.visibility, gallery_scope: null, published_at: null, published_at_basis: null }
+		: null;
 	const client = {
 		from(_table: string) {
 			return {
@@ -28,17 +32,31 @@ function fakeAlbumSettingsClient(options: {
 								async maybeSingle() {
 									calls.push({ type: 'select' });
 									if (options.readError) return { data: null, error: { message: options.readError } };
-									return { data: row, error: null };
+									return { data: row ? { visibility: row.visibility } : null, error: null };
 								}
 							};
 						}
 					};
 				},
-				async upsert(payload: { visibility: 'public' | 'unlisted'; published_at?: string }, _opts: unknown) {
+				upsert(payload: { visibility: 'public' | 'unlisted'; gallery_scope: string | null }, _opts: unknown) {
 					calls.push({ type: 'upsert', payload });
-					if (options.writeError) return { data: null, error: { message: options.writeError } };
-					row = { visibility: payload.visibility };
-					return { data: null, error: null };
+					return {
+						select(_cols: string) {
+							return {
+								async single() {
+									if (options.writeError) return { data: null, error: { message: options.writeError } };
+									const stamped = row?.visibility === 'unlisted' && payload.visibility === 'public';
+									row = {
+										visibility: payload.visibility,
+										gallery_scope: payload.gallery_scope,
+										published_at: stamped ? STAMP : (row?.published_at ?? null),
+										published_at_basis: stamped ? 'recorded' : (row?.published_at_basis ?? null)
+									};
+									return { data: row, error: null };
+								}
+							};
+						}
+					};
 				},
 				delete() {
 					return {
@@ -51,107 +69,78 @@ function fakeAlbumSettingsClient(options: {
 			};
 		}
 	};
-	return { client: client as unknown as SupabaseClient, calls, getRow: () => row };
+	return { client: client as unknown as SupabaseClient, calls };
 }
 
-test('hidden (unlisted) -> public stamps published_at', () => {
-	const target = resolvePublishTarget({
-		before: { visibility: 'unlisted' },
-		unpublish: false,
-		scope: null,
-		now: NOW
-	});
-	assert.deepEqual(target, { visibility: 'public', gallery_scope: null, published_at: NOW });
+test('resolvePublishTarget: a publish writes public with the given scope and nothing else', () => {
+	assert.deepEqual(resolvePublishTarget({ unpublish: false, scope: 'lpo' }), { visibility: 'public', gallery_scope: 'lpo' });
+	assert.deepEqual(resolvePublishTarget({ unpublish: false, scope: null }), { visibility: 'public', gallery_scope: null });
 });
 
-test('no settings row at all (legacy / video-only) -> public also stamps published_at', () => {
-	const target = resolvePublishTarget({ before: null, unpublish: false, scope: null, now: NOW });
-	assert.deepEqual(target, { visibility: 'public', gallery_scope: null, published_at: NOW });
+test('resolvePublishTarget: an unpublish writes unlisted and clears the scope', () => {
+	assert.deepEqual(resolvePublishTarget({ unpublish: true, scope: 'lpo' }), { visibility: 'unlisted', gallery_scope: null });
 });
 
-test('re-publishing an already-public album does NOT stamp published_at', () => {
-	const target = resolvePublishTarget({
-		before: { visibility: 'public' },
-		unpublish: false,
-		scope: 'lpo',
-		now: NOW
-	});
-	assert.deepEqual(target, { visibility: 'public', gallery_scope: 'lpo' });
-	assert.equal('published_at' in target, false);
+test('becomesPublic: only an unlisted row that is being published', () => {
+	assert.equal(becomesPublic({ visibility: 'unlisted' }, false), true);
+	assert.equal(becomesPublic({ visibility: 'public' }, false), false, 're-publishing a public album');
+	assert.equal(becomesPublic(null, false), false, 'a missing row already reads as public');
+	assert.equal(becomesPublic({ visibility: 'unlisted' }, true), false, 'an unpublish');
 });
 
-test('--unpublish never stamps published_at, regardless of the prior state', () => {
-	const fromPublic = resolvePublishTarget({
-		before: { visibility: 'public' },
-		unpublish: true,
-		scope: null,
-		now: NOW
-	});
-	assert.deepEqual(fromPublic, { visibility: 'unlisted', gallery_scope: null });
-
-	const fromNoRow = resolvePublishTarget({ before: null, unpublish: true, scope: null, now: NOW });
-	assert.deepEqual(fromNoRow, { visibility: 'unlisted', gallery_scope: null });
-});
-
-test('gallery_scope passes through unchanged on a publish', () => {
-	const target = resolvePublishTarget({
-		before: { visibility: 'unlisted' },
-		unpublish: false,
-		scope: 'lpo',
-		now: NOW
-	});
-	assert.equal(target.gallery_scope, 'lpo');
-});
-
-// applyPublishTransition — the shared writer scripts/publish-album.ts and the admin visibility
-// action both call, so a publish means the same thing (an UPSERT that stamps published_at)
-// regardless of which one made the album public.
-
-test('applyPublishTransition: publishing an unlisted album upserts public + published_at, never deletes', async () => {
+test('applyPublishTransition: publishing an unlisted album upserts public, returns the stamped row, never deletes', async () => {
 	const { client, calls } = fakeAlbumSettingsClient({ initialRow: { visibility: 'unlisted' } });
 	const result = await applyPublishTransition(client, { albumKey: 'abc123', unpublish: false });
 	assert.equal(result.ok, true);
 	if (result.ok) {
-		assert.equal(result.target.visibility, 'public');
-		assert.equal(typeof result.target.published_at, 'string');
+		assert.equal(result.wentPublic, true);
+		assert.deepEqual(result.after, { visibility: 'public', gallery_scope: null, published_at: STAMP, published_at_basis: 'recorded' });
 	}
-	assert.deepEqual(
-		calls.map((c) => c.type),
-		['select', 'upsert']
-	);
-	assert.equal(calls.some((c) => c.type === 'delete'), false);
+	assert.deepEqual(calls.map((c) => c.type), ['select', 'upsert']);
 });
 
-test('applyPublishTransition: publishing an album with NO settings row also stamps published_at (the admin-UI case this fixes)', async () => {
-	const { client, calls } = fakeAlbumSettingsClient({ initialRow: null });
-	const result = await applyPublishTransition(client, { albumKey: 'abc123', unpublish: false });
+test('applyPublishTransition: the write never sends published_at; the database trigger owns it', async () => {
+	for (const initialRow of [{ visibility: 'unlisted' as const }, { visibility: 'public' as const }, null]) {
+		for (const unpublish of [false, true]) {
+			const { client, calls } = fakeAlbumSettingsClient({ initialRow });
+			await applyPublishTransition(client, { albumKey: 'abc123', unpublish, scope: 'lpo' });
+			const upsert = calls.find((c) => c.type === 'upsert');
+			assert.ok(upsert, 'an upsert was issued');
+			assert.deepEqual(Object.keys(upsert.payload ?? {}).sort(), ['album_key', 'gallery_scope', 'visibility']);
+			assert.equal(calls.some((c) => c.type === 'delete'), false);
+		}
+	}
+});
+
+test('applyPublishTransition: an album with no row is already public, so writing one is not a publication', async () => {
+	const { client } = fakeAlbumSettingsClient({ initialRow: null });
+	const result = await applyPublishTransition(client, { albumKey: 'abc123', unpublish: false, scope: 'lpo' });
 	assert.equal(result.ok, true);
 	if (result.ok) {
 		assert.equal(result.before, null);
-		assert.equal(result.target.visibility, 'public');
-		assert.equal(typeof result.target.published_at, 'string');
+		assert.equal(result.wentPublic, false);
+		assert.equal(result.after.published_at, null);
 	}
-	assert.equal(calls.some((c) => c.type === 'delete'), false);
 });
 
-test('applyPublishTransition: re-publishing an already-public album does not re-stamp published_at', async () => {
+test('applyPublishTransition: re-publishing a public album is not a publication', async () => {
 	const { client } = fakeAlbumSettingsClient({ initialRow: { visibility: 'public' } });
 	const result = await applyPublishTransition(client, { albumKey: 'abc123', unpublish: false, scope: 'lpo' });
 	assert.equal(result.ok, true);
 	if (result.ok) {
-		assert.equal('published_at' in result.target, false);
-		assert.equal(result.target.gallery_scope, 'lpo');
+		assert.equal(result.wentPublic, false);
+		assert.equal(result.after.gallery_scope, 'lpo');
 	}
 });
 
-test('applyPublishTransition: unpublish upserts unlisted and never stamps published_at', async () => {
-	const { client, calls } = fakeAlbumSettingsClient({ initialRow: { visibility: 'public' } });
+test('applyPublishTransition: unpublish upserts unlisted and is not a publication', async () => {
+	const { client } = fakeAlbumSettingsClient({ initialRow: { visibility: 'public' } });
 	const result = await applyPublishTransition(client, { albumKey: 'abc123', unpublish: true });
 	assert.equal(result.ok, true);
 	if (result.ok) {
 		assert.deepEqual(result.target, { visibility: 'unlisted', gallery_scope: null });
+		assert.equal(result.wentPublic, false);
 	}
-	assert.equal(calls.some((c) => c.type === 'delete'), false);
 });
 
 test('applyPublishTransition: a failed read is reported, not swallowed', async () => {
@@ -162,8 +151,8 @@ test('applyPublishTransition: a failed read is reported, not swallowed', async (
 });
 
 test('applyPublishTransition: a failed write is reported, not swallowed', async () => {
-	const { client } = fakeAlbumSettingsClient({ initialRow: null, writeError: 'column does not exist' });
+	const { client } = fakeAlbumSettingsClient({ initialRow: null, writeError: 'column album_settings.published_at_basis does not exist' });
 	const result = await applyPublishTransition(client, { albumKey: 'abc123', unpublish: false });
 	assert.equal(result.ok, false);
-	if (!result.ok) assert.match(result.error, /column does not exist/);
+	if (!result.ok) assert.match(result.error, /published_at_basis does not exist/);
 });
