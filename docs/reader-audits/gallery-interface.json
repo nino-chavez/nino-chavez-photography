@@ -1,13 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T03:16:26.300Z",
-  "reviewedBy": "Claude Code session that authored the hidden-trend removal (not a cold reviewer, not a human)",
-  "method": "Merge of main 386cdeb (PRs #191 publication provenance and #192 scrollable-table keyboard focus) into the hidden-trend removal branch, 2026-10-05. The only conflict in src/routes/analytics/operator/+page.svelte was #192's tabindex edit to the Daily activity table inside .legacy-trend; it resolved to the removal, because that table never rendered (#192's receipt lists it as checked in source only for that reason). Every other #191 and #192 change is kept unmodified. Implementer walked Overview on the merged tree on a local dev server reading production data, at 1440x1000 and 375x812 (in-app browser): the AnalyticsTrend figure and its 30-row Read the daily values table render, zero .legacy-trend, .traffic-summary, or .daily-chart nodes, scrollWidth equals clientWidth at both widths. The Measurement tab Traffic panel was seen rendered before the merge and is unchanged by it. npm run check: 0 errors, no warnings in the touched file. #192's receipt (ca7626a, in git history at 386cdeb) remains the evidence for the scrollable-table keyboard walk, and #191's (68e6e14) for the inferred publication-date display. Not covered: a cold reviewer, a screen-reader pass, a physical device.",
-  "sourceDigest": "sha256:292d2e46def901d8c708ac2328b55824e423bcc7c87518bfddffb17e44985c30",
+  "reviewedAt": "2026-10-06T18:19:02.064Z",
+  "reviewedBy": "Claude Code orchestrator session that dispatched and reviewed the first-publication change (not its author's subagent, not a cold reviewer, not a human)",
+  "method": "Branch feat/first-publication-age (cc9d3cf) on a local dev server reading production data, after migration 20261006120000 was applied to production on 2026-10-06 with Nino's approval. In-app browser at desktop width and 375x812: Albums tab scoped to Re7kho shows the inspector line 'first published Sep 25, 2026 (inferred)', the row reads 'Not published / New album', and the new-album note renders; Albums with compare=publication_age shows heading 'First 30 days after publication', the 'First published' column with seven inferred dates, and the 247-album left-out note. No element extends past the viewport at 375 px; that check was forced to fail once with a 420 px probe. Not covered: Overview, Photos, Sources, Measurement, Preferences and Sites were not re-walked (their source is unchanged by this branch); no physical device; no cold reviewer; no signed-in owner controls.",
+  "sourceDigest": "sha256:01c6eb716ac5c46ebd0a1f682ddb6973a82d6989351c4a1058cff65a64d3eaef",
   "sourceFiles": 162,
   "scope": [
-    "Analytics Overview trend (hidden duplicate trend and traffic blocks removed)",
-    "Merge with main 386cdeb (#191, #192)"
+    "analytics albums inspector first-publication label",
+    "analytics publication-age comparison First published column"
   ]
 }
