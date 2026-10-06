@@ -3,8 +3,7 @@ import { base } from '$app/paths';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { buildOperatorReport } from '$lib/analytics/operator-report.server';
-import type { PhotoRank } from '$lib/analytics/gallery-performance.server';
-import { assertReportDateBounds, parseReportQuery, chicagoDayStart } from '$lib/analytics/report-contract';
+import { assertReportDateBounds, parseReportQuery, chicagoDayStart, isPhotoRank, type PhotoRank } from '$lib/analytics/report-contract';
 import { fetchV2ReportProjection, unavailableV2ReportProjection } from '$lib/analytics/v2-report-projection.server';
 import { createPostHogQueryTransport, queryGalleryJourneys } from '$lib/analytics/posthog-queries.server';
 import { POSTHOG_JOURNEY_REPORTS } from '$lib/analytics/posthog.types';
@@ -102,7 +101,7 @@ export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {
 	}
 	const section = reportSection(url.searchParams.get('section'));
 	const requestedRank = url.searchParams.get('photo_rank');
-	const photoRank: PhotoRank = requestedRank === 'rising' || requestedRank === 'recent' ? requestedRank : 'popular';
+	const photoRank: PhotoRank = isPhotoRank(requestedRank) ? requestedRank : 'popular';
 	const photoWindow = section === 'overview'
 		? { page: 0, pageSize: 4, rank: 'popular' as const }
 		: section === 'photos'

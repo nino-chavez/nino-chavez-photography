@@ -10,6 +10,16 @@ export const MAX_INTERACTIVE_REPORT_DAYS = 3_650;
 export const MAX_EXPORT_REPORT_DAYS = 3_650;
 export type ReportMeasure = (typeof REPORT_MEASURES)[number];
 export type MeasureTotals = Record<ReportMeasure, number | null>;
+/** Photo orderings the scheduled gallery report RPC accepts; ranking and paging happen in SQL. */
+export const PHOTO_RANKS = ['popular', 'rising', 'recent'] as const;
+export type PhotoRank = (typeof PHOTO_RANKS)[number];
+export const isPhotoRank = (value: unknown): value is PhotoRank => (PHOTO_RANKS as readonly unknown[]).includes(value);
+
+export interface PhotoWindow {
+	page: number;
+	pageSize: number;
+	rank: PhotoRank;
+}
 export type TrafficMode = 'inclusive' | 'conservative';
 export type ReportScope = 'all' | 'album' | 'selected';
 export type ComparisonMode = 'previous' | 'custom' | 'publication_age' | 'none';
