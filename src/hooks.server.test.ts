@@ -41,3 +41,19 @@ test('gallery collection and local analytics preview remain available', async ()
  assert.equal((await request('https://analytics.ninochavez.co/photography/analytics/sites?period=7')).headers.get('location'),'https://analytics.ninochavez.co/sites?period=7');
  assert.equal((await request('https://analytics.ninochavez.co/')).headers.get('location'),'/sites');
  });
+
+test('an album launch report keeps its clean address and the internal one redirects to it', async () => {
+	assert.equal((await request('https://analytics.ninochavez.co/albums/Re7kho')).status, 200);
+	assert.equal((await request('https://analytics.ninochavez.co/photography/analytics/albums/Re7kho?x=1')).headers.get('location'), 'https://analytics.ninochavez.co/albums/Re7kho?x=1');
+	assert.equal((await request('https://ninochavez.co/photography/analytics/albums/Re7kho')).headers.get('location'), 'https://analytics.ninochavez.co/albums/Re7kho');
+	assert.equal((await request('http://127.0.0.1:5189/photography/analytics/albums/Re7kho')).status, 200);
+	assert.equal((await request('https://ninochavez.co/photography/analytics/albums/Re7kho?/addAnnotation', 'POST')).status, 404);
+});
+
+test('an album address with anything but one key is never redirected into a report', async () => {
+	for (const path of ['/photography/analytics/albums/..', '/photography/analytics/albums/a%2Fb', '/photography/analytics/albums/Re7kho/extra']) {
+		const response = await request(`https://ninochavez.co${path}`);
+		// It may be sent on to the report host unchanged, but never rewritten to a clean /albums/<key> address.
+		assert.ok(!(response.headers.get('location') ?? '').startsWith('https://analytics.ninochavez.co/albums/'), path);
+	}
+});
