@@ -20,7 +20,8 @@
       "renderedRoots": [],
       "sourceRoots": [
         "src/routes",
-        "src/lib/components"
+        "src/lib/components",
+        "src/lib/analytics/launch-recap.ts"
       ],
       "manualReview": {
         "evidencePath": "docs/reader-audits/gallery-interface.json"
