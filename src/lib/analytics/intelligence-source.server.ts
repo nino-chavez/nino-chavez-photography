@@ -5,9 +5,10 @@ import type { GalleryDecisionEvidence } from './posthog-queries.server';
 import type { SiteJourneyRow } from './site-journeys.server';
 import type { IntelligenceScope } from './intelligence-contract';
 import type { IntelligenceRuleInput } from './intelligence-rules';
+import { publishedAfterComparison } from './report-contract';
 
 export type IntelligenceJourneyContext = { gallery?: JourneyAggregate[]; site?: SiteJourneyRow[]; decision?: GalleryDecisionEvidence };
-type GalleryReport = { dataAsOf: string | null; coverage: IntelligenceRuleInput['coverage']; previousCoverage: IntelligenceRuleInput['coverage']; total: number | null; previousTotal: number | null; photos: unknown[]; publicationAge: { missingAlbumKeys: string[] }; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null }> };
+type GalleryReport = { dataAsOf: string | null; coverage: IntelligenceRuleInput['coverage']; previousCoverage: IntelligenceRuleInput['coverage']; total: number | null; previousTotal: number | null; photos: unknown[]; publicationAge: { missingAlbumKeys: string[] }; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null; publicationAt?: string | null }> };
 type SiteReport = Awaited<ReturnType<typeof import('./site-actions.server').loadSiteActions>>;
 type EvidenceLoaders = { diagnostics?: (client: SupabaseClient, now: Date) => Promise<IntelligenceRuleInput['diagnostics']>; galleryReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryReport>; siteReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>) => Promise<SiteReport> };
 async function scheduledGalleryReport(client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>): Promise<GalleryReport> {
@@ -70,7 +71,6 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 		const downloadJourney = totals(journeys.gallery, 'download_reliability');
 		const distributionJourney = totals(journeys.gallery, 'sources_return');
 		const decision = journeys.decision?.available ? journeys.decision : undefined;
-		const payload = report as unknown as { publicationAge: { missingAlbumKeys: string[] }; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null }> };
 		const submitted = decision?.search ? count(decision.search.submitted) : null;
 		const failures = decision?.search ? count(decision.search.failed) : null;
 		const shown = number(searchJourney, 'searches_shown');
@@ -87,14 +87,14 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 			current: report.total, previous: report.previousTotal,
 			eligibility: scope.query.traffic === 'conservative' ? 'public eligible gallery actions; conservative traffic excludes known non-audience traffic' : 'public eligible gallery actions; inclusive traffic retains unclassified and suspected automation as requested',
 			...(providerLimitation ? { providerLimitation } : {}),
-			...(payload.albums.length ? { albumMomentum: payload.albums.map((row) => ({ albumKey: row.albumKey, current: row.count, previous: row.previousCount, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
+			...(report.albums.length ? { albumMomentum: report.albums.map((row) => ({ albumKey: row.albumKey, current: row.count, previous: row.previousCount, publishedAfterComparison: publishedAfterComparison(row.publicationAt, scope.query), evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
 			...(decision?.albumDiscovery.length ? { albumDiscovery: decision.albumDiscovery.map((row) => ({ ...row, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
 			...(decision?.photoResponses.length ? { linkedPhotoResponse: decision.photoResponses.map((row) => ({ photoId: row.photoId, albumKey: row.albumKey, exposures: row.exposures, responses: row.responses, evidenceLinks: [`/photo/${encodeURIComponent(row.photoId)}`] })) } : {}),
 			...(decision?.rendering ? { rendering: { rendered: decision.rendering.rendered, failed: decision.rendering.failed, observedTerminal: decision.rendering.observedTerminal } } : {}),
 			...(submitted !== null || shown !== null ? { search: { submitted, resultsShown: shown, emptyResults: empty, failures, selections } } : {}),
 			...(requests !== null && failed !== null && unknownTerminal !== null && handedOff !== null ? { download: { requests, failed, unknownTerminal, handedOff } } : {}),
 			...(taggedArrivals !== null && favoriteVisits !== null ? { distribution: { taggedArrivals, laterNamedAction: favoriteVisits, actionName: 'favorite-added' } } : {}),
-			catalogue: { eligibleAlbums: payload.albums.length, eligiblePhotos: report.photos.length, missingAlbumFacts: payload.publicationAge.missingAlbumKeys.length }
+			catalogue: { eligibleAlbums: report.albums.length, eligiblePhotos: report.photos.length, missingAlbumFacts: report.publicationAge.missingAlbumKeys.length }
 		};
 	}
 

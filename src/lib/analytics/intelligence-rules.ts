@@ -14,7 +14,8 @@ export interface IntelligenceRuleInput {
 	diagnostics?: Array<{ type: string; status: string; count: number }>;
 	linkedPhotoResponse?: Array<{ photoId: string; albumKey: string; exposures: number; responses: number; evidenceLinks: string[] }>;
 	albumDiscovery?: Array<{ albumKey: string; exposures: number; opens: number; directEntries: number; evidenceLinks: string[] }>;
-	albumMomentum?: Array<{ albumKey: string; current: number | null; previous: number | null; evidenceLinks: string[] }>;
+	/** `publishedAfterComparison` comes from report-contract's rule: such an album had nothing to compare, so its activity is new, not growth. */
+	albumMomentum?: Array<{ albumKey: string; current: number | null; previous: number | null; publishedAfterComparison?: boolean; evidenceLinks: string[] }>;
 	rendering?: { rendered: number; failed: number; observedTerminal: number | null };
 	search?: { submitted: number | null; resultsShown: number | null; emptyResults: number | null; failures: number | null; selections: number | null };
 	download?: { requests: number; failed: number; unknownTerminal: number; handedOff: number };
@@ -86,6 +87,7 @@ export function evaluateIntelligenceRules(input: IntelligenceRuleInput): Intelli
 		? input.albumMomentum.map((row) => ({ ...row, target: { kind: 'album' as const, albumKey: row.albumKey } }))
 		: [{ albumKey: null, current: input.current, previous: input.previous, evidenceLinks: [], target: { kind: input.scope.kind === 'gallery' ? 'gallery' as const : 'site' as const } }];
 	for (const row of momentum) {
+		if ('publishedAfterComparison' in row && row.publishedAfterComparison) { suppress(result, 'momentum', 'This album was published after the comparison period, so there is no earlier activity to compare. Its activity is new, not growth.', row.target); continue; }
 		if (!completeComparison(input) || !nonnegative(row.current, row.previous) || row.current === null || row.previous === null) { suppress(result, 'momentum', 'A complete comparable period is not available.', row.target); continue; }
 		if (row.current < minimumSample || row.previous < minimumSample) { suppress(result, 'momentum', `Both periods need at least ${minimumSample} ${input.scope.kind === 'sites' ? 'page views' : 'recorded actions'}.`, row.target); continue; }
 		if (Math.abs(row.current - row.previous) < meaningfulAbsoluteChange) { suppress(result, 'momentum', 'The absolute change is too small to recommend a review.', row.target); continue; }
