@@ -37,6 +37,16 @@ Briefs have two separate blockers. A brief is written only for an owner with a p
 
 What this walk did not see: every page was read signed out, the way the "Available by direct link" visitor sees it. The signed-in screens (actions to review, assistant answers, saved-view management, brief settings) were judged from source and from the zero usage counts above, not from their rendered screens.
 
+## What a blind reviewer saw
+
+A reviewer with no access to the brief, code or this document judged the six current captures against Nino's own questions. Record: [`cold-review.md`](../../evidence/screen-reviews/analytics-current-ac68ae5/cold-review.md). Verdict: the product does not let the owner know what to do. Its proposed structural change matches this proposal: open on the newest album, say in plain words how it is doing, and fold Measurement away.
+
+It also found defects to carry into the rebuild:
+- Sources' open locations add up to 2,459, while Overview says 2,290 photo opens. The gap is the 169 album opens counted in one and not the other.
+- Measurement's traffic-impact table lists 136 albums, while Albums says 254.
+- "Inspector context: Album Re7kho" shows an internal album ID on an all-albums report.
+- Photo titles truncate at the same point, so tiles cannot be told apart.
+
 ## Current and proposed page tree
 
 ```text
@@ -189,7 +199,7 @@ The rest of this proposal (the page structure) is not yet approved.
 
 ## Next step
 
-Three different whole-screen concepts for Home, the album index, and the album report. They will be compared on the same real cases: JCA at ACC's three-day burst; a trickle album like VLA – Spring 2026; a quiet week with no new album; and unavailable data. Each case uses production numbers, not invented ones. This matches the judged-screen pattern and the concept comparison in [`ANALYTICS_DESIGN_CONCEPTS.md`](../../ANALYTICS_DESIGN_CONCEPTS.md). The Sep 28 comparison used invented cases ("an older photo rising", "a traffic burst") that the real gallery has not produced.
+Done October 6: [three concepts](../../design/concepts/2026-10-06-launch/README.md) on these cases, awaiting Nino's selection. Original plan: three different whole-screen concepts for Home, the album index, and the album report. They will be compared on the same real cases: JCA at ACC's three-day burst; a trickle album like VLA – Spring 2026; a quiet week with no new album; and unavailable data. Each case uses production numbers, not invented ones. This matches the judged-screen pattern and the concept comparison in [`ANALYTICS_DESIGN_CONCEPTS.md`](../../ANALYTICS_DESIGN_CONCEPTS.md). The Sep 28 comparison used invented cases ("an older photo rising", "a traffic burst") that the real gallery has not produced.
 
 ## Sources
 
