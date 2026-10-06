@@ -9,9 +9,13 @@ compatibility_flags = ["nodejs_compat"]
 # Once a Pages project has a Wrangler config, that file is the source of truth and the same
 # fields become read-only in the dashboard. A plain-text variable set through the dashboard or
 # the API is reconciled away on the next deploy. Secrets are exempt — Wrangler never deletes
-# them — which is why the nine `secret_text` values (SUPABASE_SERVICE_ROLE_KEY, the CF Images
-# and Stream tokens, OPENROUTER_API_KEY, the VITE_* pair, NODE_VERSION) survive out there and
-# are deliberately not duplicated here.
+# them — which is why the `secret_text` values (SUPABASE_SERVICE_ROLE_KEY, the CF Images and
+# Stream tokens, OPENROUTER_API_KEY, the PostHog keys, the VITE_* values and the rest) survive
+# out there and are deliberately not duplicated here.
+#
+# The build's Node version comes from `.nvmrc` alone. Keep NODE_VERSION unset in the dashboard:
+# setting it there puts the version in two places that nothing keeps in sync. It was a dashboard
+# secret pinned to 22.22.0 until 2026-10-05, and was deleted so `.nvmrc` is the only owner.
 #
 # Learned the hard way on 2026-07-28: ADMIN_EMAILS was set via the API, confirmed present, and
 # then silently vanished across two consecutive deploys before anyone would have noticed. That
