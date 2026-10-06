@@ -312,7 +312,9 @@ test('open problems: none when everything is current, and each cause links to wh
 	assert.equal(COMPLETED_DAYS_CHECKED, 7);
 	const late = openProblems({ ...base, freshness: { ...base.freshness, refreshedAt: '2026-10-06T12:00:00Z' } });
 	assert.deepEqual(late.map((p) => p.id), ['refresh-late']);
-	assert.match(late[0].text, /last refreshed at 7:00 AM Chicago time\. They normally refresh every 30 minutes\.$/);
+	// The opening sentence already gives the refresh time; the problem says only what it adds.
+	assert.equal(late[0].text, 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.');
+	assert.doesNotMatch(late[0].text, /Chicago time/);
 	const incidents = openProblems({ ...base, incidents: ['collection-health-provider_delivery_failures', 'search-failures', 'download-failed', 'render-x', 'odd'] });
 	assert.deepEqual(incidents.map((p) => p.text), [
 		'A data collection check is failing. This incident is open.',

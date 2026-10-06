@@ -472,7 +472,7 @@ export function openProblems(input: ProblemInput): HomeProblem[] {
 		const more = freshness.incompleteDays.length > 4 ? ` and ${freshness.incompleteDays.length - 4} earlier` : '';
 		problems.push({ id: 'coverage', text: `Records are incomplete for ${plural(freshness.incompleteDays.length, 'completed day')} of the last ${COMPLETED_DAYS_CHECKED} (${list}${more}). A total that includes one is not shown.`, href: 'measurement', linkText: 'See what was recorded' });
 	}
-	if (stale.kind === 'refresh_late') problems.push({ id: 'refresh-late', text: `The gallery counts were last refreshed at ${chicagoTime(stale.refreshedAt, today)} Chicago time. They normally refresh every 30 minutes.`, href: 'measurement', linkText: 'Check the refresh' });
+	if (stale.kind === 'refresh_late') problems.push({ id: 'refresh-late', text: 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.', href: 'measurement', linkText: 'Check the refresh' });
 	if (stale.kind === 'refresh_unknown') problems.push({ id: 'refresh-unknown', text: 'The time of the last gallery refresh could not be read, so whether the counts are current is unknown.', href: 'measurement', linkText: 'Check the refresh' });
 	if (input.siteActionsStale) problems.push({ id: 'site-actions-stale', text: `Site action counts were last refreshed at ${chicagoTime(input.siteActionsStale.refreshedAt, today)} Chicago time, so recent clicks may be missing.`, href: 'site_actions', linkText: 'Open site actions' });
 	if (input.incidents === null) problems.push({ id: 'incidents-unreadable', text: 'Open incidents could not be checked, so none is shown here.', href: 'measurement', linkText: 'Check data collection' });
