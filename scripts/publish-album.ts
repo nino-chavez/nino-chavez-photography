@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Publish (or unpublish) an album: the album_settings flip that no ingest
- * script owned until now. Ingest leaves an album visibility='unlisted' with
- * gallery_scope=NULL — invisible on ninochavez.co and letspepper.com — and a
- * video-only album has no album_settings row at all. This script owns the
- * flip that was previously a hand-typed REST PATCH (jpo, 2026-07-19).
+ * Publish (or unpublish) an album: the album_settings visibility flip. Ingest run with
+ * --unlisted leaves an album visibility='unlisted' with gallery_scope=NULL — invisible on
+ * ninochavez.co and letspepper.com. An album with no album_settings row (legacy albums, video-only
+ * albums, and any ingest run without --unlisted) is already public. This script owns the flip
+ * that was previously a hand-typed REST PATCH (jpo, 2026-07-19).
  *
  *   visibility='public'   → album appears on ninochavez.co/photography
  *   gallery_scope='lpo'   → album ALSO appears on letspepper.com/gallery (opt-in;
@@ -23,17 +23,20 @@
  * phone alert with the veto command, then seeds the item into the posting Worker's queue. The
  * series (which account posts) comes from this album's own gallery_scope: 'lpo' posts from
  * letspepper.open, anything else from nino.chavez.photo, with flickday.media as a Collab.
- * Re-publishing an already-public album does not announce it again; pass --announce to announce
- * one anyway (the builder refuses a duplicate queue item, so a repeat is harmless), or
+ * Re-publishing an already-public album does not announce it again, and neither does publishing an
+ * album with no album_settings row: a missing row already reads as public, so it is not a new
+ * gallery (a legacy album given a --scope would otherwise post a "new gallery" carousel for an
+ * album that has been public for years). Pass --announce to announce one anyway (the builder refuses a duplicate queue item, so a repeat is harmless), or
  * --no-announce to publish without it. The builder lives in the letspepper repo; set
  * LETSPEPPER_SOCIAL_DIR if it is not at ~/Workspace/dev/apps/letspepper/scripts/social-publish.
  * A missing builder is skipped with a notice; a failed build exits 2 after the publish succeeded.
  *
- * PUBLISHED_AT: the same hidden -> public transition also stamps `album_settings.published_at`
- * (never on --unpublish, never on re-publishing an already-public album) — see
- * `src/lib/albums/publish-target.ts`'s `resolvePublishTarget`, the pure rule this script and its
- * tests share. It is what the "latest gallery" route (`/latest`, `/api/latest`,
- * `/api/galleries/recent`) sorts on.
+ * PUBLISHED_AT: the database stamps `album_settings.published_at` (with published_at_basis =
+ * 'recorded') on the same unlisted -> public write, via the album_settings_stamp_published_at
+ * trigger (supabase/migrations/20261005230000_album_settings_publication_provenance.sql). This
+ * script does not compute it; it prints the row as written so the stamp is visible in the run's
+ * output. It is what the "latest gallery" route (`/latest`, `/api/latest`,
+ * `/api/galleries/recent`) and the analytics publication-age comparison read.
  *
  * Required env (.env.local): VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
@@ -58,7 +61,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 config({ path: join(REPO_ROOT, '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { verifyAlbum } from './verify-album';
-import { resolvePublishTarget, applyPublishTransition } from '../src/lib/albums/publish-target';
+import { resolvePublishTarget, becomesPublic, applyPublishTransition } from '../src/lib/albums/publish-target';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -129,25 +132,20 @@ async function main() {
 			.from('album_settings').select('album_key, visibility, gallery_scope')
 			.eq('album_key', ALBUM_KEY).maybeSingle();
 		if (readErr) { console.error(`read failed: ${readErr.message}`); process.exit(1); }
-		console.log(`before: ${before ? JSON.stringify(before) : 'no album_settings row (video-only album)'}`);
-		const target = resolvePublishTarget({
-			before: before ? { visibility: before.visibility } : null,
-			unpublish: UNPUBLISH,
-			scope: SCOPE,
-			now: new Date().toISOString()
-		});
+		console.log(`before: ${before ? JSON.stringify(before) : 'no album_settings row (already public)'}`);
+		const target = resolvePublishTarget({ unpublish: UNPUBLISH, scope: SCOPE });
 		console.log(`target: ${JSON.stringify({ album_key: ALBUM_KEY, ...target })}`);
 		console.log('dry-run — no write');
-		if (target.published_at) console.log('would set published_at (hidden -> public)');
-		const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || before?.visibility !== 'public');
+		const wouldGoPublic = becomesPublic(before, UNPUBLISH);
+		if (wouldGoPublic) console.log('the database would stamp published_at (unlisted -> public)');
+		const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || wouldGoPublic);
 		if (willAnnounce) console.log(`would announce: ${SOCIAL_DIR}/build-gallery-announce.mjs --album-key ${ALBUM_KEY} --series ${SCOPE === 'lpo' ? 'lpo' : 'other'}`);
 		return;
 	}
 
 	// The one write path every publish/unpublish caller shares (also used by the admin
-	// visibility action) — reads the current row, computes the target via
-	// `resolvePublishTarget`, and UPSERTs it (never deletes), so `published_at` is stamped
-	// identically regardless of which caller made the album public.
+	// visibility action): reads the current row, UPSERTs the target (never deletes), and returns
+	// the row as written, including the trigger's published_at stamp.
 	const result = await applyPublishTransition(supabase, {
 		albumKey: ALBUM_KEY!,
 		unpublish: UNPUBLISH,
@@ -155,9 +153,12 @@ async function main() {
 	});
 	if (!result.ok) { console.error(`write failed: ${result.error}`); process.exit(1); }
 
-	console.log(`before: ${result.before ? JSON.stringify(result.before) : 'no album_settings row (video-only album)'}`);
-	console.log(`target: ${JSON.stringify({ album_key: ALBUM_KEY, ...result.target })}`);
-	const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || result.before?.visibility !== 'public');
+	console.log(`before: ${result.before ? JSON.stringify(result.before) : 'no album_settings row (already public)'}`);
+	console.log(`after:  ${JSON.stringify({ album_key: ALBUM_KEY, ...result.after })}`);
+	if (result.wentPublic && result.after.published_at_basis !== 'recorded') {
+		console.error('warning: the album went public but the database recorded no published_at — is the album_settings_stamp_published_at trigger installed?');
+	}
+	const willAnnounce = !UNPUBLISH && !NO_ANNOUNCE && (ANNOUNCE_FORCED || result.wentPublic);
 	console.log(UNPUBLISH
 		? 'unpublished — hidden from both sites'
 		: SCOPE
