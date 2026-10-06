@@ -1,0 +1,12 @@
+phone: side panel visible = false | dialog open = false
+phone order: grid top 1818 aside height 0 (0 = not shown)
+before Enter: {"open":false,"scrollY":1694,"activeIn":false,"active":"button#.cell s-2T1rzPsanUmp","label":"Photo 6: 2 download requests, 10 opens"}
+after Enter: {"open":true,"scrollY":1694,"activeIn":true,"active":"button#dialog-close.secondary close s-2T","label":"Close"} | scroll moved = false
+dialog title: Photo 6 of 120
+Tab x6 stays in dialog: true:Open photo to share or download | false:NCNino Chavez / Photography reports All  | true:Close | true:Open photo to share or download | false:NCNino Chavez / Photography reports All  | true:Close
+after Esc: {"open":false,"scrollY":1694,"activeIn":false,"active":"button#.cell s-2T1rzPsanUmp ","label":"Photo 6: 2 download requests, 10 opens"} | scroll moved = false | focus back on tapped photo = true
+reopened: true | focus: button#dialog-close.secondary close s-2T
+after Close click: {"open":false,"scrollY":1694,"activeIn":false,"active":"button#.cell s-2T1rzPsanUmp ","label":"Photo 6: 2 download requests, 10 opens"} | focus back = true | scroll moved = false
+strip tap opens dialog: true
+desktop: side panel visible = true | dialog open = false | panel note = Number 5 of 120 in this ranking.
+desktop: "Worth your attention" present = 0 | "Intelligence is unavailable" = 0 | #assistant = 0

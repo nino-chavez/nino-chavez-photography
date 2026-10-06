@@ -1,13 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T18:19:02.064Z",
-  "reviewedBy": "Claude Code orchestrator session that dispatched and reviewed the first-publication change (not its author's subagent, not a cold reviewer, not a human)",
-  "method": "Branch feat/first-publication-age (cc9d3cf) on a local dev server reading production data, after migration 20261006120000 was applied to production on 2026-10-06 with Nino's approval. In-app browser at desktop width and 375x812: Albums tab scoped to Re7kho shows the inspector line 'first published Sep 25, 2026 (inferred)', the row reads 'Not published / New album', and the new-album note renders; Albums with compare=publication_age shows heading 'First 30 days after publication', the 'First published' column with seven inferred dates, and the 247-album left-out note. No element extends past the viewport at 375 px; that check was forced to fail once with a 420 px probe. Not covered: Overview, Photos, Sources, Measurement, Preferences and Sites were not re-walked (their source is unchanged by this branch); no physical device; no cold reviewer; no signed-in owner controls.",
-  "sourceDigest": "sha256:01c6eb716ac5c46ebd0a1f682ddb6973a82d6989351c4a1058cff65a64d3eaef",
-  "sourceFiles": 162,
+  "reviewedAt": "2026-10-06T19:51:40.148Z",
+  "reviewedBy": "Claude Code orchestrator session (reviewed the implementing agent's captures; wrote this one copy fix; not a cold reviewer, not a human)",
+  "method": "Branch feat/album-launch-report on a local dev server reading production, 2026-10-06. Orchestrator opened the agent's final captures in docs/evidence/screen-reviews/album-launch-report-55cf710 (Re7kho desktop bottom, jq1Rp7 desktop, 5M7kNx desktop, Re7kho phone dialog) and found the selected-photo exposure sentence read as impossible ('shown 0 times and opened 1 time'). Reworded it to 'tile appeared on screen in a gallery grid N times', with a second sentence about direct-link opens only when opens exceed grid appearances. Walked 5M7kNx and Re7kho in the in-app browser: both sentence variants render with correct spacing; at 375x812 the photo dialog opens from a grid cell with focus on Close and no element outside the viewport. Everything else is covered by the implementing agent's walk recorded at 55cf710 (six albums at 1440x900 and 375x812, keyboard dialog walk, focus, 200% text, forced colors, increased contrast, overflow gate forced to fail once). Not covered: signed-in controls (shortlist, record, sign-in return) were not run; real host clean URL; physical device or Safari; screen reader; cold reviewer.",
+  "sourceDigest": "sha256:9caeda66922202da390e75532b0ebd2135d9041bef4b7fdef37a0269eccfc112",
+  "sourceFiles": 167,
   "scope": [
-    "analytics albums inspector first-publication label",
-    "analytics publication-age comparison First published column"
+    "album launch report selected-photo exposure sentence",
+    "album launch report phone photo dialog"
   ]
 }

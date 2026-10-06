@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { MeasureTotals } from '$lib/analytics/report-contract';
 	import type { AlbumRow } from './AlbumComparisonTable.svelte';
-	interface Props { row: AlbumRow | null; measure: keyof MeasureTotals; measureLabel?: string; comparisonLabel?: string; risingAvailable?: boolean; risingBasis?: string; albumCount?: number; reportHref: (albumKey: string, section: 'albums' | 'photos') => string; }
-	let { row, measure, reportHref, measureLabel = 'Recorded actions', comparisonLabel = '', risingAvailable = false, risingBasis = 'absolute', albumCount = 0 }: Props = $props();
+	interface Props { row: AlbumRow | null; measure: keyof MeasureTotals; measureLabel?: string; comparisonLabel?: string; risingAvailable?: boolean; risingBasis?: string; albumCount?: number; reportHref: (albumKey: string, section: 'albums' | 'photos') => string; launchReportHref: (albumKey: string) => string; }
+	let { row, measure, reportHref, launchReportHref, measureLabel = 'Recorded actions', comparisonLabel = '', risingAvailable = false, risingBasis = 'absolute', albumCount = 0 }: Props = $props();
 	const measures = $derived(row ? ([
 		['album_opens', 'Album opens'], ['photo_opens', 'Photo opens'], ['downloads', 'Download actions'], ['favorites', 'Favorite additions'], ['shares', 'Share actions']
 	] as const).filter(([key]) => key !== measure).map(([key, label]) => [label, row.measures[key]] as const) : []);
@@ -17,10 +17,10 @@
 		{#if row.publishedAfterComparison}<p class="note">This album was published after the previous period ended, so there was nothing to compare. Its whole total is new activity, not growth.</p>{/if}
 		<dl>{#each measures as [label, value]}<div><dt>{label}</dt><dd>{value === null ? 'Unavailable' : value.toLocaleString()}</dd></div>{/each}</dl>
 		<p class="note">Download actions are requests or handoffs, not confirmed file saves. Shares are handoffs, not confirmed posts.</p>
-		<a class="open" href={reportHref(row.key, 'albums')+'#albums'} data-sveltekit-preload="tap">Open album report</a>
+		<a class="open" href={launchReportHref(row.key)} data-sveltekit-preload="tap">Open album report</a>
 		<a class="open photos" href={reportHref(row.key, 'photos')+'#photos'}>View album photos</a>
 	{:else}
-		<p class="label">Album inspector</p><h2 id="inspector-title">Select an album</h2><p class="note">Selecting a row only changes this inspector. Open album report changes the report scope.</p>
+		<p class="label">Album inspector</p><h2 id="inspector-title">Select an album</h2><p class="note">Selecting a row only changes this inspector. Open album report shows how this album's launch went.</p>
 	{/if}
 </aside>
 

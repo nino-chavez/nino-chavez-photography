@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import EmailIntelligenceControls from './EmailIntelligenceControls.svelte';
 	import PrivateIntelligenceControls from './PrivateIntelligenceControls.svelte';
 	import { base } from '$app/paths';
@@ -23,9 +23,15 @@
 		kind: 'gallery' | 'sites';
 		contextTarget?: Finding['target'] | null;
 		class?: string;
+		/** Where the sign-in link returns to. Defaults to the report this panel belongs to. */
+		signInNext?: string;
+		/** A page button that wants the record-an-actual-change form open: raise this number to ask for it. */
+		recordRequest?: number;
+		/** Show only the owner's private record form and settings. For a scope that has no saved calculation to read. */
+		recordOnly?: boolean;
 	}
-	let { scope, owner, kind, contextTarget = null, class: className = '' }: Props = $props();
-	const ownerSignInHref = `${base}/login?next=${encodeURIComponent(kind === 'sites' ? '/analytics/sites' : '/analytics/operator')}`;
+	let { scope, owner, kind, contextTarget = null, class: className = '', signInNext, recordRequest = 0, recordOnly = false }: Props = $props();
+	const ownerSignInHref = $derived(`${base}/login?next=${encodeURIComponent(signInNext ?? (kind === 'sites' ? '/analytics/sites' : '/analytics/operator'))}`);
 
 	type ActionMode = 'record' | 'dismiss' | 'snooze' | null;
 	type PollResponse = { status: 'pending' | 'complete' | 'unavailable'; answer: AssistantAnswer | null };
@@ -241,6 +247,7 @@
 		pollTimer = setTimeout(() => void pollAnswer(), Math.min(maximumPollDelayMs, initialPollMs * 2 ** poll.attempt));
 	}
 	async function loadReport(page = 0, actionsPage = report?.actionsPage ?? 0, briefsPage = report?.briefsPage ?? 0) {
+		if (recordOnly) { loading = false; return; }
 		if (!validatedScope) { reportError = 'This report has an invalid scope.'; loading = false; return; }
 		reportAbort?.abort(); const controller = new AbortController(); reportAbort = controller; const version = ++reportRequestVersion;
 		loading = true; reportError = null;
@@ -356,6 +363,18 @@
 		catch { actionError = 'The action reversal could not be saved. Private history is unchanged.'; }
 	}
 
+	// A request from the page to open the private record form. Only the owner has one; the effect below closes it again when the scope changes.
+	let handledRecordRequest = 0;
+	$effect(() => {
+		const requested = recordRequest;
+		untrack(() => {
+			if (requested > handledRecordRequest && owner) {
+				handledRecordRequest = requested; actionFinding = null; actionMode = 'record';
+				void tick().then(() => document.getElementById('action-sheet-title')?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+			}
+		});
+	});
+
 	$effect(() => {
 		scopeKey; requestedSnapshot; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; expandedBriefs = false; untrack(() => { stopPolling(); answerAbort?.abort(); void loadReport(0, 0, 0); });
 		return () => { reportAbort?.abort(); answerAbort?.abort(); stopPolling(); };
@@ -363,15 +382,17 @@
 	$effect(() => { if (owner) untrack(() => void loadPreferences()); else preferences = null; });
 </script>
 
-<section class={`intelligence ${className}`} aria-labelledby={`${kind}-intelligence-heading`}>
+<section class={`intelligence ${className}`} aria-labelledby={recordOnly ? undefined : `${kind}-intelligence-heading`} aria-label={recordOnly ? 'Record what you did' : undefined}>
+	{#if !recordOnly}
 	<div class="heading">
 		<div><p class="kicker">Report intelligence</p><h2 id={`${kind}-intelligence-heading`}>Worth your attention</h2>{#if requestedSnapshot}<p class="context-note">You are reading saved evidence. The cutoff below belongs to that saved calculation.</p>{/if}<p>Short evidence-led observations for this report. They do not rate photographic quality or prove a business result.</p></div>
 		{#if report && !requestedSnapshot && Date.now()-Date.parse(report.generatedAt)>30*60_000}<p class="context-note">This saved calculation is more than 30 minutes old. Check its cutoff and refresh before acting on a new change.</p>{/if}
 		{#if report}<p class="freshness">Cutoff: {formatTime(report.cutoff)}<br />Saved: {formatTime(report.generatedAt)}</p>{/if}
 	</div>
+	{/if}
 
-	{#if owner}
-		<details class="reporting-settings"><summary>Reporting settings</summary><section class="settings" aria-labelledby={`${kind}-settings-heading`}>
+	{#if owner && (!recordOnly || actionMode)}
+		<details class="reporting-settings" open={recordOnly || undefined}><summary>Reporting settings</summary><section class="settings" aria-labelledby={`${kind}-settings-heading`}>
 			<div><p class="kicker">Private reporting settings</p><h3 id={`${kind}-settings-heading`}>History and briefs</h3><p>These settings apply to private records only. Visitor privacy and public aggregate reporting follow their separate contracts.</p></div>
 			{#if preferencesLoading && !preferences}<p class="state" role="status">Loading private settings.</p>{:else if preferences}<form onsubmit={(event) => { event.preventDefault(); void savePreferences(event.currentTarget as HTMLFormElement); }}>
 				<fieldset><legend>Keep private records for</legend><label><input type="radio" name="retention" value="until_deleted" checked={preferences.retention === 'until_deleted'} /> Until I delete them</label><label><input type="radio" name="retention" value="90_days" checked={preferences.retention === '90_days'} /> 90 days</label><label><input type="radio" name="retention" value="one_year" checked={preferences.retention === 'one_year'} /> One year</label></fieldset>
@@ -383,7 +404,9 @@
 		</section></details>
 	{/if}
 
-	{#if loading}
+	{#if recordOnly}
+		<!-- no saved calculation exists for this scope: nothing to read, only the owner's record form below -->
+	{:else if loading}
 		<p class="state" role="status">Loading saved findings. The report above remains usable.</p>
 	{:else if reportError}
 		<div class="state unavailable" role="status"><strong>Intelligence is unavailable</strong><p>{reportError}</p><button type="button" onclick={() => void loadReport(currentPage)}>Try again</button>{#if owner}<button type="button" disabled={refreshLoading} onclick={() => void queueReport()}>Calculate this scope</button>{/if}{#if refreshMessage}<p role="status">{refreshMessage}</p>{/if}</div>
@@ -456,7 +479,7 @@
 			{#if actionError}<p class="answer-error" role="alert">{actionError}</p>{/if}{#if actionMessage}<p class="action-message" role="status">{actionMessage}</p>{/if}
 		</section>
 	{/if}
-	<PrivateIntelligenceControls {owner} {actions} onchanged={() => { void loadReport(currentPage); void loadPreferences(); }} />
+	{#if !recordOnly}<PrivateIntelligenceControls {owner} {actions} onchanged={() => { void loadReport(currentPage); void loadPreferences(); }} />{/if}
 </section>
 
 <style>

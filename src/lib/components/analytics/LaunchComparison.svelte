@@ -1,0 +1,140 @@
+<script lang="ts">
+	import type { CumulativeCurve, LaunchTableRow } from '$lib/analytics/launch-report-view';
+	import { ordinal } from '$lib/analytics/launch-recap';
+	import { nameWithoutDate } from '$lib/analytics/launch-report-view';
+
+	interface Props { curves: CumulativeCurve[]; rows: LaunchTableRow[]; hasLaunch: boolean }
+	let { curves, rows, hasLaunch }: Props = $props();
+
+	const height = 250;
+	const pad = { top: 22, right: 14, bottom: 36, left: 46 };
+	let width = $state(520);
+	const days = $derived(Math.max(8, ...curves.map((curve) => (curve.points.at(-1)?.day ?? 0) + 1)));
+	const max = $derived(Math.max(1, ...curves.flatMap((curve) => curve.points.map((point) => point.total))));
+	const inner = $derived(Math.max(120, width - pad.left - pad.right));
+	const plotHeight = height - pad.top - pad.bottom;
+	const x = (day: number) => pad.left + (day / (days - 1)) * inner;
+	const y = (total: number) => pad.top + plotHeight - (total / max) * plotHeight;
+	const path = (curve: CumulativeCurve) => curve.points.map((point) => `${x(point.day).toFixed(1)},${y(point.total).toFixed(1)}`).join(' ');
+	const current = $derived(curves.find((curve) => curve.current) ?? null);
+	const others = $derived(curves.filter((curve) => !curve.current));
+	const leader = $derived(others.reduce<CumulativeCurve | null>((best, curve) => ((curve.points.at(-1)?.total ?? -1) > (best?.points.at(-1)?.total ?? -1) ? curve : best), null));
+	const ticks = $derived([0, 3, 7, 13].filter((day) => day < days));
+	const summary = $derived(
+		current && current.points.length
+			? `This album has ${current.points.at(-1)!.total.toLocaleString()} photo opens by day ${current.points.at(-1)!.day}. ${others.length} other launches are in grey.`
+			: 'Every launch with a first publication, added up by day since publication.'
+	);
+</script>
+
+{#snippet launchTable()}
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
+	<div class="scroll" role="region" aria-label="Launches ranked by photo opens in the first week" tabindex="0">
+		<table>
+			<caption class="sr-only">Launches ranked by photo opens in the first week, with the first three days beside it</caption>
+			<thead><tr><th scope="col">Album</th><th scope="col" class="num"><abbr title="First 3 days">3 days</abbr></th><th scope="col" class="num"><abbr title="First week">Week 1</abbr></th><th scope="col" class="num">Rank</th></tr></thead>
+			<tbody>
+				{#each rows as row}
+					<tr class:current={row.current} aria-current={row.current ? 'true' : undefined}>
+						<th scope="row">{row.name}{#if row.current}<span class="here">This album</span>{/if}<span class="pub">Published {row.published}{row.inferred ? ' (inferred)' : ''}</span></th>
+						<td class="num">{row.day3State === 'ok' ? row.day3?.toLocaleString() : row.day3State === 'incomplete' ? 'Incomplete' : 'Not yet'}</td>
+						<td class="num">{row.day7State === 'ok' ? row.day7?.toLocaleString() : row.day7State === 'incomplete' ? 'Incomplete' : 'Not yet'}</td>
+						<td class="num">{row.rank7 === null ? '' : `${row.tied7 ? 'tied ' : ''}${ordinal(row.rank7)}`}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+{/snippet}
+
+<section class="compare" aria-labelledby="compare-title">
+	<h2 id="compare-title">Against other launches</h2>
+	{#if !hasLaunch}
+		<p class="lead">This album has no launch date, so it has no place in this comparison. The ranking below shows the launches it would be compared with.</p>
+	{:else}
+		<p class="lead lead-chart">Each line adds up one launch's photo opens by day since publication. This album is the blue line. The table has the same numbers.</p>
+		<p class="lead lead-table">Each launch's photo opens in its first three days and first week, best week first.</p>
+	{/if}
+	<div class="chart-only" bind:clientWidth={width}>
+		{#if hasLaunch && current}
+			<svg {width} {height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Cumulative photo opens by day since publication. ${summary}`}>
+				{#each ticks as tick}
+					<line class="grid" x1={x(tick)} x2={x(tick)} y1={pad.top} y2={y(0)} />
+					<text class="tick" x={x(tick)} y={height - 18} text-anchor={x(tick) > width - 36 ? 'end' : 'middle'}>day {tick}</text>
+				{/each}
+				<line class="axis" x1={pad.left} x2={width - pad.right} y1={y(0)} y2={y(0)} />
+				<text class="tick" x={pad.left - 6} y={y(max) + 4} text-anchor="end">{max.toLocaleString()}</text>
+				<text class="tick" x={pad.left - 6} y={y(0) + 4} text-anchor="end">0</text>
+				{#each others as curve}
+					{#if curve.points.length}
+						<polyline class="other" points={path(curve)} fill="none"><title>{curve.name}: {curve.points.at(-1)?.total.toLocaleString()} photo opens by day {curve.points.at(-1)?.day}</title></polyline>
+					{/if}
+				{/each}
+				{#if current.points.length}
+					<polyline class="mine" points={path(current)} fill="none" />
+					{@const end = current.points.at(-1)!}
+					<circle class="mine-dot" cx={x(end.day)} cy={y(end.total)} r="4" />
+					{#if current.cutByGap}<text class="tick" x={pad.left + 4} y={pad.top + 10}>Records incomplete after day {end.day}</text>{/if}
+				{/if}
+				<text class="tick" x={pad.left + inner / 2} y={height - 2} text-anchor="middle">Days since publication</text>
+			</svg>
+			<p class="legend">
+				<span><span class="swatch mine-swatch" aria-hidden="true"></span> This album{#if current.points.length}: {current.points.at(-1)?.total.toLocaleString()} by day {current.points.at(-1)?.day}{/if}</span>
+				<span><span class="swatch other-swatch" aria-hidden="true"></span> Other launches{#if leader && leader.points.length}{' '}(highest: {nameWithoutDate(leader.name)}, {leader.points.at(-1)?.total.toLocaleString()} by day {leader.points.at(-1)?.day}){/if}</span>
+			</p>
+		{/if}
+	</div>
+	{#if hasLaunch}
+		<details class="table-wide">
+			<summary>Show the ranked launch table</summary>
+			{@render launchTable()}
+		</details>
+		<div class="table-phone">
+			{@render launchTable()}
+		</div>
+	{:else}
+		{@render launchTable()}
+	{/if}
+</section>
+
+<style>
+	.compare { min-width: 0; }
+	h2 { color: #172033; font-size: 1.05rem; margin: 0; }
+	.lead, .legend { color: #526176; font-size: .85rem; line-height: 1.5; margin: .3rem 0 .6rem; }
+	.chart-only { min-width: 0; overflow: hidden; }
+	svg { display: block; max-width: 100%; }
+	.axis { stroke: #6f7f95; }
+	.grid { stroke: #e1e8f0; stroke-dasharray: 3 3; }
+	.tick { fill: #526176; font-size: 12px; font-variant-numeric: tabular-nums; }
+	.other { stroke: #7b8ca3; stroke-width: 1.6; stroke-linejoin: round; }
+	.mine { stroke: #1458c4; stroke-width: 3.2; stroke-linejoin: round; stroke-linecap: round; }
+	.mine-dot { fill: #1458c4; }
+	.legend { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .8rem; }
+	.swatch { display: inline-block; width: 1.2rem; height: 0; margin-right: .3rem; vertical-align: middle; }
+	.mine-swatch { border-top: 3px solid #1458c4; }
+	.other-swatch { border-top: 2px solid #7b8ca3; }
+	.table-wide { margin-top: .5rem; border-top: 1px solid #e1e8f0; padding-top: .4rem; }
+	summary { cursor: pointer; color: #174ea6; font-size: .85rem; font-weight: 650; min-height: 2.75rem; display: flex; align-items: center; }
+	summary:focus-visible, .scroll:focus-visible { outline: 3px solid #174ea6; outline-offset: 2px; }
+	.scroll { overflow-x: auto; }
+	table { border-collapse: collapse; font-size: .85rem; width: 100%; }
+	th, td { border-bottom: 1px solid #e1e8f0; padding: .45rem .4rem; text-align: left; vertical-align: top; color: #172033; }
+	thead th { color: #526176; font-size: .76rem; font-weight: 650; }
+	tbody th { font-size: .82rem; font-weight: 600; overflow-wrap: anywhere; }
+	.pub { display: block; color: #526176; font-size: .76rem; font-weight: 400; }
+	.here { color: #174ea6; display: block; font-size: .76rem; font-weight: 800; }
+	abbr { text-decoration: none; }
+	.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+	tr.current > * { background: #eaf1fd; }
+	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+	.table-phone, .lead-table { display: none; }
+	@media (max-width: 639px) {
+		.chart-only { display: none; }
+		.table-wide { display: none; }
+		.table-phone { display: block; }
+		.lead-table { display: block; }
+		.lead-chart { display: none; }
+	}
+	@media (forced-colors: active) { .mine { stroke: Highlight; } .other { stroke: GrayText; } .mine-swatch { border-top-color: Highlight; forced-color-adjust: none; } .other-swatch { border-top-color: GrayText; forced-color-adjust: none; } }
+	@media (prefers-contrast: more) { .tick, .lead, .legend, .pub { color: #2b3748; fill: #2b3748; } .grid { stroke: #6f7f95; } .other { stroke: #4f6078; } }
+</style>
