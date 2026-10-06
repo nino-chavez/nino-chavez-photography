@@ -161,9 +161,10 @@ BEGIN
 	IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(r->'photos')p WHERE (p->>'count')::bigint>0 AND p->'measures'->'photo_opens'='null'::jsonb) THEN RAISE EXCEPTION 'partial group count/measures semantics wrong'; END IF;
 END $$;
 
--- Rising leaves out photos from albums published after the comparison window
--- (20261005200000). Same Chicago-date rule as publishedAfterComparison() in
--- report-contract.ts; Popular and the no-comparison case keep every photo.
+-- Rising leaves out photos from albums FIRST published after the comparison window
+-- (20261005200000, anchored on first_published_at by 20261006120000). Same Chicago-date rule as
+-- publishedAfterComparison() in report-contract.ts; Popular and the no-comparison case keep every
+-- photo. Both fields are set together: first_published_at is never later than published_at.
 DO $$ DECLARE target text; popular jsonb; rising_r jsonb; target_photos integer;
 BEGIN
   popular:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'popular',true,false);
@@ -171,16 +172,109 @@ BEGIN
   IF target IS NULL THEN RAISE EXCEPTION 'fixture has no photo activity on 2026-09-28'; END IF;
   SELECT count(*) INTO target_photos FROM jsonb_array_elements(popular->'photos')p WHERE p->>'albumKey'=target;
   -- 15:00Z on Sep 28 is Sep 28 in Chicago: after the comparison window, so excluded.
-  UPDATE public.album_settings SET published_at='2026-09-28T15:00:00Z' WHERE album_key=target;
+  UPDATE public.album_settings SET first_published_at='2026-09-28T15:00:00Z', published_at='2026-09-28T15:00:00Z' WHERE album_key=target;
   rising_r:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'rising',true,false);
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(rising_r->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'rising ranked photos from an album published after the comparison window'; END IF;
   IF (rising_r->'photoPagination'->>'total')::integer<>(popular->'photoPagination'->>'total')::integer-target_photos THEN RAISE EXCEPTION 'rising total still counts new-album photos'; END IF;
   IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'popular',true,false)->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'popular dropped new-album photos'; END IF;
   IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'none',NULL,NULL,'inclusive',false,0,0,'rising',true,false)->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'rising without a comparison dropped photos'; END IF;
   -- 04:30Z on Sep 28 is still Sep 27 in Chicago: inside the comparison window, so kept.
-  UPDATE public.album_settings SET published_at='2026-09-28T04:30:00Z' WHERE album_key=target;
+  UPDATE public.album_settings SET first_published_at='2026-09-28T04:30:00Z', published_at='2026-09-28T04:30:00Z' WHERE album_key=target;
   rising_r:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'rising',true,false);
   IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(rising_r->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'rising used the UTC date instead of the Chicago publication date'; END IF;
+END $$;
+
+-- Album age counts from the FIRST publication (20261006120000). An old album that was unpublished
+-- and republished inside the comparison window is not new: its latest publication is recent, its
+-- first is not, and every analytics age rule must use the first.
+DO $$ DECLARE target text; popular jsonb; rising_r jsonb; age_r jsonb; first_at timestamptz:='2026-09-01T15:00:00Z'; latest_at timestamptz:='2026-09-28T15:00:00Z';
+BEGIN
+  popular:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'popular',true,false);
+  target:=popular->'photos'->0->>'albumKey';
+  IF target IS NULL THEN RAISE EXCEPTION 'fixture has no photo activity on 2026-09-28'; END IF;
+  UPDATE public.album_settings SET first_published_at=first_at, published_at=latest_at WHERE album_key=target;
+  -- The latest publication is after the comparison window; the first is before it.
+  rising_r:=public.analytics_read_scheduled_gallery_report('2026-09-28','2026-09-28','photo_opens','all','{}',NULL,NULL,NULL,NULL,NULL,NULL,'custom','2026-09-26','2026-09-27','inclusive',false,0,0,'rising',true,false);
+  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(rising_r->'photos')p WHERE p->>'albumKey'=target) THEN RAISE EXCEPTION 'rising excluded an old album because of its latest publication, not its first'; END IF;
+  IF (SELECT (a->>'publicationAt')::timestamptz FROM jsonb_array_elements(rising_r->'albums')a WHERE a->>'albumKey'=target) IS DISTINCT FROM first_at THEN RAISE EXCEPTION 'album row publicationAt is not the first publication'; END IF;
+  age_r:=public.analytics_read_scheduled_gallery_report('2026-09-01','2026-09-02','photo_opens','album',ARRAY[target],NULL,NULL,NULL,NULL,NULL,NULL,'publication_age',NULL,NULL,'inclusive',false,0,0,'popular',true,false);
+  IF (SELECT (a->>'publishedAt')::timestamptz FROM jsonb_array_elements(age_r->'publicationAge'->'albums')a WHERE a->>'albumKey'=target) IS DISTINCT FROM first_at THEN RAISE EXCEPTION 'publication-age comparison does not start at the first publication'; END IF;
+  IF age_r->'publicationAge'->>'label' !~ 'first publication' THEN RAISE EXCEPTION 'publication-age label does not name the first publication'; END IF;
+END $$;
+
+-- The trigger: unlisted -> public -> unlisted -> public keeps the FIRST publication and moves the
+-- latest one. The row is seeded by a direct UPDATE that leaves visibility alone, so the trigger
+-- does not fire and both times are old and distinguishable from now(), which is fixed for the whole
+-- rehearsal transaction. Without that seed the guard would be invisible: first and latest would
+-- both equal now().
+DO $$ DECLARE r record; first_seed timestamptz:='2026-09-01T15:00:00Z'; latest_seed timestamptz:='2026-09-02T15:00:00Z';
+BEGIN
+  UPDATE public.album_settings SET visibility='public',
+    first_published_at=first_seed, first_published_at_basis='inferred', first_published_at_evidence='rehearsal seed: first',
+    published_at=latest_seed, published_at_basis='inferred', published_at_evidence='rehearsal seed: latest'
+  WHERE album_key='gamma';
+  UPDATE public.album_settings SET visibility='unlisted' WHERE album_key='gamma';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='gamma';
+  IF r.published_at<>latest_seed OR r.first_published_at<>first_seed THEN RAISE EXCEPTION 'unpublishing moved a publication time'; END IF;
+  UPDATE public.album_settings SET visibility='public' WHERE album_key='gamma';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='gamma';
+  IF r.first_published_at IS DISTINCT FROM first_seed OR r.first_published_at_basis IS DISTINCT FROM 'inferred' OR r.first_published_at_evidence IS DISTINCT FROM 'rehearsal seed: first' THEN RAISE EXCEPTION 'republishing moved the first publication: % % %',r.first_published_at,r.first_published_at_basis,r.first_published_at_evidence; END IF;
+  IF r.published_at IS DISTINCT FROM now() OR r.published_at_basis IS DISTINCT FROM 'recorded' OR r.published_at_evidence IS NOT NULL THEN RAISE EXCEPTION 'republishing did not move published_at to now() as recorded: % %',r.published_at,r.published_at_basis; END IF;
+  IF r.published_at<=r.first_published_at THEN RAISE EXCEPTION 'latest publication is not after the first'; END IF;
+END $$;
+
+-- An album with no publication on record gets both fields, recorded, at its first unlisted -> public write.
+DO $$ DECLARE r record;
+BEGIN
+  SELECT * INTO r FROM public.album_settings WHERE album_key='beta';
+  IF r.visibility<>'unlisted' OR r.published_at IS NOT NULL OR r.first_published_at IS NOT NULL THEN RAISE EXCEPTION 'fixture: beta should be unlisted with no publication'; END IF;
+  UPDATE public.album_settings SET visibility='public' WHERE album_key='beta';
+  SELECT * INTO r FROM public.album_settings WHERE album_key='beta';
+  IF r.first_published_at IS DISTINCT FROM now() OR r.first_published_at_basis IS DISTINCT FROM 'recorded' OR r.first_published_at_evidence IS NOT NULL
+     OR r.published_at IS DISTINCT FROM now() OR r.published_at_basis IS DISTINCT FROM 'recorded' THEN RAISE EXCEPTION 'first publication not stamped as recorded at the first write'; END IF;
+END $$;
+
+-- Constraints: the pair is set together, in order, and an inferred value names its evidence.
+DO $$ BEGIN
+  BEGIN UPDATE public.album_settings SET first_published_at=NULL, first_published_at_basis=NULL, first_published_at_evidence=NULL WHERE album_key='gamma'; RAISE EXCEPTION 'a latest publication without a first was accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE public.album_settings SET first_published_at=published_at + interval '1 day' WHERE album_key='gamma'; RAISE EXCEPTION 'a first publication after the latest was accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE public.album_settings SET first_published_at_evidence=NULL WHERE album_key='gamma'; RAISE EXCEPTION 'an inferred first publication without evidence was accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+END $$;
+
+-- The write the currently deployed code issues (publish-target.ts: INSERT .. ON CONFLICT DO UPDATE
+-- with only album_key, visibility and gallery_scope, shaped as PostgREST sends it) must pass the
+-- new constraints and let the trigger set both fields. album_settings in this synthetic database
+-- predates gallery_scope, so the column is added for this rolled-back transaction.
+RESET ROLE;
+ALTER TABLE public.album_settings ADD COLUMN IF NOT EXISTS gallery_scope text;
+INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('deployed-payload', 'Deployed payload replay', 'volleyball', '2026-09-20');
+INSERT INTO public.album_settings (album_key, visibility) VALUES ('deployed-payload', 'unlisted');
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r record;
+BEGIN
+  INSERT INTO public.album_settings (album_key, visibility, gallery_scope) VALUES ('deployed-payload', 'public', 'lpo')
+  ON CONFLICT (album_key) DO UPDATE SET album_key=EXCLUDED.album_key, visibility=EXCLUDED.visibility, gallery_scope=EXCLUDED.gallery_scope;
+  SELECT * INTO r FROM public.album_settings WHERE album_key='deployed-payload';
+  IF r.visibility<>'public' OR r.gallery_scope<>'lpo' OR r.first_published_at IS DISTINCT FROM now() OR r.published_at IS DISTINCT FROM now() THEN RAISE EXCEPTION 'deployed publish payload did not stamp both times'; END IF;
+  -- An album that never had a row is already public by convention: no publication, no stamp.
+  INSERT INTO public.albums (album_key, album_name, sport, event_date) VALUES ('deployed-no-row', 'Deployed payload, no row', 'volleyball', '2026-09-20');
+  INSERT INTO public.album_settings (album_key, visibility, gallery_scope) VALUES ('deployed-no-row', 'public', 'lpo')
+  ON CONFLICT (album_key) DO UPDATE SET album_key=EXCLUDED.album_key, visibility=EXCLUDED.visibility, gallery_scope=EXCLUDED.gallery_scope;
+  IF EXISTS(SELECT 1 FROM public.album_settings WHERE album_key='deployed-no-row' AND (published_at IS NOT NULL OR first_published_at IS NOT NULL)) THEN RAISE EXCEPTION 'a first insert of a public row stamped a publication'; END IF;
+END $$;
+
+-- New events snapshot the FIRST publication, so one album does not split into two publication_at
+-- groups after a republish. alpha is seeded with a first time far from its latest.
+DO $$ DECLARE snap timestamptz; first_seed timestamptz:='2026-09-01T15:00:00Z';
+BEGIN
+  UPDATE public.album_settings SET first_published_at=first_seed, published_at='2026-09-28T15:00:00Z' WHERE album_key='alpha';
+  INSERT INTO public.engagement_events (photo_id, album_key, event_type, session_hash, source, source_kind, traffic_context)
+  VALUES (NULL, 'alpha', 'album_open', 'first-publication-snapshot', 'rehearsal', 'internal_open_location', 'test');
+  SELECT (catalogue_snapshot->>'publication_at')::timestamptz INTO snap FROM public.engagement_events WHERE session_hash='first-publication-snapshot';
+  IF snap IS DISTINCT FROM first_seed THEN RAISE EXCEPTION 'event snapshot publication_at is %, not the first publication %',snap,first_seed; END IF;
 END $$;
 
 DO $$ BEGIN
