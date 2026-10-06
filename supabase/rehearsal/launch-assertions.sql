@@ -1,5 +1,5 @@
 -- Dedicated synthetic rehearsal database only. Every mutation rolls back.
--- Fixtures for public.analytics_read_launch (20261006180000). Dates are in February 2026 so
+-- Fixtures for public.analytics_read_launch (20261006180000) and public.analytics_read_launches (20261006210000). Dates are in February 2026 so
 -- nothing here meets the September 2026 rehearsal fixtures, and they are in the past, which the live
 -- report needs (it reads "today" from the clock); the as-of instant is
 -- 2026-02-20T18:00:00Z, which is Chicago 2026-02-20 12:00 (today, partial).
@@ -112,6 +112,39 @@ FROM public.analytics_events_v2 WHERE occurred_at = '2026-02-04T15:03:00Z';
 INSERT INTO public.analytics_v2_archived_totals (bucket_date, event_name, traffic_context, album_key, photo_id, event_count, export_eligible_count, last_recorded_at) VALUES
   ('2026-02-06', 'photo_exposed', 'audience', 'burst', 'burst-2', 7, 0, '2026-02-06T20:00:00Z'),
   ('2026-02-06', 'photo_exposed', 'operator', 'burst', 'burst-2', 2, 0, '2026-02-06T20:00:00Z');
+
+-- 0. analytics_read_launch is unchanged. launch-baseline.sql froze it as 20261006180000 created it; the live one
+-- now builds its launch list on analytics_read_launches. Every fixture album, both traffic words, public-only on and
+-- off, several as-of days, other window sizes, an undated window and a photo limit: the two answers must be the same
+-- jsonb value and the same text. This runs as the migration owner, before the role changes below.
+CREATE TEMP TABLE parity_log (n int);
+INSERT INTO parity_log VALUES (0);
+DO $$ DECLARE k text; t text; po boolean; a timestamptz; d int; o jsonb; w jsonb;
+BEGIN
+  FOREACH k IN ARRAY ARRAY['burst','trickle','tie','low','gap','young','oldpub','draft','noRow','hidden'] LOOP
+    FOREACH t IN ARRAY ARRAY['conservative','inclusive'] LOOP
+      FOREACH po IN ARRAY ARRAY[true,false] LOOP
+        FOREACH a IN ARRAY ARRAY['2026-02-20T18:00:00Z'::timestamptz,'2026-02-19T18:00:00Z'::timestamptz,'2026-02-17T18:00:00Z'::timestamptz,'2026-02-10T18:00:00Z'::timestamptz] LOOP
+          o := pg_temp.analytics_read_launch_v1(k, a, 14, t, po);
+          w := public.analytics_read_launch(k, a, 14, t, po);
+          IF o IS DISTINCT FROM w OR o::text IS DISTINCT FROM w::text THEN RAISE EXCEPTION 'analytics_read_launch changed: % % % % %', k, t, po, a, jsonb_path_query_array(o, '$.launches[*].albumKey'); END IF;
+          UPDATE parity_log SET n = n + 1;
+        END LOOP;
+      END LOOP;
+    END LOOP;
+    FOREACH d IN ARRAY ARRAY[1, 3, 7, 30] LOOP
+      o := pg_temp.analytics_read_launch_v1(k, '2026-02-20T18:00:00Z', d);
+      w := public.analytics_read_launch(k, '2026-02-20T18:00:00Z', d);
+      IF o IS DISTINCT FROM w OR o::text IS DISTINCT FROM w::text THEN RAISE EXCEPTION 'analytics_read_launch changed for % at % days', k, d; END IF;
+      UPDATE parity_log SET n = n + 1;
+    END LOOP;
+    o := pg_temp.analytics_read_launch_v1(k, '2026-02-20T18:00:00Z', 14, 'conservative', true, '2026-02-04', '2026-02-12', 1);
+    w := public.analytics_read_launch(k, '2026-02-20T18:00:00Z', 14, 'conservative', true, '2026-02-04', '2026-02-12', 1);
+    IF o IS DISTINCT FROM w OR o::text IS DISTINCT FROM w::text THEN RAISE EXCEPTION 'analytics_read_launch changed for % with a window and a photo limit', k; END IF;
+    UPDATE parity_log SET n = n + 1;
+  END LOOP;
+END $$;
+SELECT 'byte identity: ' || n || ' call pairs, old and new analytics_read_launch equal as jsonb and as text' FROM parity_log;
 
 SET LOCAL ROLE service_role;
 
@@ -298,17 +331,88 @@ BEGIN
   IF (h->'rank'->'day7'->>'rank')::int <> 1 OR (b->'rank'->'day7'->>'rank')::int <> 2 OR (b->'rank'->'day7'->>'compared')::int <> 5 THEN RAISE EXCEPTION 'ranks with the unlisted launch included are wrong: % / %', h->'rank', b->'rank'; END IF;
 END $$;
 
+-- 8c. public.analytics_read_launches: the launch list on its own.
+DO $$ DECLARE r jsonb; a timestamptz; t text; po boolean; d int; l jsonb; first_set jsonb;
+BEGIN
+  r := public.analytics_read_launches('2026-02-20T18:00:00Z');
+  IF (SELECT array_agg(k ORDER BY k) FROM jsonb_object_keys(r) k) <> ARRAY['asOf','days','lastCompleteDay','launches','today','traffic'] THEN RAISE EXCEPTION 'top-level keys wrong: %', (SELECT array_agg(k ORDER BY k) FROM jsonb_object_keys(r) k); END IF;
+  IF r->>'today' <> '2026-02-20' OR r->>'lastCompleteDay' <> '2026-02-19' OR (r->>'days')::int <> 14 OR r->>'traffic' <> 'conservative' THEN RAISE EXCEPTION 'envelope wrong: %', r - 'launches'; END IF;
+  IF r::text ~* 'anonymous_browser_id|visit_id|session_hash|browser_id|event_id|occurred_at|user_agent|ip_address' THEN RAISE EXCEPTION 'an identifier or raw event field leaked'; END IF;
+  IF (SELECT jsonb_agg(x->>'albumKey') FROM jsonb_array_elements(r->'launches') x) <> '["young","gap","low","tie","trickle","burst"]'::jsonb THEN RAISE EXCEPTION 'launches should be the six public launches, newest first publication first: %', (SELECT jsonb_agg(x->>'albumKey') FROM jsonb_array_elements(r->'launches') x); END IF;
+  -- Each launch has exactly the keys the older function gave it.
+  FOR l IN SELECT x FROM jsonb_array_elements(r->'launches') x LOOP
+    IF (SELECT array_agg(k ORDER BY k) FROM jsonb_object_keys(l) k) <> ARRAY['albumKey','albumName','basis','currentDay','elapsedDays','firstPublishedAt','rank','series','status','totals'] THEN RAISE EXCEPTION 'launch keys wrong for %', l->>'albumKey'; END IF;
+  END LOOP;
+  -- The same list as analytics_read_launch gives, for every as-of day, both traffic words, both public-only settings, from a launch, an undated album and an unlisted one.
+  FOREACH a IN ARRAY ARRAY['2026-02-20T18:00:00Z'::timestamptz,'2026-02-19T18:00:00Z'::timestamptz,'2026-02-17T18:00:00Z'::timestamptz,'2026-02-10T18:00:00Z'::timestamptz] LOOP
+    FOREACH t IN ARRAY ARRAY['conservative','inclusive'] LOOP
+      FOREACH po IN ARRAY ARRAY[true,false] LOOP
+        FOREACH d IN ARRAY ARRAY[14, 3] LOOP
+          l := public.analytics_read_launches(a, d, t, po)->'launches';
+          IF l IS DISTINCT FROM public.analytics_read_launch('burst', a, d, t, po)->'launches'
+            OR l IS DISTINCT FROM public.analytics_read_launch('oldpub', a, d, t, po)->'launches'
+            OR l IS DISTINCT FROM public.analytics_read_launch('hidden', a, d, t, po)->'launches' THEN
+            RAISE EXCEPTION 'the launch lists differ at % % % % days', a, t, po, d; END IF;
+        END LOOP;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+  -- The comparison set is the same whichever album is asked about, which is the point of the function.
+  first_set := public.analytics_read_launch('burst')->'launches';
+  IF first_set IS DISTINCT FROM public.analytics_read_launch('oldpub')->'launches' THEN RAISE EXCEPTION 'the launch list depends on the album asked about'; END IF;
+END $$;
+
+-- 8d. Public-only leaves an unlisted launch out of the list and out of every rank; false compares it like any other.
+DO $$ DECLARE r jsonb;
+BEGIN
+  r := public.analytics_read_launches('2026-02-20T18:00:00Z');
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(r->'launches') x WHERE x->>'albumKey' IN ('hidden','draft','noRow','oldpub')) OR jsonb_array_length(r->'launches') <> 6 THEN RAISE EXCEPTION 'default list should hold only the six public dated launches'; END IF;
+  IF (SELECT (x->'rank'->'day7'->>'compared')::int FROM jsonb_array_elements(r->'launches') x WHERE x->>'albumKey' = 'burst') <> 4 THEN RAISE EXCEPTION 'an unlisted launch changed a rank'; END IF;
+  r := public.analytics_read_launches('2026-02-20T18:00:00Z', 14, 'conservative', false);
+  IF jsonb_array_length(r->'launches') <> 7 OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(r->'launches') x WHERE x->>'albumKey' = 'hidden') THEN RAISE EXCEPTION 'public_only false should list the unlisted launch too'; END IF;
+  IF (SELECT (x->'rank'->'day7'->>'rank')::int FROM jsonb_array_elements(r->'launches') x WHERE x->>'albumKey' = 'hidden') <> 1 THEN RAISE EXCEPTION 'the unlisted launch should rank first when included'; END IF;
+  -- Undated albums (oldpub, draft, noRow) are never launches, in any setting.
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(r->'launches') x WHERE x->>'albumKey' IN ('draft','noRow','oldpub')) THEN RAISE EXCEPTION 'an undated album entered the list'; END IF;
+END $$;
+
+-- 8e. No launches is an empty array, not an error, and the older function agrees. The sub-block rolls its own deletes back.
+DO $$ DECLARE r jsonb; o jsonb;
+BEGIN
+  BEGIN
+    RESET ROLE;
+    DELETE FROM public.album_settings;
+    SET LOCAL ROLE service_role;
+    r := public.analytics_read_launches('2026-02-20T18:00:00Z');
+    o := public.analytics_read_launch('burst', '2026-02-20T18:00:00Z')->'launches';
+    RAISE EXCEPTION 'rehearsal-undo';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'rehearsal-undo' THEN RAISE; END IF;
+  END;
+  IF jsonb_typeof(r->'launches') <> 'array' OR jsonb_array_length(r->'launches') <> 0 THEN RAISE EXCEPTION 'no launches must be an empty array, got %', r->'launches'; END IF;
+  IF o IS DISTINCT FROM '[]'::jsonb THEN RAISE EXCEPTION 'analytics_read_launch should also return an empty launches array: %', o; END IF;
+  IF jsonb_array_length(public.analytics_read_launches('2026-02-20T18:00:00Z')->'launches') <> 6 THEN RAISE EXCEPTION 'the sub-block did not roll back'; END IF;
+END $$;
+
 -- 9. Only the service role may call it, and a bad request fails loudly.
 DO $$ BEGIN
   BEGIN PERFORM public.analytics_read_launch('burst', '2026-02-20T18:00:00Z', 0); RAISE EXCEPTION 'zero days accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'invalid launch days' THEN RAISE; END IF; END;
   BEGIN PERFORM public.analytics_read_launch('burst', '2026-02-20T18:00:00Z', 14, 'everything'); RAISE EXCEPTION 'unknown traffic accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'invalid traffic option' THEN RAISE; END IF; END;
   BEGIN PERFORM public.analytics_read_launch('no-such-album'); RAISE EXCEPTION 'unknown album accepted'; EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+  BEGIN PERFORM public.analytics_read_launches('2026-02-20T18:00:00Z', 0); RAISE EXCEPTION 'zero days accepted by the list'; EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'invalid launch days' THEN RAISE; END IF; END;
+  BEGIN PERFORM public.analytics_read_launches('2026-02-20T18:00:00Z', 366); RAISE EXCEPTION '366 days accepted by the list'; EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'invalid launch days' THEN RAISE; END IF; END;
+  BEGIN PERFORM public.analytics_read_launches('2026-02-20T18:00:00Z', 14, 'everything'); RAISE EXCEPTION 'unknown traffic accepted by the list'; EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'invalid traffic option' THEN RAISE; END IF; END;
+  BEGIN PERFORM public.analytics_read_launches(NULL); RAISE EXCEPTION 'null as-of accepted by the list'; EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'as-of is required' THEN RAISE; END IF; END;
 END $$;
 DO $$ BEGIN
   BEGIN SET LOCAL ROLE anon; PERFORM public.analytics_read_launch('burst'); RAISE EXCEPTION 'anon unexpectedly executed the launch read';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   RESET ROLE;
   BEGIN SET LOCAL ROLE authenticated; PERFORM public.analytics_read_launch('burst'); RAISE EXCEPTION 'authenticated unexpectedly executed the launch read';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  RESET ROLE;
+  BEGIN SET LOCAL ROLE anon; PERFORM public.analytics_read_launches(); RAISE EXCEPTION 'anon unexpectedly executed the launch list';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  RESET ROLE;
+  BEGIN SET LOCAL ROLE authenticated; PERFORM public.analytics_read_launches(); RAISE EXCEPTION 'authenticated unexpectedly executed the launch list';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   RESET ROLE;
 END $$;

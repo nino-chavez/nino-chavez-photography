@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { LaunchesNotInstalledError } from './launch-read-model.server';
 import { indexCsv, loadAlbumIndex } from './album-index.server';
 
 type Json = Record<string, any>;
@@ -18,7 +19,6 @@ function launchPayload(): Json {
 	});
 	return {
 		asOf: AS_OF.toISOString(), today: '2026-10-06', lastCompleteDay: '2026-10-05', days: 14, traffic: 'conservative',
-		album: { ...launch('A', 'Alpha'), firstPublishedAtEvidence: null, reason: null, window: { start: '2026-09-25', end: '2026-10-03' }, photosInAlbum: 3, photosWithActivity: 0, photos: [], exposure: { since: null, coverage: 'none' } },
 		launches: [launch('A', 'Alpha'), launch('B', 'Bravo')]
 	};
 }
@@ -33,7 +33,7 @@ function reportPayload(albums: Json[]): Json {
 }
 const group = (albumKey: string, count: number | null, measures: Json = zero, lastActivity: string | null = null) => ({ albumKey, count, previousCount: null, difference: null, lastActivity, measures, publicationAt: null });
 
-function fixture(over: { reportAlbums?: Json[]; reportError?: boolean } = {}) {
+function fixture(over: { reportAlbums?: Json[]; reportError?: boolean; launches?: Json[]; launchError?: { code: string; message: string } } = {}) {
 	const reads: string[] = [];
 	const rpcs: Array<{ name: string; args: Json }> = [];
 	const tables: Record<string, Json[]> = {
@@ -57,7 +57,7 @@ function fixture(over: { reportAlbums?: Json[]; reportError?: boolean } = {}) {
 		},
 		async rpc(name: string, args: Json) {
 			rpcs.push({ name, args });
-			if (name === 'analytics_read_launch') return { data: launchPayload(), error: null };
+			if (name === 'analytics_read_launches') return over.launchError ? { data: null, error: over.launchError } : { data: over.launches ? { ...launchPayload(), launches: over.launches } : launchPayload(), error: null };
 			if (over.reportError) return { data: null, error: { code: 'XX000', message: 'down' } };
 			return { data: reportPayload(over.reportAlbums ?? [group('A', 0), group('B', 0), group('C', 12, { ...zero, photo_opens: 12 }, '2026-10-03T03:30:00Z'), group('E', 0)]), error: null };
 		}
@@ -69,11 +69,10 @@ test('the index is built from one read per source, never one per album, and asks
 	const { client, reads, rpcs } = fixture();
 	const index = await loadAlbumIndex(client, AS_OF);
 	assert.deepEqual([...reads].sort(), ['album_settings', 'albums_summary']);
-	assert.deepEqual(rpcs.map((call) => call.name).sort(), ['analytics_read_launch', 'analytics_read_scheduled_gallery_report']);
-	const launch = rpcs.find((call) => call.name === 'analytics_read_launch')!.args;
+	assert.deepEqual(rpcs.map((call) => call.name).sort(), ['analytics_read_launches', 'analytics_read_scheduled_gallery_report']);
+	const launch = rpcs.find((call) => call.name === 'analytics_read_launches')!.args;
 	assert.equal(launch.p_public_only, true);
-	assert.equal(launch.p_photo_limit, 0);
-	assert.equal(launch.p_album_key, 'A');
+	assert.deepEqual(Object.keys(launch).sort(), ['p_as_of', 'p_days', 'p_public_only', 'p_traffic'], 'the list asks for no album: there is no anchor');
 	const report = rpcs.find((call) => call.name === 'analytics_read_scheduled_gallery_report')!.args;
 	assert.equal(report.p_public_only, true);
 	assert.equal(report.p_scope, 'all');
@@ -138,4 +137,16 @@ test('the CSV has the visible columns, keeps numbers numeric and unknown empty, 
 	// The unlisted album is in no row, and a formula-shaped name is defused.
 	assert.ok(!csv.includes('Delta'));
 	assert.match(lines[4], /"'=HYPERLINK/);
+});
+
+test('when the launch list function is not installed the index says so; it never shows an empty launch list', async () => {
+	const { client } = fixture({ launchError: { code: 'PGRST202', message: 'Could not find the function public.analytics_read_launches' } });
+	await assert.rejects(loadAlbumIndex(client, AS_OF), (cause) => cause instanceof LaunchesNotInstalledError);
+});
+
+test('an empty launch list is a real answer: every public album is listed without a launch date', async () => {
+	const { client } = fixture({ launches: [] });
+	const index = await loadAlbumIndex(client, AS_OF);
+	assert.equal(index.launches.length, 0);
+	assert.deepEqual(index.undated.map((row) => row.albumKey).sort(), ['A', 'B', 'C', 'E']);
 });

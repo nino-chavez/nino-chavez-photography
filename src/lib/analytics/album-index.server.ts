@@ -1,13 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildAlbumIndex, statusText, undatedReasonShort, QUIET_DAYS, type AlbumActivity, type AlbumIndex, type AlbumSetting, type CatalogueAlbum } from './album-index';
-import { fetchLaunchReadModel, type LaunchReadModel } from './launch-read-model.server';
+import { fetchLaunches, type LaunchList } from './launch-read-model.server';
 import { buildOperatorReport, formulaSafe } from './operator-report.server';
 import { dateOnly, parseReportQuery } from './report-contract';
 
 /**
- * Reads behind the album index: one catalogue read, one settings read, one launch call and one
- * 30-day report call. No query per album. Everything is read with the service role, so the
- * visibility rule is applied here and in `buildAlbumIndex`: only public albums are returned.
+ * Reads behind the album index: one catalogue read, one settings read, one launch-list call
+ * (`analytics_read_launches`) and one 30-day report call. No query per album. Everything is read
+ * with the service role, so the visibility rule is applied here and in `buildAlbumIndex`: only
+ * public albums are returned.
  */
 
 async function readAll<T>(page: (from: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
@@ -32,35 +33,26 @@ const LAUNCH_DAYS = 14;
 export async function loadAlbumIndex(admin: SupabaseClient, asOf: Date = new Date()): Promise<AlbumIndex> {
 	const [albums, settingRows] = await Promise.all([
 		readAll<{ album_key: string; album_name: string | null; photo_count: number | null }>((from) => admin.from('albums_summary').select('album_key, album_name, photo_count').order('album_key').range(from, from + 999)),
-		readAll<{ album_key: string; visibility: string | null; first_published_at: string | null; first_published_at_basis: 'recorded' | 'inferred' | 'unobserved' | null }>((from) => admin.from('album_settings').select('album_key, visibility, first_published_at, first_published_at_basis').order('album_key').range(from, from + 999))
+		readAll<{ album_key: string; visibility: string | null; first_published_at_basis: 'recorded' | 'inferred' | 'unobserved' | null }>((from) => admin.from('album_settings').select('album_key, visibility, first_published_at_basis').order('album_key').range(from, from + 999))
 	]);
 	const catalogue: CatalogueAlbum[] = albums.map((row) => ({ albumKey: row.album_key, name: row.album_name || row.album_key, photos: Number(row.photo_count ?? 0) }));
 	const settings: AlbumSetting[] = settingRows.map((row) => ({ albumKey: row.album_key, visibility: row.visibility, basis: row.first_published_at_basis }));
-	const unlisted = new Set(settings.filter((s) => s.visibility === 'unlisted').map((s) => s.albumKey));
-	const publicKeys = catalogue.filter((album) => !unlisted.has(album.albumKey)).map((album) => album.albumKey);
 	const asOfIso = asOf.toISOString();
-	const today = dateOnly(asOf);
-	const lastCompleteDay = addDays(today, -1);
+	const lastCompleteDay = addDays(dateOnly(asOf), -1);
 	const window = { start: addDays(lastCompleteDay, -(QUIET_DAYS - 1)), end: lastCompleteDay };
 
-	if (publicKeys.length === 0) return buildAlbumIndex({ asOf: asOfIso, today, window, launches: [], catalogue: [], settings, activity: [] });
-
-	// Any public album's launch call returns the whole launch list. A dated one is the sturdier anchor: it needs no undated-window logic.
-	const dated = new Set(settingRows.filter((row) => row.first_published_at && row.first_published_at_basis !== 'unobserved' && row.visibility !== 'unlisted').map((row) => row.album_key));
-	const anchor = publicKeys.find((key) => dated.has(key)) ?? publicKeys[0];
-
 	const params = new URLSearchParams({ period: 'custom', start: window.start, end: window.end, scope: 'all', measure: 'photo_opens', traffic: 'conservative', compare: 'none' });
-	const [model, report] = await Promise.all([
-		fetchLaunchReadModel(admin, { albumKey: anchor, asOf: asOfIso, days: LAUNCH_DAYS, traffic: 'conservative', publicOnly: true, photoLimit: 0 }),
+	const [list, report] = await Promise.all([
+		fetchLaunches(admin, { asOf: asOfIso, days: LAUNCH_DAYS, traffic: 'conservative', publicOnly: true }),
 		buildOperatorReport(admin, parseReportQuery(params, asOf), { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: false, includeVisitorEstimate: false, includeToday: false, cacheRole: 'service_role' })
 	]);
-	return indexFromReads(model, report.available ? report.albums.map((row): AlbumActivity => ({ albumKey: row.albumKey, count: row.count, lastActivity: row.lastActivity, measures: row.measures })) : null, { catalogue, settings, window });
+	return indexFromReads(list, report.available ? report.albums.map((row): AlbumActivity => ({ albumKey: row.albumKey, count: row.count, lastActivity: row.lastActivity, measures: row.measures })) : null, { catalogue, settings, window });
 }
 
 /** The two reads agree on the day, or the counts would not describe the same 30 days. */
-export function indexFromReads(model: LaunchReadModel, activity: AlbumActivity[] | null, base: { catalogue: CatalogueAlbum[]; settings: AlbumSetting[]; window: { start: string; end: string } }): AlbumIndex {
-	if (model.lastCompleteDay !== base.window.end) throw new Error(`The launch read and the 30-day window disagree about the last complete day (${model.lastCompleteDay} against ${base.window.end}).`);
-	return buildAlbumIndex({ asOf: model.asOf, today: model.today, window: base.window, launches: model.launches, catalogue: base.catalogue, settings: base.settings, activity });
+export function indexFromReads(list: LaunchList, activity: AlbumActivity[] | null, base: { catalogue: CatalogueAlbum[]; settings: AlbumSetting[]; window: { start: string; end: string } }): AlbumIndex {
+	if (list.lastCompleteDay !== base.window.end) throw new Error(`The launch read and the 30-day window disagree about the last complete day (${list.lastCompleteDay} against ${base.window.end}).`);
+	return buildAlbumIndex({ asOf: list.asOf, today: list.today, window: base.window, launches: list.launches, catalogue: base.catalogue, settings: base.settings, activity });
 }
 
 const CSV_HEADER = [
