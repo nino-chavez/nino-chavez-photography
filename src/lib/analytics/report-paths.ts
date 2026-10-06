@@ -29,9 +29,20 @@ export function albumIndexPath(hostname: string, suffix = '') {
 	return `${isReportHost(hostname) ? '' : '/photography/analytics'}/albums${suffix}`;
 }
 
+/** Where the data quality page lives: the clean address on the report host, the internal route elsewhere. `suffix` is a query, an anchor, or both. */
+export function dataPath(hostname: string, suffix = '') {
+	return `${isReportHost(hostname) ? '/data' : '/photography/analytics/data'}${suffix}`;
+}
+/** Where settings live: the clean address on the report host, the internal route elsewhere. */
+export function settingsPath(hostname: string, suffix = '') {
+	return `${isReportHost(hostname) ? '/settings' : '/photography/analytics/settings'}${suffix}`;
+}
+
+const WORKSPACE_ROUTES = new Set(['/analytics/home', '/analytics/operator', '/analytics/sites', '/analytics/albums', '/analytics/albums/[albumKey]', '/analytics/data', '/analytics/settings']);
+const CLEAN_PAGES = new Set(['/', '/sites', '/gallery', '/albums', '/data', '/settings']);
 export function isAnalyticsWorkspace(routeId: string | null, hostname: string, pathname: string) {
-	return routeId === '/analytics/home' || routeId === '/analytics/operator' || routeId === '/analytics/sites' || routeId === '/analytics/albums' || routeId === '/analytics/albums/[albumKey]'
-		|| (isReportHost(hostname) && (pathname === '/' || pathname === '/sites' || pathname === '/gallery' || pathname === '/albums' || albumKeyFrom(CLEAN_ALBUM, pathname) !== null));
+	return (routeId !== null && WORKSPACE_ROUTES.has(routeId))
+		|| (isReportHost(hostname) && (CLEAN_PAGES.has(pathname) || albumKeyFrom(CLEAN_ALBUM, pathname) !== null));
 }
 export function reportPath(hostname: string, report: 'sites' | 'gallery', suffix = '') {
 	const path = report === 'sites' ? '/sites' : '/gallery';
@@ -40,6 +51,8 @@ export function reportPath(hostname: string, report: 'sites' | 'gallery', suffix
 export function internalReportPath(pathname: string): string | null {
 	if (pathname === '/') return '/photography/analytics/home';
 	if (pathname === '/sites') return '/photography/analytics/sites';
+	if (pathname === '/data') return '/photography/analytics/data';
+	if (pathname === '/settings') return '/photography/analytics/settings';
 	if (pathname === '/gallery') return '/photography/analytics/operator';
 	if (pathname === '/gallery/export.csv') return '/photography/analytics/operator/export.csv';
 	if (pathname === '/albums') return '/photography/analytics/albums';
@@ -51,6 +64,8 @@ export function internalReportPath(pathname: string): string | null {
 export function cleanReportPath(pathname: string): string | null {
 	if (pathname === '/photography/analytics/home') return '/';
 	if (pathname === '/photography/analytics/sites') return '/sites';
+	if (pathname === '/photography/analytics/data') return '/data';
+	if (pathname === '/photography/analytics/settings') return '/settings';
 	if (pathname === '/photography/analytics' || pathname === '/photography/analytics/operator') return '/gallery';
 	if (pathname === '/photography/analytics/operator/export.csv') return '/gallery/export.csv';
 	if (pathname === '/photography/analytics/albums') return '/albums';

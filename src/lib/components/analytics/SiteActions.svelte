@@ -1,35 +1,87 @@
 <script lang="ts">
- import type {SiteJourneys} from '$lib/analytics/site-journeys.server';
- import { page } from '$app/state';
- import { reportPath } from '$lib/analytics/report-paths';
- import { SITE_ACTION_METRICS, type SiteActionReport } from '$lib/analytics/site-actions';
- let {report, period, section, currentPage, journeys}: {report:SiteActionReport;period:number;section:string;currentPage:number;journeys:SiteJourneys|Promise<SiteJourneys>|null}=$props();
- const metrics=$derived(SITE_ACTION_METRICS.filter(metric=> section==='all' || ['page_views','contact_clicks','external_clicks'].includes(metric.key) || (section==='writing' && ['reading_90','active_30'].includes(metric.key)) || (section==='demos' && metric.key==='demo_last_section')));
- const hasPeriodHistory=$derived(report.available && !!report.firstRecordedAt && report.firstRecordedAt.slice(0,10)<=report.end);
- function applicable(key:string,scope:string){return !['reading_90','active_30','demo_last_section'].includes(key) || (scope==='writing' && ['reading_90','active_30'].includes(key)) || (scope==='demos' && key==='demo_last_section');}
- function metricHasHistory(key:string){return hasPeriodHistory && report.available && report.recordedSections.some(scope=>applicable(key,scope));}
- function href(pageIndex:number){return `${reportPath(page.url.hostname, 'sites')}?view=actions&period=${period}&section=${section}&actionsPage=${pageIndex}`;}
- function utcTime(value:string){return new Intl.DateTimeFormat('en-US',{dateStyle:'medium',timeStyle:'short',timeZone:'UTC'}).format(new Date(value))+' UTC';}
+	import { page } from '$app/state';
+	import { dataPath, reportPath } from '$lib/analytics/report-paths';
+	import { SITE_ACTION_METRICS, type SiteActionReport } from '$lib/analytics/site-actions';
+
+	/**
+	 * What visitors did on each page: link clicks and article and demo progress. The count of pages
+	 * viewed is a second measure with its own window, so it lives on the data quality page.
+	 */
+	let { report, period, section, currentPage }: { report: SiteActionReport | null; period: number; section: string; currentPage: number } = $props();
+
+	const SHOWN = ['contact_clicks', 'external_clicks', 'reading_90', 'active_30', 'demo_last_section'] as const;
+	const PROGRESS = ['reading_90', 'active_30', 'demo_last_section'];
+	const metrics = $derived(SITE_ACTION_METRICS.filter((metric) => (SHOWN as readonly string[]).includes(metric.key)
+		&& (section === 'all' || !PROGRESS.includes(metric.key) || (section === 'writing' && ['reading_90', 'active_30'].includes(metric.key)) || (section === 'demos' && metric.key === 'demo_last_section'))));
+	const hasHistory = $derived(report !== null && report.available && !!report.firstRecordedAt && report.firstRecordedAt.slice(0, 10) <= report.end);
+	function applicable(key: string, scope: string) {
+		return !PROGRESS.includes(key) || (scope === 'writing' && ['reading_90', 'active_30'].includes(key)) || (scope === 'demos' && key === 'demo_last_section');
+	}
+	function href(pageIndex: number) {
+		return `${reportPath(page.url.hostname, 'sites')}?period=${period}&section=${section}&actionsPage=${pageIndex}#actions`;
+	}
+	const since = $derived(report !== null && report.available && report.firstRecordedAt ? new Date(report.firstRecordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : null);
 </script>
-<section class="actions" aria-labelledby="action-title">
- <header><div><p class="eyebrow">Observed actions</p><h2 id="action-title">What visitors did</h2></div>{#if report.available}<span>{report.start}–{report.end} · complete UTC days<br>Updated {utcTime(report.freshness.refreshedAt)}</span>{/if}</header>
- {#if !report.available}<p role="status">{report.reason}</p>
- {:else if section==='other'}<p class="note">Other pages currently have Cloudflare reach measurements. Action tracking covers public profile, writing, demo and photography landing pages.</p>
- {:else}
-  <p class="note">Operator, test, classified bot and excluded-browser activity is omitted. These are action counts, not people or completed outcomes. No browser or visit identifiers are shown.</p>
- {#if !report.firstRecordedAt}<div class="empty" role="status">No matching action has been recorded yet. This tracking starts with this release; earlier Cloudflare traffic cannot supply missing actions.</div>
-  {:else}<p class="note">Action collection begins: {new Date(report.firstRecordedAt).toLocaleDateString('en-US', {timeZone:'UTC'})}. Earlier dates have no action history.</p>{/if}
-  {#if report.freshness.status==='stale'}<p class="empty" role="status">The summary refresh is overdue or failed. Counts remain available through {utcTime(report.freshness.summaryCutoffAt)} and will update after the next successful refresh.</p>{/if}
-  <div class="metrics">{#each metrics as metric}<div><span>{metric.label}</span><strong>{metricHasHistory(metric.key) ? (report.totals[metric.key]??0).toLocaleString() : '—'}</strong><small>{metric.help}</small>{#if metricHasHistory(metric.key) && report.freshness.todayAvailable}<small>Today so far: {(report.todayTotals[metric.key]??0).toLocaleString()} · not included above. Through {utcTime(report.freshness.summaryCutoffAt)}.</small>{:else}<small>Today: not available</small>{/if}{#if metricHasHistory(metric.key) && report.firstRecordedAt && new Date(report.firstRecordedAt).toISOString().slice(0,10)<report.start}<small>Previous period: {(report.previousTotals[metric.key]??0).toLocaleString()}</small>{/if}</div>{/each}</div>
-  <p class="mobile-scroll-hint">Swipe the page list to see all action columns →</p><!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) --><div class="table-box" tabindex="0" role="region" aria-label="Actions by page"><table><caption>Actions by page · most viewed first</caption><thead><tr><th>Page</th>{#each metrics as metric}<th>{metric.label}</th>{/each}</tr></thead><tbody>{#each report.pages as page}<tr><th><a href={`https://ninochavez.co${page.path}`} target="_blank" rel="noopener noreferrer">{page.path}</a></th>{#each metrics as metric}<td>{applicable(metric.key,page.section) ? (page.measures[metric.key]??0).toLocaleString() : '—'}</td>{/each}</tr>{/each}</tbody></table></div>
-  {#if report.pages.length===0}<p class="note">No audience actions match these dates and section.</p>{/if}
-  {#if report.pageCount>1}<nav aria-label="Action pages pagination"><span>Page {report.page+1} of {report.pageCount}</span><div>{#if report.page>0}<a href={href(report.page-1)}>Previous</a>{/if}{#if report.page+1<report.pageCount}<a href={href(report.page+1)}>Next</a>{/if}</div></nav>{/if}
-  <details><summary>Use these signals to decide what to change</summary><ul><li>Compare articles with similar traffic. Low progress and little active time suggest testing the opening or page layout.</li><li>Use contact clicks to find work that prompts inquiries. Check actual submitted requests separately.</li><li>Compare demo chapters to find where visitors stop. Reaching the last section alone is not a completion rate.</li><li>Use the gallery report to compare photo exposure with opens, favorites and download outcomes.</li></ul><p>{report.excludedEvents.toLocaleString()} non-audience events omitted in this scope. Unrecognized automation may remain. Action tracking can be blocked or interrupted.</p></details>
- {/if}
- {#if section==='photography'}<p class="note">This view measures the photography landing and coverage pages. <a href={`${reportPath(page.url.hostname, 'gallery')}`}>Open the gallery report</a> for album and photo views, favorites, shares and downloads.</p>{/if}
- {#if journeys}<details><summary>Linked journeys · PostHog</summary>{#await journeys}<p role="status">Loading linked journeys. The action counts above are ready.</p>{:then result}{#if !result.available}<p>{result.reason}</p>{:else}<p>Opted-in views only. These fractions show actions observed after a view within the same page view. They do not prove cause or describe all visitors.</p>{#if result.rows.length}<ul>{#each result.rows as row}<li><strong>{row.section}</strong>: {row.contactViews} of {row.views} views had a contact-link click; {row.outboundViews} had an outbound click.{#if row.articleViews} {row.progressViews} of {row.articleViews} article views reached 90%; {row.activeViews} had 30 seconds on screen.{/if}{#if row.demoViews} {row.lastSectionViews} of {row.demoViews} demo views reached the last section.{/if}</li>{/each}</ul>{:else}<p>No eligible linked views match these dates. Collection and delivery gaps can also cause an empty result.</p>{/if}{/if}{:catch}<p>Linked journey report unavailable.</p>{/await}</details>{/if}
- <p class="note"><a href="https://ninochavez.co/photography/analytics-preferences" target="_blank" rel="noopener noreferrer">Exclude your browser or change linked-analytics choices</a>. PostHog journeys use only opted-in visits and will differ from these totals.</p>
+
+<section class="actions" id="actions" aria-labelledby="actions-title">
+	<h2 id="actions-title">What visitors did on each page</h2>
+	{#if report === null}
+		<p class="note" role="status">Page actions could not be read. This is not a report of zero. Reload in a few minutes; the numbers above do not depend on it.</p>
+	{:else if !report.available}
+		<p class="note" role="status">{report.reason} This is not a report of zero. Reload in a few minutes; the numbers above do not depend on it.</p>
+	{:else if section === 'other'}
+		<p class="note">Other pages are measured only as page loads. Page actions cover the profile, writing, demo and photography landing pages.</p>
+	{:else if section === 'photography'}
+		<p class="note">Only the photography landing and coverage pages are covered here. Album and photo opens, favorites, shares and downloads are in the gallery numbers on <a href={reportPath(page.url.hostname, 'gallery')}>the gallery report</a>, and launches are on Home and Albums.</p>
+	{:else}
+		<p class="note">Operator, test, bot and excluded-browser activity is left out. These are counts of actions, not people. {#if since}Counting began {since}; earlier days have no action history.{:else}Nothing has been counted yet, and earlier traffic cannot fill that in.{/if}</p>
+		{#if !hasHistory}
+			<p class="empty" role="status">No page actions have been counted for these dates. This is not zero: counting had not started.</p>
+		{:else}
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
+			<div class="table-box" tabindex="0" role="region" aria-label="Actions by page. Scroll sideways for every column.">
+				<table>
+					<caption>Most viewed pages first</caption>
+					<thead><tr><th scope="col">Page</th>{#each metrics as metric (metric.key)}<th scope="col" title={metric.help}>{metric.label}</th>{/each}</tr></thead>
+					<tbody>
+						{#each report.pages as row (row.path)}
+							<tr><th scope="row"><a href={`https://ninochavez.co${row.path}`} target="_blank" rel="noopener noreferrer">{row.path}<span class="sr-only"> (opens the page on ninochavez.co in a new tab)</span></a></th>{#each metrics as metric (metric.key)}<td>{applicable(metric.key, row.section) ? (row.measures[metric.key] ?? 0).toLocaleString() : '—'}</td>{/each}</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+			{#if report.pages.length === 0}<p class="note">No page actions match these dates and section.</p>{/if}
+			{#if report.pageCount > 1}
+				<nav class="pager" aria-label="Pages of actions">
+					<span>Page {report.page + 1} of {report.pageCount}</span>
+					<span class="pager-links">{#if report.page > 0}<a href={href(report.page - 1)}>Previous</a>{/if}{#if report.page + 1 < report.pageCount}<a href={href(report.page + 1)}>Next</a>{/if}</span>
+				</nav>
+			{/if}
+			<p class="note">Reading progress and demo chapters are in the columns that apply to writing and demo pages. Each column's meaning is on <a href={dataPath(page.url.hostname, '#site-measures')}>the data page</a>.</p>
+		{/if}
+	{/if}
 </section>
+
 <style>
-.actions{background:white;border:1px solid #d6e0eb;border-radius:.8rem;padding:1.2rem;margin-top:1rem;color:#172238}.actions header,nav{display:flex;justify-content:space-between;gap:1rem;align-items:end}.eyebrow{font-size:.7rem;letter-spacing:.15em;color:#285eaf;margin:0 0 .4rem;text-transform:uppercase;font-weight:700}h2{margin:0;font-size:1.25rem}header>span,.note,small,details{font-size:.8rem;color:#586980;line-height:1.55}.note{margin:1rem 0}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.metrics>div{border-bottom:1px solid #dce5ef;padding:.6rem 0;display:flex;flex-direction:column;gap:.3rem}.metrics span{font-size:.85rem;font-weight:600}.metrics strong{font-size:1.7rem;color:#1754b0;font-variant-numeric:tabular-nums}.empty{padding:1rem;background:#eef4fc;margin:1rem 0;line-height:1.5}.mobile-scroll-hint{display:none}.table-box{overflow:auto;margin-top:1.5rem}.table-box:focus-visible{outline:3px solid #1851a7;outline-offset:2px}table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap;font-size:.8rem}caption{text-align:left;font-size:.9rem;font-weight:650;padding-bottom:.6rem}th,td{padding:.7rem;border-bottom:1px solid #e1e8f0}td{text-align:right;font-variant-numeric:tabular-nums}thead th:not(:first-child){text-align:right;font-weight:500}tbody th{max-width:24rem;overflow:hidden;text-overflow:ellipsis;font-weight:500}a{color:#1851a7}nav{margin-top:1rem;font-size:.85rem}nav div{display:flex;gap:.6rem}nav a{border:1px solid #bac8dc;padding:.45rem .65rem;border-radius:.4rem;text-decoration:none}details{margin-top:1rem}summary{cursor:pointer;color:#1851a7}@media(max-width:600px){.mobile-scroll-hint{display:block;font-size:.8rem;color:#1851a7;margin:1rem 0 -.8rem}.table-box{border-right:3px solid #bac8dc}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.actions header{align-items:start;flex-direction:column}.actions{padding:1rem}}
+	.actions { background: #fff; border: 1px solid var(--line, #d8e0ea); border-radius: .8rem; color: var(--ink, #172033); min-width: 0; padding: .8rem .9rem; }
+	h2 { font-size: 1.02rem; font-weight: 700; margin: 0; }
+	.note { color: var(--muted, #526176); font-size: .85rem; line-height: 1.5; margin: .35rem 0 0; max-width: 62rem; }
+	.note a, th a { color: var(--blue-ink, #174ea6); text-underline-offset: 3px; }
+	th a { align-items: center; display: flex; min-height: 2.75rem; min-width: 2.75rem; }
+	.empty { background: #eef4fc; border-radius: .5rem; font-size: .9rem; line-height: 1.45; margin: .6rem 0 0; padding: .6rem .75rem; }
+	.table-box { margin-top: .6rem; max-width: 100%; overflow-x: auto; }
+	.table-box:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
+	table { border-collapse: collapse; font-size: .85rem; min-width: 36rem; width: 100%; }
+	caption { color: var(--muted, #526176); font-size: .8rem; padding-bottom: .35rem; text-align: left; }
+	th, td { border-bottom: 1px solid #e6ecf3; padding: .5rem .6rem; }
+	thead th { font-weight: 650; text-align: right; vertical-align: bottom; }
+	thead th:first-child, tbody th { text-align: left; }
+	tbody th { font-weight: 500; max-width: 22rem; overflow-wrap: anywhere; }
+	td { font-variant-numeric: tabular-nums; text-align: right; }
+	.pager { align-items: center; display: flex; flex-wrap: wrap; font-size: .85rem; gap: .5rem 1rem; justify-content: space-between; margin-top: .6rem; }
+	.pager-links { display: flex; gap: .4rem; }
+	.pager-links a { align-items: center; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink, #174ea6); display: inline-flex; font-weight: 650; min-height: 2.75rem; padding: 0 .8rem; text-decoration: none; }
+	a:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
+	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+	@media (prefers-contrast: more) { .note, caption { color: #2b3748; } }
 </style>

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
-	import EmailIntelligenceControls from './EmailIntelligenceControls.svelte';
+	import ReportingSettings from './ReportingSettings.svelte';
 	import PrivateIntelligenceControls from './PrivateIntelligenceControls.svelte';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { intelligenceEvidenceHref } from '$lib/analytics/report-paths';
+	import type { IntelligencePreferences } from '$lib/analytics/intelligence-preferences';
 	import {
 		parseIntelligenceScope,
 		type AssistantAnswer,
@@ -36,7 +37,6 @@
 	type ActionMode = 'record' | 'dismiss' | 'snooze' | null;
 	type PollResponse = { status: 'pending' | 'complete' | 'unavailable'; answer: AssistantAnswer | null };
 	type PendingPoll = { requestId: string; scopeKey: string; startedAt: number; attempt: number };
-	type Preferences = { retention: 'undecided' | 'until_deleted' | '90_days' | 'one_year'; daily: boolean; weekly: boolean; externalEnabled: boolean; destination: string | null; destinationVerified: boolean };
 	type ActionRecord = IntelligenceAction & {
 		publicTarget?: Finding['target'] | null;
 		changeType?: string | null;
@@ -58,7 +58,6 @@
 	};
 
 	const endpoint = `${base}/api/analytics/intelligence`;
-	const preferencesEndpoint = `${endpoint}/preferences`;
 	const firstViewportLimit = 3;
 	const firstBriefLimit = 3;
 	const maximumPollMs = 120_000;
@@ -84,10 +83,8 @@
 	let actionError = $state<string | null>(null);
 	let expandedHistory = $state(false);
 	let expandedBriefs = $state(false);
-	let preferences = $state<Preferences | null>(null);
-	let preferencesLoading = $state(false);
-	let preferencesError = $state<string | null>(null);
-	let preferencesMessage = $state<string | null>(null);
+	let preferences = $state<IntelligencePreferences | null>(null);
+	let settings = $state<{ reload: () => Promise<void> }>();
 	let refreshMessage = $state<string | null>(null);
 	let refreshLoading = $state(false);
 	let reportAbort: AbortController | null = null;
@@ -189,11 +186,6 @@
 		return (value.target === undefined || validRow(value.target)) && (value.peers === undefined || (Array.isArray(value.peers) && value.peers.length <= 25 && value.peers.every(validRow)));
 	}
 	function validPollResponse(value: unknown): value is PollResponse { return object(value) && ['pending', 'complete', 'unavailable'].includes(String(value.status)) && (value.answer === null || validAnswer(value.answer)); }
-	function validPreferences(value: unknown): value is Preferences {
-		return object(value) && ['undecided', 'until_deleted', '90_days', 'one_year'].includes(String(value.retention))
-			&& typeof value.daily === 'boolean' && typeof value.weekly === 'boolean' && typeof value.externalEnabled === 'boolean'
-			&& (value.destination === null || typeof value.destination === 'string') && typeof value.destinationVerified === 'boolean';
-	}
 	function number(value: number | undefined) { return typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString() : 'Not supplied'; }
 	function formatTime(value: string | null | undefined) {
 		if (!value || Number.isNaN(Date.parse(value))) return 'Not supplied';
@@ -269,28 +261,6 @@
 		try { const response = await fetch(`${endpoint}/refresh`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scope: validatedScope }) }); if (!response.ok) throw new Error('queue'); refreshMessage = 'Calculation queued for this exact scope. The scheduled worker will prepare it; use Try again to read the result.'; }
 		catch { refreshMessage = 'This calculation could not be queued. Your filters and saved reports are unchanged.'; }
 		finally { refreshLoading = false; }
-	}
-	async function loadPreferences() {
-		if (!owner) return;
-		preferencesLoading = true; preferencesError = null;
-		try {
-			const response = await fetch(preferencesEndpoint, { headers: { accept: 'application/json' }, cache: 'no-store' });
-			const payload = await json(response); if (!response.ok || !validPreferences(payload)) throw new Error('preferences');
-			preferences = payload;
-		} catch { preferences = null; preferencesError = 'Private reporting settings are unavailable. No preference or action was changed.'; }
-		finally { preferencesLoading = false; }
-	}
-	async function savePreferences(form: HTMLFormElement) {
-		const fields = new FormData(form); const retention = fields.get('retention'); const daily = fields.get('daily') === 'on'; const weekly = fields.get('weekly') === 'on';
-		if (typeof retention !== 'string' || retention === 'undecided') { preferencesError = 'Choose how long to keep private records before saving settings.'; return; }
-		preferencesLoading = true; preferencesError = null; preferencesMessage = null;
-		try {
-			const response = await fetch(preferencesEndpoint, { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ retention, daily, weekly }) });
-			if (!response.ok) throw new Error('save preferences');
-			preferences = { ...(preferences ?? { externalEnabled: false, destination: null, destinationVerified: false }), retention: retention as Preferences['retention'], daily, weekly };
-			preferencesMessage = 'Private reporting settings saved.';
-		} catch { preferencesError = 'Settings were not saved. No reporting preference changed.'; }
-		finally { preferencesLoading = false; }
 	}
 	async function ask(questionText: string, finding: Finding | null = selectedFinding) {
 		const frozenScope = questionScope(); if (!frozenScope) { answerError = 'This report has an invalid scope.'; return; }
@@ -379,7 +349,6 @@
 		scopeKey; requestedSnapshot; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; expandedBriefs = false; untrack(() => { stopPolling(); answerAbort?.abort(); void loadReport(0, 0, 0); });
 		return () => { reportAbort?.abort(); answerAbort?.abort(); stopPolling(); };
 	});
-	$effect(() => { if (owner) untrack(() => void loadPreferences()); else preferences = null; });
 </script>
 
 <section class={`intelligence ${className}`} aria-labelledby={recordOnly ? undefined : `${kind}-intelligence-heading`} aria-label={recordOnly ? 'Record what you did' : undefined}>
@@ -392,16 +361,10 @@
 	{/if}
 
 	{#if owner && (!recordOnly || actionMode)}
-		<details class="reporting-settings" open={recordOnly || undefined}><summary>Reporting settings</summary><section class="settings" aria-labelledby={`${kind}-settings-heading`}>
-			<div><p class="kicker">Private reporting settings</p><h3 id={`${kind}-settings-heading`}>History and briefs</h3><p>These settings apply to private records only. Visitor privacy and public aggregate reporting follow their separate contracts.</p></div>
-			{#if preferencesLoading && !preferences}<p class="state" role="status">Loading private settings.</p>{:else if preferences}<form onsubmit={(event) => { event.preventDefault(); void savePreferences(event.currentTarget as HTMLFormElement); }}>
-				<fieldset><legend>Keep private records for</legend><label><input type="radio" name="retention" value="until_deleted" checked={preferences.retention === 'until_deleted'} /> Until I delete them</label><label><input type="radio" name="retention" value="90_days" checked={preferences.retention === '90_days'} /> 90 days</label><label><input type="radio" name="retention" value="one_year" checked={preferences.retention === 'one_year'} /> One year</label></fieldset>
-				<fieldset><legend>In-dashboard briefs</legend><label><input type="checkbox" name="daily" checked={preferences.daily} /> Daily review</label><label><input type="checkbox" name="weekly" checked={preferences.weekly} /> Weekly review</label></fieldset>
-				<button type="submit" disabled={preferencesLoading}>Save private settings</button>
-				<EmailIntelligenceControls />
-			</form>{:else}<div class="state unavailable"><p>{preferencesError ?? 'Private settings are unavailable.'}</p><button type="button" onclick={() => void loadPreferences()}>Try settings again</button></div>{/if}
-			{#if preferencesError && preferences}<p class="answer-error" role="alert">{preferencesError}</p>{/if}{#if preferencesMessage}<p class="action-message" role="status">{preferencesMessage}</p>{/if}
-		</section></details>
+		<details class="reporting-settings" open={recordOnly || undefined}><summary>Reporting settings</summary><ReportingSettings {owner} bind:preferences bind:this={settings} id={kind} /></details>
+	{:else if owner}
+		<!-- not shown, but the saved retention is still read: saving a private action needs it -->
+		<ReportingSettings {owner} bind:preferences bind:this={settings} visible={false} id={kind} />
 	{/if}
 
 	{#if recordOnly}
@@ -479,13 +442,13 @@
 			{#if actionError}<p class="answer-error" role="alert">{actionError}</p>{/if}{#if actionMessage}<p class="action-message" role="status">{actionMessage}</p>{/if}
 		</section>
 	{/if}
-	{#if !recordOnly}<PrivateIntelligenceControls {owner} {actions} onchanged={() => { void loadReport(currentPage); void loadPreferences(); }} />{/if}
+	{#if !recordOnly}<PrivateIntelligenceControls {owner} {actions} onchanged={() => { void loadReport(currentPage); void settings?.reload(); }} />{/if}
 </section>
 
 <style>
 .actions-review a,.auth-note a{color:#174ea6;font-weight:700;text-decoration:underline;text-underline-offset:.15em}
 
-	.intelligence{margin-top:1.25rem;border-top:1px solid #d8e0ea;padding-top:1.25rem;color:#172033}.heading,.finding-topline,.finding-actions,.pager,.action-sheet-heading,.action-history li{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.heading{align-items:end}.kicker{color:#174ea6;font-size:.68rem;font-weight:800;letter-spacing:.07em;margin:0 0 .35rem;text-transform:uppercase}h2,h3,p{margin-top:0}h2{font-size:1.2rem;letter-spacing:-.02em;margin-bottom:.3rem}h3{font-size:1rem;line-height:1.3;margin-bottom:.45rem}.heading>div>p:last-child,.inspector-copy,.scope,.freshness,.evidence,.auth-note,.context-note,.delivery-note{color:#526176;font-size:.78rem;line-height:1.5}.freshness{margin:0;text-align:right}.scope,.context-note{margin:.8rem 0}.context-note{background:#eef5ff;border-left:3px solid #6195df;padding:.55rem .7rem}.content-grid{display:grid;gap:1rem;grid-template-columns:minmax(0,1.35fr) minmax(17rem,.8fr);align-items:start}.finding-list{display:grid;gap:.65rem}.finding,.inspector,.briefs,.state,.action-sheet,.action-history{background:#fff;border:1px solid #d8e0ea;border-radius:.75rem;padding:1rem}.reporting-settings{margin:.9rem 0}.reporting-settings>summary{cursor:pointer;color:#174ea6;font-weight:700}.settings{background:#fff;border:1px solid #d8e0ea;border-radius:.75rem;padding:1rem}.finding.selected{border-color:#1769e0;box-shadow:inset 3px 0 #1769e0}.finding-topline{color:#64758a;font-size:.7rem;text-transform:capitalize}.finding p{color:#384b66;font-size:.84rem;line-height:1.5}.proposal{color:#172033!important}.follow-up{border-left:2px solid #91b7ee;margin:.65rem 0;padding-left:.7rem}.follow-up p{font-size:.78rem;margin:.25rem 0}.finding-actions{justify-content:start;flex-wrap:wrap;margin-top:.85rem}.inspector{position:sticky;top:1rem;background:#f4f7fb}.presets{display:flex;flex-wrap:wrap;gap:.45rem;margin:.8rem 0}.question-form,.action-sheet form,.settings form{display:grid;gap:.6rem;margin-top:.9rem}.question-form label,.action-sheet label,.settings label{display:grid;color:#33445c;font-size:.78rem;font-weight:700;gap:.35rem}.settings{display:grid;gap:.4rem;grid-template-columns:minmax(14rem,.55fr) minmax(0,1fr);margin:1rem 0}.settings fieldset{border:0;margin:0;padding:0}.settings legend{color:#33445c;font-size:.78rem;font-weight:700;margin-bottom:.35rem}.settings label{display:inline-flex;margin-right:.8rem}.settings input[type=radio],.settings input[type=checkbox]{accent-color:#1769e0}button,.finding-actions a{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#174ea6;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .65rem;text-decoration:none}button:hover,button:focus-visible,.finding-actions a:hover,.finding-actions a:focus-visible{border-color:#1769e0;background:#edf5ff}button:disabled{cursor:not-allowed;opacity:.55}button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #1769e0;outline-offset:2px}textarea,input,select{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#172033;font:inherit;min-height:2.45rem;padding:.55rem .65rem}textarea{min-height:5rem;resize:vertical}.question-form button,.action-sheet form button,.settings form button{background:#1769e0;border-color:#1769e0;color:#fff}.form-grid{display:grid;gap:.6rem;grid-template-columns:repeat(2,minmax(0,1fr))}.answer,.previous-answer{border-top:1px solid #d8e0ea;margin-top:.9rem;padding-top:.9rem}.answer-status{color:#174ea6;font-size:.72rem;font-weight:800;text-transform:capitalize}.answer ul,.finding details ul{color:#526176;font-size:.77rem;line-height:1.45;margin:.65rem 0 0;padding-left:1.1rem}.comparison{overflow-x:auto}.comparison table{width:100%;border-collapse:collapse;font-size:.78rem}.comparison caption{text-align:left;color:#526176;margin:.5rem 0}.comparison th,.comparison td{text-align:left;border-bottom:1px solid #d8e0ea;padding:.5rem}.comparison a{color:#174ea6}.answer-findings{display:grid;gap:.35rem;margin-top:.75rem}.answer-findings a,.links a{color:#174ea6;font-size:.78rem;font-weight:700}.links{display:grid;gap:.35rem;margin:.65rem 0 0}.state{color:#526176;font-size:.84rem;line-height:1.5}.state p{margin:.3rem 0 0}.unavailable{border-color:#dba6a6}.answer-error{color:#a42424;font-size:.8rem;line-height:1.45}.pager{border-top:1px solid #d8e0ea;color:#526176;font-size:.78rem;padding-top:.8rem}.pager div{display:flex;gap:.4rem}.actions-review{align-items:start;background:#eef5ff;border-left:3px solid #6195df;color:#384b66;display:flex;font-size:.78rem;gap:1rem;justify-content:space-between;line-height:1.5;margin:.9rem 0;padding:.75rem .85rem}.actions-review p{margin:0}.briefs{display:grid;gap:.8rem;grid-template-columns:minmax(12rem,.45fr) minmax(0,1fr);margin-top:1rem}.brief-list{display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}.brief-list article{border-left:2px solid #91b7ee;padding-left:.7rem}.brief-list strong,.brief-list span{display:block}.brief-list span,.brief-empty,.brief-windows{color:#64758a;font-size:.72rem;margin-top:.15rem}.brief-list p{color:#526176;font-size:.78rem;line-height:1.45;margin:.4rem 0 0}.action-history{margin-top:1rem}.action-history li > div > span { display: block; margin-top: .2rem; }
-	.action-history ul{display:grid;gap:.65rem;list-style:none;margin:.8rem 0;padding:0}.action-history li{align-items:start;border-top:1px solid #e3e9f1;padding-top:.7rem}.action-history span,.action-history p{color:#526176;font-size:.78rem;line-height:1.45}.action-history p{margin:.25rem 0 0}.action-sheet{border-color:#9ebce8;margin-top:1rem;max-width:52rem}.action-sheet-heading{align-items:start}.action-sheet-heading p{color:#526176;font-size:.82rem;margin-bottom:0}.action-message{color:#195b33;font-size:.82rem;margin:.75rem 0 0}.evidence summary{cursor:pointer;color:#174ea6;font-weight:700}.evidence dl{display:grid;gap:.35rem;margin:.7rem 0}.evidence dl div{display:grid;gap:.6rem;grid-template-columns:7rem minmax(0,1fr)}.evidence dt{color:#64758a}.evidence dd{margin:0;overflow-wrap:anywhere}.evidence>p{margin:.7rem 0 0}@media(max-width:900px){.content-grid,.briefs,.settings{grid-template-columns:1fr}.inspector{position:static}}@media(max-width:600px){.heading,.actions-review,.action-history li{align-items:start;flex-direction:column}.freshness{text-align:left}.finding-actions button,.finding-actions a{flex:1 1 auto;text-align:center}.evidence dl div,.form-grid{grid-template-columns:1fr}.settings label{display:flex;margin:.2rem 0}}
+	.intelligence{margin-top:1.25rem;border-top:1px solid #d8e0ea;padding-top:1.25rem;color:#172033}.heading,.finding-topline,.finding-actions,.pager,.action-sheet-heading,.action-history li{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.heading{align-items:end}.kicker{color:#174ea6;font-size:.68rem;font-weight:800;letter-spacing:.07em;margin:0 0 .35rem;text-transform:uppercase}h2,h3,p{margin-top:0}h2{font-size:1.2rem;letter-spacing:-.02em;margin-bottom:.3rem}h3{font-size:1rem;line-height:1.3;margin-bottom:.45rem}.heading>div>p:last-child,.inspector-copy,.scope,.freshness,.evidence,.auth-note,.context-note,.delivery-note{color:#526176;font-size:.78rem;line-height:1.5}.freshness{margin:0;text-align:right}.scope,.context-note{margin:.8rem 0}.context-note{background:#eef5ff;border-left:3px solid #6195df;padding:.55rem .7rem}.content-grid{display:grid;gap:1rem;grid-template-columns:minmax(0,1.35fr) minmax(17rem,.8fr);align-items:start}.finding-list{display:grid;gap:.65rem}.finding,.inspector,.briefs,.state,.action-sheet,.action-history{background:#fff;border:1px solid #d8e0ea;border-radius:.75rem;padding:1rem}.reporting-settings{margin:.9rem 0}.reporting-settings>summary{align-items:center;cursor:pointer;color:#174ea6;display:flex;font-weight:700;min-height:2.75rem}.finding.selected{border-color:#1769e0;box-shadow:inset 3px 0 #1769e0}.finding-topline{color:#64758a;font-size:.7rem;text-transform:capitalize}.finding p{color:#384b66;font-size:.84rem;line-height:1.5}.proposal{color:#172033!important}.follow-up{border-left:2px solid #91b7ee;margin:.65rem 0;padding-left:.7rem}.follow-up p{font-size:.78rem;margin:.25rem 0}.finding-actions{justify-content:start;flex-wrap:wrap;margin-top:.85rem}.inspector{position:sticky;top:1rem;background:#f4f7fb}.presets{display:flex;flex-wrap:wrap;gap:.45rem;margin:.8rem 0}.question-form,.action-sheet form{display:grid;gap:.6rem;margin-top:.9rem}.question-form label,.action-sheet label{display:grid;color:#33445c;font-size:.78rem;font-weight:700;gap:.35rem}button,.finding-actions a{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#174ea6;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;min-height:2.75rem;padding:.5rem .65rem;text-decoration:none}button:hover,button:focus-visible,.finding-actions a:hover,.finding-actions a:focus-visible{border-color:#1769e0;background:#edf5ff}button:disabled{cursor:not-allowed;opacity:.55}button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible,input:focus-within,select:focus-visible{outline:3px solid #1769e0;outline-offset:2px}textarea,input,select{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#172033;font:inherit;max-width:100%;min-height:2.75rem;min-width:0;padding:.55rem .65rem}textarea{min-height:5rem;resize:vertical}.question-form button,.action-sheet form button{background:#1769e0;border-color:#1769e0;color:#fff}.form-grid{display:grid;gap:.6rem;grid-template-columns:repeat(2,minmax(0,1fr))}.answer,.previous-answer{border-top:1px solid #d8e0ea;margin-top:.9rem;padding-top:.9rem}.answer-status{color:#174ea6;font-size:.72rem;font-weight:800;text-transform:capitalize}.answer ul,.finding details ul{color:#526176;font-size:.77rem;line-height:1.45;margin:.65rem 0 0;padding-left:1.1rem}.comparison{overflow-x:auto}.comparison table{width:100%;border-collapse:collapse;font-size:.78rem}.comparison caption{text-align:left;color:#526176;margin:.5rem 0}.comparison th,.comparison td{text-align:left;border-bottom:1px solid #d8e0ea;padding:.5rem}.comparison a{color:#174ea6}.answer-findings{display:grid;gap:.35rem;margin-top:.75rem}.answer-findings a,.links a{color:#174ea6;font-size:.78rem;font-weight:700}.links{display:grid;gap:.35rem;margin:.65rem 0 0}.state{color:#526176;font-size:.84rem;line-height:1.5}.state p{margin:.3rem 0 0}.unavailable{border-color:#dba6a6}.answer-error{color:#a42424;font-size:.8rem;line-height:1.45}.pager{border-top:1px solid #d8e0ea;color:#526176;font-size:.78rem;padding-top:.8rem}.pager div{display:flex;gap:.4rem}.actions-review{align-items:start;background:#eef5ff;border-left:3px solid #6195df;color:#384b66;display:flex;font-size:.78rem;gap:1rem;justify-content:space-between;line-height:1.5;margin:.9rem 0;padding:.75rem .85rem}.actions-review p{margin:0}.briefs{display:grid;gap:.8rem;grid-template-columns:minmax(12rem,.45fr) minmax(0,1fr);margin-top:1rem}.brief-list{display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}.brief-list article{border-left:2px solid #91b7ee;padding-left:.7rem}.brief-list strong,.brief-list span{display:block}.brief-list span,.brief-empty,.brief-windows{color:#64758a;font-size:.72rem;margin-top:.15rem}.brief-list p{color:#526176;font-size:.78rem;line-height:1.45;margin:.4rem 0 0}.action-history{margin-top:1rem}.action-history li > div > span { display: block; margin-top: .2rem; }
+	.action-history ul{display:grid;gap:.65rem;list-style:none;margin:.8rem 0;padding:0}.action-history li{align-items:start;border-top:1px solid #e3e9f1;padding-top:.7rem}.action-history span,.action-history p{color:#526176;font-size:.78rem;line-height:1.45}.action-history p{margin:.25rem 0 0}.action-sheet{border-color:#9ebce8;margin-top:1rem;max-width:52rem}.action-sheet-heading{align-items:start}.action-sheet-heading p{color:#526176;font-size:.82rem;margin-bottom:0}.action-message{color:#195b33;font-size:.82rem;margin:.75rem 0 0}.evidence summary{cursor:pointer;color:#174ea6;font-weight:700}.evidence dl{display:grid;gap:.35rem;margin:.7rem 0}.evidence dl div{display:grid;gap:.6rem;grid-template-columns:7rem minmax(0,1fr)}.evidence dt{color:#64758a}.evidence dd{margin:0;overflow-wrap:anywhere}.evidence>p{margin:.7rem 0 0}@media(max-width:900px){.content-grid,.briefs{grid-template-columns:1fr}.inspector{position:static}}@media(max-width:600px){.heading,.actions-review,.action-history li{align-items:start;flex-direction:column}.freshness{text-align:left}.finding-actions button,.finding-actions a{flex:1 1 auto;text-align:center}.evidence dl div,.form-grid{grid-template-columns:minmax(0,1fr)}}
 	.brief-evidence{margin-top:.65rem}.brief-evidence summary{cursor:pointer;color:#174ea6;font-size:.78rem;font-weight:700}.brief-evidence dl{display:grid;gap:.35rem;margin:.7rem 0}.brief-evidence dl div{display:grid;gap:.6rem;grid-template-columns:7rem minmax(0,1fr)}.brief-evidence dt{color:#64758a}.brief-evidence dd{margin:0;overflow-wrap:anywhere}.brief-evidence>p{margin:.7rem 0 0}.brief-evidence ul{color:#526176;font-size:.77rem;line-height:1.45;margin:.65rem 0 0;padding-left:1.1rem}
 </style>

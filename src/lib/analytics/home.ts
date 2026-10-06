@@ -1,6 +1,8 @@
 import type { Launch, LaunchDay } from './launch-read-model.server';
 import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
 import { nameWithoutDate } from './launch-report-view';
+import type { HomeProblemTarget } from './data-anchors';
+import { minimumSample } from './intelligence-rules';
 
 /**
  * Home: what happened since you last looked, across both sites, from reads that already exist.
@@ -248,14 +250,18 @@ export interface WeekInput {
 	previousCoverage: 'complete' | 'partial' | 'unavailable';
 }
 
-function range(window: { start: string; end: string }, today: string): string {
+export function range(window: { start: string; end: string }, today: string): string {
 	return `${dayLabel(window.start, today)} – ${window.end.slice(0, 7) === window.start.slice(0, 7) ? String(Number(window.end.slice(8))) : dayLabel(window.end, today)}`;
 }
 
-/** "up 12%", "down 87%", "the same". New activity from zero is never an infinite percentage. */
+/**
+ * "up 12%", "down 87%", "the same as", or "against". A percentage appears only when both periods have at
+ * least the sample the intelligence rules need; below that, a change of 2 to 4 is not "up 100%", so the two
+ * counts are stated plainly. New activity from zero is never an infinite percentage.
+ */
 export function changeWords(current: number, previous: number): string {
 	if (current === previous) return 'the same as';
-	if (previous === 0) return 'up from';
+	if (Math.min(current, previous) < minimumSample) return 'against';
 	const pct = Math.round((Math.abs(current - previous) / previous) * 100);
 	if (pct === 0) return `${current > previous ? 'up' : 'down'} less than 1% from`;
 	return `${current > previous ? 'up' : 'down'} ${pct}% from`;
@@ -412,11 +418,12 @@ export interface SiteFigure { label: string; value: string | null; detail: strin
 export const SITE_REACH_LABEL = 'Page loads on ninochavez.co (Cloudflare)';
 export const SITE_CONTACT_LABEL = 'Contact links clicked';
 
-function siteFigure(label: string, reading: SiteReading, today: string, unit: string): SiteFigure {
+/** One site figure: the number, the dates it covers, and what it is compared with. `days` is the length of both windows. */
+export function siteFigure(label: string, reading: SiteReading, today: string, unit: string, days = 7): SiteFigure {
 	if (!reading.available) return { label, value: null, detail: reading.reason };
 	const dates = range({ start: reading.start, end: reading.end }, today);
-	if (reading.previous === null) return { label, value: fmt(reading.current), detail: `${dates}. The 7 days before could not be read, so there is nothing to compare it with.` };
-	return { label, value: fmt(reading.current), detail: `${dates}, ${changeWords(reading.current, reading.previous)} ${fmt(reading.previous)} in the 7 days before.${unit}` };
+	if (reading.previous === null) return { label, value: fmt(reading.current), detail: `${dates}. The ${days} days before could not be read, so there is nothing to compare it with.${unit}` };
+	return { label, value: fmt(reading.current), detail: `${dates}, ${changeWords(reading.current, reading.previous)} ${fmt(reading.previous)} in the ${days} days before.${unit}` };
 }
 
 export function siteFigures(reach: SiteReading, contacts: SiteReading, today: string): { reach: SiteFigure; contacts: SiteFigure } {
@@ -433,8 +440,8 @@ export function siteFigures(reach: SiteReading, contacts: SiteReading, today: st
 export interface HomeProblem {
 	id: string;
 	text: string;
-	/** Where it can be looked into. Always an analytics page; never an album or photo. */
-	href: 'measurement' | 'site_actions';
+	/** The place on the data quality page that explains it. Never an album or photo. */
+	href: HomeProblemTarget;
 	linkText: string;
 }
 
@@ -465,24 +472,24 @@ export function openProblems(input: ProblemInput): HomeProblem[] {
 	const problems: HomeProblem[] = [];
 	const { freshness, today } = input;
 	const stale = staleness(freshness, input.lastCompleteDay, input.now);
-	if (!input.launchesRead) problems.push({ id: 'launches-unreadable', text: 'Launch numbers could not be read. Nothing on this page says whether anything is happening.', href: 'measurement', linkText: 'Check data collection' });
-	if (!input.weekRead) problems.push({ id: 'week-unreadable', text: 'The gallery daily summary could not be read.', href: 'measurement', linkText: 'Check data collection' });
+	if (!input.launchesRead) problems.push({ id: 'launches-unreadable', text: 'Launch numbers could not be read. Nothing on this page says whether anything is happening.', href: 'status', linkText: 'Check data collection' });
+	if (!input.weekRead) problems.push({ id: 'week-unreadable', text: 'The gallery daily summary could not be read.', href: 'status', linkText: 'Check data collection' });
 	if (freshness.incompleteDays.length) {
 		const list = freshness.incompleteDays.slice(-4).map(formatDay).join(', ');
 		const more = freshness.incompleteDays.length > 4 ? ` and ${freshness.incompleteDays.length - 4} earlier` : '';
-		problems.push({ id: 'coverage', text: `Records are incomplete for ${plural(freshness.incompleteDays.length, 'completed day')} of the last ${COMPLETED_DAYS_CHECKED} (${list}${more}). A total that includes one is not shown.`, href: 'measurement', linkText: 'See what was recorded' });
+		problems.push({ id: 'coverage', text: `Records are incomplete for ${plural(freshness.incompleteDays.length, 'completed day')} of the last ${COMPLETED_DAYS_CHECKED} (${list}${more}). A total that includes one is not shown.`, href: 'coverage', linkText: 'See what was recorded' });
 	}
-	if (stale.kind === 'refresh_late') problems.push({ id: 'refresh-late', text: 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.', href: 'measurement', linkText: 'Check the refresh' });
-	if (stale.kind === 'refresh_unknown') problems.push({ id: 'refresh-unknown', text: 'The time of the last gallery refresh could not be read, so whether the counts are current is unknown.', href: 'measurement', linkText: 'Check the refresh' });
-	if (input.siteActionsStale) problems.push({ id: 'site-actions-stale', text: `Site action counts were last refreshed at ${chicagoTime(input.siteActionsStale.refreshedAt, today)} Chicago time, so recent clicks may be missing.`, href: 'site_actions', linkText: 'Open site actions' });
-	if (input.incidents === null) problems.push({ id: 'incidents-unreadable', text: 'Open incidents could not be checked, so none is shown here.', href: 'measurement', linkText: 'Check data collection' });
-	else for (const id of input.incidents.slice(0, 3)) problems.push({ id: `incident-${id}`, text: `${incidentWords(id)}. This incident is open.`, href: 'measurement', linkText: 'Investigate' });
-	if (input.incidents && input.incidents.length > 3) problems.push({ id: 'incident-more', text: `${plural(input.incidents.length - 3, 'more open incident')}.`, href: 'measurement', linkText: 'Investigate' });
-	if (input.diagnostics === null) problems.push({ id: 'delivery-unknown', text: 'Delivery to the analytics provider could not be checked.', href: 'measurement', linkText: 'Check delivery' });
+	if (stale.kind === 'refresh_late') problems.push({ id: 'refresh-late', text: 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.', href: 'coverage', linkText: 'Check the refresh' });
+	if (stale.kind === 'refresh_unknown') problems.push({ id: 'refresh-unknown', text: 'The time of the last gallery refresh could not be read, so whether the counts are current is unknown.', href: 'coverage', linkText: 'Check the refresh' });
+	if (input.siteActionsStale) problems.push({ id: 'site-actions-stale', text: `Site action counts were last refreshed at ${chicagoTime(input.siteActionsStale.refreshedAt, today)} Chicago time, so recent clicks may be missing.`, href: 'site-measures', linkText: 'Check the site counts' });
+	if (input.incidents === null) problems.push({ id: 'incidents-unreadable', text: 'Open incidents could not be checked, so none is shown here.', href: 'status', linkText: 'Check data collection' });
+	else for (const id of input.incidents.slice(0, 3)) problems.push({ id: `incident-${id}`, text: `${incidentWords(id)}. This incident is open.`, href: 'status', linkText: 'Investigate' });
+	if (input.incidents && input.incidents.length > 3) problems.push({ id: 'incident-more', text: `${plural(input.incidents.length - 3, 'more open incident')}.`, href: 'status', linkText: 'Investigate' });
+	if (input.diagnostics === null) problems.push({ id: 'delivery-unknown', text: 'Delivery to the analytics provider could not be checked.', href: 'delivery', linkText: 'Check delivery' });
 	else for (const diagnostic of input.diagnostics.filter((item) => item.status === 'failed')) {
-		if (diagnostic.type === 'delivery_health_unavailable') problems.push({ id: 'delivery-unknown', text: 'Delivery to the analytics provider could not be checked.', href: 'measurement', linkText: 'Check delivery' });
-		else if (diagnostic.type === 'provider_delivery_failures') problems.push({ id: 'delivery-failed', text: `${plural(diagnostic.count, 'event')} could not be delivered to the analytics provider.`, href: 'measurement', linkText: 'Check delivery' });
-		else if (diagnostic.type === 'provider_delivery_overdue') problems.push({ id: 'delivery-late', text: `${plural(diagnostic.count, 'event')} are waiting for delivery to the analytics provider, longer than expected.`, href: 'measurement', linkText: 'Check delivery' });
+		if (diagnostic.type === 'delivery_health_unavailable') problems.push({ id: 'delivery-unknown', text: 'Delivery to the analytics provider could not be checked.', href: 'delivery', linkText: 'Check delivery' });
+		else if (diagnostic.type === 'provider_delivery_failures') problems.push({ id: 'delivery-failed', text: `${plural(diagnostic.count, 'event')} could not be delivered to the analytics provider.`, href: 'delivery', linkText: 'Check delivery' });
+		else if (diagnostic.type === 'provider_delivery_overdue') problems.push({ id: 'delivery-late', text: `${plural(diagnostic.count, 'event')} are waiting for delivery to the analytics provider, longer than expected.`, href: 'delivery', linkText: 'Check delivery' });
 	}
 	// One problem per cause: two checks reaching the same words must not show twice.
 	return problems.filter((problem, i) => problems.findIndex((other) => other.id === problem.id) === i);

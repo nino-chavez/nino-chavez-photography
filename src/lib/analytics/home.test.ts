@@ -6,6 +6,8 @@ import {
 	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, staleness, statusLabel, trailingGap, weekLine,
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
 } from './home';
+import { minimumSample } from './intelligence-rules';
+import { DATA_ANCHORS } from './data-anchors';
 
 /*
  * Fixtures follow production on 2026-10-06 (read-only analytics_read_launch, conservative traffic): the daily
@@ -211,13 +213,22 @@ test('no sentence on Home claims a recap was sent or is ready', () => {
 test('the week line compares the last 7 complete days with the 7 before, and says when it cannot', () => {
 	const week: WeekInput = { window: { start: '2026-09-29', end: '2026-10-05' }, previous: { start: '2026-09-22', end: '2026-09-28' }, current: 396, previousTotal: 3102, coverage: 'complete', previousCoverage: 'complete' };
 	assert.equal(sentenceText(weekLine(week, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 396, down 87% from 3,102 in the 7 days before (Sep 22 – 28).');
-	assert.equal(sentenceText(weekLine({ ...week, current: 100, previousTotal: 0 }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 100, up from 0 in the 7 days before (Sep 22 – 28).');
+	assert.equal(sentenceText(weekLine({ ...week, current: 100, previousTotal: 0 }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 100, against 0 in the 7 days before (Sep 22 – 28).');
 	assert.equal(sentenceText(weekLine({ ...week, current: 5, previousTotal: 5 }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 5, the same as 5 in the 7 days before (Sep 22 – 28).');
 	assert.equal(sentenceText(weekLine({ ...week, previousCoverage: 'partial', previousTotal: null }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 396, with nothing to compare it with: the 7 days before (Sep 22 – 28) have incomplete records.');
 	assert.equal(sentenceText(weekLine({ ...week, coverage: 'partial', current: null }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: not stated: a day in it has incomplete records, so a short total is not shown.');
 	assert.match(sentenceText(weekLine(null, '2026-10-06', NO_LAUNCHES)), /could not be read\. No number is shown rather than a wrong one\.$/);
 	assert.equal(changeWords(1001, 1000), 'up less than 1% from');
-	assert.equal(changeWords(10, 4), 'up 150% from');
+	// Below the intelligence rules' sample of 20 in either period, two plain counts, never a percentage.
+	assert.equal(minimumSample, 20);
+	assert.equal(changeWords(10, 4), 'against');
+	assert.equal(changeWords(4, 2), 'against');
+	assert.equal(changeWords(19, 40), 'against');
+	assert.equal(changeWords(40, 19), 'against');
+	assert.equal(changeWords(2, 0), 'against');
+	assert.equal(changeWords(20, 40), 'down 50% from');
+	assert.equal(changeWords(40, 20), 'up 100% from');
+	assert.equal(changeWords(5, 5), 'the same as');
 });
 
 test('a card says what it is, and each number says what it is compared with', () => {
@@ -293,7 +304,7 @@ test('the site line names its measures, compares each with the 7 days before, an
 	assert.equal(both.reach.value, '730');
 	assert.equal(both.reach.detail, 'Sep 29 – Oct 5, up 11% from 658 in the 7 days before.');
 	assert.equal(both.contacts.label, 'Contact links clicked');
-	assert.equal(both.contacts.detail, 'Sep 29 – Oct 5, down 100% from 2 in the 7 days before. These are links opened, not messages sent.');
+	assert.equal(both.contacts.detail, 'Sep 29 – Oct 5, against 2 in the 7 days before. These are links opened, not messages sent.');
 	// A provider that is unavailable says so in its own figure; the other is untouched.
 	const down = siteFigures({ available: false, reason: 'Cloudflare Web Analytics could not be read. No traffic total is shown.' }, contacts, '2026-10-06');
 	assert.equal(down.reach.value, null);
@@ -308,10 +319,12 @@ test('open problems: none when everything is current, and each cause links to wh
 	assert.deepEqual(openProblems(base), []);
 	const coverage = openProblems({ ...base, freshness: { ...base.freshness, incompleteDays: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05'] } });
 	assert.equal(coverage.length, 1);
+	assert.equal(coverage[0].href, 'coverage');
 	assert.match(coverage[0].text, /^Records are incomplete for 5 completed days of the last 7 \(Oct 2, Oct 3, Oct 4, Oct 5 and 1 earlier\)\./);
 	assert.equal(COMPLETED_DAYS_CHECKED, 7);
 	const late = openProblems({ ...base, freshness: { ...base.freshness, refreshedAt: '2026-10-06T12:00:00Z' } });
 	assert.deepEqual(late.map((p) => p.id), ['refresh-late']);
+	assert.equal(late[0].href, 'coverage');
 	// The opening sentence already gives the refresh time; the problem says only what it adds.
 	assert.equal(late[0].text, 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.');
 	assert.doesNotMatch(late[0].text, /Chicago time/);
@@ -322,7 +335,7 @@ test('open problems: none when everything is current, and each cause links to wh
 		'Download requests are failing for visitors. This incident is open.',
 		'2 more open incidents.'
 	]);
-	assert.ok(incidents.every((p) => p.href === 'measurement'));
+	assert.ok(incidents.every((p) => p.href === 'status'));
 	// A check that could not run is a problem of its own, never an absent one.
 	assert.deepEqual(openProblems({ ...base, incidents: null }).map((p) => p.id), ['incidents-unreadable']);
 	assert.deepEqual(openProblems({ ...base, diagnostics: null }).map((p) => p.id), ['delivery-unknown']);
@@ -333,7 +346,7 @@ test('open problems: none when everything is current, and each cause links to wh
 	]);
 	assert.deepEqual(openProblems({ ...base, launchesRead: false, weekRead: false }).map((p) => p.id), ['launches-unreadable', 'week-unreadable']);
 	const site = openProblems({ ...base, siteActionsStale: { refreshedAt: '2026-10-05T03:00:00Z' } });
-	assert.equal(site[0].href, 'site_actions');
+	assert.equal(site[0].href, 'site-measures');
 	assert.equal(site[0].text, 'Site action counts were last refreshed at Oct 4, 10:00 PM Chicago time, so recent clicks may be missing.');
 	// The words for an incident never come from the finding's own text, so no album name can reach the page.
 	assert.equal(incidentWords('download-failed-for-Re7kho'), 'Download requests are failing for visitors');
@@ -413,4 +426,16 @@ test('the overlapping sentence carries no counts, so it fits two lines; the card
 	assert.equal(text(opening), 'Two launches are in play: College Women\'s VB - Millikin at North Central is on day 6 of 7, and HS Girls VB - JCA at ACC finished its first week in 2nd place of 6 launches.');
 	assert.ok(text(opening).length <= 180);
 	assert.doesNotMatch(text(opening), /\d{2}-\d{2}-\d{4}/, 'no trailing album date in any Home sentence');
+});
+
+test('every place a Home problem links to exists on the data quality page', () => {
+	const base: ProblemInput = { freshness: { incompleteDays: ['2026-10-04'], refreshedAt: '2026-10-06T12:00:00Z', checked: true }, lastCompleteDay: '2026-10-05', now: '2026-10-06T15:00:00Z', today: '2026-10-06', launchesRead: false, weekRead: false, incidents: ['a', 'b', 'c', 'd', 'e'], diagnostics: [{ type: 'delivery_health_unavailable', status: 'failed', count: 1 }, { type: 'provider_delivery_failures', status: 'failed', count: 3 }, { type: 'provider_delivery_overdue', status: 'failed', count: 2 }], siteActionsStale: { refreshedAt: '2026-10-05T03:00:00Z' } };
+	const all = [
+		...openProblems(base),
+		...openProblems({ ...base, incidents: null, diagnostics: null, freshness: { incompleteDays: [], refreshedAt: null, checked: true } })
+	];
+	assert.ok(all.length >= 9, `expected every kind of problem, saw ${all.map((p) => p.id).join(', ')}`);
+	const known = new Set<string>(DATA_ANCHORS);
+	for (const problem of all) assert.ok(known.has(problem.href), `${problem.id} links to ${problem.href}, which the data page does not have`);
+	assert.deepEqual([...new Set(all.map((p) => p.href))].sort(), ['coverage', 'delivery', 'site-measures', 'status']);
 });

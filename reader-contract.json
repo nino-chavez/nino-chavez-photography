@@ -24,7 +24,12 @@
         "src/lib/analytics/launch-recap.ts",
         "src/lib/analytics/album-index.ts",
         "src/lib/analytics/home.ts",
-        "src/lib/analytics/home.server.ts"
+        "src/lib/analytics/home.server.ts",
+        "src/lib/analytics/site-report.ts",
+        "src/lib/analytics/site-readings.ts",
+        "src/lib/analytics/data-quality.ts",
+        "src/lib/analytics/measurement-health.ts",
+        "src/lib/analytics/saved-views.ts"
       ],
       "manualReview": {
         "evidencePath": "docs/reader-audits/gallery-interface.json"

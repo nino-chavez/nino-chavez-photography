@@ -31,7 +31,8 @@ export const INTELLIGENCE_RULES = [
 	'profile_response', 'writing_demo_response', 'distribution', 'collection_health', 'follow_up'
 ] as const;
 
-const minimumSample = 20;
+/** Both periods need at least this many actions before a change is stated as a rule or a percentage. */
+export const minimumSample = 20;
 const meaningfulAbsoluteChange = 5;
 const nonnegative = (...values: Array<number | null | undefined>): boolean => values.every((value) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
 const completeComparison = (input: IntelligenceRuleInput) => input.coverage === 'complete' && input.previousCoverage === 'complete';

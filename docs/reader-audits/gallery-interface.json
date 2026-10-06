@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T22:15:06.668Z",
-  "reviewedBy": "Claude Code orchestrator session (reviewed the implementing agent's Home captures; wrote this one copy change; not a cold reviewer, not a human)",
-  "method": "Branch feat/analytics-home, 2026-10-06. The orchestrator opened the agent's Home captures (today, Oct 2 shift, phone today) and found the late-refresh problem repeated the refresh time already given in the opening sentence, which also pushed the simulated stale state past the two-phone-screen target (1732 px against 1688). Changed only that problem's text to 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.' Verified by unit test (exact text, no repeated time), npm run check and the full build. The stale state was not re-rendered after this change; the text is shorter than before, so the layout can only shrink. Everything else is covered by the implementing agent's walk at e98e459 (today, Sep 27 and Oct 2 shifts, simulated stale, gap and provider-unavailable at 1440x900 and 375x812, header on the album index, album report and site page, forced colors, increased contrast, overflow and 44 px gates forced to fail once). Not covered: real Cloudflare figure, real incident, real records gap, clean root URL on the real host, signed-in view, Safari or physical device, cold reviewer.",
-  "sourceDigest": "sha256:0edae21a55e7362e646c0f77d79596a402631c955663ff040b066aa08819da71",
-  "sourceFiles": 177,
+  "reviewedAt": "2026-10-06T23:44:53.213Z",
+  "reviewedBy": "Claude Code orchestrator session (reviewed the implementing agent's step 5 captures; wrote this one gating change; not a cold reviewer, not a human)",
+  "method": "Branch feat/analytics-site-data-settings, 2026-10-06. Production already holds 18 site-scope intelligence snapshots, all with zero findings (read-only PostgREST probe of analytics_intelligence_snapshot_current embedded with analytics_intelligence_snapshots.findings: 32 current rows, 0 with findings). The page rule 'show the findings panel when a snapshot exists' would therefore have shown 'No actionable findings' to every visitor of /sites. Moved the decision into src/lib/analytics/intelligence-panel.server.ts: report only when the current snapshot holds at least one finding; otherwise the owner gets the record form and visitors see nothing. Used by /sites and the album report. Verified with unit tests and a local dev server reading production: /sites (7 days), /sites?period=30&section=profile and /albums/Re7kho render no findings panel and no owner form signed out. Everything else is covered by the implementing agent's walk at bd99964. Not covered: owner view with a real snapshot holding findings (none exists), signed-in pages, real host, Safari or device, cold reviewer.",
+  "sourceDigest": "sha256:ecfeda175a958c60a0bc607168a138a3dd5f2888cf98ca2d675afbb5cb25c23f",
+  "sourceFiles": 187,
   "scope": [
-    "analytics home late-refresh problem text"
+    "findings panel shown only when a snapshot has findings (site report, album report)"
   ]
 }

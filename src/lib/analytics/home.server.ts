@@ -3,9 +3,10 @@ import { buildHome, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, type Freshness, t
 import { collectionDiagnostics } from './intelligence-source.server';
 import { fetchLaunches, type LaunchList } from './launch-read-model.server';
 import { buildOperatorReport, type OperatorReport } from './operator-report.server';
-import { chicagoDate, formatDay } from './launch-recap';
+import { chicagoDate } from './launch-recap';
 import { parseReportQuery } from './report-contract';
 import { loadSiteActions } from './site-actions.server';
+import { clickReading, reachReading } from './site-readings';
 import { loadSiteTraffic, siteTrafficCache } from './site-traffic.server';
 
 /**
@@ -82,17 +83,6 @@ function freshnessFrom(report: OperatorReport | null, lastCompleteDay: string, r
 	return { incompleteDays, refreshedAt, checked: true };
 }
 
-/** Action counts exist only for the days since collection began; a window that begins earlier is not a full 7 days. */
-function contactReading(report: Awaited<ReturnType<typeof loadSiteActions>>): SiteReading {
-	if (!report.available) return { available: false, reason: report.reason };
-	const first = report.firstRecordedAt?.slice(0, 10) ?? null;
-	if (!first || first > report.start || report.recordedSections.length === 0) {
-		return { available: false, reason: first ? `Link clicks have been counted since ${formatDay(first)}, so there is no full 7 days to count yet.` : 'Link clicks have not been counted yet, so there is nothing to show. This is not zero.' };
-	}
-	const hasPrevious = first <= addDays(report.start, -COMPLETED_DAYS_CHECKED);
-	return { available: true, start: report.start, end: report.end, current: report.totals.contact_clicks ?? 0, previous: hasPrevious ? report.previousTotals.contact_clicks ?? 0 : null };
-}
-
 export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const { admin } = deps;
 	const asOf = deps.now ?? new Date();
@@ -123,14 +113,9 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const incidents = ok(incidentRead);
 	const incidentIds = incidents && !incidents.error ? (incidents.data ?? []).map((row) => String(row.finding_id)) : null;
 
-	const traffic7 = ok(traffic);
-	const siteReach: SiteReading = traffic7 === null
-		? { available: false, reason: 'Cloudflare Web Analytics could not be read. No traffic total is shown.' }
-		: traffic7.available
-			? { available: true, start: traffic7.start, end: traffic7.end, current: traffic7.pageviews, previous: traffic7.previousPageviews }
-			: { available: false, reason: traffic7.reason };
+	const siteReach: SiteReading = reachReading(ok(traffic));
 	const actions7 = ok(actions);
-	const siteContacts: SiteReading = actions7 === null ? { available: false, reason: 'Link clicks could not be read. This is not a report of zero.' } : contactReading(actions7);
+	const siteContacts: SiteReading = actions7 === null ? { available: false, reason: 'Link clicks could not be read. This is not a report of zero.' } : clickReading(actions7, 'contact_clicks', COMPLETED_DAYS_CHECKED);
 
 	// Covers only for the launches that get a card, and only after the launch read says which are public.
 	const newest = list ? [...list.launches].sort((x, y) => Date.parse(y.firstPublishedAt) - Date.parse(x.firstPublishedAt)).slice(0, HOME_LAUNCH_CARDS) : [];

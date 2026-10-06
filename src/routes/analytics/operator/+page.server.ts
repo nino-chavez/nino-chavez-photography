@@ -1,7 +1,9 @@
-import { error, fail, redirect } from '@sveltejs/kit';
-import { base } from '$app/paths';
+import { error, fail } from '@sveltejs/kit';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
+import { parseMeasurementHealth } from '$lib/analytics/measurement-health';
+import { requireOperator } from '$lib/analytics/operator-session.server';
+import { savedQueryState } from '$lib/analytics/saved-views';
 import { buildOperatorReport } from '$lib/analytics/operator-report.server';
 import { assertReportDateBounds, parseReportQuery, chicagoDayStart, isPhotoRank, type PhotoRank } from '$lib/analytics/report-contract';
 import { fetchV2ReportProjection, unavailableV2ReportProjection } from '$lib/analytics/v2-report-projection.server';
@@ -17,12 +19,6 @@ type AlbumSetting = {album_key:string;visibility:string|null;first_published_at:
 type AlbumFact = {album_key:string;sport:string|null;event_date:string|null;event_type?:string|null};
 type CategoryFact = {album_key:string;photo_category:string|null};
 type V2EvidenceEvent = {event_id:string;event_name:string;occurred_at:string;album_key:string|null;photo_id:string|null;traffic_context:string};
-type MeasurementHealth = {
-	available:boolean; schemaVersion:number | null; pending:number | null; submitted:number | null; confirmed:number | null; failed:number | null;
-	controlPending:number | null; oldestPendingAt:string | null; oldestSubmittedAt:string | null; confirmedWatermark:string | null;
-	accepted:number | null; rejected:number | null; duplicate:number | null; quotaBillingState:'unknown'; eligibleObservations:number | null; eligibleDays:number | null;
-	forecast30Days:number | null; forecastLimit:string;
-};
 const REPORT_SECTIONS = ['overview', 'albums', 'photos', 'sources', 'measurement', 'analytics-preferences'] as const;
 type ReportSection = (typeof REPORT_SECTIONS)[number];
 
@@ -40,49 +36,6 @@ async function readAll<T>(page:(from:number)=>PromiseLike<{data:T[]|null;error:u
 
 function validDate(value: string | undefined): value is string {
 	return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00Z`).getTime()) && new Date(`${value}T12:00:00Z`).toISOString().slice(0,10)===value;
-}
-
-function numberOrNull(value: unknown): number | null {
-	return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-}
-
-function parseMeasurementHealth(value: unknown): MeasurementHealth {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return { available:false, schemaVersion:null, pending:null, submitted:null, confirmed:null, failed:null, controlPending:null, oldestPendingAt:null, oldestSubmittedAt:null, confirmedWatermark:null, accepted:null, rejected:null, duplicate:null, quotaBillingState:'unknown', eligibleObservations:null, eligibleDays:null, forecast30Days:null, forecastLimit:'Delivery health is unavailable. This is not a zero or healthy result.' };
-	const source=value as Record<string,unknown>;
-	const collection=source.collection && typeof source.collection==='object' && !Array.isArray(source.collection) ? source.collection as Record<string,unknown> : {};
-	const eligibleObservations=numberOrNull(source.eligible_observations_14d);
-	const eligibleDays=numberOrNull(source.eligible_days_observed);
-	const forecast30Days=eligibleObservations !== null && eligibleDays !== null && eligibleDays > 0 ? Math.round((eligibleObservations / eligibleDays) * 30) : null;
-	return {
-		available:true, schemaVersion:numberOrNull(source.schema_version), pending:numberOrNull(source.pending), submitted:numberOrNull(source.submitted), confirmed:numberOrNull(source.confirmed), failed:numberOrNull(source.failed), controlPending:numberOrNull(source.control_pending),
-		oldestPendingAt:typeof source.oldest_pending_at==='string'?source.oldest_pending_at:null, oldestSubmittedAt:typeof source.oldest_submitted_at==='string'?source.oldest_submitted_at:null, confirmedWatermark:typeof source.confirmed_watermark==='string'?source.confirmed_watermark:null,
-		accepted:numberOrNull(collection.accepted), rejected:numberOrNull(collection.rejected), duplicate:numberOrNull(collection.duplicate), quotaBillingState:'unknown', eligibleObservations, eligibleDays, forecast30Days,
-		forecastLimit:forecast30Days === null ? 'No forecast is available until eligible observations cover at least one measured day. This does not imply zero traffic.' : `A simple 30-day estimate from ${(eligibleObservations ?? 0).toLocaleString()} eligible observations across ${eligibleDays ?? 0} days with eligible activity. Days with no eligible events are excluded, so this active-day estimate may overstate a calendar-month total; partial days and traffic changes add uncertainty.`
-	};
-}
-
-async function requireOperator(cookies: Parameters<typeof createSupabaseServerClient>[0]) {
-	const supabase = createSupabaseServerClient(cookies);
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) throw redirect(302, `${base}/login`);
-	if (!isAllowedAdmin(user.email)) throw error(403, 'Operator access required');
-	return user;
-}
-
-function savedQueryState(query: ReturnType<typeof parseReportQuery>) {
-	return {
-		period: 'custom', start: query.start, end: query.end, measure: query.measure, scope: query.scope,
-		albums: query.albumKeys, traffic: query.traffic,
-		...(query.sport ? { sport: query.sport } : {}),
-		...(query.category ? { category: query.category } : {}),
-		...(query.source ? { source: query.source } : {}),
-		...(query.eventDate ? { event_date: query.eventDate } : {}),
-		...(query.season ? { season: query.season } : {}),
-		...(query.albumEventType ? { event_type: query.albumEventType } : {}),
-		compare: query.compare,
-		...(query.compareStart ? { compare_start: query.compareStart } : {}),
-		...(query.compareEnd ? { compare_end: query.compareEnd } : {})
-	};
 }
 
 export const load: PageServerLoad = async ({ cookies, url, setHeaders }) => {

@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { loadIntelligencePanelMode } from '$lib/analytics/intelligence-panel.server';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { buildOperatorReport } from '$lib/analytics/operator-report.server';
@@ -94,17 +95,9 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders }) => {
 		}
 	}
 
-	// The findings panel reads a saved calculation for exactly this scope. Until one exists (launch rules, build step 6,
-	// are what will produce them) the panel can only say "unavailable", so it is not shown. The owner still gets the
-	// private record form. This is decided here from the stored data, not by a flag.
-	let hasSnapshot = false;
-	try {
-		const { data: current, error: snapshotError } = await admin.from('analytics_intelligence_snapshot_current').select('scope_key').eq('scope_key', intelligenceScopeKey({ kind: 'gallery', query })).maybeSingle();
-		hasSnapshot = !snapshotError && !!current;
-	} catch (cause) {
-		console.error('[album launch report] snapshot lookup failed:', cause instanceof Error ? cause.message : cause);
-	}
-	const intelligence: 'report' | 'record' | 'none' = hasSnapshot ? 'report' : user ? 'record' : 'none';
+	// Findings show only when this scope's saved calculation holds at least one (launch rules, build step 6, will
+	// produce them); the owner keeps the private record form. See intelligence-panel.server.ts.
+	const intelligence = await loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'gallery', query }), !!user, 'album launch report');
 
 	const album = model.album;
 	const photoIds = new Set(photoRows.map((row) => row.photoId));

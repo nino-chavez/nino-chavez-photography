@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { albumIndexPath, homePath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAlbumKey, isAnalyticsWorkspace } from './report-paths';
+import { albumIndexPath, dataPath, homePath, settingsPath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAlbumKey, isAnalyticsWorkspace } from './report-paths';
 
 const HOST = 'analytics.ninochavez.co';
 
@@ -99,4 +99,33 @@ test('Home is the root of the report host, with an internal route that maps back
 	// The gallery's own root is the public site, not a report.
 	assert.equal(isAnalyticsWorkspace(null, 'ninochavez.co', '/'), false);
 	assert.equal(isAnalyticsWorkspace('/', 'ninochavez.co', '/photography'), false);
+});
+
+test('the data quality page and settings have clean addresses that map in both directions, and nothing else maps to them', () => {
+	for (const [clean, internal] of [['/data', '/photography/analytics/data'], ['/settings', '/photography/analytics/settings']] as const) {
+		assert.equal(internalReportPath(clean), internal);
+		assert.equal(cleanReportPath(internal), clean);
+		assert.equal(cleanReportPath(internalReportPath(clean)!), clean);
+		assert.equal(internalReportPath(cleanReportPath(internal)!), internal);
+		assert.equal(cleanReportPath(`${internal}/extra`), null);
+		assert.equal(internalReportPath(`${clean}/extra`), null);
+		assert.equal(internalReportPath(`${clean}.csv`), null);
+	}
+	// A page with an album's key as its name is still an album report, not one of these.
+	assert.equal(internalReportPath('/albums/data'), '/photography/analytics/albums/data');
+	assert.equal(internalReportPath('/albums/settings'), '/photography/analytics/albums/settings');
+	assert.equal(dataPath(HOST), '/data');
+	assert.equal(dataPath(HOST, '?period=7#coverage'), '/data?period=7#coverage');
+	assert.equal(dataPath('localhost', '#status'), '/photography/analytics/data#status');
+	assert.equal(dataPath('ninochavez.co'), '/photography/analytics/data');
+	assert.equal(settingsPath(HOST), '/settings');
+	assert.equal(settingsPath('localhost'), '/photography/analytics/settings');
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/data'), true);
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/settings'), true);
+	assert.equal(isAnalyticsWorkspace('/analytics/data', 'localhost', '/photography/analytics/data'), true);
+	assert.equal(isAnalyticsWorkspace('/analytics/settings', 'localhost', '/photography/analytics/settings'), true);
+	// On the gallery host these are not analytics pages.
+	assert.equal(isAnalyticsWorkspace(null, 'ninochavez.co', '/data'), false);
+	assert.equal(isAnalyticsWorkspace(null, 'ninochavez.co', '/settings'), false);
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/data/extra'), false);
 });

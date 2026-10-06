@@ -1,142 +1,233 @@
 <script lang="ts">
-	import SiteActions from '$lib/components/analytics/SiteActions.svelte';
-	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
- import { albumIndexPath, homePath, reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, dataPath, homePath, reportPath } from '$lib/analytics/report-paths';
+	import { pageLabel, pagesFor, providerFix, referrersFor, sectionCards, sectionLabel, siteLead, SITE_PERIODS, todayLine, windowNote } from '$lib/analytics/site-report';
 	import { SITE_SECTIONS } from '$lib/analytics/site-traffic';
+	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
+	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
+	import SiteActions from '$lib/components/analytics/SiteActions.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-	const report = $derived(data.report);
-	const intelligenceOwner = $derived('intelligenceOwner' in data && data.intelligenceOwner === true);
-	const selected = $derived(report.available && data.section !== 'all'
-		? report.sections.find((section) => section.key === data.section) : null);
-	const pages = $derived(report.available ? selected?.topPages ?? report.topPages : []);
+
+	// The owner's record form opens from a request made here, as on the album report. It needs the page to be interactive.
+	let recordRequest = $state(0);
+	let hydrated = $state(false);
+	onMount(() => { hydrated = true; });
+	const hostname = $derived(page.url.hostname);
+	const traffic = $derived(data.traffic);
+	const report = $derived(traffic && traffic.available ? traffic : null);
+	const lead = $derived(siteLead({ traffic, actions: data.actions, period: data.period, section: data.section, today: data.today }));
+	const figures = $derived([lead.reach, lead.contacts, lead.outbound]);
+	const today = $derived(todayLine(data.actions, data.today));
+	const pages = $derived(report ? pagesFor(report, data.section) : []);
 	const pageCount = $derived(Math.max(1, Math.ceil(pages.length / 8)));
 	const currentPage = $derived(Math.min(data.page, pageCount - 1));
 	const visiblePages = $derived(pages.slice(currentPage * 8, (currentPage + 1) * 8));
-	const trendDays = $derived(report.available ? selected?.daily ?? report.daily : []);
-	const largestDay = $derived(Math.max(1, ...trendDays.map((day) => day.pageviews)));
-	const chartPoints = $derived(trendDays.map((day, index) =>
-		`${(index / Math.max(1, trendDays.length - 1)) * 100},${100 - (day.pageviews / largestDay) * 88}`
-	).join(' '));
-	const visibleReferrers = $derived(report.available
-		? (selected?.referrers ?? report.referrers).filter((item) => item.entryVisits > 0 && item.host !== 'ninochavez.co').slice(0, 6) : []);
-	const visibleDevices = $derived(report.available ? selected?.devices ?? report.devices : []);
+	const sources = $derived(report ? referrersFor(report, data.section) : []);
+	const cards = $derived(report ? sectionCards(report) : []);
+	const days = $derived(report ? (data.section === 'all' ? report.daily : report.sections.find((item) => item.key === data.section)?.daily ?? []) : []);
+	const largest = $derived(Math.max(1, ...days.map((day) => day.pageviews)));
+	const points = $derived(days.map((day, index) => `${(index / Math.max(1, days.length - 1)) * 100},${100 - (day.pageviews / largest) * 88}`).join(' '));
 
-	function reportHref(period: number, section: string, pageIndex = 0) {
-		const params = new URLSearchParams({ period: String(period), view: data.view });
+	function href(period: number, section: string, pageIndex = 0) {
+		const params = new URLSearchParams({ period: String(period) });
 		if (section !== 'all') params.set('section', section);
 		if (pageIndex > 0) params.set('page', String(pageIndex));
-		return `${reportPath(page.url.hostname, 'sites')}?${params}`;
+		return `${reportPath(hostname, 'sites')}?${params}`;
 	}
-	function pageLabel(path: string) {
-		if (path === '/') return 'Home';
-		try {
-			return decodeURIComponent(path).split('/').filter(Boolean).map((part) => part.replaceAll('-', ' ')).join(' / ');
-		} catch { return path; }
-	}
-	function changeLabel(current: number, previous: number | null) {
-		if (previous === null) return 'Previous period unavailable';
-		if (previous === 0) return current > 0 ? 'New activity' : 'No change';
-		const percent = Math.round(((current - previous) / previous) * 100);
-		return `${percent > 0 ? '+' : ''}${percent}% vs previous ${data.period} days`;
-	}
+	const shortDate = (date: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
 </script>
 
 <svelte:head>
+	<title>Site · Photography reports</title>
 	<meta name="robots" content="noindex, nofollow, noarchive" />
 </svelte:head>
 
-<div class="site-report">
-	{#if data.localReview}<p class="measurement-note">Local review — synthetic data. These counts are invented; do not quote them as site traffic.</p>{/if}
-	<header class="masthead">
-		<div class="identity"><span class="mark">NC</span><span>Nino Chavez <span class="slash">/</span> Reports</span></div>
-		<a class="gallery-link" href="https://ninochavez.co/">View site ↗</a>
-	</header>
-	<div class="opening">
-		<div>
-			<p class="eyebrow">Across ninochavez.co</p>
-			<h1>Site analytics</h1>
-			<p class="subtitle">Find which work people reach, then inspect a section.</p>
-		</div>
-		<p class="availability">Available by direct link</p>
-	</div>
-	<nav class="workspace-nav" aria-label="Report workspaces">
-		<a href={homePath(page.url.hostname)}>Home</a>
-		<a href={albumIndexPath(page.url.hostname)}>Albums</a>
-		<a aria-current="page" href={`${reportPath(page.url.hostname, 'sites')}`}>Site</a>
-		<a href={`${reportPath(page.url.hostname, 'gallery')}`}>Gallery report</a>
-	</nav>
-	<div class="controls" aria-label="Traffic filters">
-		<div class="control-group"><span class="control-label">Period</span><div class="segmented" aria-label="Reporting period">
-			{#each [7, 30, 90] as period}
-				<a class:active={data.period === period} aria-current={data.period === period ? 'true' : undefined} href={reportHref(period, data.section)}>{period} days</a>
-			{/each}
-		</div></div>
-		<div class="control-group section-control"><span class="control-label">Section</span><div class="section-options">
-			<a class:active={data.section === 'all'} href={reportHref(data.period, 'all')}>All sections</a>
-			{#each SITE_SECTIONS as section}
-				<a class:active={data.section === section.key} href={reportHref(data.period, section.key)}>{section.label}</a>
-			{/each}
-		</div></div>
-	</div>
+<div class="site">
+	<ReportHeader current="site" />
 
-	<nav class="workspace-nav" aria-label="Measurement type"><a aria-current={data.view === 'reach' ? 'page' : undefined} href={`${reportPath(page.url.hostname, 'sites')}?period=${data.period}&section=${data.section}&view=reach`}>Reach</a><a aria-current={data.view === 'actions' ? 'page' : undefined} href={`${reportPath(page.url.hostname, 'sites')}?period=${data.period}&section=${data.section}&view=actions`}>Actions</a></nav>
-	{#if data.view === 'actions' && data.actions}<SiteActions report={data.actions} period={data.period} section={data.section} currentPage={data.actionsPage} journeys={data.journeys} />
-	{:else if !report.available}
-		<section class="unavailable" role="status"><h2>Traffic report unavailable</h2><p>{report.reason}</p><p>The gallery report remains available.</p></section>
-	{:else}
-		<div class="report-meta"><span>Cloudflare Web Analytics · bot-filtered page loads</span><span>{report.start} to {report.end} · complete UTC days</span></div>
-		<div class="headline-grid">
-			<section class="primary-stat" aria-label="Page loads"><span>Page loads</span><strong>{(selected?.pageviews ?? report.pageviews).toLocaleString()}</strong><small>{selected ? `${selected.label} in this period` : changeLabel(report.pageviews, report.previousPageviews)}</small></section>
-			<section class="primary-stat" aria-label="Entry visits"><span>Entry visits</span><strong>{(selected?.entryVisits ?? report.entryVisits).toLocaleString()}</strong><small>{selected ? 'From outside this site or direct links' : changeLabel(report.entryVisits, report.previousEntryVisits)}</small></section>
-			<section class="trend-card" aria-labelledby="trend-heading"><div class="card-heading"><h2 id="trend-heading">Daily page loads</h2><span>{trendDays.length} days</span></div>
-				<svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Daily page loads trend"><polyline points={chartPoints} fill="none" stroke="currentColor" stroke-width="2.25" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" /></svg>
-				<details><summary>Read daily values</summary><div class="daily-values">{#each trendDays as day}<span>{day.date}</span><strong>{day.pageviews.toLocaleString()}</strong>{/each}</div></details>
-			</section>
-		</div>
-		<p class="measurement-note">A page load is a browser measurement, not a person. Entry visits are page loads reached from another site or a direct link. Your own and agent-assisted visits can be included. These counts do not measure reading, clicks, or completed requests.</p>
-		<IntelligenceWorkspace kind="sites" scope={{ kind: 'sites', period: data.period, section: data.section }} owner={intelligenceOwner} />
+	<div class="body">
+		<section class="intro" aria-labelledby="site-title">
+			<p class="eyebrow">Site · ninochavez.co</p>
+			<h1 id="site-title">Is anyone looking at your profile and work, and did anyone reach out?</h1>
+		</section>
 
-		{#if data.section === 'all'}
-			<section class="section-breakdown" aria-labelledby="section-heading"><div class="section-title"><div><p class="eyebrow">Compare</p><h2 id="section-heading">Where attention went</h2></div><p>Same dates and measure across sections</p></div>
-				<div class="section-cards">{#each report.sections as section}
-					<a href={reportHref(data.period, section.key)}><span class="section-name">{section.label}</span><strong>{section.pageviews.toLocaleString()}</strong><span>{section.entryVisits.toLocaleString()} entry visits</span></a>
-				{/each}</div>
+		<div class="controls">
+			<nav class="group" aria-label="Period"><span class="label">Period</span>
+				<span class="chips">{#each SITE_PERIODS as period (period)}<a class="choice" href={href(period, data.section)} aria-current={data.period === period ? 'true' : undefined}>{period} days</a>{/each}</span>
+			</nav>
+			<nav class="group" aria-label="Section"><span class="label">Section</span>
+				<span class="chips">
+					<a class="choice" href={href(data.period, 'all')} aria-current={data.section === 'all' ? 'true' : undefined}>All sections</a>
+					{#each SITE_SECTIONS as section (section.key)}<a class="choice" href={href(data.period, section.key)} aria-current={data.section === section.key ? 'true' : undefined}>{section.label}</a>{/each}
+				</span>
+			</nav>
+		</div>
+
+		<section class="lead" aria-labelledby="lead-title">
+			<h2 id="lead-title" class="sr-only">{sectionLabel(data.section)}, the last {data.period} days</h2>
+			<div class="figures">
+				{#each figures as figure (figure.label)}
+					<div class="figure">
+						<p class="label">{figure.label}</p>
+						{#if figure.value !== null}<p class="value">{figure.value}</p>{/if}
+						<p class="detail">{figure.detail}</p>
+					</div>
+				{/each}
+			</div>
+			{#if today}<p class="note">{today}</p>{/if}
+			<p class="note">{windowNote(traffic, data.period, data.today)} <a href={dataPath(hostname, '#site-measures')}>How these are counted</a>.</p>
+		</section>
+
+		{#if report && data.section !== 'photography'}
+			<section class="panel trend" aria-labelledby="trend-title">
+				<h2 id="trend-title">Page loads by day</h2>
+				<svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Page loads by day, ${days.length} days, the most in one day ${largest.toLocaleString()}. The values are listed below.`}>
+					<polyline fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" {points} />
+				</svg>
+				<details>
+					<summary>Daily values</summary>
+					<dl class="daily">{#each days as day (day.date)}<div><dt>{shortDate(day.date)}</dt><dd>{day.pageviews.toLocaleString()}</dd></div>{/each}</dl>
+				</details>
 			</section>
 		{/if}
 
-		<div class="detail-grid">
-			<section class="panel" aria-labelledby="pages-heading"><div class="card-heading"><div><p class="eyebrow">Explore</p><h2 id="pages-heading">{selected ? `${selected.label} pages` : 'Pages drawing attention'}</h2></div><span>Page loads</span></div>
-				{#if pages.length}<ol class="ranked-pages">{#each visiblePages as page, index}<li><span class="rank">{currentPage * 8 + index + 1}</span><a href={`https://ninochavez.co${page.path}`} target="_blank" rel="noopener noreferrer"><strong>{pageLabel(page.path)}</strong><small>{page.path}</small></a><strong class="count">{page.pageviews.toLocaleString()}</strong></li>{/each}</ol>{:else}<p class="empty">No measured page loads in this section for these dates.</p>{/if}
-				{#if pageCount > 1}<nav class="page-nav" aria-label="Pages list pagination"><span>Page {currentPage + 1} of {pageCount}</span><div>{#if currentPage > 0}<a href={reportHref(data.period, data.section, currentPage - 1)}>Previous</a>{/if}{#if currentPage < pageCount - 1}<a href={reportHref(data.period, data.section, currentPage + 1)}>Next</a>{/if}</div></nav>{/if}
+		{#if report && data.section === 'all'}
+			<section aria-labelledby="where-title">
+				<h2 id="where-title">Where attention went</h2>
+				<ul class="cards">
+					{#each cards as card (card.key)}
+						<li class="card">
+							<a href={card.pointsToGallery ? homePath(hostname) : href(data.period, card.key)}>
+								<span class="name">{card.label}</span>
+								{#if card.pointsToGallery}<span class="detail">The gallery is counted on Home and Albums, not as page loads.</span>
+								{:else}<strong>{(card.pageLoads ?? 0).toLocaleString()}</strong><span class="detail">page loads · {(card.entryVisits ?? 0).toLocaleString()} entry visits</span>{/if}
+							</a>
+						</li>
+					{/each}
+				</ul>
 			</section>
-			<div class="side-panels">
-				<section class="panel" aria-labelledby="sources-heading"><div class="card-heading"><div><p class="eyebrow">Arrival</p><h2 id="sources-heading">Entry sources</h2></div><span>Entry visits</span></div>
-					{#if visibleReferrers.length}<dl class="compact-list">{#each visibleReferrers as source}<div><dt>{source.host}</dt><dd>{source.entryVisits.toLocaleString()}</dd></div>{/each}</dl>{:else}<p class="empty">No referral source was reported for this period.</p>{/if}
+		{/if}
+
+		{#if report && data.section === 'photography'}
+			<section class="panel" aria-labelledby="gallery-title">
+				<h2 id="gallery-title">Photography is counted in the gallery reports</h2>
+				<p class="note">The gallery is one app page, so page loads undercount what people do in it. Open <a href={homePath(hostname)}>Home</a> for what happened since you last looked, or <a href={albumIndexPath(hostname)}>Albums</a> for every launch.</p>
+			</section>
+		{:else if report}
+			<div class="grid">
+				<section class="panel" aria-labelledby="pages-title">
+					<h2 id="pages-title">{data.section === 'all' ? 'Pages drawing attention' : `${sectionLabel(data.section)} pages`}</h2>
+					<p class="sub">Page loads</p>
+					{#if pages.length}
+						<ol class="ranked">{#each visiblePages as row, index (row.path)}<li><span class="rank">{currentPage * 8 + index + 1}</span><a href={`https://ninochavez.co${row.path}`} target="_blank" rel="noopener noreferrer"><strong>{pageLabel(row.path)}</strong><small>{row.path}</small><span class="sr-only"> (opens the page on ninochavez.co in a new tab)</span></a><span class="count">{row.pageviews.toLocaleString()}</span></li>{/each}</ol>
+					{:else}<p class="note">No page loads were measured in this section for these dates. This does not mean the section is broken.</p>{/if}
+					{#if pageCount > 1}
+						<nav class="pager" aria-label="Pages drawing attention"><span>Page {currentPage + 1} of {pageCount}</span><span class="pager-links">{#if currentPage > 0}<a href={href(data.period, data.section, currentPage - 1)}>Previous</a>{/if}{#if currentPage < pageCount - 1}<a href={href(data.period, data.section, currentPage + 1)}>Next</a>{/if}</span></nav>
+					{/if}
 				</section>
-				<section class="panel" aria-labelledby="devices-heading"><div class="card-heading"><div><p class="eyebrow">Experience</p><h2 id="devices-heading">Devices</h2></div><span>Page loads</span></div>
-					<dl class="compact-list">{#each visibleDevices as device}<div><dt>{device.name}</dt><dd>{device.pageviews.toLocaleString()}</dd></div>{/each}</dl>
+				<section class="panel" aria-labelledby="sources-title">
+					<h2 id="sources-title">Where visits came from</h2>
+					<p class="sub">Entry visits</p>
+					{#if sources.length}<dl class="sources">{#each sources as source (source.host)}<div><dt>{source.host}</dt><dd>{source.entryVisits.toLocaleString()}</dd></div>{/each}</dl>
+					{:else}<p class="note">No referring site was reported for these dates. Visits that arrive directly have no referrer.</p>{/if}
 				</section>
 			</div>
-		</div>
-		<section class="handoff"><div><p class="eyebrow">More specific evidence</p><h2>What happened inside the gallery?</h2><p>Open the gallery report for album opens, photo opens, favorites, downloads, and shares. Those events have different definitions from these page loads.</p></div><a href={`${reportPath(page.url.hostname, 'gallery')}`}>Open gallery report →</a></section>
-		<p class="footnote">Measured at {new Date(report.measuredAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' })} CDT. Cloudflare adapts sampling to the query, so totals may be estimates and may differ from the gallery report. Profile, writing, and demos are sections of one site; separate business properties are not included.</p>
-	{/if}
+		{/if}
+
+		{#if !report}
+			<section class="panel" role="status" aria-labelledby="down-title">
+				<h2 id="down-title">The page-load lists are not available</h2>
+				<p class="note">Top pages and visit sources come from Cloudflare, which could not be read, so they are not shown. That is not the same as there being none. {providerFix(traffic && !traffic.available ? traffic.reason : 'could not be read')} The click counts above and the page actions below do not depend on Cloudflare.</p>
+			</section>
+		{/if}
+
+		<SiteActions report={data.actions} period={data.period} section={data.section} currentPage={data.actionsPage} />
+
+		{#if data.intelligence !== 'none'}
+			<section class="panel" id="assistant" aria-label="Report intelligence and recorded changes for this site report">
+				{#if data.intelligence === 'record'}
+					<h2 id="record-title">Record what you did</h2>
+					<p class="note">Note a change you made, such as a new post or a changed link, so that later you can check whether it moved anything. Nothing is published or sent.</p>
+					<p class="action"><button type="button" class="record" onclick={() => { recordRequest += 1; }} disabled={!hydrated}>Record what you did</button></p>
+				{/if}
+				<IntelligenceWorkspace recordOnly={data.intelligence === 'record'} kind="sites" scope={{ kind: 'sites', period: data.period, section: data.section }} owner={data.intelligenceOwner} signInNext="/analytics/sites" {recordRequest} />
+			</section>
+		{/if}
+	</div>
 </div>
 
 <style>
-	.site-report{max-width:92rem;margin:auto;padding:1.5rem 2rem 4rem;color:#172238;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:14px}
-	.masthead,.opening,.workspace-nav,.controls,.report-meta,.section-title,.card-heading,.headline-grid,.detail-grid,.handoff{display:flex;justify-content:space-between;align-items:center;gap:1rem}
-	.masthead{min-height:2.5rem}.identity{display:flex;align-items:center;gap:.65rem;font-weight:700}.mark{display:grid;place-items:center;width:2rem;height:2rem;border-radius:.4rem;background:#1b54ab;color:white;font-size:.7rem}.slash{color:#95a3b9;padding:0 .2rem}.gallery-link{border:1px solid #bac8dc;border-radius:.45rem;padding:.65rem .8rem;color:#1851a7;font-weight:650;text-decoration:none}
-	.opening{margin-top:1.2rem;align-items:end}.eyebrow{color:#285eaf;text-transform:uppercase;letter-spacing:.16em;font-size:.67rem;font-weight:800;margin:0 0 .5rem}h1,h2,p{margin-top:0}h1{font-size:2rem;letter-spacing:-.04em;line-height:1.1;margin-bottom:.35rem}h2{font-size:1.15rem;letter-spacing:-.015em;margin:0}.subtitle{color:#607087;margin:0}.availability{color:#62718a;font-size:.78rem;margin:0}
-	.workspace-nav{justify-content:start;gap:.25rem;margin-top:1rem;padding:.35rem 0;border-top:1px solid #d5dfeb;border-bottom:1px solid #d5dfeb}.workspace-nav a{padding:.7rem .9rem;border-radius:.4rem;color:#394960;text-decoration:none}.workspace-nav a[aria-current=page]{background:#dbe9fb;color:#1450a4;font-weight:700}
-	.controls{justify-content:start;align-items:end;flex-wrap:wrap;background:#fff;border:1px solid #d6e0eb;border-radius:.8rem;padding:1rem;margin-top:.8rem}.control-group{display:grid;gap:.45rem}.control-label{font-size:.73rem;color:#5b6a80;font-weight:650}.segmented,.section-options{display:flex;gap:.25rem;flex-wrap:wrap}.segmented a,.section-options a{padding:.6rem .8rem;border:1px solid #d3deeb;border-radius:.4rem;color:#445268;text-decoration:none}.segmented a.active,.section-options a.active{background:#e2efff;border-color:#9fc2f3;color:#1450a4;font-weight:700}.section-control{min-width:0}
-	.report-meta{font-size:.77rem;color:#64758c;margin:1.1rem 0 .7rem;flex-wrap:wrap}.headline-grid{align-items:stretch;display:grid;grid-template-columns:minmax(10rem,.7fr) minmax(10rem,.7fr) minmax(20rem,1.6fr);gap:.75rem}.primary-stat,.trend-card,.panel,.handoff,.unavailable{background:#fff;border:1px solid #d6e0eb;border-radius:.8rem;padding:1.1rem}.primary-stat{display:flex;flex-direction:column}.primary-stat span,.card-heading span{color:#66758a;font-size:.78rem}.primary-stat strong{font-size:2.35rem;color:#174fa4;line-height:1.2;margin:.5rem 0}.primary-stat small{color:#55657a}.trend-card svg{width:100%;height:5rem;color:#2469d1;margin:.6rem 0}.trend-card details,.measurement-note,.footnote{color:#586980;font-size:.78rem}.trend-card summary{cursor:pointer;color:#1a58b0}.daily-values{display:grid;grid-template-columns:1fr auto;gap:.3rem .7rem;max-height:12rem;overflow:auto;padding:.7rem 0}.measurement-note{max-width:65rem;line-height:1.55;margin:1rem 0 1.8rem}
-	.section-breakdown{margin-bottom:1.6rem}.section-title{align-items:end;margin-bottom:.7rem}.section-title p:last-child{color:#718096;font-size:.78rem;margin:0}.section-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.65rem}.section-cards a{display:flex;flex-direction:column;gap:.45rem;background:#fff;border:1px solid #d6e0eb;border-radius:.7rem;padding:1rem;text-decoration:none;color:#56677e}.section-cards a:hover,.section-cards a:focus-visible,.ranked-pages a:hover{border-color:#6195df;color:#1353ad}.section-cards strong{font-size:1.6rem;color:#192943}.section-name{font-weight:700;color:#24364f}
-	.detail-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(18rem,.8fr);align-items:start;gap:.8rem}.card-heading{align-items:end;padding-bottom:.7rem;border-bottom:1px solid #e0e7f1}.ranked-pages{list-style:none;padding:0;margin:0}.ranked-pages li{display:grid;grid-template-columns:1.4rem minmax(0,1fr) auto;align-items:center;gap:.8rem;padding:.65rem 0;border-bottom:1px solid #e4eaf2}.ranked-pages li:last-child{border:0}.rank{color:#7b899a}.ranked-pages a{display:flex;flex-direction:column;gap:.12rem;min-width:0;color:#24334a;text-decoration:none;text-transform:capitalize}.ranked-pages a strong,.ranked-pages a small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ranked-pages a small{color:#79879a;font-size:.7rem;text-transform:none}.count{color:#1f5db8;font-variant-numeric:tabular-nums}.side-panels{display:grid;gap:.8rem;width:100%}.compact-list{margin:.1rem 0 0}.compact-list div{display:flex;justify-content:space-between;gap:1rem;padding:.55rem 0;border-bottom:1px solid #e4eaf2}.compact-list div:last-child{border:0}.compact-list dt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4b5a70}.compact-list dd{margin:0;font-variant-numeric:tabular-nums;font-weight:700;color:#1c57ad}.empty{color:#64758c;margin:1rem 0 0}.handoff{align-items:center;margin-top:1rem;background:#e9f2ff}.handoff h2{margin-bottom:.45rem}.handoff p:not(.eyebrow){color:#57677e;max-width:52rem;margin:0}.handoff a{white-space:nowrap;border-radius:.4rem;background:#1955b3;color:white;text-decoration:none;padding:.8rem 1rem;font-weight:700}.footnote{line-height:1.5;margin:1rem 0}.unavailable{margin-top:1rem}.unavailable p{color:#596a80}
-	@media(max-width:900px){.headline-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.trend-card{grid-column:1/-1}.section-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.detail-grid{grid-template-columns:1fr}.side-panels{grid-template-columns:repeat(2,minmax(0,1fr))}}
-	.page-nav{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:.6rem;padding-top:.8rem;border-top:1px solid #e0e7f1;color:#64758c;font-size:.8rem}.page-nav div{display:flex;gap:.4rem}.page-nav a{border:1px solid #bac8dc;border-radius:.4rem;padding:.45rem .65rem;color:#1851a7;text-decoration:none;font-weight:650}
-	@media(max-width:600px){.site-report{padding:1rem 1rem 3rem}.opening{align-items:start}.availability{display:none}.headline-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.primary-stat strong{font-size:1.8rem}.section-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.side-panels{grid-template-columns:1fr}.handoff{align-items:start;flex-direction:column}.controls{align-items:start}.section-title p:last-child{display:none}.gallery-link{font-size:.75rem}.site-report h1{font-size:1.65rem}}
+	.site { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	@media (min-width: 640px) { .site { padding: 1rem 1.5rem 2.5rem; } }
+	@media (min-width: 1024px) { .site { padding-inline: 2rem; } }
+	a:focus-visible, summary:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
+	.body { display: grid; gap: .9rem; min-width: 0; }
+	.eyebrow { color: var(--blue-ink); font-size: .75rem; font-weight: 800; letter-spacing: .09em; margin: 0; text-transform: uppercase; }
+	h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.28; margin: .3rem 0 0; max-width: 46rem; }
+	@media (min-width: 640px) { h1 { font-size: 1.4rem; } }
+	@media (min-width: 1024px) { h1 { font-size: 1.6rem; } }
+	h2 { font-size: 1.02rem; font-weight: 700; margin: 0; }
+
+	.controls { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; }
+	.group { align-items: center; display: flex; flex-wrap: wrap; gap: .25rem .6rem; }
+	.label { color: var(--muted); font-size: .8rem; font-weight: 650; margin: 0; }
+	.chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+	.choice { align-items: center; background: #fff; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
+	.choice[aria-current='true'] { background: #dce9fa; border-color: var(--blue-ink); box-shadow: inset 0 -3px 0 var(--blue-ink); }
+
+	.lead { min-width: 0; }
+	.figures { display: grid; gap: .6rem; grid-template-columns: 1fr; }
+	@media (min-width: 900px) { .figures { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+	.figure, .panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem .9rem; }
+	.figure p { margin: .2rem 0 0; }
+	@media (max-width: 899px) { .figure { column-gap: .8rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; } .figure .label { align-self: center; } .figure .value { grid-column: 2; grid-row: 1; margin: 0; text-align: right; } .figure .detail { grid-column: 1 / -1; } }
+	.value { font-size: 1.7rem; font-variant-numeric: tabular-nums; font-weight: 750; line-height: 1.1; }
+	.detail { color: var(--muted); font-size: .85rem; line-height: 1.4; }
+	.note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .4rem 0 0; max-width: 62rem; }
+	.note a { color: var(--blue-ink); text-underline-offset: 3px; }
+	.sub { color: var(--muted); font-size: .8rem; margin: .1rem 0 .3rem; }
+
+	.trend svg { color: var(--blue); display: block; height: 3.25rem; margin: .5rem 0; width: 100%; }
+	details { font-size: .85rem; }
+	summary { align-items: center; color: var(--blue-ink); cursor: pointer; display: flex; font-weight: 650; min-height: 2.75rem; }
+	.daily { display: grid; gap: .1rem .8rem; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); margin: 0 0 .3rem; }
+	.daily div { display: flex; justify-content: space-between; padding: .2rem 0; }
+	.daily dt { color: var(--muted); }
+	.daily dd { font-variant-numeric: tabular-nums; font-weight: 650; margin: 0; }
+
+	.cards { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr)); list-style: none; margin: .5rem 0 0; padding: 0; }
+	.card a { background: #fff; border: 1px solid var(--line); border-radius: .8rem; color: var(--ink); display: grid; gap: .2rem; height: 100%; min-height: 2.75rem; padding: .7rem .8rem; text-decoration: none; }
+	.card a:hover { border-color: var(--blue-ink); }
+	.card .name { font-weight: 700; }
+	.card span, .card strong { overflow-wrap: anywhere; }
+	.card strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+
+	.grid { display: grid; gap: .9rem; }
+	@media (min-width: 900px) { .grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; } }
+	.ranked { list-style: none; margin: 0; padding: 0; }
+	.ranked li { align-items: center; border-top: 1px solid #e6ecf3; display: grid; gap: .6rem; grid-template-columns: 1.6rem minmax(0, 1fr) auto; min-height: 2.75rem; padding: .35rem 0; }
+	.ranked li:first-child { border-top: 0; }
+	.rank { color: var(--muted); font-variant-numeric: tabular-nums; }
+	.ranked a { align-content: center; color: var(--ink); display: grid; min-height: 2.75rem; min-width: 0; text-decoration: none; }
+	.ranked a strong { overflow-wrap: anywhere; text-transform: capitalize; }
+	.ranked small { color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }
+	.count { font-variant-numeric: tabular-nums; font-weight: 700; }
+	.sources { margin: 0; }
+	.sources div { border-top: 1px solid #e6ecf3; display: flex; gap: .8rem; justify-content: space-between; padding: .5rem 0; }
+	.sources div:first-child { border-top: 0; }
+	.sources dt { overflow-wrap: anywhere; }
+	.sources dd { font-variant-numeric: tabular-nums; font-weight: 700; margin: 0; }
+	.pager { align-items: center; display: flex; flex-wrap: wrap; font-size: .85rem; gap: .5rem 1rem; justify-content: space-between; margin-top: .6rem; }
+	.pager-links { display: flex; gap: .4rem; }
+	.pager-links a { align-items: center; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-weight: 650; min-height: 2.75rem; padding: 0 .8rem; text-decoration: none; }
+	.action { margin: .6rem 0 0; }
+	.record { align-items: center; background: var(--blue-ink); border: 1px solid var(--blue-ink); border-radius: .5rem; color: #fff; cursor: pointer; display: inline-flex; font: inherit; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .9rem; }
+	.record:disabled { cursor: not-allowed; opacity: .62; }
+	.record:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
+	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+	@media (forced-colors: active) { .figure, .panel, .card a, .choice { border: 1px solid CanvasText; } .trend svg { color: CanvasText; } }
+	@media (prefers-contrast: more) { .site { --muted: #36445a; --line: #5c6b80; } .detail, .note, .sub, .label { color: #2b3748; } }
 </style>
