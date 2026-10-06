@@ -62,6 +62,7 @@ export interface DailyActionRow {
 	sport: string;
 	event_date?: string | null;
 	album_event_type?: string;
+	/** The album's FIRST publication when the event was recorded (album_settings.first_published_at), not the latest. */
 	publication_at?: string | null;
 	photo_category: string;
 	traffic_classification: 'audience' | 'operator' | 'test' | 'known_crawler' | 'suspected_automation' | 'unclassified';
@@ -205,8 +206,10 @@ export function risingComparison(query: ReportQuery, coverage: 'complete' | 'par
 /**
  * An album first published after the comparison window ended had nothing to
  * open then. Its comparison count is "not yet published", not a measured zero,
- * so its change is not growth. Albums without a recorded publication time
- * return false: the event or import date is never substituted.
+ * so its change is not growth. `publicationAt` is the album's FIRST publication
+ * (album_settings.first_published_at), so an old album that was unpublished and
+ * republished inside the window is not "new". Albums without a recorded first
+ * publication time return false: the event or import date is never substituted.
  */
 export function publishedAfterComparison(publicationAt: string | null | undefined, query: ReportQuery): boolean {
 	const comparison = comparisonWindow(query);

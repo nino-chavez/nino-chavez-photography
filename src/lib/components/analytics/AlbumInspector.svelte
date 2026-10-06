@@ -10,7 +10,7 @@
 
 <aside class="inspector" aria-labelledby="inspector-title" aria-live="polite">
 	{#if row}
-		<p class="label">Selected album</p><h2 id="inspector-title">{row.name}</h2><p class="context">{row.photoCount.toLocaleString()} photos{row.publishedLabel ? ` · published ${row.publishedLabel}` : ''}</p>
+		<p class="label">Selected album</p><h2 id="inspector-title">{row.name}</h2><p class="context">{row.photoCount.toLocaleString()} photos{row.publishedLabel ? ` · first published ${row.publishedLabel}` : ''}</p>
 		<p class="context">{comparisonLabel}</p>
 		{#if row.rank !== null && albumCount > 1}<p class="rank">Ranked <strong>{row.rank.toLocaleString()} of {albumCount.toLocaleString()}</strong> albums by {measureLabel.toLowerCase()} in these dates.</p>{/if}
 		<dl class="comparison"><div><dt>{measureLabel}</dt><dd>{row.count?.toLocaleString() ?? 'Unavailable'}</dd></div><div><dt>Previous</dt><dd>{row.publishedAfterComparison ? 'Not published' : row.previousCount?.toLocaleString() ?? 'Unavailable'}</dd></div><div><dt>Change{risingBasis==='daily_rate' && !row.publishedAfterComparison ? ' per day' : ''}</dt><dd>{row.publishedAfterComparison ? 'New album' : risingAvailable && row.risingValue!==null ? `${row.risingValue>=0?'+':''}${row.risingValue.toLocaleString(undefined,{maximumFractionDigits:1})}` : 'Unavailable'}</dd></div></dl>
