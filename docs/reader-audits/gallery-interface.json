@@ -1,15 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T00:50:10.201Z",
-  "reviewedBy": "Claude Code session that authored PR #181 (not a cold reviewer)",
-  "method": "Implementer walked the changed analytics encounters on a local dev server reading production data, 2026-10-05: Albums tab scoped to one album (HS Girls VB - JCA at ACC) and to all 254 albums at 1440px desktop and 390px phone; Photos tab Rising ranking. Confirmed: new albums read Not published / New album, the inspector rank line (1 of 254), the one-album note and Compare with all albums link, Advanced filters without a false active count, no row report link in one-album scope, and export.csv flagging exactly the two new albums. Contract tests (40) and npm run check passed. Not covered: a cold reviewer, a physical device, and gallery routes outside analytics, which this change did not edit. The prior receipt (2026-10-01, 707a2c8/0fb0231) remains the evidence for those routes.",
-  "sourceDigest": "sha256:f8a5195680fb7aaaa8fc501f76c253b1ab493617fe486d06a657d4445f64efbe",
+  "reviewedAt": "2026-10-06T01:03:34.854Z",
+  "reviewedBy": "Claude Code session that authored the dead-ranking removal (not a cold reviewer)",
+  "method": "Server-only change, 2026-10-05. The only edit under the fingerprinted roots is src/routes/analytics/operator/+page.server.ts: PhotoRank now imports from report-contract.ts, and the photo_rank parse uses isPhotoRank with the same three accepted values and the same popular default (a tsx run showed popular/rising/recent accepted, bogus/null/1 rejected). No .svelte file, rendered string, or route changed. npm run check (0 errors) and the 40 analytics contract tests passed. Not covered: a browser walk, a cold reviewer, a physical device. The prior receipt (2026-10-06, ed46284) remains the evidence for the rendered analytics encounters.",
+  "sourceDigest": "sha256:e151b1ba29dec4367b8190aec80e87fe8a41a4c984ed5839487257d09f545fe5",
   "sourceFiles": 162,
   "scope": [
-    "Analytics Albums tab",
-    "Analytics album inspector",
-    "Analytics Photos change labels",
-    "Analytics CSV comparison note"
+    "Analytics Photos rank parameter (server only, no rendered change)"
   ]
 }
