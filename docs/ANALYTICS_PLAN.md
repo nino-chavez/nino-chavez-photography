@@ -30,6 +30,8 @@ Private notes, saved private reports, individual event investigation and classif
 
 ## 2. Deliver the complete photographer and analyst workspace
 
+> Under review, 2026-10-06: [the analytics site rethink](audits/20261006-analytics-site-rethink/README.md) proposes reorganizing these capabilities around album launches. It keeps every capability below. Until it is approved, this section still governs.
+
 | Capability | Photographer/operator job | Required behavior |
 | --- | --- | --- |
 | Overview | Understand what is happening across the gallery | Daily trends, previous-period comparison, popular and rising work, and the albums contributing to change |
