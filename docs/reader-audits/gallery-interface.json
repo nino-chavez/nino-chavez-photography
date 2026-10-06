@@ -1,12 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T01:14:22.948Z",
-  "reviewedBy": "Claude Code session that authored the dead-ranking removal (not a cold reviewer)",
-  "method": "Server-only change on top of main 5320aba, 2026-10-05. The only edit under the fingerprinted roots beyond main is src/routes/analytics/operator/+page.server.ts: PhotoRank now imports from report-contract.ts, and the photo_rank parse uses isPhotoRank with the same three accepted values and the same popular default (a tsx run showed popular/rising/recent accepted, bogus/null/1 rejected). No .svelte file, rendered string, or route changed relative to main. npm run check (0 errors) and the 40 analytics contract tests passed on the merged tree. Not covered: a browser walk, a cold reviewer, a physical device. The 2026-10-06 receipt for PR #184 (f49c126) remains the evidence for the rendered Rising and Overview encounters, and the 2026-10-01 receipt (707a2c8/0fb0231) for gallery routes outside analytics.",
-  "sourceDigest": "sha256:1834a3f905f7076535745b1d2723ff7388b1e880c456e83c7f93305f9b992bc7",
+  "reviewedAt": "2026-10-06T01:51:59.239Z",
+  "reviewedBy": "Claude Code session that authored the publication-provenance change (not a cold reviewer)",
+  "method": "Implementer walked the changed analytics encounters on a local dev server built from this branch and reading production data, 2026-10-05, after migrations 20261005230000 and 20261005230100 were applied to production. Albums tab scoped to Re7kho at 800px: the inspector reads '120 photos · published Sep 25, 2026 (inferred)' (previously 2026-09-26 from the typed value). Albums tab with compare=publication_age for all albums at 1440px desktop and 390px phone: the First 30 days table lists the seven recovered albums, each Published cell marked (inferred) in America/Chicago dates; five show complete totals and DWdCET and Re7kho show Partial; the exclusion line reads '247 selected albums have no recorded publication time and are left out...' and wraps without page overflow at 390px while the table scrolls inside its own region. npm run check (0 errors), 30 publish/latest tests and 40 analytics contract tests passed. Not covered: a cold reviewer, a physical device, the admin albums page (server comment change only), and gallery routes outside analytics, which this change did not edit; the prior receipts remain the evidence for those.",
+  "sourceDigest": "sha256:47f37fa619c9fb383bea03f3c0efdb2475cea141da28a9f82df7eecc104c5ac1",
   "sourceFiles": 162,
   "scope": [
-    "Analytics Photos rank parameter (server only, no rendered change)"
+    "Analytics inspector publication date and inferred label",
+    "Analytics publication-age table and exclusion message"
   ]
 }
