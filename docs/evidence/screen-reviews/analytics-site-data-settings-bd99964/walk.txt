@@ -1,0 +1,283 @@
+Site report, data quality and settings walk, branch feat/analytics-site-data-settings at bd99964, 2026-10-06.
+Method: this worktree's vite dev server (Node 22.22.0) reading production Supabase read-only, with the project's .env.local exported into the server process (node --env-file); no .env file was copied or edited. Playwright driving headless Chromium. Desktop 1440x900 full page; phone 375x812 at 2x in 812px parts (no capture is over 8,000 CSS px). The pages were opened at their internal addresses on 127.0.0.1 (the clean /data and /settings addresses need the real host, because the dev server's base path rejects them). No public gallery page was opened, and every run recorded its requests: none was a POST, none went to a public gallery page.
+
+Labels in file names:
+- "production": real production numbers. Cloudflare and PostHog are not configured locally, so the pages show their unavailable states honestly. On production the site scope has saved calculations, so signed-out visitors see the report-intelligence panel ("No actionable findings for this scope") at the foot of the site report.
+- "synthetic-cloudflare": the Cloudflare page-load figures are INVENTED by a preload that answers api.cloudflare.com for the dev server only; the rest is production. "and-clicks": the link-click totals are also invented (counted-since moved to Sep 20, today's totals 1 and 2) so the populated layout can be seen. Do not quote any figure in these captures as site traffic.
+- "simulated-problems": the dev server rewrites real Supabase responses (newest refresh 4 hours old, one open collection incident, Oct 3 and Oct 4 incomplete). Nothing was written anywhere.
+- "owner-fixture" and "owner-record-fixture": NOT the real signed-in pages. Throwaway harness routes (src/routes/analytics/walk-settings and walk-sites, deleted before the receipt, never committed) rendered the real settings and site report page components with invented data (saved views; click figures, a Cloudflare read that is null and the owner's record-only state), and the browser stubbed the preferences and email-delivery endpoints. For the site report the record form was opened by pressing "Record what you did", as the owner would. They show layout of the owner views only. They do not exercise the load functions, the auth check, the saved-view actions or the snapshot lookup, and no shipped auth code was touched.
+
+Gates: the overflow gate compares every element box with the viewport (hidden or clipped ancestors are not an excuse; a box inside a keyboard-focusable scroll region is excused only when that region itself fits). It was forced to fail once per width by planting an element wider than the viewport (the first scenario, both widths), then passed again after removal. Targets: links, buttons and fields under 44px in either direction, with links inside sentences reported separately (WCAG 2.5.8 inline exception); a card whose name link is stretched by ::after is measured as the card. Disclosures were opened before the gates ran. Scroll regions: Tab to the region, ArrowRight, wait 700 ms, scrollLeft must increase. At 1440 the data page's search and download evidence table fits its panel with no clipping and no scrolling. Text 200% sets the root font size to 200% and reruns the overflow gate.
+Home links: with simulated problems, Home's Needs attention links were followed and each lands on an element that exists on the data page.
+Console errors on Home were timeouts fetching album cover images from imagedelivery.net from this sandbox.
+
+== checks outside the browser walk (same dev server, production data, bd99964)
+90 days: GET /photography/analytics/data?period=90 -> 200 in 3.0 s; GET /photography/analytics/sites?period=90 -> 200 in 0.13 s. (7 and 30 days were walked; 90 was only smoke-tested, not captured.)
+Signed-out writes on the new route, POST with Origin set so the CSRF check passes: /settings?/saveView, ?/deleteView and ?/renameView each answered {"type":"redirect","status":302,"location":"/photography/login"} (the form fields were empty or invalid; the auth check runs before validation and nothing was inserted).
+Edge: Cloudflare Page Rules read through the API (read-only): only 49cd0626 (analytics.ninochavez.co/?*) applies to this host. https://analytics.ninochavez.co/data, /data?period=7 and /settings answered 404 from the app before this release, not a 301.
+tests/analytics/intelligence-workspace.spec.ts against this server (run at the previous commit, before the record-form CSS change): the two signed-out tests that ran passed; the first test fails on a live-data count of "42" (3 matches, 2 expected), which is production data; the owner tests skip because they need the local rehearsal's owner cookie. The owner path of the extracted ReportingSettings component is therefore unrun outside the harnesses.
+
+== results (raw output of the walk follows)
+== site-production desktop (production data; Cloudflare not configured locally, so the page shows its unavailable state) scrollHeight 1905
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 31 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   FORCED FAILURE, a planted 1600px element: offenders 57: section.intro spans 32..1632 of 1440 | p.eyebrow spans 32..1632 of 1440 | div.controls spans 32..1632 of 1440; scrollWidth 1440 vs viewport 1440
+   after removing it: offenders none
+   text 200%: offenders none
+   keyboard: 29 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": fits, no scroll needed
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-production phone (production data; Cloudflare not configured locally, so the page shows its unavailable state) scrollHeight 3166
+   phone height 3166 = 3.90 screens in 4 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 31 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   FORCED FAILURE, a planted 420px element: offenders 96: section.intro spans 16..436 of 375 | p.eyebrow spans 16..436 of 375 | h1#site-title.s-LcQisFxUg8BW spans 16..436 of 375; scrollWidth 375 vs viewport 375
+   after removing it: offenders none
+   text 200%: offenders none
+   keyboard: 29 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-synthetic-cloudflare-and-clicks desktop (SYNTHETIC: Cloudflare page loads and link-click totals are invented, to show the populated layout) scrollHeight 2453
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 41 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   text 200%: offenders none
+   keyboard: 39 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": fits, no scroll needed
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-synthetic-cloudflare-and-clicks phone (SYNTHETIC: Cloudflare page loads and link-click totals are invented, to show the populated layout) scrollHeight 4182
+   phone height 4182 = 5.15 screens in 6 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 41 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   text 200%: offenders none
+   keyboard: 39 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-synthetic-cloudflare-writing desktop (SYNTHETIC Cloudflare and clicks, Writing section) scrollHeight 2112
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 33 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   text 200%: offenders none
+   keyboard: 31 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": fits, no scroll needed
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-synthetic-cloudflare-writing phone (SYNTHETIC Cloudflare and clicks, Writing section) scrollHeight 3372
+   phone height 3372 = 4.15 screens in 5 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 33 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   text 200%: offenders none
+   keyboard: 31 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-synthetic-cloudflare-photography desktop (SYNTHETIC Cloudflare and clicks, Photography section (pointer to the gallery numbers)) scrollHeight 1241
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 24 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 6
+   text 200%: offenders none
+   keyboard: 21 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-synthetic-cloudflare-photography phone (SYNTHETIC Cloudflare and clicks, Photography section (pointer to the gallery numbers)) scrollHeight 2326
+   phone height 2326 = 2.86 screens in 3 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 24 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 6
+   text 200%: offenders none
+   keyboard: 21 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-30-days-synthetic-cloudflare desktop (SYNTHETIC Cloudflare; real clicks, which are counted since Sep 30 so a 30-day window has none) scrollHeight 2453
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 41 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   text 200%: offenders none
+   keyboard: 39 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": fits, no scroll needed
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== site-30-days-synthetic-cloudflare phone (SYNTHETIC Cloudflare; real clicks, which are counted since Sep 30 so a 30-day window has none) scrollHeight 4186
+   phone height 4186 = 5.16 screens in 6 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 41 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 4
+   text 200%: offenders none
+   keyboard: 39 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> 7 days [solid 3px]; 8 <a> 30 days [solid 3px]; 9 <a> 90 days [solid 3px]; 10 <a> All sections [solid 3px]; 11 <a> Profile & work [solid 3px]; 12 <a> Writing [solid 3px]
+   region "Actions by page. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 132; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== data-production desktop (production data; Cloudflare and PostHog not configured locally; delivery counts are owner-only) scrollHeight 2788
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 15 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 18 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> What this meansfor Cloudflare page loa [solid 3px]; 8 <a> What this meansfor linked journeys (Po [solid 3px]; 9 <a> 7 days [solid 3px]; 10 <a> 30 days [solid 3px]; 11 <a> 90 days [solid 3px]; 12 <summary> Inspect every event count [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": fits, no scroll needed
+   region "Search and download evidence. Scroll sideways for every column.": fits, no scroll needed
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": fits, no scroll needed
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+   anchors present: status=true coverage=true traffic=true counting=true arrivals=true site-measures=true journeys=true delivery=true corrections=true
+   in-page links resolve: #site-measures=true #journeys=true #journeys=true
+== data-production phone (production data; Cloudflare and PostHog not configured locally; delivery counts are owner-only) scrollHeight 5651
+   phone height 5651 = 6.96 screens in 7 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 15 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 18 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> What this meansfor Cloudflare page loa [solid 3px]; 8 <a> What this meansfor linked journeys (Po [solid 3px]; 9 <a> 7 days [solid 3px]; 10 <a> 30 days [solid 3px]; 11 <a> 90 days [solid 3px]; 12 <summary> Inspect every event count [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Search and download evidence. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== data-synthetic-cloudflare desktop (production data with SYNTHETIC Cloudflare page loads) scrollHeight 2727
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 14 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 17 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> What this meansfor linked journeys (Po [solid 3px]; 8 <a> 7 days [solid 3px]; 9 <a> 30 days [solid 3px]; 10 <a> 90 days [solid 3px]; 11 <summary> Inspect every event count [solid 3px]; 12 <div> Recorded event counts. Scroll sideways [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": fits, no scroll needed
+   region "Search and download evidence. Scroll sideways for every column.": fits, no scroll needed
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": fits, no scroll needed
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+   anchors present: status=true coverage=true traffic=true counting=true arrivals=true site-measures=true journeys=true delivery=true corrections=true
+   in-page links resolve: #journeys=true #journeys=true
+== data-synthetic-cloudflare phone (production data with SYNTHETIC Cloudflare page loads) scrollHeight 5651
+   phone height 5651 = 6.96 screens in 7 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 14 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 17 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> What this meansfor linked journeys (Po [solid 3px]; 8 <a> 7 days [solid 3px]; 9 <a> 30 days [solid 3px]; 10 <a> 90 days [solid 3px]; 11 <summary> Inspect every event count [solid 3px]; 12 <div> Recorded event counts. Scroll sideways [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Search and download evidence. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== data-7-days-synthetic-cloudflare desktop (production data with SYNTHETIC Cloudflare, 7 days) scrollHeight 2362
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 14 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 17 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> What this meansfor linked journeys (Po [solid 3px]; 8 <a> 7 days [solid 3px]; 9 <a> 30 days [solid 3px]; 10 <a> 90 days [solid 3px]; 11 <summary> Inspect every event count [solid 3px]; 12 <div> Recorded event counts. Scroll sideways [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": fits, no scroll needed
+   region "Search and download evidence. Scroll sideways for every column.": fits, no scroll needed
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": fits, no scroll needed
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+   anchors present: status=true coverage=true traffic=true counting=true arrivals=true site-measures=true journeys=true delivery=true corrections=true
+   in-page links resolve: #journeys=true #journeys=true
+== data-7-days-synthetic-cloudflare phone (production data with SYNTHETIC Cloudflare, 7 days) scrollHeight 5031
+   phone height 5031 = 6.20 screens in 7 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 14 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 17 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> What this meansfor linked journeys (Po [solid 3px]; 8 <a> 7 days [solid 3px]; 9 <a> 30 days [solid 3px]; 10 <a> 90 days [solid 3px]; 11 <summary> Inspect every event count [solid 3px]; 12 <div> Recorded event counts. Scroll sideways [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Search and download evidence. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== data-simulated-problems desktop (SIMULATED: refresh 4 hours old, one open incident, Oct 3 and Oct 4 incomplete (server-side rewrite of real responses)) scrollHeight 2977
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 16 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 19 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> See what was recordedfor: Records are  [solid 3px]; 8 <a> Check the refreshfor: The gallery coun [solid 3px]; 9 <a> What this meansfor linked journeys (Po [solid 3px]; 10 <a> 7 days [solid 3px]; 11 <a> 30 days [solid 3px]; 12 <a> 90 days [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": fits, no scroll needed
+   region "Search and download evidence. Scroll sideways for every column.": fits, no scroll needed
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": fits, no scroll needed
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+   anchors present: status=true coverage=true traffic=true counting=true arrivals=true site-measures=true journeys=true delivery=true corrections=true
+   in-page links resolve: #coverage=true #coverage=true #journeys=true #journeys=true
+== data-simulated-problems phone (SIMULATED: refresh 4 hours old, one open incident, Oct 3 and Oct 4 incomplete (server-side rewrite of real responses)) scrollHeight 6025
+   phone height 6025 = 7.42 screens in 8 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 16 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 2
+   text 200%: offenders none
+   keyboard: 19 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> See what was recordedfor: Records are  [solid 3px]; 8 <a> Check the refreshfor: The gallery coun [solid 3px]; 9 <a> What this meansfor linked journeys (Po [solid 3px]; 10 <a> 7 days [solid 3px]; 11 <a> 30 days [solid 3px]; 12 <a> 90 days [solid 3px]
+   region "Recorded event counts. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Search and download evidence. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   region "Every album with at least one recorded photo open. Scroll sideways for every column.": overflows; focused true, ArrowRight moved scrollLeft to 40, ring solid
+   requests: 119; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== settings-signed-out desktop (signed out) scrollHeight 900
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 10 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 1
+   text 200%: offenders none
+   keyboard: 10 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> the public analytics preferences page( [solid 3px]; 8 <input>  [solid 2px]; 9 <input>  [solid 2px]; 10 <a> Sign in with a magic link [solid 3px]
+   requests: 125; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== settings-signed-out phone (signed out) scrollHeight 1073
+   phone height 1073 = 1.32 screens in 2 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 10 measured, under 44px: none; inline links inside sentences (WCAG 2.5.8 inline exception, not counted): 1
+   text 200%: offenders none
+   keyboard: 10 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> the public analytics preferences page( [solid 3px]; 8 <input>  [solid 2px]; 9 <input>  [solid 2px]; 10 <a> Sign in with a magic link [solid 3px]
+   requests: 125; other hosts: none; non-GET: none; public gallery pages: none
+   console errors: none
+== home-simulated-problems desktop (SIMULATED problems, to check Home links to the data page) scrollHeight 957
+   overflow gate: viewport 1440, scrollWidth 1440, body 1440, offenders none
+   targets: 14 measured, under 44px: none
+   text 200%: offenders none
+   keyboard: 14 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> See what was recordedfor: Records are  [solid 3px]; 8 <a> Check the refreshfor: The gallery coun [solid 3px]; 9 <a> Investigatefor: A data collection chec [solid 3px]; 10 <a> The other 4 launches [solid 3px]; 11 <a> College Women's VB - Millikin at North [none 3px]; 12 <a> HS Girls VB - JCA at ACC - 09-22-2026 [none 3px]
+   requests: 116; other hosts: imagedelivery.net; non-GET: none; public gallery pages: none
+   console errors: none
+   Home problem links: /photography/analytics/data#coverage | /photography/analytics/data#coverage | /photography/analytics/data#status
+   Home links land on an element that exists: /photography/analytics/data#coverage -> true | /photography/analytics/data#coverage -> true | /photography/analytics/data#status -> true
+== home-simulated-problems phone (SIMULATED problems, to check Home links to the data page) scrollHeight 2013
+   phone height 2013 = 2.48 screens in 3 parts
+   overflow gate: viewport 375, scrollWidth 375, body 375, offenders none
+   targets: 14 measured, under 44px: none
+   text 200%: offenders none
+   keyboard: 14 tab stops; without a visible focus ring: none
+   first stops: 1 <a> Home [solid 3px]; 2 <a> Albums [solid 3px]; 3 <a> Site [solid 3px]; 4 <a> Data [solid 3px]; 5 <a> Settings [solid 3px]; 6 <a> Gallery report [solid 3px]; 7 <a> See what was recordedfor: Records are  [solid 3px]; 8 <a> Check the refreshfor: The gallery coun [solid 3px]; 9 <a> Investigatefor: A data collection chec [solid 3px]; 10 <a> The other 4 launches [solid 3px]; 11 <a> College Women's VB - Millikin at North [none 3px]; 12 <a> HS Girls VB - JCA at ACC - 09-22-2026 [none 3px]
+   requests: 116; other hosts: imagedelivery.net; non-GET: none; public gallery pages: none
+   console errors: none
+== settings-owner-fixture desktop (FIXTURE: the settings page component, invented saved views, stubbed endpoints; not the real signed-in page) scrollHeight 2093
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets: 30 measured, under 44px: none; inline links inside sentences: 1
+   text 200%: offenders none
+   keyboard: 32 tab stops; without a visible focus ring: none
+   stops: 1 <button> Clear private history; 2 <a> Launches, last 30 days(opens the g; 3 <input> name; 4 <button> RenameLaunches, last 30 days; 5 <button> DeleteLaunches, last 30 days; 6 <a> JCA at ACC downloads, first week, ; 7 <input> name; 8 <button> RenameJCA at ACC downloads, first ; 9 <button> DeleteJCA at ACC downloads, first ; 10 <input> name; 11 <select> Last 7 daysLast 30 daysLast 90 day; 12 <select> photo opensalbum opensdownload req; 13 <button> Save view; 14 <a> Writing; 15 <a> Building; 16 <a> Photography; 17 <a> About; 18 <a> Now; 19 <a> Links; 20 <a> Privacy; 21 <a> GitHub ↗; 22 <a> LinkedIn ↗; 23 <a> Email ↗; 24 <a> Find photos; 25 <a> By date; 26 <a> Collections; 27 <a> Saved photos; 28 <a> Story; 29 <a> Privacy; 30 <a> Analytics preferences; 31 <a> Instagram; 32 <a> Email
+   requests that are not GET: none
+== settings-owner-fixture phone (FIXTURE: the settings page component, invented saved views, stubbed endpoints; not the real signed-in page) scrollHeight 4383
+   phone height 3384 = 4.17 screens in 5 parts
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets: 30 measured, under 44px: none; inline links inside sentences: 1
+   text 200%: offenders none
+   keyboard: 32 tab stops; without a visible focus ring: none
+   stops: 1 <button> Clear private history; 2 <a> Launches, last 30 days(opens the g; 3 <input> name; 4 <button> RenameLaunches, last 30 days; 5 <button> DeleteLaunches, last 30 days; 6 <a> JCA at ACC downloads, first week, ; 7 <input> name; 8 <button> RenameJCA at ACC downloads, first ; 9 <button> DeleteJCA at ACC downloads, first ; 10 <input> name; 11 <select> Last 7 daysLast 30 daysLast 90 day; 12 <select> photo opensalbum opensdownload req; 13 <button> Save view; 14 <a> Writing; 15 <a> Building; 16 <a> Photography; 17 <a> About; 18 <a> Now; 19 <a> Links; 20 <a> Privacy; 21 <a> GitHub ↗; 22 <a> LinkedIn ↗; 23 <a> Email ↗; 24 <a> Find photos; 25 <a> By date; 26 <a> Collections; 27 <a> Saved photos; 28 <a> Story; 29 <a> Privacy; 30 <a> Analytics preferences; 31 <a> Instagram; 32 <a> Email
+   requests that are not GET: none
+== sites-owner-record-fixture desktop (FIXTURE: the site report page component, invented click figures, a Cloudflare read that is null, stubbed endpoints; not the real signed-in page) scrollHeight 3030
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets: 43 measured, under 44px: none; inline links inside sentences: 2
+   text 200%: offenders none
+   keyboard: 41 tab stops; without a visible focus ring: none
+   stops: 1 <button> Close; 2 <select> AlbumPhotoPage path; 3 <input> targetValue; 4 <input> actualAt; 5 <input> actualAt; 6 <input> actualAt; 7 <input> actualAt; 8 <input> actualAt; 9 <input> actualAt; 10 <input> actualAt; 11 <select> Choose a changePromotionAlbum cove; 12 <select> Choose one measureAlbum opensPhoto; 13 <select> 7 days14 days30 days90 days; 14 <input> channel; 15 <input> campaign; 16 <input> release; 17 <input> variant; 18 <select> Not recordedInquiry countBooking c; 19 <input> outcomeCount; 20 <textarea> hypothesis; 21 <textarea> note; 22 <button> Record actual change; 23 <a> Writing; 24 <a> Building; 25 <a> Photography; 26 <a> About; 27 <a> Now; 28 <a> Links; 29 <a> Privacy; 30 <a> GitHub ↗; 31 <a> LinkedIn ↗; 32 <a> Email ↗; 33 <a> Find photos; 34 <a> By date; 35 <a> Collections; 36 <a> Saved photos; 37 <a> Story; 38 <a> Privacy; 39 <a> Analytics preferences; 40 <a> Instagram; 41 <a> Email
+   requests that are not GET: none
+== sites-owner-record-fixture phone (FIXTURE: the site report page component, invented click figures, a Cloudflare read that is null, stubbed endpoints; not the real signed-in page) scrollHeight 5265
+   phone height 4267 = 5.25 screens in 6 parts
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets: 43 measured, under 44px: none; inline links inside sentences: 2
+   text 200%: offenders none
+   keyboard: 41 tab stops; without a visible focus ring: none
+   stops: 1 <button> Close; 2 <select> AlbumPhotoPage path; 3 <input> targetValue; 4 <input> actualAt; 5 <input> actualAt; 6 <input> actualAt; 7 <input> actualAt; 8 <input> actualAt; 9 <input> actualAt; 10 <input> actualAt; 11 <select> Choose a changePromotionAlbum cove; 12 <select> Choose one measureAlbum opensPhoto; 13 <select> 7 days14 days30 days90 days; 14 <input> channel; 15 <input> campaign; 16 <input> release; 17 <input> variant; 18 <select> Not recordedInquiry countBooking c; 19 <input> outcomeCount; 20 <textarea> hypothesis; 21 <textarea> note; 22 <button> Record actual change; 23 <a> Writing; 24 <a> Building; 25 <a> Photography; 26 <a> About; 27 <a> Now; 28 <a> Links; 29 <a> Privacy; 30 <a> GitHub ↗; 31 <a> LinkedIn ↗; 32 <a> Email ↗; 33 <a> Find photos; 34 <a> By date; 35 <a> Collections; 36 <a> Saved photos; 37 <a> Story; 38 <a> Privacy; 39 <a> Analytics preferences; 40 <a> Instagram; 41 <a> Email
+   requests that are not GET: none

@@ -186,7 +186,7 @@ The rules have to fit the launch pattern. Proposed rules: launch reach against a
 | Saved reports | Inside Sources (0 saved) | `/settings`, plus "save this view" on the index and report |
 | Measurement and operations, traffic impact, provider reconciliation | Measurement tab | `/data` |
 | Durable history | Behind every view | Unchanged |
-| Actionable intelligence, assistant, actions and follow-up | Panel on Overview and Sites | Inline findings on Home and album report; assistant in album report |
+| Actionable intelligence, assistant, actions and follow-up | Panel on Overview and Sites | Inline findings on Home and album report; assistant in album report; owner record form also on `/sites` (record-only until a site-scope calculation exists) |
 | Daily and weekly reports, incident alerts | Built; never sent | Launch recaps (decided) and incident alerts |
 | Visitor analytics choices | Preferences tab and public page | `/settings` (yours); public page unchanged (visitors) |
 
@@ -212,7 +212,7 @@ One release, built in dependency order. Each step is its own PR with its own che
 5. **Site report, data quality, settings.** `/sites` shrinks to one reach measure plus contact clicks. Measurement, open locations and traffic impact move to data quality. Preferences, recap settings and saved views move to settings.
 6. **Launch rules.** The intelligence rules are rewritten around launches: reach against earlier launches at the same age, launch finished, seen-but-rarely-opened photos, failures during a launch, and collection outage. Findings show inline on Home and the album report.
 7. **Launch recaps.** Day 3 and day 7 recaps replace the daily and weekly scheduler. Email stays off until Nino verifies a destination.
-8. **Old addresses.** `/gallery?section=…` links redirect to their new homes, then the old tabs are removed.
+8. **Old addresses.** `/gallery?section=…` links redirect to their new homes, then the old tabs are removed. Two things still live only on the old tabs after step 5 and must move before they go: the signed-in classification corrections (Measurement tab, linked from `/data`) and the signed-in sharing notes (Sources tab). Saved-view updates from the gallery filter bar also stay there; `/settings` saves, renames and deletes. Step 5 also keeps two things from the old site report: the report-intelligence panel returns on `/sites` the way it does on the album report (findings when a saved calculation exists for the site scope, the owner's record form when none does, nothing for visitors), and a single "Today so far" line for link clicks, kept apart from every total.
 9. **Acceptance.** A cold review of device captures for every surface, including largest text and increased contrast. Performance is compared with `scripts/measure-analytics-performance.mjs`.
 
 ## Sources

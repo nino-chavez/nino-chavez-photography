@@ -1,12 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T22:15:06.668Z",
-  "reviewedBy": "Claude Code orchestrator session (reviewed the implementing agent's Home captures; wrote this one copy change; not a cold reviewer, not a human)",
-  "method": "Branch feat/analytics-home, 2026-10-06. The orchestrator opened the agent's Home captures (today, Oct 2 shift, phone today) and found the late-refresh problem repeated the refresh time already given in the opening sentence, which also pushed the simulated stale state past the two-phone-screen target (1732 px against 1688). Changed only that problem's text to 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.' Verified by unit test (exact text, no repeated time), npm run check and the full build. The stale state was not re-rendered after this change; the text is shorter than before, so the layout can only shrink. Everything else is covered by the implementing agent's walk at e98e459 (today, Sep 27 and Oct 2 shifts, simulated stale, gap and provider-unavailable at 1440x900 and 375x812, header on the album index, album report and site page, forced colors, increased contrast, overflow and 44 px gates forced to fail once). Not covered: real Cloudflare figure, real incident, real records gap, clean root URL on the real host, signed-in view, Safari or physical device, cold reviewer.",
-  "sourceDigest": "sha256:0edae21a55e7362e646c0f77d79596a402631c955663ff040b066aa08819da71",
-  "sourceFiles": 177,
+  "reviewedAt": "2026-10-06T23:40:38.778Z",
+  "reviewedBy": "The implementing agent (Claude Sonnet 5.5) reviewed its own work. No cold reviewer and no human has reviewed these screens.",
+  "method": "Branch feat/analytics-site-data-settings at bd99964, 2026-10-06. Walked the site report (/sites), data quality (/data) and settings (/settings, signed out) on a local dev server reading production, at 1440x900 and 375x812: production state, populated state with invented Cloudflare and click figures, the Writing and Photography sections, 30 days, and simulated problems (late refresh, an open incident, two incomplete days); 90 days was only smoke-tested by request. Opened the captures and fixed what they showed: a clipped impact table on a phone, card text overflow at 200 percent text, link targets under 44 px, a global .field and .chip class colliding with the new pages, a void in the signed-out settings layout, a clipped Latest column in the delivery evidence table at 1440, record-form fields under 44 px or missing a focus ring or overflowing at 200 percent in the report-intelligence panel now mounted on the site report. Copy rules changed after review: a change is a percentage only when both periods have at least 20, otherwise the two counts are stated (4 against 2, not up 100 percent); one Today so far line for link clicks sits apart from every total. Gates run, and forced to fail once per width: overflow, 44 px targets, keyboard tab order and focus ring, ArrowRight on every scroll region, text at 200 percent. Home links to the data page anchors were followed and resolve. The owner views (settings; the site report in its record-only state) were rendered from throwaway harness routes (deleted, never committed) that mounted the real page components with invented data and stubbed endpoints: they prove layout only, and do not exercise the load functions, the auth check, the saved-view actions or the snapshot lookup; no shipped auth code was changed. Signed-out POSTs to the new actions were refused with a redirect to sign-in. Not covered: the real signed-in /settings and /sites (loads, saved-view actions, reporting settings, email delivery and the record form against real endpoints), the delivery counts on /data (owner only), real Cloudflare and PostHog figures, how the data status reads in production, the clean /data and /settings addresses on the real host and the report-host variant of the analytics preferences card, forced colors and increased contrast, Safari or a physical device, and a cold reviewer.",
+  "sourceDigest": "sha256:3192e0e77356a40fbc92ba2139eaf76e93871cfc4ae6f746726dcfebfded3eec",
+  "sourceFiles": 187,
   "scope": [
-    "analytics home late-refresh problem text"
+    "analytics site report",
+    "analytics data quality page",
+    "analytics settings page",
+    "analytics header Data and Settings links",
+    "Home needs-attention links to data anchors",
+    "analytics change wording below 20 actions"
   ]
 }

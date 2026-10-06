@@ -58,8 +58,8 @@
 - analytics.ninochavez.co/ (same Pages project). The proxied
   `analytics` CNAME points to `nino-chavez-photography.pages.dev`, and the hostname is attached
   as a Pages custom domain. The bare root `/` is served by the app as Home. SvelteKit
-  reroutes `/`, `/albums`, `/albums/<key>`, `/albums/export.csv`, `/sites`, `/gallery`, and
-  `/gallery/export.csv` internally while keeping clean public URLs. The gallery build base
+  reroutes `/`, `/albums`, `/albums/<key>`, `/albums/export.csv`, `/sites`, `/data`, `/settings`,
+  `/gallery`, and `/gallery/export.csv` internally while keeping clean public URLs. The gallery build base
   remains `/photography`.
 - One Cloudflare Page Rule acts on this host: `49cd0626a9c5fe0e70031b988f948c2c` matches
   `analytics.ninochavez.co/?*` (the root with a query string) and forwards it with a 301 to the
@@ -81,6 +81,9 @@
 - `curl -s https://analytics.ninochavez.co/` returns 200 and a page titled "Home · Photography
   reports", and `curl -I 'https://analytics.ninochavez.co/?period=30'` redirects to the site
   report. The old gallery analytics URL redirects to the new host.
+- `/data` and `/settings` on the analytics subdomain return 200. Page Rule `49cd0626` matches only
+  `analytics.ninochavez.co/?*`, so neither path is caught (checked 2026-10-06 through the API; both
+  returned the app's own 404 before this release, not a 301).
 - `/albums` and `/albums/<key>` on the analytics subdomain return 200; an unlisted or unknown
   album key returns 404.
 - Check `/sites` on the analytics subdomain for nonzero page loads,
