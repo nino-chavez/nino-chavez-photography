@@ -22,7 +22,9 @@
         "src/routes",
         "src/lib/components",
         "src/lib/analytics/launch-recap.ts",
-        "src/lib/analytics/album-index.ts"
+        "src/lib/analytics/album-index.ts",
+        "src/lib/analytics/home.ts",
+        "src/lib/analytics/home.server.ts"
       ],
       "manualReview": {
         "evidencePath": "docs/reader-audits/gallery-interface.json"

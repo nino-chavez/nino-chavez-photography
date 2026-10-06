@@ -2,9 +2,10 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
-	import { albumIndexPath, albumReportPath, reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, albumReportPath } from '$lib/analytics/report-paths';
 	import { dayLabel, figureText, matchesName, MAX_COMPARED, QUIET_DAYS, rankText, statusText, undatedReasonShort, type IndexLaunchRow, type IndexUndatedRow } from '$lib/analytics/album-index';
 	import { formatDay, plural } from '$lib/analytics/launch-recap';
+	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchOverlay from '$lib/components/analytics/LaunchOverlay.svelte';
 	import type { PageData } from './$types';
 
@@ -76,14 +77,7 @@
 {/snippet}
 
 <div class="album-index">
-	<header class="masthead">
-		<div class="identity"><span class="mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="divider">/</span> Photography reports</span></div>
-		<nav class="masthead-links" aria-label="Report navigation">
-			<a href={albumIndexPath(hostname)} aria-current="page">All albums</a>
-			<a href={reportPath(hostname, 'gallery')}>Gallery report</a>
-			<a href={reportPath(hostname, 'sites')}>All sites</a>
-		</nav>
-	</header>
+	<ReportHeader current="albums" />
 
 	<div class="body">
 		<section class="intro" aria-labelledby="index-title">
@@ -239,15 +233,6 @@
 	.album-index { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
 	@media (min-width: 640px) { .album-index { padding: 1.25rem 1.5rem 3.5rem; } }
 	@media (min-width: 1024px) { .album-index { padding-inline: 2rem; } }
-
-	.masthead { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; margin-bottom: .5rem; padding: .35rem 0; }
-	.identity { align-items: center; color: var(--ink); display: flex; font-size: .85rem; font-weight: 650; gap: .6rem; }
-	.mark { background: var(--blue-ink); border-radius: .45rem; color: #fff; display: inline-grid; font-size: .7rem; height: 2rem; place-items: center; width: 2rem; }
-	.divider { color: var(--muted); }
-	.masthead-links { display: flex; flex-wrap: wrap; gap: .4rem; }
-	.masthead-links a { align-items: center; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
-	.masthead-links a:hover { background: #dce9fa; }
-	.masthead-links a[aria-current='page'] { background: #dce9fa; }
 
 	a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 

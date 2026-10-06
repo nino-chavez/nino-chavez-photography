@@ -1,13 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T20:20:25.649Z",
-  "reviewedBy": "Claude Code implementing agent (Sonnet 5.5) reviewing its own work; not a cold reviewer, not a human",
-  "method": "Branch feat/album-launch-index at 25b5ed6 on a local dev server reading production, 2026-10-06. Opened the final captures in docs/evidence/screen-reviews/album-launch-index-25b5ed6 myself (default, search for JCA, no-activity list open, three launches compared, at 1440x900 and 375x812, plus 200% text, increased contrast, forced colors, and one capture with the as-of day shifted to Sep 29 so launches in progress show). Fixed after viewing: phone card Compare label spilling past its card, one-column phone cards, a repeated Compare word in every desktop row, link and list targets under 44px, a phone compare table that scrolled sideways (now stacked), cards spilling out of their panel at 200% text. Overflow gate compares every element box with the viewport and was forced to fail once on purpose at each width. Keyboard walk covered tab order, focus ring, ticking four launches by Space, the fifth being disabled, the address holding the choice, search, and the no-activity list by Enter. Not covered: the in-progress and gap states on live data (no launch is in progress today; the shifted capture is the only sight of it); signed-in view; real host analytics.ninochavez.co clean URL; physical device or Safari; screen reader; cold reviewer.",
-  "sourceDigest": "sha256:5866a7d295dbe2429f79bc22dcbf6d99babd463ef48ee32963bf4d3ebcd454ab",
-  "sourceFiles": 172,
+  "reviewedAt": "2026-10-06T22:15:06.668Z",
+  "reviewedBy": "Claude Code orchestrator session (reviewed the implementing agent's Home captures; wrote this one copy change; not a cold reviewer, not a human)",
+  "method": "Branch feat/analytics-home, 2026-10-06. The orchestrator opened the agent's Home captures (today, Oct 2 shift, phone today) and found the late-refresh problem repeated the refresh time already given in the opening sentence, which also pushed the simulated stale state past the two-phone-screen target (1732 px against 1688). Changed only that problem's text to 'The gallery counts normally refresh every 30 minutes, and the last refresh is late.' Verified by unit test (exact text, no repeated time), npm run check and the full build. The stale state was not re-rendered after this change; the text is shorter than before, so the layout can only shrink. Everything else is covered by the implementing agent's walk at e98e459 (today, Sep 27 and Oct 2 shifts, simulated stale, gap and provider-unavailable at 1440x900 and 375x812, header on the album index, album report and site page, forced colors, increased contrast, overflow and 44 px gates forced to fail once). Not covered: real Cloudflare figure, real incident, real records gap, clean root URL on the real host, signed-in view, Safari or physical device, cold reviewer.",
+  "sourceDigest": "sha256:0edae21a55e7362e646c0f77d79596a402631c955663ff040b066aa08819da71",
+  "sourceFiles": 177,
   "scope": [
-    "album index page: launches table, albums without a launch date, search, compare overlay, no-activity list",
-    "album report All albums link"
+    "analytics home late-refresh problem text"
   ]
 }

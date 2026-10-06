@@ -5,6 +5,7 @@
 	import { albumIndexPath, reportPath } from '$lib/analytics/report-paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
+	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchDailyChart from '$lib/components/analytics/LaunchDailyChart.svelte';
 	import LaunchComparison from '$lib/components/analytics/LaunchComparison.svelte';
 	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
@@ -146,13 +147,7 @@
 {/snippet}
 
 <div class="launch-report">
-	<header class="masthead">
-		<div class="identity"><span class="mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="divider">/</span> Photography reports</span></div>
-		<nav class="masthead-links" aria-label="Report navigation">
-			<a href={indexHref}>All albums</a>
-			<a href={reportPath(hostname, 'sites')}>All sites</a>
-		</nav>
-	</header>
+	<ReportHeader current="album" />
 
 	<div class="report-body">
 		<section class="recap" aria-labelledby="album-title">
@@ -263,14 +258,6 @@
 	.launch-report { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
 	@media (min-width: 640px) { .launch-report { padding: 1.25rem 1.5rem 3.5rem; } }
 	@media (min-width: 1024px) { .launch-report { padding-inline: 2rem; } }
-
-	.masthead { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; margin-bottom: .5rem; padding: .35rem 0; }
-	.identity { align-items: center; color: var(--ink); display: flex; font-size: .85rem; font-weight: 650; gap: .6rem; }
-	.mark { background: var(--blue-ink); border-radius: .45rem; color: #fff; display: inline-grid; font-size: .7rem; height: 2rem; place-items: center; width: 2rem; }
-	.divider { color: var(--muted); }
-	.masthead-links { display: flex; gap: .4rem; }
-	.masthead-links a { align-items: center; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
-	.masthead-links a:hover { background: #dce9fa; }
 
 	a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 	#photos:focus-visible { outline-offset: 4px; }

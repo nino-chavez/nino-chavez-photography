@@ -39,7 +39,20 @@ test('gallery collection and local analytics preview remain available', async ()
  test('clean reports keep their public URL and old subdomain links redirect once', async () => {
  assert.equal((await request('https://analytics.ninochavez.co/sites?period=7')).status,200);
  assert.equal((await request('https://analytics.ninochavez.co/photography/analytics/sites?period=7')).headers.get('location'),'https://analytics.ninochavez.co/sites?period=7');
- assert.equal((await request('https://analytics.ninochavez.co/')).headers.get('location'),'/sites');
+ // Home: the root of the report host is a page now, not a redirect to /sites.
+	{
+		const home = await request('https://analytics.ninochavez.co/?x=1');
+		assert.equal(home.status, 200);
+		assert.equal(home.headers.get('location'), null);
+	}
+	// Its internal address, on any host, goes to the clean root and keeps the query.
+	assert.equal((await request('https://analytics.ninochavez.co/photography/analytics/home?x=1')).headers.get('location'), 'https://analytics.ninochavez.co/?x=1');
+	assert.equal((await request('https://ninochavez.co/photography/analytics/home')).headers.get('location'), 'https://analytics.ninochavez.co/');
+	assert.equal((await request('http://127.0.0.1:5189/photography/analytics/home')).status, 200);
+	assert.equal((await request('https://ninochavez.co/photography/analytics/home?/anything', 'POST')).status, 404);
+	// The older addresses still work.
+	assert.equal((await request('https://analytics.ninochavez.co/gallery')).status, 200);
+	assert.equal((await request('https://ninochavez.co/photography/analytics')).headers.get('location'), 'https://analytics.ninochavez.co/gallery');
  });
 
 test('an album launch report keeps its clean address and the internal one redirects to it', async () => {
