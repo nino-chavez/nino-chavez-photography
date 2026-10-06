@@ -57,9 +57,17 @@
 - ninochavez.co/photography (apex router to Pages)
 - analytics.ninochavez.co/ (same Pages project). The proxied
   `analytics` CNAME points to `nino-chavez-photography.pages.dev`, and the hostname is attached
-  as a Pages custom domain. Cloudflare Page Rules `4abee86fac06ab509ec6e74a93c4019e` and
-  `49cd0626a9c5fe0e70031b988f948c2c` forward the subdomain root and root with query
-  to `/sites`. SvelteKit reroutes `/sites`, `/gallery`, and `/gallery/export.csv` internally while keeping clean public URLs. The gallery build base remains `/photography`.
+  as a Pages custom domain. The bare root `/` is served by the app as Home. SvelteKit
+  reroutes `/`, `/albums`, `/albums/<key>`, `/albums/export.csv`, `/sites`, `/gallery`, and
+  `/gallery/export.csv` internally while keeping clean public URLs. The gallery build base
+  remains `/photography`.
+- One Cloudflare Page Rule acts on this host: `49cd0626a9c5fe0e70031b988f948c2c` matches
+  `analytics.ninochavez.co/?*` (the root with a query string) and forwards it with a 301 to the
+  site report, so old links that carried site-report filters on the root keep working. Page
+  Rules run at the edge before the app, so a rule on a path the app serves hides that page.
+  The bare-root rule `4abee86fac06ab509ec6e74a93c4019e` (`analytics.ninochavez.co/` → the site
+  report) was deleted on 2026-10-06 so the root reaches Home. Browsers that followed its 301
+  may have cached it; a private window shows the current behaviour.
 - Old analytics GET/HEAD URLs redirect to this hostname. Old-host analytics writes return 404.
   The report remains public; the hostname is an access-control boundary for a future
   Cloudflare Access policy, not authentication by itself.
@@ -70,8 +78,11 @@
 
 ## Verify after deploy
 - `curl -fsSL https://ninochavez.co/photography` returns 200
-- `curl -I https://analytics.ninochavez.co/` redirects to the report. The report returns 200,
-  while the old gallery analytics URL redirects to the new host.
+- `curl -s https://analytics.ninochavez.co/` returns 200 and a page titled "Home · Photography
+  reports", and `curl -I 'https://analytics.ninochavez.co/?period=30'` redirects to the site
+  report. The old gallery analytics URL redirects to the new host.
+- `/albums` and `/albums/<key>` on the analytics subdomain return 200; an unlisted or unknown
+  album key returns 404.
 - Check `/sites` on the analytics subdomain for nonzero page loads,
   a section-specific trend, and a paginated page list. Private share paths must not appear.
 - Spot-check an album page loads
