@@ -1,0 +1,197 @@
+# Analytics site rethink: pages, jobs, and verdicts
+
+Status: proposal, 2026-10-06. Not approved. It revises the page structure in [`ANALYTICS_PLAN.md` § 2](../../ANALYTICS_PLAN.md#2-deliver-the-complete-photographer-and-analyst-workspace). It removes no capability; the [coverage table](#every-capability-keeps-a-home) maps each one to its new place. The [Sep 28 scope directive](../../ANALYTICS_PLAN.md) still binds: the full north star is the release.
+
+## The verdict
+
+The site is built for steady traffic that the gallery does not have. An event album gets nearly all of its attention in its first three days, and then it goes quiet. The pages compare calendar months, and the intelligence rules wait for a steady baseline. So the main comparison is wrong for every new album, and the intelligence layer has never produced a single finding.
+
+The fix is to make the **album launch** the unit of the site, with its comparison measured from publication. That is a change to the rules as well as the pages.
+
+## What the data looks like
+
+Gallery, last 30 complete days (Sep 6 – Oct 5, 2026), observed on the live site on Oct 6:
+
+- **Small audience.** 125 browsers, 2,290 photo opens, 169 album opens.
+- **Two albums are most of it.** JCA at ACC had 1,011 photo opens and Millikin at North Central had 266. Together that is 56% of all photo opens across 254 albums. From the fourth album down, each gets about one photo open a day.
+- **Attention arrives in a burst.** JCA at ACC went public Sep 25 (inferred). It had 103 opens that day, 575 on Sep 26 and 126 on Sep 27, which is 80% of its total. It has had none since Oct 2.
+- **Most response columns are empty.** Shares are 0 across the gallery. The most-downloaded photo had 4 downloads.
+- **The newer, more detailed collection is one week old.** It started Sep 29. It shows 1,692 photos scrolled past on screen and 259 opened. Searches: 0.
+
+Site (ninochavez.co), last 30 days: Cloudflare counted 730 page loads and 120 entry visits. These are sampled and rounded to tens. The site's own collection, running only since Sep 29, recorded 85 page views, 0 contact-link clicks and 3 outbound clicks.
+
+Intelligence and private features, production queries on Oct 6 (read-only):
+
+| Record | Count | Since |
+| --- | --- | --- |
+| Intelligence snapshots | 12,637 | Sep 30 |
+| Snapshots with at least one finding | **0** | |
+| Briefs written / deliveries | 0 / 0 | |
+| Owner preference rows / brief schedules | 0 / 0 | |
+| Actions recorded / outcomes / assistant requests | 0 / 0 / 0 | |
+| Saved views | 0 | |
+
+The three most common reasons a rule stayed silent in the last day: "A complete comparable period is not available" (24,804), "Both periods need at least 20 recorded actions" (23,762), and "The selected evidence window is partial or unavailable" (18,530). The rules need two steady, complete periods with at least 20 actions each. A three-day burst followed by silence never qualifies.
+
+Briefs have two separate blockers. A brief is written only for an owner with a preferences row that has a decided retention policy and the dashboard enabled. No such row exists, because nobody has signed in and set one up. Even with that row, there has been no finding to report.
+
+What this walk did not see: every page was read signed out, the way the "Available by direct link" visitor sees it. The signed-in screens (actions to review, assistant answers, saved-view management, brief settings) were judged from source and from the zero usage counts above, not from their rendered screens.
+
+## Current and proposed page tree
+
+```text
+CURRENT                                         PROPOSED
+analytics.ninochavez.co/                        analytics.ninochavez.co/
+├─ /  → redirects to /sites                     ├─ /            Home: what happened since you last looked
+├─ /sites   Reach | Actions                     ├─ /albums      Every album, by publish date and first-week reach
+└─ /gallery                                     │  └─ /albums/:id   Album launch report
+   ├─ Overview                                  ├─ /site        Profile, work, writing, demos
+   ├─ Albums       ── folded into ───────────▶  │
+   ├─ Photos       ── folded into album report  │
+   ├─ Sources      ── split: tags → album/site; │
+   │                  locations → /data         │
+   ├─ Measurement  ── becomes ───────────────▶  ├─ /data        Can I trust these numbers?
+   └─ Preferences  ── moves to ──────────────▶  └─ /settings    This browser, briefs and alerts, saved views
+gallery/export.csv                              (export stays, from album index and album report)
+daily + weekly briefs, incident alerts          launch recaps + incident alerts (see decision 2)
+```
+
+## Page by page
+
+### `/` (redirects to Site analytics)
+
+| | |
+| --- | --- |
+| Shows | Nothing of its own. It sends you to `/sites`, so the gallery report is one click away from home. |
+| Job today | None. The gallery, where most of the activity is, is not the landing page. |
+| Verdict | **Redesign** as Home. |
+
+Proposed Home answers "what happened since I last looked?" across both sites in one screen. It shows each recent album's launch status ("in its first 3 days", "done; 40 people, 2nd of the last 10 at day 7"). It shows site reach this week against last week. It shows any open incident (collection, rendering, downloads). Findings appear here inline, next to the thing they are about, not in a separate panel.
+
+### `/sites`, Site analytics
+
+| | |
+| --- | --- |
+| Shows | Two views. Reach: Cloudflare page loads and entry visits, daily chart, sections, top pages, entry sources, devices. Actions: first-party page views, contact and outbound clicks, article and demo progress. Plus the intelligence panel. |
+| What you can do | Change period and section, page through top pages, open the gallery report. |
+| Job | Is anyone looking at my profile and work, and did anyone reach out? |
+| Data today | 730 page loads (Cloudflare, sampled) and 85 page views (first-party, since Sep 29) describe the same site with different measures and windows, side by side. Contact clicks: 0. The Photography section shows 100 page loads, while the gallery report shows 2,290 photo opens; the gallery is a single-page app, so page loads undercount it. |
+| Verdict | **Redesign** as `/site`. |
+
+Lead with one reach number and say which measure it is. Show the contact and outbound clicks, the closest thing to a business outcome, next to it. Keep top pages and entry sources. Move the second measure, devices, and the Cloudflare caveats to `/data`. Point photography traffic to the gallery numbers instead of showing a competing figure.
+
+### `/gallery` Overview
+
+| | |
+| --- | --- |
+| Shows | Totals, browsers, previous-period change, coverage, daily trend, intelligence panel and assistant, top 5 albums, top 4 photos. |
+| What you can do | Filter albums, period and measure; ask the assistant (signed in); record actions (signed in); jump to Albums or Photos. |
+| Job | What is happening across the gallery right now? |
+| Data today | "Previous equal period: −684 actions" says JCA vs PNHS has aged out, not that the gallery declined. Intelligence: "No actionable findings for this scope", which is what all 12,637 snapshots so far have said. Top-photo cards repeat the album name four times and nothing else. |
+| Verdict | **Fold** into Home. |
+
+### `/gallery` Albums
+
+| | |
+| --- | --- |
+| Shows | A 254-row table: current, previous and change for the chosen measure, plus album opens, downloads, favorites, shares, last activity. A selected-album side panel. |
+| What you can do | Search, page, select an album, open its report, open its photos. |
+| Job | Which album should I look at, and how did it do? |
+| Data today | The previous-period columns compare calendar months, which for an event album mostly reflects when it was published. Five columns are near zero for 250 rows. The side panel's main button ("Open album report") leads back to the Overview scoped to that album. |
+| Verdict | **Fold** into `/albums` (the index) and `/albums/:id` (the report). |
+
+The index lists every album, including ones with no activity, newest publication first. Its default comparison is by album age ("people in the first 7 days, against other albums at day 7"). That comparison already exists as `compare=publication_age`, but it is hidden under advanced filters. It works only for albums with a publication time: 7 of 254 today, all inferred from logs, growing with each publish. Older albums still show their activity totals and say plainly that they have no launch comparison.
+
+### `/gallery` Photos
+
+| | |
+| --- | --- |
+| Shows | 2,224 photos across 186 pages; popular, rising and recently active rankings; image and table views; shortlist. |
+| What you can do | Rank, choose columns, shortlist, export. |
+| Job | Which photos should I post, send, or learn from? |
+| Data today | The top photo has 13 opens and the most-downloaded photo has 4. Every card repeats "New album · not published in the previous period". Album name is the only text, so photos are told apart only by the thumbnail. |
+| Verdict | **Fold** into the album report, and **redesign** the ranking. |
+
+Inside one album, rank photos by response to being seen: shown, then opened, then downloaded or favorited. The collection that began Sep 29 records these exposures. Say when a photo has too few showings to rank. Keep a gallery-wide photo view reachable from the album index (scope: all albums), because the plan requires cross-gallery discovery.
+
+### `/gallery` Sources
+
+| | |
+| --- | --- |
+| Shows | Tagged arrivals (profile 126, links 15, coverage 11, share-x 1), where albums and photos were opened inside the gallery, linked-visit results, and saved views. |
+| What you can do | Read counts; save, update and delete a view (signed in). |
+| Job | Where did the attention come from? |
+| Data today | Linked results: "unavailable". Open locations describe the gallery's own navigation, not outside sources. Saved views (0 saved) sit here, unrelated to sources. |
+| Verdict | **Split.** Arrival tags go into the album report ("how people got here") and `/site`. Open locations go to `/data`. Saved views go to `/settings`. |
+
+### `/gallery` Measurement
+
+| | |
+| --- | --- |
+| Shows | Cloudflare cross-check, traffic classes, counting rules, delivery health, volume estimate, event counts, seven linked journeys, traffic impact on rankings. |
+| What you can do | Read; expand event counts. |
+| Job | Can I trust these numbers, and is collection working? |
+| Data today | Cloudflare comparison "unresolved". Delivery health "unavailable". Volume estimate: none. Journeys: 5 of 7 "unavailable". Traffic impact: no ranking changes. Unclassified traffic is 1,906 of 2,290 actions. |
+| Verdict | **Survive** as `/data`, moved out of the main tabs. |
+
+This is a page for checking whether something is broken, not for deciding what to shoot or share. Home links to it when an incident is open.
+
+### `/gallery` Preferences
+
+| | |
+| --- | --- |
+| Shows | The same analytics-choices component as the public `/analytics-preferences` page. |
+| Job | Exclude my own browser; change linked-analytics choice. |
+| Verdict | **Fold** into `/settings`, together with brief and alert preferences and saved views. Keep the public `/analytics-preferences` page unchanged; it serves visitors. |
+
+### Intelligence panel and assistant
+
+| | |
+| --- | --- |
+| Shows | "Worth your attention", actions to review, contextual inspector with three canned questions. On both `/sites` and `/gallery`. |
+| Job | Tell me what to do next and why. |
+| Data today | 0 findings in 12,637 snapshots; 0 actions, 0 assistant requests. |
+| Verdict | **Redesign the rules**, then place findings inline on Home and the album report. |
+
+The rules have to fit the launch pattern. Proposed rules: launch reach against albums at the same age; launch finished (activity stopped); photos that were seen often and rarely opened; download or rendering failures during a launch; collection outage. Each still states its evidence, sample size and limits, as the plan requires. The assistant moves into the album report, scoped to that album.
+
+### Daily and weekly briefs, incident alerts
+
+| | |
+| --- | --- |
+| Job | Tell me without my having to open the site. |
+| Data today | 0 briefs and 0 deliveries. No owner has set up preferences or a verified destination, and no finding has existed to send. |
+| Verdict | **Redesign** around launches: a recap on day 3 and day 7 after an album goes public. Keep incident alerts. See decision 2. |
+
+## Every capability keeps a home
+
+| `ANALYTICS_PLAN.md` § 2 capability | Today | Proposed home |
+| --- | --- | --- |
+| Overview: trends, comparison, popular and rising work | Overview tab | Home |
+| Album reports, including zero-activity albums | Albums tab, side panel, album-scoped Overview | `/albums` index and `/albums/:id` |
+| Bounded multi-album comparison | Albums table with album picker | `/albums` index (same-age comparison by default; pick albums to compare) |
+| Photo explorer: real images, table, rankings, inspection, shortlist, export | Photos tab | Album report photo section; gallery-wide view from `/albums` |
+| Sources and sharing annotations | Sources tab | Album report and `/site` (arrivals); `/data` (open locations) |
+| Analyst controls: dates, measures, filters, columns, CSV | Filter bar on every tab | Same controls on `/albums` and the album report; CSV from both |
+| Saved reports | Inside Sources (0 saved) | `/settings`, plus "save this view" on the index and report |
+| Measurement and operations, traffic impact, provider reconciliation | Measurement tab | `/data` |
+| Durable history | Behind every view | Unchanged |
+| Actionable intelligence, assistant, actions and follow-up | Panel on Overview and Sites | Inline findings on Home and album report; assistant in album report |
+| Daily and weekly reports, incident alerts | Built; never sent | Launch recaps and incident alerts (decision 2) |
+| Visitor analytics choices | Preferences tab and public page | `/settings` (yours); public page unchanged (visitors) |
+
+## Decisions that are Nino's
+
+1. **Album age: first publication or latest?** The launch comparison counts days from publication. Republishing currently replaces the publication time, which would restart an album's age. This choice decides which albums share a cohort.
+2. **Briefs: replace daily and weekly with launch recaps?** The plan calls for daily and weekly reports. On this data a daily brief would almost always say "nothing changed". Replacing them is a scope change against the plan, so it needs your call. The alternative keeps daily and weekly reports and adds launch recaps.
+
+## Next step
+
+Three different whole-screen concepts for Home, the album index, and the album report. They will be compared on the same real cases: JCA at ACC's three-day burst; a trickle album like VLA – Spring 2026; a quiet week with no new album; and unavailable data. Each case uses production numbers, not invented ones. This matches the judged-screen pattern and the concept comparison in [`ANALYTICS_DESIGN_CONCEPTS.md`](../../ANALYTICS_DESIGN_CONCEPTS.md). The Sep 28 comparison used invented cases ("an older photo rising", "a traffic burst") that the real gallery has not produced.
+
+## Sources
+
+- Live pages walked signed out on 2026-10-06 with browse-tool: `/sites` (Reach and Actions), `/gallery` (all six sections, all albums, last 30 days), and the album-scoped views for `Re7kho`.
+- Production queries, read-only, `supabase db query --linked`, 2026-10-06: counts on `analytics_intelligence_*` tables and `analytics_saved_reports`; suppression reasons from `analytics_intelligence_snapshots` in the last day.
+- Brief creation condition: `supabase/migrations/20260930084000_analytics_intelligence_refresh_health.sql` (owner loop over `analytics_intelligence_preferences` where `retention_policy <> 'undecided' AND dashboard_enabled`).
+- Root redirect observed by navigation: `/` lands on `/sites`.
