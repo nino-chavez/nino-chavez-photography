@@ -30,6 +30,8 @@ Private notes, saved private reports, individual event investigation and classif
 
 ## 2. Deliver the complete photographer and analyst workspace
 
+> Under review, 2026-10-06: [the analytics site rethink](audits/20261006-analytics-site-rethink/README.md) proposes reorganizing these capabilities around album launches. It keeps every capability below. Until it is approved, this section still governs.
+
 | Capability | Photographer/operator job | Required behavior |
 | --- | --- | --- |
 | Overview | Understand what is happening across the gallery | Daily trends, previous-period comparison, popular and rising work, and the albums contributing to change |
@@ -186,7 +188,7 @@ Change the plan if a controlled replay shows that the suspicious burst comes fro
 
 ### Outcome and reader
 
-Give Nino a short list of useful actions, the evidence behind each one, and a way to see whether an action helped. Cover photography, profile/work, writing and demos in the complete release. Put this intelligence in the dashboard, with a contextual assistant for the report Nino is examining. Daily and weekly reports should deliver the same findings. Operational alerts should identify broken collection or visitor flows while they can still be repaired.
+Give Nino a short list of useful actions, the evidence behind each one, and a way to see whether an action helped. Cover photography, profile/work, writing and demos in the complete release. Put this intelligence in the dashboard, with a contextual assistant for the report Nino is examining. Launch recaps should deliver the same findings for each new album, article or demo (decided October 6; they replace the daily and weekly reports). Operational alerts should identify broken collection or visitor flows while they can still be repaired.
 
 This section is the implementation plan for that outcome. Nino is the primary reader and operator. The decision summary uses ordinary language; the data contracts retain exact event names, units, coverage and permissions. Build order follows dependencies. It does not split the commitment into smaller releases.
 
@@ -324,17 +326,16 @@ Acceptance: Nino can understand a finding, inspect the exact evidence, record an
 
 ### Workstream E: deliver useful reports without notification noise
 
-Proposed defaults, configurable by the owner:
+Decided October 6: launch recaps replace the daily brief and weekly review. On this gallery, attention arrives in the first days after a launch, so a calendar brief would almost always report no change ([evidence](audits/20261006-analytics-site-rethink/README.md)). Defaults, configurable by the owner:
 
 | Report | Schedule and job | Quiet behavior |
 | --- | --- | --- |
-| Daily brief | 08:00 America/Chicago; last complete source days, material changes, promotion candidates and due follow-ups | Generate an in-dashboard brief each day. Outbound delivery happens only when there is new actionable information; no fabricated zero for unavailable data. |
-| Weekly review | Monday 08:00 America/Chicago; completed weekly evidence, repeated patterns, recorded actions and follow-up results | Keep sparse or inconclusive weeks explicit. Dashboard review remains available even when outbound delivery is muted. |
+| Launch recap | Day 3 and day 7 after an album, article or demo first goes public, at 08:00 America/Chicago; reach so far against earlier launches at the same age, what people opened and downloaded, how they arrived, and due follow-ups | Generate an in-dashboard recap for every launch. Outbound delivery happens only when the recap is complete; a launch with partial or unavailable evidence says so instead of reporting a zero. |
 | Operational alert | Evaluate on the existing bounded job cadence; confirmed collection/render/download/refresh problems | One open incident per cause; cooldown, acknowledged state and a recovery message. Display every incident even when outbound delivery is muted. |
 
-Use a few top actions in a brief with a link to all findings. Explain each period and timezone. Complete-day briefs wait for successful preservation/refresh and supported provider cutoffs. Current-day operational evidence is labeled partial and compared only with a compatible cutoff.
+Use a few top actions in a recap with a link to all findings. Explain each period and timezone. Complete-day briefs wait for successful preservation/refresh and supported provider cutoffs. Current-day operational evidence is labeled partial and compared only with a compatible cutoff.
 
-Use the existing job mechanism to check due work; compute the owner's local date/time and persist a unique period key. UTC offset changes, retries or overlapping runs must not duplicate a daily/weekly report. Late runs retain the intended period, mark delayed delivery and suppress obsolete alerts. Keep snapshot generation separate from notification attempts.
+Use the existing job mechanism to check due work; compute the owner's local date/time and persist a unique period key. UTC offset changes, retries or overlapping runs must not duplicate a launch recap; its period key is the launch and its day 3 or day 7 checkpoint. Late runs retain the intended period, mark delayed delivery and suppress obsolete alerts. Keep snapshot generation separate from notification attempts.
 
 Email is the proposed optional external channel. Its destination, delivery preference and final activation require a verified owner choice; do not infer an address from screenshots or Chrome. Reuse PostHog subscriptions/alerts when their data and privacy match the finding. Use one small owned sender for cross-provider briefs or local operational evidence. Persist a delivery record and stable idempotency key; provider acceptance and confirmed delivery remain distinct from inbox placement. A timeout after submission requires reconciliation before another send.
 

@@ -1,16 +1,39 @@
 # Analytics experience
 
-Design intent: rethink. Scope: `/photography/analytics/operator` and its report interactions. Mode: Operate.
+Design intent: rethink. Scope: the whole report site at `analytics.ninochavez.co` (gallery and site reports, intelligence, recaps). Mode: Operate.
 
 Nino asked to replace the styling completely on September 29, 2026. Public access, accurate measure definitions, exports, filtering, and protections for private data remain product requirements. The measurement review below identifies definitions and collection behavior that need correction alongside the redesign.
 
-## The job
+## Launch rethink, October 6
+
+This section supersedes "The job", "Character and hierarchy" and the surface list below where they conflict. The September sections stay as the record of the first direction and its evidence.
+
+**Why.** On October 5 and 6 Nino asked what the Albums page was for and whether it was a dead page. Production data shows why the September structure fails: each event album gets about 80% of its attention in its first three days, then goes quiet. Calendar-period comparisons describe publication timing, not performance, and the intelligence rules never fired (12,637 snapshots, 0 findings). Full evidence: [the analytics site rethink](../audits/20261006-analytics-site-rethink/README.md). Decided October 6: album age counts from the first publication, and launch recaps on day 3 and day 7 replace the daily and weekly briefs.
+
+**The job, in five questions.**
+1. *What is happening now?* Which album launched most recently, and how its first days compare with earlier launches at the same age.
+2. *What is next?* The next recap checkpoint, or nothing until the next publish. A quiet gallery says so.
+3. *Who is involved?* A small group per launch (about 40 browsers for JCA at ACC), how they arrived, and which photos they took.
+4. *When and where is this read?* On a phone in the days after publishing, and from a day 3 or day 7 recap. On a desktop when comparing launches or checking data.
+5. *What can I do from here?* Open the album's photos, shortlist or export the ones people downloaded, record a change, or check whether collection is working.
+
+**Character:** launch-centred, honest about small numbers, photographic, quiet when nothing happens, brief.
+
+**Anti-goals:** calendar-month comparisons on burst-shaped albums; a 250-row table of trickle; an intelligence panel that is always empty; a diagnostics console in the main navigation; any number without a "compared with what".
+
+**Density target.** Home fits one 1440 × 900 desktop screen and two 390 × 844 phone screens. An album report's first desktop screen holds the launch curve, its place among earlier launches, and three numbers; photos start in the second.
+
+**Hierarchy.** First the most recent launch and its status; second its comparison with earlier launches at the same age; third the photos people took. Data quality appears only as an open incident.
+
+**Carried forward from September 29.** Nino's note asked for an album summary beside the overview and a click into a photo-first detail view. Every October concept keeps that path: summary, then photos.
+
+## The job (September 29)
 
 Nino opens this after publishing or sharing photography, or to revisit the catalogue. He needs to understand what is getting attention, whether that attention changed, and which albums or photographs explain the change. From there he can inspect an album, compare it with peers, find photos to share, or export the result.
 
 Desktop supports sustained comparison. A phone supports a quick check and drilling into one album. Ambient lighting is unknown; the concepts test a readable light workspace and a photo-focused neutral surface rather than assuming photography requires a dark dashboard.
 
-## Character and hierarchy
+## Character and hierarchy (September 29)
 
 Character: precise, photographic, composed, inspectable, responsive.
 
@@ -22,13 +45,15 @@ The overview should fit a summary, a chart under 280px tall, and the start of bo
 
 ## Surfaces
 
-- Overview: activity across the gallery, comparison period, top albums, and a small photo selection.
-- Albums: find a known event, sort performance, select peers, and open an album report.
-- Album report: one album's context, activity, comparison, and photos; return keeps prior filters.
-- Photos: popular, rising, or recently active photos, inspection, shortlist, and CSV.
-- Sources: tagged arrivals and where opens occurred, kept as separate measures.
-- Data quality: reporting definitions, coverage, excluded traffic, and protected operator tools.
-- Filter controls: date, metric, album scope, comparisons, and optional slices.
+Selected October 6 ([ADR 0008](../../blueprint/decisions/0008-analytics-launch-layout.md)): Home from concept A, the album report opening with concept C's recap, then concept B's photo grid and launch chart; B's table is the album index. The September surfaces fold in as noted.
+
+- Home: the latest launches and their status, site reach this week, and any open incident. Replaces Overview.
+- Album index: every album, newest first publication first, with first-week reach against earlier launches. Replaces the Albums table.
+- Album report: one album's launch curve, comparison, people and arrivals, then a photo-first view with shortlist and export. Absorbs the side panel, Photos and album-level Sources.
+- Site report: profile, work, writing and demos; reach, top pages, arrivals, contact clicks.
+- Data quality: coverage, traffic classes and impact, counting rules, event counts, journeys, provider checks, open locations.
+- Settings: this browser's analytics choices, recap and alert preferences, saved views.
+- Launch recap: the day 3 and day 7 summary, in the dashboard and by email once a destination is verified.
 
 ## Interaction and copy
 
@@ -42,6 +67,8 @@ Plainness: lay. Keep album names, recorded counts, date windows, coverage, traff
 
 | Object | Owner | Valid actions | States | Reverse action |
 |---|---|---|---|---|
+| Launch (October 6) | Album catalogue's first publication time | Open report, compare with earlier launches, open photos | In first 3 days, days 3–7, finished, no launch date recorded, inferred date | Back to Home or index |
+| Launch recap (October 6) | Scheduled recap job | Read, open evidence, record a change | Due, ready, partial evidence, unavailable, delivered, delivery failed | None; a recap is a record |
 | Report | Server report contract | Filter, compare, export | Loading, complete, partial, unavailable, empty | Reset filters |
 | Album | Album catalogue | Search, sort, select, inspect, compare | Active, no activity, missing publication date | Back to albums, clear selection |
 | Photo | Photo catalogue and report | Inspect, rank, shortlist, export | Image loaded, missing preview, new activity, unchanged | Close inspection, remove from shortlist |
