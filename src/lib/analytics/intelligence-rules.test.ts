@@ -39,6 +39,20 @@ test('per-album discovery and momentum keep targets, calendar counts, and exact 
 	assert.match(momentum?.reportHref ?? '', /scope=album/);
 });
 
+test('an album published after the comparison period is new activity, not a momentum gain', () => {
+	const result = evaluateIntelligenceRules(input({
+		albumMomentum: [
+			{ albumKey: 'new-album', current: 1011, previous: 0, publishedAfterComparison: true, evidenceLinks: [] },
+			{ albumKey: 'older-album', current: 40, previous: 20, publishedAfterComparison: false, evidenceLinks: [] }
+		]
+	}));
+	const momentum = result.findings.filter((item) => item.rule === 'momentum');
+	assert.deepEqual(momentum.map((item) => item.target.albumKey), ['older-album']);
+	const suppression = result.suppressions.find((item) => item.rule === 'momentum' && item.target?.kind === 'album' && item.target.albumKey === 'new-album');
+	assert.match(suppression?.reason ?? '', /published after the comparison period/);
+	assert.match(suppression?.reason ?? '', /new, not growth/);
+});
+
 test('search and distribution retain distinct cohorts without adding overlapping source actions', () => {
 	const result = evaluateIntelligenceRules(input({
 		search: { submitted: 40, failures: 1, resultsShown: 40, emptyResults: 14, selections: 4 },

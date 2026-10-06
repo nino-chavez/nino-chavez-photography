@@ -15,8 +15,9 @@ test('gallery adapter preserves provider cohorts, per-target discovery, and dedu
 		decision: { available: true, asOf: '2026-10-01T02:00:00.000Z', truncated: false, photoResponses: [{ photoId: 'photo-1', albumKey: 'album-1', exposures: 25, favorites: 2, downloadItems: 2, responses: 3 }], albumDiscovery: [{ albumKey: 'album-1', exposures: 30, opens: 2, directEntries: 1 }], rendering: { rendered: 20, failed: 1, observedTerminal: 20 }, search: { submitted: 31, failed: 1 } }
 	}, {
 		diagnostics: async () => [],
-		galleryReport: async () => ({ dataAsOf: '2026-10-01T02:00:00.000Z', coverage: 'complete', previousCoverage: 'complete', total: 50, previousTotal: 25, photos: [], publicationAge: { missingAlbumKeys: [] }, albums: [{ albumKey: 'album-1', count: 50, previousCount: 25 }] })
+		galleryReport: async () => ({ dataAsOf: '2026-10-01T02:00:00.000Z', coverage: 'complete', previousCoverage: 'complete', total: 50, previousTotal: 25, photos: [], publicationAge: { missingAlbumKeys: [] }, albums: [{ albumKey: 'album-1', count: 50, previousCount: 25, publicationAt: '2026-08-20T12:00:00Z' }, { albumKey: 'album-new', count: 40, previousCount: 0, publicationAt: '2026-09-10T15:00:00Z' }] })
 	});
+	assert.deepEqual(evidence.albumMomentum?.map((row) => [row.albumKey, row.publishedAfterComparison]), [['album-1', false], ['album-new', true]], 'same publication rule as the Albums tab and CSV');
 	assert.equal(evidence.albumDiscovery?.[0].albumKey, 'album-1');
 	assert.equal(evidence.linkedPhotoResponse?.[0].evidenceLinks[0], '/photo/photo-1');
 	assert.equal(evidence.rendering?.observedTerminal, 20);
