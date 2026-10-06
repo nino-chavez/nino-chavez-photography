@@ -50,6 +50,16 @@ test('an album launch report keeps its clean address and the internal one redire
 	assert.equal((await request('https://ninochavez.co/photography/analytics/albums/Re7kho?/addAnnotation', 'POST')).status, 404);
 });
 
+test('the album index keeps its clean address, its CSV, and the internal addresses redirect to them', async () => {
+	assert.equal((await request('https://analytics.ninochavez.co/albums?compare=Re7kho')).status, 200);
+	assert.equal((await request('https://analytics.ninochavez.co/albums/export.csv')).status, 200);
+	assert.equal((await request('https://analytics.ninochavez.co/photography/analytics/albums?compare=Re7kho')).headers.get('location'), 'https://analytics.ninochavez.co/albums?compare=Re7kho');
+	assert.equal((await request('https://ninochavez.co/photography/analytics/albums')).headers.get('location'), 'https://analytics.ninochavez.co/albums');
+	assert.equal((await request('https://ninochavez.co/photography/analytics/albums/export.csv')).headers.get('location'), 'https://analytics.ninochavez.co/albums/export.csv');
+	assert.equal((await request('http://127.0.0.1:5189/photography/analytics/albums')).status, 200);
+	assert.equal((await request('https://ninochavez.co/photography/analytics/albums', 'POST')).status, 404);
+});
+
 test('an album address with anything but one key is never redirected into a report', async () => {
 	for (const path of ['/photography/analytics/albums/..', '/photography/analytics/albums/a%2Fb', '/photography/analytics/albums/Re7kho/extra']) {
 		const response = await request(`https://ninochavez.co${path}`);

@@ -21,7 +21,8 @@
       "sourceRoots": [
         "src/routes",
         "src/lib/components",
-        "src/lib/analytics/launch-recap.ts"
+        "src/lib/analytics/launch-recap.ts",
+        "src/lib/analytics/album-index.ts"
       ],
       "manualReview": {
         "evidencePath": "docs/reader-audits/gallery-interface.json"

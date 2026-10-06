@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { onMount, tick } from 'svelte';
-	import { reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, reportPath } from '$lib/analytics/report-paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
 	import LaunchDailyChart from '$lib/components/analytics/LaunchDailyChart.svelte';
@@ -35,7 +35,7 @@
 	const orderIsWeak = $derived(topCount <= 3);
 	const shown = $derived(photos.slice(0, visible));
 	const hostname = $derived(page.url.hostname);
-	const galleryHref = $derived(reportPath(hostname, 'gallery'));
+	const indexHref = $derived(albumIndexPath(hostname));
 	const signInHref = $derived(`${base}/login?next=${encodeURIComponent(`/analytics/albums/${data.album.key}`)}`);
 	const csvQuery = $derived((measure: string) => new URLSearchParams({
 		period: 'custom', start: data.query.start, end: data.query.end, scope: 'album', albums: data.album.key, measure, traffic: 'conservative', compare: 'none'
@@ -149,7 +149,7 @@
 	<header class="masthead">
 		<div class="identity"><span class="mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="divider">/</span> Photography reports</span></div>
 		<nav class="masthead-links" aria-label="Report navigation">
-			<a href={galleryHref}>All albums</a>
+			<a href={indexHref}>All albums</a>
 			<a href={reportPath(hostname, 'sites')}>All sites</a>
 		</nav>
 	</header>

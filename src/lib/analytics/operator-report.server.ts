@@ -109,7 +109,7 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 	}
 }
 
-function formulaSafe(value: string | number | null): string { const text = String(value ?? ''); return typeof value === 'string' && /^[=+\-@\t\r]/.test(text) ? `'${text}` : text; }
+export function formulaSafe(value: string | number | null): string { const text = String(value ?? ''); return typeof value === 'string' && /^[=+\-@\t\r]/.test(text) ? `'${text}` : text; }
 
 export function reportCsv(report: OperatorReport, shortlist?: Set<string>, v2?: V2ReportProjection): string {
 	const escape = (value: string | number | null) => `"${formulaSafe(value).replaceAll('"', '""')}"`;

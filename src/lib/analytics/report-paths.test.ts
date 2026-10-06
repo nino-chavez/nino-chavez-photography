@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAlbumKey, isAnalyticsWorkspace } from './report-paths';
+import { albumIndexPath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAlbumKey, isAnalyticsWorkspace } from './report-paths';
 
 const HOST = 'analytics.ninochavez.co';
 
@@ -20,10 +20,10 @@ test('the report host maps /albums/<key> to the internal route and back', () => 
 });
 
 test('anything that is not exactly one album key is not an album address', () => {
-	for (const path of ['/albums', '/albums/', '/albums/Re7kho/extra', '/albums/..', '/albums/%2e%2e', '/albums/a%2Fb', '/albums/a.b', '/albums//Re7kho', '/albumsX/Re7kho', '/albums/Re7kho/']) {
+	for (const path of ['/albums/', '/albums/Re7kho/extra', '/albums/..', '/albums/%2e%2e', '/albums/a%2Fb', '/albums/a.b', '/albums//Re7kho', '/albumsX/Re7kho', '/albums/Re7kho/']) {
 		assert.equal(internalReportPath(path), null, path);
 	}
-	for (const path of ['/photography/analytics/albums', '/photography/analytics/albums/', '/photography/analytics/albums/Re7kho/extra', '/photography/analytics/albums/..', '/photography/analytics/albums/%2e%2e', '/photography/analytics/albums/a%2Fb']) {
+	for (const path of ['/photography/analytics/albums/', '/photography/analytics/albums/Re7kho/extra', '/photography/analytics/albums/..', '/photography/analytics/albums/%2e%2e', '/photography/analytics/albums/a%2Fb']) {
 		assert.equal(cleanReportPath(path), null, path);
 	}
 });
@@ -50,7 +50,26 @@ test('the album report uses the analytics shell, and only on the report host or 
 	assert.equal(isAnalyticsWorkspace('/albums/[slug]', 'ninochavez.co', '/photography/albums/Re7kho'), false);
 	assert.equal(isAnalyticsWorkspace(null, 'ninochavez.co', '/albums/Re7kho'), false);
 	assert.equal(isAnalyticsWorkspace(null, HOST, '/albums/a%2Fb'), false);
-	assert.equal(isAnalyticsWorkspace(null, HOST, '/albums'), false);
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/albums/'), false);
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/albums/Re7kho/extra'), false);
+});
+
+test('the album index has its own clean address, its CSV, and an internal route that maps back', () => {
+	assert.equal(internalReportPath('/albums'), '/photography/analytics/albums');
+	assert.equal(internalReportPath('/albums/export.csv'), '/photography/analytics/albums/export.csv');
+	assert.equal(cleanReportPath('/photography/analytics/albums'), '/albums');
+	assert.equal(cleanReportPath('/photography/analytics/albums/export.csv'), '/albums/export.csv');
+	for (const path of ['/albums', '/albums/export.csv']) assert.equal(cleanReportPath(internalReportPath(path)!), path);
+	// The CSV address is not an album key, so it can never be read as one album's report.
+	assert.equal(isAlbumKey('export.csv'), false);
+	assert.equal(albumIndexPath(HOST), '/albums');
+	assert.equal(albumIndexPath(HOST, '/export.csv'), '/albums/export.csv');
+	assert.equal(albumIndexPath('localhost'), '/photography/analytics/albums');
+	assert.equal(albumIndexPath('ninochavez.co', '?compare=a'), '/photography/analytics/albums?compare=a');
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/albums'), true);
+	assert.equal(isAnalyticsWorkspace('/analytics/albums', 'localhost', '/photography/analytics/albums'), true);
+	// On the gallery host, /albums is not an analytics page.
+	assert.equal(isAnalyticsWorkspace(null, 'ninochavez.co', '/albums'), false);
 });
 
 test('evidence links to an album report stay in the analytics shell; public album links keep going to the gallery', () => {
