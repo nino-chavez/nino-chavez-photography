@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
+import { loadIntelligencePanelMode } from '$lib/analytics/intelligence-panel.server';
 import { env } from '$env/dynamic/private';
 import { chicagoDate } from '$lib/analytics/launch-recap';
 import { currentOperator } from '$lib/analytics/operator-session.server';
@@ -30,16 +31,13 @@ export const load: PageServerLoad = async ({ url, cookies, setHeaders, fetch }) 
 
 	const admin = createSupabaseAdminClient();
 	const owner = (await currentOperator(cookies)) !== null;
-	const [traffic, actions, snapshot] = await Promise.allSettled([
+	// Findings show only when this scope's saved calculation holds at least one; see intelligence-panel.server.ts.
+	const panel = loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'sites', period, section }), owner, 'site report');
+	const [traffic, actions] = await Promise.allSettled([
 		loadSiteTraffic(period, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_ANALYTICS_TOKEN, fetch, { cache: siteTrafficCache }),
-		loadSiteActions(admin, period, section, actionsPage),
-		admin.from('analytics_intelligence_snapshot_current').select('scope_key').eq('scope_key', intelligenceScopeKey({ kind: 'sites', period, section })).maybeSingle()
+		loadSiteActions(admin, period, section, actionsPage)
 	]);
-	// The findings panel reads a saved calculation for exactly this scope. Until one exists it could only say "unavailable", so
-	// visitors see nothing; the owner still gets the private record form. Decided here from the stored data, as on the album report.
-	const hasSnapshot = snapshot.status === 'fulfilled' && !snapshot.value.error && !!snapshot.value.data;
-	if (snapshot.status === 'rejected') console.error('[site report] snapshot lookup failed:', snapshot.reason instanceof Error ? snapshot.reason.message : snapshot.reason);
-	const intelligence: 'report' | 'record' | 'none' = hasSnapshot ? 'report' : owner ? 'record' : 'none';
+	const intelligence = await panel;
 	if (actions.status === 'rejected') console.error('[site report] actions unavailable:', actions.reason instanceof Error ? actions.reason.message : actions.reason);
 	if (traffic.status === 'rejected') console.error('[site report] traffic unavailable:', traffic.reason instanceof Error ? traffic.reason.message : traffic.reason);
 	return {
