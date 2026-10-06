@@ -1,10 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	assertReportDateBounds, comparisonWindow, dateOnly, publishedAfterComparison, rising, risingComparison,
-	type MeasureTotals, type ReportQuery
+	type MeasureTotals, type PhotoWindow, type ReportQuery
 } from './report-contract';
 import type { V2ReportProjection } from './v2-report-projection.server';
-import type { PhotoWindow } from './gallery-performance.server';
 import { fetchScheduledGalleryReport } from './scheduled-gallery-report.server';
 
 type Coverage = 'complete' | 'partial' | 'unavailable';

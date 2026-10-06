@@ -1,8 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cfImageUrl } from '$lib/utils/cloudflare-images';
 import type { OperatorReport } from './operator-report.server';
-import type { ReportQuery } from './report-contract';
-import type { PhotoWindow } from './gallery-performance.server';
+import { isPhotoRank, type PhotoWindow, type ReportQuery } from './report-contract';
 
 type ScheduledPayload = Pick<OperatorReport,
 	'coverage'|'previousCoverage'|'total'|'previousTotal'|'observedTotal'|'today'|'dataAsOf'|
@@ -35,7 +34,7 @@ export function decodeScheduledGalleryReport(value:unknown):ScheduledPayload {
 	if(!Array.isArray(r.albums)||!r.albums.every((v)=>validGroup(v,false)&&isObject(v)&&validMeasures(v.measures)&&isInstant(v.publicationAt)))throw new Error('Invalid scheduled gallery albums');
 	if(!Array.isArray(r.photos)||!r.photos.every((v)=>validGroup(v,true)&&isObject(v)&&validMeasures(v.measures)&&(v.imageUrl===null||isString(v.imageUrl))))throw new Error('Invalid scheduled gallery photos');
 	if(!Array.isArray(r.albumOnlyActions)||!r.albumOnlyActions.every((v)=>validGroup(v,false)))throw new Error('Invalid scheduled gallery album actions');
-	if(!isObject(r.photoPagination)||!isCount(r.photoPagination.page)||!isCount(r.photoPagination.pageSize)||r.photoPagination.pageSize>100||!isCount(r.photoPagination.total)||!isCount(r.photoPagination.pageCount)||!['popular','rising','recent'].includes(String(r.photoPagination.rank))||(r.photoPagination.pageCount===0?r.photoPagination.page!==0:r.photoPagination.page>=r.photoPagination.pageCount))throw new Error('Invalid scheduled gallery pagination');
+	if(!isObject(r.photoPagination)||!isCount(r.photoPagination.page)||!isCount(r.photoPagination.pageSize)||r.photoPagination.pageSize>100||!isCount(r.photoPagination.total)||!isCount(r.photoPagination.pageCount)||!isPhotoRank(r.photoPagination.rank)||(r.photoPagination.pageCount===0?r.photoPagination.page!==0:r.photoPagination.page>=r.photoPagination.pageCount))throw new Error('Invalid scheduled gallery pagination');
 	if(!isObject(r.sources)||!Array.isArray(r.sources.arrivals)||!Array.isArray(r.sources.openLocations)||!isCount(r.sources.unknown)||![...r.sources.arrivals,...r.sources.openLocations].every((v)=>isObject(v)&&isString(v.source)&&isCount(v.count)))throw new Error('Invalid scheduled gallery sources');
 	if(!Array.isArray(r.traffic)||!r.traffic.every((v)=>isObject(v)&&isString(v.classification)&&isCount(v.count)))throw new Error('Invalid scheduled gallery traffic');
 	if(!Array.isArray(r.trafficImpact)||!r.trafficImpact.every((v)=>isObject(v)&&isString(v.albumKey)&&isCount(v.inclusive)&&isCount(v.conservative)&&v.conservative<=v.inclusive&&isCount(v.excluded)&&v.excluded===v.inclusive-v.conservative&&isCount(v.inclusiveRank)&&v.inclusiveRank>0&&isCount(v.conservativeRank)&&v.conservativeRank>0))throw new Error('Invalid scheduled gallery traffic impact');
