@@ -49,7 +49,6 @@ const undated = (): Json => ({
 	exposure: { since: '2026-09-29', coverage: 'complete' }
 });
 const undatedPayload = (): Json => ({ ...payload(), album: undated(), launches: [launch()] });
-const clone = <T>(v: T): T => structuredClone(v);
 
 test('a real launch decodes with its series, totals, ranks and photos', () => {
 	const model = decodeLaunchReadModel(payload());
