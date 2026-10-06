@@ -112,6 +112,35 @@ export interface LaunchReadModel {
 	launches: Launch[];
 }
 
+/** `public.analytics_read_launches`: the launch list on its own, with the same envelope as the album read. */
+export interface LaunchList {
+	asOf: string;
+	/** The as-of Chicago day. */
+	today: string;
+	/** The last complete Chicago day; no series holds a later date. */
+	lastCompleteDay: string;
+	days: number;
+	traffic: LaunchTraffic;
+	/** Every launch with a first publication, newest first. Empty when there are none; that is not an error. */
+	launches: Launch[];
+}
+
+export interface LaunchListInput {
+	asOf?: Date | string;
+	days?: number;
+	traffic?: LaunchTraffic;
+	/** Leave out albums currently unlisted. Default true, as in the report. */
+	publicOnly?: boolean;
+}
+
+/** The function is not installed. The message is distinct on purpose: it is not "no launches". */
+export class LaunchesNotInstalledError extends Error {
+	constructor() {
+		super('Launch list reporting is not installed. This is not an empty list of launches.');
+		this.name = 'LaunchesNotInstalledError';
+	}
+}
+
 export interface LaunchReadInput {
 	albumKey: string;
 	asOf?: Date | string;
@@ -274,8 +303,8 @@ function decodeAlbum(value: unknown, today: string): DatedLaunchAlbum | UndatedL
 	};
 }
 
-export function decodeLaunchReadModel(value: unknown): LaunchReadModel {
-	const v = exact(value, ['asOf', 'today', 'lastCompleteDay', 'days', 'traffic', 'album', 'launches'], 'payload');
+/** The envelope both reads share: the clock, the window length, the traffic words, and every launch. */
+function decodeEnvelope(v: Record<string, unknown>): Omit<LaunchList, 'launches'> & { launches: Launch[] } {
 	if (!isInstant(v.asOf) || !isDate(v.today) || !isDate(v.lastCompleteDay)) fail('payload dates');
 	if (v.lastCompleteDay !== addDays(v.today, -1)) fail('lastCompleteDay is not the day before today');
 	if (!isCount(v.days) || v.days < 1) fail('payload.days');
@@ -286,7 +315,33 @@ export function decodeLaunchReadModel(value: unknown): LaunchReadModel {
 		const l = exact(item, launchKeys, `launches[${i}]`);
 		return decodeLaunchFields(l, `launches[${i}]`, today);
 	});
-	return { asOf: v.asOf, today, lastCompleteDay: v.lastCompleteDay, days: v.days, traffic: v.traffic, album: decodeAlbum(v.album, today), launches };
+	return { asOf: v.asOf, today, lastCompleteDay: v.lastCompleteDay, days: v.days, traffic: v.traffic, launches };
+}
+
+export function decodeLaunchReadModel(value: unknown): LaunchReadModel {
+	const v = exact(value, ['asOf', 'today', 'lastCompleteDay', 'days', 'traffic', 'album', 'launches'], 'payload');
+	const envelope = decodeEnvelope(v);
+	return { ...envelope, album: decodeAlbum(v.album, envelope.today) };
+}
+
+/** Decoder for `public.analytics_read_launches`. Same strictness as the album read: unknown keys are refused. */
+export function decodeLaunchList(value: unknown): LaunchList {
+	return decodeEnvelope(exact(value, ['asOf', 'today', 'lastCompleteDay', 'days', 'traffic', 'launches'], 'payload'));
+}
+
+export async function fetchLaunches(client: SupabaseClient, input: LaunchListInput = {}): Promise<LaunchList> {
+	const { data, error } = await client.rpc('analytics_read_launches', {
+		p_as_of: input.asOf === undefined ? new Date().toISOString() : new Date(input.asOf).toISOString(),
+		p_days: input.days ?? 14,
+		p_traffic: input.traffic ?? 'conservative',
+		p_public_only: input.publicOnly ?? true
+	});
+	if (error) {
+		// PostgREST says the function is not in its schema cache. Say so; an empty list would read as "no launches".
+		if (error.code === 'PGRST202') throw new LaunchesNotInstalledError();
+		throw error;
+	}
+	return decodeLaunchList(data);
 }
 
 export async function fetchLaunchReadModel(client: SupabaseClient, input: LaunchReadInput): Promise<LaunchReadModel> {

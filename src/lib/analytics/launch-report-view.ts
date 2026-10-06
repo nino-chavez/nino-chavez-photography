@@ -75,7 +75,7 @@ export interface CumulativeCurve {
 	cutByGap: boolean;
 }
 
-function cumulativePoints(launch: Pick<Launch, 'series'>): { points: CumulativePoint[]; cutByGap: boolean } {
+export function cumulativePoints(launch: Pick<Launch, 'series'>): { points: CumulativePoint[]; cutByGap: boolean } {
 	const points: CumulativePoint[] = [];
 	let total = 0;
 	for (let i = 0; i < launch.series.length; i += 1) {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { decodeLaunchReadModel, fetchLaunchReadModel } from './launch-read-model.server';
+import { decodeLaunchList, decodeLaunchReadModel, fetchLaunches, fetchLaunchReadModel, LaunchesNotInstalledError } from './launch-read-model.server';
 
 type Json = Record<string, any>;
 
@@ -222,4 +222,67 @@ test('fetch says so when the function is missing or the album is unknown, and ne
 	await assert.rejects(fetchLaunchReadModel(fakeClient({ error: { code: '23503', message: 'unknown album' } }).client, { albumKey: 'nope' }), /Unknown album: nope/);
 	await assert.rejects(fetchLaunchReadModel(fakeClient({ error: Object.assign(new Error('permission denied'), { code: '42501' }) }).client, { albumKey: 'a' }), /permission denied/);
 	await assert.rejects(fetchLaunchReadModel(fakeClient({ data: { nope: true } }).client, { albumKey: 'a' }), /keys differ/);
+});
+
+// ---- public.analytics_read_launches: the launch list on its own.
+const listPayload = (): Json => { const { album: _album, ...rest } = payload(); return rest; };
+
+test('the launch list decodes with the same envelope and launches as the album read', () => {
+	const list = decodeLaunchList(listPayload());
+	assert.equal(list.today, '2026-10-03');
+	assert.equal(list.lastCompleteDay, '2026-10-02');
+	assert.equal(list.launches.length, 1);
+	assert.deepEqual(list.launches, decodeLaunchReadModel(payload()).launches);
+	assert.ok(!('album' in list));
+});
+
+test('no launches is an empty list, not an error', () => {
+	const none = listPayload();
+	none.launches = [];
+	assert.deepEqual(decodeLaunchList(none).launches, []);
+});
+
+test('the list decoder refuses what the album decoder refuses: unknown keys, future days, a wrong clock, bad launches', () => {
+	for (const mutate of [
+		(p: Json) => { p.sessionHash = 's'; },
+		(p: Json) => { p.album = {}; },
+		(p: Json) => { p.launches[0].visitId = 'v'; },
+		(p: Json) => { p.launches[0].series[0].anonymousBrowserId = 'b'; },
+		(p: Json) => { p.launches[0].series.push({ day: 8, date: '2026-10-03', photoOpens: 1, downloads: 0, albumOpens: 0, coverage: 'complete' }); },
+		(p: Json) => { p.lastCompleteDay = '2026-10-01'; },
+		(p: Json) => { p.traffic = 'everything'; },
+		(p: Json) => { p.launches[0].basis = 'unobserved'; },
+		(p: Json) => { p.launches[0].status = 'in_progress'; },
+		(p: Json) => { p.launches = {}; }
+	]) {
+		const p = listPayload();
+		mutate(p);
+		assert.throws(() => decodeLaunchList(p), /Invalid launch read model/);
+	}
+	assert.throws(() => decodeLaunchList(null), /not an object/);
+});
+
+test('fetchLaunches calls the list function with the documented defaults and an explicit as-of', async () => {
+	const { client, calls } = fakeClient({ data: listPayload() });
+	const list = await fetchLaunches(client, { asOf: '2026-10-03T18:00:00Z' });
+	assert.equal(list.launches[0].albumKey, 'Re7kho');
+	assert.equal(calls.length, 1);
+	assert.equal(calls[0].fn, 'analytics_read_launches');
+	assert.deepEqual(calls[0].args, { p_as_of: '2026-10-03T18:00:00.000Z', p_days: 14, p_traffic: 'conservative', p_public_only: true });
+	const custom = fakeClient({ data: listPayload() });
+	await fetchLaunches(custom.client, { asOf: new Date('2026-10-03T18:00:00Z'), days: 7, traffic: 'inclusive', publicOnly: false });
+	assert.deepEqual(custom.calls[0].args, { p_as_of: '2026-10-03T18:00:00.000Z', p_days: 7, p_traffic: 'inclusive', p_public_only: false });
+	const now = fakeClient({ data: listPayload() });
+	await fetchLaunches(now.client);
+	assert.match(String(now.calls[0].args.p_as_of), /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('fetchLaunches reports "not installed" as its own error and never turns an error into an empty list', async () => {
+	const missing = fetchLaunches(fakeClient({ error: { code: 'PGRST202', message: 'Could not find the function' } }).client);
+	await assert.rejects(missing, (cause) => cause instanceof LaunchesNotInstalledError && /not installed\. This is not an empty list of launches/.test(cause.message));
+	// A different failure is not "not installed".
+	await assert.rejects(fetchLaunches(fakeClient({ error: Object.assign(new Error('permission denied'), { code: '42501' }) }).client), (cause) => !(cause instanceof LaunchesNotInstalledError) && /permission denied/.test((cause as Error).message));
+	await assert.rejects(fetchLaunches(fakeClient({ data: { nope: true } }).client), /keys differ/);
+	// An empty answer from the database is a decode failure, not a list with no launches.
+	await assert.rejects(fetchLaunches(fakeClient({}).client), /not an object/);
 });

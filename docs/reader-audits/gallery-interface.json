@@ -1,13 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T19:51:40.148Z",
-  "reviewedBy": "Claude Code orchestrator session (reviewed the implementing agent's captures; wrote this one copy fix; not a cold reviewer, not a human)",
-  "method": "Branch feat/album-launch-report on a local dev server reading production, 2026-10-06. Orchestrator opened the agent's final captures in docs/evidence/screen-reviews/album-launch-report-55cf710 (Re7kho desktop bottom, jq1Rp7 desktop, 5M7kNx desktop, Re7kho phone dialog) and found the selected-photo exposure sentence read as impossible ('shown 0 times and opened 1 time'). Reworded it to 'tile appeared on screen in a gallery grid N times', with a second sentence about direct-link opens only when opens exceed grid appearances. Walked 5M7kNx and Re7kho in the in-app browser: both sentence variants render with correct spacing; at 375x812 the photo dialog opens from a grid cell with focus on Close and no element outside the viewport. Everything else is covered by the implementing agent's walk recorded at 55cf710 (six albums at 1440x900 and 375x812, keyboard dialog walk, focus, 200% text, forced colors, increased contrast, overflow gate forced to fail once). Not covered: signed-in controls (shortlist, record, sign-in return) were not run; real host clean URL; physical device or Safari; screen reader; cold reviewer.",
-  "sourceDigest": "sha256:9caeda66922202da390e75532b0ebd2135d9041bef4b7fdef37a0269eccfc112",
-  "sourceFiles": 167,
+  "reviewedAt": "2026-10-06T20:20:25.649Z",
+  "reviewedBy": "Claude Code implementing agent (Sonnet 5.5) reviewing its own work; not a cold reviewer, not a human",
+  "method": "Branch feat/album-launch-index at 25b5ed6 on a local dev server reading production, 2026-10-06. Opened the final captures in docs/evidence/screen-reviews/album-launch-index-25b5ed6 myself (default, search for JCA, no-activity list open, three launches compared, at 1440x900 and 375x812, plus 200% text, increased contrast, forced colors, and one capture with the as-of day shifted to Sep 29 so launches in progress show). Fixed after viewing: phone card Compare label spilling past its card, one-column phone cards, a repeated Compare word in every desktop row, link and list targets under 44px, a phone compare table that scrolled sideways (now stacked), cards spilling out of their panel at 200% text. Overflow gate compares every element box with the viewport and was forced to fail once on purpose at each width. Keyboard walk covered tab order, focus ring, ticking four launches by Space, the fifth being disabled, the address holding the choice, search, and the no-activity list by Enter. Not covered: the in-progress and gap states on live data (no launch is in progress today; the shifted capture is the only sight of it); signed-in view; real host analytics.ninochavez.co clean URL; physical device or Safari; screen reader; cold reviewer.",
+  "sourceDigest": "sha256:5866a7d295dbe2429f79bc22dcbf6d99babd463ef48ee32963bf4d3ebcd454ab",
+  "sourceFiles": 172,
   "scope": [
-    "album launch report selected-photo exposure sentence",
-    "album launch report phone photo dialog"
+    "album index page: launches table, albums without a launch date, search, compare overlay, no-activity list",
+    "album report All albums link"
   ]
 }

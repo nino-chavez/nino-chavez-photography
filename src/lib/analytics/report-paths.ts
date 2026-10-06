@@ -20,9 +20,14 @@ export function albumReportPath(hostname: string, albumKey: string, suffix = '')
 	if (!isAlbumKey(albumKey)) throw new RangeError('not an album key');
 	return `${isReportHost(hostname) ? '' : '/photography/analytics'}/albums/${albumKey}${suffix}`;
 }
+/** Where the album index lives: the clean address on the report host, the internal route elsewhere. */
+export function albumIndexPath(hostname: string, suffix = '') {
+	return `${isReportHost(hostname) ? '' : '/photography/analytics'}/albums${suffix}`;
+}
+
 export function isAnalyticsWorkspace(routeId: string | null, hostname: string, pathname: string) {
-	return routeId === '/analytics/operator' || routeId === '/analytics/sites' || routeId === '/analytics/albums/[albumKey]'
-		|| (isReportHost(hostname) && (pathname === '/sites' || pathname === '/gallery' || albumKeyFrom(CLEAN_ALBUM, pathname) !== null));
+	return routeId === '/analytics/operator' || routeId === '/analytics/sites' || routeId === '/analytics/albums' || routeId === '/analytics/albums/[albumKey]'
+		|| (isReportHost(hostname) && (pathname === '/sites' || pathname === '/gallery' || pathname === '/albums' || albumKeyFrom(CLEAN_ALBUM, pathname) !== null));
 }
 export function reportPath(hostname: string, report: 'sites' | 'gallery', suffix = '') {
 	const path = report === 'sites' ? '/sites' : '/gallery';
@@ -32,6 +37,8 @@ export function internalReportPath(pathname: string): string | null {
 	if (pathname === '/sites') return '/photography/analytics/sites';
 	if (pathname === '/gallery') return '/photography/analytics/operator';
 	if (pathname === '/gallery/export.csv') return '/photography/analytics/operator/export.csv';
+	if (pathname === '/albums') return '/photography/analytics/albums';
+	if (pathname === '/albums/export.csv') return '/photography/analytics/albums/export.csv';
 	const album = albumKeyFrom(CLEAN_ALBUM, pathname);
 	if (album) return `/photography/analytics/albums/${album}`;
 	return null;
@@ -40,6 +47,8 @@ export function cleanReportPath(pathname: string): string | null {
 	if (pathname === '/photography/analytics/sites') return '/sites';
 	if (pathname === '/photography/analytics' || pathname === '/photography/analytics/operator') return '/gallery';
 	if (pathname === '/photography/analytics/operator/export.csv') return '/gallery/export.csv';
+	if (pathname === '/photography/analytics/albums') return '/albums';
+	if (pathname === '/photography/analytics/albums/export.csv') return '/albums/export.csv';
 	const album = albumKeyFrom(INTERNAL_ALBUM, pathname);
 	if (album) return `/albums/${album}`;
 	return null;
