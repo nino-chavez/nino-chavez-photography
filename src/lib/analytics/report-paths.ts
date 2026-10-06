@@ -20,20 +20,25 @@ export function albumReportPath(hostname: string, albumKey: string, suffix = '')
 	if (!isAlbumKey(albumKey)) throw new RangeError('not an album key');
 	return `${isReportHost(hostname) ? '' : '/photography/analytics'}/albums/${albumKey}${suffix}`;
 }
+/** Where Home lives: the root of the report host, the internal route elsewhere. */
+export function homePath(hostname: string, suffix = '') {
+	return `${isReportHost(hostname) ? '/' : '/photography/analytics/home'}${suffix}`;
+}
 /** Where the album index lives: the clean address on the report host, the internal route elsewhere. */
 export function albumIndexPath(hostname: string, suffix = '') {
 	return `${isReportHost(hostname) ? '' : '/photography/analytics'}/albums${suffix}`;
 }
 
 export function isAnalyticsWorkspace(routeId: string | null, hostname: string, pathname: string) {
-	return routeId === '/analytics/operator' || routeId === '/analytics/sites' || routeId === '/analytics/albums' || routeId === '/analytics/albums/[albumKey]'
-		|| (isReportHost(hostname) && (pathname === '/sites' || pathname === '/gallery' || pathname === '/albums' || albumKeyFrom(CLEAN_ALBUM, pathname) !== null));
+	return routeId === '/analytics/home' || routeId === '/analytics/operator' || routeId === '/analytics/sites' || routeId === '/analytics/albums' || routeId === '/analytics/albums/[albumKey]'
+		|| (isReportHost(hostname) && (pathname === '/' || pathname === '/sites' || pathname === '/gallery' || pathname === '/albums' || albumKeyFrom(CLEAN_ALBUM, pathname) !== null));
 }
 export function reportPath(hostname: string, report: 'sites' | 'gallery', suffix = '') {
 	const path = report === 'sites' ? '/sites' : '/gallery';
 	return `${isReportHost(hostname) ? path : `/photography/analytics/${report === 'sites' ? 'sites' : 'operator'}`}${suffix}`;
 }
 export function internalReportPath(pathname: string): string | null {
+	if (pathname === '/') return '/photography/analytics/home';
 	if (pathname === '/sites') return '/photography/analytics/sites';
 	if (pathname === '/gallery') return '/photography/analytics/operator';
 	if (pathname === '/gallery/export.csv') return '/photography/analytics/operator/export.csv';
@@ -44,6 +49,7 @@ export function internalReportPath(pathname: string): string | null {
 	return null;
 }
 export function cleanReportPath(pathname: string): string | null {
+	if (pathname === '/photography/analytics/home') return '/';
 	if (pathname === '/photography/analytics/sites') return '/sites';
 	if (pathname === '/photography/analytics' || pathname === '/photography/analytics/operator') return '/gallery';
 	if (pathname === '/photography/analytics/operator/export.csv') return '/gallery/export.csv';

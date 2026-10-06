@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { albumIndexPath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAlbumKey, isAnalyticsWorkspace } from './report-paths';
+import { albumIndexPath, homePath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAlbumKey, isAnalyticsWorkspace } from './report-paths';
 
 const HOST = 'analytics.ninochavez.co';
 
@@ -79,4 +79,24 @@ test('evidence links to an album report stay in the analytics shell; public albu
 	// /albums/<slug> is the gallery's public album page and must keep its meaning.
 	assert.equal(intelligenceEvidenceHref(HOST, '/albums/Re7kho'), 'https://ninochavez.co/photography/albums/Re7kho');
 	assert.equal(intelligenceEvidenceHref(HOST, '/gallery?period=7'), '/gallery?period=7');
+});
+
+test('Home is the root of the report host, with an internal route that maps back, and the old root mapping is untouched', () => {
+	assert.equal(internalReportPath('/'), '/photography/analytics/home');
+	assert.equal(cleanReportPath('/photography/analytics/home'), '/');
+	assert.equal(cleanReportPath(internalReportPath('/')!), '/');
+	assert.equal(internalReportPath(cleanReportPath('/photography/analytics/home')!), '/photography/analytics/home');
+	// The legacy bookmark address still lands on the gallery report, not on Home.
+	assert.equal(cleanReportPath('/photography/analytics'), '/gallery');
+	assert.equal(cleanReportPath('/photography/analytics/home/extra'), null);
+	assert.equal(internalReportPath('/home'), null);
+	assert.equal(homePath(HOST), '/');
+	assert.equal(homePath(HOST, '?x=1'), '/?x=1');
+	assert.equal(homePath('localhost'), '/photography/analytics/home');
+	assert.equal(homePath('ninochavez.co'), '/photography/analytics/home');
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/'), true);
+	assert.equal(isAnalyticsWorkspace('/analytics/home', 'localhost', '/photography/analytics/home'), true);
+	// The gallery's own root is the public site, not a report.
+	assert.equal(isAnalyticsWorkspace(null, 'ninochavez.co', '/'), false);
+	assert.equal(isAnalyticsWorkspace('/', 'ninochavez.co', '/photography'), false);
 });

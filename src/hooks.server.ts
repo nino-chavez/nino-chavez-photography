@@ -51,9 +51,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost');
 	let response: Response;
 	const cleanPath = cleanReportPath(pathname);
-	if (isReportHost(hostname) && pathname === '/') {
-		response = analyticsRedirect(`/sites${search}`);
-	} else if (isAnalyticsRoute && ((!isLocal && hostname !== ANALYTICS_HOST) || (isReportHost(hostname) && cleanPath))) {
+	if (isAnalyticsRoute && ((!isLocal && hostname !== ANALYTICS_HOST) || (isReportHost(hostname) && cleanPath))) {
 		const destination = cleanPath ?? pathname;
 		response = event.request.method === 'GET' || event.request.method === 'HEAD'
 			? analyticsRedirect(`${isLocal ? event.url.origin : `https://${ANALYTICS_HOST}`}${destination}${search}`)

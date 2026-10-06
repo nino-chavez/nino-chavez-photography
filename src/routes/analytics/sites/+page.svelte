@@ -2,7 +2,7 @@
 	import SiteActions from '$lib/components/analytics/SiteActions.svelte';
 	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
 	import { page } from '$app/state';
- import { reportPath } from '$lib/analytics/report-paths';
+ import { albumIndexPath, homePath, reportPath } from '$lib/analytics/report-paths';
 	import { SITE_SECTIONS } from '$lib/analytics/site-traffic';
 	import type { PageData } from './$types';
 
@@ -63,7 +63,9 @@
 		<p class="availability">Available by direct link</p>
 	</div>
 	<nav class="workspace-nav" aria-label="Report workspaces">
-		<a aria-current="page" href={`${reportPath(page.url.hostname, 'sites')}`}>Sites</a>
+		<a href={homePath(page.url.hostname)}>Home</a>
+		<a href={albumIndexPath(page.url.hostname)}>Albums</a>
+		<a aria-current="page" href={`${reportPath(page.url.hostname, 'sites')}`}>Site</a>
 		<a href={`${reportPath(page.url.hostname, 'gallery')}`}>Gallery report</a>
 	</nav>
 	<div class="controls" aria-label="Traffic filters">
