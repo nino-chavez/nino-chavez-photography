@@ -1,83 +1,73 @@
 /**
- * Decide the `album_settings` row a hidden/public transition writes — including whether this
- * particular write should stamp `published_at` — and apply it. Every writer that can make an
- * album public (`scripts/publish-album.ts`, the admin visibility toggle) goes through
- * `applyPublishTransition` so "published" means the same thing everywhere: the row is UPSERTed,
- * never deleted, and `published_at` is stamped on exactly the hidden -> public transition.
+ * Decide and apply the `album_settings` row a publish or unpublish writes. Every writer that can
+ * change an album's visibility (`scripts/publish-album.ts`, the admin visibility toggle) goes
+ * through `applyPublishTransition`, so the row is always UPSERTed and never deleted.
  *
- * Before this module existed, the admin action (`src/routes/admin/albums/+page.server.ts`)
- * published an album by DELETING its `album_settings` row outright — a second, independent
- * writer that never stamped `published_at`, so an album published that way stayed invisible to
- * the "latest gallery" ranking forever (it doesn't even show up via the capture-date fallback,
- * since deleting the row doesn't touch `albums_summary`, but it also means a LATER admin
- * unlisted-toggle round-trip loses any `gallery_scope` the row held). `resolvePublishTarget` is
- * kept pure and DB-free for `publish-target.test.ts`; `applyPublishTransition` is the thin,
- * client-agnostic wrapper both real writers call.
+ * Publication time is not decided here. The `album_settings_stamp_published_at` trigger
+ * (`supabase/migrations/20261005230000_album_settings_publication_provenance.sql`) stamps
+ * `published_at` and `published_at_basis = 'recorded'` on every `unlisted -> public` update,
+ * whoever issues it, including a hand-typed REST PATCH. `applyPublishTransition` returns the row
+ * as written, so a caller can show the stamp the database actually made.
  *
- * "No row = public" is a READ-side convention (`getAlbumSettings`, `getUnlistedAlbumKeys`, and
- * every caller that treats `settings?.visibility === 'unlisted'` as the only "not public" case)
- * and stays exactly as it is — this module only changes what a PUBLISH write does, never what an
- * absent row means to a reader. Every album this writes to now keeps a row after its first
- * publish, same as it always did for `scripts/publish-album.ts`; the admin action simply stops
- * being the one path that deleted it.
+ * "No row = public" is the read-side convention (`getAlbumSettings`, `getUnlistedAlbumKeys`, and
+ * every caller that treats `visibility === 'unlisted'` as the only hidden state). This module
+ * follows it: only an `'unlisted'` row becomes public. An album with no row is already public,
+ * so writing a row for it (for example to set `gallery_scope` on a legacy album) is not a
+ * publication. It gets no stamp and must not trigger a "new gallery" announcement.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+type Visibility = 'public' | 'unlisted';
+
 export interface PublishTargetInput {
-	/** The current `album_settings` row, or `null`/`undefined` when none exists yet. */
-	before: { visibility: 'public' | 'unlisted' } | null | undefined;
 	unpublish: boolean;
-	/** `album_settings.gallery_scope` to write — ignored on `--unpublish`. */
+	/** `album_settings.gallery_scope` to write; ignored on unpublish. */
 	scope: string | null;
-	/** ISO timestamp for "now", passed in so this stays pure. */
-	now: string;
 }
 
 export interface PublishTarget {
-	visibility: 'public' | 'unlisted';
+	visibility: Visibility;
 	gallery_scope: string | null;
-	/** Present only on the write that should stamp it — see the module comment. */
-	published_at?: string;
+}
+
+/** The row as the database holds it after the write, including the trigger's stamp. */
+export interface PublishedRow {
+	visibility: Visibility;
+	gallery_scope: string | null;
+	published_at: string | null;
+	published_at_basis: 'recorded' | 'inferred' | null;
+}
+
+export function resolvePublishTarget({ unpublish, scope }: PublishTargetInput): PublishTarget {
+	return unpublish ? { visibility: 'unlisted', gallery_scope: null } : { visibility: 'public', gallery_scope: scope };
 }
 
 /**
- * `published_at` marks when an album became publicly reachable — the field the "latest
- * gallery" route (`$lib/albums/latest`) sorts by. It is set only on a hidden -> public
- * transition: `before` is absent (no settings row — legacy or a video-only album) or
- * `'unlisted'`. It is never set on `--unpublish`, and never touched when `before` is already
- * `'public'` — re-publishing an already-public album (e.g. changing `--scope`) must not make a
- * stale album look newly published.
+ * True only when this write takes a hidden album public: the current row is `'unlisted'` and the
+ * write publishes. A missing row is already public, and re-publishing a public album only
+ * changes its scope. This is the same condition the trigger stamps on.
  */
-export function resolvePublishTarget({ before, unpublish, scope, now }: PublishTargetInput): PublishTarget {
-	if (unpublish) {
-		return { visibility: 'unlisted', gallery_scope: null };
-	}
-	const goingPublic = before?.visibility !== 'public';
-	return {
-		visibility: 'public',
-		gallery_scope: scope,
-		...(goingPublic ? { published_at: now } : {})
-	};
+export function becomesPublic(before: { visibility: Visibility } | null | undefined, unpublish: boolean): boolean {
+	return !unpublish && before?.visibility === 'unlisted';
 }
 
 export interface ApplyPublishTransitionParams {
 	albumKey: string;
 	unpublish: boolean;
-	/** `album_settings.gallery_scope` to write on a publish — ignored on unpublish. */
+	/** `album_settings.gallery_scope` to write on a publish; ignored on unpublish. */
 	scope?: string | null;
 }
 
 export type ApplyPublishTransitionResult =
-	| { ok: true; before: { visibility: 'public' | 'unlisted' } | null; target: PublishTarget }
+	| { ok: true; before: { visibility: Visibility } | null; target: PublishTarget; after: PublishedRow; wentPublic: boolean }
 	| { ok: false; error: string };
 
 /**
- * Read the current `album_settings` row (if any), compute the target via `resolvePublishTarget`,
- * and UPSERT it — never DELETE. `client` is caller-supplied (service_role in every real caller:
- * the script's own service-role client, or `createSupabaseAdminClient()` from the admin route) so
- * this stays free of both `dotenv` (the script's concern) and `$env/dynamic/private` (a
- * SvelteKit-only virtual module the script cannot import — this is why the shared piece is a
- * plain function taking a client, not a re-export of anything in `$lib/supabase/server*`).
+ * Read the current `album_settings` row (if any), UPSERT the target (never DELETE), and return
+ * the row as written. `client` is caller-supplied (service_role in every real caller: the
+ * script's own client, or `createSupabaseAdminClient()` from the admin route), so this stays free
+ * of both `dotenv` (the script's concern) and `$env/dynamic/private` (a SvelteKit-only virtual
+ * module the script cannot import).
  */
 export async function applyPublishTransition(
 	client: SupabaseClient,
@@ -90,17 +80,14 @@ export async function applyPublishTransition(
 		.maybeSingle();
 	if (readErr) return { ok: false, error: readErr.message };
 
-	const target = resolvePublishTarget({
-		before: before ? { visibility: before.visibility } : null,
-		unpublish,
-		scope,
-		now: new Date().toISOString()
-	});
-
-	const { error: writeErr } = await client
+	const target = resolvePublishTarget({ unpublish, scope });
+	const { data: after, error: writeErr } = await client
 		.from('album_settings')
-		.upsert({ album_key: albumKey, ...target }, { onConflict: 'album_key' });
+		.upsert({ album_key: albumKey, ...target }, { onConflict: 'album_key' })
+		.select('visibility, gallery_scope, published_at, published_at_basis')
+		.single();
 	if (writeErr) return { ok: false, error: writeErr.message };
 
-	return { ok: true, before: before ? { visibility: before.visibility } : null, target };
+	const prior = before ? { visibility: before.visibility as Visibility } : null;
+	return { ok: true, before: prior, target, after: after as PublishedRow, wentPublic: becomesPublic(prior, unpublish) };
 }

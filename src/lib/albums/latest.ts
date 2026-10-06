@@ -3,8 +3,9 @@
  * `/api/galleries/recent` all share.
  *
  * A public album ranks by `album_settings.published_at` descending; an album with no
- * `published_at` (every album published before that column existed, or with no `album_settings`
- * row at all — see `supabase/migrations/20260926140000_album_settings_published_at.sql`) falls
+ * `published_at` (a legacy album public before any publication was recorded, or one with no
+ * `album_settings` row at all — see the trigger in
+ * `supabase/migrations/20261005230000_album_settings_publication_provenance.sql`) falls
  * back to its event date: `albums.event_date` (the authoritative, operator-set or
  * ingest-derived-once value) when the album has one, else the derived capture date
  * (`albums_summary.latest_photo_date` / `videos_summary.latest_video_date`) for the rare album
