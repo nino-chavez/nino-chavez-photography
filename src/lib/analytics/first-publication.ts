@@ -4,7 +4,11 @@
  * (`published_at`, which the latest-gallery ranking sorts on) is a different fact and is
  * never shown here.
  */
-export type FirstPublicationBasis = 'recorded' | 'inferred' | null | undefined;
+/**
+ * `unobserved` means the album was public before anything recorded it: there is no time, so no label
+ * (analytics treats it as "no launch date"). A null basis means no publication has been seen yet.
+ */
+export type FirstPublicationBasis = 'recorded' | 'inferred' | 'unobserved' | null | undefined;
 
 /**
  * The first-publication date in the reporting timezone. A time recovered from a log after the

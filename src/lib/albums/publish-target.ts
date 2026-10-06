@@ -39,9 +39,9 @@ export interface PublishedRow {
 	/** The LATEST unlisted -> public write. Drives the latest-gallery ranking. */
 	published_at: string | null;
 	published_at_basis: 'recorded' | 'inferred' | null;
-	/** The FIRST publication on record. A republish never moves it; analytics album age counts from it. */
+	/** The FIRST publication on record. A republish never moves it; analytics album age counts from it. NULL with basis 'unobserved' for an album that was public before anything recorded it. */
 	first_published_at: string | null;
-	first_published_at_basis: 'recorded' | 'inferred' | null;
+	first_published_at_basis: 'recorded' | 'inferred' | 'unobserved' | null;
 }
 
 export function resolvePublishTarget({ unpublish, scope }: PublishTargetInput): PublishTarget {

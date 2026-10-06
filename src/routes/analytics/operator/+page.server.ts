@@ -13,7 +13,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 type CatalogueEntry = {album_key:string;album_name:string;photo_count:number};
 // first_published_at is what analytics treats as album age; published_at (the latest publication) is not read here.
-type AlbumSetting = {album_key:string;visibility:string|null;first_published_at:string|null;first_published_at_basis:'recorded'|'inferred'|null};
+type AlbumSetting = {album_key:string;visibility:string|null;first_published_at:string|null;first_published_at_basis:'recorded'|'inferred'|'unobserved'|null};
 type AlbumFact = {album_key:string;sport:string|null;event_date:string|null;event_type?:string|null};
 type CategoryFact = {album_key:string;photo_category:string|null};
 type V2EvidenceEvent = {event_id:string;event_name:string;occurred_at:string;album_key:string|null;photo_id:string|null;traffic_context:string};
