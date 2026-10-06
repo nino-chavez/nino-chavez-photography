@@ -1,15 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-01T05:59:10.968Z",
-  "reviewedBy": "Codex release parent, selected A merged onto production",
-  "method": "Parent inspected final merged album and timeline phone captures and the combined 26-route desktop/phone run. All routes returned 200 without overflow or page errors. Fifteen browser tests passed: four real-content photo journeys and eleven isolated tracker privacy/navigation cases. Production analytics source, migrations and schedules were preserved from 707a2c8; no schema changes introduced. Existing independent selected-A visual review informed the corrected archive labels and persistent album search label. Prior analytics-owner review is retained in git history at 707a2c8; this pass does not claim fresh private-owner or physical-device acceptance.",
-  "sourceDigest": "sha256:f072fd23cb0203e7a8f2345ed82442343cc09d77b34c40d0c1cbb3748f411d56",
+  "reviewedAt": "2026-10-06T00:50:10.201Z",
+  "reviewedBy": "Claude Code session that authored PR #181 (not a cold reviewer)",
+  "method": "Implementer walked the changed analytics encounters on a local dev server reading production data, 2026-10-05: Albums tab scoped to one album (HS Girls VB - JCA at ACC) and to all 254 albums at 1440px desktop and 390px phone; Photos tab Rising ranking. Confirmed: new albums read Not published / New album, the inspector rank line (1 of 254), the one-album note and Compare with all albums link, Advanced filters without a false active count, no row report link in one-album scope, and export.csv flagging exactly the two new albums. Contract tests (40) and npm run check passed. Not covered: a cold reviewer, a physical device, and gallery routes outside analytics, which this change did not edit. The prior receipt (2026-10-01, 707a2c8/0fb0231) remains the evidence for those routes.",
+  "sourceDigest": "sha256:f8a5195680fb7aaaa8fc501f76c253b1ab493617fe486d06a657d4445f64efbe",
   "sourceFiles": 162,
   "scope": [
-    "Shared navigation",
-    "Merged album and timeline",
-    "Saved persistence and JPEG bytes",
-    "Tracker exclusion and identity boundary tests"
+    "Analytics Albums tab",
+    "Analytics album inspector",
+    "Analytics Photos change labels",
+    "Analytics CSV comparison note"
   ]
 }
