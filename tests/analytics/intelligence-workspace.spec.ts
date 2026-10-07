@@ -95,7 +95,7 @@ test('reports a safe unavailable state when the intelligence response is invalid
 test('keeps private controls out of the anonymous report', async ({ page }) => {
 	await mockReport(page);
 	await page.goto(galleryRoute);
-	await expect(page.getByRole('heading', { name: 'History and briefs' })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'Private records and launch recaps' })).toHaveCount(0);
 	await expect(page.getByLabel('Ask about this report')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Public explanation' })).toBeVisible();
 });
@@ -134,7 +134,7 @@ test('renders stored private brief content and freezes an album question scope',
 		const request = route.request(); const url = new URL(request.url());
 		if (url.pathname.endsWith('/preferences')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...ownerPreferences, retention: '90_days' }) });
 		if (request.method() === 'POST') { questionScope = (request.postDataJSON() as { scope: Record<string, unknown> }).scope; return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ scope: questionScope, question: 'How is this album doing compared with similar albums?', operation: 'album_comparison', status: 'complete', summary: 'Comparable evidence is limited.', findings: report.findings, evidenceLinks: [report.findings[0].reportHref], limitations: ['No matching peer cohort was stored.'], generatedAt: '2026-09-08T12:00:00.000Z' }) }); }
-		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true, briefs: [{ id: 'brief-1', kind: 'daily', periodKey: '2026-09-08', createdAt: '2026-09-08T12:00:00.000Z', title: 'Morning review', body: 'Inspect the album before choosing a promotion.', findings: report.findings }] }) });
+		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true, briefs: [{ id: 'brief-1', kind: 'operational', periodKey: '2026-09-08', createdAt: '2026-09-08T12:00:00.000Z', title: 'Morning review', body: 'Inspect the album before choosing a promotion.', findings: report.findings }] }) });
 	});
 	await page.goto(galleryRoute);
 	await expect(page.getByText('Morning review')).toBeVisible();
@@ -154,7 +154,7 @@ test('keeps stored brief provenance private, compact, and paged', async ({ page 
 		previous: { start: '2026-08-25', end: '2026-08-31' }
 	}];
 	const pageOneBriefs = Array.from({ length: 4 }, (_, index) => ({
-		id: `brief-${index + 1}`, kind: 'daily' as const, periodKey: `2026-09-0${index + 1}`, createdAt: '2026-09-08T12:00:00.000Z', title: `Morning review ${index + 1}`,
+		id: `brief-${index + 1}`, kind: 'operational' as const, periodKey: `2026-09-0${index + 1}`, createdAt: '2026-09-08T12:00:00.000Z', title: `Morning review ${index + 1}`,
 		sourceWindows, suppressions: [{ rule: 'album_momentum', reason: 'Comparable history is still limited.' }], late: index === 0
 	}));
 	let requestedBriefPage = '0';

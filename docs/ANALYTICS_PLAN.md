@@ -364,7 +364,7 @@ Scheduled work is idempotent, bounded and monitored. Reuse existing PostgreSQL s
 2. Extend promotion/change/outcome context and validate the private operator workflow.
 3. Specify and test the rule catalogue against aggregate/linked evidence, suppression and invalidation cases.
 4. Store scheduled findings; implement dashboard inspection, the contextual assistant and bounded on-demand analysis, action recording and follow-up.
-5. Implement daily/weekly briefs, incident alerts, preference gates and delivery receipts.
+5. Implement launch recaps (they replaced the daily and weekly briefs on October 6), incident alerts, preference gates and delivery receipts.
 6. Rehearse the complete job, measure performance, inspect desktop/mobile renders and obtain cold review.
 7. Apply reviewed migrations before the reader deployment; deploy through the owned git integration; verify actual scheduled runs and approved test delivery before activating normal reporting.
 

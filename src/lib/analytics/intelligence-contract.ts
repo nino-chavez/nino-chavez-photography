@@ -78,7 +78,8 @@ export interface IntelligenceBriefSourceWindow {
 export interface IntelligenceBrief {
 	id: string;
 	periodKey: string;
-	kind: 'daily' | 'weekly' | 'operational';
+	/** Incident alerts. Launch recaps are stored beside them in the same table, but they are read from the album report, not this list. */
+	kind: 'operational';
 	createdAt: string;
 	title?: string;
 	body?: string;

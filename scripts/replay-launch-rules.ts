@@ -15,7 +15,7 @@ import { dirname } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { evaluateIntelligenceRules } from '../src/lib/analytics/intelligence-rules';
 import { loadIntelligenceEvidence } from '../src/lib/analytics/intelligence-source.server';
-import { chicagoWallTimeToUtc } from '../src/lib/analytics/intelligence-schedule';
+import { chicagoWallTimeToUtc } from '../src/lib/analytics/launch-recap-schedule';
 import type { IntelligenceScope } from '../src/lib/analytics/intelligence-contract';
 
 const url = process.env.VITE_SUPABASE_URL ?? process.env.PUBLIC_SUPABASE_URL;

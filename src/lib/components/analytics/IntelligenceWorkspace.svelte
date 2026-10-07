@@ -153,7 +153,7 @@
 	}
 	function validBrief(value: unknown): value is BriefRecord {
 		return object(value) && typeof value.id === 'string' && typeof value.periodKey === 'string' && typeof value.createdAt === 'string'
-			&& ['daily', 'weekly', 'operational'].includes(String(value.kind))
+			&& value.kind === 'operational'
 			&& (value.title === undefined || value.title === null || typeof value.title === 'string')
 			&& (value.body === undefined || value.body === null || typeof value.body === 'string')
 			&& (value.snapshotHref === undefined || value.snapshotHref === null || safeHref(value.snapshotHref))
@@ -411,12 +411,12 @@
 
 		{#if owner}
 			<section class="briefs" aria-labelledby={`${kind}-briefs-heading`}>
-				<div><p class="kicker">Scheduled briefs</p><h3 id={`${kind}-briefs-heading`}>Daily and weekly review</h3></div>
+				<div><p class="kicker">Incident alerts</p><h3 id={`${kind}-briefs-heading`}>Collection and visitor-flow incidents</h3></div>
 				{#if briefs.length}
 					<div class="brief-list">
 						{#each visibleBriefs as brief}
 							<article>
-								<strong>{brief.title ?? (brief.kind === 'daily' ? 'Daily brief' : brief.kind === 'weekly' ? 'Weekly brief' : 'Operational brief')}</strong>
+								<strong>{brief.title ?? 'Incident alert'}</strong>
 								<span>{brief.periodKey} · created {formatTime(brief.createdAt)}</span>
 								{#if brief.body}<p>{brief.body}</p>{/if}
 								{#if briefFindings(brief).length}<div class="links">{#each briefFindings(brief) as finding}<a href={evidenceHref(finding.reportHref)}>{finding.title}</a>{/each}</div>{/if}
@@ -431,9 +431,9 @@
 							</article>
 						{/each}
 						{#if !expandedBriefs && briefs.length > firstBriefLimit}<button type="button" onclick={() => expandedBriefs = true}>Show all on this brief page</button>{:else if expandedBriefs && briefs.length > firstBriefLimit}<button type="button" onclick={() => expandedBriefs = false}>Show recent briefs</button>{/if}
-						{#if (report?.briefsPageCount ?? 1) > 1}<nav class="pager" aria-label="Scheduled brief pages"><span>Brief page {(report?.briefsPage ?? 0) + 1} of {report?.briefsPageCount}</span><div><button type="button" disabled={loading || !report?.briefsPage} onclick={() => void loadReport(report?.page ?? 0, report?.actionsPage ?? 0, (report?.briefsPage ?? 0) - 1)}>Previous briefs</button><button type="button" disabled={loading || (report?.briefsPage ?? 0) + 1 >= (report?.briefsPageCount ?? 1)} onclick={() => void loadReport(report?.page ?? 0, report?.actionsPage ?? 0, (report?.briefsPage ?? 0) + 1)}>Next briefs</button></div></nav>{/if}
+						{#if (report?.briefsPageCount ?? 1) > 1}<nav class="pager" aria-label="Incident alert pages"><span>Brief page {(report?.briefsPage ?? 0) + 1} of {report?.briefsPageCount}</span><div><button type="button" disabled={loading || !report?.briefsPage} onclick={() => void loadReport(report?.page ?? 0, report?.actionsPage ?? 0, (report?.briefsPage ?? 0) - 1)}>Previous briefs</button><button type="button" disabled={loading || (report?.briefsPage ?? 0) + 1 >= (report?.briefsPageCount ?? 1)} onclick={() => void loadReport(report?.page ?? 0, report?.actionsPage ?? 0, (report?.briefsPage ?? 0) + 1)}>Next briefs</button></div></nav>{/if}
 					</div>
-				{:else}<p class="brief-empty">No stored daily or weekly brief is available for this report scope. That does not mean there was no activity.</p>{/if}
+				{:else}<p class="brief-empty">No incident alert is stored. That does not mean nothing went wrong; launch recaps are on each album report.</p>{/if}
 			</section>
 		{/if}
 

@@ -9,15 +9,11 @@ export const GET: RequestHandler = async ({ cookies }) => {
 	const owner = await intelligenceOwner(cookies);
 	if (!owner.owner || !owner.userId) throw error(403, 'Sign in as the owner to see reporting preferences.');
 	const client = createSupabaseAdminClient();
-	const [preferences, schedule] = await Promise.all([
-		client.from('analytics_intelligence_preferences').select('retention_policy, retention_days, external_enabled, destination, destination_verified').eq('owner_id', owner.userId).maybeSingle(),
-		client.from('analytics_intelligence_schedules').select('daily_enabled, weekly_enabled').eq('owner_id', owner.userId).maybeSingle()
-	]);
-	if (preferences.error || schedule.error) throw error(503, 'Reporting preferences could not be read.');
+	const preferences = await client.from('analytics_intelligence_preferences').select('retention_policy, retention_days, external_enabled, destination, destination_verified').eq('owner_id', owner.userId).maybeSingle();
+	if (preferences.error) throw error(503, 'Reporting preferences could not be read.');
 	const row = preferences.data;
 	const result: IntelligencePreferences = {
 		retention: row?.retention_policy === 'until_deleted' ? 'until_deleted' : row?.retention_days === 90 ? '90_days' : row?.retention_days === 365 ? 'one_year' : 'undecided',
-		daily: schedule.data?.daily_enabled ?? true, weekly: schedule.data?.weekly_enabled ?? true,
 		externalEnabled: row?.external_enabled === true,
 		destination: row?.destination ?? null, destinationVerified: row?.destination_verified === true
 	};
@@ -35,12 +31,14 @@ export const POST: RequestHandler = async ({ cookies, request, url }) => {
 	const raw = new TextDecoder().decode(bytes);
 	let value: unknown; try { value = JSON.parse(raw); } catch { throw error(400, 'Choose valid reporting preferences.'); }
 	const parsed = parseIntelligencePreferences(value);
-	if (!parsed) throw error(400, 'Choose a retention period and reporting schedule.');
+	if (!parsed) throw error(400, 'Choose a retention period.');
 	const { error: saveError } = await createSupabaseAdminClient().rpc('analytics_set_intelligence_preferences', {
 		p_owner_id: owner.userId,
 		p_retention_policy: parsed.retention === 'until_deleted' ? 'until_deleted' : 'days',
 		p_retention_days: retentionDays(parsed.retention),
-		p_daily_enabled: parsed.daily, p_weekly_enabled: parsed.weekly
+		// Launch recaps replaced the daily and weekly briefs. The function still writes a schedule row, so it is written
+		// switched off: nothing reads it, and a row left on by an older version could never queue a brief again.
+		p_daily_enabled: false, p_weekly_enabled: false
 	});
 	if (saveError) throw error(503, 'Preferences were not saved.');
 	return json({ saved: true }, { headers: { 'cache-control': 'private, no-store' } });

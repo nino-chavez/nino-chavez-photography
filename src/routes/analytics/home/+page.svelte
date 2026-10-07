@@ -108,6 +108,7 @@
 					{:else}
 						<p>{view.next.text}</p>
 					{/if}
+					{#if view.next.note}<p class="note">{view.next.note}</p>{/if}
 				</section>
 
 				<section class="panel" aria-labelledby="site-title">

@@ -16,11 +16,14 @@ test('separate snapshots sharing a timestamp finish and record lifecycle by repo
 		return { data: null, error: null };
 	} } as never;
 	const result = await runIntelligenceJobs(client, { refreshIntelligence: async (_client, current) => report(current, current.kind === 'sites' && current.period === 7 ? 'snapshot-a' : 'snapshot-b') }, async () => ({ journeys: {}, providerQueries: 0, providerPending: false }), { now: new Date('2026-09-30T15:00:00.000Z'), concurrency: 1 });
-	assert.deepEqual(result, { prepared: 2, claimed: 2, refreshed: 2, retried: 0, providerQueries: 0, deferred: 0 });
+	assert.deepEqual(result, { claimed: 2, refreshed: 2, retried: 0, providerQueries: 0, deferred: 0 });
 	const prepared = calls.find((call) => call.name === 'analytics_prepare_intelligence_periods')?.args;
 	assert.equal(prepared?.p_refresh_cadence_seconds, 900);
 	assert.equal(prepared?.p_provider_pending_retry_seconds, 300);
 	assert.equal(prepared?.p_max_catchup_periods, 4);
+	// Launch recaps replaced the daily and weekly briefs: no scheduled brief period is ever requested.
+	assert.equal(prepared?.p_daily_period, null);
+	assert.equal(prepared?.p_weekly_period, null);
 	assert.deepEqual(calls.filter((call) => call.name === 'analytics_finish_intelligence_job').map((call) => call.args?.p_report_id), ['snapshot-a', 'snapshot-b']);
 	assert.deepEqual(calls.filter((call) => call.name === 'analytics_record_intelligence_lifecycle').map((call) => call.args?.p_report_id), ['snapshot-a', 'snapshot-b']);
 });
@@ -122,4 +125,19 @@ test('a failed launch list still refreshes the standard scopes and Home', async 
 	const prepared = calls.find((call) => call.name === 'analytics_prepare_intelligence_periods')?.args?.p_standard_scopes as unknown[];
 	assert.deepEqual(prepared.at(-1), { kind: 'launch', albumKey: null });
 	assert.ok(prepared.some((scope) => (scope as { kind: string }).kind === 'gallery'));
+});
+
+test('a daily or weekly job left from before recaps is handed back, never refreshed or turned into a brief', async () => {
+	const calls: Array<{ name: string; args?: Record<string, unknown> }> = [];
+	let refreshed = 0;
+	const legacy = (id: string, kind: 'daily' | 'weekly') => ({ id, kind, scope, ownerId: 'owner-1', intendedPeriod: '2026-09-30', late: false, requestId: null, operation: null });
+	const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
+		calls.push({ name, args });
+		return name === 'analytics_claim_intelligence_jobs' ? { data: [legacy('old-daily', 'daily'), refreshJob('fresh'), legacy('old-weekly', 'weekly')], error: null } : { data: null, error: null };
+	} } as never;
+	const result = await runIntelligenceJobs(client, { refreshIntelligence: async (_client, current) => { refreshed += 1; return report(current, 'fresh-snapshot'); } }, async () => ({ journeys: {}, providerQueries: 0, providerPending: false }), { now: new Date('2026-10-06T17:00:00Z') });
+	assert.equal(refreshed, 1, 'only the refresh job ran');
+	assert.equal(result.claimed, 1);
+	const handedBack = calls.filter((call) => call.name === 'analytics_finish_intelligence_job' && call.args?.p_error_code === 'brief_kind_retired');
+	assert.deepEqual(handedBack.map((call) => [call.args?.p_job_id, call.args?.p_status]), [['old-daily', 'retry'], ['old-weekly', 'retry']]);
 });

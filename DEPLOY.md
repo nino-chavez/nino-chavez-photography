@@ -31,6 +31,17 @@
 - **Tip**: run from an isolated `git worktree` (copy `supabase/.temp` into it) when another
   session holds the main checkout, so the push doesn't depend on the working branch.
 
+### Launch recaps: apply order
+
+Migration `20261007120000_analytics_launch_recap_kind.sql` adds the `launch_recap` brief kind and the key that makes one recap per
+owner, launch and checkpoint. **Apply it before the deploy that contains the recap code.** Until it is applied the scheduler stores
+no recap, logs `recap brief was not stored (23514)`, and keeps refreshing everything else, so deploying first is harmless but
+silent. Rehearsal: `npm run analytics:recap:rehearse` (synthetic database, rolled back).
+
+Recaps are written for an owner who has chosen how long to keep private records (a row in `analytics_intelligence_preferences`). With
+no such row the scheduler reads no launch number and stores nothing, and Home and Settings say so. Email needs a verified destination
+and the existing `ANALYTICS_INTELLIGENCE_DELIVERY_*` settings; none of them changes with this release.
+
 ## Companion Worker
 - `cloudflare-worker/album-zip/` — separate Worker for ZIP downloads. Deploy with `npm run worker:deploy`.
 

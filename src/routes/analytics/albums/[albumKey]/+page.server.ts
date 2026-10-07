@@ -2,10 +2,12 @@ import { error } from '@sveltejs/kit';
 import { loadIntelligencePanelMode, loadVisibleFindings } from '$lib/analytics/intelligence-panel.server';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
-import { buildOperatorReport } from '$lib/analytics/operator-report.server';
-import { parseReportQuery, type ReportQuery } from '$lib/analytics/report-contract';
 import { fetchLaunchReadModel, type LaunchReadModel } from '$lib/analytics/launch-read-model.server';
-import { buildRecap, type ArrivalRow } from '$lib/analytics/launch-recap';
+import { buildRecap } from '$lib/analytics/launch-recap';
+import { albumQuery, LAUNCH_DAYS, readArrivals, readPhotoRows, readRecapStorage, readStoredRecap, readStoredRecaps } from '$lib/analytics/launch-recap.server';
+import { recapListExplain, recapListSummary, recapRows } from '$lib/analytics/launch-recap-list';
+import { recapBlocks, recapTitle } from '$lib/analytics/launch-recap-text';
+import { isRecapCheckpoint, type RecapCheckpoint } from '$lib/analytics/launch-recap-schedule';
 import { cumulativeCurves, dailyChart, gridPhotos, launchTable } from '$lib/analytics/launch-report-view';
 import { isAlbumKey } from '$lib/analytics/report-paths';
 import { intelligenceScopeKey, launchScope } from '$lib/analytics/intelligence-contract';
@@ -13,41 +15,7 @@ import { LAUNCH_FINDING_DAYS } from '$lib/analytics/launch-rules';
 import { findingsCheck } from '$lib/analytics/home';
 import type { PageServerLoad } from './$types';
 
-/** The window every report on this page covers: the launch's first two weeks, as the read model returns them. */
-const LAUNCH_DAYS = 14;
-
-async function readPhotoRows(admin: ReturnType<typeof createSupabaseAdminClient>, albumKey: string) {
-	// Photos with no sharpness are unprocessed and are never listed, here or in the gallery.
-	const rows: Array<{ photoId: string; cfImageId: string | null }> = [];
-	for (let from = 0; from < 5000; from += 1000) {
-		const { data, error: readError } = await admin
-			.from('photo_metadata')
-			.select('photo_id, cf_image_id')
-			.eq('album_key', albumKey)
-			.not('sharpness', 'is', null)
-			.order('photo_id')
-			.range(from, from + 999);
-		if (readError) throw readError;
-		rows.push(...(data ?? []).map((row) => ({ photoId: String(row.photo_id), cfImageId: typeof row.cf_image_id === 'string' && row.cf_image_id ? row.cf_image_id : null })));
-		if ((data ?? []).length < 1000) break;
-	}
-	return rows;
-}
-
-/** The report query behind this page's CSV export, assistant and arrivals: this album over the days its numbers cover. */
-function albumQuery(model: LaunchReadModel): ReportQuery {
-	const album = model.album;
-	const params = new URLSearchParams({ period: 'custom', scope: 'album', albums: album.albumKey, measure: 'photo_opens', traffic: 'conservative', compare: 'none' });
-	const first = album.series[0]?.date;
-	const last = album.series.at(-1)?.date;
-	if (first && last) {
-		params.set('start', first);
-		params.set('end', last);
-	}
-	return parseReportQuery(params);
-}
-
-export const load: PageServerLoad = async ({ params, cookies, setHeaders }) => {
+export const load: PageServerLoad = async ({ params, cookies, setHeaders, url }) => {
 	setHeaders({
 		'cache-control': 'private, no-store, max-age=0',
 		pragma: 'no-cache',
@@ -85,17 +53,7 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders }) => {
 
 	const query = albumQuery(model);
 	// Tagged arrivals are not part of the launch read model. They come from the report the operator page uses.
-	let arrivals: ArrivalRow[] | null = null;
-	if (model.album.series.length > 0) {
-		try {
-			const report = await buildOperatorReport(admin, query, {
-				publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: false, includeVisitorEstimate: false, includeToday: false, cacheRole: 'service_role'
-			});
-			arrivals = report.available ? report.sources.arrivals : null;
-		} catch (cause) {
-			console.error('[album launch report] arrivals unavailable:', cause instanceof Error ? cause.message : cause);
-		}
-	}
+	const { arrivals } = await readArrivals(admin, model);
 
 	const album = model.album;
 	// Launch findings for this album sit above the photo grid. Same rule as the panel: none, or none still public,
@@ -106,6 +64,13 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders }) => {
 		// The record form and assistant below keep their own scope: this album over the days its numbers cover.
 		loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'gallery', query }), !!user, 'album launch report')
 	]);
+
+	// Recaps: what is stored, whether anything is set up to store more, and the one the reader opened with ?recap=3 or ?recap=7.
+	const asked = Number(url.searchParams.get('recap'));
+	const openCheckpoint: RecapCheckpoint | null = isRecapCheckpoint(asked) ? asked : null;
+	const [storedRecaps, recapStorage] = await Promise.all([readStoredRecaps(admin, albumKey), readRecapStorage(admin)]);
+	const openRecap = openCheckpoint !== null && storedRecaps?.some((recap) => recap.checkpoint === openCheckpoint) ? await readStoredRecap(admin, albumKey, openCheckpoint) : null;
+	const recapRowList = album.status === 'no_launch_date' ? null : recapRows({ launch: album, now: new Date(model.asOf), stored: storedRecaps, storing: recapStorage ? recapStorage.storing : null, owner: !!user });
 
 	const photoIds = new Set(photoRows.map((row) => row.photoId));
 	const recap = buildRecap({ model, arrivals, photoIds });
@@ -128,6 +93,18 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders }) => {
 			today: model.today
 		},
 		recap,
+		recaps: recapRowList ? {
+			rows: recapRowList,
+			summary: recapListSummary(recapRowList),
+			explain: recapListExplain({ storing: recapStorage ? recapStorage.storing : null, owner: !!user }),
+			open: openRecap ? {
+				title: recapTitle(openRecap.checkpoint), subject: openRecap.subject,
+				flags: [...(openRecap.late ? ['Late'] : []), ...(openRecap.evidence === 'partial' ? ['Some records were incomplete'] : openRecap.evidence === 'unavailable' ? ['Could not be built'] : [])],
+				// The page links to the full report itself, so the plain-text address line is left out.
+				blocks: recapBlocks(openRecap.body).filter((block) => !(block.kind === 'paragraph' && block.text.startsWith('Full report: ')))
+			} : null,
+			openMissing: openCheckpoint !== null && !openRecap ? openCheckpoint : null
+		} : null,
 		photos,
 		charts: { daily: dailyChart(model), curves: cumulativeCurves(model), table: launchTable(model) },
 		query

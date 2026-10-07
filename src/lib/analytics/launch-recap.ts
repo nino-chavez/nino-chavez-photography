@@ -51,6 +51,12 @@ export interface RecapInput {
 	arrivals: ArrivalRow[] | null;
 	/** The photos the grid lists. Its size is the one photo total used everywhere on the page. */
 	photoIds: ReadonlySet<string>;
+	/**
+	 * The text will be stored and read away from the page (a recap in the dashboard list or an email). It leaves out
+	 * today's partial count, which stops meaning anything after the morning it was written and must not change with
+	 * how late the run was, and it points to the report where the page says "below".
+	 */
+	stored?: boolean;
 }
 
 type Piece = string | number | { b: string | number };
@@ -199,7 +205,7 @@ function downloadComparison(model: LaunchReadModel, launch: DatedLaunchAlbum): R
 		: sentence('At the same age, the ', count, ' had a median of ', b(mid), '.');
 }
 
-function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Photos, compare: RecapSentence | null = null): RecapSentence | null {
+function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Photos, compare: RecapSentence | null = null, stored = false): RecapSentence | null {
 	const { total, gaps } = sumComplete(album.series, 'downloads');
 	if (!album.series.length) return null;
 	const photoSum = photos.cut ? null : photos.list.reduce((sum, photo) => sum + photo.downloads, 0);
@@ -209,8 +215,8 @@ function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Pho
 	const parts: Piece[] = [gaps.length ? 'At least ' : '', b(plural(total, 'download request')), ' ', gaps.length ? 'were counted on days with complete records. ' : 'were made.', ...compared, ' '];
 	if (photoSum !== null && !gaps.length && total > photoSum) parts.push(`${fmt(photoSum)} named a photo and ${fmt(total - photoSum)} asked for the whole album. `);
 	if (top === 0) parts.push('No single photo was requested, so there is no photo order to show.');
-	else if (top !== null && top <= 3) parts.push('No single photo was requested more than ', b(plural(top, 'time')), ', so the order below is weak.');
-	else if (top !== null) parts.push('The photos below were requested most.');
+	else if (top !== null && top <= 3) parts.push('No single photo was requested more than ', b(plural(top, 'time')), stored ? ', so the photo order in the report is weak.' : ', so the order below is weak.');
+	else if (top !== null) parts.push(stored ? 'The album report lists the photos requested most.' : 'The photos below were requested most.');
 	return sentence(...parts.filter((part) => part !== ''));
 }
 
@@ -226,7 +232,7 @@ function arrivalsLine(arrivals: ArrivalRow[] | null): RecapSentence | null {
 	return sentence(b(plural(total, 'tagged arrival')), ' by tag: ', named, more, '. Arrivals without a tag cannot be traced.');
 }
 
-function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: string, weekFigures = false): RecapSentence {
+function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: string, weekFigures = false, omitToday = false): RecapSentence {
 	const first = series[0]?.date;
 	const last = series.at(-1)?.date;
 	const week = series[6]?.date;
@@ -235,6 +241,7 @@ function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: st
 			? sentence('Week-1 figures use ', b('7 full days'), ', ', formatDay(first), ' to ', formatDay(week), '. The chart, downloads and photo counts use all ', b(plural(series.length, 'full day')), ', to ', formatDay(last), '. ')
 			: sentence('Counts cover ', b(plural(series.length, 'full day')), ', ', first === last ? formatDay(first) : `${formatDay(first)} to ${formatDay(last)}`, '. ')
 		: sentence('No full day is counted yet. ');
+	if (omitToday) return counted.map((part, i) => (i === counted.length - 1 ? { ...part, text: part.text.trimEnd() } : part));
 	const todayPart = currentDay
 		? currentDay.photoOpens === null
 			? sentence(`Today, ${formatDay(today)}, is still being recorded and is left out.`)
@@ -281,7 +288,7 @@ export function buildRecap(input: RecapInput): Recap {
 	if (album.status === 'no_launch_date') {
 		const reason = undatedReason(album.reason.code);
 		const { total, gaps } = sumComplete(album.series, 'photoOpens');
-		const windowSentence = windowLine(album.series, album.currentDay, model.today);
+		const windowSentence = windowLine(album.series, album.currentDay, model.today, false, input.stored);
 		if (album.reason.code === 'not_published') {
 			return { state: 'not_published', eyebrow: 'Not published', published: null, headline: sentence(reason), sentences: [sentence('It gets a launch date when it is first published, and its first week is compared with earlier launches then.'), sentence('Only the signed-in owner can open this page for an album that is not published.')], window: windowSentence, downloads: null, arrivals: null, limits };
 		}
@@ -295,14 +302,14 @@ export function buildRecap(input: RecapInput): Recap {
 		if (peak && !gaps.length) sentences.push(peak);
 		const opened = openedSentence(photos);
 		if (opened) sentences.push(opened);
-		return { state: 'no_launch_date', eyebrow: 'No launch date', published: null, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(album, photos), arrivals: arrivalsLine(arrivals), limits };
+		return { state: 'no_launch_date', eyebrow: 'No launch date', published: null, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(album, photos, null, input.stored), arrivals: arrivalsLine(arrivals), limits };
 	}
 
 	const launch = album;
 	const n = launch.series.length;
 	const published = sentence(`Published ${publishedPhrase(launch)}.`);
 	const weekFigures = launch.elapsedDays >= 7;
-	const windowSentence = windowLine(launch.series, launch.currentDay, model.today, weekFigures);
+	const windowSentence = windowLine(launch.series, launch.currentDay, model.today, weekFigures, input.stored);
 	const { total: opens, gaps } = sumComplete(launch.series, 'photoOpens');
 	const earlier = earlierLaunches(model, launch);
 
@@ -366,5 +373,5 @@ export function buildRecap(input: RecapInput): Recap {
 	const opened = openedSentence(photos);
 	if (opened) sentences.push(opened);
 
-	return { state, eyebrow, published, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(launch, photos, downloadComparison(model, launch)), arrivals: arrivalsLine(arrivals), limits };
+	return { state, eyebrow, published, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(launch, photos, downloadComparison(model, launch), input.stored), arrivals: arrivalsLine(arrivals), limits };
 }

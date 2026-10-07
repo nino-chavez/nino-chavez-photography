@@ -1,6 +1,7 @@
 import type { Launch, LaunchDay } from './launch-read-model.server';
 import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
 import { nameWithoutDate } from './launch-report-view';
+import { NO_RECAP_DUE, nextRecapItems, RECAPS_NOT_STORED } from './launch-recap-list';
 import type { HomeProblemTarget } from './data-anchors';
 import { minimumSample } from './intelligence-rules';
 import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligence-contract';
@@ -16,7 +17,7 @@ import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligen
  *  - Today is partial and never part of a number here. Counts are browser actions, not people.
  *  - An inferred first publication says "(inferred)".
  *  - Every number says what it is compared with, or says that there is nothing to compare it with.
- *  - Nothing here says a recap exists or was sent. Recaps are a later step.
+ *  - A recap is called due, overdue or stored only from the clock and the stored recaps. Nothing here says one was sent.
  */
 
 /** A launch counts as "just finished" for this many days after its seventh. Then the gallery is quiet. */
@@ -61,9 +62,6 @@ const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T
 /** "Sep 26" for this year, "Sep 26, 2025" for another. */
 function dayLabel(date: string, today: string): string {
 	return date.slice(0, 4) === today.slice(0, 4) ? formatDay(date) : `${formatDay(date)}, ${date.slice(0, 4)}`;
-}
-function weekdayDay(date: string): string {
-	return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
 }
 /** An instant in Chicago time: "8:40 AM" for today, "Oct 5, 8:40 AM" for another day. */
 export function chicagoTime(instant: string, today: string): string {
@@ -408,23 +406,16 @@ export function launchCard(launch: Launch, all: readonly Launch[], today: string
 /* Next                                                                                             */
 /* ---------------------------------------------------------------------------------------------- */
 
-export const NOTHING_DUE = 'Nothing is due. The next recap starts when you publish an album.';
-
 /**
- * What is due: the day 3 or day 7 mark of each launch in its first week, soonest first. A launch
- * has reached day N when N complete Chicago days have passed since its first publication day, so
- * the mark falls on that day plus N. This says when numbers become complete; it does not say a
- * recap exists.
+ * What is due: the day 3 and day 7 recap of each launch, soonest first, with any that are due and not stored yet.
+ * The dates come from the recap schedule (08:00 Chicago on the morning after the day completes), so this line and the
+ * scheduler cannot disagree. A stored recap is not listed.
  */
-export function nextItems(launches: readonly Launch[]): Array<{ date: string; text: string }> {
-	return launches
-		.filter((launch) => launch.elapsedDays < 7)
-		.map((launch) => {
-			const target = launch.elapsedDays < 3 ? 3 : 7;
-			const date = addDays(chicagoDate(launch.firstPublishedAt), target);
-			return { date, text: `${nameWithoutDate(launch.albumName ?? launch.albumKey)} reaches day ${target} on ${weekdayDay(date)}${inferredTag(launch)}.` };
-		})
-		.sort((x, y) => x.date.localeCompare(y.date) || x.text.localeCompare(y.text));
+export function nextRecaps(launches: readonly Launch[], now: Date, recaps: RecapStorageInput): { text: string; items: string[]; note: string | null } {
+	if (recaps.storedKeys === null) return { text: 'Which recaps are stored could not be read, so what is due is not shown.', items: [], note: null };
+	const items = nextRecapItems({ launches, now, storedKeys: recaps.storedKeys, storing: recaps.storing }, (launch) => nameWithoutDate(launch.albumName ?? launch.albumKey));
+	const note = recaps.storing === false ? RECAPS_NOT_STORED : null;
+	return items.length ? { text: 'Due next', items: items.map((item) => item.text), note } : { text: NO_RECAP_DUE, items: [], note };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -537,6 +528,8 @@ export interface HomeInput {
 	diagnostics: ProblemInput['diagnostics'];
 	/** Findings from the gallery-wide launch scope, most urgent first, already checked for visibility. */
 	findings: readonly Finding[];
+	/** Which recaps are stored and whether any owner has them written; unreadable is `storedKeys: null`. */
+	recaps: RecapStorageInput;
 	/** When the scheduler last checked them; null when unknown. */
 	findingsCheckedAt: string | null;
 }
@@ -554,6 +547,11 @@ export function placeFindings(cards: HomeCard[], findings: readonly Finding[], c
 	});
 }
 
+export interface RecapStorageInput {
+	storedKeys: ReadonlySet<string> | null;
+	storing: boolean | null;
+}
+
 export interface HomeView {
 	state: HomeState;
 	asOf: string;
@@ -565,7 +563,7 @@ export interface HomeView {
 	/** Launches beyond the cards, for the "see all" link. */
 	moreLaunches: number;
 	totalLaunches: number;
-	next: { text: string; items: string[] };
+	next: { text: string; items: string[]; note: string | null };
 	site: { reach: SiteFigure; contacts: SiteFigure };
 	problems: HomeProblem[];
 }
@@ -577,14 +575,11 @@ export function buildHome(input: HomeInput): HomeView {
 	const opening = openingSentence({ launches, stale, today });
 	const newest = launches ? [...launches].sort((x, y) => Date.parse(y.firstPublishedAt) - Date.parse(x.firstPublishedAt)) : [];
 	const cards = placeFindings(newest.slice(0, HOME_LAUNCH_CARDS).map((launch) => launchCard(launch, newest, today, input.covers.get(launch.albumKey) ?? null)), input.findings, findingsCheck(input.findingsCheckedAt, input.asOf, today));
-	const due = launches ? nextItems(launches) : [];
 	return {
 		state: opening.state, asOf: input.asOf, today, lastCompleteDay: input.lastCompleteDay,
 		opening: opening.sentence, week: weekLine(input.week, today, input.launches),
 		cards, moreLaunches: Math.max(0, newest.length - cards.length), totalLaunches: newest.length,
-		next: launches === null
-			? { text: 'What is due cannot be said while the launch numbers are unavailable.', items: [] }
-			: due.length ? { text: 'Due next', items: due.map((item) => item.text) } : { text: NOTHING_DUE, items: [] },
+		next: launches === null ? { text: 'What is due cannot be said while the launch numbers are unavailable.', items: [], note: null } : nextRecaps(launches, new Date(input.asOf), input.recaps),
 		site: siteFigures(input.siteReach, input.siteContacts, today),
 		problems: openProblems({
 			freshness: input.freshness, lastCompleteDay: input.lastCompleteDay, now: input.asOf, today, launchesRead: launches !== null, weekRead: input.week !== null,
