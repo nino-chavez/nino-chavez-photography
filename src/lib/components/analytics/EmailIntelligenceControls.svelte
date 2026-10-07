@@ -61,7 +61,8 @@
 
 <style>
 	.email-delivery { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d8e0ea; }
-	.email-delivery h4 { margin: .15rem 0 .5rem; }
+	.email-delivery h4 { font-size: 1rem; font-weight: 700; margin: .15rem 0 .5rem; }
+	.email-delivery .kicker { color: #174ea6; font-size: .7rem; font-weight: 800; letter-spacing: .07em; margin: 0; text-transform: uppercase; }
 	.email-delivery p { margin: .45rem 0; overflow-wrap: break-word; }
 
  button{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#174ea6;cursor:pointer;font:inherit;font-size:.85rem;font-weight:700;min-height:2.75rem;padding:.5rem .65rem}
