@@ -485,3 +485,53 @@ test('PostHog transport uses one total deadline across polling and aborts unfini
 	await assert.rejects(unfinished!.query({ query: { kind: 'HogQLQuery', query: 'SELECT 1' } }), { name: 'PostHogQueryPendingError' });
 	assert.equal(sawAbort, true);
 });
+
+test('PostHog transport keeps three queries in flight and bounds the wait for a slot', async () => {
+	const source = {
+		POSTHOG_ENABLED: 'true', POSTHOG_TARGET_ENVIRONMENT: 'production',
+		POSTHOG_QUERY_API_KEY: 'query-key', POSTHOG_PROJECT_ID: '42', POSTHOG_HOST: 'https://us.i.posthog.com'
+	};
+	const settle = () => new Promise((resolve) => setImmediate(resolve));
+	const query = { query: { kind: 'HogQLQuery' as const, query: 'SELECT 1' } };
+	let inFlight = 0;
+	let most = 0;
+	const held: Array<() => void> = [];
+	const transport = createPostHogQueryTransport(source, {
+		fetcher: async () => {
+			inFlight += 1; most = Math.max(most, inFlight);
+			await new Promise<void>((resolve) => held.push(resolve));
+			inFlight -= 1;
+			return new Response(JSON.stringify({ results: [] }), { status: 200 });
+		},
+		scheduleAbort: () => 1,
+		cancelAbort: () => {}
+	});
+	// Two gallery jobs in one wake-up send eight queries together; PostHog runs three per project at once.
+	const queries = Array.from({ length: 8 }, () => transport!.query(query));
+	await settle();
+	assert.equal(most, 3);
+	while (held.length) { held.shift()!(); await settle(); }
+	await Promise.all(queries);
+	assert.equal(most, 3);
+
+	const timers: Array<() => void> = [];
+	const busyHeld: Array<() => void> = [];
+	let sent = 0;
+	const busy = createPostHogQueryTransport(source, {
+		fetcher: async () => {
+			sent += 1;
+			await new Promise<void>((resolve) => busyHeld.push(resolve));
+			return new Response(JSON.stringify({ results: [] }), { status: 200 });
+		},
+		scheduleAbort: (callback) => { timers.push(callback); return timers.length; },
+		cancelAbort: () => {}
+	});
+	const running = [busy!.query(query), busy!.query(query), busy!.query(query)];
+	await settle();
+	const queued = busy!.query(query);
+	timers.at(-1)!();
+	await assert.rejects(queued, { name: 'PostHogQueryPendingError' });
+	assert.equal(sent, 3);
+	busyHeld.forEach((release) => release());
+	await Promise.all(running);
+});

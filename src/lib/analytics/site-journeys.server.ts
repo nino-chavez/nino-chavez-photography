@@ -31,8 +31,11 @@ export async function loadSiteJourneys(transport:PostHogQueryTransport|null,star
  if(!transport) return {available:false,reason:'PostHog linked journeys are not configured. First-party action counts above remain available.'};
  try {
   const query=buildSiteJourneyQuery(start,end,section);
+  // PostHog's cache, as the gallery reads use it. A run abandoned at the report deadline still finishes and caches,
+  // so the retry collects it instead of starting over. Windows end at a completed UTC day; within one, the six-hour
+  // cache only delays late events and classification corrections.
   const load=async()=>{
-   const result=await transport.query({refresh:'force_async',query}) as {results?:unknown};
+   const result=await transport.query({refresh:'async',query}) as {results?:unknown};
    const data=Array.isArray(result)?result:result?.results;
    if(!Array.isArray(data)||data.length>5) throw new Error('unexpected query shape');
    return data.map((row:unknown)=>{

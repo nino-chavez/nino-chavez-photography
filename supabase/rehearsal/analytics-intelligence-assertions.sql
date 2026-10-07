@@ -112,6 +112,9 @@ BEGIN
   UPDATE public.analytics_intelligence_snapshot_current SET updated_at=clock_timestamp() WHERE scope_key=key_one;
   PERFORM public.analytics_prepare_intelligence_periods(NULL,NULL,jsonb_build_array(scope_one),900,300,4,clock_timestamp());
   IF (SELECT count(*) FROM public.analytics_intelligence_jobs WHERE kind='refresh' AND scope_key=key_one AND status IN('pending','leased','retry')) > 1 THEN RAISE EXCEPTION 'refresh cadence created duplicate work'; END IF;
+  -- From 08:00 Chicago the catch-up call above queues today's daily and weekly work, which claims ahead of any refresh.
+  -- Clear it so the one-job claim below reaches the lease probe at every hour, not only before 08:00 Chicago.
+  DELETE FROM public.analytics_intelligence_jobs WHERE kind IN ('daily','weekly') AND status='pending';
   INSERT INTO public.analytics_intelligence_jobs(kind,scope_key,scope,status,attempts,available_at,leased_until)
   VALUES('refresh','lease-expiry-probe','{"kind":"sites","period":30,"section":"lease-probe"}','leased',0,clock_timestamp()-interval '2 minutes',clock_timestamp()-interval '1 minute') RETURNING id INTO expired_job;
   PERFORM public.analytics_claim_intelligence_jobs(1,120,clock_timestamp());
@@ -142,6 +145,13 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'intelligence job is not leased' THEN RAISE EXCEPTION 'expected second-finish denial, got: %', SQLERRM; END IF;
   END;
+  IF (SELECT error_code FROM public.analytics_intelligence_jobs WHERE id=leased_job) IS NOT NULL THEN RAISE EXCEPTION 'first-attempt completion carried a retry reason'; END IF;
+  -- A job that retried and then completed keeps the reason for its latest retry.
+  INSERT INTO public.analytics_intelligence_jobs(id,kind,scope_key,scope,status,leased_until) VALUES(gen_random_uuid(),'refresh',key_three,scope_three,'leased',clock_timestamp()+interval '2 minutes') RETURNING id INTO leased_job;
+  PERFORM public.analytics_finish_intelligence_job(leased_job,'retry',snapshot_three,'provider_query_pending');
+  UPDATE public.analytics_intelligence_jobs SET status='leased',leased_until=clock_timestamp()+interval '2 minutes',attempts=attempts+1 WHERE id=leased_job;
+  PERFORM public.analytics_finish_intelligence_job(leased_job,'complete',snapshot_three,NULL);
+  IF NOT EXISTS(SELECT 1 FROM public.analytics_intelligence_jobs WHERE id=leased_job AND status='complete' AND error_code='provider_query_pending') THEN RAISE EXCEPTION 'completed job lost its retry reason'; END IF;
 
   INSERT INTO public.analytics_intelligence_jobs(kind,owner_id,scope_key,scope,intended_period,status,leased_until) VALUES('daily',v_owner_id,key_one,scope_one,current_date-10,'leased',clock_timestamp()+interval '2 minutes');
   PERFORM public.analytics_finish_intelligence_job((SELECT job.id FROM public.analytics_intelligence_jobs job WHERE job.kind='daily' AND job.owner_id=v_owner_id AND job.intended_period=current_date-10),'complete',snapshot_one,NULL);
