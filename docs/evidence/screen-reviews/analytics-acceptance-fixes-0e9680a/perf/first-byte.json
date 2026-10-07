@@ -1,0 +1,22 @@
+{
+ "before plain": {
+  "first body byte ms": 1924,
+  "headline in the markup ms": 1924,
+  "last byte ms": 1925
+ },
+ "before gzip": {
+  "first body byte ms": 1985,
+  "headline in the markup ms": 1985,
+  "last byte ms": 1986
+ },
+ "after plain": {
+  "first body byte ms": 430,
+  "headline in the markup ms": 430,
+  "last byte ms": 1480
+ },
+ "after gzip": {
+  "first body byte ms": 1512,
+  "headline in the markup ms": 1512,
+  "last byte ms": 1512
+ }
+}
