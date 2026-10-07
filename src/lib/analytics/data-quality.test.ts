@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	basisWords, buildDataView, coverageView, deliveryView, rejectionSplit, rejectedOnDay, EVENTS_NOT_READ, eventsLabel, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
+	basisWords, buildDataView, coverageView, deliveryView, rejectionSplit, rejectedOnDay, diagnosticsLabel, EVENTS_NOT_READ, eventsLabel, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
 	siteJourneyNote, siteMeasuresView, statusView, trafficClassWords, trafficView, withNotRead, type DataInput, type NotRead
 } from './data-quality';
 import { DATA_ANCHORS } from './data-anchors';
@@ -432,4 +432,8 @@ test('every start date on this page is in one format: the event counts say "Sep 
 	// The view carries it, and the page's other start date is in the same format.
 	assert.equal(eventsView({ available: true, coverage: bounds, counts: [] } as unknown as V2ReportProjection, true).label, label);
 	assert.equal(coverageView({ report: { ...report(), preservedSince: '2026-06-30' } as OperatorReport, days: 30, refreshedAt: REFRESHED, lastCompleteDay: LAST, now: NOW, today: TODAY })?.since, 'Jun 30');
+	// The search and download evidence says where it starts in the same format; with no start or a failed read its own sentence stands.
+	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30T14:00:00.000Z', label: 'First recorded diagnostic evidence: 2026-09-30. Earlier coverage is unknown.', error: null }), 'First recorded diagnostic evidence: Sep 30. Earlier coverage is unknown.');
+	assert.equal(diagnosticsLabel({ availableFrom: null, label: 'Diagnostic evidence was not loaded for this section.', error: null }), 'Diagnostic evidence was not loaded for this section.');
+	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30', label: 'Diagnostic evidence could not be read.', error: 'x' }), 'Diagnostic evidence could not be read.');
 });

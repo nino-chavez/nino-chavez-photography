@@ -458,6 +458,15 @@ export interface EvidenceView {
 	note: string;
 }
 
+/**
+ * Where the search and download evidence starts, in the date format the rest of this page uses. The report's own label carries an ISO date; with no start recorded,
+ * or a read that failed, its own sentence stands because it names no date.
+ */
+export function diagnosticsLabel(coverage: OperatorReport['diagnosticsCoverage']): string {
+	if (coverage.error || !coverage.availableFrom) return coverage.label;
+	return `First recorded diagnostic evidence: ${formatDay(coverage.availableFrom.slice(0, 10))}. Earlier coverage is unknown.`;
+}
+
 /** Search and download evidence: what was recorded when a search or download was attempted. Downloads record requests and failures, never completed transfers. */
 export function evidenceView(report: OperatorReport, today: string): EvidenceView | null {
 	if (!report.available) return null;
@@ -466,7 +475,7 @@ export function evidenceView(report: OperatorReport, today: string): EvidenceVie
 			path: item.type.replaceAll('_', ' '), status: item.status, recorded: fmt(item.count), results: item.resultCount === null ? 'none counted' : fmt(item.resultCount),
 			errors: item.errorCodes.length ? item.errorCodes.join(', ') : 'none', latest: item.latestAt ? chicagoTime(item.latestAt, today) : 'none recorded'
 		})),
-		label: report.diagnosticsCoverage.label,
+		label: diagnosticsLabel(report.diagnosticsCoverage),
 		failed: !!report.diagnosticsCoverage.error,
 		note: 'Results is how many results a search returned. A "requested" row is written before any result exists, so it reads "none counted"; the search\'s count is on its "accepted" row. A download has no result count. Search text and visitor identifiers are never shown. Browser downloads record requests and failures, not completed transfers. A missing row is not evidence that nothing happened.'
 	};

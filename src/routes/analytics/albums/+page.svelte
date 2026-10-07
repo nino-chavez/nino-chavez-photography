@@ -70,6 +70,8 @@
 	const full = $derived(selected.length >= MAX_COMPARED);
 	const reportHref = (key: string) => albumReportPath(hostname, key);
 	const published = (row: IndexLaunchRow) => `${dayLabel(row.published, index.today)}${recovered.mark ? recoveredTag(row.inferred) : ''}`;
+	// On a card the label is "Download requests" and the window sits with the figure ("26 in week 1"), so the label never breaks to fit a narrow column.
+	const inWeekOne = (item: IndexLaunchRow['downloads']) => (item.state === 'ok' ? `${figureText(item)} in week 1` : figureText(item));
 	const count = (value: number | null) => (value === null ? 'Unknown' : value.toLocaleString('en-US'));
 	const lastActivity = (row: IndexUndatedRow) => (row.lastActivity ? dayLabel(row.lastActivity, index.today) : 'None in the window');
 </script>
@@ -155,7 +157,7 @@
 									<dl class="tight">
 										<div><dt>First published</dt><dd>{published(row)}</dd></div>
 										{#if statusVaries}<div><dt>Status</dt><dd>{statusText(row.status)}</dd></div>{/if}
-										<div><dt>Download requests, week 1</dt><dd>{figureText(row.downloads)}</dd></div>
+										<div><dt>Download requests</dt><dd>{inWeekOne(row.downloads)}</dd></div>
 									</dl>
 							</li>
 						{/each}
