@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Launch, LaunchAgeTotals, LaunchDay } from './launch-read-model.server';
 import {
-	buildHome, changeWords, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, NOTHING_DUE, nextItems,
+	buildHome, changeWords, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, nextRecaps,
 	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, staleness, statusLabel, trailingGap, weekLine,
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
 } from './home';
 import { minimumSample } from './intelligence-rules';
+import { NO_RECAP_DUE } from './launch-recap-list';
 import { DATA_ANCHORS } from './data-anchors';
 
 /*
@@ -203,11 +204,14 @@ test('a refresh is late only past the limit; an old incomplete day that is not t
 	assert.deepEqual(trailingGap(['2026-10-02'], '2026-10-05'), []);
 });
 
-test('no sentence on Home claims a recap was sent or is ready', () => {
+test('no sentence on Home claims a recap was sent, emailed or delivered; the opening and cards do not mention recaps at all', () => {
 	const sentences: string[] = [];
 	for (const asOf of ['2026-09-26', '2026-09-27', '2026-09-29', '2026-10-02', '2026-10-06']) sentences.push(text(open(world(asOf, ALL), asOf)));
-	sentences.push(...nextItems(world('2026-10-02', ALL)).map((item) => item.text));
 	for (const line of sentences) assert.doesNotMatch(line, /recap|sent|ready|delivered/i, line);
+	for (const asOf of ['2026-09-26', '2026-09-27', '2026-09-30', '2026-10-02']) {
+		const next = nextRecaps(world(asOf, ALL), new Date(`${asOf}T15:00:00Z`));
+		for (const line of [next.text, ...next.items]) assert.doesNotMatch(line, /\b(sent|emailed|delivered|ready|stored)\b/i, line);
+	}
 });
 
 test('the week line compares the last 7 complete days with the 7 before, and says when it cannot', () => {
@@ -276,24 +280,29 @@ test('the sparkline draws a day with incomplete records as a gap, never a zero, 
 	assert.equal(sparkBars([]).label, 'Daily photo opens: no complete day yet.');
 });
 
-test('next: the day 3 and day 7 dates of launches in their first week, and nothing otherwise', () => {
-	// Re7kho first published Sep 25 (Chicago): day 3 is Sep 28, day 7 is Oct 2. DWdCET: Sep 29 and Oct 3.
-	const early = nextItems(world('2026-09-27', ['Re7kho', 'DWdCET']));
-	assert.deepEqual(early.map((item) => item.text), [
-		'HS Girls VB - JCA at ACC reaches day 3 on Mon, Sep 28 (inferred).',
-		'College Women\'s VB - Millikin at North Central reaches day 3 on Tue, Sep 29 (inferred).'
+const at = (asOfDay: string, time = '15:00:00Z') => new Date(`${asOfDay}T${time}`);
+
+test('next: each launch\'s day 3 and day 7 recap with the date and 8:00 AM Chicago time they are due, soonest first', () => {
+	// Re7kho first published Sep 25 (Chicago): day 3 is due Sep 28, day 7 Oct 2. DWdCET: Sep 29 and Oct 3.
+	const early = nextRecaps(world('2026-09-27', ['Re7kho', 'DWdCET']), at('2026-09-27'));
+	assert.equal(early.text, 'Due next');
+	assert.deepEqual(early.items, [
+		'HS Girls VB - JCA at ACC: day 3 recap is due Mon, Sep 28 at 8:00 AM Chicago time.',
+		'College Women\'s VB - Millikin at North Central: day 3 recap is due Tue, Sep 29 at 8:00 AM Chicago time.',
+		'HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time.',
+		'College Women\'s VB - Millikin at North Central: day 7 recap is due Sat, Oct 3 at 8:00 AM Chicago time.'
 	]);
-	const mid = nextItems(world('2026-09-30', ['Re7kho', 'DWdCET']));
-	assert.deepEqual(mid.map((item) => item.text), [
-		'HS Girls VB - JCA at ACC reaches day 7 on Fri, Oct 2 (inferred).',
-		'College Women\'s VB - Millikin at North Central reaches day 7 on Sat, Oct 3 (inferred).'
-	]);
-	assert.deepEqual(nextItems(world('2026-10-06', ALL)), []);
-	// A launch whose seventh day has passed is not due anything.
-	assert.deepEqual(nextItems(world('2026-10-02', ['Re7kho'])), []);
-	// A recorded date carries no mark.
-	assert.equal(nextItems(world('2026-09-27', ['Re7kho'], {}, []))[0].text, 'HS Girls VB - JCA at ACC reaches day 3 on Mon, Sep 28.');
-	assert.equal(NOTHING_DUE, 'Nothing is due. The next recap starts when you publish an album.');
+	// A recap whose time has come is read on its album report, so it drops off this line; the later one stays.
+	const mid = nextRecaps(world('2026-09-29', ['Re7kho']), at('2026-09-29'));
+	assert.deepEqual(mid.items, ['HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time.']);
+});
+
+test('next: nothing to come says so, and never tells a visitor about a recap that is due and not there', () => {
+	assert.deepEqual(nextRecaps(world('2026-10-06', ALL), at('2026-10-06')), { text: NO_RECAP_DUE, items: [] });
+	assert.equal(NO_RECAP_DUE, 'No recap is due. Publishing an album schedules its day 3 and day 7 recaps.');
+	assert.deepEqual(nextRecaps(world('2026-10-06', ['Re7kho']), at('2026-10-06')).items, []);
+	// Day 3's 08:00 has passed on Sep 28 at 09:00; only day 7 is still to come.
+	assert.deepEqual(nextRecaps(world('2026-09-28', ['Re7kho']), at('2026-09-28', '14:00:00Z')).items.length, 1);
 });
 
 test('the site line names its measures, compares each with the 7 days before, and keeps one failure to itself', () => {
@@ -373,7 +382,7 @@ test('Home: three cards, newest first, the rest behind a link; the quiet gallery
 	assert.equal(view.cards[1].cover, 'cover-re');
 	assert.equal(view.cards[0].cover, null);
 	assert.deepEqual(view.cards.map((card) => card.status), ['Finished', 'Finished', 'Finished']);
-	assert.equal(view.next.text, NOTHING_DUE);
+	assert.equal(view.next.text, NO_RECAP_DUE);
 	assert.deepEqual(view.next.items, []);
 	assert.deepEqual(view.problems, []);
 });
@@ -381,7 +390,7 @@ test('Home: three cards, newest first, the rest behind a link; the quiet gallery
 test('Home: a launch in progress lists what is due, and unreadable launches say what cannot be said', () => {
 	const view = buildHome(baseInput('2026-09-30', ['Re7kho', 'Big']));
 	assert.equal(view.state, 'running');
-	assert.deepEqual(view.next.items, ['HS Girls VB - JCA at ACC reaches day 7 on Fri, Oct 2 (inferred).']);
+	assert.deepEqual(view.next.items, ['HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time.']);
 	const down = buildHome(baseInput('2026-10-06', ALL, { launches: null }));
 	assert.equal(down.state, 'unavailable');
 	assert.deepEqual(down.cards, []);

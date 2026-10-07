@@ -1,0 +1,339 @@
+DRY RUN: nothing is written. Run with --write after the migration is applied and this output is approved.
+The recap table could not be read (PGRST205); treated as empty because the migration is not applied.
+
+=== Jalapeño Open - July 2026 | day 3 | due 2026-07-22 08:00 Chicago (2026-07-22T13:00:00.000Z) | key launch:jq1Rp7:day3 | evidence complete | covers 2026-07-19 to 2026-07-21 | WOULD WRITE source=backfill late=false, no email ===
+Jalapeño Open - July 2026: day 3 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Jul 19 (date recovered afterwards from a log). 10 photo opens in its first 3 full days. That is the only launch with a day-3 total, so there is nothing to rank it against yet. Most of it came at once: 5 opens on Jul 21, day 2 (50% of its first 3 days). 7 of the 73 photos were opened at least once.
+
+Counts cover 3 full days, Jul 19 to Jul 21.
+
+5 download requests were made. No single photo was requested more than 2 times, so there are too few requests to tell which photos people want most.
+
+What to look at:
+
+No finding is open for this launch.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Where people came from is only known for tagged links, and none were recorded.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/jq1Rp7?recap=3
+
+=== Jalapeño Open - July 2026 | day 7 | due 2026-07-26 08:00 Chicago (2026-07-26T13:00:00.000Z) | key launch:jq1Rp7:day7 | evidence complete | covers 2026-07-19 to 2026-07-25 | WOULD WRITE source=backfill late=false, no email ===
+Jalapeño Open - July 2026: day 7 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Jul 19 (date recovered afterwards from a log). 37 photo opens in its first week. That is the only launch with a week-1 total, so there is nothing to rank it against yet. The busiest day was Jul 23, day 4, with 12 opens. 19 of the 73 photos were opened at least once.
+
+Counts cover 7 full days, Jul 19 to Jul 25.
+
+5 download requests were made. No single photo was requested more than 2 times, so there are too few requests to tell which photos people want most.
+
+What to look at:
+
+No finding is open for this launch.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Where people came from is only known for tagged links, and none were recorded.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/jq1Rp7?recap=7
+
+=== Chicago Big Dig 2026 - North Avenue Beach | day 3 | due 2026-07-29 08:00 Chicago (2026-07-29T13:00:00.000Z) | key launch:1BlKk4:day3 | evidence complete | covers 2026-07-26 to 2026-07-28 | WOULD WRITE source=backfill late=false, no email ===
+Chicago Big Dig 2026 - North Avenue Beach: day 3 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Jul 26 (date recovered afterwards from a log). 549 photo opens in its first 3 full days. At the same age, the 1 earlier launch had 10 photo opens. That is the most of the 2 launches with a day-3 total. Most of it came at once: 310 opens on Jul 26, the day it was published (56% of its first 3 days). 244 of the 267 photos were opened at least once.
+
+Counts cover 3 full days, Jul 26 to Jul 28.
+
+64 download requests were made. At the same age, the 1 earlier launch had 5. 62 named a photo and 2 asked for the whole album. No single photo was requested more than 2 times, so there are too few requests to tell which photos people want most.
+
+What to look at:
+
+No finding is open for this launch.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Where people came from is only known for tagged links, and none were recorded.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/1BlKk4?recap=3
+
+=== Chicago Big Dig 2026 - North Avenue Beach | day 7 | due 2026-08-02 08:00 Chicago (2026-08-02T13:00:00.000Z) | key launch:1BlKk4:day7 | evidence complete | covers 2026-07-26 to 2026-08-01 | WOULD WRITE source=backfill late=false, no email ===
+Chicago Big Dig 2026 - North Avenue Beach: day 7 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Jul 26 (date recovered afterwards from a log). 636 photo opens in its first week. At the same age, the 1 earlier launch had 37 photo opens. That is the most of the 2 launches with a week-1 total. The busiest day was Jul 26, the day it was published, with 310 opens. 248 of the 267 photos were opened at least once.
+
+Counts cover 7 full days, Jul 26 to Aug 1.
+
+64 download requests were made. At the same age, the 1 earlier launch had 5. 62 named a photo and 2 asked for the whole album. No single photo was requested more than 2 times, so there are too few requests to tell which photos people want most.
+
+1 arrival came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+No finding is open for this launch.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/1BlKk4?recap=7
+
+=== Diggin' for Drakes - 08-09-2026 | day 3 | due 2026-08-15 08:00 Chicago (2026-08-15T13:00:00.000Z) | key launch:dKe567:day3 | evidence complete | covers 2026-08-12 to 2026-08-14 | WOULD WRITE source=backfill late=false, no email ===
+Diggin' for Drakes - 08-09-2026: day 3 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Aug 12 (date recovered afterwards from a log). 25 photo opens in its first 3 full days. At the same age, the 2 earlier launches had a median of 280 photo opens. That is 2nd of the 3 launches with a day-3 total, behind Chicago Big Dig 2026 - North Avenue Beach (549). Most of it came at once: 25 opens on Aug 12, the day it was published (100% of its first 3 days). 25 of the 109 photos were opened at least once.
+
+Counts cover 3 full days, Aug 12 to Aug 14.
+
+No download requests were made. At the same age, the 2 earlier launches had a median of 35.
+
+4 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+No finding is open for this launch.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/dKe567?recap=3
+
+=== Diggin' for Drakes - 08-09-2026 | day 7 | due 2026-08-19 08:00 Chicago (2026-08-19T13:00:00.000Z) | key launch:dKe567:day7 | evidence complete | covers 2026-08-12 to 2026-08-18 | WOULD WRITE source=backfill late=false, no email ===
+Diggin' for Drakes - 08-09-2026: day 7 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Aug 12 (date recovered afterwards from a log). 25 photo opens in its first week. At the same age, the 2 earlier launches had a median of 337 photo opens. That is 3rd of the 3 launches with a week-1 total, behind Jalapeño Open - July 2026 (37). Most of it came at once: 25 opens on Aug 12, the day it was published (100% of the week). 25 of the 109 photos were opened at least once.
+
+Counts cover 7 full days, Aug 12 to Aug 18.
+
+No download requests were made. At the same age, the 2 earlier launches had a median of 35.
+
+4 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- The launch is over. Photo opens fell to 0 over Aug 16–18. Next step: Look at the photos people asked to download before choosing what to feature or share again.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/dKe567?recap=7
+
+=== Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026 | day 3 | due 2026-08-26 08:00 Chicago (2026-08-26T13:00:00.000Z) | key launch:eqYF0h:day3 | evidence complete | covers 2026-08-23 to 2026-08-25 | WOULD WRITE source=backfill late=false, no email ===
+Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026: day 3 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Aug 23 (date recovered afterwards from a log). 124 photo opens in its first 3 full days. At the same age, the 3 earlier launches had a median of 25 photo opens. That is 2nd of the 4 launches with a day-3 total, behind Chicago Big Dig 2026 - North Avenue Beach (549). Most of it came at once: 63 opens on Aug 23, the day it was published (51% of its first 3 days). 74 of the 162 photos were opened at least once.
+
+Counts cover 3 full days, Aug 23 to Aug 25.
+
+15 download requests were made. At the same age, the 3 earlier launches had a median of 5. No single photo was requested more than 2 times, so there are too few requests to tell which photos people want most.
+
+12 arrivals came through tagged links: ig-nino 5 (42%), profile 5 (42%), links 2 (17%). Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- Next step: See which photos people are opening and downloading while attention is still arriving.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/eqYF0h?recap=3
+
+=== Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026 | day 7 | due 2026-08-30 08:00 Chicago (2026-08-30T13:00:00.000Z) | key launch:eqYF0h:day7 | evidence complete | covers 2026-08-23 to 2026-08-29 | WOULD WRITE source=backfill late=false, no email ===
+Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026: day 7 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Aug 23 (date recovered afterwards from a log). 125 photo opens in its first week. At the same age, the 3 earlier launches had a median of 37 photo opens. That is 2nd of the 4 launches with a week-1 total, behind Chicago Big Dig 2026 - North Avenue Beach (636). Most of it came at once: 63 opens on Aug 23, the day it was published (50% of the week). 74 of the 162 photos were opened at least once.
+
+Counts cover 7 full days, Aug 23 to Aug 29.
+
+15 download requests were made. At the same age, the 3 earlier launches had a median of 5. No single photo was requested more than 2 times, so there are too few requests to tell which photos people want most.
+
+16 arrivals came through tagged links: profile 8 (50%), ig-nino 5 (31%), links 3 (19%). Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- The launch is over. Photo opens fell to 1 over Aug 27–29. Next step: Look at the photos people asked to download before choosing what to feature or share again.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/eqYF0h?recap=7
+
+=== HS Girls VB - JCA vs PNHS - 08-25-2026 | day 3 | due 2026-08-31 08:00 Chicago (2026-08-31T13:00:00.000Z) | key launch:fJKdsB:day3 | evidence complete | covers 2026-08-28 to 2026-08-30 | WOULD WRITE source=backfill late=false, no email ===
+HS Girls VB - JCA vs PNHS - 08-25-2026: day 3 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Aug 28 (date recovered afterwards from a log). 1,117 photo opens in its first 3 full days. At the same age, the 4 earlier launches had a median of 75 photo opens. That is the most of the 5 launches with a day-3 total. Most of it came at once: 749 opens on Aug 28, the day it was published (67% of its first 3 days). Every one of the 241 photos was opened at least once.
+
+Counts cover 3 full days, Aug 28 to Aug 30.
+
+106 download requests were made. At the same age, the 4 earlier launches had a median of 10. The album report lists the photos requested most.
+
+1 arrival came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- Next step: See which photos people are opening and downloading while attention is still arriving.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/fJKdsB?recap=3
+
+=== HS Girls VB - JCA vs PNHS - 08-25-2026 | day 7 | due 2026-09-04 08:00 Chicago (2026-09-04T13:00:00.000Z) | key launch:fJKdsB:day7 | evidence complete | covers 2026-08-28 to 2026-09-03 | WOULD WRITE source=backfill late=false, no email ===
+HS Girls VB - JCA vs PNHS - 08-25-2026: day 7 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Aug 28 (date recovered afterwards from a log). 1,258 photo opens in its first week. At the same age, the 4 earlier launches had a median of 81 photo opens. That is the most of the 5 launches with a week-1 total. Most of it came at once: 749 opens on Aug 28, the day it was published (60% of the week). Every one of the 241 photos was opened at least once.
+
+Counts cover 7 full days, Aug 28 to Sep 3.
+
+109 download requests were made. At the same age, the 4 earlier launches had a median of 10. The album report lists the photos requested most.
+
+5 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- The launch is over. Photo opens fell to 1 over Sep 1–3. Next step: Look at the photos people asked to download before choosing what to feature or share again.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/fJKdsB?recap=7
+
+=== HS Girls VB - JCA at ACC - 09-22-2026 | day 3 | due 2026-09-28 08:00 Chicago (2026-09-28T13:00:00.000Z) | key launch:Re7kho:day3 | evidence complete | covers 2026-09-25 to 2026-09-27 | WOULD WRITE source=backfill late=false, no email ===
+HS Girls VB - JCA at ACC - 09-22-2026: day 3 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Sep 25 (date recovered afterwards from a log). 804 photo opens in its first 3 full days. At the same age, the 5 earlier launches had a median of 124 photo opens. That is 2nd of the 6 launches with a day-3 total, behind HS Girls VB - JCA vs PNHS - 08-25-2026 (1,117). Most of it came at once: 575 opens on Sep 26, the day after it was published (72% of its first 3 days). Every one of the 120 photos was opened at least once.
+
+Counts cover 3 full days, Sep 25 to Sep 27.
+
+59 download requests were made. At the same age, the 5 earlier launches had a median of 15. No single photo was requested more than 3 times, so there are too few requests to tell which photos people want most.
+
+4 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- Next step: See which photos people are opening and downloading while attention is still arriving.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/Re7kho?recap=3
+
+=== HS Girls VB - JCA at ACC - 09-22-2026 | day 7 | due 2026-10-02 08:00 Chicago (2026-10-02T13:00:00.000Z) | key launch:Re7kho:day7 | evidence complete | covers 2026-09-25 to 2026-10-01 | WOULD WRITE source=backfill late=false, no email ===
+HS Girls VB - JCA at ACC - 09-22-2026: day 7 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Sep 25 (date recovered afterwards from a log). 931 photo opens in its first week. At the same age, the 5 earlier launches had a median of 125 photo opens. That is 2nd of the 6 launches with a week-1 total, behind HS Girls VB - JCA vs PNHS - 08-25-2026 (1,258). Most of it came at once: 575 opens on Sep 26, the day after it was published (62% of the week). Every one of the 120 photos was opened at least once.
+
+Counts cover 7 full days, Sep 25 to Oct 1.
+
+61 download requests were made. At the same age, the 5 earlier launches had a median of 15. No single photo was requested more than 3 times, so there are too few requests to tell which photos people want most.
+
+14 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- Next step: Open the album report to see which photos people asked to download.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open is recorded only from Sep 29.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/Re7kho?recap=7
+
+=== College Women's VB - Millikin at North Central - 09-23-2026 | day 3 | due 2026-09-29 08:00 Chicago (2026-09-29T13:00:00.000Z) | key launch:DWdCET:day3 | evidence complete | covers 2026-09-26 to 2026-09-28 | WOULD WRITE source=backfill late=false, no email ===
+College Women's VB - Millikin at North Central - 09-23-2026: day 3 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Sep 26 (date recovered afterwards from a log). 207 photo opens in its first 3 full days. At the same age, the 6 earlier launches had a median of 337 photo opens. That is 4th of the 7 launches with a day-3 total, behind Chicago Big Dig 2026 - North Avenue Beach (549). Most of it came at once: 106 opens on Sep 27, the day after it was published (51% of its first 3 days). Every one of the 43 photos was opened at least once.
+
+Counts cover 3 full days, Sep 26 to Sep 28.
+
+19 download requests were made. At the same age, the 6 earlier launches had a median of 37. No single photo was requested more than 2 times, so there are too few requests to tell which photos people want most.
+
+14 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- Next step: Check where the album was shared, and whether the people in it have the link.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open was not recorded until Sep 29, after these days.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/DWdCET?recap=3
+
+=== College Women's VB - Millikin at North Central - 09-23-2026 | day 7 | due 2026-10-03 08:00 Chicago (2026-10-03T13:00:00.000Z) | key launch:DWdCET:day7 | evidence complete | covers 2026-09-26 to 2026-10-02 | WOULD WRITE source=backfill late=false, no email ===
+College Women's VB - Millikin at North Central - 09-23-2026: day 7 recap
+
+This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.
+
+Published Sep 26 (date recovered afterwards from a log). 266 photo opens in its first week. At the same age, the 6 earlier launches had a median of 381 photo opens. That is 4th of the 7 launches with a week-1 total, behind Chicago Big Dig 2026 - North Avenue Beach (636). The busiest day was Sep 27, the day after it was published, with 106 opens. Every one of the 43 photos was opened at least once.
+
+Counts cover 7 full days, Sep 26 to Oct 2.
+
+26 download requests were made. At the same age, the 6 earlier launches had a median of 38. The album report lists the photos requested most.
+
+27 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.
+
+What to look at:
+
+- 2 photo loads failed during the launch. 2 of the 64 photo loads with a recorded result failed, on Sep 29 – Oct 2. Next step: Open the album on a phone and a computer and check that its photos load.
+- Next step: Check where the album was shared, and whether the people in it have the link.
+
+What this cannot tell you:
+
+- Which photos people saw but did not open is recorded only from Sep 29.
+- Counts are browser actions, not people.
+
+Full report: https://analytics.ninochavez.co/albums/DWdCET?recap=7
+
+Would write 14 recap(s). Left alone: 0. Deliveries, briefs, owners and emails: untouched.
+Wrote .temp/launch-recap-backfill-dry-run.json

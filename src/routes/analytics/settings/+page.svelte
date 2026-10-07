@@ -48,7 +48,7 @@
 				{#if data.owner}
 					<section class="block" aria-labelledby="private-title">
 						<h2 id="private-title">Private reports</h2>
-						<p class="note">Launch recaps, the day 3 and day 7 summary of each new album, are planned and not built yet. Until they are, these settings control the daily and weekly reviews and the optional email delivery that exist today.</p>
+						<p class="note">A launch recap is the day 3 and day 7 summary of each new album. These settings say how long private records are kept and whether recaps are emailed.</p>
 						<ReportingSettings owner={true} id="settings" />
 						<PrivateIntelligenceControls owner={true} actions={[]} />
 					</section>
@@ -109,7 +109,7 @@
 				{:else}
 					<section class="block" aria-labelledby="private-title">
 						<h2 id="private-title">Private reports and saved views</h2>
-						<p class="note">Signing in adds how long private records are kept, the daily and weekly reviews, optional email delivery, and your saved views. Nothing private is read or shown until you sign in.</p>
+						<p class="note">Signing in adds how long private records are kept, the launch recap settings, optional email delivery, and your saved views. Nothing private is read or shown until you sign in.</p>
 						<p class="action"><a class="button" href={signInHref}>Sign in with a magic link</a></p>
 					</section>
 				{/if}

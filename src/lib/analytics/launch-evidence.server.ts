@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchLaunchReadModel, fetchLaunches, type Launch, type LaunchList, type LaunchReadModel } from './launch-read-model.server';
 import { chicagoDate } from './launch-recap';
-import { chicagoWallTimeToUtc } from './intelligence-schedule';
+import { chicagoWallTimeToUtc } from './launch-recap-schedule';
 import { FAILURE_WINDOW_DAYS, LAUNCH_FINDING_DAYS, type LaunchEvidence, type LaunchFailureEvidence, type LaunchFocus, type LaunchPeer, type LaunchPhotoEvidence } from './launch-rules';
 
 /**

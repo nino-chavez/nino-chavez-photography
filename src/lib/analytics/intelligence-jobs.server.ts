@@ -5,14 +5,13 @@ import { GALLERY_LAUNCH_SCOPE, INTELLIGENCE_REFRESH_CADENCE_SECONDS, intelligenc
 import { LAUNCH_FINDING_DAYS } from './launch-rules';
 import type { LaunchList } from './launch-read-model.server';
 import type { IntelligenceJourneyContext } from './intelligence-source.server';
-import { dueIntelligencePeriods, type ScheduledIntelligencePeriod } from './intelligence-schedule';
 import { POSTHOG_JOURNEY_REPORTS, type JourneyAggregate } from './posthog.types';
 import type { GalleryDecisionEvidence } from './posthog-queries.server';
 import type { SiteJourneys } from './site-journeys.server';
 
 export type IntelligenceJob = {
 	id: string;
-	kind: 'refresh' | 'request' | 'daily' | 'weekly';
+	kind: 'refresh' | 'request';
 	scope: IntelligenceScope;
 	ownerId: string | null;
 	intendedPeriod: string | null;
@@ -64,17 +63,22 @@ function parseJob(value: unknown): IntelligenceJob | null {
 	if (!row) return null;
 	const id = text(row.id);
 	const kind = row.kind;
-	if (kind !== 'refresh' && kind !== 'request' && kind !== 'daily' && kind !== 'weekly') return null;
+	if (kind !== 'refresh' && kind !== 'request') return null;
 	const scope = parseIntelligenceScope(row.scope);
 	const ownerId = nullableText(row.ownerId);
 	const intendedPeriod = nullableText(row.intendedPeriod);
 	const requestId = nullableText(row.requestId);
 	const operation = requestOperation(row.operation);
-	if (!id || !scope || !['refresh', 'request', 'daily', 'weekly'].includes(String(kind)) || ownerId === undefined
+	if (!id || !scope || ownerId === undefined
 		|| intendedPeriod === undefined || requestId === undefined || operation === undefined || typeof row.late !== 'boolean'
 		|| (intendedPeriod !== null && !validDate(intendedPeriod))) return null;
 	if (kind === 'request' ? !ownerId || !requestId || !operation : requestId !== null || operation !== null) return null;
 	return { id, kind: kind as IntelligenceJob['kind'], scope, ownerId, intendedPeriod, late: row.late, requestId, operation };
+}
+
+function retiredBriefJob(value: unknown): boolean {
+	const row = object(value);
+	return !!row && typeof row.id === 'string' && (row.kind === 'daily' || row.kind === 'weekly');
 }
 
 function reportId(report: IntelligenceReport): string {
@@ -112,10 +116,12 @@ async function completeRequest(client: SupabaseClient, job: IntelligenceJob, rep
 
 export function createIntelligenceJobStore(client: IntelligenceJobRpcClient) {
 	return {
-		async prepare(periods: ScheduledIntelligencePeriod[], now: Date, launchScopes: readonly IntelligenceScope[] = []) {
+		async prepare(now: Date, launchScopes: readonly IntelligenceScope[] = []) {
+			// Launch recaps replaced the daily and weekly briefs. A null period tells the function to queue no
+			// scheduled brief, so this call only keeps the standard and launch scopes fresh.
 			const result = await client.rpc('analytics_prepare_intelligence_periods', {
-				p_daily_period: periods.find((period) => period.kind === 'daily')?.intendedPeriod ?? null,
-				p_weekly_period: periods.find((period) => period.kind === 'weekly')?.intendedPeriod ?? null,
+				p_daily_period: null,
+				p_weekly_period: null,
 				p_standard_scopes: [...standardIntelligenceScopes(now), ...launchScopes],
 				p_refresh_cadence_seconds: REFRESH_CADENCE_SECONDS,
 				p_provider_pending_retry_seconds: PROVIDER_PENDING_RETRY_SECONDS,
@@ -127,7 +133,11 @@ export function createIntelligenceJobStore(client: IntelligenceJobRpcClient) {
 		async claim(limit: number, now: Date): Promise<IntelligenceJob[]> {
 			const result = await client.rpc('analytics_claim_intelligence_jobs', { p_limit: Math.min(Math.max(limit, 1), 4), p_lease_seconds: 120, p_now: now.toISOString() });
 			if (result.error || !Array.isArray(result.data)) throw new Error('analytics_claim_intelligence_jobs failed');
-			const jobs = result.data.map(parseJob);
+			// A daily or weekly job left from before recaps is not run. It is handed back with a backoff, so it stops
+			// holding a claim slot. After 20 hand-backs the database marks its period unavailable and its own finish
+			// path then writes a brief that names the unavailable source. There are none today (0 in production).
+			for (const row of result.data.filter(retiredBriefJob)) await client.rpc('analytics_finish_intelligence_job', { p_job_id: (row as { id: string }).id, p_status: 'retry', p_report_id: null, p_error_code: 'brief_kind_retired' });
+			const jobs = result.data.filter((row) => !retiredBriefJob(row)).map(parseJob);
 			if (jobs.some((job) => job === null)) invalid('analytics_claim_intelligence_jobs');
 			return jobs.filter((job): job is IntelligenceJob => job !== null);
 		},
@@ -142,7 +152,7 @@ export function createIntelligenceJobStore(client: IntelligenceJobRpcClient) {
 	};
 }
 
-export type IntelligenceJobResult = { prepared: number; claimed: number; refreshed: number; retried: number; providerQueries: number; deferred: number };
+export type IntelligenceJobResult = { claimed: number; refreshed: number; retried: number; providerQueries: number; deferred: number };
 
 /** Bounded scheduler worker; dashboard reads only a persisted report snapshot. */
 export async function runIntelligenceJobs(
@@ -154,13 +164,12 @@ export async function runIntelligenceJobs(
 	const now = options.now ?? new Date();
 	const deadline = Date.now() + Math.min(Math.max(options.deadlineMs ?? 25_000, 1_000), 55_000);
 	const store = createIntelligenceJobStore(client);
-	const periods = dueIntelligencePeriods(now);
 	// Launch scopes come from a database read. If it fails, the standard scopes and Home's scope still refresh.
 	let launchScopes: IntelligenceScope[] = [];
 	try { launchScopes = options.launchScopes ? await options.launchScopes() : []; } catch { launchScopes = [GALLERY_LAUNCH_SCOPE]; }
-	await store.prepare(periods, now, launchScopes);
+	await store.prepare(now, launchScopes);
 	const jobs = await store.claim(options.limit ?? 4, now);
-	const result: IntelligenceJobResult = { prepared: periods.length, claimed: jobs.length, refreshed: 0, retried: 0, providerQueries: 0, deferred: 0 };
+	const result: IntelligenceJobResult = { claimed: jobs.length, refreshed: 0, retried: 0, providerQueries: 0, deferred: 0 };
 	let next = 0;
 	const process = async (job: IntelligenceJob) => {
 		try {
