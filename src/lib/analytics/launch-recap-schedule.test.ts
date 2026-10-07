@@ -13,7 +13,7 @@ test('the named constants are the decision: day 3 and day 7, 08:00 Chicago, a 15
 	assert.equal(RECAP_LATE_AFTER_MINUTES, 15);
 	assert.equal(RECAP_CATCH_UP_DAYS, 3);
 	assert.equal(RECAP_SETTLE_HOURS, 6);
-	assert.equal(MAX_RECAPS_PER_RUN, 2);
+	assert.equal(MAX_RECAPS_PER_RUN, 1);
 	assert.equal(isRecapCheckpoint(3), true);
 	assert.equal(isRecapCheckpoint(7), true);
 	assert.equal(isRecapCheckpoint(5), false);

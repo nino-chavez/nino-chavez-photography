@@ -212,7 +212,7 @@
 		{/if}
 
 		{#if data.recaps}
-			<LaunchRecaps rows={data.recaps.rows} summary={data.recaps.summary} explain={data.recaps.explain} open={data.recaps.open} openMissing={data.recaps.openMissing} />
+			<LaunchRecaps rows={data.recaps.rows} open={data.recaps.open} openMissing={data.recaps.openMissing} />
 		{/if}
 
 		<div class="below">

@@ -48,7 +48,7 @@
 				{#if data.owner}
 					<section class="block" aria-labelledby="private-title">
 						<h2 id="private-title">Private reports</h2>
-						<p class="note">A launch recap is the day 3 and day 7 summary of each new album. These settings say how long private records are kept, whether recaps are being written, and whether they are emailed.</p>
+						<p class="note">A launch recap is the day 3 and day 7 summary of each new album. These settings say how long private records are kept and whether recaps are emailed.</p>
 						<ReportingSettings owner={true} id="settings" />
 						<PrivateIntelligenceControls owner={true} actions={[]} />
 					</section>

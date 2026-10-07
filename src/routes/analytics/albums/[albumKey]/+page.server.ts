@@ -4,8 +4,8 @@ import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supa
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { fetchLaunchReadModel, type LaunchReadModel } from '$lib/analytics/launch-read-model.server';
 import { buildRecap } from '$lib/analytics/launch-recap';
-import { albumQuery, LAUNCH_DAYS, readArrivals, readPhotoRows, readRecapStorage, readStoredRecap, readStoredRecaps } from '$lib/analytics/launch-recap.server';
-import { recapListExplain, recapListSummary, recapRows } from '$lib/analytics/launch-recap-list';
+import { albumQuery, LAUNCH_DAYS, readArrivals, readPhotoRows, readStoredRecap, readStoredRecaps } from '$lib/analytics/launch-recap.server';
+import { recapRows } from '$lib/analytics/launch-recap-list';
 import { recapBlocks, recapTitle } from '$lib/analytics/launch-recap-text';
 import { isRecapCheckpoint, type RecapCheckpoint } from '$lib/analytics/launch-recap-schedule';
 import { cumulativeCurves, dailyChart, gridPhotos, launchTable } from '$lib/analytics/launch-report-view';
@@ -65,12 +65,12 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 		loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'gallery', query }), !!user, 'album launch report')
 	]);
 
-	// Recaps: what is stored, whether anything is set up to store more, and the one the reader opened with ?recap=3 or ?recap=7.
+	// Recaps: what is stored, and the one the reader opened with ?recap=3 or ?recap=7.
 	const asked = Number(url.searchParams.get('recap'));
 	const openCheckpoint: RecapCheckpoint | null = isRecapCheckpoint(asked) ? asked : null;
-	const [storedRecaps, recapStorage] = await Promise.all([readStoredRecaps(admin, albumKey), readRecapStorage(admin)]);
-	const openRecap = openCheckpoint !== null && storedRecaps?.some((recap) => recap.checkpoint === openCheckpoint) ? await readStoredRecap(admin, albumKey, openCheckpoint) : null;
-	const recapRowList = album.status === 'no_launch_date' ? null : recapRows({ launch: album, now: new Date(model.asOf), stored: storedRecaps, storing: recapStorage ? recapStorage.storing : null, owner: !!user });
+	const storedRecaps = await readStoredRecaps(admin, albumKey);
+	const openRecap = openCheckpoint !== null && storedRecaps?.some((stored) => stored.checkpoint === openCheckpoint) ? await readStoredRecap(admin, albumKey, openCheckpoint) : null;
+	const recapRowList = album.status === 'no_launch_date' ? null : recapRows({ launch: album, now: new Date(model.asOf), stored: storedRecaps, owner: !!user });
 
 	const photoIds = new Set(photoRows.map((row) => row.photoId));
 	const recap = buildRecap({ model, arrivals, photoIds });
@@ -93,13 +93,12 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 			today: model.today
 		},
 		recap,
-		recaps: recapRowList ? {
+		// Nothing to list (an album with no launch date, or a visitor and no recap yet) means no section at all.
+		recaps: recapRowList && (recapRowList.length || openCheckpoint !== null) ? {
 			rows: recapRowList,
-			summary: recapListSummary(recapRowList),
-			explain: recapListExplain({ storing: recapStorage ? recapStorage.storing : null, owner: !!user }),
 			open: openRecap ? {
 				title: recapTitle(openRecap.checkpoint), subject: openRecap.subject,
-				flags: [...(openRecap.late ? ['Late'] : []), ...(openRecap.evidence === 'partial' ? ['Some records were incomplete'] : openRecap.evidence === 'unavailable' ? ['Could not be built'] : [])],
+				flags: [...(openRecap.source === 'backfill' ? ['Written later from the records'] : openRecap.late ? ['Late'] : []), ...(openRecap.evidence === 'partial' ? ['Some records were incomplete'] : openRecap.evidence === 'unavailable' ? ['Could not be built'] : [])],
 				// The page links to the full report itself, so the plain-text address line is left out.
 				blocks: recapBlocks(openRecap.body).filter((block) => !(block.kind === 'paragraph' && block.text.startsWith('Full report: ')))
 			} : null,

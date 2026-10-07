@@ -1,6 +1,6 @@
 import type { Finding } from './intelligence-contract';
 import type { LaunchReadModel } from './launch-read-model.server';
-import { plural, recapToPlain, type Recap } from './launch-recap';
+import { formatDay, plural, recapToPlain, type Recap } from './launch-recap';
 import { chicagoDay, type RecapCheckpoint, type RecapSlot } from './launch-recap-schedule';
 
 /**
@@ -51,6 +51,8 @@ export interface RecapDocumentInput {
 	/** False when the tagged arrivals could not be read. */
 	arrivalsRead: boolean;
 	link: string;
+	/** A backfill: the Chicago date it was written. The text says it was written later, from the records for those days. */
+	writtenOn?: string;
 }
 
 const AGE_LABEL: Record<RecapCheckpoint, string> = { 3: 'Day 3 recap', 7: 'Day 7 recap' };
@@ -71,6 +73,10 @@ function lateNote(dueAt: string): string {
 	return `This recap is late. It was due ${dueWords(dueAt)}. It reports the same days it would have then, not the days since.`;
 }
 
+function writtenLaterNote(writtenOn: string): string {
+	return `This recap was written on ${formatDay(writtenOn)}, after its checkpoint, from the records for those days. It was not written on the morning it was due.`;
+}
+
 function bulletList(items: readonly string[]): string {
 	return items.map((item) => `- ${item}`).join('\n');
 }
@@ -83,9 +89,21 @@ function joinMissing(items: readonly string[]): string {
 /** A finding's title is a headline with no full stop. Written next to its explanation it needs one, or two sentences run together. */
 const endSentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
 
+/**
+ * The reach and finished findings are computed from the same figures as the recap's own headline, ranking and comparison, so
+ * written out in full they say the same thing twice: a reach finding's title is the headline total and its explanation is the
+ * median comparison; a finished finding's explanation is the week total, the downloads and the comparison again. The recap
+ * keeps the comparison once, in its own text, and takes from these findings only what the text lacks: the next step, and for
+ * a finished launch the sentences saying it is over and how far opens fell. Every other finding is written out in full.
+ */
+/** The first sentence of a finding's explanation. For a finished launch it is the one that says how far opens fell. */
+const firstSentence = (text: string) => text.trim().match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text.trim();
+
 function findingBlock(finding: Finding): string {
-	const parts = [finding.title, finding.explanation].filter((part) => part.trim()).map(endSentence).join(' ');
-	return `${parts} Next step: ${endSentence(finding.action)}`.replace(/\s+/g, ' ');
+	const next = `Next step: ${endSentence(finding.action)}`;
+	if (finding.rule === 'launch_reach') return next;
+	const parts = (finding.rule === 'launch_finished' ? [finding.title, firstSentence(finding.explanation)] : [finding.title, finding.explanation]).filter((part) => part.trim()).map(endSentence).join(' ');
+	return `${parts} ${next}`.replace(/\s+/g, ' ');
 }
 
 /** Drops whole trailing blocks, never the first or the last, until the body fits. */
@@ -121,7 +139,8 @@ export function buildRecapDocument(input: RecapDocumentInput): RecapDocument {
 	const missing = recapGaps(model, slot.checkpoint, input.arrivalsRead, input.findingsRead);
 	const evidence: RecapEvidence = missing.length ? 'partial' : 'complete';
 	const blocks: string[] = [subject];
-	if (slot.late) blocks.push(lateNote(slot.dueAt));
+	if (input.writtenOn) blocks.push(writtenLaterNote(input.writtenOn));
+	else if (slot.late) blocks.push(lateNote(slot.dueAt));
 	if (missing.length) blocks.push(`This recap is incomplete. What is missing: ${joinMissing(missing)}. A figure that depends on it is not stated, and nothing here is a report of zero.`);
 
 	const head = [recap.published ? recapToPlain(recap.published) : '', recapToPlain(recap.headline)].filter(Boolean).join(' ');

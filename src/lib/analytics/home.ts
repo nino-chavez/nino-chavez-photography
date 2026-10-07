@@ -1,7 +1,7 @@
 import type { Launch, LaunchDay } from './launch-read-model.server';
 import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
 import { nameWithoutDate } from './launch-report-view';
-import { NO_RECAP_DUE, nextRecapItems, RECAPS_NOT_STORED } from './launch-recap-list';
+import { NO_RECAP_DUE, nextRecapItems } from './launch-recap-list';
 import type { HomeProblemTarget } from './data-anchors';
 import { minimumSample } from './intelligence-rules';
 import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligence-contract';
@@ -17,7 +17,7 @@ import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligen
  *  - Today is partial and never part of a number here. Counts are browser actions, not people.
  *  - An inferred first publication says "(inferred)".
  *  - Every number says what it is compared with, or says that there is nothing to compare it with.
- *  - A recap is called due, overdue or stored only from the clock and the stored recaps. Nothing here says one was sent.
+ *  - A recap is called due only from the clock. Nothing here says one was sent.
  */
 
 /** A launch counts as "just finished" for this many days after its seventh. Then the gallery is quiet. */
@@ -407,15 +407,13 @@ export function launchCard(launch: Launch, all: readonly Launch[], today: string
 /* ---------------------------------------------------------------------------------------------- */
 
 /**
- * What is due: the day 3 and day 7 recap of each launch, soonest first, with any that are due and not stored yet.
- * The dates come from the recap schedule (08:00 Chicago on the morning after the day completes), so this line and the
- * scheduler cannot disagree. A stored recap is not listed.
+ * What is due: the day 3 and day 7 recap of each launch whose due time has not come, soonest first. The dates come from the
+ * recap schedule (08:00 Chicago on the morning after the day completes), so this line and the scheduler cannot disagree.
+ * A recap whose time has come is read on its album report; Home does not list it.
  */
-export function nextRecaps(launches: readonly Launch[], now: Date, recaps: RecapStorageInput): { text: string; items: string[]; note: string | null } {
-	if (recaps.storedKeys === null) return { text: 'Which recaps are stored could not be read, so what is due is not shown.', items: [], note: null };
-	const items = nextRecapItems({ launches, now, storedKeys: recaps.storedKeys, storing: recaps.storing }, (launch) => nameWithoutDate(launch.albumName ?? launch.albumKey));
-	const note = recaps.storing === false ? RECAPS_NOT_STORED : null;
-	return items.length ? { text: 'Due next', items: items.map((item) => item.text), note } : { text: NO_RECAP_DUE, items: [], note };
+export function nextRecaps(launches: readonly Launch[], now: Date): { text: string; items: string[] } {
+	const items = nextRecapItems({ launches, now }, (launch) => nameWithoutDate(launch.albumName ?? launch.albumKey));
+	return items.length ? { text: 'Due next', items: items.map((item) => item.text) } : { text: NO_RECAP_DUE, items: [] };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -528,8 +526,6 @@ export interface HomeInput {
 	diagnostics: ProblemInput['diagnostics'];
 	/** Findings from the gallery-wide launch scope, most urgent first, already checked for visibility. */
 	findings: readonly Finding[];
-	/** Which recaps are stored and whether any owner has them written; unreadable is `storedKeys: null`. */
-	recaps: RecapStorageInput;
 	/** When the scheduler last checked them; null when unknown. */
 	findingsCheckedAt: string | null;
 }
@@ -547,11 +543,6 @@ export function placeFindings(cards: HomeCard[], findings: readonly Finding[], c
 	});
 }
 
-export interface RecapStorageInput {
-	storedKeys: ReadonlySet<string> | null;
-	storing: boolean | null;
-}
-
 export interface HomeView {
 	state: HomeState;
 	asOf: string;
@@ -563,7 +554,7 @@ export interface HomeView {
 	/** Launches beyond the cards, for the "see all" link. */
 	moreLaunches: number;
 	totalLaunches: number;
-	next: { text: string; items: string[]; note: string | null };
+	next: { text: string; items: string[] };
 	site: { reach: SiteFigure; contacts: SiteFigure };
 	problems: HomeProblem[];
 }
@@ -579,7 +570,7 @@ export function buildHome(input: HomeInput): HomeView {
 		state: opening.state, asOf: input.asOf, today, lastCompleteDay: input.lastCompleteDay,
 		opening: opening.sentence, week: weekLine(input.week, today, input.launches),
 		cards, moreLaunches: Math.max(0, newest.length - cards.length), totalLaunches: newest.length,
-		next: launches === null ? { text: 'What is due cannot be said while the launch numbers are unavailable.', items: [], note: null } : nextRecaps(launches, new Date(input.asOf), input.recaps),
+		next: launches === null ? { text: 'What is due cannot be said while the launch numbers are unavailable.', items: [] } : nextRecaps(launches, new Date(input.asOf)),
 		site: siteFigures(input.siteReach, input.siteContacts, today),
 		problems: openProblems({
 			freshness: input.freshness, lastCompleteDay: input.lastCompleteDay, now: input.asOf, today, launchesRead: launches !== null, weekRead: input.week !== null,

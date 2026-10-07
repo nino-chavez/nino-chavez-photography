@@ -17,30 +17,32 @@ test('the form saves one thing, how long private records are kept; the old daily
 	assert.deepEqual(['until_deleted', '90_days', 'one_year', 'undecided'].map((retention) => retentionDays(retention as never)), [null, 90, 365, null]);
 });
 
-test('the recap settings copy: the schedule, whether recaps are written, and what email will and will not do', () => {
+const STORAGE = 'Recaps are written for every album on their own and listed on its report. They are public and are not deleted with your private records.';
+
+test('the recap settings copy: the schedule, that recaps do not depend on the owner, and what email will and will not do', () => {
 	assert.equal(RECAP_SCHEDULE_COPY, 'Each album gets a recap on day 3 and day 7 after it is first public, at 8:00 AM Chicago time.');
 	const undecided = recapSettingsLines(prefs({ retention: 'undecided' }));
 	assert.equal(undecided.schedule, RECAP_SCHEDULE_COPY);
-	assert.equal(undecided.storage, 'No recap is being written yet. Recaps are written for you once you choose how long to keep private records. A recap that came due before then is not written later.');
+	assert.equal(undecided.storage, STORAGE, 'no retention choice changes whether recaps are written');
+	assert.equal(recapSettingsLines(prefs()).storage, STORAGE);
 	assert.equal(undecided.email, 'Email is off, so no recap is emailed. There is no verified address yet.');
-	const chosen = recapSettingsLines(prefs());
-	assert.equal(chosen.storage, 'Recaps are written for you and listed on each album report, under Recaps. Only a complete one can be emailed.');
-	assert.equal(chosen.email, 'Email is off, so no recap is emailed. There is no verified address yet.');
+	assert.equal(recapSettingsLines(prefs()).email, 'Email is off, so no recap is emailed. There is no verified address yet.');
 	assert.equal(recapSettingsLines(prefs({ destinationVerified: true, destination: 'a@example.test' })).email, 'Email is off, so no recap is emailed.');
 	const on = recapSettingsLines(prefs({ externalEnabled: true, destinationVerified: true, destination: 'a@example.test' }));
-	assert.equal(on.email, 'Email is on for a@example.test. Only a complete recap is emailed; an incomplete one stays in the dashboard. Nothing is sent from this page.');
+	assert.equal(on.email, 'Email is on for a@example.test. Only a complete recap is emailed; an incomplete one is only listed on the album report. Nothing is sent from this page.');
 	assert.equal(recapSettingsLines(prefs({ externalEnabled: true })).email, 'Email is on but has no verified address, so no recap is emailed.');
 });
 
-test('unreadable settings are said as unreadable, and no line claims a send or a daily or weekly review', () => {
+test('unreadable settings are said as unreadable, and no line claims a send, a daily or weekly review, or that recaps wait for a retention choice', () => {
 	const unknown = recapSettingsLines(null);
-	assert.equal(unknown.storage, 'Whether recaps are being written could not be read.');
+	assert.equal(unknown.storage, STORAGE);
 	assert.equal(unknown.email, 'Whether recap email is on could not be read.');
 	for (const state of [null, prefs(), prefs({ retention: 'undecided' }), prefs({ externalEnabled: true, destinationVerified: true, destination: 'a@example.test' })]) {
 		const lines = recapSettingsLines(state);
 		for (const line of Object.values(lines)) {
 			assert.doesNotMatch(line, /\b(daily|weekly)\b/i, line);
 			assert.doesNotMatch(line, /\b(was|were|has been|have been) (sent|emailed|delivered)\b/i, line);
+			assert.doesNotMatch(line, /once you choose|no recap is being written|written for you/i, line);
 		}
 	}
 });

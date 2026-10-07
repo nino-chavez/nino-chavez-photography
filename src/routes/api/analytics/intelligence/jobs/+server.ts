@@ -57,16 +57,19 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 			if (scope.query.albumKeys.some(key => !keys.includes(key))) throw new Error('requested album is not public');
 			return keys;
 		};
-		// Launch recaps replaced the daily and weekly briefs. They run first: a due recap is rare and bounded (at most
-		// MAX_RECAPS_PER_RUN), and the refresh jobs below can spend their whole 25 second deadline, so a recap that waited
-		// for them could be cut off by the caller's 90 second limit on a busy minute. A failure here is counted and never
-		// stops the refresh jobs or the delivery: the recap is tried again until its checkpoint lapses.
+		// Launch recaps replaced the daily and weekly briefs. A recap that is due is built here, one per wake-up, and that
+		// wake-up skips the refresh jobs: a request that built a recap measured 16 outbound requests in all, and the refresh
+		// jobs can spend more than the Free plan's 50 on their own (see the README's subrequest arithmetic). The jobs run again the
+		// next minute, so a refresh is late by one minute on the few mornings a recap is due. A wake-up that finds nothing
+		// to build, or only has to wait for records, costs a few reads and runs the jobs as always. A failure here is
+		// counted and never stops the delivery below; the recap is tried again until its checkpoint lapses.
 		let recaps: RecapRunResult | { error: 'launches_unavailable' };
 		try {
 			const list = await launches().catch(() => null);
 			recaps = list ? await runRecapGeneration(recapRunDeps(client), list.launches, now) : { error: 'launches_unavailable' };
 		} catch { recaps = { error: 'launches_unavailable' }; }
-		const jobs = await runIntelligenceJobs(client, { refreshIntelligence }, async (scope) => !transport ? { journeys: {}, providerQueries: 0, providerPending: false } : loadFixedIntelligenceJourneys(scope, {
+		const recapWakeUp = 'built' in recaps && recaps.built > 0;
+		const jobs = recapWakeUp ? { skipped: 'recap_wake_up' as const } : await runIntelligenceJobs(client, { refreshIntelligence }, async (scope) => !transport ? { journeys: {}, providerQueries: 0, providerPending: false } : loadFixedIntelligenceJourneys(scope, {
 			gallery: async (report, current) => {
 				const albumKeys = await keysFor(current);
 				const query = current.query;

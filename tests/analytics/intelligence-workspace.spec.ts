@@ -57,8 +57,10 @@ test('shows the target and complete stored evidence without flattening windows',
 	await page.getByText('Read exact evidence').click();
 	await expect(page.getByText('Current: 2026-09-01 to 2026-09-07. Previous: 2026-08-25 to 2026-08-31')).toBeVisible();
 	await expect(page.getByText('eligible album opens')).toBeVisible();
-	await expect(page.getByText('8', { exact: true })).toBeVisible();
-	await expect(page.getByText('42', { exact: true })).toHaveCount(2);
+	// Scoped to the report panel: the page around it shows live gallery numbers, and a bare "42" can appear there too.
+	const panel = page.locator('section.intelligence').first();
+	await expect(panel.getByText('8', { exact: true })).toBeVisible();
+	await expect(panel.getByText('42', { exact: true })).toHaveCount(2);
 	await expect(page.getByText('Comparable history is still limited.')).toBeVisible();
 });
 

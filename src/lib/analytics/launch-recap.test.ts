@@ -16,19 +16,20 @@ test('finished launch: week-1 total, rank, the launch ahead, peak day and every 
 	const r = recap(m);
 	assert.equal(r.state, 'finished');
 	assert.equal(r.eyebrow, 'Week 1 recap');
-	assert.equal(recapToPlain(r.published!), 'Published Sep 25 (inferred).');
+	assert.equal(recapToPlain(r.published!), 'Published Sep 25 (date recovered afterwards from a log).');
 	assert.equal(recapToPlain(r.headline), '931 photo opens in its first week.');
 	const lines = r.sentences.map((s) => recapToPlain(s));
-	assert.match(lines[0], /^That is 2nd of the 7 launches with a week-1 total, behind HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)\.$/);
-	assert.match(lines[1], /^Most of it came at once: 575 opens on Sep 26, the day after it was published \(62% of the week\)\.$/);
-	assert.equal(lines[2], 'Every one of the 4 photos was opened at least once.');
-	assert.ok(r.sentences.length >= 2 && r.sentences.length <= 4);
+	assert.match(lines[0], /^At the same age, the 5 earlier launches had a median of 125 photo opens\.$/);
+	assert.match(lines[1], /^That is 2nd of the 7 launches with a week-1 total, behind HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)\.$/);
+	assert.match(lines[2], /^Most of it came at once: 575 opens on Sep 26, the day after it was published \(62% of the week\)\.$/);
+	assert.equal(lines[3], 'Every one of the 4 photos was opened at least once.');
+	assert.equal(r.sentences.length, 4);
 });
 
 test('the day Chicago says a launch began is the day it is dated, not the UTC day', () => {
 	const m = model(shape('Re7kho'), ALL);
 	m.album.firstPublishedAt = '2026-09-26T01:10:52.556+00:00';
-	assert.equal(recapToPlain(recap(m).published!), 'Published Sep 25 (inferred).');
+	assert.equal(recapToPlain(recap(m).published!), 'Published Sep 25 (date recovered afterwards from a log).');
 });
 
 test('a recorded date is not marked inferred', () => {
@@ -57,10 +58,10 @@ test('the launch named as ahead is the one the read model ranks directly above, 
 
 test('first place and a tie are worded as such', () => {
 	const m = model(shape('fJKdsB'), ALL);
-	assert.match(recapToPlain(recap(m).sentences[0]), /^That is the most of the 7 launches with a week-1 total\.$/);
+	assert.match(recapToPlain(recap(m).sentences[1]), /^That is the most of the 7 launches with a week-1 total\.$/);
 	const tied = model(shape('Re7kho'), ALL);
 	(tied.album as DatedLaunchAlbum).rank.day7 = { rank: 1, compared: 7, tied: true };
-	assert.match(recapToPlain(recap(tied).sentences[0]), /^That is tied for the most of the 7 launches/);
+	assert.match(recapToPlain(recap(tied).sentences[1]), /^That is tied for the most of the 7 launches/);
 });
 
 test('the only launch with a total has nothing to rank against', () => {
@@ -149,21 +150,21 @@ test('week-1 figures and the longer window are told apart when more than seven d
 
 test('no exposure recorded during the launch says so, and partial and complete are worded differently', () => {
 	const none = model(shape('jq1Rp7'), ALL, { exposure: { since: '2026-09-29', coverage: 'none' } });
-	assert.match(text(none), /Which photos were shown but not opened was not recorded until Sep 29, after these days\./);
+	assert.match(text(none), /Which photos people saw but did not open was not recorded until Sep 29, after these days\./);
 	const never = model(shape('jq1Rp7'), ALL, { exposure: { since: null, coverage: 'none' } });
-	assert.match(text(never), /has not been recorded/);
+	assert.match(text(never), /did not open has not been recorded/);
 	const partial = model(shape('Re7kho'), ALL, { exposure: { since: '2026-09-29', coverage: 'partial' } });
 	assert.match(text(partial), /is recorded only from Sep 29/);
 	const complete = model(shape('Re7kho'), ALL, { exposure: { since: '2026-09-01', coverage: 'complete' } });
-	assert.ok(!/shown but not opened/.test(text(complete)));
+	assert.ok(!/saw but did not open/.test(text(complete)));
 });
 
 test('downloads: weak order at 3 or fewer, a real order above, and none requested', () => {
 	const weak = recap(model(shape('Re7kho'), ALL, { photos: photos([3, 2, 1, 0]) }));
-	assert.match(recapToPlain(weak.downloads!), /No single photo was requested more than 3 times, so the order below is weak\./);
+	assert.match(recapToPlain(weak.downloads!), /No single photo was requested more than 3 times, so there are too few requests to tell which photos people want most\./);
 	const strong = recap(model(shape('Re7kho'), ALL, { photos: photos([12, 5, 1, 0]) }));
 	assert.match(recapToPlain(strong.downloads!), /The photos below were requested most\./);
-	assert.ok(!/weak/.test(recapToPlain(strong.downloads!)));
+	assert.ok(!/too few requests/.test(recapToPlain(strong.downloads!)));
 	const none = recap(model(shape('Re7kho'), ALL, { photos: photos([0, 0, 0, 0]) }));
 	assert.match(recapToPlain(none.downloads!), /No single photo was requested, so there is no photo order to show\./);
 });
@@ -195,8 +196,8 @@ test('the photo total is the grid size, so a photo left out of the grid is not c
 test('arrivals: tagged arrivals by tag when they exist, and a limit when none do', () => {
 	const m = model(shape('Re7kho'), ALL);
 	const r = recap(m, [{ source: 'links', count: 3 }, { source: 'profile', count: 19 }]);
-	assert.equal(recapToPlain(r.arrivals!), '22 tagged arrivals by tag: profile 19 (86%), links 3 (14%). Arrivals without a tag cannot be traced.');
-	assert.equal(recapToPlain(recap(m, [{ source: 'profile', count: 4 }]).arrivals!), '4 tagged arrivals, all from the "profile" tag. Arrivals without a tag cannot be traced.');
+	assert.equal(recapToPlain(r.arrivals!), '22 arrivals came through tagged links: profile 19 (86%), links 3 (14%). Arrivals that did not use a tagged link cannot be traced to a source.');
+	assert.equal(recapToPlain(recap(m, [{ source: 'profile', count: 4 }]).arrivals!), '4 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.');
 	assert.ok(!r.limits.some((l) => /came from/.test(l)));
 	const none = recap(m, []);
 	assert.equal(none.arrivals, null);
@@ -387,16 +388,32 @@ test('an album name loses its trailing event date and is otherwise left whole', 
 });
 
 test('stored: the text leaves out today and points to the report instead of "below"; the page text is unchanged', () => {
-	const m = model(shape('Re7kho', '2026-09-28'), ALL.map((one) => ({ ...one, asOfDay: '2026-09-28' })), {}, '2026-09-28');
+	const m = model(shape('Re7kho', '2026-09-28'), ALL.map((one) => ({ ...one, asOfDay: '2026-09-28' })), { photos: photos([5, 2, 1, 0]) }, '2026-09-28');
 	const page = buildRecap({ model: m, arrivals: null, photoIds: ids(4) });
 	const stored = buildRecap({ model: m, arrivals: null, photoIds: ids(4), stored: true });
 	assert.match(recapToPlain(page.window), /Counts cover 3 full days, Sep 25 to Sep 27\. Today, Sep 28, is partial and left out: 4 photo opens so far\./);
 	assert.equal(recapToPlain(stored.window), 'Counts cover 3 full days, Sep 25 to Sep 27.');
-	assert.match(recapToPlain(page.downloads!), /below/);
+	assert.match(recapToPlain(page.downloads!), /The photos below were requested most\./);
 	assert.doesNotMatch(recapToPlain(stored.downloads!), /below/);
-	assert.match(recapToPlain(stored.downloads!), /the photo order in the report is weak\.$/);
+	assert.match(recapToPlain(stored.downloads!), /The album report lists the photos requested most\.$/);
 	// Everything else is the same words.
 	assert.deepEqual(stored.headline, page.headline);
-	assert.deepEqual(stored.sentences, page.sentences);
+	// The peak sentence says "of the total so far" on the page and names the days in a stored text, since the total is no longer "so far".
+	const unpeak = (list: typeof page.sentences) => list.map((sentence) => recapToPlain(sentence).replace(/\(\d+% of .*\)\.$/, '(N%).'));
+	assert.deepEqual(unpeak(stored.sentences), unpeak(page.sentences));
+	assert.match(recapToPlain(stored.sentences.at(-2)!), /of its first 3 days\)\./);
 	assert.deepEqual(stored.limits, page.limits);
+});
+
+test('the first launch ever says once that there is nothing to compare it with, not twice', () => {
+	const m = model(shape('jq1Rp7', '2026-07-22'), [shape('jq1Rp7', '2026-07-22')], {}, '2026-07-22');
+	const lines = recap(m).sentences.map((sentence) => recapToPlain(sentence));
+	assert.equal(lines.filter((line) => /nothing to rank it against|No earlier launch/.test(line)).length, 1);
+	assert.ok(lines.some((line) => /the only launch with a day-3 total/.test(line)));
+});
+
+test('one earlier launch is "had 10 photo opens", never a median of one', () => {
+	const m = model(shape('Re7kho', '2026-09-28'), [shape('Re7kho', '2026-09-28'), shape('fJKdsB', '2026-09-28')], {}, '2026-09-28');
+	const line = recap(m).sentences.map((sentence) => recapToPlain(sentence)).find((text) => /^At the same age/.test(text));
+	assert.equal(line, 'At the same age, the 1 earlier launch had 1,167 photo opens.');
 });

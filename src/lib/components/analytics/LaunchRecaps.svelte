@@ -5,13 +5,11 @@
 
 	/**
 	 * The album's recaps: day 3 and day 7, each with the date it was due, whether it was late or built on incomplete
-	 * records, and a plain link that opens the stored text. A recap that is not stored says why. Nothing here is a
+	 * records, and a plain link that opens the stored text. Only the owner sees why a recap is missing. Nothing here is a
 	 * control that writes or sends: opening a recap is a link to this same page.
 	 */
-	let { rows, summary, explain, open, openMissing }: {
+	let { rows, open, openMissing }: {
 		rows: RecapRow[];
-		summary: string;
-		explain: string | null;
 		open: { title: string; subject: string; flags: string[]; blocks: RecapBlock[] } | null;
 		openMissing: number | null;
 	} = $props();
@@ -21,9 +19,7 @@
 
 <section class="recaps panel" id="recaps" aria-labelledby="recaps-title">
 	<h2 id="recaps-title">Recaps</h2>
-	<p class="note">{summary}</p>
-	{#if explain}<p class="note">{explain}</p>{/if}
-	<ul class="rows">
+	{#if rows.length}<ul class="rows">
 		{#each rows as row (row.checkpoint)}
 			<li>
 				<div class="head">
@@ -33,13 +29,13 @@
 				</div>
 				{#if row.covers}<p class="note">{row.covers}</p>{/if}
 				{#if row.note}<p class="note">{row.note}</p>{/if}
-				{#if row.query}<a class="read" href={`${row.query}#stored-recap`}>Read the stored {row.title.toLowerCase()}</a>{/if}
+				{#if row.query}<a class="read" href={`${row.query}#stored-recap`}>Read the {row.title.toLowerCase()}</a>{/if}
 			</li>
 		{/each}
-	</ul>
+	</ul>{/if}
 
 	{#if openMissing !== null}
-		<p class="note" id="stored-recap" tabindex="-1">The day {openMissing} recap is not stored, so there is no text to read. <a href={back}>Back to the report</a></p>
+		<p class="note" id="stored-recap" tabindex="-1">There is no day {openMissing} recap to read for this album. <a href={back}>Back to the report</a></p>
 	{/if}
 	{#if open}
 		<article class="stored" id="stored-recap" tabindex="-1" aria-labelledby="stored-title">

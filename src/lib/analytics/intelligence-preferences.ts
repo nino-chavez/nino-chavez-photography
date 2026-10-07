@@ -29,25 +29,23 @@ export const RECAP_SCHEDULE_COPY = 'Each album gets a recap on day 3 and day 7 a
 
 export interface RecapSettingsLines {
 	schedule: string;
-	/** Whether a recap is written and stored for this owner. */
+	/** Where recaps are written, and that this does not depend on the owner's choices. */
 	storage: string;
 	/** What email will and will not do, from the saved choice; never a claim that anything was sent. */
 	email: string;
 }
 
 /**
- * What the owner's settings say about recaps, from the saved choices only. Recaps are stored per owner once private
- * record retention is chosen, so until then none is written; saying so is the point of this text.
+ * What the owner's settings say about recaps. A recap is public and written for every album on its own, so how long private
+ * records are kept changes nothing about it; only email depends on the saved choices, and the text says what email will not do.
  */
 export function recapSettingsLines(preferences: IntelligencePreferences | null): RecapSettingsLines {
-	if (!preferences) return { schedule: RECAP_SCHEDULE_COPY, storage: 'Whether recaps are being written could not be read.', email: 'Whether recap email is on could not be read.' };
-	const storage = preferences.retention === 'undecided'
-		? 'No recap is being written yet. Recaps are written for you once you choose how long to keep private records. A recap that came due before then is not written later.'
-		: 'Recaps are written for you and listed on each album report, under Recaps. Only a complete one can be emailed.';
+	const storage = 'Recaps are written for every album on their own and listed on its report. They are public and are not deleted with your private records.';
+	if (!preferences) return { schedule: RECAP_SCHEDULE_COPY, storage, email: 'Whether recap email is on could not be read.' };
 	const email = !preferences.externalEnabled
 		? `Email is off, so no recap is emailed.${preferences.destinationVerified ? '' : ' There is no verified address yet.'}`
 		: preferences.destinationVerified && preferences.destination
-			? `Email is on for ${preferences.destination}. Only a complete recap is emailed; an incomplete one stays in the dashboard. Nothing is sent from this page.`
+			? `Email is on for ${preferences.destination}. Only a complete recap is emailed; an incomplete one is only listed on the album report. Nothing is sent from this page.`
 			: 'Email is on but has no verified address, so no recap is emailed.';
 	return { schedule: RECAP_SCHEDULE_COPY, storage, email };
 }

@@ -33,14 +33,16 @@
 
 ### Launch recaps: apply order
 
-Migration `20261007120000_analytics_launch_recap_kind.sql` adds the `launch_recap` brief kind and the key that makes one recap per
-owner, launch and checkpoint. **Apply it before the deploy that contains the recap code.** Until it is applied the scheduler stores
-no recap, logs `recap brief was not stored (23514)`, and keeps refreshing everything else, so deploying first is harmless but
-silent. Rehearsal: `npm run analytics:recap:rehearse` (synthetic database, rolled back).
+Migration `20261007120000_analytics_launch_recaps.sql` creates the public recap table (`analytics_launch_recaps`, no owner) and widens the brief
+kind for queued recap emails. **Apply it before the deploy that contains the recap code.** Until it is applied the scheduler stores no recap and
+logs the missing table, and keeps refreshing everything else, so deploying first is harmless but silent. Rehearsal: `npm run analytics:recap:rehearse`
+(synthetic database, rolled back).
 
-Recaps are written for an owner who has chosen how long to keep private records (a row in `analytics_intelligence_preferences`). With
-no such row the scheduler reads no launch number and stores nothing, and Home and Settings say so. Email needs a verified destination
+Recaps are written for every launch whether or not an owner exists. Email needs an owner with email on, a verified destination and a retention choice,
 and the existing `ANALYTICS_INTELLIGENCE_DELIVERY_*` settings; none of them changes with this release.
+
+The 7 launches that predate recaps have no recap to show. After the migration is applied, run `scripts/backfill-launch-recaps.ts --dry-run` and read it,
+then with Nino's approval `--write` (see the header of the script). It is idempotent and never sends anything.
 
 ## Companion Worker
 - `cloudflare-worker/album-zip/` — separate Worker for ZIP downloads. Deploy with `npm run worker:deploy`.

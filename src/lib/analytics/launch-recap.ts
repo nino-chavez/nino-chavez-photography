@@ -10,7 +10,7 @@ import type { DatedLaunchAlbum, Launch, LaunchAgeRank, LaunchDay, LaunchPhoto, L
  *  - Today is partial and is reported apart. It never enters a total, a rank or a median.
  *  - A rank is the read model's own rank. This file only names the launch it trails.
  *  - Browsers and arrivals are not people; download actions are requests, not saved files.
- *  - A date that was inferred from logs says "(inferred)".
+ *  - A date that was recovered afterwards from a log says so.
  */
 
 /** A run of text. `strong` marks a number the page may emphasise, so no HTML is ever built here. */
@@ -32,7 +32,7 @@ export interface Recap {
 	state: RecapState;
 	/** Short label above the album name, for example "Week 1 recap". */
 	eyebrow: string;
-	/** "Published Sep 25 (inferred)." for a dated launch; null otherwise. */
+	/** "Published Sep 25." for a dated launch, with a note when the date was recovered from a log; null otherwise. */
 	published: RecapSentence | null;
 	headline: RecapSentence;
 	/** Two to four short sentences. */
@@ -75,6 +75,12 @@ export function recapToPlain(value: RecapSentence | RecapSentence[]): string {
 }
 
 export const plural = (count: number, one: string, many = `${one}s`) => `${fmt(count)} ${count === 1 ? one : many}`;
+/** "At the same age, the 5 earlier launches had a median of 124 photo opens." One earlier launch is "had 10 photo opens": a median of one is not a median. */
+function earlierHad(count: number, value: string): RecapSentence {
+	return count === 1
+		? sentence('At the same age, the ', b('1 earlier launch'), ' had ', b(value), '.')
+		: sentence('At the same age, the ', b(plural(count, 'earlier launch', 'earlier launches')), ' had a median of ', b(value), '.');
+}
 export function ordinal(n: number): string {
 	const rest = n % 100;
 	if (rest >= 11 && rest <= 13) return `${n}th`;
@@ -200,6 +206,7 @@ function downloadComparison(model: LaunchReadModel, launch: DatedLaunchAlbum): R
 	const mid = median(others);
 	if (mid === null) return null;
 	const count = plural(others.length, 'earlier launch', 'earlier launches');
+	if (others.length === 1 && !(n > 7 && k === 7)) return earlierHad(1, String(mid));
 	return n > 7 && k === 7
 		? sentence('In week 1 that was ', b(mine), ', against a median of ', b(mid), ' for the ', count, '.')
 		: sentence('At the same age, the ', count, ' had a median of ', b(mid), '.');
@@ -215,7 +222,7 @@ function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Pho
 	const parts: Piece[] = [gaps.length ? 'At least ' : '', b(plural(total, 'download request')), ' ', gaps.length ? 'were counted on days with complete records. ' : 'were made.', ...compared, ' '];
 	if (photoSum !== null && !gaps.length && total > photoSum) parts.push(`${fmt(photoSum)} named a photo and ${fmt(total - photoSum)} asked for the whole album. `);
 	if (top === 0) parts.push('No single photo was requested, so there is no photo order to show.');
-	else if (top !== null && top <= 3) parts.push('No single photo was requested more than ', b(plural(top, 'time')), stored ? ', so the photo order in the report is weak.' : ', so the order below is weak.');
+	else if (top !== null && top <= 3) parts.push('No single photo was requested more than ', b(plural(top, 'time')), ', so there are too few requests to tell which photos people want most.');
 	else if (top !== null) parts.push(stored ? 'The album report lists the photos requested most.' : 'The photos below were requested most.');
 	return sentence(...parts.filter((part) => part !== ''));
 }
@@ -226,10 +233,10 @@ function arrivalsLine(arrivals: ArrivalRow[] | null): RecapSentence | null {
 	if (!rows.length) return null;
 	const total = rows.reduce((sum, row) => sum + row.count, 0);
 	// Other launches' arrivals are not in the launch read model, so the only comparison is between this album's own tags.
-	if (rows.length === 1) return sentence(b(plural(total, 'tagged arrival')), ', all from the "', rows[0].source, '" tag. Arrivals without a tag cannot be traced.');
+	if (rows.length === 1) return sentence(b(plural(total, 'arrival')), ' came through tagged links, all from the "', rows[0].source, '" tag. Arrivals that did not use a tagged link cannot be traced to a source.');
 	const named = rows.slice(0, 3).map((row) => `${row.source} ${fmt(row.count)} (${Math.round((row.count / total) * 100)}%)`).join(', ');
 	const more = rows.length > 3 ? `, and ${rows.length - 3} more` : '';
-	return sentence(b(plural(total, 'tagged arrival')), ' by tag: ', named, more, '. Arrivals without a tag cannot be traced.');
+	return sentence(b(plural(total, 'arrival')), ' came through tagged links: ', named, more, '. Arrivals that did not use a tagged link cannot be traced to a source.');
 }
 
 function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: string, weekFigures = false, omitToday = false): RecapSentence {
@@ -254,10 +261,10 @@ function exposureLimit(album: DatedLaunchAlbum | UndatedLaunchAlbum): string {
 	const { since, coverage } = album.exposure;
 	if (coverage === 'none') {
 		return since
-			? `Which photos were shown but not opened was not recorded until ${formatDay(since)}, after these days.`
-			: 'Which photos were shown but not opened has not been recorded.';
+			? `Which photos people saw but did not open was not recorded until ${formatDay(since)}, after these days.`
+			: 'Which photos people saw but did not open has not been recorded.';
 	}
-	if (coverage === 'partial' && since) return `Which photos were shown but not opened is recorded only from ${formatDay(since)}.`;
+	if (coverage === 'partial' && since) return `Which photos people saw but did not open is recorded only from ${formatDay(since)}.`;
 	return '';
 }
 
@@ -266,7 +273,7 @@ export function chicagoDate(instant: string): string {
 	return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(instant));
 }
 function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>): string {
-	return `${formatDay(chicagoDate(album.firstPublishedAt))}${album.basis === 'inferred' ? ' (inferred)' : ''}`;
+	return `${formatDay(chicagoDate(album.firstPublishedAt))}${album.basis === 'inferred' ? ' (date recovered afterwards from a log)' : ''}`;
 }
 
 export function undatedReason(code: 'unobserved' | 'not_published' | 'no_record'): string {
@@ -338,19 +345,21 @@ export function buildRecap(input: RecapInput): Recap {
 		}
 		const atAge = gaps.length ? [] : earlier.flatMap((l) => { const v = cumulativeOpens(l, n); return v === null ? [] : [v]; });
 		const mid = median(atAge);
+		const rank = midLaunch && launch.totals.day3.complete ? rankSentence(model, launch, 'day3', n > 3) : null;
 		if (!gaps.length) {
-			if (mid !== null) sentences.push(sentence('At the same age, the ', b(plural(atAge.length, 'earlier launch', 'earlier launches')), ' had a median of ', b(plural(mid, 'photo open')), '.'));
-			else sentences.push(sentence(`No earlier launch has ${n === 1 ? 'a full day' : `${n} full days`} of complete records to compare with.`));
+			if (mid !== null) sentences.push(earlierHad(atAge.length, plural(mid, 'photo open')));
+			// A rank sentence that says there is nothing to compare with already says it; one is enough.
+			else if (!rank) sentences.push(sentence(`No earlier launch has ${n === 1 ? 'a full day' : `${n} full days`} of complete records to compare with.`));
 		}
-		if (midLaunch && launch.totals.day3.complete) {
-			const rank = rankSentence(model, launch, 'day3', n > 3);
-			if (rank) sentences.push(rank);
-		}
+		if (rank) sentences.push(rank);
 	} else if (launch.totals.day7.complete) {
 		state = 'finished';
 		eyebrow = 'Week 1 recap';
 		headline = sentence(b(plural(launch.totals.day7.photoOpens as number, 'photo open')), ' in its first week.');
+		const atAge = earlier.flatMap((l) => { const v = cumulativeOpens(l, 7); return v === null ? [] : [v]; });
+		const mid = median(atAge);
 		const rank = rankSentence(model, launch, 'day7');
+		if (mid !== null) sentences.push(earlierHad(atAge.length, plural(mid, 'photo open')));
 		if (rank) sentences.push(rank);
 	} else {
 		state = 'finished_gap';
@@ -367,7 +376,7 @@ export function buildRecap(input: RecapInput): Recap {
 		const peak = peakSentence(week, launch.totals.day7.photoOpens as number, true, 'the week');
 		if (peak) sentences.push(peak);
 	} else if (state !== 'finished_gap' && !gaps.length) {
-		const peak = peakSentence(launch.series, opens, true, 'the total so far');
+		const peak = peakSentence(launch.series, opens, true, input.stored ? `its first ${n} days` : 'the total so far');
 		if (peak) sentences.push(peak);
 	}
 	const opened = openedSentence(photos);

@@ -7,7 +7,7 @@ import {
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
 } from './home';
 import { minimumSample } from './intelligence-rules';
-import { NO_RECAP_DUE, RECAPS_NOT_STORED } from './launch-recap-list';
+import { NO_RECAP_DUE } from './launch-recap-list';
 import { DATA_ANCHORS } from './data-anchors';
 
 /*
@@ -208,10 +208,9 @@ test('no sentence on Home claims a recap was sent, emailed or delivered; the ope
 	const sentences: string[] = [];
 	for (const asOf of ['2026-09-26', '2026-09-27', '2026-09-29', '2026-10-02', '2026-10-06']) sentences.push(text(open(world(asOf, ALL), asOf)));
 	for (const line of sentences) assert.doesNotMatch(line, /recap|sent|ready|delivered/i, line);
-	const nothing = { storedKeys: new Set<string>(), storing: false };
 	for (const asOf of ['2026-09-26', '2026-09-27', '2026-09-30', '2026-10-02']) {
-		const next = nextRecaps(world(asOf, ALL), new Date(`${asOf}T15:00:00Z`), nothing);
-		for (const line of [next.text, ...next.items, next.note ?? '']) assert.doesNotMatch(line, /\b(sent|emailed|delivered|ready)\b/i, line);
+		const next = nextRecaps(world(asOf, ALL), new Date(`${asOf}T15:00:00Z`));
+		for (const line of [next.text, ...next.items]) assert.doesNotMatch(line, /\b(sent|emailed|delivered|ready|stored)\b/i, line);
 	}
 });
 
@@ -281,44 +280,29 @@ test('the sparkline draws a day with incomplete records as a gap, never a zero, 
 	assert.equal(sparkBars([]).label, 'Daily photo opens: no complete day yet.');
 });
 
-const NONE_STORED = { storedKeys: new Set<string>(), storing: true };
 const at = (asOfDay: string, time = '15:00:00Z') => new Date(`${asOfDay}T${time}`);
 
-test('next: each launch\'s day 3 and day 7 recap with the date and 8:00 AM Chicago time they are due', () => {
+test('next: each launch\'s day 3 and day 7 recap with the date and 8:00 AM Chicago time they are due, soonest first', () => {
 	// Re7kho first published Sep 25 (Chicago): day 3 is due Sep 28, day 7 Oct 2. DWdCET: Sep 29 and Oct 3.
-	const early = nextRecaps(world('2026-09-27', ['Re7kho', 'DWdCET']), at('2026-09-27'), NONE_STORED);
+	const early = nextRecaps(world('2026-09-27', ['Re7kho', 'DWdCET']), at('2026-09-27'));
 	assert.equal(early.text, 'Due next');
 	assert.deepEqual(early.items, [
-		'HS Girls VB - JCA at ACC: day 3 recap is due Mon, Sep 28 at 8:00 AM Chicago time (inferred).',
-		'College Women\'s VB - Millikin at North Central: day 3 recap is due Tue, Sep 29 at 8:00 AM Chicago time (inferred).',
-		'HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time (inferred).',
-		'College Women\'s VB - Millikin at North Central: day 7 recap is due Sat, Oct 3 at 8:00 AM Chicago time (inferred).'
+		'HS Girls VB - JCA at ACC: day 3 recap is due Mon, Sep 28 at 8:00 AM Chicago time.',
+		'College Women\'s VB - Millikin at North Central: day 3 recap is due Tue, Sep 29 at 8:00 AM Chicago time.',
+		'HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time.',
+		'College Women\'s VB - Millikin at North Central: day 7 recap is due Sat, Oct 3 at 8:00 AM Chicago time.'
 	]);
-	assert.equal(early.note, null);
-	// Past its 08:00 and not stored, it is overdue rather than due: the line says so.
-	const overdue = nextRecaps(world('2026-09-29', ['Re7kho']), at('2026-09-29'), NONE_STORED);
-	assert.equal(overdue.items[0], 'HS Girls VB - JCA at ACC: day 3 recap was due Mon, Sep 28 at 8:00 AM Chicago time and is not stored yet.');
-	// Stored recaps are not next.
-	const stored = nextRecaps(world('2026-09-29', ['Re7kho']), at('2026-09-29'), { storedKeys: new Set(['launch:Re7kho:day3']), storing: true });
-	assert.deepEqual(stored.items, ['HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time (inferred).']);
-	// A recorded date carries no mark.
-	assert.equal(nextRecaps(world('2026-09-27', ['Re7kho'], {}, []), at('2026-09-27'), NONE_STORED).items[0], 'HS Girls VB - JCA at ACC: day 3 recap is due Mon, Sep 28 at 8:00 AM Chicago time.');
+	// A recap whose time has come is read on its album report, so it drops off this line; the later one stays.
+	const mid = nextRecaps(world('2026-09-29', ['Re7kho']), at('2026-09-29'));
+	assert.deepEqual(mid.items, ['HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time.']);
 });
 
-test('next: nothing due says so; a checkpoint past its catch-up window is not listed; unreadable and unstored are said, not guessed', () => {
-	const quiet = nextRecaps(world('2026-10-06', ALL), at('2026-10-06'), NONE_STORED);
-	assert.deepEqual(quiet, { text: NO_RECAP_DUE, items: [], note: null });
+test('next: nothing to come says so, and never tells a visitor about a recap that is due and not there', () => {
+	assert.deepEqual(nextRecaps(world('2026-10-06', ALL), at('2026-10-06')), { text: NO_RECAP_DUE, items: [] });
 	assert.equal(NO_RECAP_DUE, 'No recap is due. Publishing an album schedules its day 3 and day 7 recaps.');
-	// Re7kho day 7 was due Oct 2 at 08:00; by Oct 6 the 3 day window has passed and it will not be written.
-	assert.deepEqual(nextRecaps(world('2026-10-06', ['Re7kho']), at('2026-10-06'), NONE_STORED).items, []);
-	// Which recaps are stored could not be read: nothing is listed as due.
-	const unknown = nextRecaps(world('2026-09-27', ['Re7kho']), at('2026-09-27'), { storedKeys: null, storing: null });
-	assert.deepEqual(unknown, { text: 'Which recaps are stored could not be read, so what is due is not shown.', items: [], note: null });
-	// Nothing is set up to store them: the dates still show, with the reason none will be written.
-	const unset = nextRecaps(world('2026-09-27', ['Re7kho']), at('2026-09-27'), { storedKeys: new Set(), storing: false });
-	assert.equal(unset.items.length, 2);
-	assert.equal(unset.note, RECAPS_NOT_STORED);
-	assert.equal(RECAPS_NOT_STORED, 'Recaps are not being written yet. They start once the owner chooses how long to keep private records, in Settings.');
+	assert.deepEqual(nextRecaps(world('2026-10-06', ['Re7kho']), at('2026-10-06')).items, []);
+	// Day 3's 08:00 has passed on Sep 28 at 09:00; only day 7 is still to come.
+	assert.deepEqual(nextRecaps(world('2026-09-28', ['Re7kho']), at('2026-09-28', '14:00:00Z')).items.length, 1);
 });
 
 test('the site line names its measures, compares each with the 7 days before, and keeps one failure to itself', () => {
@@ -385,7 +369,7 @@ test('chicagoTime is Chicago time on any day', () => {
 const baseInput = (asOfDay: string, keys: readonly Key[], over: Partial<HomeInput> = {}): HomeInput => ({
 	asOf: `${asOfDay}T15:00:00Z`, today: asOfDay, lastCompleteDay: addDays(asOfDay, -1), launches: world(asOfDay, keys),
 	covers: new Map([['Re7kho', 'cover-re']]), week: { window: { start: addDays(asOfDay, -7), end: addDays(asOfDay, -1) }, previous: { start: addDays(asOfDay, -14), end: addDays(asOfDay, -8) }, current: 1, previousTotal: 2, coverage: 'complete', previousCoverage: 'complete' }, freshness: { incompleteDays: [], refreshedAt: `${asOfDay}T14:45:00Z`, checked: true },
-	siteReach: { available: false, reason: 'x' }, siteContacts: { available: false, reason: 'y' }, siteActionsStale: null, incidents: [], diagnostics: [], findings: [], findingsCheckedAt: null, recaps: { storedKeys: new Set<string>(), storing: true }, ...over
+	siteReach: { available: false, reason: 'x' }, siteContacts: { available: false, reason: 'y' }, siteActionsStale: null, incidents: [], diagnostics: [], findings: [], findingsCheckedAt: null, ...over
 });
 
 test('Home: three cards, newest first, the rest behind a link; the quiet gallery has nothing due and no problem', () => {
@@ -400,14 +384,13 @@ test('Home: three cards, newest first, the rest behind a link; the quiet gallery
 	assert.deepEqual(view.cards.map((card) => card.status), ['Finished', 'Finished', 'Finished']);
 	assert.equal(view.next.text, NO_RECAP_DUE);
 	assert.deepEqual(view.next.items, []);
-	assert.equal(view.next.note, null);
 	assert.deepEqual(view.problems, []);
 });
 
 test('Home: a launch in progress lists what is due, and unreadable launches say what cannot be said', () => {
-	const view = buildHome(baseInput('2026-09-30', ['Re7kho', 'Big'], { recaps: { storedKeys: new Set(['launch:Re7kho:day3']), storing: true } }));
+	const view = buildHome(baseInput('2026-09-30', ['Re7kho', 'Big']));
 	assert.equal(view.state, 'running');
-	assert.deepEqual(view.next.items, ['HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time (inferred).']);
+	assert.deepEqual(view.next.items, ['HS Girls VB - JCA at ACC: day 7 recap is due Fri, Oct 2 at 8:00 AM Chicago time.']);
 	const down = buildHome(baseInput('2026-10-06', ALL, { launches: null }));
 	assert.equal(down.state, 'unavailable');
 	assert.deepEqual(down.cards, []);
