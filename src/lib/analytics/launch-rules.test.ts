@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	compareAtAge, evaluateLaunchRules, FINISHED_MAX_OPENS, LAUNCH_FINDING_DAYS, MIN_EARLIER_LAUNCHES, quietSince, SEEN_MIN_EXPOSURES,
+	compareAtAge, evaluateLaunchRules, FINISHED_MAX_OPENS, LAUNCH_FINDING_DAYS, MIN_EARLIER_LAUNCHES, quietSince, SEEN_MIN_EXPOSURES, WHILE_ARRIVING_STEP,
 	type LaunchEvidence, type LaunchFailureEvidence, type LaunchFocus, type LaunchPeer, type LaunchPhotoEvidence
 } from './launch-rules';
 import { evaluateIntelligenceRules } from './intelligence-rules';
@@ -77,6 +77,16 @@ test('Millikin at day 7: an even count of earlier launches gives a median betwee
 	assert.equal(reach?.explanation, '3 of the 6 launches before it had more photo opens by day 7. Their median was about 381, so this launch is below it.');
 	assert.equal(reach?.evidence.comparison?.median, 380.5, 'the stored median is exact');
 	assert.equal(reach?.action, 'Check where the album was shared, and whether the people in it have the link.');
+});
+
+test('the next step of a launch that is ahead of the usual: while attention is arriving at day 3, the photos people asked for at day 7, never "open the page you are on"', () => {
+	const day3 = run(evidence([focus('Re7kho', 'HS Girls VB - JCA at ACC - 09-22-2026', '2026-09-26T01:10:52Z', '2026-09-25', RE7KHO.slice(0, 3))], peersAsOf('2026-09-28T17:00:00Z', { Re7kho: { day3: 804, day7: null } }))).findings.find((f) => f.rule === 'launch_reach');
+	assert.equal(day3?.action, WHILE_ARRIVING_STEP);
+	assert.equal(WHILE_ARRIVING_STEP, 'See which photos people are opening and downloading while attention is still arriving.');
+	const day7 = run(evidence([focus('Re7kho', 'HS Girls VB - JCA at ACC - 09-22-2026', '2026-09-26T01:10:52Z', '2026-09-25', RE7KHO.slice(0, 7))], peersAsOf('2026-10-02T17:00:00Z', { Re7kho: { day3: 804, day7: 931 } }))).findings.find((f) => f.rule === 'launch_reach');
+	assert.equal(day7?.id, 'launch-reach-day7-Re7kho');
+	assert.equal(day7?.action, 'Look at the photos people asked to download.');
+	for (const finding of [day3, day7]) assert.doesNotMatch(finding?.action ?? '', /open the (album )?report|album report/i);
 });
 
 test('tied totals share a rank and say so', () => {
@@ -209,6 +219,9 @@ test('failures during a launch: two photo-load failures in the first week, with 
 	assert.match(found?.action ?? '', /If they all do, nothing needs fixing\.$/);
 	assert.ok(found?.limits?.some((l) => /day 3 of this launch/.test(l)));
 	assert.ok(found?.limits?.some((l) => /small sample/.test(l)));
+	// How the visits were sorted is said in the gallery's own words, not the implementation's.
+	assert.ok(found?.limits?.includes('Each visit is counted as the gallery’s counter sorted it when it arrived. Later corrections to how a visit was sorted do not change these failure counts.'));
+	assert.doesNotMatch(JSON.stringify(found), /collector/);
 	assert.equal(found?.evidence.strength, 'limited');
 
 	const one = focus('x', 'One failure (synthetic)', '2026-09-26T18:50:36Z', '2026-09-26', DWDCET.slice(0, 7), { failures: { recordedSince: '2026-09-29', window: { start: '2026-09-29', end: '2026-10-02' }, photoLoads: 30, photoLoadFailures: 1, downloadRequests: 7, downloadFailures: 1 } });

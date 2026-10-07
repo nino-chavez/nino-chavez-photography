@@ -1,6 +1,6 @@
 import type { Finding } from './intelligence-contract';
 import type { LaunchReadModel } from './launch-read-model.server';
-import { formatDay, plural, recapToPlain, type Recap } from './launch-recap';
+import { formatDay, NO_LABELED_ARRIVALS, plural, recapToPlain, type Recap } from './launch-recap';
 import { chicagoDay, type RecapCheckpoint, type RecapSlot } from './launch-recap-schedule';
 
 /**
@@ -57,7 +57,6 @@ export interface RecapDocumentInput {
 
 const AGE_LABEL: Record<RecapCheckpoint, string> = { 3: 'Day 3 recap', 7: 'Day 7 recap' };
 export const recapTitle = (checkpoint: RecapCheckpoint) => AGE_LABEL[checkpoint];
-const ARRIVALS_LIMIT = /^Where people came from is only known for tagged links/;
 
 function weekday(date: string): string {
 	return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
@@ -161,7 +160,7 @@ export function buildRecapDocument(input: RecapDocumentInput): RecapDocument {
 	}
 
 	if (timingNote) blocks.push(timingNote);
-	const limits = recap.limits.filter((limit) => input.arrivalsRead || !ARRIVALS_LIMIT.test(limit));
+	const limits = recap.limits.filter((limit) => input.arrivalsRead || limit !== NO_LABELED_ARRIVALS);
 	if (limits.length) blocks.push('What this cannot tell you:', bulletList(limits));
 	blocks.push(`Full report: ${link}`);
 

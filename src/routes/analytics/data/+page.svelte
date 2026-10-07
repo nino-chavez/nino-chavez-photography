@@ -164,7 +164,7 @@
 					{#if view.arrivals.tagged.length}
 						<dl class="facts">{#each view.arrivals.tagged as item (item.source)}<div><dt>{item.source}</dt><dd>{item.count.toLocaleString()}</dd></div>{/each}</dl>
 					{:else}<p>No tagged arrival was recorded in these dates.</p>{/if}
-					<p class="detail">A tag is the label on a shared link, the part after src= in its address. It shows how a link was shared. It does not prove that a later action was caused by that channel.</p>
+					<p class="detail">A tag is a short label added to the end of a shared link, such as profile or share-x. It shows how a link was shared. It does not prove that a later action was caused by that channel.</p>
 					<h3>Open locations</h3>
 					<p>{view.arrivals.open.sentence}</p>
 					{#if view.arrivals.openLocations.length}
@@ -181,7 +181,7 @@
 								<ResponsiveTable label="What happened after a tagged arrival" headerLabel="Source tag" columns={[{ label: 'Arrival visits', numeric: true }, { label: 'Album opens', numeric: true }, { label: 'Photo opens', numeric: true }, { label: 'Download requests', numeric: true }, { label: 'Favorites', numeric: true }, { label: 'Returning browsers', numeric: true }]} rows={linked.breakdown.map((row) => ({ key: row.source, title: row.source, values: [row.tagged_arrival_visits, row.subsequent_album_open_visits, row.subsequent_photo_open_visits, row.subsequent_download_request_visits, row.subsequent_favorite_visits, row.before_window_returning_browsers].map((value) => String(value)) }))} />
 							<p class="detail">Returning means seen before this period, within a 90-day look back. As of {asOfTime(linked.asOf)}. These are associations, not proof that a channel caused an action.</p>
 						{:else if linked}<p>No tagged linked visits match these dates.</p>
-						{:else}<p class="gap"><strong>Not shown.</strong> This comes from the linked-journey reports, which could not be read. <a href="#journeys">What that means and what to do</a>.</p>{/if}
+						{:else}<p class="gap"><strong>Not shown.</strong> This comes from the reports on what visitors did after arriving, which could not be read. <a href="#journeys">What that means and what to do</a>.</p>{/if}
 					{/await}
 				{:else if view.reportDown}
 					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} {#if view.reportDown.todo}<span>{view.reportDown.todo}</span>{/if}</p>
@@ -203,9 +203,9 @@
 					<p class="detail">{view.site.devicesNote}</p>
 					<dl class="facts">{#each view.site.devices as item (item.name)}<div><dt>{item.name}</dt><dd>{item.pageLoads.toLocaleString()}</dd></div>{/each}</dl>
 				{/if}
-				<h3>Linked journeys on the site</h3>
+				<h3>What visitors did on the site after arriving</h3>
 				{#await data.siteJourneys}
-					<p class="detail" role="status">Loading linked journeys. The rest of this page is ready.</p>
+					<p class="detail" role="status">Loading what visitors did after arriving. The rest of this page is ready.</p>
 				{:then loaded}
 					{#if !loaded.available}
 						<p class="gap"><strong>Not shown.</strong> {siteJourneyNote(loaded.reason, view.owner).what} {#if siteJourneyNote(loaded.reason, view.owner).todo}<span>{siteJourneyNote(loaded.reason, view.owner).todo}</span>{/if}</p>
@@ -220,12 +220,12 @@
 				</div>
 			</div>
 			<section id="journeys" class="panel" aria-labelledby="journeys-title">
-				<h2 id="journeys-title">Linked journeys in the gallery</h2>
+				<h2 id="journeys-title">What visitors did in the gallery after arriving</h2>
 				<p class="lead">What visitors did in sequence, for the browsers that allowed linked analytics.</p>
 				{#await data.journeys}
-					<p class="detail" role="status">Loading the linked-journey reports. The rest of this page is ready.</p>
+					<p class="detail" role="status">Loading the reports on what visitors did after arriving. The rest of this page is ready.</p>
 				{:then loaded}
-					<p class="detail">These reports connect actions only for browsers that allowed linked analytics. Each report uses its own denominator, so its totals can differ from the counts above. They describe that group, not every visitor.</p>
+					<p class="detail">These reports connect actions only for browsers that allowed linked analytics. Each report is measured against its own group of browsers, so its totals can differ from the counts above. They describe that group, not every visitor.</p>
 					{#each loaded.available as journey (journey.report)}
 						<details class="journey">
 							<summary>{journeyName(journey.report)}</summary>

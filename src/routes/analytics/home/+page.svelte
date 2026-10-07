@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { albumIndexPath, albumReportPath, dataPath, sitePath } from '$lib/analytics/report-paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
-	import { plural, RECOVERED_NOTE } from '$lib/analytics/launch-recap';
+	import { plural } from '$lib/analytics/launch-recap';
 	import { sparkCaption, type HomeProblem } from '$lib/analytics/home';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchFindings from '$lib/components/analytics/LaunchFindings.svelte';
@@ -80,6 +80,7 @@
 							{@const scale = card.failureScale}
 							{@const alarms = scale?.routine ? card.findings.filter((finding) => finding.id !== scale.findingId) : card.findings}
 							<li class="launch">
+								<div class="box">
 								<div class="card">
 									<div class="cover">{#if card.cover}<img src={cfImageUrl(card.cover, 'thumbnail')} alt="" width="150" height="150" loading="lazy" decoding="async" />{:else}<span class="no-image" aria-hidden="true">No cover</span>{/if}</div>
 									<div class="text">
@@ -111,10 +112,11 @@
 										{#if scale}<p class="scale" class:routine={scale.routine}>{scale.sentence}</p>{/if}
 									</div>
 								{/if}
+								</div>
 							</li>
 						{/each}
 					</ul>
-					{#if view.datesRecovered}<p class="note recovered">{RECOVERED_NOTE}</p>{/if}
+					{#if view.recovered.note}<p class="note recovered">{view.recovered.note}</p>{/if}
 				{/if}
 			</section>
 
@@ -132,7 +134,7 @@
 				<a class="more" href={sitePath(hostname)}>Open the site report</a>
 			</section>
 
-			<p class="note">Counts are browser actions, not people. Gallery numbers cover complete days in Chicago time through {through}. Page loads are Cloudflare's count of UTC days, a different measure from photo opens.</p>
+			<p class="note">Counts are browser actions, not people. Gallery numbers cover complete days in Chicago time through {through}. Page loads are Cloudflare's count of UTC days, a different measure from photo opens.{#if view.unsorted} {view.unsorted}{/if}</p>
 		</div>
 
 	</div>
@@ -184,17 +186,18 @@
 	.cards { display: grid; gap: .6rem; list-style: none; margin: 0; padding: 0; }
 	/* The card lays itself out by its own width in rem, so a larger text size gives the same stacked layout a narrow card gets. */
 	.launch { container-type: inline-size; display: grid; gap: .35rem; min-width: 0; }
-	/* Beside the launch it concerns: indented under its card, outside the card's single link. */
-	.card-findings { margin-left: .9rem; min-width: 0; }
+	/* The notes about a launch sit inside its box, under the card, and outside the card's single link. */
+	.box { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; }
+	.box:hover { border-color: #9db8e6; }
+	.box:has(.card:focus-within) { border-color: var(--blue-ink); }
+	.box:has(.card a:focus-visible) { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
+	.card-findings { border-top: 1px solid #e6ecf3; margin: 0 .65rem; min-width: 0; padding-block: .1rem .45rem; }
 	/* The scale of a photo-load failure note. When it is within the usual range it is this one muted line and nothing amber. */
 	.scale { color: var(--muted); font-size: .85rem; line-height: 1.45; margin: .3rem 0 0; max-width: 46rem; }
 	.scale:not(.routine) { color: var(--ink); }
-	@media (min-width: 640px) { .card-findings { margin-left: 2rem; } }
-	.card { background: #fff; border: 1px solid var(--line); border-radius: .8rem; display: grid; gap: .4rem .8rem; grid-template-columns: minmax(0, 1fr); padding: .65rem; position: relative; }
-	.card:hover { border-color: #9db8e6; }
+	.card { border-radius: .8rem; display: grid; gap: .4rem .8rem; grid-template-columns: minmax(0, 1fr); padding: .65rem; position: relative; }
 	.card:hover .text a { text-decoration-color: var(--blue-ink); text-decoration-thickness: 2px; }
 	.recovered { margin-top: .5rem; }
-	.card:focus-within { border-color: var(--blue-ink); }
 	.cover { align-self: start; aspect-ratio: 1; background: #dfe6ef; border-radius: .5rem; max-width: 7rem; overflow: hidden; }
 	.cover img { display: block; height: 100%; object-fit: cover; width: 100%; }
 	.no-image { align-items: center; color: var(--muted); display: flex; font-size: .7rem; height: 100%; justify-content: center; }
@@ -206,7 +209,6 @@
 	/* One target per card: the name is the link, stretched over the whole card. */
 	.text a::after { content: ''; inset: 0; position: absolute; border-radius: .8rem; }
 	.text a:focus-visible { outline: none; }
-	.card:has(a:focus-visible) { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 	.meta { color: var(--muted); display: flex; flex-wrap: wrap; font-size: .8rem; gap: .1rem .6rem; margin: .15rem 0 0; }
 	.status { color: var(--ink); font-weight: 700; }
 	.status[data-phase='running'], .status[data-phase='published_today'] { color: var(--blue-ink); }
@@ -256,6 +258,6 @@
 
 	.note { color: var(--muted); font-size: .82rem; line-height: 1.5; margin: .2rem 0 0; max-width: 62rem; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-	@media (forced-colors: active) { .card, .panel, .problems { border: 1px solid CanvasText; } }
+	@media (forced-colors: active) { .box, .panel, .problems { border: 1px solid CanvasText; } }
 	@media (prefers-contrast: more) { .home { --muted: #36445a; --line: #5c6b80; } .compare, .detail, .note, .week, .then, .label, .meta { color: #2b3748; } }
 </style>

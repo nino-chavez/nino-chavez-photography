@@ -6,11 +6,15 @@
 	 */
 	interface Column { label: string; numeric?: boolean; help?: string }
 	/** A value of null is a figure that does not apply to this row: the table shows a dash, and the card leaves the field out. */
-	interface Row { key: string; title: string; href?: string; newTab?: boolean; values: Array<string | null> }
-	let { label, caption = null, headerLabel, columns, rows }: { label: string; caption?: string | null; headerLabel: string; columns: Column[]; rows: Row[] } = $props();
+	interface Row { key: string; title: string; href?: string; newTab?: boolean; values: Array<string | null>; /** A line under the name, such as when it was published. */ sub?: string; /** The row the page is about: marked "This album" and shaded. */ current?: boolean }
+	/**
+	 * `compact` is for a table of a few short columns: it stays a table down to 19rem wide, where a table of many columns changes to cards at 40rem.
+	 * A 390px phone at the default text size is about 20rem inside a card, so a compact table is still a table there and is cards from 125% text up.
+	 */
+	let { label, caption = null, headerLabel, columns, rows, compact = false }: { label: string; caption?: string | null; headerLabel: string; columns: Column[]; rows: Row[]; compact?: boolean } = $props();
 </script>
 
-<div class="rt">
+<div class="rt" class:compact>
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
 	<div class="table-view" role="region" aria-label={`${label}. Scroll sideways for every column.`} tabindex="0">
 		<table>
@@ -18,8 +22,8 @@
 			<thead><tr><th scope="col">{headerLabel}</th>{#each columns as column (column.label)}<th scope="col" class:num={column.numeric} title={column.help}>{column.label}</th>{/each}</tr></thead>
 			<tbody>
 				{#each rows as row (row.key)}
-					<tr>
-						<th scope="row">{#if row.href}<a href={row.href} target={row.newTab ? '_blank' : undefined} rel={row.newTab ? 'noopener noreferrer' : undefined}>{row.title}{#if row.newTab}<span class="sr-only"> (opens in a new tab)</span>{/if}</a>{:else}{row.title}{/if}</th>
+					<tr class:current={row.current} aria-current={row.current ? 'true' : undefined}>
+						<th scope="row">{#if row.href}<a href={row.href} target={row.newTab ? '_blank' : undefined} rel={row.newTab ? 'noopener noreferrer' : undefined}>{row.title}{#if row.newTab}<span class="sr-only"> (opens in a new tab)</span>{/if}</a>{:else}{row.title}{/if}{#if row.current}<span class="here">This album</span>{/if}{#if row.sub}<span class="sub">{row.sub}</span>{/if}</th>
 						{#each columns as column, at (column.label)}<td class:num={column.numeric}>{row.values[at] ?? '—'}</td>{/each}
 					</tr>
 				{/each}
@@ -28,8 +32,10 @@
 	</div>
 	<ul class="cards" aria-label={label}>
 		{#each rows as row (row.key)}
-			<li class="card">
+			<li class="card" class:current={row.current} aria-current={row.current ? 'true' : undefined}>
 				<div class="card-head">{#if row.href}<a href={row.href} target={row.newTab ? '_blank' : undefined} rel={row.newTab ? 'noopener noreferrer' : undefined}>{row.title}{#if row.newTab}<span class="sr-only"> (opens in a new tab)</span>{/if}</a>{:else}<span class="name">{row.title}</span>{/if}</div>
+				{#if row.current}<p class="here">This album</p>{/if}
+				{#if row.sub}<p class="sub">{row.sub}</p>{/if}
 				<dl>
 					{#each columns as column, at (column.label)}{#if row.values[at] !== null}<div><dt>{column.label}</dt><dd>{row.values[at]}</dd></div>{/if}{/each}
 				</dl>
@@ -62,11 +68,18 @@
 	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: break-word; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
+	.here { color: var(--blue-ink, #174ea6); display: block; font-size: .76rem; font-weight: 800; margin: 0; }
+	.sub { color: var(--muted, #526176); display: block; font-size: .76rem; font-weight: 400; margin: 0; }
+	tr.current > *, .card.current { background: #eaf1fd; }
 	@container (min-width: 40rem) {
-		.table-view { display: block; }
-		.cards { display: none; }
+		.rt:not(.compact) .table-view { display: block; }
+		.rt:not(.compact) .cards { display: none; }
+	}
+	@container (min-width: 19rem) {
+		.rt.compact .table-view { display: block; }
+		.rt.compact .cards { display: none; }
 	}
 	a:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
 	@media (forced-colors: active) { .card { border: 1px solid CanvasText; } }
-	@media (prefers-contrast: more) { .card dt, caption { color: #2b3748; } }
+	@media (prefers-contrast: more) { .card dt, caption, .sub { color: #2b3748; } }
 </style>

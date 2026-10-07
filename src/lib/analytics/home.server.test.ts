@@ -119,7 +119,7 @@ test('the quiet gallery on a fresh day reads as quiet, with no open problem exce
 	const { view } = await run();
 	assert.equal(view.state, 'quiet');
 	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches, with [\d,]+ photo opens( against (a median of )?[\d,]+ for (the 1 )?earlier launches?)?\.$/);
-	assert.equal(sentenceText(view.then!), 'No new album since Sep 26*, 10 days ago.');
+	assert.equal(sentenceText(view.then!), 'No new album since Sep 26, 10 days ago.');
 	// Both windows hold the first week of the launches in the fixture (published Sep 26), so there is no calendar-week line at all.
 	assert.equal(view.week, null);
 	assert.deepEqual(view.problems, []);
@@ -176,7 +176,7 @@ test('a refusal surge in the delivery health read reaches Home, from the same si
 		.map(([day, count]) => ({ day, reason: 'not_recorded', count }));
 	const { view, rpcs } = await run({ delivery: { failed: 0, pending: 0, oldest_pending_at: null, collection_rejected_days: days } });
 	assert.deepEqual(view.problems.map((problem) => problem.id), ['collection-surge']);
-	assert.match(view.problems[0].text, /^The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day\./);
+	assert.match(view.problems[0].text, /^The gallery’s counter rejected 20,528 events on Oct 5, 50 times its usual 412 a day\./);
 	assert.equal(rpcs.filter((call) => call.name === 'analytics_posthog_delivery_health').length, 1);
 	// Before the reasons migration the list is absent: no surge is claimed either way.
 	assert.deepEqual((await run({ delivery: { failed: 0, pending: 0, oldest_pending_at: null } })).view.problems, []);

@@ -46,7 +46,7 @@ test('a complete day 3 recap: the launch so far, the rank, what was opened and d
 	assert.match(d.body, /At the same age, the \d+ earlier launches? had a median of [\d,]+ photo opens\./);
 	assert.match(d.body, /Counts cover 3 full days, Sep 25 to Sep 27\.$/m);
 	assert.match(d.body, /download requests/);
-	assert.match(d.body, /25 arrivals came through tagged links: instagram 21 \(84%\), newsletter 4 \(16%\)\./);
+	assert.match(d.body, /25 arrivals came in through shared links: instagram 21 \(84%\), newsletter 4 \(16%\)\./);
 	assert.match(d.body, /What to look at:\n\n- Title a\. Explanation a\. Next step: Action a\./);
 	assert.match(d.body, /What this cannot tell you:\n\n- /);
 	assert.ok(d.body.endsWith(`Full report: ${LINK}`));
@@ -129,7 +129,7 @@ test('no open finding is its own sentence; arrivals that were read and are empty
 	const { doc: d } = doc(3, { findings: [], arrivals: [] });
 	assert.equal(d.complete, true);
 	assert.match(d.body, /What to look at:\n\nNo finding is open for this launch\./);
-	assert.match(d.body, /Where people came from is only known for tagged links, and none were recorded\./);
+	assert.match(d.body, /Where people came from is only known for links with a label, and none were recorded\./);
 	assert.doesNotMatch(d.body, /could not be read/);
 });
 

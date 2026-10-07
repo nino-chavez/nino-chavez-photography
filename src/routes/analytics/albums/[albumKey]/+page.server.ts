@@ -5,7 +5,7 @@ import { loadIntelligencePanelMode, loadVisibleFindings } from '$lib/analytics/i
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { fetchLaunchReadModel, type LaunchReadModel } from '$lib/analytics/launch-read-model.server';
-import { buildRecap } from '$lib/analytics/launch-recap';
+import { buildRecap, recoveredDates } from '$lib/analytics/launch-recap';
 import { albumQuery, LAUNCH_DAYS, readArrivals, readPhotoRows, readStoredRecap, readStoredRecaps } from '$lib/analytics/launch-recap.server';
 import { recapRows } from '$lib/analytics/launch-recap-list';
 import { buildRecapView } from '$lib/analytics/launch-recap-view';
@@ -93,7 +93,10 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 	const recapRowList = album.status === 'no_launch_date' ? null : recapRows({ launch: album, now: new Date(model.asOf), stored: storedRecaps, owner: !!user });
 
 	const photoIds = new Set(photoRows.map((row) => row.photoId));
-	const recap = buildRecap({ model, arrivals, photoIds });
+	// One note per page explains the recovered dates it shows (this album's and the comparison table's), and when every one is recovered it is said once in words with no mark.
+	const table = launchTable(model);
+	const recovered = recoveredDates([...(album.status !== 'no_launch_date' ? [album.basis === 'inferred'] : []), ...table.map((row) => row.inferred)]);
+	const recap = buildRecap({ model, arrivals, photoIds, markRecovered: recovered.mark });
 	const photos = gridPhotos(photoRows, album.photos, album.exposure.coverage !== 'none');
 
 	return {
@@ -115,12 +118,11 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 			today: model.today
 		},
 		recap,
-		// One note per page explains every `*` on it: the header's date and any row of the comparison table.
-		datesRecovered: (album.status !== 'no_launch_date' && album.basis === 'inferred') || launchTable(model).some((row) => row.inferred),
+		recovered,
 		// Nothing to list (an album with no launch date, or a visitor and no recap yet) means no section at all.
 		recaps: recapRowList && recapRowList.length ? { rows: recapRowList } : null,
 		photos,
-		charts: { daily: dailyChart(model), curves: cumulativeCurves(model), table: launchTable(model) },
+		charts: { daily: dailyChart(model), curves: cumulativeCurves(model), table },
 		query
 	};
 };

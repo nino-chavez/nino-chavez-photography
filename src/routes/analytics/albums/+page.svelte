@@ -4,7 +4,7 @@
 	import { replaceState } from '$app/navigation';
 	import { albumIndexPath, albumReportPath, photosPath } from '$lib/analytics/report-paths';
 	import { dayLabel, figureText, matchesName, MAX_COMPARED, QUIET_DAYS, rankText, statusText, undatedReasonShort, type IndexLaunchRow, type IndexUndatedRow } from '$lib/analytics/album-index';
-	import { formatDay, plural, RECOVERED_NOTE, recoveredTag } from '$lib/analytics/launch-recap';
+	import { formatDay, plural, recoveredDates, recoveredTag } from '$lib/analytics/launch-recap';
 	import { undatedCounts } from '$lib/analytics/album-index';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchOverlay from '$lib/components/analytics/LaunchOverlay.svelte';
@@ -34,7 +34,10 @@
 	const active = $derived(index.undated.filter((row) => !row.noActivity));
 	const quiet = $derived(index.undated.filter((row) => row.noActivity));
 	const undatedLine = $derived(undatedCounts(active.length, quiet.length, QUIET_DAYS));
-	const anyRecovered = $derived(index.launches.some((row) => row.inferred));
+	// Recovered dates: a mark picks them out only when some dates were recorded; when all were recovered the page says so once and draws no mark.
+	const recovered = $derived(recoveredDates(index.launches.map((row) => row.inferred)));
+	// A column every row fills the same way says nothing, so it is left out: here, a status that is the same for every launch.
+	const statusVaries = $derived(new Set(index.launches.map((row) => statusText(row.status))).size > 1);
 	// A search looks through every album, including the quiet ones, so a known event is never hidden by the collapsed list.
 	const shownUndated = $derived(searching ? undatedMatches.slice(0, visible) : active.slice(0, visible));
 	const hiddenUndated = $derived((searching ? undatedMatches.length : active.length) - shownUndated.length);
@@ -66,7 +69,7 @@
 	}
 	const full = $derived(selected.length >= MAX_COMPARED);
 	const reportHref = (key: string) => albumReportPath(hostname, key);
-	const published = (row: IndexLaunchRow) => `${dayLabel(row.published, index.today)}${recoveredTag(row.inferred)}`;
+	const published = (row: IndexLaunchRow) => `${dayLabel(row.published, index.today)}${recovered.mark ? recoveredTag(row.inferred) : ''}`;
 	const count = (value: number | null) => (value === null ? 'Unknown' : value.toLocaleString('en-US'));
 	const lastActivity = (row: IndexUndatedRow) => (row.lastActivity ? dayLabel(row.lastActivity, index.today) : 'None in the window');
 </script>
@@ -109,7 +112,7 @@
 				<p class="note">No album has a launch date yet. An album gets one when it is first published.</p>
 			{:else}
 				<p class="lead">Each launch is counted from its first publication and compared with the other launches at the same age. First 3 days and week 1 are photo opens in complete days. Rank at day 7 is among the launches with a complete first week. A launch younger than that shows its figure so far and is not ranked.</p>
-					{#if anyRecovered}<p class="note">{RECOVERED_NOTE}</p>{/if}
+					{#if recovered.note}<p class="note">{recovered.note}</p>{/if}
 				{#if launchMatches.length === 0}
 					<p class="note">No launch matches "{term}".</p>
 				{:else}
@@ -119,7 +122,7 @@
 							<caption class="sr-only">Launches, newest first, with photo opens in the first 3 days and first week, rank at day 7, and download requests in the first week</caption>
 							<thead>
 								<tr>
-									<th scope="col">Compare</th><th scope="col">Album</th><th scope="col">First published</th><th scope="col">Status</th>
+									<th scope="col">Compare</th><th scope="col">Album</th><th scope="col">First published</th>{#if statusVaries}<th scope="col">Status</th>{/if}
 									<th scope="col" class="num">First 3 days</th><th scope="col" class="num">Week 1</th><th scope="col" class="num">Rank at day 7</th><th scope="col" class="num">Download requests, week 1</th>
 								</tr>
 							</thead>
@@ -129,7 +132,7 @@
 										<td>{@render pick(row, false)}</td>
 										<th scope="row"><a href={reportHref(row.albumKey)}>{row.name}</a></th>
 										<td>{published(row)}</td>
-										<td>{statusText(row.status)}</td>
+										{#if statusVaries}<td>{statusText(row.status)}</td>{/if}
 										<td class="num">{figureText(row.day3)}</td>
 										<td class="num">{figureText(row.week1)}</td>
 										<td class="num">{rankText(row.rank)}</td>
@@ -144,14 +147,16 @@
 						{#each launchMatches as row (row.albumKey)}
 							<li class="card" class:picked={selected.includes(row.albumKey)}>
 								<div class="card-head"><a href={reportHref(row.albumKey)}>{row.name}</a>{@render pick(row, true)}</div>
-								<dl>
-									<div><dt>First published</dt><dd>{published(row)}</dd></div>
-									<div><dt>Status</dt><dd>{statusText(row.status)}</dd></div>
-									<div><dt>First 3 days</dt><dd>{figureText(row.day3)}</dd></div>
-									<div><dt>Week 1</dt><dd>{figureText(row.week1)}</dd></div>
-									<div><dt>Rank at day 7</dt><dd>{rankText(row.rank)}</dd></div>
-									<div><dt>Downloads, week 1</dt><dd>{figureText(row.downloads)}</dd></div>
-								</dl>
+								<dl class="tight">
+										<div><dt>First 3 days</dt><dd>{figureText(row.day3)}</dd></div>
+										<div><dt>Week 1</dt><dd>{figureText(row.week1)}</dd></div>
+										<div><dt>Rank at day 7</dt><dd>{rankText(row.rank)}</dd></div>
+									</dl>
+									<dl class="tight">
+										<div><dt>First published</dt><dd>{published(row)}</dd></div>
+										{#if statusVaries}<div><dt>Status</dt><dd>{statusText(row.status)}</dd></div>{/if}
+										<div><dt>Download requests, week 1</dt><dd>{figureText(row.downloads)}</dd></div>
+									</dl>
 							</li>
 						{/each}
 					</ul>
@@ -305,7 +310,10 @@
 	.card-head a { align-items: center; color: var(--ink); display: inline-flex; flex: 1 1 min(9rem, 100%); min-height: 2.75rem; min-width: 0; font-size: .98rem; font-weight: 650; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
 	.card dl { display: grid; gap: .25rem .75rem; grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr)); margin: .4rem 0 0; }
 	.card dl div { min-width: 0; }
-	.card dl div:first-child { grid-column: 1 / -1; }
+	.card dl:not(.tight) div:first-child { grid-column: 1 / -1; }
+	/* A launch card's three figures sit on one line (down to a 390px phone at the default text size); the larger the text, the fewer fit. */
+	.card dl.tight { grid-template-columns: repeat(auto-fit, minmax(min(5.5rem, 100%), 1fr)); }
+	.card dl.tight + dl.tight { grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr)); margin-top: .25rem; }
 	.card dt { color: var(--muted); font-size: .74rem; }
 	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: break-word; }
 

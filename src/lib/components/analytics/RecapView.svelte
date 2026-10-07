@@ -31,6 +31,14 @@
 		{/if}
 		{#if view.message}<p class="message">{view.message}</p>{/if}
 
+		{#if view.lead}
+			<section class="lead" aria-label="The recap in brief">
+				{#if view.lead.published}<p class="published">{view.lead.published}</p>{/if}
+				<p class="headline">{view.lead.headline}</p>
+				{#if view.lead.facts.length}<ul class="facts">{#each view.lead.facts as fact, at (at)}<li>{fact}</li>{/each}</ul>{/if}
+			</section>
+		{/if}
+
 		{#if view.blocks.length}
 			<div class="text">
 				{#each view.blocks as block, index (index)}
@@ -64,6 +72,12 @@
 	.flags { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0 0 .4rem; }
 	.flag { background: #fdf3e3; border: 1px solid #c98a1f; border-radius: .3rem; color: #6b4300; font-size: .8rem; font-weight: 700; padding: .05rem .4rem; }
 	.message { font-size: 1.02rem; line-height: 1.55; margin: .6rem 0; }
+	.lead { border-top: 1px solid #e6ecf3; margin-top: .8rem; padding-top: .5rem; }
+	.published { color: var(--muted); font-size: .88rem; margin: 0; }
+	.headline { font-size: 1.5rem; font-weight: 750; letter-spacing: -.01em; line-height: 1.25; margin: .3rem 0 .5rem; overflow-wrap: break-word; }
+	@media (min-width: 1024px) { .headline { font-size: 1.9rem; } }
+	.facts { font-size: 1rem; line-height: 1.5; list-style: disc; margin: 0 0 .3rem; padding-left: 1.2rem; }
+	.facts li { margin: .3rem 0; overflow-wrap: break-word; }
 	.text { border-top: 1px solid #e6ecf3; margin-top: .8rem; padding-top: .3rem; }
 	.text p { font-size: 1rem; line-height: 1.55; margin: .6rem 0; overflow-wrap: break-word; }
 	h2 { color: var(--muted); font-size: .88rem; font-weight: 700; margin: 1rem 0 .2rem; }
@@ -77,5 +91,5 @@
 	.primary:hover { background: #0f47a3; }
 	.secondary:hover { background: #eef4fc; }
 	@media (forced-colors: active) { .recap-view, .flag { border: 1px solid CanvasText; } .primary { border: 1px solid ButtonText; } }
-	@media (prefers-contrast: more) { .recap-page { --muted: #36445a; --line: #5c6b80; } .note, h2 { color: #2b3748; } .secondary { border-color: #36445a; } }
+	@media (prefers-contrast: more) { .recap-page { --muted: #36445a; --line: #5c6b80; } .note, h2, .published { color: #2b3748; } .secondary { border-color: #36445a; } }
 </style>

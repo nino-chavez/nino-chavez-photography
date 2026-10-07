@@ -6,7 +6,7 @@
 	import { photoParams } from '$lib/analytics/photo-view';
 	import { readShortlist, signInNeeds, writeShortlist } from '$lib/analytics/shortlist';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
-	import { daysWords, formatDay, plural, RECOVERED_NOTE, type RecapSentence } from '$lib/analytics/launch-recap';
+	import { daysWords, formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import { mergeLimits } from '$lib/analytics/launch-report-view';
 	import LaunchDailyChart from '$lib/components/analytics/LaunchDailyChart.svelte';
@@ -135,7 +135,10 @@
 		visible = photos.length;
 	}
 	// One list of what the page cannot tell the reader: the report's own limits, then the findings'.
-	const pageLimits = $derived(mergeLimits(recap.limits, data.findings.findings.flatMap((finding) => finding.limits ?? []), data.datesRecovered));
+	const pageLimits = $derived(mergeLimits(recap.limits, data.findings.findings.flatMap((finding) => finding.limits ?? []), data.recovered.note !== null));
+	// The launch-reach finding says what the headline above already says (the median and the place), so it is not a card here. Its next step stays, as one line under the headline.
+	const reach = $derived(data.findings.findings.find((finding) => finding.rule === 'launch_reach') ?? null);
+	const worth = $derived(data.findings.findings.filter((finding) => finding.rule !== 'launch_reach'));
 </script>
 
 <svelte:head>
@@ -175,13 +178,20 @@
 				<p class="eyebrow">{recap.eyebrow}</p>
 				<h1 id="album-title">{data.album.name}</h1>
 				<p class="meta">{#if recap.published}<span>{@render words(recap.published)}</span>{' '}{/if}<span>{photos.length.toLocaleString()} {photos.length === 1 ? 'photo' : 'photos'} in the album.</span></p>
-					{#if data.datesRecovered}<p class="note recovered">{RECOVERED_NOTE}</p>{/if}
+					{#if data.recovered.note}<p class="note recovered">{data.recovered.note}</p>{/if}
 				<p class="headline">{@render words(recap.headline)}</p>
 				{#each recap.sentences as sentence}
 					<p class="sentence">{@render words(sentence)}</p>
 				{/each}
+				{#if reach}<p class="sentence next-step"><strong>Next step:</strong> {reach.action}</p>{/if}
 				<p class="window">{@render words(recap.window)}</p>
 			</div>
+			{#if worth.length}
+				<section class="worth" aria-labelledby="worth-title">
+					<h2 id="worth-title">Worth your attention</h2>
+					<LaunchFindings findings={worth} checked={data.findings.checked} owner={signedIn} scope={launchScope(data.album.key)} showLimits={false} />
+				</section>
+			{/if}
 			<div class="panel chart-panel" id="launch-chart">
 				<LaunchDailyChart chart={data.charts.daily} {undated} />
 			</div>
@@ -189,7 +199,7 @@
 
 		<!-- On a phone the comparison sits under the chart, where it answers "how do its first days compare". A desktop keeps it beside the photos. -->
 		<div class="compare-early panel">
-			<LaunchComparison uid="compare-early" curves={data.charts.curves} rows={data.charts.table} hasLaunch={!undated} />
+			<LaunchComparison uid="compare-early" curves={data.charts.curves} rows={data.charts.table} hasLaunch={!undated} markRecovered={data.recovered.mark} />
 		</div>
 
 		<section class="downloads panel" aria-labelledby="downloads-title">
@@ -234,13 +244,6 @@
 			</div>
 		{/if}
 
-		{#if data.findings.findings.length}
-			<section class="worth" aria-labelledby="worth-title">
-				<h2 id="worth-title">Worth your attention</h2>
-				<LaunchFindings findings={data.findings.findings} checked={data.findings.checked} owner={signedIn} scope={launchScope(data.album.key)} showLimits={false} />
-			</section>
-		{/if}
-
 		{#if data.recaps}
 			<LaunchRecaps rows={data.recaps.rows} />
 		{/if}
@@ -258,7 +261,7 @@
 									{#if photo.cfImageId}<img src={cfImageUrl(photo.cfImageId, 'grid')} alt="" loading="lazy" decoding="async" />{:else}<span class="no-image">No preview</span>{/if}
 									{#if shortlist.includes(photo.photoId)}<span class="tag" aria-hidden="true">Shortlisted</span>{/if}
 								</button>
-								<span class="cap">{photo.downloads.toLocaleString()} requested · {photo.opens.toLocaleString()} {photo.opens === 1 ? 'open' : 'opens'}</span>
+								<span class="cap"><span>{requested(photo.downloads)}</span><span>{photo.opens.toLocaleString()} {photo.opens === 1 ? 'open' : 'opens'}</span></span>
 							</li>
 						{/each}
 					</ul>
@@ -280,7 +283,7 @@
 			{/if}
 
 			<div class="compare panel">
-				<LaunchComparison uid="compare" curves={data.charts.curves} rows={data.charts.table} hasLaunch={!undated} />
+				<LaunchComparison uid="compare" curves={data.charts.curves} rows={data.charts.table} hasLaunch={!undated} markRecovered={data.recovered.mark} />
 			</div>
 		</div>
 
@@ -313,7 +316,11 @@
 	/* The site layout already provides the page's <main>. */
 	.report-body { display: grid; gap: 1rem; min-width: 0; }
 
-	.recap { display: grid; gap: 1rem; min-width: 0; }
+	/* A phone reads the headline, then what needs attention, then the chart. A wide screen has the text and the findings in one column and the chart beside them. */
+	.recap { display: grid; gap: 1rem; grid-template-areas: "text" "worth" "chart"; min-width: 0; }
+	.recap-text { grid-area: text; }
+	.worth { grid-area: worth; }
+	.chart-panel { grid-area: chart; }
 	.recap-text { min-width: 0; padding-block: .25rem; }
 	.eyebrow { color: var(--blue-ink); font-size: .75rem; font-weight: 800; letter-spacing: .09em; margin: 0; text-transform: uppercase; }
 	h1 { font-size: 1.55rem; font-weight: 750; letter-spacing: -.01em; line-height: 1.2; margin: .35rem 0 .2rem; overflow-wrap: break-word; }
@@ -338,14 +345,15 @@
 	.strip { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(min(6.25rem, 100%), 1fr)); list-style: none; margin: .5rem 0; padding: 0; }
 	@media (min-width: 640px) { .strip { max-width: 52rem; } }
 	.strip li, .grid li { display: grid; gap: .25rem; min-width: 0; }
-	.cap { color: var(--muted); font-size: .8rem; line-height: 1.3; overflow-wrap: break-word; }
+	/* Two short lines by design, requests then opens, so a caption never breaks a word to fit one line. */
+	.cap { color: var(--muted); display: grid; font-size: .88rem; line-height: 1.3; overflow-wrap: break-word; }
 	.strip-photo, .cell { background: #dfe6ef; border: 2px solid transparent; border-radius: .5rem; cursor: pointer; display: block; min-height: 2.75rem; overflow: hidden; padding: 0; position: relative; width: 100%; }
 	.strip-photo { aspect-ratio: 3 / 2; }
 	.cell { aspect-ratio: 3 / 2; }
 	.cell.active { border-color: var(--blue); box-shadow: 0 0 0 2px #fff inset; }
 	img { display: block; height: 100%; object-fit: cover; width: 100%; }
 	.no-image { align-items: center; color: var(--muted); display: flex; font-size: .8rem; height: 100%; justify-content: center; }
-	.tag { background: var(--blue); border-radius: .3rem; bottom: .25rem; color: #fff; font-size: .68rem; font-weight: 700; left: .25rem; padding: .1rem .35rem; position: absolute; }
+	.tag { background: var(--blue); border-radius: .3rem; bottom: .25rem; color: #fff; font-size: .75rem; font-weight: 700; left: .25rem; padding: .1rem .35rem; position: absolute; }
 
 	.actions { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
 	.primary, .secondary { align-items: center; border-radius: .55rem; cursor: pointer; display: inline-flex; font: inherit; font-size: .9rem; font-weight: 700; justify-content: center; min-height: 2.75rem; padding: .5rem .9rem; text-align: center; text-decoration: none; }
@@ -375,12 +383,12 @@
 	.selected-image { aspect-ratio: 3 / 2; background: #dfe6ef; border-radius: .6rem; margin: .5rem 0; overflow: hidden; }
 	.facts { display: grid; gap: .5rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .6rem 0; }
 	.facts div { background: #f4f7fb; border-radius: .5rem; padding: .5rem .6rem; }
-	.facts dt { color: var(--muted); font-size: .74rem; }
+	.facts dt { color: var(--muted); font-size: .8rem; }
 	.facts dd { font-size: 1.15rem; font-variant-numeric: tabular-nums; font-weight: 750; margin: .1rem 0 0; }
 	.selected-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
 
 	@media (min-width: 1024px) {
-		.recap { align-items: start; grid-template-columns: minmax(0, 1fr) minmax(0, 30rem); }
+		.recap { align-items: start; grid-template-areas: "text chart" "worth chart"; grid-template-columns: minmax(0, 1fr) minmax(0, 30rem); grid-template-rows: auto 1fr; }
 		h1 { font-size: 1.85rem; }
 		.below { align-items: start; grid-template-columns: minmax(0, 1fr) 24rem; grid-template-areas: "photos selected" "photos compare" "photos ."; grid-template-rows: auto auto 1fr; }
 		.photos { grid-area: photos; }

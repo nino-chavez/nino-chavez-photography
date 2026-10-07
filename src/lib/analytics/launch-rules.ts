@@ -17,6 +17,11 @@ export const LAUNCH_FINDING_DAYS = 14;
 /** Launches are compared at these ages: complete days counted from the day of first publication. */
 export const LAUNCH_CHECKPOINTS = [3, 7] as const;
 export type LaunchAge = (typeof LAUNCH_CHECKPOINTS)[number];
+/**
+ * The next step a day 3 finding gives for a launch that is ahead of the usual: it only makes sense while the first week is still running. A stored
+ * recap carries these words as they were written, so a page that shows one after the week has ended leaves this step out (see `launch-recap-view.ts`).
+ */
+export const WHILE_ARRIVING_STEP = 'See which photos people are opening and downloading while attention is still arriving.';
 /** A launch is ranked only against at least this many earlier launches with a complete total at the same age. */
 export const MIN_EARLIER_LAUNCHES = 3;
 /** A launch has finished when, after its first week, its last FINISHED_QUIET_DAYS complete days hold at most FINISHED_MAX_OPENS photo opens in all. */
@@ -338,7 +343,7 @@ function launchReach(input: LaunchRuleInput, focus: LaunchFocus, peers: readonly
 		evidenceText: `${plural(c.own, 'photo open')} on ${dayRange(first, addDays(first, age - 1))}, complete Chicago days. The ${plural(c.earlier, 'earlier launch', 'earlier launches')} had between ${fmt(c.lowest)} and ${fmt(c.highest)} by day ${age}.`,
 		limits: [recordedOnly, 'The rank says how this launch compares, not why.', excludedLimit(c), inferredLimit(focus)],
 		action: above
-			? (age === 3 ? 'See which photos people are opening and downloading while attention is still arriving.' : 'Open the album report to see which photos people asked to download.')
+			? (age === 3 ? WHILE_ARRIVING_STEP : 'Look at the photos people asked to download.')
 			: 'Check where the album was shared, and whether the people in it have the link.',
 		evidence: { windows: { current: { start: first, end: addDays(first, age - 1) }, previous: null }, units: 'photo opens', current: c.own, strength: c.earlier >= 5 ? 'exploratory' : 'limited', comparison: comparisonEvidence(c) },
 		reportHref: albumReport(focus.albumKey, '#compare-title'),
@@ -359,7 +364,7 @@ function launchFailures(input: LaunchRuleInput, focus: LaunchFocus, result: Laun
 	}
 	const startDay = Math.round((Date.parse(`${f.window.start}T12:00:00Z`) - Date.parse(`${first}T12:00:00Z`)) / 86_400_000);
 	const lateStart = startDay > 0 ? `Results were recorded from ${formatDay(f.window.start)}, day ${startDay} of this launch. Earlier days are not in these counts.` : null;
-	const relabel = 'Counted as the collector labeled each visit when it arrived. Later traffic corrections are not applied to failures.';
+	const relabel = 'Each visit is counted as the gallery’s counter sorted it when it arrived. Later corrections to how a visit was sorted do not change these failure counts.';
 	let found = false;
 	if (f.photoLoadFailures >= FAILURE_MIN_COUNT) {
 		found = true;

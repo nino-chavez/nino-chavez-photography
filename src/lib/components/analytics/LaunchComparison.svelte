@@ -4,10 +4,11 @@
 	import { nameWithoutDate } from '$lib/analytics/launch-report-view';
 	import { COMPARISON_DAYS } from '$lib/analytics/launch-report-view';
 	import RemProbe from '$lib/components/analytics/RemProbe.svelte';
+	import ResponsiveTable from '$lib/components/analytics/ResponsiveTable.svelte';
 
 	/** `uid` keeps the ids apart when the report draws this twice (once under the chart on a phone, once beside the photos on a desktop). */
-	interface Props { curves: CumulativeCurve[]; rows: LaunchTableRow[]; hasLaunch: boolean; uid?: string }
-	let { curves, rows, hasLaunch, uid = 'compare' }: Props = $props();
+	interface Props { curves: CumulativeCurve[]; rows: LaunchTableRow[]; hasLaunch: boolean; uid?: string; /** Mark a recovered publication date with `*`; the page says what it means once. False when the page says every date was recovered instead. */ markRecovered?: boolean }
+	let { curves, rows, hasLaunch, uid = 'compare', markRecovered = true }: Props = $props();
 
 	// The chart is drawn in pixels, so its size and its text follow the page's text size (`rem`, one rem in pixels).
 	let rem = $state(16);
@@ -36,6 +37,7 @@
 		const end = curve?.points.at(-1);
 		return end ? `${end.total.toLocaleString()} ${end.day === COMPARISON_DAYS - 1 ? 'in week 1' : `by day ${end.day}`}` : '';
 	};
+	const stateWords = (state: LaunchTableRow['day3State'], value: number | null) => (state === 'ok' ? (value ?? 0).toLocaleString() : state === 'incomplete' ? 'Incomplete' : 'Not yet');
 	const summary = $derived(
 		current && current.points.length
 			? `This album has ${upTo(current)} photo opens. ${others.length} other launches are in grey.`
@@ -46,23 +48,12 @@
 <RemProbe bind:rem />
 
 {#snippet launchTable()}
-	<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-	<div class="scroll" role="region" aria-label="Launches ranked by photo opens in the first week" tabindex="0">
-		<table>
-			<caption class="sr-only">Launches ranked by photo opens in the first week, with the first three days beside it</caption>
-			<thead><tr><th scope="col">Album</th><th scope="col" class="num"><abbr title="First 3 days">3 days</abbr></th><th scope="col" class="num"><abbr title="First week">Week 1</abbr></th><th scope="col" class="num">Rank</th></tr></thead>
-			<tbody>
-				{#each rows as row}
-					<tr class:current={row.current} aria-current={row.current ? 'true' : undefined}>
-						<th scope="row">{row.name}{#if row.current}<span class="here">This album</span>{/if}<span class="pub">Published {row.published}{recoveredTag(row.inferred)}</span></th>
-						<td class="num">{row.day3State === 'ok' ? row.day3?.toLocaleString() : row.day3State === 'incomplete' ? 'Incomplete' : 'Not yet'}</td>
-						<td class="num">{row.day7State === 'ok' ? row.day7?.toLocaleString() : row.day7State === 'incomplete' ? 'Incomplete' : 'Not yet'}</td>
-						<td class="num">{row.rank7 === null ? '' : `${row.tied7 ? 'tied ' : ''}${ordinal(row.rank7)}`}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+	<ResponsiveTable compact label="Launches ranked by photo opens in the first week" caption="Launches ranked by photo opens in the first week, with the first three days beside it" headerLabel="Album"
+		columns={[{ label: 'First 3 days', numeric: true }, { label: 'Week 1', numeric: true }, { label: 'Rank', numeric: true }]}
+		rows={rows.map((row) => ({
+			key: row.albumKey, title: row.name, sub: `Published ${row.published}${markRecovered ? recoveredTag(row.inferred) : ''}`, current: row.current,
+			values: [stateWords(row.day3State, row.day3), stateWords(row.day7State, row.day7), row.rank7 === null ? null : `${row.tied7 ? 'tied ' : ''}${ordinal(row.rank7)}`]
+		}))} />
 {/snippet}
 
 <section class="compare" aria-labelledby={`${uid}-title`}>
@@ -139,18 +130,7 @@
 	.other-swatch { border-top: 2px solid #7b8ca3; }
 	.table-wide { margin-top: .5rem; border-top: 1px solid #e1e8f0; padding-top: .4rem; }
 	summary { cursor: pointer; color: #174ea6; font-size: .85rem; font-weight: 650; min-height: 2.75rem; display: flex; align-items: center; }
-	summary:focus-visible, .scroll:focus-visible { outline: 3px solid #174ea6; outline-offset: 2px; }
-	.scroll { overflow-x: auto; }
-	table { border-collapse: collapse; font-size: .85rem; width: 100%; }
-	th, td { border-bottom: 1px solid #e1e8f0; padding: .45rem .4rem; text-align: left; vertical-align: top; color: #172033; }
-	thead th { color: #526176; font-size: .76rem; font-weight: 650; }
-	tbody th { font-size: .82rem; font-weight: 600; overflow-wrap: break-word; }
-	.pub { display: block; color: #526176; font-size: .76rem; font-weight: 400; }
-	.here { color: #174ea6; display: block; font-size: .76rem; font-weight: 800; }
-	abbr { text-decoration: none; }
-	.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-	tr.current > * { background: #eaf1fd; }
-	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+	summary:focus-visible { outline: 3px solid #174ea6; outline-offset: 2px; }
 	.table-phone, .lead-table { display: none; }
 	@media (max-width: 639px) {
 		.chart-only { display: none; }
@@ -160,5 +140,5 @@
 		.lead-chart { display: none; }
 	}
 	@media (forced-colors: active) { .label { fill: CanvasText; stroke: Canvas; } .mine { stroke: Highlight; } .other { stroke: GrayText; } .mine-swatch { border-top-color: Highlight; forced-color-adjust: none; } .other-swatch { border-top-color: GrayText; forced-color-adjust: none; } }
-	@media (prefers-contrast: more) { .tick, .lead, .legend, .pub { color: #2b3748; fill: #2b3748; } .other-label { fill: #2b3748; } .grid { stroke: #6f7f95; } .other { stroke: #4f6078; } }
+	@media (prefers-contrast: more) { .tick, .lead, .legend { color: #2b3748; fill: #2b3748; } .other-label { fill: #2b3748; } .grid { stroke: #6f7f95; } .other { stroke: #4f6078; } }
 </style>

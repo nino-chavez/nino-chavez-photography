@@ -163,6 +163,7 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 		incidents: incidentIds,
 		diagnostics: health ? diagnosticsFromHealth(health, asOf) : null,
 		rejections: health && !health.error ? rejectionsFromHealth(health.data, lastCompleteDay) : null,
+		traffic: report && report.available ? { start: report.query.start, end: report.query.end, classes: report.traffic } : null,
 		findings,
 		findingsCheckedAt: ok(findingsRead)?.checkedAt ?? null
 	};
