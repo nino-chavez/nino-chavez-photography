@@ -317,7 +317,7 @@
 	/* The site layout already provides the page's <main>. */
 	.report-body { display: grid; gap: 1rem; min-width: 0; }
 
-	/* A phone reads the headline, then what needs attention, then the chart. A wide screen has the text and the findings in one column and the chart beside them. */
+	/* A phone reads the headline, then what needs attention, then the chart. A wide screen has the headline beside the chart and what needs attention across the full width under both, still before the photos. */
 	.recap { display: grid; gap: 1rem; grid-template-areas: "text" "worth" "chart"; min-width: 0; }
 	.recap-text { grid-area: text; }
 	.worth { grid-area: worth; }
@@ -389,7 +389,7 @@
 	.selected-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
 
 	@media (min-width: 1024px) {
-		.recap { align-items: start; grid-template-areas: "text chart" "worth chart"; grid-template-columns: minmax(0, 1fr) minmax(0, 30rem); grid-template-rows: auto 1fr; }
+		.recap { align-items: start; grid-template-areas: "text chart" "worth worth"; grid-template-columns: minmax(0, 1fr) minmax(0, 30rem); }
 		h1 { font-size: 1.85rem; }
 		.below { align-items: start; grid-template-columns: minmax(0, 1fr) 24rem; grid-template-areas: "photos selected" "photos compare" "photos ."; grid-template-rows: auto auto 1fr; }
 		.photos { grid-area: photos; }

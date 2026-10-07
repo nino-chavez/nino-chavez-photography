@@ -572,7 +572,7 @@ test('the verdict word is the plain comparison of the week with the usual: above
 test('one sentence says what share of the counted photo opens came from browsers the counter could not sort, with the real share and its dates', () => {
 	const classes = (audience: number, unclassified: number) => ({ start: '2026-09-30', end: '2026-10-06', classes: [{ classification: 'audience', count: audience }, { classification: 'unclassified', count: unclassified }, { classification: 'known_crawler', count: 900 }] });
 	// Most: the real share, computed over the counted classes only (a crawler is left out of the counting), with the upper-limit clause.
-	assert.equal(unsortedLine(classes(190, 810), '2026-10-07'), 'Most (81%) of the newest launch’s counted opens, Sep 30 – Oct 6, came from browsers the counter could not sort, so read them as an upper limit.');
+	assert.equal(unsortedLine(classes(190, 810), '2026-10-07'), 'Most (81%) of the newest launch’s counted opens, Sep 30 – Oct 6, came from browsers the counter could not sort: an upper limit.');
 	// Not most: the share, and no upper-limit clause.
 	assert.equal(unsortedLine(classes(880, 120), '2026-10-07'), '12% of the newest launch’s counted opens, Sep 30 – Oct 6, came from browsers the counter could not sort.');
 	// Exactly half is not most.

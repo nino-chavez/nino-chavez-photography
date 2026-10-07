@@ -367,7 +367,7 @@ export function unsortedSentence(classes: ReadonlyArray<{ classification: string
 	const share = Math.round((unsorted / counted) * 100);
 	const most = unsorted * 2 > counted;
 	const lead = most ? `Most of ${whose} counted photo opens, ${dates} (${share}%),` : `${share}% of ${whose} counted photo opens, ${dates},`;
-	if (brief) return `${most ? `Most (${share}%)` : `${share}%`} of ${whose} counted opens, ${dates}, came from browsers the counter could not sort${most ? ', so read them as an upper limit' : ''}.`;
+	if (brief) return `${most ? `Most (${share}%)` : `${share}%`} of ${whose} counted opens, ${dates}, came from browsers the counter could not sort${most ? ': an upper limit' : ''}.`;
 	return `${lead} came from browsers the gallery’s counter could not sort. They are counted, and they are not called human${most ? ', so read these totals as an upper limit on what visitors did' : ''}.`;
 }
 

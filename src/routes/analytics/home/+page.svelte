@@ -134,7 +134,7 @@
 				<a class="more" href={sitePath(hostname)}>Open the site report</a>
 			</section>
 
-			<p class="note">Counts are browser actions, not people. Gallery numbers cover complete days in Chicago time through {through}. Page loads are Cloudflare's count of UTC days, a different measure from photo opens.{#if view.unsorted}{' '}{view.unsorted}{/if}</p>
+			<p class="note">Counts are browser actions, not people. Gallery numbers cover complete Chicago days through {through}. Page loads are Cloudflare's count of UTC days, a different measure.{#if view.unsorted}{' '}{view.unsorted}{/if}</p>
 		</div>
 
 	</div>
