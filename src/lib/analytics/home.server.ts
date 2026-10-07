@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildHome, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, type Freshness, type HomeInput, type HomeView, type SiteReading, type WeekInput } from './home';
 import { collectionDiagnostics } from './intelligence-source.server';
+import type { VisibleFindings } from './intelligence-panel.server';
 import { fetchLaunches, type LaunchList } from './launch-read-model.server';
 import { buildOperatorReport, type OperatorReport } from './operator-report.server';
 import { chicagoDate } from './launch-recap';
@@ -34,6 +35,8 @@ export interface HomeDeps {
 	env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_ANALYTICS_TOKEN?: string };
 	fetch: typeof fetch;
 	now?: Date;
+	/** The gallery-wide launch scope's current findings (intelligence-panel.server's loadVisibleFindings). Absent: none are shown. */
+	findings?: () => Promise<VisibleFindings>;
 }
 
 const ok = <T>(result: PromiseSettledResult<T>): T | null => (result.status === 'fulfilled' ? result.value : null);
@@ -92,16 +95,18 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const weekStart = addDays(lastCompleteDay, -(COMPLETED_DAYS_CHECKED - 1));
 
 	const params = new URLSearchParams({ period: 'custom', start: weekStart, end: lastCompleteDay, scope: 'all', measure: 'photo_opens', traffic: 'conservative', compare: 'previous' });
-	const [launchRead, reportRead, traffic, actions, incidentRead, diagnosticRead, refreshRead] = await Promise.allSettled([
+	const [launchRead, reportRead, traffic, actions, incidentRead, diagnosticRead, refreshRead, findingsRead] = await Promise.allSettled([
 		fetchLaunches(admin, { asOf: asOfIso, days: 14, traffic: 'conservative', publicOnly: true }),
 		buildOperatorReport(admin, parseReportQuery(params, asOf), { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: false, includeVisitorEstimate: false, includeToday: false, cacheRole: 'service_role' }),
-		loadSiteTraffic(7, deps.env.CLOUDFLARE_ACCOUNT_ID, deps.env.CLOUDFLARE_ANALYTICS_TOKEN, deps.fetch, { cache: siteTrafficCache }),
+		// A fixed as-of (tests, a replayed date) fixes the site window too, so both halves of Home describe the same days.
+		loadSiteTraffic(7, deps.env.CLOUDFLARE_ACCOUNT_ID, deps.env.CLOUDFLARE_ANALYTICS_TOKEN, deps.fetch, { cache: siteTrafficCache, ...(deps.now ? { now: () => asOf.getTime() } : {}) }),
 		loadSiteActions(admin, 7, 'all', 0),
 		admin.from('analytics_intelligence_incidents').select('finding_id').eq('status', 'open').order('updated_at', { ascending: false }).limit(20),
 		collectionDiagnostics(admin, asOf),
-		admin.from('analytics_daily_coverage').select('reconciled_at').order('reconciled_at', { ascending: false }).limit(1)
+		admin.from('analytics_daily_coverage').select('reconciled_at').order('reconciled_at', { ascending: false }).limit(1),
+		deps.findings ? deps.findings() : Promise.resolve<VisibleFindings>({ findings: [], checkedAt: null })
 	]);
-	for (const [what, result] of [['launches', launchRead], ['gallery week', reportRead], ['site reach', traffic], ['site actions', actions], ['incidents', incidentRead], ['delivery health', diagnosticRead], ['refresh time', refreshRead]] as const) logFailure(what, result);
+	for (const [what, result] of [['launches', launchRead], ['gallery week', reportRead], ['site reach', traffic], ['site actions', actions], ['incidents', incidentRead], ['delivery health', diagnosticRead], ['refresh time', refreshRead], ['findings', findingsRead]] as const) logFailure(what, result);
 
 	// The two reads must describe the same day, or a launch's last complete day would not match the week line.
 	let list: LaunchList | null = ok(launchRead);
@@ -127,7 +132,9 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 		siteReach, siteContacts,
 		siteActionsStale: actions7 && actions7.available && actions7.freshness.status === 'stale' ? { refreshedAt: actions7.freshness.refreshedAt } : null,
 		incidents: incidentIds,
-		diagnostics: ok(diagnosticRead) ?? null
+		diagnostics: ok(diagnosticRead) ?? null,
+		findings: ok(findingsRead)?.findings ?? [],
+		findingsCheckedAt: ok(findingsRead)?.checkedAt ?? null
 	};
 	return buildHome(input);
 }

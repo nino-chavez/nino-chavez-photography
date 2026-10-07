@@ -114,6 +114,7 @@
 		if (!window.snapshotId) return null;
 		const params = new URLSearchParams({ intelligence_snapshot: window.snapshotId });
 		if (window.scope.kind === 'sites') { params.set('period', String(window.scope.period)); params.set('section', window.scope.section); return evidenceHref(`/photography/analytics/sites?${params}`); }
+		if (window.scope.kind === 'launch') return window.scope.albumKey ? evidenceHref(`/analytics/albums/${window.scope.albumKey}`) : null;
 		for (const [key,value] of Object.entries(window.scope.query)) { if (value !== undefined) params.set(({albumKeys:'albums',compareStart:'compare_start',compareEnd:'compare_end',eventDate:'event_date',albumEventType:'event_type'} as Record<string,string>)[key] ?? key, Array.isArray(value) ? value.join(',') : String(value)); }
 		params.set('period','custom'); return evidenceHref(`/analytics/operator?${params}`);
 	}
@@ -198,7 +199,11 @@
 		return target.kind;
 	}
 	function actionTarget(action: ActionRecord) { return action.publicTarget ?? action.target; }
-	function scopeLabel(value: IntelligenceScope) { return value.kind === 'sites' ? `Sites · ${value.period} days · ${value.section}` : `Gallery · ${value.query.start} to ${value.query.end} · ${value.query.traffic} traffic`; }
+	function scopeLabel(value: IntelligenceScope) {
+		if (value.kind === 'sites') return `Sites · ${value.period} days · ${value.section}`;
+		if (value.kind === 'launch') return value.albumKey ? `Launch · album ${value.albumKey}` : 'Launches · every recent album';
+		return `Gallery · ${value.query.start} to ${value.query.end} · ${value.query.traffic} traffic`;
+	}
 	function evidenceWindows(evidence: FindingEvidence) {
 		const current = `Current: ${evidence.windows.current.start} to ${evidence.windows.current.end}`;
 		return evidence.windows.previous ? `${current}. Previous: ${evidence.windows.previous.start} to ${evidence.windows.previous.end}` : current;
@@ -355,8 +360,8 @@
 	{#if !recordOnly}
 	<div class="heading">
 		<div><p class="kicker">Report intelligence</p><h2 id={`${kind}-intelligence-heading`}>Worth your attention</h2>{#if requestedSnapshot}<p class="context-note">You are reading saved evidence. The cutoff below belongs to that saved calculation.</p>{/if}<p>Short evidence-led observations for this report. They do not rate photographic quality or prove a business result.</p></div>
-		{#if report && !requestedSnapshot && Date.now()-Date.parse(report.generatedAt)>30*60_000}<p class="context-note">This saved calculation is more than 30 minutes old. Check its cutoff and refresh before acting on a new change.</p>{/if}
-		{#if report}<p class="freshness">Cutoff: {formatTime(report.cutoff)}<br />Saved: {formatTime(report.generatedAt)}</p>{/if}
+		{#if report && !requestedSnapshot && Date.now()-Date.parse(report.checkedAt ?? report.generatedAt)>30*60_000}<p class="context-note">This saved calculation is more than 30 minutes old. Check its cutoff and refresh before acting on a new change.</p>{/if}
+		{#if report}<p class="freshness">Cutoff: {formatTime(report.cutoff)}<br />Saved: {formatTime(report.generatedAt)}{#if report.checkedAt && report.checkedAt !== report.generatedAt}<br />Checked unchanged: {formatTime(report.checkedAt)}{/if}</p>{/if}
 	</div>
 	{/if}
 

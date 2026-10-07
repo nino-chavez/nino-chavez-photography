@@ -92,3 +92,34 @@ test('fixed gallery and site loaders preserve their respective provider shapes',
 	assert.deepEqual(site.journeys, { site: [] });
 	assert.equal(site.providerQueries, 1);
 });
+
+test('launch scopes refresh with the standard ones, make no provider query, and never open incidents', async () => {
+	const { launchIntelligenceScopes } = await import('./intelligence-jobs.server');
+	const calls: Array<{ name: string; args?: Record<string, unknown> }> = [];
+	const launchJob = (id: string, albumKey: string | null) => ({ ...refreshJob(id), scope: { kind: 'launch', albumKey } });
+	const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
+		calls.push({ name, args });
+		if (name === 'analytics_claim_intelligence_jobs') return { data: [launchJob('l1', 'Re7kho'), launchJob('l2', null)], error: null };
+		return { data: null, error: null };
+	} } as never;
+	const at = new Date('2026-10-06T17:00:00Z');
+	const recent = (albumKey: string, firstPublishedAt: string, elapsedDays: number) => ({ albumKey, firstPublishedAt, elapsedDays }) as never;
+	const scopes = launchIntelligenceScopes({ launches: [recent('later', '2026-10-07T01:00:00Z', 0), recent('Re7kho', '2026-09-26T01:10:52Z', 11), recent('fJKdsB', '2026-08-29T02:39:40Z', 39)] }, at);
+	assert.deepEqual(scopes, [{ kind: 'launch', albumKey: null }, { kind: 'launch', albumKey: 'Re7kho' }], 'Home, then each launch inside its window; not one published after as-of, not one long over');
+	const result = await runIntelligenceJobs(client, { refreshIntelligence: async (_client, current) => report(current, current.kind === 'launch' && current.albumKey ? 'snap-album' : 'snap-home') }, async (current) => loadFixedIntelligenceJourneys(current, { gallery: async () => { throw new Error('no provider'); }, site: async () => { throw new Error('no provider'); } }), { now: at, launchScopes: async () => scopes });
+	assert.equal(result.refreshed, 2);
+	assert.equal(result.providerQueries, 0);
+	const prepared = calls.find((call) => call.name === 'analytics_prepare_intelligence_periods')?.args?.p_standard_scopes as unknown[];
+	assert.deepEqual(prepared.slice(-2), scopes);
+	assert.equal(calls.filter((call) => call.name === 'analytics_record_intelligence_lifecycle').length, 0, 'a launch finding is not an incident');
+	assert.deepEqual(calls.filter((call) => call.name === 'analytics_finish_intelligence_job').map((call) => call.args?.p_report_id), ['snap-album', 'snap-home']);
+});
+
+test('a failed launch list still refreshes the standard scopes and Home', async () => {
+	const calls: Array<{ name: string; args?: Record<string, unknown> }> = [];
+	const client = { rpc: async (name: string, args?: Record<string, unknown>) => { calls.push({ name, args }); return name === 'analytics_claim_intelligence_jobs' ? { data: [], error: null } : { data: null, error: null }; } } as never;
+	await runIntelligenceJobs(client, { refreshIntelligence: async () => report() }, async () => ({ journeys: {}, providerQueries: 0, providerPending: false }), { now: new Date('2026-10-06T17:00:00Z'), launchScopes: async () => { throw new Error('down'); } });
+	const prepared = calls.find((call) => call.name === 'analytics_prepare_intelligence_periods')?.args?.p_standard_scopes as unknown[];
+	assert.deepEqual(prepared.at(-1), { kind: 'launch', albumKey: null });
+	assert.ok(prepared.some((scope) => (scope as { kind: string }).kind === 'gallery'));
+});

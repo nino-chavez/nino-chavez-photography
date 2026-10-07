@@ -1,5 +1,6 @@
 import { comparisonWindow } from './report-contract';
-import type { Finding, FindingEvidence, IntelligenceAction, IntelligenceCoverage, IntelligenceScope, IntelligenceSuppression } from './intelligence-contract';
+import { minimumSample, type Finding, type FindingEvidence, type IntelligenceCoverage, type IntelligenceScope, type IntelligenceSuppression } from './intelligence-contract';
+import { evaluateLaunchRules, type LaunchEvidence } from './launch-rules';
 
 export interface IntelligenceRuleInput {
 	scope: IntelligenceScope;
@@ -14,8 +15,6 @@ export interface IntelligenceRuleInput {
 	diagnostics?: Array<{ type: string; status: string; count: number }>;
 	linkedPhotoResponse?: Array<{ photoId: string; albumKey: string; exposures: number; responses: number; evidenceLinks: string[] }>;
 	albumDiscovery?: Array<{ albumKey: string; exposures: number; opens: number; directEntries: number; evidenceLinks: string[] }>;
-	/** `publishedAfterComparison` comes from report-contract's rule: such an album had nothing to compare, so its activity is new, not growth. */
-	albumMomentum?: Array<{ albumKey: string; current: number | null; previous: number | null; publishedAfterComparison?: boolean; evidenceLinks: string[] }>;
 	rendering?: { rendered: number; failed: number; observedTerminal: number | null };
 	search?: { submitted: number | null; resultsShown: number | null; emptyResults: number | null; failures: number | null; selections: number | null };
 	download?: { requests: number; failed: number; unknownTerminal: number; handedOff: number };
@@ -23,21 +22,30 @@ export interface IntelligenceRuleInput {
 	distribution?: { taggedArrivals: number; laterNamedAction: number; actionName: string };
 	siteWindows?: { current: { start: string; end: string }; previous: { start: string; end: string } };
 	catalogue?: { eligibleAlbums: number; eligiblePhotos: number; missingAlbumFacts: number };
+	/** Launch scopes only: the stored launch evidence, or null with the reason it could not be read. */
+	launch?: LaunchEvidence | null;
+	launchUnavailable?: string;
 	followUp?: { actionId: string; target?: Finding['target']; before: number; after: number; coverage: IntelligenceCoverage; previousCoverage: IntelligenceCoverage | null; concurrentChanges: number; measure: string; window: { before: { start: string; end: string }; after: { start: string; end: string } } };
 }
 export interface IntelligenceRuleResult { findings: Finding[]; suppressions: IntelligenceSuppression[]; }
+/**
+ * Calendar-window rules for the gallery and site scopes. Album momentum (two calendar periods compared) is retired
+ * for the gallery: an event album gets most of its attention in three days and then goes quiet, so two steady
+ * complete periods of 20 or more actions never existed for it. Launch rules (launch-rules.ts) replace it. Site
+ * momentum stays: page views on the site have no launch, and its comparison becomes available as history grows.
+ */
 export const INTELLIGENCE_RULES = [
 	'momentum', 'strong_photo_response', 'discovery_friction', 'rendering_download_reliability', 'search_usefulness',
 	'profile_response', 'writing_demo_response', 'distribution', 'collection_health', 'follow_up'
 ] as const;
 
 /** Both periods need at least this many actions before a change is stated as a rule or a percentage. */
-export const minimumSample = 20;
+export { minimumSample };
 const meaningfulAbsoluteChange = 5;
 const nonnegative = (...values: Array<number | null | undefined>): boolean => values.every((value) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
 const completeComparison = (input: IntelligenceRuleInput) => input.coverage === 'complete' && input.previousCoverage === 'complete';
 
-function reportHref(scope: IntelligenceScope, albumKey?: string): string {
+function reportHref(scope: Exclude<IntelligenceScope, { kind: 'launch' }>, albumKey?: string): string {
 	if (scope.kind === 'sites') return `/photography/analytics/sites?period=${scope.period}&section=${encodeURIComponent(scope.section)}`;
 	const query = { ...scope.query, ...(albumKey ? { scope: 'album' as const, albumKeys: [albumKey] } : {}) };
 	const params = new URLSearchParams({ period: 'custom', start: query.start, end: query.end, measure: query.measure, scope: query.scope, compare: query.compare, traffic: query.traffic });
@@ -54,8 +62,8 @@ function reportHref(scope: IntelligenceScope, albumKey?: string): string {
 }
 
 function windows(input: IntelligenceRuleInput): FindingEvidence['windows'] {
-	if (input.scope.kind === 'sites') return input.siteWindows ? input.siteWindows : { current: { start: input.generatedAt.slice(0, 10), end: input.generatedAt.slice(0, 10) }, previous: null };
-	return { current: { start: input.scope.query.start, end: input.scope.query.end }, previous: comparisonWindow(input.scope.query) };
+	if (input.scope.kind === 'gallery') return { current: { start: input.scope.query.start, end: input.scope.query.end }, previous: comparisonWindow(input.scope.query) };
+	return input.siteWindows ? input.siteWindows : { current: { start: input.generatedAt.slice(0, 10), end: input.generatedAt.slice(0, 10) }, previous: null };
 }
 function evidence(input: IntelligenceRuleInput, units: string, values: Partial<Pick<FindingEvidence, 'numerator' | 'denominator' | 'current' | 'previous'>>, strength: FindingEvidence['strength']): FindingEvidence {
 	return { windows: windows(input), cutoff: input.cutoff, coverage: input.coverage, previousCoverage: input.previousCoverage ?? null, units, eligibility: input.eligibility, strength, ...values };
@@ -71,29 +79,28 @@ export function prioritizeFindings(findings: Finding[]): Finding[] {
 
 function finding(input: IntelligenceRuleInput, rule: string, id: string, title: string, explanation: string, action: string, data: FindingEvidence, target: Finding['target'] = { kind: input.scope.kind === 'gallery' ? 'gallery' : 'site' }, evidenceLinks?: string[]): Finding {
 	const albumKey = target.kind === 'album' ? target.albumKey ?? target.id ?? undefined : target.albumKey ?? undefined;
-	return { id, rule, severity: findingSeverity(rule, id), target, title, explanation, action, evidence: data, reportHref: reportHref(input.scope, albumKey), ...(evidenceLinks?.length ? { evidenceLinks: [...new Set(evidenceLinks)].filter((link) => link.startsWith('/')).slice(0, 6) } : {}), status: 'open' };
+	return { id, rule, severity: findingSeverity(rule, id), target, title, explanation, action, evidence: data, reportHref: input.scope.kind === 'launch' ? '/analytics/albums' : reportHref(input.scope, albumKey), ...(evidenceLinks?.length ? { evidenceLinks: [...new Set(evidenceLinks)].filter((link) => link.startsWith('/')).slice(0, 6) } : {}), status: 'open' };
 }
 function suppress(result: IntelligenceRuleResult, rule: string, reason: string, target?: Finding['target']): void { result.suppressions.push({ rule, reason, target }); }
 
 /** Deterministic aggregate rules. Unknown cohorts stay suppressions; they never become zero. */
 export function evaluateIntelligenceRules(input: IntelligenceRuleInput): IntelligenceRuleResult {
+	if (input.scope.kind === 'launch') return evaluateLaunchRules({ generatedAt: input.generatedAt, cutoff: input.cutoff, launch: input.launch ?? null, unavailableReason: input.launchUnavailable });
 	const result: IntelligenceRuleResult = { findings: [], suppressions: [] };
 	if (input.coverage !== 'complete') {
         for (const diagnostic of input.diagnostics ?? []) if (diagnostic.status === 'failed' && nonnegative(diagnostic.count) && diagnostic.count > 0) result.findings.push(finding(input, 'collection_health', `collection-health-${diagnostic.type}`, 'A collection diagnostic needs attention', `${diagnostic.count} observations match the stable ${diagnostic.type} incident source.`, 'Inspect the collection diagnostic and confirm recovery before closing it.', evidence(input, 'diagnostic observations', { numerator: diagnostic.count }, 'limited')));
-        for (const rule of INTELLIGENCE_RULES) suppress(result, rule, 'The selected evidence window is partial or unavailable. This alone does not establish a collection outage.');
+        for (const rule of INTELLIGENCE_RULES) if (rule !== 'momentum' || input.scope.kind === 'sites') suppress(result, rule, 'The selected evidence window is partial or unavailable. This alone does not establish a collection outage.');
         return result;
     }
 
-	const momentum = input.scope.kind === 'gallery' && input.albumMomentum?.length
-		? input.albumMomentum.map((row) => ({ ...row, target: { kind: 'album' as const, albumKey: row.albumKey } }))
-		: [{ albumKey: null, current: input.current, previous: input.previous, evidenceLinks: [], target: { kind: input.scope.kind === 'gallery' ? 'gallery' as const : 'site' as const } }];
-	for (const row of momentum) {
-		if ('publishedAfterComparison' in row && row.publishedAfterComparison) { suppress(result, 'momentum', 'This album was published after the comparison period, so there is no earlier activity to compare. Its activity is new, not growth.', row.target); continue; }
-		if (!completeComparison(input) || !nonnegative(row.current, row.previous) || row.current === null || row.previous === null) { suppress(result, 'momentum', 'A complete comparable period is not available.', row.target); continue; }
-		if (row.current < minimumSample || row.previous < minimumSample) { suppress(result, 'momentum', `Both periods need at least ${minimumSample} ${input.scope.kind === 'sites' ? 'page views' : 'recorded actions'}.`, row.target); continue; }
-		if (Math.abs(row.current - row.previous) < meaningfulAbsoluteChange) { suppress(result, 'momentum', 'The absolute change is too small to recommend a review.', row.target); continue; }
-		if (row.current <= row.previous) { suppress(result, 'momentum', 'The comparable activity did not increase.', row.target); continue; }
-		result.findings.push(finding(input, 'momentum', `momentum-increase-${row.albumKey ?? input.scope.kind}`, 'Recorded activity increased', `The current window has ${row.current} recorded actions versus ${row.previous} in the declared comparable window. This is not proof of audience growth.`, 'Inspect the affected known catalogue or publication context before deciding whether to repeat a promotion.', evidence(input, input.scope.kind === 'sites' ? 'page views' : 'recorded actions', { current: row.current, previous: row.previous }, 'exploratory'), row.target, row.evidenceLinks));
+	// Site momentum only. Gallery momentum is retired: launch rules compare albums at the same age instead.
+	if (input.scope.kind === 'sites') {
+		const target: Finding['target'] = { kind: 'site' };
+		if (!completeComparison(input) || !nonnegative(input.current, input.previous) || input.current === null || input.previous === null) suppress(result, 'momentum', 'A complete comparable period is not available.', target);
+		else if (input.current < minimumSample || input.previous < minimumSample) suppress(result, 'momentum', `Both periods need at least ${minimumSample} page views.`, target);
+		else if (Math.abs(input.current - input.previous) < meaningfulAbsoluteChange) suppress(result, 'momentum', 'The absolute change is too small to recommend a review.', target);
+		else if (input.current <= input.previous) suppress(result, 'momentum', 'The comparable activity did not increase.', target);
+		else result.findings.push(finding(input, 'momentum', 'momentum-increase-sites', 'Recorded activity increased', `The current window has ${input.current} page views versus ${input.previous} in the declared comparable window. This is not proof of audience growth.`, 'Inspect the affected page or publication context before deciding whether to repeat a promotion.', evidence(input, 'page views', { current: input.current, previous: input.previous }, 'exploratory'), target));
 	}
 
 	if (input.providerLimitation) for (const rule of ['strong_photo_response','discovery_friction','rendering_download_reliability','search_usefulness','distribution']) suppress(result, rule, input.providerLimitation);
@@ -168,4 +175,4 @@ export function evaluateIntelligenceRules(input: IntelligenceRuleInput): Intelli
 	return result;
 }
 
-export function validRuleScope(scope: IntelligenceScope): boolean { return scope.kind === 'sites' || scope.query.start <= scope.query.end; }
+export function validRuleScope(scope: IntelligenceScope): boolean { return scope.kind !== 'gallery' || scope.query.start <= scope.query.end; }

@@ -1,7 +1,9 @@
 import { calculateAlbumComparison } from './intelligence-comparison.server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { answerIntelligenceQuestion, unsupportedProviderScope } from './intelligence-assistant';
-import { intelligenceScopeKey, parseIntelligenceScope, standardIntelligenceScopes, type IntelligenceReport, type IntelligenceScope } from './intelligence-contract';
+import { GALLERY_LAUNCH_SCOPE, INTELLIGENCE_REFRESH_CADENCE_SECONDS, intelligenceScopeKey, launchScope, parseIntelligenceScope, standardIntelligenceScopes, type IntelligenceReport, type IntelligenceScope } from './intelligence-contract';
+import { LAUNCH_FINDING_DAYS } from './launch-rules';
+import type { LaunchList } from './launch-read-model.server';
 import type { IntelligenceJourneyContext } from './intelligence-source.server';
 import { dueIntelligencePeriods, type ScheduledIntelligencePeriod } from './intelligence-schedule';
 import { POSTHOG_JOURNEY_REPORTS, type JourneyAggregate } from './posthog.types';
@@ -39,7 +41,7 @@ export const FIXED_INTELLIGENCE_JOURNEYS = POSTHOG_JOURNEY_REPORTS;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // A one-minute wake-up drains bounded work; saved standard reports refresh at
 // most every fifteen minutes. SQL prioritizes interactive and due-period work.
-const REFRESH_CADENCE_SECONDS = 15 * 60;
+const REFRESH_CADENCE_SECONDS = INTELLIGENCE_REFRESH_CADENCE_SECONDS;
 const PROVIDER_PENDING_RETRY_SECONDS = 5 * 60;
 const MAX_CATCHUP_PERIODS = 4;
 
@@ -110,11 +112,11 @@ async function completeRequest(client: SupabaseClient, job: IntelligenceJob, rep
 
 export function createIntelligenceJobStore(client: IntelligenceJobRpcClient) {
 	return {
-		async prepare(periods: ScheduledIntelligencePeriod[], now: Date) {
+		async prepare(periods: ScheduledIntelligencePeriod[], now: Date, launchScopes: readonly IntelligenceScope[] = []) {
 			const result = await client.rpc('analytics_prepare_intelligence_periods', {
 				p_daily_period: periods.find((period) => period.kind === 'daily')?.intendedPeriod ?? null,
 				p_weekly_period: periods.find((period) => period.kind === 'weekly')?.intendedPeriod ?? null,
-				p_standard_scopes: standardIntelligenceScopes(now),
+				p_standard_scopes: [...standardIntelligenceScopes(now), ...launchScopes],
 				p_refresh_cadence_seconds: REFRESH_CADENCE_SECONDS,
 				p_provider_pending_retry_seconds: PROVIDER_PENDING_RETRY_SECONDS,
 				p_max_catchup_periods: MAX_CATCHUP_PERIODS,
@@ -147,13 +149,16 @@ export async function runIntelligenceJobs(
 	client: SupabaseClient & IntelligenceJobRpcClient,
 	engine: IntelligenceEngine,
 	journeys: IntelligenceJourneys,
-	options: { now?: Date; limit?: number; deadlineMs?: number; concurrency?: number } = {}
+	options: { now?: Date; limit?: number; deadlineMs?: number; concurrency?: number; launchScopes?: () => Promise<IntelligenceScope[]> } = {}
 ): Promise<IntelligenceJobResult> {
 	const now = options.now ?? new Date();
 	const deadline = Date.now() + Math.min(Math.max(options.deadlineMs ?? 25_000, 1_000), 55_000);
 	const store = createIntelligenceJobStore(client);
 	const periods = dueIntelligencePeriods(now);
-	await store.prepare(periods, now);
+	// Launch scopes come from a database read. If it fails, the standard scopes and Home's scope still refresh.
+	let launchScopes: IntelligenceScope[] = [];
+	try { launchScopes = options.launchScopes ? await options.launchScopes() : []; } catch { launchScopes = [GALLERY_LAUNCH_SCOPE]; }
+	await store.prepare(periods, now, launchScopes);
 	const jobs = await store.claim(options.limit ?? 4, now);
 	const result: IntelligenceJobResult = { prepared: periods.length, claimed: jobs.length, refreshed: 0, retried: 0, providerQueries: 0, deferred: 0 };
 	let next = 0;
@@ -163,7 +168,9 @@ export async function runIntelligenceJobs(
 			result.providerQueries += loaded.providerQueries;
 			const report = await engine.refreshIntelligence(client, job.scope, { ownerId: job.ownerId ?? undefined, now, journeys: loaded.journeys });
 			if (!loaded.providerPending) await completeRequest(client, job, report);
-			await store.lifecycle(report, now);
+			// Launch findings are not incidents. The incident table holds operational problems that Home lists as
+			// open, and a launch's reach or recap would never recover from it. Collection incidents keep their own path.
+			if (job.scope.kind !== 'launch') await store.lifecycle(report, now);
 			await store.finish(job, loaded.providerPending ? 'retry' : 'complete', report, loaded.providerPending ? 'provider_query_pending' : null);
 			result.refreshed += 1;
 			if (loaded.providerPending) result.retried += 1;
@@ -209,6 +216,8 @@ export async function loadFixedIntelligenceJourneys(
 		decision?: (scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryDecisionEvidence>;
 	}
 ): Promise<IntelligenceJourneyLoad> {
+	// Launch rules read only first-party records; they make no provider query.
+	if (scope.kind === 'launch') return { journeys: {}, providerQueries: 0, providerPending: false };
 	if (scope.kind === 'gallery') {
 		if (unsupportedProviderScope(scope)) return { journeys: {}, providerQueries: 0, providerPending: false };
 		const [gallery, decision] = await Promise.all([mapWithConcurrency(FIXED_INTELLIGENCE_JOURNEYS, 3, (name) => loaders.gallery(name, scope)), loaders.decision?.(scope)]);
@@ -220,6 +229,19 @@ export async function loadFixedIntelligenceJourneys(
 		providerQueries: 1,
 		providerPending: !site.available && site.reason.includes('still pending')
 	};
+}
+
+/**
+ * The launch scopes to keep fresh: Home's gallery-wide scope, and one per album whose launch is inside its finding
+ * window. Two extra days past the window let the last refresh write the empty snapshot that retires its findings,
+ * so an old launch never keeps a stale finding. Older launches are not refreshed: their findings have ended.
+ */
+export const LAUNCH_REFRESH_DAYS = LAUNCH_FINDING_DAYS + 2;
+export function launchIntelligenceScopes(list: Pick<LaunchList, 'launches'> | null, asOf: Date): IntelligenceScope[] {
+	const albums = (list?.launches ?? [])
+		.filter((launch) => Date.parse(launch.firstPublishedAt) <= asOf.getTime() && launch.elapsedDays <= LAUNCH_REFRESH_DAYS)
+		.map((launch) => launchScope(launch.albumKey));
+	return [GALLERY_LAUNCH_SCOPE, ...albums];
 }
 
 export { standardIntelligenceScopes };

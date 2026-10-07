@@ -9,6 +9,9 @@ import { answerIntelligenceQuestion } from './intelligence-assistant';
 import { projectAlbumComparison } from './intelligence-comparison.server';
 import { loadLatestIntelligenceOutcomes } from './intelligence-private-controls.server';
 import { loadPersistedActionFollowUp } from './intelligence-followup.server';
+import { snapshotFingerprint, type SnapshotContent } from './intelligence-fingerprint';
+import { allowedTargets, decodeFinding } from './intelligence-public.server';
+import { findingVersion } from './intelligence-lifecycle';
 
 type SnapshotRow = { snapshot_id: string; scope_key: string; scope: unknown; generated_at: string; cutoff_at: string | null; coverage: IntelligenceReport['coverage']; findings: unknown; suppressions: unknown; evidence: unknown };
 type LifecycleRow = { finding_id: string; status: IntelligenceAction['kind'] | 'open'; snoozed_until: string | null };
@@ -35,11 +38,6 @@ function decodeInput(value: unknown, scope: IntelligenceScope): IntelligenceRule
 	const coverage = row.coverage;
 	if (!['complete', 'partial', 'unavailable'].includes(String(coverage)) || typeof row.generatedAt !== 'string' || !safeInstant(row.generatedAt)) return null;
 	return { ...row, scope, coverage: coverage as IntelligenceReport['coverage'], previousCoverage: ['complete', 'partial', 'unavailable'].includes(String(row.previousCoverage)) ? row.previousCoverage as IntelligenceReport['coverage'] : null, generatedAt: row.generatedAt, cutoff: safeInstant(row.cutoff), current: typeof row.current === 'number' ? row.current : null, previous: typeof row.previous === 'number' ? row.previous : null } as IntelligenceRuleInput;
-}
-function decodeFinding(value: unknown): Finding | null {
-	const row = safeObject(value); const target = safeObject(row?.target); const evidence = safeObject(row?.evidence);
-	if (!row || !target || !evidence || typeof row.id !== 'string' || typeof row.rule !== 'string' || typeof row.title !== 'string' || typeof row.explanation !== 'string' || typeof row.action !== 'string' || typeof row.reportHref !== 'string' || !['gallery', 'album', 'photo', 'site', 'page'].includes(String(target.kind))) return null;
-	return { ...row, severity: ['high','medium','low'].includes(String(row.severity)) ? row.severity : findingSeverity(row.rule,row.id), target: { kind: target.kind as Finding['target']['kind'], id: typeof target.id === 'string' ? target.id : null, albumKey: typeof target.albumKey === 'string' ? target.albumKey : null }, evidence: evidence as unknown as Finding['evidence'], status: 'open', ...(Array.isArray(row.evidenceLinks) ? { evidenceLinks: row.evidenceLinks.filter((link): link is string => typeof link === 'string' && link.startsWith('/')).slice(0, 6) } : {}) } as Finding;
 }
 function decodeSuppression(value: unknown): IntelligenceSuppression | null {
 	const row = safeObject(value); if (!row || typeof row.rule !== 'string' || typeof row.reason !== 'string') return null;
@@ -80,33 +78,8 @@ function decodeAction(row: Record<string, unknown>): IntelligenceAction | null {
 	};
 }
 
-async function allowedTargets(client: SupabaseClient, scope: IntelligenceScope, findings: Finding[], suppressions: IntelligenceSuppression[]) {
-	const requestedAlbums = scope.kind === 'gallery' ? scope.query.albumKeys : [];
-	const albumKeys = [...new Set([...requestedAlbums, ...findings.map((finding) => finding.target.kind === 'album' ? finding.target.albumKey ?? finding.target.id : finding.target.albumKey).filter((key): key is string => !!key), ...suppressions.map((item) => item.target?.kind === 'album' ? item.target.albumKey ?? item.target.id : item.target?.albumKey).filter((key): key is string => !!key)])];
-	const photoIds = [...new Set([...findings, ...suppressions].flatMap((item) => item.target?.kind === 'photo' && item.target.id ? [item.target.id] : []))];
-	const photosResult = photoIds.length ? await client.from('photo_metadata').select('photo_id, album_key').in('photo_id', photoIds) : { data: [] as Array<{ photo_id: string; album_key: string }>, error: null };
-	if (photosResult.error) throw new Error('public target lookup unavailable');
-	for (const photo of photosResult.data ?? []) if (photo.album_key && !albumKeys.includes(photo.album_key)) albumKeys.push(photo.album_key);
-	const [albumsResult, settingsResult] = await Promise.all([
-		albumKeys.length ? client.from('albums').select('album_key').in('album_key', albumKeys) : Promise.resolve({ data: [] as Array<{ album_key: string }>, error: null }),
-		albumKeys.length ? client.from('album_settings').select('album_key, visibility').in('album_key', albumKeys) : Promise.resolve({ data: [] as Array<{ album_key: string; visibility: string | null }>, error: null })
-	]);
-	if (albumsResult.error || settingsResult.error || photosResult.error) throw new Error('public target lookup unavailable');
-	const albums = new Set((albumsResult.data ?? []).map((row) => row.album_key));
-	const hidden = new Set((settingsResult.data ?? []).filter((row) => row.visibility === 'unlisted').map((row) => row.album_key));
-	const publicAlbum = (key: string | null | undefined) => !!key && albums.has(key) && !hidden.has(key);
-	if (requestedAlbums.some((key) => !publicAlbum(key))) throw new Error('intelligence report unavailable');
-	const photos = new Map((photosResult.data ?? []).map((row) => [row.photo_id, row.album_key]));
-	const visible = (target: Finding['target'] | undefined) => {
-		if (!target || target.kind === 'gallery' || target.kind === 'site' || target.kind === 'page') return true;
-		if (target.kind === 'album') return publicAlbum(target.albumKey ?? target.id);
-		return !!target.id && publicAlbum(photos.get(target.id)) && (!target.albumKey || target.albumKey === photos.get(target.id));
-	};
-	return { findings: findings.filter((finding) => visible(finding.target)).map((finding) => ({ ...finding, evidenceLinks: (finding.evidenceLinks ?? []).filter((link) => !link.startsWith('/photo/') || finding.target.kind === 'photo') })), suppressions: suppressions.filter((item) => visible(item.target)) };
-}
-
 async function resolvePublicTarget(client: SupabaseClient, scope: IntelligenceScope, target: IntelligenceAction['target'] | undefined | null): Promise<NonNullable<IntelligenceAction['target']>> {
-	const candidate = target ?? (scope.kind === 'gallery' ? { kind: 'gallery' as const } : { kind: 'site' as const });
+	const candidate = target ?? (scope.kind === 'sites' ? { kind: 'site' as const } : scope.kind === 'launch' && scope.albumKey ? { kind: 'album' as const, albumKey: scope.albumKey } : { kind: 'gallery' as const });
 	if (!targetMatchesScope(candidate, scope)) throw new Error('public action target does not match report');
 	const visible = await allowedTargets(client, scope, [{
 		id: 'action-target', rule: 'action_target', target: candidate, title: '', explanation: '', action: '',
@@ -125,7 +98,7 @@ async function allVisibleFindings(client: SupabaseClient, scope: IntelligenceSco
 }
 
 function targetMatchesScope(target: IntelligenceAction['target'], scope: IntelligenceScope): boolean {
-	return !!target && (scope.kind === 'gallery' ? ['gallery', 'album', 'photo'].includes(target.kind) : ['site', 'page'].includes(target.kind));
+	return !!target && (scope.kind === 'sites' ? ['site', 'page'] : ['gallery', 'album', 'photo']).includes(target.kind);
 }
 
 async function findingForAction(client: SupabaseClient, scope: IntelligenceScope, ownerId: string, findingId: string): Promise<Finding | undefined> {
@@ -140,12 +113,28 @@ async function findingForAction(client: SupabaseClient, scope: IntelligenceScope
 	return undefined;
 }
 
+/** The current snapshot's id when it holds the same rule version, coverage, findings, suppressions and evidence; otherwise null. */
+async function currentSnapshotIfUnchanged(client: SupabaseClient, scopeKey: string, next: SnapshotContent): Promise<string | null> {
+	const { data, error } = await client.from('analytics_intelligence_snapshot_current').select('snapshot_id, snapshot:analytics_intelligence_snapshots(coverage, findings, suppressions, evidence, rule_version)').eq('scope_key', scopeKey).maybeSingle();
+	const row = safeObject(data); const stored = safeObject(row?.snapshot);
+	if (error || !row || !stored || !uuid(row.snapshot_id) || stored.rule_version !== INTELLIGENCE_RULE_VERSION) return null;
+	return snapshotFingerprint(stored as unknown as SnapshotContent) === snapshotFingerprint(next) ? row.snapshot_id : null;
+}
+
 export async function refreshIntelligence(client: SupabaseClient, scope: IntelligenceScope, options: { ownerId?: string; now?: Date; journeys?: IntelligenceJourneyContext } = {}): Promise<IntelligenceReport> {
 	const checked = parseIntelligenceScope(scope); if (!checked) throw new Error('invalid intelligence scope');
 	const now = options.now ?? new Date();
 	const evidence = await loadIntelligenceEvidence(client, checked, now, options.journeys);
 	const evaluated = evaluateIntelligenceRules(evidence);
 	const scopeKey = intelligenceScopeKey(checked);
+	// One snapshot per change. When the evidence and findings match the current snapshot, the pointer is touched so
+	// the scheduler knows the scope was checked, and no new row is written.
+	const unchanged = await currentSnapshotIfUnchanged(client, scopeKey, { coverage: evidence.coverage, findings: evaluated.findings, suppressions: evaluated.suppressions, evidence });
+	if (unchanged) {
+		const { error: touchError } = await client.from('analytics_intelligence_snapshot_current').upsert({ scope_key: scopeKey, snapshot_id: unchanged, updated_at: now.toISOString() }, { onConflict: 'scope_key' });
+		if (touchError) throw new Error('intelligence snapshot pointer unavailable');
+		return loadIntelligence(client, checked, { ownerId: options.ownerId, page: 0 });
+	}
 	const { data: inserted, error: insertError } = await client.from('analytics_intelligence_snapshots').insert({
 		scope_key: scopeKey, scope: checked, generated_at: evidence.generatedAt, cutoff_at: evidence.cutoff, coverage: evidence.coverage,
 		findings: evaluated.findings, suppressions: evaluated.suppressions, evidence, rule_version: INTELLIGENCE_RULE_VERSION
@@ -162,7 +151,7 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 	const scopeKey = intelligenceScopeKey(checked);
 	const selected = options.snapshotId
 		? await client.from('analytics_intelligence_snapshots').select('snapshot_id, scope_key, scope, generated_at, cutoff_at, coverage, findings, suppressions, evidence').eq('snapshot_id', options.snapshotId).eq('scope_key', scopeKey).maybeSingle()
-		: await client.from('analytics_intelligence_snapshot_current').select('snapshot:analytics_intelligence_snapshots(snapshot_id, scope_key, scope, generated_at, cutoff_at, coverage, findings, suppressions, evidence)').eq('scope_key', scopeKey).maybeSingle();
+		: await client.from('analytics_intelligence_snapshot_current').select('updated_at, snapshot:analytics_intelligence_snapshots(snapshot_id, scope_key, scope, generated_at, cutoff_at, coverage, findings, suppressions, evidence)').eq('scope_key', scopeKey).maybeSingle();
 	const { error } = selected;
 	const snapshot = (options.snapshotId ? safeObject(selected.data) : safeObject(safeObject(selected.data)?.snapshot)) as SnapshotRow | null;
 	if (error || !snapshot || snapshot.scope_key !== scopeKey || !uuid(snapshot.snapshot_id) || parseIntelligenceScope(snapshot.scope) === null) throw new Error('intelligence report unavailable');
@@ -174,7 +163,7 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 	const briefsPage = Math.max(0, Math.min(1000, Math.floor(options.briefsPage ?? 0))); let briefsPageCount = 1;
 	if (options.ownerId) {
 		const [{ data: actionRows, count: actionCount, error: actionError }, { data: briefRows, count: briefCount, error: briefError }, { data: lifecycleRows }] = await Promise.all([
-			client.from('analytics_intelligence_actions').select('id, kind, finding_id, target, actual_at, hypothesis, primary_measure, follow_up_at, note, created_at, reverses_action_id, change_type, channel, campaign, release, variant, outcome, outcome_count, observation_days', { count: 'exact' }).eq('owner_id', options.ownerId).in('target->>kind', checked.kind === 'gallery' ? ['gallery', 'album', 'photo'] : ['site', 'page']).order('created_at', { ascending: false }).order('id', { ascending: false }).range(actionsPage * ACTION_PAGE_SIZE, (actionsPage + 1) * ACTION_PAGE_SIZE - 1),
+			client.from('analytics_intelligence_actions').select('id, kind, finding_id, target, actual_at, hypothesis, primary_measure, follow_up_at, note, created_at, reverses_action_id, change_type, channel, campaign, release, variant, outcome, outcome_count, observation_days', { count: 'exact' }).eq('owner_id', options.ownerId).in('target->>kind', checked.kind === 'sites' ? ['site', 'page'] : ['gallery', 'album', 'photo']).order('created_at', { ascending: false }).order('id', { ascending: false }).range(actionsPage * ACTION_PAGE_SIZE, (actionsPage + 1) * ACTION_PAGE_SIZE - 1),
 			client.from('analytics_intelligence_briefs').select('id, period_key, kind, created_at, body, findings, snapshot_ids, source_windows, suppressions, late', { count: 'exact' }).eq('owner_id', options.ownerId).order('created_at', { ascending: false }).order('id', { ascending: false }).range(briefsPage * INTELLIGENCE_BRIEF_PAGE_SIZE, (briefsPage + 1) * INTELLIGENCE_BRIEF_PAGE_SIZE - 1),
 			client.from('analytics_intelligence_finding_lifecycle').select('finding_id, status, snoozed_until').eq('owner_id', options.ownerId).eq('scope_key', scopeKey)
 		]);
@@ -187,9 +176,15 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 		const latestOutcomes = await loadLatestIntelligenceOutcomes(client, options.ownerId, actions.filter((item) => item.kind === 'record').map((item) => item.id));
 		actions = actions.map((item) => { const latest = latestOutcomes.get(item.id); return latest ? { ...item, outcome: latest.outcome, outcomeCount: latest.outcomeCount } : item; });
 		briefs = safeArray<Record<string, unknown>>(briefRows).map(decodeIntelligenceBrief).filter((item): item is IntelligenceBrief => !!item);
-		const {data: flowKey,error: flowKeyError}=await client.rpc('analytics_intelligence_incident_scope',{p_scope:checked,p_rule:'rendering_download_reliability'});
-		if(flowKeyError || typeof flowKey!=='string') throw new Error('incident state unavailable');
-		const {data: incidents,error: incidentError}=await client.from('analytics_intelligence_incidents').select('finding_id,status,acknowledged_until').in('scope_key',[scopeKey,'collection_health',flowKey]).eq('status','acknowledged');
+		// The flow incident key exists only for a gallery query: the database derives it from the scope's query and
+		// returns null for a site or launch scope, which has none.
+		let flowKey: string | null = null;
+		if (checked.kind === 'gallery') {
+			const {data,error: flowKeyError}=await client.rpc('analytics_intelligence_incident_scope',{p_scope:checked,p_rule:'rendering_download_reliability'});
+			if(flowKeyError || typeof data!=='string') throw new Error('incident state unavailable');
+			flowKey = data;
+		}
+		const {data: incidents,error: incidentError}=await client.from('analytics_intelligence_incidents').select('finding_id,status,acknowledged_until').in('scope_key',[scopeKey,'collection_health',...(flowKey ? [flowKey] : [])]).eq('status','acknowledged');
 		if(incidentError) throw new Error('incident state unavailable');
 		const acknowledged=new Set(safeArray<Record<string,unknown>>(incidents).filter(row=>typeof row.finding_id==='string' && safeInstant(row.acknowledged_until) && Date.parse(String(row.acknowledged_until))>Date.now()).map(row=>row.finding_id));
 		const lifecycle = new Map(safeArray<LifecycleRow>(lifecycleRows).map((row) => [row.finding_id, row]));
@@ -217,7 +212,8 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 	prioritizeFindings(visible.findings);
 	const pageCount = Math.max(1, Math.ceil(visible.findings.length / INTELLIGENCE_PAGE_SIZE));
 	const currentPage = Math.min(page, pageCount - 1);
-	return { snapshotId: snapshot.snapshot_id, scope: checked, generatedAt: snapshot.generated_at, cutoff: snapshot.cutoff_at, coverage: snapshot.coverage, findings: visible.findings.slice(currentPage * INTELLIGENCE_PAGE_SIZE, (currentPage + 1) * INTELLIGENCE_PAGE_SIZE), suppressions: visible.suppressions, actions, briefs, page: currentPage, pageCount, actionsPage, actionsPageCount, briefsPage, briefsPageCount, owner: !!options.ownerId };
+	const checkedAt = options.snapshotId ? snapshot.generated_at : safeInstant(safeObject(selected.data)?.updated_at) ?? snapshot.generated_at;
+	return { snapshotId: snapshot.snapshot_id, scope: checked, generatedAt: snapshot.generated_at, checkedAt, cutoff: snapshot.cutoff_at, coverage: snapshot.coverage, findings: visible.findings.slice(currentPage * INTELLIGENCE_PAGE_SIZE, (currentPage + 1) * INTELLIGENCE_PAGE_SIZE), suppressions: visible.suppressions, actions, briefs, page: currentPage, pageCount, actionsPage, actionsPageCount, briefsPage, briefsPageCount, owner: !!options.ownerId };
 }
 
 export async function recordIntelligenceAction(client: SupabaseClient, ownerId: string, scope: IntelligenceScope, action: Omit<IntelligenceAction, 'id' | 'createdAt' | 'followUpAt'> & { actionId?: string | null }): Promise<IntelligenceAction> {
@@ -239,7 +235,8 @@ export async function recordIntelligenceAction(client: SupabaseClient, ownerId: 
 		p_primary_measure: action.primaryMeasure ?? null, p_follow_up_at: followUpAt, p_note: action.note ?? null, p_reverses_action_id: action.actionId ?? null,
 		p_change_type: action.changeType ?? null, p_channel: action.channel ?? null, p_campaign: action.campaign ?? null, p_release: action.release ?? null,
 		p_variant: action.variant ?? null, p_outcome: action.outcome ?? null, p_outcome_count: action.outcomeCount ?? null, p_observation_days: observationDays,
-		p_target_context: { target, scope: checked }
+		// The dismissed version, so a launch finding whose substance later changes shows again (intelligence-lifecycle.ts).
+		p_target_context: { target, scope: checked, ...(finding && (action.kind === 'dismiss' || action.kind === 'snooze') ? { findingVersion: findingVersion(finding) } : {}) }
 	}).single();
 	const row = safeObject(data);
 	if (error || !row || !uuid(row.id)) throw new Error('intelligence action storage unavailable');
