@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { oldAddressTarget } from './old-addresses';
+import { oldAddressTarget, oldRootTarget } from './old-addresses';
 
 /** The address as a reader sees it: path, query, anchor. */
 function moved(pathname: string, search = ''): string | null {
@@ -18,6 +18,9 @@ const TABLE: Array<[string, string, string]> = [
 	['/gallery', '?section=overview&scope=album&albums=Re7kho', '/albums/Re7kho'],
 	['/gallery', '?section=albums', '/albums'],
 	['/gallery', '?section=albums&scope=album&albums=Re7kho', '/albums/Re7kho'],
+	['/gallery', '?section=albums&albums=Re7kho', '/albums/Re7kho'],
+	['/gallery', '?section=albums&scope=selected&albums=Re7kho', '/albums/Re7kho'],
+	['/gallery', '?section=albums&scope=all&albums=Re7kho', '/albums'],
 	['/gallery', '?section=albums&scope=selected&albums=Re7kho,fJKdsB,jq1Rp7', '/albums?compare=Re7kho%2CfJKdsB%2Cjq1Rp7'],
 	['/gallery', '?section=photos', '/photos'],
 	['/gallery', '?section=photos&period=7&measure=downloads&scope=album&albums=Re7kho&photo_rank=rising&photo_page=2', '/photos?period=7&measure=downloads&scope=album&albums=Re7kho&photo_page=2&photo_rank=rising'],
@@ -80,8 +83,9 @@ test('an album key is validated before it goes into a path', () => {
 	assert.equal(moved('/gallery', '?scope=album&albums=Re7kho,..'), '/');
 	// Selected scope keeps the valid keys only, and needs two of them.
 	assert.equal(moved('/gallery', '?section=albums&scope=selected&albums=Re7kho,..,fJKdsB'), '/albums?compare=Re7kho%2CfJKdsB');
-	assert.equal(moved('/gallery', '?section=albums&scope=selected&albums=Re7kho,..'), '/albums');
-	assert.equal(moved('/gallery', '?section=albums&scope=selected&albums=Re7kho,Re7kho'), '/albums');
+	assert.equal(moved('/gallery', '?section=albums&scope=selected&albums=Re7kho,..'), '/albums/Re7kho');
+	assert.equal(moved('/gallery', '?section=albums&scope=selected&albums=..,a%2Fb'), '/albums');
+	assert.equal(moved('/gallery', '?section=albums&scope=selected&albums=Re7kho,Re7kho'), '/albums/Re7kho');
 });
 
 test('only the query the new page reads is carried over, and nothing else is invented', () => {
@@ -101,4 +105,21 @@ test('every target is a path on the report host: nothing the old query holds can
 			assert.equal(new URL(`${target.pathname}${target.search}${target.hash}`, origin).origin, origin, `${path}${search}`);
 		}
 	}
+});
+
+const root = (search: string) => { const target = oldRootTarget('/', search); return target ? `${target.pathname}${target.search}${target.hash}` : null; };
+
+test('the root with a query the old site report read is the site report, with those parameters kept', () => {
+	assert.equal(root('?period=30'), '/sites?period=30');
+	assert.equal(root('?period=7&section=writing'), '/sites?period=7&section=writing');
+	assert.equal(root('?section=overview'), '/sites?section=overview');
+	assert.equal(root('?view=actions&section=profile&period=90&page=2&actionsPage=1'), '/sites?period=90&section=profile&page=2&actionsPage=1&view=actions');
+	// Only what the site report read is carried.
+	assert.equal(root('?period=7&evil=1&albums=Re7kho&next=//evil.invalid'), '/sites?period=7');
+});
+
+test('a bare root, or a root query with nothing the site report read, stays on Home', () => {
+	for (const search of ['', '?', '?x=1', '?albums=Re7kho', '?measure=downloads&scope=all', '?period=']) assert.equal(root(search), null, search);
+	// Only the root: no other path is the site report.
+	for (const path of ['/sites', '/albums', '/gallery', '/data', '/photography', '//', '/index']) assert.equal(oldRootTarget(path, '?period=7'), null, path);
 });

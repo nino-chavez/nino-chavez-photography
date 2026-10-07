@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CORRECTION_NOTE_MAX, eventPage, legacyCorrection, legacyReversal, reversibleKeys, v2Correction, v2Reversal } from './corrections';
+import { CORRECTION_NOTE_MAX, describeEvent, eventPage, legacyWhat, v2What, legacyCorrection, legacyReversal, reversibleKeys, v2Correction, v2Reversal } from './corrections';
 
 const form = (fields: Record<string, string>) => {
 	const data = new FormData();
@@ -53,4 +53,16 @@ test('the event page is a small whole number, and the first page for anything el
 	assert.equal(eventPage('abc'), 0);
 	assert.equal(eventPage('-4'), 0);
 	assert.equal(eventPage('999999'), 10_000);
+});
+
+test('an action is described in the words the counts use, with where and when, and no identifier', () => {
+	assert.equal(legacyWhat('view'), 'Photo opened');
+	assert.equal(legacyWhat('album_open'), 'Album opened');
+	assert.equal(legacyWhat('something_new'), 'Something new');
+	assert.equal(v2What('photo_exposed'), 'Photo shown on screen');
+	assert.equal(v2What('download_requested'), 'Download requested');
+	assert.equal(describeEvent({ what: 'Photo opened', album: 'JCA at ACC', page: null, at: 'Oct 2, 3:00 PM CDT', source: 'profile' }), 'Photo opened · JCA at ACC · Oct 2, 3:00 PM CDT · via profile');
+	assert.equal(describeEvent({ what: 'Gallery page viewed', album: null, page: '/albums', at: 'Oct 2' }), 'Gallery page viewed · /albums · Oct 2');
+	assert.equal(describeEvent({ what: 'Photo opened', album: 'JCA', page: '/albums/x', at: 'Oct 2' }), 'Photo opened · JCA (/albums/x) · Oct 2');
+	assert.equal(describeEvent({ what: 'Download requested', album: null, page: null, at: 'Oct 2' }), 'Download requested · Gallery · Oct 2');
 });

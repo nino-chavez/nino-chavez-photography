@@ -120,3 +120,16 @@ test('the data quality page and settings keep their clean addresses and the inte
 		assert.equal((await request(`https://ninochavez.co/photography/analytics${clean}?/anything`, 'POST')).status, 404);
 	}
 });
+
+test('a root address with the old site report query goes to /sites once; a bare root and other hosts are left alone', async () => {
+	const where = async (url: string, method = 'GET') => (await request(url, method)).headers.get('location');
+	assert.equal(await where('https://analytics.ninochavez.co/?period=30'), 'https://analytics.ninochavez.co/sites?period=30');
+	assert.equal(await where('https://analytics.ninochavez.co/?period=7&section=writing&evil=1'), 'https://analytics.ninochavez.co/sites?period=7&section=writing');
+	assert.equal((await request('https://analytics.ninochavez.co/?period=30', 'HEAD')).status, 308);
+	assert.equal(await where('https://analytics.ninochavez.co/'), null);
+	assert.equal(await where('https://analytics.ninochavez.co/?x=1'), null);
+	// A post is never redirected, and the apex site's own root is not a report address.
+	assert.equal(await where('https://analytics.ninochavez.co/?period=30', 'POST'), null);
+	assert.equal(await where('https://ninochavez.co/?period=30'), null);
+	assert.equal(await where('http://127.0.0.1:5189/?period=30'), null);
+});

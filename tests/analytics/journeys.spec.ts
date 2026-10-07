@@ -48,6 +48,18 @@ test('save, update and reopen a view keeps the chosen dates and album',async({pa
  await page.locator('li').filter({hasText:name}).getByRole('button',{name:/^Delete/}).click();
  await expect(page.getByText(name,{exact:true})).toHaveCount(0);
 });
+test('a shortlist survives paging and going back, and is offered only to the signed-in owner',async({page})=>{
+ await page.goto(photos+'?period=7');
+ await expect(page.getByRole('button',{name:'Table',exact:true})).toBeEnabled();
+ await page.getByRole('checkbox',{name:'Shortlist',exact:true}).first().check();
+ await page.getByRole('link',{name:'Next',exact:true}).click();
+ await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
+ await page.goBack();
+ await expect(page.getByText(/Page 1 of \d+/)).toBeVisible();
+ await expect(page.getByRole('checkbox',{name:'Shortlist',exact:true}).first()).toBeChecked();
+ await expect(page.getByRole('link',{name:/Shortlist CSV \(1\)/})).toBeVisible();
+ await expect(page.getByText(/Shortlisting and saved views need/)).toHaveCount(0);
+});
 test('photo inspection supports keyboard focus and shortlist export',async({page})=>{
  await page.goto(photos+'?'+query);
  const trigger=page.locator('ul.grid .thumb').first();
@@ -88,10 +100,10 @@ test('a sharing note can be created, updated and deleted on the album report',as
 test('a classification correction on the data page is recorded and can be reversed',async({page})=>{
  await page.goto('/photography/analytics/data?period=30#corrections');
  const form=page.locator('form[action*="correctClassification"]');
- const id=await form.locator('select[name="eventId"] option').evaluateAll(options=>(options.find(o=>o.textContent?.includes(' · view')&&o.textContent?.includes('gallery-grid')) as HTMLOptionElement)?.value);
+ const id=await form.locator('select[name="eventId"] option').evaluateAll(options=>(options.find(o=>o.textContent?.startsWith('Photo opened')) as HTMLOptionElement)?.value);
  expect(id).toBeTruthy();
- await form.getByRole('combobox',{name:'Retained event',exact:true}).selectOption(id!);
- await form.getByRole('combobox',{name:'Classification',exact:true}).selectOption('test');
+ await form.getByRole('combobox',{name:'Action to correct',exact:true}).selectOption(id!);
+ await form.getByRole('combobox',{name:'New class',exact:true}).selectOption('test');
  const reason='Synthetic browser correction '+Date.now();
  await form.getByRole('textbox',{name:'Reason',exact:true}).fill(reason);
  await form.getByRole('button',{name:'Record correction',exact:true}).click();

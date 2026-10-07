@@ -23,11 +23,11 @@ export type V2Class = (typeof V2_CLASSES)[number];
 
 export const CLASS_LABELS: Record<V2Class, string> = {
 	audience: 'Audience', operator: 'Operator', test: 'Test', known_crawler: 'Known crawler',
-	suspected_automation: 'Suspected automation', unclassified: 'Unclassified', self_excluded: 'Self excluded'
+	suspected_automation: 'Suspected automation', unclassified: 'Unclassified', self_excluded: 'My own browser, left out'
 };
 
 const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
-const REASON_ERROR = `Use a retained event, a supported classification, and a reason of 1–${CORRECTION_NOTE_MAX.toLocaleString('en-US')} characters.`;
+const REASON_ERROR = `Choose an action, a class, and give a reason of 1–${CORRECTION_NOTE_MAX.toLocaleString('en-US')} characters.`;
 
 function reason(form: FormData): string | null {
 	const note = form.get('note')?.toString().trim();
@@ -50,7 +50,7 @@ export function legacyCorrection(form: FormData): Parsed<{ eventId: number; clas
 
 export function legacyReversal(form: FormData): Parsed<{ eventId: number }> {
 	const eventId = legacyEventId(form.get('eventId'));
-	return eventId === null ? { ok: false, error: 'Choose the event whose latest correction you want to reverse.' } : { ok: true, eventId };
+	return eventId === null ? { ok: false, error: 'Choose the action whose latest correction you want to reverse.' } : { ok: true, eventId };
 }
 
 export function v2Correction(form: FormData): Parsed<{ eventId: string; classification: V2Class; note: string }> {
@@ -63,7 +63,7 @@ export function v2Correction(form: FormData): Parsed<{ eventId: string; classifi
 
 export function v2Reversal(form: FormData): Parsed<{ eventId: string }> {
 	const eventId = form.get('eventId')?.toString();
-	return eventId && UUID.test(eventId) ? { ok: true, eventId } : { ok: false, error: 'Choose the event whose latest correction you want to reverse.' };
+	return eventId && UUID.test(eventId) ? { ok: true, eventId } : { ok: false, error: 'Choose the action whose latest correction you want to reverse.' };
 }
 
 /** The page of events asked for. Anything that is not a small whole number is the first page. */
@@ -87,8 +87,34 @@ export function reversibleKeys(log: LoggedCorrection[]): Set<string> {
 	return new Set(log.filter((row) => !row.reversed && row.version === newest.get(row.eventId)).map(correctionKey));
 }
 
-export interface EventChoice { id: string; album: string | null; what: string; at: string; source: string | null }
-export interface CorrectionRow { eventId: string; version: number; classification: string; note: string; correctedAt: string | null; reversed: boolean; context: string; canReverse: boolean }
+/** What a retained action was, in the words the counts use. */
+const LEGACY_WHAT: Record<string, string> = { view: 'Photo opened', album_open: 'Album opened', favorite: 'Favorited', download: 'Download requested', share: 'Shared' };
+const sentence = (value: string) => `${value[0].toUpperCase()}${value.slice(1)}`;
+export const legacyWhat = (eventType: string) => LEGACY_WHAT[eventType] ?? sentence(eventType.replaceAll('_', ' '));
+/** The detailed events' own names read as jargon ("exposed", "rendered"), so the ones people see are said as what happened on screen. */
+const V2_WHAT: Record<string, string> = {
+	photo_exposed: 'Photo shown on screen', album_exposed: 'Album shown on screen', photo_rendered: 'Photo loaded', photo_load_failed: 'Photo failed to load',
+	experiment_exposed: 'Page variant shown', search_result_selected: 'Search result chosen', filters_applied: 'Filters used'
+};
+export const v2What = (eventName: string) => V2_WHAT[eventName] ?? sentence(eventName.replaceAll('_', ' '));
+
+/**
+ * One retained action as a line a person can recognise: what happened, where (the album, else the page, else the
+ * gallery), when, and for the older records the source tag it carried. Nothing here is an identifier.
+ */
+export function describeEvent(input: { what: string; album: string | null; page: string | null; at: string; source?: string | null }): string {
+	const where = input.album && input.page ? `${input.album} (${input.page})` : input.album ?? input.page ?? 'Gallery';
+	return `${input.what} · ${where} · ${input.at}${input.source ? ` · via ${input.source}` : ''}`;
+}
+
+/** Said in place of a description when the record itself is not there to describe. */
+export const EVENT_GONE = 'This action\'s record is no longer kept, so its details cannot be shown.';
+export const EVENT_UNREAD = 'Its details could not be read just now.';
+
+/** An action that can be chosen to correct: `label` is what the person reads; the id is only the form's value. */
+export interface EventChoice { id: string; label: string }
+/** `context` says what the action was; `reference` is its identifier, shown as secondary text. */
+export interface CorrectionRow { eventId: string; version: number; classification: string; note: string; correctedAt: string | null; reversed: boolean; context: string; reference: string; canReverse: boolean }
 export interface CorrectionsView {
 	page: number;
 	hasMore: boolean;

@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect,type Page} from '@playwright/test';
 
 // Local rehearsal suite (npm run analytics:ui:local). It needs the synthetic local project; see docs/ANALYTICS_BUILD.md.
 const photos='/photography/analytics/photos';
@@ -17,22 +17,24 @@ test('the retired gallery report addresses go to their new homes in one hop',asy
  expect(await where('/photography/analytics/operator/export.csv?period=7')).toBe('/photography/analytics/photos/export.csv?period=7');
 });
 
-test('photo results use pages inside the photo view',async({page})=>{
+// The explorer's controls switch on once the page has hydrated; a choice made before then is overwritten by the page's own state.
+const hydrated=(page:Page)=>expect(page.getByRole('button',{name:'Table',exact:true})).toBeEnabled();
+
+test('photo results use pages inside the photo view, and a visitor is offered no shortlist',async({page})=>{
  await page.goto(photos+'?period=7');
+ await hydrated(page);
  await expect(page.getByRole('link',{name:'Next',exact:true})).toBeEnabled();
  await expect(page.locator('ul.grid > li')).toHaveCount(12);
- await page.getByRole('checkbox',{name:'Shortlist',exact:true}).first().check();
+ await expect(page.getByRole('checkbox',{name:'Shortlist'})).toHaveCount(0);
+ await expect(page.getByText(/Shortlisting and saved views need/)).toBeVisible();
  await page.getByRole('link',{name:'Next',exact:true}).click();
  await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
  await expect.poll(()=>new URL(page.url()).searchParams.get('photo_page')).toBe('1');
  await page.goBack();
  await expect(page.getByText(/Page 1 of \d+/)).toBeVisible();
- await expect(page.getByRole('checkbox',{name:'Shortlist',exact:true}).first()).toBeChecked();
- await expect(page.getByRole('link',{name:/Shortlist CSV \(1\)/})).toBeVisible();
- await page.getByRole('link',{name:'Next',exact:true}).click();
- await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
  await page.locator('ul.grid .thumb').first().click();
  await expect(page.getByRole('dialog')).toBeVisible();
+ await expect(page.getByRole('dialog').getByRole('button',{name:/shortlist/i})).toHaveCount(0);
  await page.getByRole('button',{name:'Close photo details'}).click();
  await expect(page.locator('ul.grid > li')).toHaveCount(12);
 });
@@ -40,6 +42,7 @@ test('photo results use pages inside the photo view',async({page})=>{
 test('reports, filters and CSV are available without a session',async({page})=>{
  const response=await page.goto(photos+'?period=7');
  expect(response?.status()).toBe(200);
+ await hydrated(page);
  await expect(page.getByRole('heading',{name:'Photos across the gallery',exact:true})).toBeVisible();
  await expect(page.locator('form[method="POST"]')).toHaveCount(0);
  await page.getByRole('combobox',{name:'Count',exact:true}).selectOption('album_opens');

@@ -236,11 +236,11 @@
 				{/await}
 			</section>
 			<section id="corrections" class="panel" aria-labelledby="corrections-title">
-				<h2 id="corrections-title">Correcting how an event is classified</h2>
+				<h2 id="corrections-title">Correct how an action is classed</h2>
 				{#if data.corrections}
 					<ClassificationCorrections corrections={data.corrections} {form} pageHref={(pageNumber) => dataPath(hostname, `?period=${view.days}&event_page=${pageNumber}#corrections`)} />
 				{:else}
-					<p>When you are signed in you can reclassify a retained event, with a reason, and reverse it later. <a href={signInHref}>Sign in with a magic link</a> to see the events and the history.</p>
+					<p>When you are signed in you can give a counted action a different class, with a reason, and reverse it later. <a href={signInHref}>Sign in with a magic link</a> to see the actions and the corrections made so far.</p>
 				{/if}
 			</section>
 		</div>

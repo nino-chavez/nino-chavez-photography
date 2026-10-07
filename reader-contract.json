@@ -38,7 +38,8 @@
         "src/lib/analytics/corrections.ts",
         "src/lib/analytics/corrections.server.ts",
         "src/lib/analytics/sharing-notes.ts",
-        "src/lib/analytics/sharing-notes.server.ts"
+        "src/lib/analytics/sharing-notes.server.ts",
+        "src/lib/analytics/shortlist.ts"
       ],
       "manualReview": {
         "evidencePath": "docs/reader-audits/gallery-interface.json"

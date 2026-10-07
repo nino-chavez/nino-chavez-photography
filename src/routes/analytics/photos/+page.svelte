@@ -1,18 +1,19 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { onMount, tick } from 'svelte';
 	import { albumIndexPath, photosPath, settingsPath } from '$lib/analytics/report-paths';
 	import { changeLabel, countLabel, csvRowCount, measureLabel, periodFor, PHOTO_RANK_LABELS, filterParams, photoParams } from '$lib/analytics/photo-view';
 	import { describeSavedView, SAVED_VIEW_NAME_MAX, savedViewParams } from '$lib/analytics/saved-views';
 	import { PHOTO_RANKS, type PhotoRank } from '$lib/analytics/report-contract';
+	import { readShortlist, signInNeeds, writeShortlist } from '$lib/analytics/shortlist';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	type Photo = PageData['view']['report']['photos'][number];
-	const SHORTLIST_KEY = 'analytics:photo-shortlist';
 	const VIEW_KEY = 'analytics:photo-view';
 
 	const view = $derived(data.view);
@@ -23,6 +24,7 @@
 	const pageCount = $derived(Math.max(1, report.photoPagination?.pageCount ?? 0));
 	const total = $derived(report.photoPagination?.total ?? report.photos.length);
 	const hostname = $derived(page.url.hostname);
+	const signInHref = $derived(`${base}/login?next=${encodeURIComponent('/analytics/photos')}`);
 	const names = $derived(new Map(view.albums.map((album) => [album.albumKey, album.name])));
 	const albumName = (key: string) => names.get(key) ?? 'Album';
 	const measure = $derived(measureLabel(query.measure));
@@ -55,9 +57,8 @@
 		hydrated = true;
 		try {
 			layout = sessionStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'images';
-			const stored = JSON.parse(sessionStorage.getItem(SHORTLIST_KEY) ?? '[]');
-			shortlist = Array.isArray(stored) ? stored.filter((value): value is string => typeof value === 'string').slice(0, 500) : [];
-		} catch { shortlist = []; }
+		} catch { /* the layout then starts as images */ }
+		shortlist = data.owner ? readShortlist() : [];
 	});
 
 	const albumChoices = $derived(view.albums.filter((album) => !albumSearch.trim() || album.name.toLowerCase().includes(albumSearch.trim().toLowerCase())).slice(0, 80));
@@ -100,7 +101,7 @@
 	}
 	function toggleShortlist(photoId: string) {
 		shortlist = shortlist.includes(photoId) ? shortlist.filter((id) => id !== photoId) : [...shortlist, photoId];
-		try { sessionStorage.setItem(SHORTLIST_KEY, JSON.stringify(shortlist)); } catch { /* the shortlist then lasts for this page only */ }
+		writeShortlist(shortlist);
 	}
 	function previewFailed(url: string) {
 		failedPreviews = new Set([...failedPreviews, url]);
@@ -252,7 +253,7 @@
 								<div class="card-body">
 									<p class="name">{albumName(photo.albumKey)}</p>
 									{#if cardNote(photo)}<p class="meta">{cardNote(photo)}</p>{/if}
-									<label class="check"><input type="checkbox" checked={shortlist.includes(photo.photoId)} disabled={!hydrated} onchange={() => toggleShortlist(photo.photoId)} /><span>Shortlist</span></label>
+									{#if data.owner}<label class="check"><input type="checkbox" checked={shortlist.includes(photo.photoId)} disabled={!hydrated} onchange={() => toggleShortlist(photo.photoId)} /><span>Shortlist</span></label>{/if}
 								</div>
 							</li>
 						{/each}
@@ -275,7 +276,7 @@
 												{#if photo.imageUrl && !failedPreviews.has(photo.imageUrl)}<img src={photo.imageUrl} alt="" loading="lazy" decoding="async" onerror={() => previewFailed(photo.imageUrl!)} />{:else}<span class="none">Inspect</span>{/if}
 											</button>
 											{#if columns.identity}<span class="ref">{photo.photoId}</span>{/if}
-											<label class="check"><input type="checkbox" checked={shortlist.includes(photo.photoId)} disabled={!hydrated} onchange={() => toggleShortlist(photo.photoId)} /><span>Shortlist<span class="sr-only"> {photo.photoId}</span></span></label>
+											{#if data.owner}<label class="check"><input type="checkbox" checked={shortlist.includes(photo.photoId)} disabled={!hydrated} onchange={() => toggleShortlist(photo.photoId)} /><span>Shortlist<span class="sr-only"> {photo.photoId}</span></span></label>{/if}
 										</th>
 										{#if columns.album}<td>{albumName(photo.albumKey)}</td>{/if}
 										{#if columns.current}<td class="num">{countLabel(photo.count, report.coverage)}</td>{/if}
@@ -296,9 +297,10 @@
 				</nav>
 				<div class="exports">
 					<a class="primary" href={csvBase}>Export CSV · {rowsLabel} rows</a>
-					{#if shortlist.length}<a class="secondary" href={shortlistCsv}>Shortlist CSV ({shortlist.length})</a>{/if}
+					{#if data.owner && shortlist.length}<a class="secondary" href={shortlistCsv}>Shortlist CSV ({shortlist.length})</a>{/if}
 				</div>
-				<p class="note">The file holds every photo in these filters, not only this page, plus the album-level actions. The shortlist stays in this browser.{#if report.dataAsOf}{' '}Updated {when(report.dataAsOf)}.{/if}</p>
+				<p class="note">The file holds every photo in these filters, not only this page, plus the album-level actions. {#if data.owner}The shortlist stays in this browser.{/if}{#if report.dataAsOf}{' '}Updated {when(report.dataAsOf)}.{/if}</p>
+				{#if !data.owner}<p class="note">{signInNeeds(['shortlisting', 'saved views'])} <a href={signInHref}>sign-in</a>. Everything else on this page is open by direct link.</p>{/if}
 			</section>
 		{/if}
 
@@ -354,7 +356,7 @@
 			<p class="note">Photo reference <span class="ref">{selected.photoId}</span></p>
 			<div class="exports">
 				{#if selected.photoSegment}<a class="primary" href={`https://ninochavez.co/photography/photo/${encodeURIComponent(selected.photoSegment)}`}>Open photo to share or download</a>{:else}<p class="note">A public photo address is unavailable.</p>{/if}
-				<button type="button" class="secondary" onclick={() => toggleShortlist(selected!.photoId)}>{shortlist.includes(selected.photoId) ? 'Remove from shortlist' : 'Add to shortlist'}</button>
+				{#if data.owner}<button type="button" class="secondary" onclick={() => toggleShortlist(selected!.photoId)}>{shortlist.includes(selected.photoId) ? 'Remove from shortlist' : 'Add to shortlist'}</button>{/if}
 			</div>
 		</dialog>
 	{/if}

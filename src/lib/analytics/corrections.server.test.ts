@@ -39,17 +39,25 @@ test('retained events and the correction history are read for the days asked, fi
 			{ id: 2, engagement_event_id: 1000, classification: 'unclassified', classification_version: 1, note: 'first', corrected_at: '2026-10-03T09:00:00Z' },
 			{ id: 1, engagement_event_id: 900, classification: 'operator', classification_version: 1, note: 'older event', corrected_at: '2026-10-01T09:00:00Z' }
 		] },
-		analytics_events_v2: { data: [] },
+		analytics_events_v2: (filters) => (filters.in
+			? { data: [{ event_id: '0b7c1f34-6a2e-4d5b-8c11-3f9a7d2e6b40', event_name: 'photo_opened', occurred_at: '2026-10-02T15:00:00Z', album_key: 'Re7kho', photo_id: null, traffic_context: 'audience', properties: { canonical_path: '/albums/Re7kho', visitor: 'secret' } }] }
+			: { data: [{ event_id: 'aaaaaaaa-6a2e-4d5b-8c11-3f9a7d2e6b40', event_name: 'gallery_page_viewed', occurred_at: '2026-10-02T16:00:00Z', album_key: null, photo_id: null, traffic_context: 'audience', properties: { canonical_path: '/albums' } }] }),
 		analytics_event_v2_classifications: { data: [{ event_id: '0b7c1f34-6a2e-4d5b-8c11-3f9a7d2e6b40', classification: 'self_excluded', classification_version: 1, note: 'me', corrected_at: '2026-10-03T08:00:00Z', reversed: true }] }
 	});
 	const view = await loadCorrections(client, { start: '2026-09-06', end: '2026-10-05' }, 0, names);
 	assert.equal(view.legacy.events.length, 50);
 	assert.equal(view.hasMore, true);
-	assert.match(view.legacy.events[0].album ?? '', /JCA at ACC/);
+	assert.match(view.legacy.events[0].label, /^Album opened · JCA at ACC · .* · via profile$/);
 	// The newest version of an event is the one that can be reversed; the earlier one is history.
 	assert.deepEqual(view.legacy.log.map((row) => [row.eventId, row.version, row.canReverse]), [['1000', 2, true], ['1000', 1, false], ['900', 1, true]]);
 	// An event outside this page is still described: it was fetched by id.
-	assert.match(view.legacy.log[2].context, /JCA at ACC · album open/);
+	assert.match(view.legacy.log[2].context, /^Album opened · JCA at ACC · /);
+	assert.equal(view.legacy.log[2].reference, 'Record 900');
+	// A detailed event is described the same way, from its album and page; its identifier is the reference, not the headline.
+	assert.match(view.v2.events[0].label, /^Gallery page viewed · \/albums · /);
+	assert.match(view.v2.log[0].context, /^Photo opened · JCA at ACC \(\/albums\/Re7kho\) · /);
+	assert.equal(view.v2.log[0].reference, '0b7c1f34-6a2e-4d5b-8c11-3f9a7d2e6b40');
+	assert.doesNotMatch(view.v2.log[0].context, /0b7c1f34|secret/);
 	assert.ok(reads.some((read) => read.table === 'engagement_events' && read.filters.in));
 	// A correction that was already reversed has no button.
 	assert.equal(view.v2.log[0].canReverse, false);
@@ -114,4 +122,14 @@ test('a version 2 correction and a reversal each go to their own record', async 
 	const refused = await reverseCorrection(one.client, 'owner-1', 'legacy', new FormData()) as { status: number };
 	assert.equal(refused.status, 400);
 	assert.equal(one.rpcs.length, 3);
+});
+
+test('an action whose record is gone, or could not be read, says plainly which', async () => {
+	const gone = fake({ analytics_event_v2_classifications: { data: [{ event_id: 'cccccccc-6a2e-4d5b-8c11-3f9a7d2e6b40', classification: 'test', classification_version: 1, note: 'x', corrected_at: '2026-10-03T08:00:00Z', reversed: false }] }, engagement_classification_corrections: { data: [{ id: 1, engagement_event_id: 5, classification: 'test', classification_version: 1, note: 'x', corrected_at: '2026-10-03T08:00:00Z' }] } });
+	const view = await loadCorrections(gone.client, { start: '2026-09-06', end: '2026-10-05' }, 0, names);
+	assert.match(view.v2.log[0].context, /record is no longer kept/);
+	assert.match(view.legacy.log[0].context, /record is no longer kept/);
+	const unread = fake({ analytics_events_v2: (filters) => (filters.in ? { error: { message: 'down' } } : { data: [] }), analytics_event_v2_classifications: { data: [{ event_id: 'cccccccc-6a2e-4d5b-8c11-3f9a7d2e6b40', classification: 'test', classification_version: 1, note: 'x', corrected_at: '2026-10-03T08:00:00Z', reversed: false }] } });
+	const second = await loadCorrections(unread.client, { start: '2026-09-06', end: '2026-10-05' }, 0, names);
+	assert.match(second.v2.log[0].context, /could not be read just now/);
 });

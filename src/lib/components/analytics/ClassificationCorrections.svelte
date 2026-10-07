@@ -3,7 +3,7 @@
 	import { CLASS_LABELS, CORRECTION_NOTE_MAX, LEGACY_CLASSES, V2_CLASSES, type CorrectionRow, type CorrectionsView, type EventChoice } from '$lib/analytics/corrections';
 
 	/**
-	 * Correcting how a retained event is classified, for the signed-in owner. Each correction is a new version
+	 * Correcting how a recorded action is classed, for the signed-in owner. Each correction is a new version
 	 * with a reason; the latest can be reversed, and nothing is erased. `pageHref` is where "newer" and "older"
 	 * events go; `form` is what the last action returned.
 	 */
@@ -15,33 +15,32 @@
 	let { corrections, form, pageHref }: Props = $props();
 
 	const stamp = (value: string | null) => (value ? new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(new Date(value)) : 'Not recorded');
-	const choiceText = (event: EventChoice) => `${event.album} · ${event.what} · ${event.at}${event.source ? ` · ${event.source}` : ''}`;
 	const classText = (value: string) => CLASS_LABELS[value as keyof typeof CLASS_LABELS] ?? value.replaceAll('_', ' ');
 
 	const kinds = $derived([
 		{
-			key: 'legacy', title: 'Traffic events', fieldId: 'legacy-event', classes: LEGACY_CLASSES, set: corrections.legacy,
+			key: 'legacy', title: 'Photo and album actions', fieldId: 'legacy-event', classes: LEGACY_CLASSES, set: corrections.legacy,
 			record: '?/correctClassification', reverse: '?/undoClassification', recordLabel: 'Record correction', reverseLabel: 'Reverse latest',
 			error: form?.correctionError, done: form?.corrected ? 'Correction recorded.' : form?.correctionUndone ? 'Reversal recorded.' : null,
-			unavailable: 'Retained events could not be read just now.', none: 'No retained events fall in these days.',
-			intro: 'Each correction creates a new version and reconciles the affected day. Events are the ones in the days above.', reasonLabel: 'Reason'
+			unavailable: 'The actions could not be read just now.', none: 'No actions were recorded in these days.',
+			intro: 'These are the opens, favorites, downloads and shares behind the photo and album counts above. A correction changes that day’s counts when it is saved.', reasonLabel: 'Reason'
 		},
 		{
-			key: 'v2', title: 'Version 2 events', fieldId: 'v2-event', classes: V2_CLASSES, set: corrections.v2,
-			record: '?/correctV2Classification', reverse: '?/undoV2Classification', recordLabel: 'Record version 2 correction', reverseLabel: 'Reverse latest',
+			key: 'v2', title: 'Detailed events', fieldId: 'v2-event', classes: V2_CLASSES, set: corrections.v2,
+			record: '?/correctV2Classification', reverse: '?/undoV2Classification', recordLabel: 'Record correction', reverseLabel: 'Reverse latest',
 			error: form?.v2CorrectionError, done: form?.v2Corrected ? 'Correction recorded.' : form?.v2CorrectionUndone ? 'Reversal recorded.' : null,
-			unavailable: 'Version 2 events could not be read just now.', none: 'No retained version 2 events fall in these days.',
-			intro: 'This changes the first-party version 2 counts at once and holds back any export still waiting. If the original event was already sent to the provider, a server-made control carries only its identifier, version and classification.', reasonLabel: 'Private evidence'
+			unavailable: 'The detailed events could not be read just now.', none: 'No detailed events were recorded in these days.',
+			intro: 'These are the detailed records behind the recorded event counts above. A correction changes those counts at once, and a record that has not yet gone to PostHog is held back. For a record PostHog already has, only its identifier, the new class and the version number are sent.', reasonLabel: 'Reason, kept private'
 		}
 	] as const);
 </script>
 
 <div class="corrections">
-	<p class="lead">Reclassify a retained event, with a reason, and reverse it later. Only you can see or change this, and only the classification changes: the event itself is kept.</p>
-	<div class="pager" aria-label="Retained events">
-		{#if corrections.page > 0}<a href={pageHref(corrections.page - 1)}>Newer events</a>{/if}
-		<span>Events page {corrections.page + 1}</span>
-		{#if corrections.hasMore}<a href={pageHref(corrections.page + 1)}>Older events</a>{/if}
+	<p class="lead">Every counted action has a class: audience, operator, test, known crawler, suspected automation or unclassified. Only audience and unclassified actions are in the counts above. If one has the wrong class, give it the right one, with a reason. Only you can see or change this. The action itself is kept, and the latest correction can be reversed.</p>
+	<div class="pager" aria-label="Pages of actions">
+		{#if corrections.page > 0}<a href={pageHref(corrections.page - 1)}>Newer actions</a>{/if}
+		<span>Page {corrections.page + 1} of the actions in these days</span>
+		{#if corrections.hasMore}<a href={pageHref(corrections.page + 1)}>Older actions</a>{/if}
 	</div>
 
 	{#each kinds as kind (kind.key)}
@@ -50,10 +49,10 @@
 			<p class="note">{kind.intro}</p>
 			{#if !kind.set.eventsAvailable}<p class="alert" role="alert">{kind.unavailable}</p>{:else if !kind.set.events.length}<p class="note">{kind.none}</p>{/if}
 			<form method="POST" action={kind.record} use:enhance class="record">
-				<label class="entry wide"><span>Retained event</span>
-					<select id={kind.fieldId} name="eventId" required><option value="">Choose an event</option>{#each kind.set.events as event (event.id)}<option value={event.id}>{choiceText(event)}</option>{/each}</select>
+				<label class="entry wide"><span>Action to correct</span>
+					<select id={kind.fieldId} name="eventId" required><option value="">Choose an action</option>{#each kind.set.events as event (event.id)}<option value={event.id}>{event.label}</option>{/each}</select>
 				</label>
-				<label class="entry"><span>Classification</span>
+				<label class="entry"><span>New class</span>
 					<select name="classification">{#each kind.classes as value (value)}<option {value}>{classText(value)}</option>{/each}</select>
 				</label>
 				<label class="entry wide"><span>{kind.reasonLabel}</span><input name="note" maxlength={CORRECTION_NOTE_MAX} required /></label>
@@ -63,15 +62,16 @@
 			{#if kind.done}<p class="ok" role="status">{kind.done}</p>{/if}
 
 			{#if !kind.set.logAvailable}
-				<p class="alert" role="alert">The correction history could not be read just now.</p>
+				<p class="alert" role="alert">The corrections made so far could not be read just now.</p>
 			{:else if kind.set.log.length}
-				<ul class="history" aria-label={`${kind.title}: the latest corrections, newest first`}>
+				<h4 id={`${kind.fieldId}-history`}>Corrections made so far, newest first</h4>
+				<ul class="history" aria-labelledby={`${kind.fieldId}-history`}>
 					{#each kind.set.log as row (`${row.eventId}-${row.version}`)}
 						{@render logRow(row, kind.reverse, kind.reverseLabel)}
 					{/each}
 				</ul>
 			{:else}
-				<p class="note">No corrections have been recorded yet.</p>
+				<p class="note">No corrections have been made yet.</p>
 			{/if}
 		</section>
 	{/each}
@@ -80,12 +80,12 @@
 {#snippet logRow(row: CorrectionRow, action: string, label: string)}
 	<li>
 		<p class="event">{row.context}</p>
-		<p class="when">{stamp(row.correctedAt)}</p>
-		<p class="what"><strong>{classText(row.classification)}</strong> · version {row.version}</p>
+		<p class="when">Corrected {stamp(row.correctedAt)} · {row.reference}</p>
+		<p class="what">Now classed as <strong>{classText(row.classification)}</strong> · correction {row.version}</p>
 		<p class="why">{row.note}</p>
 		{#if row.canReverse}
 			<form method="POST" {action} use:enhance><input type="hidden" name="eventId" value={row.eventId} /><button type="submit" class="link">{label}<span class="sr-only"> for {row.context}</span></button></form>
-		{:else}<p class="muted">{row.reversed ? 'Reversal recorded' : 'Earlier version'}</p>{/if}
+		{:else}<p class="muted">{row.reversed ? 'Reversed' : 'Replaced by a later correction'}</p>{/if}
 	</li>
 {/snippet}
 
@@ -96,6 +96,7 @@
 	.pager a { align-items: center; color: var(--blue-ink, #174ea6); display: inline-flex; min-height: 2.75rem; text-underline-offset: 3px; }
 	.kind { border-top: 1px solid var(--line, #d8e0ea); display: grid; gap: .6rem; min-width: 0; padding-top: .8rem; }
 	h3 { font-size: .95rem; font-weight: 700; margin: 0; }
+	h4 { color: var(--muted, #526176); font-size: .82rem; font-weight: 700; margin: .3rem 0 0; }
 	.record { align-items: end; display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
 	.entry { color: var(--muted, #526176); display: grid; font-size: .8rem; font-weight: 650; gap: .2rem; min-width: 0; }
 	.wide { grid-column: span 2; }

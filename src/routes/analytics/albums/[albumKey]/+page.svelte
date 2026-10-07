@@ -4,6 +4,7 @@
 	import { onMount, tick } from 'svelte';
 	import { albumIndexPath, photosPath } from '$lib/analytics/report-paths';
 	import { photoParams } from '$lib/analytics/photo-view';
+	import { readShortlist, signInNeeds, writeShortlist } from '$lib/analytics/shortlist';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
@@ -63,15 +64,12 @@
 
 	onMount(() => {
 		hydrated = true;
-		try {
-			const stored = JSON.parse(sessionStorage.getItem('analytics:photo-shortlist') ?? '[]');
-			shortlist = Array.isArray(stored) ? stored.filter((value): value is string => typeof value === 'string').slice(0, 500) : [];
-		} catch { shortlist = []; }
+		shortlist = readShortlist();
 	});
 
 	function saveShortlist(next: string[]) {
 		shortlist = next;
-		try { sessionStorage.setItem('analytics:photo-shortlist', JSON.stringify(next)); } catch { /* the shortlist then lasts for this page only */ }
+		writeShortlist(next);
 	}
 	function toggleShortlist(photoId: string) {
 		const had = shortlist.includes(photoId);
@@ -200,7 +198,7 @@
 				<a class="secondary" href={explorerHref}>Filter these photos</a>
 				{#if signedIn && shortlist.length}<a class="secondary" href={shortlistCsvHref}>Shortlist CSV ({shortlist.length})</a>{/if}
 			</div>
-			{#if !signedIn}<p class="note">Shortlisting, recording what you did and private sharing notes need <a href={signInHref}>sign-in</a>. Everything else on this page is open by direct link.</p>{/if}
+			{#if !signedIn}<p class="note">{signInNeeds(['shortlisting', 'recording what you did', 'private sharing notes'])} <a href={signInHref}>sign-in</a>. Everything else on this page is open by direct link.</p>{/if}
 			<p class="sr-only" role="status" aria-live="polite">{announce}</p>
 			</div>
 			<div class="limits">

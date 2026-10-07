@@ -31,7 +31,8 @@ export const MEASURE_WORDS: Record<ReportMeasure, string> = {
 };
 export const SAVED_VIEW_PERIODS = [7, 30, 90] as const;
 
-function cleanName(value: FormDataEntryValue | null): string | null {
+/** A view's name, trimmed, or null when it is empty or too long. */
+export function viewName(value: FormDataEntryValue | null): string | null {
 	const name = typeof value === 'string' ? value.trim() : '';
 	return name.length >= 1 && name.length <= SAVED_VIEW_NAME_MAX ? name : null;
 }
@@ -43,7 +44,7 @@ const NAME_ERROR = `Give this view a name of 1–${SAVED_VIEW_NAME_MAX} characte
  * photo explorer, which has the filters; both write the same stored shape.
  */
 export function savedViewFromForm(form: FormData, now = new Date()): Parsed<{ name: string; query: ReturnType<typeof savedQueryState> }> {
-	const name = cleanName(form.get('name'));
+	const name = viewName(form.get('name'));
 	if (!name) return { ok: false, error: NAME_ERROR };
 	const period = Number(form.get('period'));
 	const measure = String(form.get('measure') ?? '');
@@ -57,7 +58,7 @@ export function savedViewFromForm(form: FormData, now = new Date()): Parsed<{ na
 export function renamedViewFromForm(form: FormData): Parsed<{ id: string; name: string }> {
 	const id = form.get('id')?.toString();
 	if (!id) return { ok: false, error: 'Choose a view to rename.' };
-	const name = cleanName(form.get('name'));
+	const name = viewName(form.get('name'));
 	if (!name) return { ok: false, error: NAME_ERROR };
 	return { ok: true, id, name };
 }

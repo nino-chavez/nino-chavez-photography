@@ -1,9 +1,8 @@
-import { error, fail } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { currentOperator, requireOperator } from '$lib/analytics/operator-session.server';
 import { loadPhotoView, photoViewRequest } from '$lib/analytics/photo-view.server';
-import { parseReportQuery } from '$lib/analytics/report-contract';
-import { savedQueryState } from '$lib/analytics/saved-views';
+import { saveViewFromPage, updateViewFromPage } from '$lib/analytics/saved-views.server';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -38,24 +37,7 @@ export const load: PageServerLoad = async ({ url, cookies, setHeaders }) => {
 	};
 };
 
-/** The filters the address carries, which is what a saved view stores. */
-const currentFilters = (url: URL) => savedQueryState(parseReportQuery(url.searchParams));
-
 export const actions: Actions = {
-	saveView: async ({ cookies, request, url }) => {
-		const user = await requireOperator(cookies);
-		const name = (await request.formData()).get('name')?.toString().trim();
-		if (!name || name.length > 100) return fail(400, { saveError: 'Give this view a name of 1–100 characters.' });
-		const { error: insertError } = await createSupabaseAdminClient().from('analytics_saved_reports').insert({ owner_id: user.id, name, query: currentFilters(url) });
-		if (insertError) return fail(503, { saveError: 'The view could not be saved. Nothing was created.' });
-		return { saved: true };
-	},
-	updateView: async ({ cookies, request, url }) => {
-		const user = await requireOperator(cookies);
-		const id = (await request.formData()).get('id')?.toString();
-		if (!id) return fail(400, { updateError: 'Choose a view to update.' });
-		const { error: updateError } = await createSupabaseAdminClient().from('analytics_saved_reports').update({ query: currentFilters(url), updated_at: new Date().toISOString() }).eq('id', id).eq('owner_id', user.id);
-		if (updateError) return fail(503, { updateError: 'The view could not be updated. Its filters are unchanged.' });
-		return { updated: true, updatedId: id };
-	}
+	saveView: async ({ cookies, request, url }) => saveViewFromPage(createSupabaseAdminClient(), (await requireOperator(cookies)).id, (await request.formData()).get('name'), url),
+	updateView: async ({ cookies, request, url }) => updateViewFromPage(createSupabaseAdminClient(), (await requireOperator(cookies)).id, (await request.formData()).get('id'), url)
 };

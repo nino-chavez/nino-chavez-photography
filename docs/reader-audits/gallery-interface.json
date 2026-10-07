@@ -1,15 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T03:35:14.850Z",
+  "reviewedAt": "2026-10-07T04:07:54.824Z",
   "reviewedBy": "Claude Sonnet 5.5 (implementing subagent, self-review; not a cold reviewer)",
-  "method": "Self-review by the agent that wrote the change, on a local dev server reading production through a preload that blocks every write (read-only). Walked at 1440x900 and 375x812: the photo explorer (all albums, rising, one album as a table, the photo dialog, a filter with no match, as a visitor and as a harness owner with and without saved views), the data page's corrections section (signed out; a harness owner with real retained events and no history, and with an invented history), the album report (signed out, and as a harness owner with no notes and with two invented notes), the album index link, Settings with two invented saved views, and Home. Stored rows marked invented were presented by the preload and nothing was written. Gates per capture: overflow, including the document scrolling sideways and boxes that escape their scroller; 44 px targets; text at 200 percent; Tab-only keyboard walk; no non-GET request; no console error; each gate was forced to fail once on purpose on the first page at both widths and fired. I opened the captures and fixed what I saw: label boxes that picked up a global style, a dialog with white text on white, single-column photo cards on a phone, a corrections table whose actions sat off-screen on a phone. Not covered: a cold reviewer; a real signed-in session and any real save, update, note or correction (the harness owner is not a sign-in and no form was submitted); the explorer's date fields beyond keyboard focus; largest system text size and increased contrast beyond the 200 percent text and the prefers-contrast rules in the source; the Playwright rehearsal specs (not run, no local stack); physical devices.",
-  "sourceDigest": "sha256:861b911e7b1b3b7c3d764290cb9c5d6894a8d0618bfb8fc8ce0127b32076875a",
-  "sourceFiles": 196,
+  "method": "Self-review by the agent that wrote the change, on a local dev server reading production through a preload that blocks every write (read-only). Walked at 1440x900 and 375x812: the photo explorer (all albums, rising, one album as a table, the photo dialog, a filter with no match; as a visitor, who is offered no shortlist and is told what signing in adds; and as a harness owner with and without saved views and with a photo shortlisted), the data page's corrections section rewritten in plain words (signed out; a harness owner with real actions and no history, and with an invented history including an action whose record is gone), the album report (signed out, and as a harness owner with no notes and with two invented notes), the album index link, Settings with two invented saved views, and Home. Stored rows marked invented were presented by the preload and nothing was written. Gates per capture: overflow, including the document scrolling sideways and boxes that escape their scroller; 44 px targets; text at 200 percent; Tab-only keyboard walk; no non-GET request; no console error; each gate was forced to fail once on purpose on the first page at both widths and fired. The Playwright rehearsal specs were also run against a local synthetic stack and pass, including real local saves, updates, notes and corrections. Not covered: a cold reviewer; a real signed-in session against production; largest system text size and increased contrast beyond the 200 percent text and the prefers-contrast rules in the source; physical devices.",
+  "sourceDigest": "sha256:4ca010a8d402edae1d159f77f89bd6930783ba5f55d56e7c5eac1d2f528cc6d1",
+  "sourceFiles": 197,
   "scope": [
-    "Photo explorer page and its CSV link",
+    "Photo explorer page, its shortlist rule and its CSV link",
     "Data page corrections section and browser estimate",
-    "Album report sharing notes and photo explorer link",
+    "Album report sharing notes, shortlist note and photo explorer link",
     "Settings saved view links",
     "Album index link to the photo explorer",
     "Header without the Gallery report link"

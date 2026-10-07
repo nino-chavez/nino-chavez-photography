@@ -32,7 +32,7 @@
  */
 
 import type { Handle } from '@sveltejs/kit';
-import { oldAddressTarget } from '$lib/analytics/old-addresses';
+import { oldAddressTarget, oldRootTarget } from '$lib/analytics/old-addresses';
 import { ANALYTICS_HOST, cleanReportPath, hostAddress, isReportHost } from '$lib/analytics/report-paths';
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -55,7 +55,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// The old gallery report moved in pieces. One permanent redirect straight to the page that took over, never a chain.
 	// Only reads are redirected: a 308 would replay a form post against a page that has no such action.
 	const isRead = event.request.method === 'GET' || event.request.method === 'HEAD';
-	const moved = isRead && (isReportHost(hostname) || isAnalyticsRoute) ? oldAddressTarget(pathname, search) : null;
+	const moved = !isRead ? null : isReportHost(hostname) ? oldAddressTarget(pathname, search) ?? oldRootTarget(pathname, search) : isAnalyticsRoute ? oldAddressTarget(pathname, search) : null;
 	if (moved) {
 		response = analyticsRedirect(isLocal ? `${event.url.origin}${hostAddress(hostname, moved)}` : `https://${ANALYTICS_HOST}${moved.pathname}${moved.search}${moved.hash}`);
 	} else if (isAnalyticsRoute && ((!isLocal && hostname !== ANALYTICS_HOST) || (isReportHost(hostname) && cleanPath))) {

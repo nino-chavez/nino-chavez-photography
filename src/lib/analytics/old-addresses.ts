@@ -7,7 +7,7 @@ import { isAlbumKey } from './album-key';
  *
  *   /gallery?section=…         (and its internal forms, /photography/analytics and /photography/analytics/operator)
  *   overview, none, or an album scope  →  Home, or that album's report when exactly one album was scoped
- *   albums                             →  the album index; one album: its report; several: the index comparison
+ *   albums                             →  the album index; one album picked: its report; several: the index comparison
  *   photos                             →  the photo view, with every filter it reads
  *   sources                            →  that album's report (arrivals sit there), else Data (arrivals and open locations)
  *   measurement                        →  Data
@@ -80,8 +80,9 @@ export function oldAddressTarget(pathname: string, search = ''): NewAddress | nu
 		case 'overview':
 			return album ? address(`/albums/${album}`) : address('/');
 		case 'albums': {
-			if (album) return address(`/albums/${album}`);
-			const keys = params.get('scope') === 'selected' ? albumKeys(params) : [];
+			// The albums that were picked: exactly one is that album's report, two or more is the index comparison.
+			const keys = params.get('scope') === 'all' ? [] : albumKeys(params);
+			if (keys.length === 1) return address(`/albums/${keys[0]}`);
 			return keys.length >= 2 ? address('/albums', `?${new URLSearchParams({ compare: keys.join(',') })}`) : address('/albums');
 		}
 		case 'photos':
@@ -96,6 +97,25 @@ export function oldAddressTarget(pathname: string, search = ''): NewAddress | nu
 		default:
 			return address('/');
 	}
+}
+
+/**
+ * What `/sites` read before the site report was rebuilt (`src/routes/analytics/sites/+page.server.ts` at bd99964^):
+ * `period`, `section`, `page`, `actionsPage` and `view`. Links of the form `analytics.ninochavez.co/?period=30` carried
+ * them, because the root used to be the site report.
+ */
+const SITE_KEYS = ['period', 'section', 'page', 'actionsPage', 'view'];
+
+/**
+ * The root of the report host with a query that carries anything the old site report read is the site report: one
+ * 308 to `/sites` with those parameters kept. A bare root, or a root query with none of them, is Home and is not
+ * redirected. Report host only, GET and HEAD only; the caller decides both. This is the job Page Rule 49cd0626 did at
+ * the edge (a 301 to the internal site path, then a second hop).
+ */
+export function oldRootTarget(pathname: string, search = ''): NewAddress | null {
+	if (pathname !== '/') return null;
+	const kept = pick(new URLSearchParams(search), SITE_KEYS);
+	return kept.size ? address('/sites', query(kept)) : null;
 }
 
 /** Data reads one number, the days it covers. A custom range has no equal there, so it is not carried over. */
