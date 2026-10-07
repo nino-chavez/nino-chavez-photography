@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { CumulativeCurve, LaunchTableRow } from '$lib/analytics/launch-report-view';
-	import { ordinal } from '$lib/analytics/launch-recap';
+	import { ordinal, recoveredTag } from '$lib/analytics/launch-recap';
 	import { nameWithoutDate } from '$lib/analytics/launch-report-view';
 
 	interface Props { curves: CumulativeCurve[]; rows: LaunchTableRow[]; hasLaunch: boolean }
@@ -36,7 +36,7 @@
 			<tbody>
 				{#each rows as row}
 					<tr class:current={row.current} aria-current={row.current ? 'true' : undefined}>
-						<th scope="row">{row.name}{#if row.current}<span class="here">This album</span>{/if}<span class="pub">Published {row.published}{row.inferred ? ' (inferred)' : ''}</span></th>
+						<th scope="row">{row.name}{#if row.current}<span class="here">This album</span>{/if}<span class="pub">Published {row.published}{recoveredTag(row.inferred)}</span></th>
 						<td class="num">{row.day3State === 'ok' ? row.day3?.toLocaleString() : row.day3State === 'incomplete' ? 'Incomplete' : 'Not yet'}</td>
 						<td class="num">{row.day7State === 'ok' ? row.day7?.toLocaleString() : row.day7State === 'incomplete' ? 'Incomplete' : 'Not yet'}</td>
 						<td class="num">{row.rank7 === null ? '' : `${row.tied7 ? 'tied ' : ''}${ordinal(row.rank7)}`}</td>

@@ -118,9 +118,10 @@ test('Home reads each source once and never once per album; only public launches
 test('the quiet gallery on a fresh day reads as quiet, with no open problem except the provider that is not configured', async () => {
 	const { view } = await run();
 	assert.equal(view.state, 'quiet');
-	assert.equal(sentenceText(view.opening), 'No new album since Sep 26 (inferred), 10 days ago.');
-	// Both windows hold the first week of the launches in the fixture (published Sep 26), so no percentage is stated.
-	assert.equal(sentenceText(view.week), 'Gallery photo opens, Sep 29 – Oct 5: 35. The 7 days before (Sep 22 – 28) had 70. Both include the first week of Alpha, Bravo, Charlie and 1 other, so this is not a fair comparison.');
+	assert.match(sentenceText(view.opening), /^Alpha finished its first week in .* \(Sep 26 to Oct 2\)\.$/);
+	assert.equal(sentenceText(view.then!), 'No new album since Sep 26 (date recovered afterwards from a log), 10 days ago.');
+	// Both windows hold the first week of the launches in the fixture (published Sep 26), so there is no calendar-week line at all.
+	assert.equal(view.week, null);
 	assert.deepEqual(view.problems, []);
 	assert.equal(view.site.reach.value, null);
 	assert.match(view.site.reach.detail, /not configured/);
@@ -146,12 +147,12 @@ test('each source fails alone: the rest of Home still reads', async () => {
 	const launchDown = await run({ launchError: true });
 	assert.equal(launchDown.view.state, 'unavailable');
 	assert.deepEqual(launchDown.view.cards, []);
-	assert.match(sentenceText(launchDown.view.week), /^Gallery photo opens, Sep 29 – Oct 5: 35\. The 7 days before \(Sep 22 – 28\) had 70\. Launch dates could not be read, so no change is stated\.$/);
+	assert.match(sentenceText(launchDown.view.week!), /^Gallery photo opens, Sep 29 – Oct 5: 35\. The 7 days before \(Sep 22 – 28\) had 70\. Launch dates could not be read, so no change is stated\.$/);
 	assert.ok(launchDown.view.problems.some((problem) => problem.id === 'launches-unreadable'));
 
 	const reportDown = await run({ reportError: true });
 	assert.equal(reportDown.view.state, 'quiet', 'the refresh time is read apart from the report, so a failed report does not make freshness unknown');
-	assert.match(sentenceText(reportDown.view.week), /could not be read/);
+	assert.match(sentenceText(reportDown.view.week!), /could not be read/);
 	assert.equal(reportDown.view.cards.length, 3, 'launches still show');
 	assert.ok(reportDown.view.problems.some((problem) => problem.id === 'week-unreadable'));
 
@@ -178,7 +179,7 @@ test('a refresh that has stopped is said first, and a gap in the last complete d
 	const gap = await run({ report: reportPayload({ daily, coverage: 'partial', total: null }) });
 	assert.equal(gap.view.state, 'stale');
 	assert.equal(sentenceText(gap.view.opening), 'Counts stop at Oct 3: the days since are incomplete, so this is a gap in the records, not a quiet gallery.');
-	assert.match(sentenceText(gap.view.week), /not stated/);
+	assert.match(sentenceText(gap.view.week!), /not stated/);
 	assert.equal(gap.view.problems[0].id, 'coverage');
 
 	// A refresh time that cannot be read is unknown, never current.
@@ -229,12 +230,12 @@ test('contact link clicks need a full 7 days of history; the week before needs i
 test('Home shows no finding for an album unlisted after its snapshot was written, with the real visibility read', async () => {
 	const { loadVisibleFindings } = await import('./intelligence-panel.server');
 	const { HOME, launchFinding, publicClient } = await import('./intelligence-public.fixture');
-	const world = (unlisted: string[]) => publicClient({ snapshots: [{ scope: HOME, findings: [launchFinding('launch-finished-A', 'A'), launchFinding('launch-finished-B', 'B')], checkedAt: '2026-10-06T15:45:00Z' }], albums: ['A', 'B', 'C'], unlisted });
+	const world = (unlisted: string[]) => publicClient({ snapshots: [{ scope: HOME, findings: [launchFinding('launch-failed-A', 'A', { rule: 'launch_failures' }), launchFinding('launch-failed-B', 'B', { rule: 'launch_failures' })], checkedAt: '2026-10-06T15:45:00Z' }], albums: ['A', 'B', 'C'], unlisted });
 	const { client } = fixture();
 	const hidden = await loadHome({ admin: client, env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: () => loadVisibleFindings(world(['A']), HOME, 'test') });
-	assert.deepEqual(hidden.cards.map((card) => [card.albumKey, card.findings.map((f) => f.id)]), [['A', []], ['B', ['launch-finished-B']], ['C', []]]);
+	assert.deepEqual(hidden.cards.map((card) => [card.albumKey, card.findings.map((f) => f.id)]), [['A', []], ['B', ['launch-failed-B']], ['C', []]]);
 	assert.equal(hidden.cards[0].findingsCheck, null);
 	assert.deepEqual(hidden.cards[1].findingsCheck, { text: 'Last checked 10:45 AM Chicago time.', late: false });
 	const listed = await loadHome({ admin: client, env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: () => loadVisibleFindings(world([]), HOME, 'test') });
-	assert.deepEqual(listed.cards[0].findings.map((f) => f.id), ['launch-finished-A'], 'control: the same snapshot while A is public');
+	assert.deepEqual(listed.cards[0].findings.map((f) => f.id), ['launch-failed-A'], 'control: the same snapshot while A is public');
 });

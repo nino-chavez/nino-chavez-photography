@@ -20,7 +20,7 @@ test('finished launch: week-1 total, rank, the launch ahead, peak day and every 
 	assert.equal(recapToPlain(r.headline), '931 photo opens in its first week.');
 	const lines = r.sentences.map((s) => recapToPlain(s));
 	assert.match(lines[0], /^At the same age, the 5 earlier launches had a median of 125 photo opens\.$/);
-	assert.match(lines[1], /^That is 2nd of the 7 launches with a week-1 total, behind HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)\.$/);
+	assert.match(lines[1], /^As of Oct 6, over its first 7 days \(Sep 25 to Oct 1\) it is 2nd of the 7 launches with a week-1 total, behind HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)\.$/);
 	assert.match(lines[2], /^Most of it came at once: 575 opens on Sep 26, the day after it was published \(62% of the week\)\.$/);
 	assert.equal(lines[3], 'Every one of the 4 photos was opened at least once.');
 	assert.equal(r.sentences.length, 4);
@@ -58,10 +58,10 @@ test('the launch named as ahead is the one the read model ranks directly above, 
 
 test('first place and a tie are worded as such', () => {
 	const m = model(shape('fJKdsB'), ALL);
-	assert.match(recapToPlain(recap(m).sentences[1]), /^That is the most of the 7 launches with a week-1 total\.$/);
+	assert.match(recapToPlain(recap(m).sentences[1]), /^As of Oct 6, over its first 7 days \(Aug 28 to Sep 3\) it is first of the 7 launches with a week-1 total\.$/);
 	const tied = model(shape('Re7kho'), ALL);
 	(tied.album as DatedLaunchAlbum).rank.day7 = { rank: 1, compared: 7, tied: true };
-	assert.match(recapToPlain(recap(tied).sentences[1]), /^That is tied for the most of the 7 launches/);
+	assert.match(recapToPlain(recap(tied).sentences[1]), /^As of Oct 6, over its first 7 days \(Sep 25 to Oct 1\) it is tied for first of the 7 launches/);
 });
 
 test('the only launch with a total has nothing to rank against', () => {
@@ -96,9 +96,9 @@ test('the median compares with launches published earlier only, never later ones
 test('with 3 to 6 full days the day-3 rank appears, and from day 4 it states the first-3-days total', () => {
 	const three = recap(model(shape('Re7kho', '2026-09-28'), ALL, {}, '2026-09-28'));
 	assert.equal(three.state, 'in_progress');
-	assert.match(three.sentences.map((s) => recapToPlain(s)).join(' '), /That is \d(st|nd|rd|th) of the \d launches with a day-3 total/);
+	assert.match(three.sentences.map((s) => recapToPlain(s)).join(' '), /As of Sep 28, over its first 3 days \(Sep 25 to Sep 27\) it is \d(st|nd|rd|th) of the \d launches with a day-3 total/);
 	const five = recap(model(shape('Re7kho', '2026-09-30'), ALL, {}, '2026-09-30'));
-	assert.match(five.sentences.map((s) => recapToPlain(s)).join(' '), /In its first 3 days it had 804 photo opens, \d(st|nd|rd|th) of the \d launches with a day-3 total/);
+	assert.match(five.sentences.map((s) => recapToPlain(s)).join(' '), /In its first 3 days \(Sep 25 to Sep 27\) it had 804 photo opens, \d(st|nd|rd|th) of the \d launches with a day-3 total as of Sep 30/);
 });
 
 test('published today: no full day yet, no comparison, today kept apart', () => {
@@ -196,8 +196,8 @@ test('the photo total is the grid size, so a photo left out of the grid is not c
 test('arrivals: tagged arrivals by tag when they exist, and a limit when none do', () => {
 	const m = model(shape('Re7kho'), ALL);
 	const r = recap(m, [{ source: 'links', count: 3 }, { source: 'profile', count: 19 }]);
-	assert.equal(recapToPlain(r.arrivals!), '22 arrivals came through tagged links: profile 19 (86%), links 3 (14%). Arrivals that did not use a tagged link cannot be traced to a source.');
-	assert.equal(recapToPlain(recap(m, [{ source: 'profile', count: 4 }]).arrivals!), '4 arrivals came through tagged links, all from the "profile" tag. Arrivals that did not use a tagged link cannot be traced to a source.');
+	assert.equal(recapToPlain(r.arrivals!), 'Over Sep 25 to Oct 5, 22 arrivals came through tagged links: profile 19 (86%), links 3 (14%). Arrivals that did not use a tagged link cannot be traced to a source.');
+	assert.equal(recapToPlain(recap(m, [{ source: 'profile', count: 4 }]).arrivals!), 'Over Sep 25 to Oct 5, 4 arrivals came through tagged links, all from the tag "profile". Arrivals that did not use a tagged link cannot be traced to a source.');
 	assert.ok(!r.limits.some((l) => /came from/.test(l)));
 	const none = recap(m, []);
 	assert.equal(none.arrivals, null);
@@ -277,13 +277,13 @@ test('a recap has a headline and two to four sentences in every state', () => {
 
 test('download requests are compared with the median of earlier launches at the same age', () => {
 	const week = recap(model(shape('Re7kho'), ALL));
-	assert.match(recapToPlain(week.downloads!), /^\d+ download requests were made\. In week 1 that was \d+, against a median of \d+ for the 5 earlier launches\./);
+	assert.match(recapToPlain(week.downloads!), /^Over Sep 25 to Oct 5, \d+ download requests were made\. In week 1 \(Sep 25 to Oct 1\) that was \d+, against a median of \d+ for the 5 earlier launches\./);
 	const early = recap(model(shape('Re7kho', '2026-09-27'), ALL, {}, '2026-09-27'));
 	assert.match(recapToPlain(early.downloads!), /At the same age, the \d+ earlier launches had a median of \d+\./);
 	// A gap in the first week withholds the comparison rather than comparing a short count.
 	const gap = recap(model(shape('Re7kho', '2026-10-06', { 4: { coverage: 'partial', photoOpens: 60 } }), ALL));
 	assert.ok(!/median/.test(recapToPlain(gap.downloads!)));
-	assert.match(recapToPlain(gap.downloads!), /^At least /);
+	assert.match(recapToPlain(gap.downloads!), /^Over Sep 25 to Oct 5, at least /);
 	// No earlier launch, no comparison.
 	assert.ok(!/median/.test(recapToPlain(recap(model(shape('Re7kho'), [])).downloads!)));
 });

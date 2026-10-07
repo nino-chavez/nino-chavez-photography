@@ -25,6 +25,20 @@
 	};
 </script>
 
+<svelte:head>
+	<!--
+		Dynamic Type. On iOS and iPadOS the root font size comes from the reader's text size setting (-apple-system-body, 17px at the
+		default size), and every size on these pages is in rem or em, so the text, the spacing and the charts follow it. The rule
+		sits here, in the head of the report pages only, so it goes when a reader leaves them and never reaches the public gallery.
+		Other browsers keep their own default size and are not changed. macOS keeps its own: -apple-system-body is 13px there.
+	-->
+	<style>
+		@supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+			html { font: -apple-system-body; line-height: 1.5; }
+		}
+	</style>
+</svelte:head>
+
 <header class="masthead">
 	<div class="identity"><span class="mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="divider">/</span> Photography reports</span></div>
 	<nav class="masthead-links" aria-label="Report navigation">

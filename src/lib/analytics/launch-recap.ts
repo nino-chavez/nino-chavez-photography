@@ -89,6 +89,10 @@ export function ordinal(n: number): string {
 export function formatDay(date: string): string {
 	return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
 }
+/** "Sep 25" for one day, "Sep 25 to Oct 1" for a run of days. */
+export function daysWords(first: string, last: string): string {
+	return first === last ? formatDay(first) : `${formatDay(first)} to ${formatDay(last)}`;
+}
 function dayPhrase(day: number): string {
 	return day === 0 ? 'the day it was published' : day === 1 ? 'the day after it was published' : `day ${day}`;
 }
@@ -153,14 +157,19 @@ function rankSentence(model: LaunchReadModel, album: DatedLaunchAlbum, age: 'day
 	const rank: LaunchAgeRank = album.rank[age];
 	const total = album.totals[age].photoOpens;
 	if (rank.rank === null || total === null) return null;
+	const days = age === 'day7' ? 7 : 3;
 	const label = age === 'day7' ? 'a week-1 total' : 'a day-3 total';
-	const lead: Piece[] = withTotal ? ['In its first 3 days it had ', b(plural(total, 'photo open')), ', '] : ['That is '];
-	if (rank.compared <= 1) return sentence(...lead, 'the only launch with ', label, ', so there is nothing to rank it against yet.');
+	// Name the days the total covers and the date the ranking was made: launches published since can move a rank.
+	const span = album.series.length >= days ? ` (${daysWords(album.series[0].date, album.series[days - 1].date)})` : '';
+	const asOf = formatDay(model.today);
+	const lead: Piece[] = withTotal ? [`In its first 3 days${span} it had `, b(plural(total, 'photo open')), ', '] : [`As of ${asOf}, over its first ${days} days${span} it is `];
+	const tail = withTotal ? ` as of ${asOf}` : '';
+	if (rank.compared <= 1) return sentence(...lead, 'the only launch with ', label, `${tail}, so there is nothing to rank it against yet.`);
 	const place = rank.rank === 1
-		? (rank.tied ? 'tied for the most' : 'the most')
+		? (rank.tied ? 'tied for first' : 'first')
 		: `${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)}`;
 	const ahead = rank.rank > 1 ? launchAhead(model, album, age) : null;
-	return sentence(...lead, b(place), ' of the ', b(rank.compared), ' launches with ', label, ahead ? `, behind ${ahead.name} (${fmt(ahead.total)}).` : '.');
+	return sentence(...lead, b(place), ' of the ', b(rank.compared), ' launches with ', label, tail, ahead ? `, behind ${ahead.name} (${fmt(ahead.total)}).` : '.');
 }
 
 function peakSentence(series: LaunchDay[], total: number, launchDated: boolean, ofWhat = 'the total'): RecapSentence | null {
@@ -208,18 +217,20 @@ function downloadComparison(model: LaunchReadModel, launch: DatedLaunchAlbum): R
 	const count = plural(others.length, 'earlier launch', 'earlier launches');
 	if (others.length === 1 && !(n > 7 && k === 7)) return earlierHad(1, String(mid));
 	return n > 7 && k === 7
-		? sentence('In week 1 that was ', b(mine), ', against a median of ', b(mid), ' for the ', count, '.')
+		? sentence(`In week 1 (${daysWords(launch.series[0].date, launch.series[6].date)}) that was `, b(mine), ', against a median of ', b(mid), ' for the ', count, '.')
 		: sentence('At the same age, the ', count, ' had a median of ', b(mid), '.');
 }
 
 function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Photos, compare: RecapSentence | null = null, stored = false): RecapSentence | null {
 	const { total, gaps } = sumComplete(album.series, 'downloads');
 	if (!album.series.length) return null;
+	// The days the count covers: every full day on the page, which is more than week 1 once the launch is older than a week.
+	const span = daysWords(album.series[0].date, album.series.at(-1)!.date);
 	const photoSum = photos.cut ? null : photos.list.reduce((sum, photo) => sum + photo.downloads, 0);
 	const top = photos.cut ? null : Math.max(0, ...photos.list.map((photo) => photo.downloads));
 	const compared: Piece[] = !gaps.length && compare ? [' ', ...compare.map((part): Piece => (part.strong ? { b: part.text } : part.text))] : [];
-	if (total === 0 && !gaps.length) return sentence('No download requests were made.', ...compared);
-	const parts: Piece[] = [gaps.length ? 'At least ' : '', b(plural(total, 'download request')), ' ', gaps.length ? 'were counted on days with complete records. ' : 'were made.', ...compared, ' '];
+	if (total === 0 && !gaps.length) return sentence(`No download requests were made over ${span}.`, ...compared);
+	const parts: Piece[] = [`Over ${span}, `, gaps.length ? 'at least ' : '', b(plural(total, 'download request')), ' ', gaps.length ? 'were counted on days with complete records. ' : 'were made.', ...compared, ' '];
 	if (photoSum !== null && !gaps.length && total > photoSum) parts.push(`${fmt(photoSum)} named a photo and ${fmt(total - photoSum)} asked for the whole album. `);
 	if (top === 0) parts.push('No single photo was requested, so there is no photo order to show.');
 	else if (top !== null && top <= 3) parts.push('No single photo was requested more than ', b(plural(top, 'time')), ', so there are too few requests to tell which photos people want most.');
@@ -227,16 +238,21 @@ function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Pho
 	return sentence(...parts.filter((part) => part !== ''));
 }
 
-function arrivalsLine(arrivals: ArrivalRow[] | null): RecapSentence | null {
+/** The days a series covers, in words. Arrivals are read over the same days as the series. */
+function seriesSpan(series: LaunchDay[]): string {
+	return series.length ? daysWords(series[0].date, series.at(-1)!.date) : 'the days counted';
+}
+
+function arrivalsLine(arrivals: ArrivalRow[] | null, span: string): RecapSentence | null {
 	if (!arrivals) return null;
 	const rows = arrivals.filter((row) => row.count > 0).sort((x, y) => y.count - x.count || x.source.localeCompare(y.source));
 	if (!rows.length) return null;
 	const total = rows.reduce((sum, row) => sum + row.count, 0);
 	// Other launches' arrivals are not in the launch read model, so the only comparison is between this album's own tags.
-	if (rows.length === 1) return sentence(b(plural(total, 'arrival')), ' came through tagged links, all from the "', rows[0].source, '" tag. Arrivals that did not use a tagged link cannot be traced to a source.');
+	if (rows.length === 1) return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links, all from the tag "', rows[0].source, '". Arrivals that did not use a tagged link cannot be traced to a source.');
 	const named = rows.slice(0, 3).map((row) => `${row.source} ${fmt(row.count)} (${Math.round((row.count / total) * 100)}%)`).join(', ');
 	const more = rows.length > 3 ? `, and ${rows.length - 3} more` : '';
-	return sentence(b(plural(total, 'arrival')), ' came through tagged links: ', named, more, '. Arrivals that did not use a tagged link cannot be traced to a source.');
+	return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links: ', named, more, '. Arrivals that did not use a tagged link cannot be traced to a source.');
 }
 
 function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: string, weekFigures = false, omitToday = false): RecapSentence {
@@ -272,8 +288,11 @@ function exposureLimit(album: DatedLaunchAlbum | UndatedLaunchAlbum): string {
 export function chicagoDate(instant: string): string {
 	return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(instant));
 }
+/** The words every page uses for a first-publication date that was worked out afterwards from server logs, not recorded when the album was published. */
+export const RECOVERED_DATE_WORDS = 'date recovered afterwards from a log';
+export const recoveredTag = (basis: 'recorded' | 'inferred' | boolean): string => (basis === 'inferred' || basis === true ? ` (${RECOVERED_DATE_WORDS})` : '');
 function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>): string {
-	return `${formatDay(chicagoDate(album.firstPublishedAt))}${album.basis === 'inferred' ? ' (date recovered afterwards from a log)' : ''}`;
+	return `${formatDay(chicagoDate(album.firstPublishedAt))}${recoveredTag(album.basis)}`;
 }
 
 export function undatedReason(code: 'unobserved' | 'not_published' | 'no_record'): string {
@@ -309,7 +328,7 @@ export function buildRecap(input: RecapInput): Recap {
 		if (peak && !gaps.length) sentences.push(peak);
 		const opened = openedSentence(photos);
 		if (opened) sentences.push(opened);
-		return { state: 'no_launch_date', eyebrow: 'No launch date', published: null, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(album, photos, null, input.stored), arrivals: arrivalsLine(arrivals), limits };
+		return { state: 'no_launch_date', eyebrow: 'No launch date', published: null, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(album, photos, null, input.stored), arrivals: arrivalsLine(arrivals, seriesSpan(album.series)), limits };
 	}
 
 	const launch = album;
@@ -325,7 +344,7 @@ export function buildRecap(input: RecapInput): Recap {
 			state: 'just_published', eyebrow: 'Published today', published,
 			headline: sentence('No full day has passed, so there is nothing to compare yet.'),
 			sentences: [sentence('The first full day closes at midnight, Chicago time.'), sentence('Photo opens counted today stay out of every total until the day is complete.')],
-			window: windowSentence, downloads: null, arrivals: arrivalsLine(arrivals), limits
+			window: windowSentence, downloads: null, arrivals: arrivalsLine(arrivals, seriesSpan(launch.series)), limits
 		};
 	}
 
@@ -382,5 +401,5 @@ export function buildRecap(input: RecapInput): Recap {
 	const opened = openedSentence(photos);
 	if (opened) sentences.push(opened);
 
-	return { state, eyebrow, published, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(launch, photos, downloadComparison(model, launch), input.stored), arrivals: arrivalsLine(arrivals), limits };
+	return { state, eyebrow, published, headline, sentences: sentences.slice(0, 4), window: windowSentence, downloads: downloadsLine(launch, photos, downloadComparison(model, launch), input.stored), arrivals: arrivalsLine(arrivals, seriesSpan(launch.series)), limits };
 }

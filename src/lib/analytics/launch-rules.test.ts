@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	compareAtAge, evaluateLaunchRules, FINISHED_MAX_OPENS, LAUNCH_FINDING_DAYS, MIN_EARLIER_LAUNCHES, SEEN_MIN_EXPOSURES,
+	compareAtAge, evaluateLaunchRules, FINISHED_MAX_OPENS, LAUNCH_FINDING_DAYS, MIN_EARLIER_LAUNCHES, quietSince, SEEN_MIN_EXPOSURES,
 	type LaunchEvidence, type LaunchFailureEvidence, type LaunchFocus, type LaunchPeer, type LaunchPhotoEvidence
 } from './launch-rules';
 import { evaluateIntelligenceRules } from './intelligence-rules';
@@ -137,10 +137,36 @@ test('launch finished: three quiet complete days after the first week recap the 
 	const result = run(evidence([re], PEERS));
 	const done = result.findings.find((f) => f.rule === 'launch_finished');
 	assert.equal(done?.title, 'The launch is over');
-	assert.match(done?.explanation ?? '', /^Photo opens fell to 0 over Oct 3–5\. In its first 7 days it had 931 photo opens and \d+ download requests\. 1 of the 5 launches before it had more photo opens by day 7; their median was 125\.$/);
+	assert.match(done?.explanation ?? '', /^No one has opened a photo since Oct 2, counting complete days through Oct 5\. In its first 7 days it had 931 photo opens and \d+ download requests\. 1 of the 5 launches before it had more photo opens by day 7; their median was 125\.$/);
 	assert.ok(done?.evidenceLinks?.some((link) => link.endsWith('#downloads-title')));
 	assert.equal(result.findings.some((f) => f.rule === 'launch_reach'), false, 'the recap replaces the reach comparison');
 	assert.match(result.suppressions.find((s) => s.rule === 'launch_reach')?.reason ?? '', /recap replaces/);
+});
+
+test('quietSince is read from every complete day: the last open day, and only when every later day is complete and zero', () => {
+	const day = (i: number, photoOpens: number | null, coverage: 'complete' | 'partial' = 'complete') => ({ date: addDays('2026-09-25', i), photoOpens, coverage });
+	// Opens through day 7, then five empty days: since Oct 2, not "since the start of the last three days".
+	const long = [103, 575, 126, 23, 98, 1, 5, 80, 0, 0, 0, 0, 0].map((n, i) => day(i, n));
+	assert.equal(quietSince(long, '2026-10-07'), '2026-10-02');
+	// The same series read through an earlier day gives the same last open day only when it reaches that day.
+	assert.equal(quietSince(long, '2026-10-06'), null, 'the series does not end on the day the claim is made through');
+	// An open on the final day is still active: no claim.
+	assert.equal(quietSince([...long.slice(0, 12), day(12, 1)], '2026-10-07'), null);
+	// An incomplete day after the last open is not a quiet day.
+	assert.equal(quietSince([...long.slice(0, 11), day(11, null, 'partial'), day(12, 0)], '2026-10-07'), null);
+	// A launch with no open at all, or no days, says nothing.
+	assert.equal(quietSince(long.map((d) => ({ ...d, photoOpens: 0 })), '2026-10-07'), null);
+	assert.equal(quietSince([], '2026-10-07'), null);
+});
+
+test('launch finished: the quiet sentence names the last open day from the whole series, and falls back to the count when the last day still has an open', () => {
+	const quietish = focus('q', 'Quietish (synthetic)', '2026-09-01T17:00:00Z', '2026-09-01', [300, 200, 100, 50, 20, 10, 5, 1, 1, FINISHED_MAX_OPENS - 2]);
+	const text = run(evidence([quietish], PEERS)).findings.find((f) => f.rule === 'launch_finished')?.explanation ?? '';
+	assert.match(text, /^3 photo opens on Sep 8–10, the last 3 complete days\. In its first 7 days/);
+	assert.doesNotMatch(text, /No one has opened/);
+	// Opens through day 7 then four empty days: "since Sep 8" (day 7), though the last three days alone would say nothing about when.
+	const long = focus('l', 'Long quiet (synthetic)', '2026-09-01T17:00:00Z', '2026-09-01', [300, 200, 100, 50, 20, 10, 5, 4, 0, 0, 0, 0]);
+	assert.match(run(evidence([long], PEERS)).findings.find((f) => f.rule === 'launch_finished')?.explanation ?? '', /^No one has opened a photo since Sep 8, counting complete days through Sep 12\./);
 });
 
 test('a late burst keeps a launch open: JCA at ACC is not finished while day 7 (80 opens) is in its last three days', () => {
@@ -178,7 +204,9 @@ test('failures during a launch: two photo-load failures in the first week, with 
 	const found = run(evidence([mk], PEERS)).findings.find((f) => f.rule === 'launch_failures');
 	assert.equal(found?.id, 'launch-photo-failures-DWdCET');
 	assert.equal(found?.severity, 'high');
-	assert.equal(found?.explanation, '2 of the 14 photo loads with a recorded result failed, on Sep 29 – Oct 2.');
+	assert.equal(found?.title, '2 of 14 photo loads failed during the launch');
+	assert.equal(found?.explanation, '2 photo loads failed on Sep 29 – Oct 2, out of 14 with a recorded result. A load with no recorded result is not counted either way.');
+	assert.match(found?.action ?? '', /If they all do, nothing needs fixing\.$/);
 	assert.ok(found?.limits?.some((l) => /day 3 of this launch/.test(l)));
 	assert.ok(found?.limits?.some((l) => /small sample/.test(l)));
 	assert.equal(found?.evidence.strength, 'limited');

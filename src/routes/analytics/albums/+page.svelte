@@ -4,7 +4,7 @@
 	import { replaceState } from '$app/navigation';
 	import { albumIndexPath, albumReportPath, photosPath } from '$lib/analytics/report-paths';
 	import { dayLabel, figureText, matchesName, MAX_COMPARED, QUIET_DAYS, rankText, statusText, undatedReasonShort, type IndexLaunchRow, type IndexUndatedRow } from '$lib/analytics/album-index';
-	import { formatDay, plural } from '$lib/analytics/launch-recap';
+	import { formatDay, plural, recoveredTag } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchOverlay from '$lib/components/analytics/LaunchOverlay.svelte';
 	import type { PageData } from './$types';
@@ -59,7 +59,7 @@
 	}
 	const full = $derived(selected.length >= MAX_COMPARED);
 	const reportHref = (key: string) => albumReportPath(hostname, key);
-	const published = (row: IndexLaunchRow) => `${dayLabel(row.published, index.today)}${row.inferred ? ' (inferred)' : ''}`;
+	const published = (row: IndexLaunchRow) => `${dayLabel(row.published, index.today)}${recoveredTag(row.inferred)}`;
 	const count = (value: number | null) => (value === null ? 'Unknown' : value.toLocaleString('en-US'));
 	const lastActivity = (row: IndexUndatedRow) => (row.lastActivity ? dayLabel(row.lastActivity, index.today) : 'None in the window');
 </script>

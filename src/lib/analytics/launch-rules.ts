@@ -138,6 +138,19 @@ function chicagoDay(instant: string): string {
 	const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(instant)).map((p) => [p.type, p.value]));
 	return `${parts.year}-${parts.month}-${parts.day}`;
 }
+/**
+ * The last day with a photo open, when it is true that no photo has been opened on any day since: every later day is
+ * complete and zero, and the series reaches `through`. Otherwise null. A gap is not a quiet day, a series that stops
+ * early says nothing about the days after it, and a quiet claim is never read from a short stretch at the end.
+ */
+export function quietSince(series: ReadonlyArray<{ date: string; photoOpens: number | null; coverage: LaunchCoverage }>, through: string): string | null {
+	if (!series.length || series[series.length - 1].date !== through) return null;
+	let last = -1;
+	series.forEach((day, i) => { if (day.coverage === 'complete' && (day.photoOpens ?? 0) > 0) last = i; });
+	if (last < 0 || last === series.length - 1) return null;
+	return series.slice(last + 1).every((day) => day.coverage === 'complete' && day.photoOpens === 0) ? series[last].date : null;
+}
+
 /** "Sep 25", "Sep 25–27", "Sep 29 – Oct 1". */
 export function dayRange(start: string, end: string): string {
 	if (start === end) return formatDay(start);
@@ -289,10 +302,16 @@ function launchFinished(input: LaunchRuleInput, focus: LaunchFocus, peers: reado
 	const c = compareAtAge(focus, peers, 7);
 	const downloads = week.downloads ?? 0;
 	const first = focus.series[0].date;
+	const through = focus.series[focus.series.length - 1].date;
+	const since = quietSince(focus.series, through);
+	// Said from the whole series: the last day with a photo open, and that every complete day after it was empty. Never from the last three days alone.
+	const quiet = since
+		? `No one has opened a photo since ${formatDay(since)}, counting complete days through ${formatDay(through)}.`
+		: `${plural(recent, 'photo open')} on ${dayRange(last[0].date, last.at(-1)!.date)}, the last ${FINISHED_QUIET_DAYS} complete days.`;
 	result.findings.push(finding(input, {
 		rule: 'launch_finished', id: `launch-finished-${focus.albumKey}`, severity: 'low', target: { kind: 'album', albumKey: focus.albumKey },
 		title: 'The launch is over',
-		explanation: `Photo opens fell to ${fmt(recent)} over ${dayRange(last[0].date, last.at(-1)!.date)}. In its first 7 days it had ${plural(week.photoOpens, 'photo open')} and ${plural(downloads, 'download request')}.${c.ok ? ` ${aheadWords(c, 7)}; their median was ${medianWords(c.median)}.` : ''}`,
+		explanation: `${quiet} In its first 7 days it had ${plural(week.photoOpens, 'photo open')} and ${plural(downloads, 'download request')}.${c.ok ? ` ${aheadWords(c, 7)}; their median was ${medianWords(c.median)}.` : ''}`,
 		why: 'Most of an album’s attention arrives in its first days. The photos people asked to download are the clearest sign of which ones mattered to them.',
 		evidenceText: `${plural(week.photoOpens, 'photo open')} and ${plural(downloads, 'download request')} on ${dayRange(first, addDays(first, 6))}; ${plural(recent, 'photo open')} on ${dayRange(last[0].date, last.at(-1)!.date)}. Complete Chicago days only.`,
 		limits: [recordedOnly, 'A download request is a request, not a confirmed saved file.', 'Quiet means nearly no photo opens. A later share can bring an album back.', c.ok ? excludedLimit(c) : null, inferredLimit(focus)],
@@ -346,12 +365,12 @@ function launchFailures(input: LaunchRuleInput, focus: LaunchFocus, result: Laun
 		found = true;
 		result.findings.push(finding(input, {
 			rule: 'launch_failures', id: `launch-photo-failures-${focus.albumKey}`, severity: 'high', target: { kind: 'album', albumKey: focus.albumKey },
-			title: `${plural(f.photoLoadFailures, 'photo load')} failed during the launch`,
-			explanation: `${fmt(f.photoLoadFailures)} of the ${plural(f.photoLoads, 'photo load')} with a recorded result failed, on ${dayRange(f.window.start, f.window.end)}.`,
+			title: `${fmt(f.photoLoadFailures)} of ${plural(f.photoLoads, 'photo load')} failed during the launch`,
+			explanation: `${plural(f.photoLoadFailures, 'photo load')} failed on ${dayRange(f.window.start, f.window.end)}, out of ${fmt(f.photoLoads)} with a recorded result. A load with no recorded result is not counted either way.`,
 			why: 'A failure in the first days reaches the most visitors, because that is when most of them arrive.',
 			evidenceText: `${fmt(f.photoLoadFailures)} failed and ${fmt(f.photoLoads - f.photoLoadFailures)} loaded, ${dayRange(f.window.start, f.window.end)}, complete Chicago days.`,
 			limits: ['A failed load can work on a retry. This counts failures, not visitors.', f.photoLoads < minimumSample ? `Only ${plural(f.photoLoads, 'photo load')} had a recorded result, so this is a small sample.` : null, lateStart, relabel],
-			action: 'Open the album on a phone and a computer and check that its photos load.',
+			action: 'Open the album on a phone and a computer and check that its photos load. If they all do, nothing needs fixing.',
 			evidence: { windows: { current: { start: f.window.start, end: f.window.end }, previous: null }, units: 'photo loads with a recorded result', numerator: f.photoLoadFailures, denominator: f.photoLoads, strength: f.photoLoads >= minimumSample ? 'exploratory' : 'limited' },
 			reportHref: albumReport(focus.albumKey, '#photos')
 		}));
