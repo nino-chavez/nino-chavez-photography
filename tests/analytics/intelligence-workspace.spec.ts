@@ -10,7 +10,7 @@ const report = {
 };
 
 const ownerPreferences = {
-	retention: 'undecided', daily: true, weekly: true,
+	retention: 'undecided',
 	externalEnabled: false, destination: null, destinationVerified: false
 };
 

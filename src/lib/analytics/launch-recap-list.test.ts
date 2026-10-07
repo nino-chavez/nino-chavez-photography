@@ -59,7 +59,7 @@ test('a checkpoint past its catch-up window with nothing stored says none was st
 		['not_stored', 'Was due Sep 28', NOT_STORED_NOTE, null],
 		['not_stored', 'Was due Oct 2', NOT_STORED_NOTE, null]
 	]);
-	assert.equal(NOT_STORED_NOTE, 'No recap was stored for this checkpoint.');
+	assert.equal(NOT_STORED_NOTE, 'No recap is stored for this checkpoint.');
 });
 
 test('stored recaps that could not be read are never listed as none stored', () => {

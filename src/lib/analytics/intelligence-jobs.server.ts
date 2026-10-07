@@ -133,8 +133,9 @@ export function createIntelligenceJobStore(client: IntelligenceJobRpcClient) {
 		async claim(limit: number, now: Date): Promise<IntelligenceJob[]> {
 			const result = await client.rpc('analytics_claim_intelligence_jobs', { p_limit: Math.min(Math.max(limit, 1), 4), p_lease_seconds: 120, p_now: now.toISOString() });
 			if (result.error || !Array.isArray(result.data)) throw new Error('analytics_claim_intelligence_jobs failed');
-			// A daily or weekly job left from before recaps is not run. It is handed back with a backoff, so it
-			// stops holding a claim slot, and the attempt cap in the database ends it.
+			// A daily or weekly job left from before recaps is not run. It is handed back with a backoff, so it stops
+			// holding a claim slot. After 20 hand-backs the database marks its period unavailable and its own finish
+			// path then writes a brief that names the unavailable source. There are none today (0 in production).
 			for (const row of result.data.filter(retiredBriefJob)) await client.rpc('analytics_finish_intelligence_job', { p_job_id: (row as { id: string }).id, p_status: 'retry', p_report_id: null, p_error_code: 'brief_kind_retired' });
 			const jobs = result.data.filter((row) => !retiredBriefJob(row)).map(parseJob);
 			if (jobs.some((job) => job === null)) invalid('analytics_claim_intelligence_jobs');

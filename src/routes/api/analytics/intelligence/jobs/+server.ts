@@ -57,6 +57,15 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 			if (scope.query.albumKeys.some(key => !keys.includes(key))) throw new Error('requested album is not public');
 			return keys;
 		};
+		// Launch recaps replaced the daily and weekly briefs. They run first: a due recap is rare and bounded (at most
+		// MAX_RECAPS_PER_RUN), and the refresh jobs below can spend their whole 25 second deadline, so a recap that waited
+		// for them could be cut off by the caller's 90 second limit on a busy minute. A failure here is counted and never
+		// stops the refresh jobs or the delivery: the recap is tried again until its checkpoint lapses.
+		let recaps: RecapRunResult | { error: 'launches_unavailable' };
+		try {
+			const list = await launches().catch(() => null);
+			recaps = list ? await runRecapGeneration(recapRunDeps(client), list.launches, now) : { error: 'launches_unavailable' };
+		} catch { recaps = { error: 'launches_unavailable' }; }
 		const jobs = await runIntelligenceJobs(client, { refreshIntelligence }, async (scope) => !transport ? { journeys: {}, providerQueries: 0, providerPending: false } : loadFixedIntelligenceJourneys(scope, {
 			gallery: async (report, current) => {
 				const albumKeys = await keysFor(current);
@@ -79,13 +88,6 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 			// Public launches only, the same list Home reads. One bounded read per wake-up.
 			launchScopes: async () => launchIntelligenceScopes(await launches(), now)
 		});
-		// Launch recaps replaced the daily and weekly briefs. A failure here is counted and never stops the delivery below
-		// or the next wake-up: the refresh jobs have already run, and a recap is tried again until its checkpoint lapses.
-		let recaps: RecapRunResult | { error: 'launches_unavailable' };
-		try {
-			const list = await launches().catch(() => null);
-			recaps = list ? await runRecapGeneration(recapRunDeps(client), list.launches, now) : { error: 'launches_unavailable' };
-		} catch { recaps = { error: 'launches_unavailable' }; }
 		const provider = createOwnedIntelligenceDeliveryProvider({
 			enabled: env.ANALYTICS_INTELLIGENCE_DELIVERY_ENABLED === 'true',
 			from: env.ANALYTICS_INTELLIGENCE_EMAIL_FROM,

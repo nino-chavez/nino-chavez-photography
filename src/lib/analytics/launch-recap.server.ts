@@ -133,10 +133,13 @@ export async function readRecapOwners(admin: Admin): Promise<RecapOwner[]> {
 /* ---------------------------------------------------------------------------------------------- */
 
 /** `incomplete`: the launch's own records for the covered days are not all complete yet, found before any other read. */
-export type BuiltRecap = { state: 'built'; document: RecapDocument } | { state: 'unread' } | { state: 'incomplete' };
+/** `skipped`: the album is unlisted now, so no recap is written for anyone. */
+export type BuiltRecap = { state: 'built'; document: RecapDocument } | { state: 'unread' } | { state: 'incomplete' } | { state: 'skipped' };
 
 /** The four reads behind one recap. Injectable so the words can be tested without a database. */
 export interface SlotReads {
+	/** False when the album is unlisted. The launch read returns an unlisted album when asked for it by key, so the check is here. */
+	visible(albumKey: string): Promise<boolean>;
 	model(slot: RecapSlot): Promise<LaunchReadModel>;
 	photoRows(albumKey: string): Promise<Array<{ photoId: string }>>;
 	arrivals(model: LaunchReadModel): Promise<{ arrivals: ArrivalRow[] | null; read: boolean }>;
@@ -145,6 +148,11 @@ export interface SlotReads {
 
 export function slotReads(admin: Admin): SlotReads {
 	return {
+		async visible(albumKey) {
+			const { data, error } = await admin.from('album_settings').select('visibility').eq('album_key', albumKey).maybeSingle();
+			if (error) throw new Error('album visibility unavailable');
+			return data?.visibility !== 'unlisted';
+		},
 		// As of the due instant, so day N is the first N complete days however late this run is.
 		model: (slot) => fetchLaunchReadModel(admin, { albumKey: slot.albumKey, asOf: slot.dueAt, days: LAUNCH_DAYS, traffic: 'conservative', publicOnly: true, photoLimit: PHOTO_LIMIT }),
 		photoRows: (albumKey) => readPhotoRows(admin, albumKey),
@@ -158,6 +166,7 @@ export async function buildSlotDocument(reads: SlotReads, slot: RecapSlot, now: 
 	let model: LaunchReadModel;
 	let photoRows: Array<{ photoId: string }>;
 	try {
+		if (!(await reads.visible(slot.albumKey))) return { state: 'skipped' };
 		model = await reads.model(slot);
 		photoRows = await reads.photoRows(slot.albumKey);
 	} catch (cause) {
@@ -232,6 +241,8 @@ export interface RecapRunResult {
 	waiting: number;
 	/** Stored saying the numbers could not be read, after the settling period. */
 	unavailable: number;
+	/** The album is unlisted now: nothing is written for it. */
+	skipped: number;
 	failed: number;
 }
 
@@ -263,7 +274,7 @@ export function recapRunDeps(admin: Admin): RecapRunDeps {
  * until the checkpoint lapses.
  */
 export async function runRecapGeneration(deps: RecapRunDeps, launches: readonly RecapLaunch[], now: Date): Promise<RecapRunResult> {
-	const result: RecapRunResult = { owners: 0, due: 0, stored: 0, existing: 0, waiting: 0, unavailable: 0, failed: 0 };
+	const result: RecapRunResult = { owners: 0, due: 0, stored: 0, existing: 0, waiting: 0, unavailable: 0, skipped: 0, failed: 0 };
 	const slots = dueRecaps(launches, now);
 	result.due = slots.length;
 	if (!slots.length) return result;
@@ -288,6 +299,7 @@ export async function runRecapGeneration(deps: RecapRunDeps, launches: readonly 
 		worked += 1;
 		try {
 			const built = await deps.build(slot, now);
+			if (built.state === 'skipped') { result.skipped += 1; continue; }
 			const settling = now.getTime() < Date.parse(slot.settleBy);
 			let document: RecapDocument | null = null;
 			if (built.state === 'built') document = built.document;

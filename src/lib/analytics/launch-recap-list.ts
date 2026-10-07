@@ -53,7 +53,7 @@ export interface RecapListInput {
 export const NOT_STORED_OWNER_NOTE = 'No recap is being written. Choose how long to keep private records in Settings and later recaps will be.';
 export const DUE_NOT_WRITTEN_NOTE = 'It is due, but no recap is being written.';
 export const DUE_NOT_STORED_NOTE = `It is due and not stored yet. It is tried again every minute for ${RECAP_CATCH_UP_DAYS} days.`;
-export const NOT_STORED_NOTE = 'No recap was stored for this checkpoint.';
+export const NOT_STORED_NOTE = 'No recap is stored for this checkpoint.';
 export const UNREADABLE_NOTE = 'Stored recaps could not be read. This is not a report that none exist.';
 
 function evidenceFlag(evidence: RecapEvidence): string | null {

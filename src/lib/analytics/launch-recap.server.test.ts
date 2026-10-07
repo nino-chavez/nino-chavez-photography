@@ -49,7 +49,7 @@ function deps(over: { owners?: RecapOwner[]; stored?: string[]; build?: (slot: R
 test('nothing is due: nothing is read, not even the owners', async () => {
 	const { deps: d, calls } = deps();
 	const result = await runRecapGeneration(d, [JCA], at('2026-09-27T13:00:00Z'));
-	assert.deepEqual(result, { owners: 0, due: 0, stored: 0, existing: 0, waiting: 0, unavailable: 0, failed: 0 });
+	assert.deepEqual(result, { owners: 0, due: 0, stored: 0, existing: 0, waiting: 0, unavailable: 0, skipped: 0, failed: 0 });
 	assert.deepEqual([calls.owners, calls.existing, calls.builds.length], [0, 0, 0]);
 });
 
@@ -65,14 +65,14 @@ test('a launch younger than 3 days, and an album that is not in the public list,
 test('with no owner set up, the recap is due but no launch number is read and nothing is stored', async () => {
 	const { deps: d, calls } = deps({ owners: [] });
 	const result = await runRecapGeneration(d, [JCA], at('2026-09-28T13:05:00Z'));
-	assert.deepEqual(result, { owners: 0, due: 1, stored: 0, existing: 0, waiting: 0, unavailable: 0, failed: 0 });
+	assert.deepEqual(result, { owners: 0, due: 1, stored: 0, existing: 0, waiting: 0, unavailable: 0, skipped: 0, failed: 0 });
 	assert.deepEqual([calls.existing, calls.builds.length, calls.stores.length], [0, 0, 0]);
 });
 
 test('a due recap is built as of its due slot and stored once for the owner; the next run finds it and does nothing', async () => {
 	const { deps: d, calls } = deps();
 	const result = await runRecapGeneration(d, [JCA], at('2026-09-28T13:05:00Z'));
-	assert.deepEqual(result, { owners: 1, due: 1, stored: 1, existing: 0, waiting: 0, unavailable: 0, failed: 0 });
+	assert.deepEqual(result, { owners: 1, due: 1, stored: 1, existing: 0, waiting: 0, unavailable: 0, skipped: 0, failed: 0 });
 	assert.deepEqual(calls.builds, ['launch:Re7kho:day3']);
 	assert.deepEqual(calls.stores, [{ owner: 'owner-1', key: 'launch:Re7kho:day3', evidence: 'complete', late: false }]);
 	// The next minute: the unique key is already stored.
@@ -143,10 +143,10 @@ test('a run builds at most MAX_RECAPS_PER_RUN recaps, oldest first, and leaves t
 	const { deps: d, calls } = deps({ build: async (slot) => ({ state: 'built', document: canned(slot) }) });
 	// Published Sep 21..25. At Sep 28 13:05: b's day 3 lapsed at 13:00, c and d are late, a's day 7 and e's day 3 are due at 13:00.
 	const result = await runRecapGeneration(d, launches, at('2026-09-28T13:05:00Z'));
-	assert.equal(MAX_RECAPS_PER_RUN, 3);
+	assert.equal(MAX_RECAPS_PER_RUN, 2);
 	assert.equal(calls.builds.length, MAX_RECAPS_PER_RUN);
 	assert.equal(result.stored, MAX_RECAPS_PER_RUN);
-	assert.deepEqual(calls.builds, ['launch:c:day3', 'launch:d:day3', 'launch:a:day7'], 'oldest due first; b lapsed at 08:00 three days after it was due');
+	assert.deepEqual(calls.builds, ['launch:c:day3', 'launch:d:day3'], 'oldest due first; b lapsed at 08:00 three days after it was due');
 	assert.ok(result.due > MAX_RECAPS_PER_RUN);
 });
 
@@ -312,6 +312,7 @@ test('owners need retention chosen and the dashboard on; email needs the deliver
 
 function reads(over: Partial<SlotReads> = {}): SlotReads {
 	return {
+		visible: async () => true,
 		model: async (slot) => model(shape('Re7kho', slot.dueDate), ALL.map((one) => ({ ...one, asOfDay: slot.dueDate })), {}, slot.dueDate),
 		photoRows: async () => ['p1', 'p2', 'p3', 'p4'].map((photoId) => ({ photoId })),
 		arrivals: async () => ({ arrivals: [{ source: 'instagram', count: 5 }], read: true }),
@@ -360,4 +361,26 @@ test('findings that could not be read, and tags that could not be read, make the
 
 test('the link in a recap opens the report on the recap, on the report host', () => {
 	assert.equal(recapLink('Re7kho', 7), 'https://analytics.ninochavez.co/albums/Re7kho?recap=7');
+});
+
+test('an unlisted album gets no recap: it is skipped before any launch number is read, and nothing is stored', async () => {
+	let modelReads = 0;
+	const hidden = reads({ visible: async () => false, model: async () => { modelReads += 1; throw new Error('must not be read'); } });
+	assert.deepEqual(await buildSlotDocument(hidden, slot3(), at('2026-09-28T13:05:00Z')), { state: 'skipped' });
+	assert.equal(modelReads, 0);
+	const { deps: d, calls } = deps({ build: (slot, now) => buildSlotDocument(hidden, slot, now) });
+	const result = await runRecapGeneration(d, [JCA], at('2026-09-28T13:05:00Z'));
+	assert.deepEqual([result.skipped, result.stored, result.waiting, result.unavailable, result.failed], [1, 0, 0, 0, 0]);
+	assert.equal(calls.stores.length, 0);
+	// A failed visibility read is unread, never "visible".
+	assert.deepEqual(await buildSlotDocument(reads({ visible: async () => { throw new Error('down'); } }), slot3(), at('2026-09-28T13:05:00Z')), { state: 'unread' });
+});
+
+test('visibility is read from album_settings: unlisted is hidden; public and no row are visible; an error throws', async () => {
+	const { slotReads } = await import('./launch-recap.server');
+	const admin = (answer: { data: unknown; error: unknown }) => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => answer }) }) }) }) as never;
+	assert.equal(await slotReads(admin({ data: { visibility: 'unlisted' }, error: null })).visible('x'), false);
+	assert.equal(await slotReads(admin({ data: { visibility: 'public' }, error: null })).visible('x'), true);
+	assert.equal(await slotReads(admin({ data: null, error: null })).visible('x'), true);
+	await assert.rejects(slotReads(admin({ data: null, error: { message: 'down' } })).visible('x'), /visibility unavailable/);
 });

@@ -31,8 +31,8 @@ export const RECAP_CATCH_UP_DAYS = 3;
  * 08:00 the scheduler waits this long for them, then stores the recap saying which records were missing.
  */
 export const RECAP_SETTLE_HOURS = 6;
-/** Bounds the work of one scheduler wake-up: each recap is several reads. */
-export const MAX_RECAPS_PER_RUN = 3;
+/** Bounds the work of one scheduler wake-up: one recap is about 20 Supabase requests (model, photo pages, report, findings, inserts). */
+export const MAX_RECAPS_PER_RUN = 2;
 
 export function isRecapCheckpoint(value: unknown): value is RecapCheckpoint {
 	return value === 3 || value === 7;
