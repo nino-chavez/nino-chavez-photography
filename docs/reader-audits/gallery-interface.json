@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T04:07:54.824Z",
-  "reviewedBy": "Claude Sonnet 5.5 (implementing subagent, self-review; not a cold reviewer)",
-  "method": "Self-review by the agent that wrote the change, on a local dev server reading production through a preload that blocks every write (read-only). Walked at 1440x900 and 375x812: the photo explorer (all albums, rising, one album as a table, the photo dialog, a filter with no match; as a visitor, who is offered no shortlist and is told what signing in adds; and as a harness owner with and without saved views and with a photo shortlisted), the data page's corrections section rewritten in plain words (signed out; a harness owner with real actions and no history, and with an invented history including an action whose record is gone), the album report (signed out, and as a harness owner with no notes and with two invented notes), the album index link, Settings with two invented saved views, and Home. Stored rows marked invented were presented by the preload and nothing was written. Gates per capture: overflow, including the document scrolling sideways and boxes that escape their scroller; 44 px targets; text at 200 percent; Tab-only keyboard walk; no non-GET request; no console error; each gate was forced to fail once on purpose on the first page at both widths and fired. The Playwright rehearsal specs were also run against a local synthetic stack and pass, including real local saves, updates, notes and corrections. Not covered: a cold reviewer; a real signed-in session against production; largest system text size and increased contrast beyond the 200 percent text and the prefers-contrast rules in the source; physical devices.",
-  "sourceDigest": "sha256:4ca010a8d402edae1d159f77f89bd6930783ba5f55d56e7c5eac1d2f528cc6d1",
+  "reviewedAt": "2026-10-07T04:14:24.162Z",
+  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer) over the step 8 subagent's walk",
+  "method": "Step 8 walk by the implementing subagent stands for every screen (method in docs/evidence/screen-reviews/analytics-old-addresses-1b45d86/walk.txt). On top of it the coordinator changed only the Settings saved-view actions (src/routes/analytics/settings/+page.server.ts) to write through saved-views.server.ts: a taken name is refused on save and rename, and a rename or delete matching none of the owner's views reports not found. No markup changed; the only reader-visible change is those three error sentences, checked in the unit tests, not in a rendered walk. The coordinator also opened the subagent's photos-visitor, album-owner-notes and data-owner-history captures and re-curled ten old addresses against the production build under wrangler. Not covered: a rendered Settings capture of the new error sentences, a cold reviewer, a real signed-in session, physical devices.",
+  "sourceDigest": "sha256:a08668b393e907adaec86cd0f1bee8578d378bb6fa4431837afde24f54b4c201",
   "sourceFiles": 197,
   "scope": [
     "Photo explorer page, its shortlist rule and its CSV link",
@@ -12,6 +12,7 @@
     "Album report sharing notes, shortlist note and photo explorer link",
     "Settings saved view links",
     "Album index link to the photo explorer",
-    "Header without the Gallery report link"
+    "Header without the Gallery report link",
+    "Settings saved view save, rename and delete errors"
   ]
 }
