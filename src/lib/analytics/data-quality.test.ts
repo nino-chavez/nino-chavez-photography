@@ -6,6 +6,8 @@ import {
 } from './data-quality';
 import { DATA_ANCHORS } from './data-anchors';
 import type { Freshness } from './home';
+import { readRejections, type DeliveryDay } from './collection-rejections';
+import { formatDay } from './launch-recap';
 import { parseMeasurementHealth } from './measurement-health';
 import type { OperatorReport } from './operator-report.server';
 import type { JourneyAggregate } from './posthog.types';
@@ -166,7 +168,7 @@ test('the headline is the worst state on the page: a limit leads a quiet page, a
 	assert.match(worse.status.detail, /Search and download evidence starts on Sep 29/);
 	const partial = buildDataView(input({ posthogConfigured: false }));
 	assert.equal(partial.status.state, 'partial');
-	assert.equal(partial.status.headline, 'Nothing is wrong, but 1 part of this page could not be read.');
+	assert.equal(partial.status.headline, '1 part of this page could not be read. No problem was found in the rest.');
 	// Evidence that could not be read at all is a part not read, never "none recorded".
 	const broken = buildDataView(input({ report: report({ diagnosticsCoverage: { availableFrom: null, label: 'x', error: 'diagnostics unavailable' } }) }));
 	assert.deepEqual(broken.status.notRead.map((item) => item.id), ['evidence']);
@@ -174,9 +176,9 @@ test('the headline is the worst state on the page: a limit leads a quiet page, a
 });
 
 test('a part that could not be read is partial, not healthy, and it names where its own note is', () => {
-	const noCloudflare = buildDataView(input({ traffic: { available: false, period: 30, reason: 'Cloudflare Web Analytics access is not configured for this report.' }, posthogConfigured: false }));
+	const noCloudflare = buildDataView(input({ owner: true, traffic: { available: false, period: 30, reason: 'Cloudflare Web Analytics access is not configured for this report.' }, posthogConfigured: false }));
 	assert.equal(noCloudflare.status.state, 'partial');
-	assert.equal(noCloudflare.status.headline, 'Nothing is wrong, but 2 parts of this page could not be read.');
+	assert.equal(noCloudflare.status.headline, '2 parts of this page could not be read. No problem was found in the rest.');
 	assert.deepEqual(noCloudflare.status.notRead.map((item) => item.id), ['cloudflare', 'posthog']);
 	assert.match(noCloudflare.site.cloudflare.detail, /no Cloudflare access set up here/);
 	assert.equal(noCloudflare.site.cloudflare.value, null);
@@ -205,7 +207,7 @@ test('delivery detail waits for the owner; everyone else is told why and where t
 	const signedOut = buildDataView(input());
 	assert.equal(signedOut.deliveryState, 'owner_only');
 	assert.equal(signedOut.delivery.rows, null);
-	assert.match(signedOut.deliveryNote!, /shown when you are signed in\. Whether delivery has failed or is late is already in the status above\./);
+	assert.match(signedOut.deliveryNote!, /shown when you are signed in\. Whether delivery to the analytics provider has failed or is late is already in the status above\./);
 	const owner = buildDataView(input({ owner: true, health }));
 	assert.equal(owner.deliveryState, 'shown');
 	assert.equal(owner.deliveryNote, null);
@@ -243,34 +245,34 @@ test('the status window is the last seven complete days, as on Home, however man
 });
 
 test('site measures: two counts that are not expected to match, with the days each covers', () => {
-	const view = siteMeasuresView({ traffic, actions: actions(), days: 30 });
+	const view = siteMeasuresView({ traffic, actions: actions(), days: 30, owner: true });
 	assert.equal(view.cloudflare.value, '730');
 	assert.equal(view.firstParty.value, '85');
 	assert.match(view.firstParty.detail, /^Sep 29 – Oct 5\. The site's own counter began Sep 29, so it covers 7 of the last 30 days\.$/);
 	assert.match(view.crossCheck, /^Cloudflare counted 730 page loads\. The site's own counter recorded 85 page views\. They use different definitions and different days, so they are not expected to match and neither one checks the other\.$/);
 	assert.match(view.sampling, /Cloudflare adapts how much it samples/);
 	assert.deepEqual(view.devices, [{ name: 'mobile', pageLoads: 730 }]);
-	const none = siteMeasuresView({ traffic: null, actions: actions({ firstRecordedAt: null }), days: 7 });
+	const none = siteMeasuresView({ traffic: null, actions: actions({ firstRecordedAt: null }), days: 7, owner: true });
 	assert.equal(none.cloudflare.value, null);
 	assert.equal(none.firstParty.value, null);
 	assert.match(none.firstParty.detail, /has not recorded a page view yet\. This is not zero\./);
 	assert.match(none.crossCheck, /so they are not compared\.$/);
 	assert.equal(none.devices, null);
-	assert.match(siteMeasuresView({ traffic, actions: null, days: 7 }).firstParty.detail, /not zero\. Reload in a few minutes\./);
+	assert.match(siteMeasuresView({ traffic, actions: null, days: 7, owner: true }).firstParty.detail, /not zero\. Reload in a few minutes\./);
 });
 
 test('linked journeys: unavailable reports are said once, with what to do, not as a box each', () => {
 	const make = (report: JourneyAggregate['report'], available: boolean, error?: JourneyAggregate['error']): JourneyAggregate => ({ report, available, error, asOf: null, coverage: { start: '', end: '', timezone: 'America/Chicago', definitionVersion: 2, cohort: '', excluded: '', metadata: '' }, totals: {}, breakdown: [] });
-	const none = journeysView(['discovery', 'album_use', 'search_usefulness'].map((name) => make(name as JourneyAggregate['report'], false, 'provider_unavailable')));
+	const none = journeysView(['discovery', 'album_use', 'search_usefulness'].map((name) => make(name as JourneyAggregate['report'], false, 'provider_unavailable')), true);
 	assert.equal(none.available.length, 0);
 	assert.match(none.unavailable!.what, /^All linked-journey reports need PostHog, which is not connected here \(Discovery, Album use, Search usefulness\)\. No figure is shown, and that is not zero\.$/);
 	assert.match(none.unavailable!.todo, /Add the PostHog query settings/);
-	const some = journeysView([make('discovery', true), make('album_use', false, 'provider_query_failed')]);
+	const some = journeysView([make('discovery', true), make('album_use', false, 'provider_query_failed')], true);
 	assert.equal(some.available.length, 1);
 	assert.match(some.unavailable!.what, /^1 of 2 linked-journey reports could not be read \(Album use\)\./);
-	assert.equal(journeysView([make('discovery', true)]).unavailable, null);
-	assert.match(journeysView(null).unavailable!.what, /not zero/);
-	assert.match(notReadNote('posthog').todo, /Reload in a few minutes/);
+	assert.equal(journeysView([make('discovery', true)], true).unavailable, null);
+	assert.match(journeysView(null, true).unavailable!.what, /not zero/);
+	assert.match(notReadNote('posthog', true).todo, /Reload in a few minutes/);
 });
 
 test('counting rules and event counts say what a number stands for', () => {
@@ -278,21 +280,21 @@ test('counting rules and event counts say what a number stands for', () => {
 	assert.match(view.counting!.rule, /counted once per day.*not people\.$/);
 	assert.deepEqual(view.counting!.totals.map((item) => item.value), ['2,290', '169', '0']);
 	// The event counts arrive after the page, from their own view.
-	const events = eventsView(v2);
+	const events = eventsView(v2, true);
 	assert.equal(events.available, true);
 	assert.equal(events.counts![0].count, 259);
 	assert.equal(events.down, null);
-	const without = eventsView(null);
+	const without = eventsView(null, true);
 	assert.deepEqual([without.available, without.counts], [false, null]);
 	assert.match(without.down!.what, /not zero\.$/);
 	assert.equal(without.label, 'Detailed event counts were not read.');
-	assert.match(eventsView(unavailableV2ReportProjection({} as never)).label, /^Detailed event counts could not be read\. This is not a zero-result or complete-coverage report\.$/);
+	assert.match(eventsView(unavailableV2ReportProjection({} as never), true).label, /^Detailed event counts could not be read\. This is not a zero-result or complete-coverage report\.$/);
 	// Until they arrive the page says nothing about them; if they cannot be read the headline changes with them.
 	const status = buildDataView(input()).status;
 	assert.ok(!status.notRead.some((item) => item.id === 'events'));
 	const failed = withNotRead(status, EVENTS_NOT_READ);
 	assert.equal(failed.state, 'partial');
-	assert.equal(failed.headline, 'Nothing is wrong, but 1 part of this page could not be read.');
+	assert.equal(failed.headline, '1 part of this page could not be read. No problem was found in the rest.');
 	assert.match(failed.detail, /Search and download evidence starts on Sep 29/, 'what the numbers do not reach back to is still said');
 	assert.equal(withNotRead(failed, EVENTS_NOT_READ), failed, 'the same part is not added twice');
 	// Something that needs attention stays the headline.
@@ -328,8 +330,76 @@ test('the catalogue basis reads as words, and a site-journey failure is said in 
 	assert.equal(basisWords('event_snapshot'), 'event snapshots');
 	assert.equal(basisWords('something_new'), 'something new');
 	assert.equal(basisWords(''), 'an unknown source');
-	assert.match(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.').what, /^PostHog is not connected here, so no linked-journey figure is shown for the site\. This is not zero\.$/);
-	assert.doesNotMatch(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.').what, /above/);
-	assert.match(siteJourneyNote('PostHog linked journeys are still pending after the report deadline. This is not zero activity.').todo, /Reload in a few minutes/);
-	assert.match(siteJourneyNote('PostHog linked journeys could not be read.').todo, /check the PostHog query settings/);
+	assert.match(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.', true).what, /^PostHog is not connected here, so no linked-journey figure is shown for the site\. This is not zero\.$/);
+	assert.doesNotMatch(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.', true).what, /above/);
+	assert.match(siteJourneyNote('PostHog linked journeys are still pending after the report deadline. This is not zero activity.', true).todo, /Reload in a few minutes/);
+	assert.match(siteJourneyNote('PostHog linked journeys could not be read.', true).todo, /check the PostHog query settings/);
+});
+
+/* B1: the headline against the rejected-events counters. Production's counters on 2026-10-07: about 400 rejected a day, then 12,865 to 27,842 a day from Oct 2. */
+const SURGE_DAYS: DeliveryDay[] = [
+	{ date: '2026-09-29', accepted: 125, rejected: 395, duplicate: 3 }, { date: '2026-09-30', accepted: 572, rejected: 433, duplicate: 5 }, { date: '2026-10-01', accepted: 648, rejected: 420, duplicate: 12 },
+	{ date: '2026-10-02', accepted: 682, rejected: 24882, duplicate: 2 }, { date: '2026-10-03', accepted: 117, rejected: 27842, duplicate: 9 }, { date: '2026-10-04', accepted: 388, rejected: 23316, duplicate: 17 },
+	{ date: '2026-10-05', accepted: 124, rejected: 20528, duplicate: 11 }
+];
+const surge = readRejections({ days: SURGE_DAYS, lastCompleteDay: LAST, formatDay });
+
+test('a rejection surge against the usual rate is the owner\'s headline, said in full, and it does not claim a cause', () => {
+	const owner = buildDataView(input({ owner: true, health, rejections: surge }));
+	assert.equal(owner.status.state, 'attention');
+	assert.equal(owner.status.headline, 'Rejected events are about 55 times their usual rate since Oct 2. The cause is not recorded yet.');
+	assert.deepEqual(owner.status.problems.map((p) => p.id), ['rejections-unusual']);
+	assert.equal(owner.status.problems[0].href, 'delivery');
+	// The row beside the totals says whether the count is usual, in the same words.
+	const row = owner.delivery.rows!.find((item) => item.label === 'Rejected events, against the usual rate')!;
+	assert.match(row.value, /^Rejected events are about 55 times their usual rate since Oct 2\. The cause is not recorded yet\. They have averaged 24,142 a day against about 420 before\. Accepted events are at about their usual rate\.$/);
+	// With another problem the headline is a count, and the surge is still one of the listed problems.
+	const two = buildDataView(input({ owner: true, health, rejections: surge, refreshedAt: '2026-10-06T12:00:00Z' }));
+	assert.equal(two.status.headline, '2 things need attention.');
+	assert.ok(two.status.problems.some((p) => p.id === 'rejections-unusual'));
+});
+
+test('a visitor never sees the rejection counts or the surge: the counters are the owner\'s', () => {
+	const visitor = buildDataView(input({ owner: false, rejections: surge }));
+	assert.notEqual(visitor.status.state, 'attention');
+	assert.doesNotMatch(JSON.stringify(visitor), /usual rate|24,882|24,142/i);
+	assert.equal(visitor.delivery.rows, null);
+});
+
+test('with no baseline the owner is told there is no usual rate to compare with, and the headline stays out of it', () => {
+	const none = readRejections({ days: SURGE_DAYS.slice(0, 2), lastCompleteDay: LAST, formatDay });
+	const owner = buildDataView(input({ owner: true, health, rejections: none }));
+	assert.equal(owner.status.problems.length, 0);
+	assert.match(owner.delivery.rows!.find((item) => item.label === 'Rejected events, against the usual rate')!.value, /^There are too few earlier days to say whether this many rejected events is usual\./);
+	// Counters that could not be read are said, not skipped.
+	assert.match(buildDataView(input({ owner: true, health, rejections: null })).delivery.rows!.find((item) => item.label === 'Rejected events, against the usual rate')!.value, /could not be checked, because the daily counters could not be read\.$/);
+});
+
+test('a page with a part missing no longer says nothing is wrong', () => {
+	const partial = buildDataView(input({ posthogConfigured: false }));
+	assert.doesNotMatch(partial.status.headline, /Nothing is wrong/);
+});
+
+test('S11: a visitor is told that a part is not available, and never handed the owner\'s setup', () => {
+	// Cloudflare not set up: the owner reads what to add; a visitor reads only that page loads are not available.
+	const unset = { available: false as const, period: 30 as const, reason: 'Cloudflare Web Analytics access is not configured for this report.' };
+	const owner = siteMeasuresView({ traffic: unset, actions: actions(), days: 30, owner: true });
+	assert.match(owner.cloudflare.detail, /Add the Cloudflare analytics settings to the site's server settings\./);
+	const visitor = siteMeasuresView({ traffic: unset, actions: actions(), days: 30, owner: false });
+	assert.equal(visitor.cloudflare.detail, 'Page loads are not available right now.');
+	// The journeys: the owner reads which settings to add; a visitor reads the fact and, when it helps, to reload.
+	const make = (report: JourneyAggregate['report'], error: JourneyAggregate['error']): JourneyAggregate => ({ report, available: false, error, asOf: null, coverage: { start: '', end: '', timezone: 'America/Chicago', definitionVersion: 2, cohort: '', excluded: '', metadata: '' }, totals: {}, breakdown: [] });
+	const missing = [make('discovery', 'provider_unavailable')];
+	assert.match(journeysView(missing, true).unavailable!.todo, /Add the PostHog query settings to the site's server settings/);
+	assert.equal(journeysView(missing, false).unavailable!.todo, '');
+	assert.equal(journeysView(null, false).unavailable!.todo, 'Reload in a few minutes.');
+	// Server settings, the database and the delivery job are the owner's.
+	for (const kind of ['cloudflare', 'posthog', 'events', 'report', 'delivery'] as const) {
+		assert.doesNotMatch(notReadNote(kind, false).todo, /server settings|database|delivery job|token/, kind);
+		assert.equal(notReadNote(kind, false).what, notReadNote(kind, true).what, `${kind}: the fact is the same for everyone`);
+	}
+	assert.equal(siteJourneyNote('PostHog linked journeys are not configured.', false).todo, '');
+	// The whole page, built for a visitor, carries none of it.
+	const page = buildDataView(input({ owner: false, traffic: unset, posthogConfigured: false, report: null }));
+	assert.doesNotMatch(JSON.stringify(page), /server settings|database is the thing to check|delivery job/);
 });

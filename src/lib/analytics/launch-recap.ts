@@ -243,16 +243,22 @@ function seriesSpan(series: LaunchDay[]): string {
 	return series.length ? daysWords(series[0].date, series.at(-1)!.date) : 'the days counted';
 }
 
+/**
+ * What an arrival and a tag are, said where they are used. A tag is the `src=` label in a shared link's address (see share.ts); an arrival is one
+ * browser landing from such a link, and like every other action it counts once a day. Neither is a person.
+ */
+export const ARRIVAL_WORDS = 'A tag is the label on a shared link, and an arrival is one browser landing from it, counted once a day. Arrivals without a tag cannot be traced to a source.';
+
 function arrivalsLine(arrivals: ArrivalRow[] | null, span: string): RecapSentence | null {
 	if (!arrivals) return null;
 	const rows = arrivals.filter((row) => row.count > 0).sort((x, y) => y.count - x.count || x.source.localeCompare(y.source));
 	if (!rows.length) return null;
 	const total = rows.reduce((sum, row) => sum + row.count, 0);
 	// Other launches' arrivals are not in the launch read model, so the only comparison is between this album's own tags.
-	if (rows.length === 1) return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links, all from the tag "', rows[0].source, '". Arrivals that did not use a tagged link cannot be traced to a source.');
+	if (rows.length === 1) return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links, all with the tag "', rows[0].source, `". ${ARRIVAL_WORDS}`);
 	const named = rows.slice(0, 3).map((row) => `${row.source} ${fmt(row.count)} (${Math.round((row.count / total) * 100)}%)`).join(', ');
 	const more = rows.length > 3 ? `, and ${rows.length - 3} more` : '';
-	return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links: ', named, more, '. Arrivals that did not use a tagged link cannot be traced to a source.');
+	return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links: ', named, more, `. ${ARRIVAL_WORDS}`);
 }
 
 function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: string, weekFigures = false, omitToday = false): RecapSentence {
@@ -290,9 +296,15 @@ export function chicagoDate(instant: string): string {
 }
 /** The words every page uses for a first-publication date that was worked out afterwards from server logs, not recorded when the album was published. */
 export const RECOVERED_DATE_WORDS = 'date recovered afterwards from a log';
-export const recoveredTag = (basis: 'recorded' | 'inferred' | boolean): string => (basis === 'inferred' || basis === true ? ` (${RECOVERED_DATE_WORDS})` : '');
-function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>): string {
-	return `${formatDay(chicagoDate(album.firstPublishedAt))}${recoveredTag(album.basis)}`;
+/** What a page says once, beside its first recovered date, for every `*` on that page. */
+export const RECOVERED_NOTE = '* Date recovered afterwards from a log. The album\'s first publication was not recorded when it happened.';
+/**
+ * A recovered date is marked `*` on a page, and the page carries RECOVERED_NOTE once. Text read away from a page (a stored recap,
+ * an email) has no page to hold the note, so there `inText` says the words beside the date instead.
+ */
+export const recoveredTag = (basis: 'recorded' | 'inferred' | boolean, inText = false): string => (basis === 'inferred' || basis === true ? (inText ? ` (${RECOVERED_DATE_WORDS})` : '*') : '');
+function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>, inText: boolean): string {
+	return `${formatDay(chicagoDate(album.firstPublishedAt))}${recoveredTag(album.basis, inText)}`;
 }
 
 export function undatedReason(code: 'unobserved' | 'not_published' | 'no_record'): string {
@@ -333,7 +345,7 @@ export function buildRecap(input: RecapInput): Recap {
 
 	const launch = album;
 	const n = launch.series.length;
-	const published = sentence(`Published ${publishedPhrase(launch)}.`);
+	const published = sentence(`Published ${publishedPhrase(launch, !!input.stored)}.`);
 	const weekFigures = launch.elapsedDays >= 7;
 	const windowSentence = windowLine(launch.series, launch.currentDay, model.today, weekFigures, input.stored);
 	const { total: opens, gaps } = sumComplete(launch.series, 'photoOpens');

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Launch, LaunchAgeTotals, LaunchDay } from './launch-read-model.server';
-import { buildAlbumIndex, figureText, launchRow, matchesName, parseCompare, rankText, statusText, undatedReasonCode, undatedReasonShort, type AlbumActivity, type AlbumSetting } from './album-index';
+import { buildAlbumIndex, figureText, launchRow, matchesName, parseCompare, rankText, statusText, undatedCounts, undatedReasonCode, undatedReasonShort, type AlbumActivity, type AlbumSetting } from './album-index';
 import { undatedReason } from './launch-recap';
 
 const addDays = (date: string, n: number) => { const d = new Date(`${date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -182,4 +182,12 @@ test('the compare choice keeps only known launches, once each, at most four', ()
 	assert.deepEqual(parseCompare('a,b,c,d,e', keys), ['a', 'b', 'c', 'd']);
 	assert.deepEqual(parseCompare(null, keys), []);
 	assert.deepEqual(parseCompare('<script>,a%2Fb', keys), []);
+});
+
+test('the headline splits the albums without a launch date into the two lists beneath it, so 247 is 130 and 117', () => {
+	// Production, 2026-10-07: 247 public albums have no launch date; 130 had activity in the last 30 days and 117 had none.
+	assert.equal(undatedCounts(130, 117, 30), '130 had activity in the last 30 days and 117 had none');
+	assert.equal(undatedCounts(0, 12, 30), 'none had activity in the last 30 days');
+	assert.equal(undatedCounts(12, 0, 30), 'all had activity in the last 30 days');
+	assert.equal(undatedCounts(1, 1, 30), '1 had activity in the last 30 days and 1 had none');
 });

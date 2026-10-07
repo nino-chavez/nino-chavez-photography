@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildRecapView, stampWords, type RecapViewInput, type StoredRecapText } from './launch-recap-view';
+import { buildRecapView, stampWords, timingNoteLast, type RecapViewInput, type StoredRecapText } from './launch-recap-view';
+import { recapBlocks } from './launch-recap-text';
 import type { StoredRecapSummary } from './launch-recap-list';
 
 /*
@@ -90,4 +91,18 @@ test('an album with no launch date has no recaps', () => {
 	const view = buildRecapView(base({ launch: null, open: null, stored: null }));
 	assert.equal(view.state, 'no_launch');
 	assert.equal(view.message, 'This album has no launch date, so it has no recaps.');
+});
+
+test('a recap stored with its timing note first is read with the finding first: the note moves to just above what it cannot tell you', () => {
+	const note = 'This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.';
+	const old = ['subject', note, 'Published Sep 25. 931 photo opens in its first 7 days.', 'What to look at:', '- A finding.', 'What this cannot tell you:', '- Counts are browser actions, not people.'].join('\n\n');
+	const moved = timingNoteLast(recapBlocks(old));
+	assert.deepEqual(moved.map((block) => (block.kind === 'paragraph' ? block.text.slice(0, 22) : block.kind === 'heading' ? block.text : 'list')), [
+		'subject', 'Published Sep 25. 931 ', 'What to look at', 'list', 'This recap was written', 'What this cannot tell you', 'list'
+	]);
+	// Without a list of limits it goes last; a late recap's note moves the same way; a recap with no note is returned as it is.
+	assert.equal(timingNoteLast(recapBlocks(['x', 'This recap is late. It was due Mon.', 'Body.'].join('\n\n'))).at(-1)!.kind, 'paragraph');
+	assert.equal((timingNoteLast(recapBlocks(['x', 'This recap is late. It was due Mon.', 'Body.'].join('\n\n'))).at(-1) as { text: string }).text, 'This recap is late. It was due Mon.');
+	const plain = recapBlocks(['x', 'Body.'].join('\n\n'));
+	assert.equal(timingNoteLast(plain), plain);
 });

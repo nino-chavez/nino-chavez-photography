@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { readRejections, type DeliveryDay, type RejectionReading } from './collection-rejections';
 import { buildDataView, eventsView, journeysView, notReadNote, type DataView, type EventsView, type JourneysView } from './data-quality';
 import { refreshTimeFrom } from './home.server';
 import { collectionDiagnostics } from './intelligence-source.server';
-import { chicagoDate } from './launch-recap';
+import { chicagoDate, formatDay } from './launch-recap';
 import { parseMeasurementHealth, type MeasurementHealth } from './measurement-health';
 import { buildOperatorReport, type OperatorReport } from './operator-report.server';
 import { createPostHogQueryTransport, queryGalleryJourneys } from './posthog-queries.server';
@@ -56,6 +57,22 @@ function logFailure(what: string, result: PromiseSettledResult<unknown>) {
 	if (result.status === 'rejected') console.error(`[data quality] ${what} unavailable:`, result.reason instanceof Error ? result.reason.message : result.reason);
 }
 
+/** How far back the collector's daily counters are read to find the usual rate of rejected events. */
+const REJECTION_HISTORY_DAYS = 90;
+
+/** The collector's counters by Chicago day, outcomes summed over event formats. Owner only. Null when they could not be read. */
+async function readDeliveryDays(admin: SupabaseClient, since: string): Promise<DeliveryDay[] | null> {
+	const read = await admin.from('analytics_collection_delivery_counters').select('bucket_date, outcome, count').gte('bucket_date', since).order('bucket_date');
+	if (read.error || !read.data) return null;
+	const byDay = new Map<string, DeliveryDay>();
+	for (const row of read.data as Array<{ bucket_date: string; outcome: 'accepted' | 'rejected' | 'duplicate'; count: number | string }>) {
+		const day = byDay.get(row.bucket_date) ?? { date: row.bucket_date, accepted: 0, rejected: 0, duplicate: 0 };
+		day[row.outcome] += Number(row.count);
+		byDay.set(row.bucket_date, day);
+	}
+	return [...byDay.values()];
+}
+
 export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	const { admin, days } = deps;
 	const asOf = deps.now ?? new Date();
@@ -88,18 +105,19 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	// when the gallery summary itself could be read, as before.
 	const eventsRaw = publicNames.then((found) => (found.size ? fetchV2ReportProjection(admin, query, { publicAlbumKeys: [...found.keys()] }) : null))
 		.catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; });
-	const events: Promise<EventsView> = Promise.all([eventsRaw, reportPromise.then((report) => report.available, () => false)]).then(([raw, reportOk]) => eventsView(reportOk ? raw : null));
+	const events: Promise<EventsView> = Promise.all([eventsRaw, reportPromise.then((report) => report.available, () => false)]).then(([raw, reportOk]) => eventsView(reportOk ? raw : null, deps.owner));
 
-	const [reportRead, healthRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
+	const [reportRead, healthRead, countersRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
 		reportPromise,
 		deps.owner ? admin.rpc('analytics_posthog_delivery_health') : Promise.resolve({ data: null, error: null }),
+		deps.owner ? readDeliveryDays(admin, addDays(today, -REJECTION_HISTORY_DAYS)) : Promise.resolve(null),
 		admin.from('analytics_daily_coverage').select('reconciled_at').order('reconciled_at', { ascending: false }).limit(1),
 		admin.from('analytics_intelligence_incidents').select('finding_id').eq('status', 'open').order('updated_at', { ascending: false }).limit(20),
 		collectionDiagnostics(admin, asOf),
 		loadSiteTraffic(days, deps.env.CLOUDFLARE_ACCOUNT_ID, deps.env.CLOUDFLARE_ANALYTICS_TOKEN, deps.fetch, { cache: siteTrafficCache }),
 		loadSiteActions(admin, days, 'all', 0)
 	]);
-	for (const [what, result] of [['gallery summary', reportRead], ['delivery health', healthRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['delivery diagnostics', diagnosticRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
+	for (const [what, result] of [['gallery summary', reportRead], ['delivery health', healthRead], ['delivery counters', countersRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['delivery diagnostics', diagnosticRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
 	const names = await publicNames;
 	const publicAlbumKeys = [...names.keys()];
 
@@ -108,13 +126,15 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	// Provider journeys start now and stream: the page does not wait for them.
 	const journeys: Promise<JourneysView> = names.size
 		? Promise.all(POSTHOG_JOURNEY_REPORTS.map((name) => queryGalleryJourneys(transport, { report: name, start: query.start, end: query.end, source: query.source, sport: query.sport, category: query.category }, { publicOnly: true, allowedAlbumKeys: publicAlbumKeys })))
-			.then((rows: JourneyAggregate[]) => journeysView(rows))
-			.catch(() => journeysView(null))
-		: Promise.resolve(journeysView(null));
-	const siteJourneys = loadSiteJourneys(transport, query.start, query.end, 'all').catch(() => ({ available: false as const, reason: notReadNote('posthog').what }));
+			.then((rows: JourneyAggregate[]) => journeysView(rows, deps.owner))
+			.catch(() => journeysView(null, deps.owner))
+		: Promise.resolve(journeysView(null, deps.owner));
+	const siteJourneys = loadSiteJourneys(transport, query.start, query.end, 'all').catch(() => ({ available: false as const, reason: notReadNote('posthog', deps.owner).what }));
 
 	const incidents = ok(incidentRead);
 	const health = ok(healthRead);
+	const counterDays = ok(countersRead);
+	const rejections: RejectionReading | null = deps.owner && counterDays ? readRejections({ days: counterDays, lastCompleteDay, formatDay }) : null;
 	const parsedHealth: MeasurementHealth | null = deps.owner && health && !health.error ? parseMeasurementHealth(health.data) : null;
 	const view = buildDataView({
 		asOf: asOfIso, today, lastCompleteDay, days, owner: deps.owner,
@@ -123,7 +143,7 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 		incidents: incidents && !incidents.error ? (incidents.data ?? []).map((row) => String(row.finding_id)) : null,
 		diagnostics: ok(diagnosticRead) ?? null,
 		traffic: ok(trafficRead), actions: ok(actionsRead),
-		posthogConfigured: transport !== null
+		posthogConfigured: transport !== null, rejections
 	});
 	return { view, events, journeys, siteJourneys };
 }

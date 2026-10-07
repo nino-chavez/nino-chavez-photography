@@ -139,8 +139,8 @@ export function buildRecapDocument(input: RecapDocumentInput): RecapDocument {
 	const missing = recapGaps(model, slot.checkpoint, input.arrivalsRead, input.findingsRead);
 	const evidence: RecapEvidence = missing.length ? 'partial' : 'complete';
 	const blocks: string[] = [subject];
-	if (input.writtenOn) blocks.push(writtenLaterNote(input.writtenOn));
-	else if (slot.late) blocks.push(lateNote(slot.dueAt));
+	// How late it is says nothing about the launch, so it follows the finding instead of leading it. The page's badge already says it first.
+	const timingNote = input.writtenOn ? writtenLaterNote(input.writtenOn) : slot.late ? lateNote(slot.dueAt) : null;
 	if (missing.length) blocks.push(`This recap is incomplete. What is missing: ${joinMissing(missing)}. A figure that depends on it is not stated, and nothing here is a report of zero.`);
 
 	const head = [recap.published ? recapToPlain(recap.published) : '', recapToPlain(recap.headline)].filter(Boolean).join(' ');
@@ -160,6 +160,7 @@ export function buildRecapDocument(input: RecapDocumentInput): RecapDocument {
 		blocks.push('What to look at:', 'No finding is open for this launch.');
 	}
 
+	if (timingNote) blocks.push(timingNote);
 	const limits = recap.limits.filter((limit) => input.arrivalsRead || !ARRIVALS_LIMIT.test(limit));
 	if (limits.length) blocks.push('What this cannot tell you:', bulletList(limits));
 	blocks.push(`Full report: ${link}`);

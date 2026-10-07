@@ -77,7 +77,7 @@
 					<p>{view.coverage.refresh}</p>
 					<p class="detail">{view.coverage.since ? `History is kept since ${view.coverage.since}; earlier days have no record. ` : ''}{view.coverage.basis}</p>
 				{:else if view.reportDown}
-					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} <span>{view.reportDown.todo}</span></p>
+					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} {#if view.reportDown.todo}<span>{view.reportDown.todo}</span>{/if}</p>
 				{/if}
 			</section>
 			<section id="counting" class="panel" aria-labelledby="counting-title">
@@ -99,11 +99,11 @@
 								<dl class="facts" aria-label="Recorded event counts">{#each events.counts as item (item.label)}<div><dt>{item.label}</dt><dd>{item.count.toLocaleString()}</dd></div>{/each}</dl>
 							</details>
 						{:else if events.down}
-							<p class="gap"><strong>Not shown.</strong> {events.down.what} <span>{events.down.todo}</span></p>
+							<p class="gap"><strong>Not shown.</strong> {events.down.what} {#if events.down.todo}<span>{events.down.todo}</span>{/if}</p>
 						{/if}
 					{/await}
 				{:else if view.reportDown}
-					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} <span>{view.reportDown.todo}</span></p>
+					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} {#if view.reportDown.todo}<span>{view.reportDown.todo}</span>{/if}</p>
 				{/if}
 			</section>
 				</div>
@@ -150,7 +150,7 @@
 						</details>
 					{/if}
 				{:else if view.reportDown}
-					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} <span>{view.reportDown.todo}</span></p>
+					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} {#if view.reportDown.todo}<span>{view.reportDown.todo}</span>{/if}</p>
 				{/if}
 			</section>
 			<div class="pair-cols">
@@ -183,7 +183,7 @@
 						{:else}<p class="gap"><strong>Not shown.</strong> This comes from the linked-journey reports, which could not be read. <a href="#journeys">What that means and what to do</a>.</p>{/if}
 					{/await}
 				{:else if view.reportDown}
-					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} <span>{view.reportDown.todo}</span></p>
+					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} {#if view.reportDown.todo}<span>{view.reportDown.todo}</span>{/if}</p>
 				{/if}
 			</section>
 				</div>
@@ -207,13 +207,13 @@
 					<p class="detail" role="status">Loading linked journeys. The rest of this page is ready.</p>
 				{:then loaded}
 					{#if !loaded.available}
-						<p class="gap"><strong>Not shown.</strong> {siteJourneyNote(loaded.reason).what} <span>{siteJourneyNote(loaded.reason).todo}</span></p>
+						<p class="gap"><strong>Not shown.</strong> {siteJourneyNote(loaded.reason, view.owner).what} {#if siteJourneyNote(loaded.reason, view.owner).todo}<span>{siteJourneyNote(loaded.reason, view.owner).todo}</span>{/if}</p>
 					{:else if loaded.rows.length}
 						<p class="detail">Opted-in views only. These fractions show actions seen after a view within the same page view. They do not prove cause or describe all visitors.</p>
 						<ul class="plain">{#each loaded.rows as row (row.section)}<li><strong>{row.section}</strong>: {row.contactViews} of {row.views} views had a contact-link click; {row.outboundViews} had an outbound click.{#if row.articleViews} {row.progressViews} of {row.articleViews} article views reached 90%; {row.activeViews} had 30 seconds on screen.{/if}{#if row.demoViews} {row.lastSectionViews} of {row.demoViews} demo views reached the last section.{/if}</li>{/each}</ul>
 					{:else}<p>No eligible linked views match these dates. A collection or delivery gap can also cause this.</p>{/if}
 				{:catch}
-					<p class="gap"><strong>Not shown.</strong> {notReadNote('posthog').what} <span>{notReadNote('posthog').todo}</span></p>
+					<p class="gap"><strong>Not shown.</strong> {notReadNote('posthog', view.owner).what} {#if notReadNote('posthog', view.owner).todo}<span>{notReadNote('posthog', view.owner).todo}</span>{/if}</p>
 				{/await}
 			</section>
 				</div>
@@ -233,7 +233,7 @@
 							<p class="detail">As of {asOfTime(journey.asOf)} · {journey.coverage.start} to {journey.coverage.end} · definition version {journey.coverage.definitionVersion}</p>
 						</details>
 					{/each}
-					{#if loaded.unavailable}<p class="gap"><strong>Not shown.</strong> {loaded.unavailable.what} <span>{loaded.unavailable.todo}</span></p>{/if}
+					{#if loaded.unavailable}<p class="gap"><strong>Not shown.</strong> {loaded.unavailable.what} {#if loaded.unavailable.todo}<span>{loaded.unavailable.todo}</span>{/if}</p>{/if}
 				{/await}
 			</section>
 			<section id="corrections" class="panel" aria-labelledby="corrections-title">

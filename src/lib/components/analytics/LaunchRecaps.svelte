@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { RecapRow } from '$lib/analytics/launch-recap-list';
+	import { sharedFlag, type RecapRow } from '$lib/analytics/launch-recap-list';
 
 	/**
 	 * The album's recaps: day 3 and day 7, each with the date it was due, whether it was late or built on incomplete
@@ -7,17 +7,20 @@
 	 * here is a control that writes or sends.
 	 */
 	let { rows }: { rows: RecapRow[] } = $props();
+	// "Written later from the records" is true of every recap here, so it is said once, not on each row.
+	const common = $derived(sharedFlag(rows));
 </script>
 
 <section class="recaps panel" id="recaps" aria-labelledby="recaps-title">
 	<h2 id="recaps-title">Recaps</h2>
+	{#if common}<p class="note">{common}: each was written after its checkpoint had passed, not on the morning it was due.</p>{/if}
 	{#if rows.length}<ul class="rows">
 		{#each rows as row (row.checkpoint)}
 			<li>
 				<div class="head">
 					<strong>{row.title}</strong>
 					<span class="when">{row.when}</span>
-					{#each row.flags as flag (flag)}<span class="flag">{flag}</span>{/each}
+					{#each row.flags.filter((flag) => flag !== common) as flag (flag)}<span class="flag">{flag}</span>{/each}
 				</div>
 				{#if row.covers}<p class="note">{row.covers}</p>{/if}
 				{#if row.note}<p class="note">{row.note}</p>{/if}

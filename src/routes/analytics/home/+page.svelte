@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { albumIndexPath, albumReportPath, dataPath, sitePath } from '$lib/analytics/report-paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
-	import { plural } from '$lib/analytics/launch-recap';
+	import { plural, RECOVERED_NOTE } from '$lib/analytics/launch-recap';
 	import type { HomeProblem } from '$lib/analytics/home';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchFindings from '$lib/components/analytics/LaunchFindings.svelte';
@@ -81,7 +81,7 @@
 								<div class="card">
 									<div class="cover">{#if card.cover}<img src={cfImageUrl(card.cover, 'thumbnail')} alt="" width="150" height="150" loading="lazy" decoding="async" />{:else}<span class="no-image" aria-hidden="true">No cover</span>{/if}</div>
 									<div class="text">
-										<h3><a href={albumReportPath(hostname, card.albumKey)}>{card.name}</a></h3>
+										<h3><a href={albumReportPath(hostname, card.albumKey)}>{card.name}<span class="chevron" aria-hidden="true"> ›</span></a></h3>
 										<p class="meta"><span class="status" data-phase={card.phase}>{card.status}</span> <span>{card.published}</span></p>
 										<p class="figure"><strong>{card.opens}</strong></p>
 										<p class="compare">{card.comparison}</p>
@@ -111,6 +111,7 @@
 							</li>
 						{/each}
 					</ul>
+					{#if view.datesRecovered}<p class="note recovered">{RECOVERED_NOTE}</p>{/if}
 				{/if}
 			</section>
 
@@ -185,12 +186,17 @@
 	@media (min-width: 640px) { .card-findings { margin-left: 2rem; } }
 	.card { background: #fff; border: 1px solid var(--line); border-radius: .8rem; display: grid; gap: .4rem .8rem; grid-template-columns: minmax(0, 1fr); padding: .65rem; position: relative; }
 	.card:hover { border-color: #9db8e6; }
+	.card:hover .text a { text-decoration-color: var(--blue-ink); text-decoration-thickness: 2px; }
+	.recovered { margin-top: .5rem; }
 	.card:focus-within { border-color: var(--blue-ink); }
 	.cover { align-self: start; aspect-ratio: 1; background: #dfe6ef; border-radius: .5rem; max-width: 7rem; overflow: hidden; }
 	.cover img { display: block; height: 100%; object-fit: cover; width: 100%; }
 	.no-image { align-items: center; color: var(--muted); display: flex; font-size: .7rem; height: 100%; justify-content: center; }
 	.text { min-width: 0; }
-	.text a { color: var(--ink); text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
+	/* The name is the card's link, so it looks like one: link blue, underlined, with a chevron that says the card opens. */
+	.text a { color: var(--blue-ink); text-decoration: underline; text-decoration-color: #8fa1b8; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+	.text a .chevron { font-weight: 800; text-decoration: none; }
+	.card { cursor: pointer; }
 	/* One target per card: the name is the link, stretched over the whole card. */
 	.text a::after { content: ''; inset: 0; position: absolute; border-radius: .8rem; }
 	.text a:focus-visible { outline: none; }

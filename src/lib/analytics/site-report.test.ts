@@ -35,7 +35,7 @@ function actions(over: Partial<Extract<SiteActionReport, { available: true }>> =
 }
 
 test('the lead says what each number is and what it is compared with', () => {
-	const lead = siteLead({ traffic, actions: actions(), period: 7, section: 'all', today: TODAY });
+	const lead = siteLead({ traffic, actions: actions(), period: 7, section: 'all', today: TODAY, owner: true });
 	assert.equal(lead.reach.label, 'Page loads on ninochavez.co (Cloudflare)');
 	assert.equal(lead.reach.value, '210');
 	assert.match(lead.reach.detail, /^Sep 29 – Oct 5, up 110% from 100 in the 7 days before\./);
@@ -49,44 +49,44 @@ test('the lead says what each number is and what it is compared with', () => {
 
 test('clicks say since when they are counted, never zero, when the window starts before collection', () => {
 	const thirty = actions({ start: '2026-09-06', end: '2026-10-05' });
-	const lead = siteLead({ traffic, actions: thirty, period: 30, section: 'all', today: TODAY });
+	const lead = siteLead({ traffic, actions: thirty, period: 30, section: 'all', today: TODAY, owner: true });
 	assert.equal(lead.contacts.value, null);
 	assert.equal(lead.contacts.detail, 'Link clicks have been counted since Sep 29, so there is no full 30 days to count yet. Choose 7 days to see them.');
 	assert.equal(lead.outbound.value, null);
 	// Never started counting: the page says so and says it is not zero.
-	const none = siteLead({ traffic, actions: actions({ firstRecordedAt: null, recordedSections: [] }), period: 7, section: 'all', today: TODAY });
+	const none = siteLead({ traffic, actions: actions({ firstRecordedAt: null, recordedSections: [] }), period: 7, section: 'all', today: TODAY, owner: true });
 	assert.equal(none.contacts.value, null);
 	assert.match(none.contacts.detail, /not been counted yet.*not zero/);
 	// A read that failed is not a quiet week.
-	const failed = siteLead({ traffic, actions: null, period: 7, section: 'all', today: TODAY });
+	const failed = siteLead({ traffic, actions: null, period: 7, section: 'all', today: TODAY, owner: true });
 	assert.equal(failed.contacts.value, null);
 	assert.match(failed.contacts.detail, /not a report of zero/);
 });
 
 test('a comparison is stated only when the week before was counted', () => {
-	const both = siteLead({ traffic, actions: actions({ firstRecordedAt: '2026-09-20T00:00:00Z', totals: { contact_clicks: 4, external_clicks: 2 }, previousTotals: { contact_clicks: 2, external_clicks: 2 } }), period: 7, section: 'all', today: TODAY });
+	const both = siteLead({ traffic, actions: actions({ firstRecordedAt: '2026-09-20T00:00:00Z', totals: { contact_clicks: 4, external_clicks: 2 }, previousTotals: { contact_clicks: 2, external_clicks: 2 } }), period: 7, section: 'all', today: TODAY, owner: true });
 	assert.match(both.contacts.detail, /^Sep 29 – Oct 5, against 2 in the 7 days before\./);
 	assert.match(both.outbound.detail, /^Sep 29 – Oct 5, the same as 2 in the 7 days before\./);
 });
 
 test('a stale summary is said next to the figure', () => {
 	const stale = actions({ freshness: { status: 'stale', refreshedAt: '2026-10-05T03:00:00Z', summaryCutoffAt: '2026-10-05T03:00:00Z', lastFailureAt: null, todayAvailable: false, completedThrough: '2026-10-04' } });
-	const lead = siteLead({ traffic, actions: stale, period: 7, section: 'all', today: TODAY });
+	const lead = siteLead({ traffic, actions: stale, period: 7, section: 'all', today: TODAY, owner: true });
 	assert.match(lead.contacts.detail, /catching up/);
 });
 
 test('Cloudflare unavailable says what that means and what to do, and shows no number', () => {
-	const down = siteLead({ traffic: { available: false, period: 7, reason: 'Cloudflare Web Analytics could not be read. No traffic total is shown.' }, actions: actions(), period: 7, section: 'all', today: TODAY });
+	const down = siteLead({ traffic: { available: false, period: 7, reason: 'Cloudflare Web Analytics could not be read. No traffic total is shown.' }, actions: actions(), period: 7, section: 'all', today: TODAY, owner: true });
 	assert.equal(down.reach.value, null);
 	assert.match(down.reach.detail, /could not be read\. No traffic total is shown\. This is not zero\. Reload in a few minutes\./);
-	const unset = siteLead({ traffic: { available: false, period: 7, reason: 'Cloudflare Web Analytics access is not configured for this report.' }, actions: actions(), period: 7, section: 'all', today: TODAY });
+	const unset = siteLead({ traffic: { available: false, period: 7, reason: 'Cloudflare Web Analytics access is not configured for this report.' }, actions: actions(), period: 7, section: 'all', today: TODAY, owner: true });
 	assert.match(unset.reach.detail, /no Cloudflare access set up here/);
-	assert.equal(providerFix('not configured'), providerFix('Cloudflare Web Analytics access is not configured for this report.'));
-	assert.equal(siteLead({ traffic: null, actions: null, period: 7, section: 'all', today: TODAY }).reach.value, null);
+	assert.equal(providerFix('not configured', true), providerFix('Cloudflare Web Analytics access is not configured for this report.', true));
+	assert.equal(siteLead({ traffic: null, actions: null, period: 7, section: 'all', today: TODAY, owner: true }).reach.value, null);
 });
 
 test('photography is pointed at the gallery numbers instead of showing a competing page-load figure', () => {
-	const lead = siteLead({ traffic, actions: actions(), period: 7, section: 'photography', today: TODAY });
+	const lead = siteLead({ traffic, actions: actions(), period: 7, section: 'photography', today: TODAY, owner: true });
 	assert.equal(lead.reach.value, null);
 	assert.match(lead.reach.detail, /Home and Albums count the gallery itself/);
 	const cards = sectionCards(traffic);
@@ -102,7 +102,7 @@ test('photography is pointed at the gallery numbers instead of showing a competi
 });
 
 test('a single section shows its own page loads and says it has nothing to compare with', () => {
-	const lead = siteLead({ traffic, actions: actions(), period: 7, section: 'writing', today: TODAY });
+	const lead = siteLead({ traffic, actions: actions(), period: 7, section: 'writing', today: TODAY, owner: true });
 	assert.equal(lead.reach.value, '30');
 	assert.match(lead.reach.detail, /Writing only\. The 7 days before are measured for the whole site, so this section has nothing to compare it with\.$/);
 });
@@ -124,13 +124,13 @@ test('the shared readings are the ones Home uses', () => {
 	assert.deepEqual(clickReading(actions(), 'contact_clicks', 7), { available: true, start: '2026-09-29', end: '2026-10-05', current: 0, previous: null });
 	assert.deepEqual(clickReading(actions(), 'external_clicks', 7), { available: true, start: '2026-09-29', end: '2026-10-05', current: 3, previous: null });
 	assert.equal(clickReading({ available: false, reason: 'down' }, 'contact_clicks', 7).available, false);
-	assert.deepEqual(reachReading(traffic), { available: true, start: '2026-09-29', end: '2026-10-05', current: 210, previous: 100 });
-	assert.equal(reachReading(null).available, false);
+	assert.deepEqual(reachReading(traffic, true), { available: true, start: '2026-09-29', end: '2026-10-05', current: 210, previous: 100 });
+	assert.equal(reachReading(null, true).available, false);
 });
 
 test('a change is a percentage only when both periods have at least 20; below that the two counts are stated plainly', () => {
 	const counted = (current: number, previous: number) => actions({ firstRecordedAt: '2026-09-20T00:00:00Z', totals: { contact_clicks: current, external_clicks: 0 }, previousTotals: { contact_clicks: previous, external_clicks: 0 } });
-	const detail = (current: number, previous: number) => siteLead({ traffic, actions: counted(current, previous), period: 7, section: 'all', today: TODAY }).contacts.detail;
+	const detail = (current: number, previous: number) => siteLead({ traffic, actions: counted(current, previous), period: 7, section: 'all', today: TODAY, owner: true }).contacts.detail;
 	assert.match(detail(4, 2), /^Sep 29 – Oct 5, against 2 in the 7 days before\. /);
 	assert.match(detail(25, 19), /^Sep 29 – Oct 5, against 19 in the 7 days before\. /);
 	assert.match(detail(19, 25), /^Sep 29 – Oct 5, against 25 in the 7 days before\. /);
@@ -140,8 +140,8 @@ test('a change is a percentage only when both periods have at least 20; below th
 	assert.match(detail(5, 5), /^Sep 29 – Oct 5, the same as 5 in the 7 days before\. /);
 	// Cloudflare page loads follow the same rule: 130 against 100 is a percentage, 12 against 9 is not.
 	const reach = (now: number, before: number) => summarizeSiteTraffic([row('2026-10-01', '/', now, 1)], 7, '2026-09-29', '2026-10-05', [row('2026-09-24', '/', before, 1)], '2026-10-06T14:00:00Z');
-	assert.match(siteLead({ traffic: reach(130, 100), actions: actions(), period: 7, section: 'all', today: TODAY }).reach.detail, /up 30% from 100/);
-	assert.match(siteLead({ traffic: reach(12, 9), actions: actions(), period: 7, section: 'all', today: TODAY }).reach.detail, /against 9 in the 7 days before/);
+	assert.match(siteLead({ traffic: reach(130, 100), actions: actions(), period: 7, section: 'all', today: TODAY, owner: true }).reach.detail, /up 30% from 100/);
+	assert.match(siteLead({ traffic: reach(12, 9), actions: actions(), period: 7, section: 'all', today: TODAY, owner: true }).reach.detail, /against 9 in the 7 days before/);
 });
 
 test('today so far is one line kept apart from every total, and is silent when it has nothing honest to say', () => {
@@ -154,7 +154,20 @@ test('today so far is one line kept apart from every total, and is silent when i
 	assert.equal(todayLine({ available: false, reason: 'down' }, TODAY), null);
 	assert.equal(todayLine(null, TODAY), null);
 	// Today is not in the lead's figures.
-	const lead = siteLead({ traffic, actions: open, period: 7, section: 'all', today: TODAY });
+	const lead = siteLead({ traffic, actions: open, period: 7, section: 'all', today: TODAY, owner: true });
 	assert.equal(lead.contacts.value, '0');
 	assert.equal(lead.outbound.value, '3');
+});
+
+test('S11: a visitor to the site report reads that page loads are not available, and the owner reads what to set up', () => {
+	const unset = { available: false as const, period: 7 as const, reason: 'Cloudflare Web Analytics access is not configured for this report.' };
+	const visitor = siteLead({ traffic: unset, actions: actions(), period: 7, section: 'all', today: TODAY, owner: false });
+	assert.equal(visitor.reach.value, null);
+	assert.equal(visitor.reach.detail, 'Page loads are not available right now.');
+	assert.doesNotMatch(visitor.reach.detail, /Cloudflare|settings|configured/);
+	assert.equal(providerFix('not configured', false), '');
+	assert.equal(reachReading(null, false).available, false);
+	assert.doesNotMatch(JSON.stringify(reachReading(null, false)), /Cloudflare/);
+	const owner = siteLead({ traffic: unset, actions: actions(), period: 7, section: 'all', today: TODAY, owner: true });
+	assert.match(owner.reach.detail, /Add the Cloudflare analytics settings to the site's server settings\./);
 });

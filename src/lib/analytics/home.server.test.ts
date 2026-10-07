@@ -86,9 +86,9 @@ function fixture(over: Over = {}) {
 }
 
 const noProvider = async () => new Response('down', { status: 500 });
-const run = (over: Over = {}, env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_ANALYTICS_TOKEN?: string } = {}, now = AS_OF) => {
+const run = (over: Over = {}, env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_ANALYTICS_TOKEN?: string } = {}, now = AS_OF, owner = false) => {
 	const { client, reads, rpcs } = fixture(over);
-	return loadHome({ admin: client, env, fetch: noProvider as unknown as typeof fetch, now }).then((view) => ({ view, reads, rpcs }));
+	return loadHome({ admin: client, env, fetch: noProvider as unknown as typeof fetch, now, owner }).then((view) => ({ view, reads, rpcs }));
 };
 
 test('Home reads each source once and never once per album; only public launches, only the first three covers', async () => {
@@ -118,13 +118,14 @@ test('Home reads each source once and never once per album; only public launches
 test('the quiet gallery on a fresh day reads as quiet, with no open problem except the provider that is not configured', async () => {
 	const { view } = await run();
 	assert.equal(view.state, 'quiet');
-	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches\.$/);
-	assert.equal(sentenceText(view.then!), 'No new album since Sep 26 (date recovered afterwards from a log), 10 days ago.');
+	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches, with [\d,]+ photo opens( against (a median of )?[\d,]+ for (the 1 )?earlier launches?)?\.$/);
+	assert.equal(sentenceText(view.then!), 'No new album since Sep 26*, 10 days ago.');
 	// Both windows hold the first week of the launches in the fixture (published Sep 26), so there is no calendar-week line at all.
 	assert.equal(view.week, null);
 	assert.deepEqual(view.problems, []);
 	assert.equal(view.site.reach.value, null);
-	assert.match(view.site.reach.detail, /not configured/);
+	// A visitor reads that page loads are not available. The setup is the owner's, and Home is open by direct link.
+	assert.equal(view.site.reach.detail, 'Page loads are not available right now.');
 	assert.equal(view.site.contacts.value, '4');
 	assert.equal(view.site.contacts.detail, 'Sep 29 – Oct 5, against 2 in the 7 days before. These are links opened, not messages sent.');
 });
@@ -239,3 +240,9 @@ test('Home shows no finding for an album unlisted after its snapshot was written
 	const listed = await loadHome({ admin: client, env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: () => loadVisibleFindings(world([]), HOME, 'test') });
 	assert.deepEqual(listed.cards[0].findings.map((f) => f.id), ['launch-failed-A'], 'control: the same snapshot while A is public');
 });
+
+test('the owner reads why the page loads are missing; a visitor does not', async () => {
+	const owner = (await run({}, {}, AS_OF, true)).view;
+	assert.match(owner.site.reach.detail, /not configured/);
+}
+);

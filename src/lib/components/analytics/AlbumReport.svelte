@@ -6,8 +6,9 @@
 	import { photoParams } from '$lib/analytics/photo-view';
 	import { readShortlist, signInNeeds, writeShortlist } from '$lib/analytics/shortlist';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
-	import { daysWords, formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
+	import { daysWords, formatDay, plural, RECOVERED_NOTE, type RecapSentence } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
+	import { mergeLimits } from '$lib/analytics/launch-report-view';
 	import LaunchDailyChart from '$lib/components/analytics/LaunchDailyChart.svelte';
 	import LaunchComparison from '$lib/components/analytics/LaunchComparison.svelte';
 	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
@@ -25,10 +26,13 @@
 	const photos = $derived(data.photos);
 	const undated = $derived(data.album.status === 'no_launch_date');
 	const PAGE_SIZE = 60;
+	/** On a phone the grid opens with two rows, so the comparison with earlier launches is not seven screens down. A wide screen shows the first page. */
+	const PHONE_FIRST = 12;
 
 	let hydrated = $state(false);
 	let selectedId = $state<string | null>(null);
 	let visible = $state(PAGE_SIZE);
+	let expanded = $state(false);
 	let shortlist = $state<string[]>([]);
 	let recordRequest = $state(0);
 	let announce = $state('');
@@ -60,7 +64,7 @@
 	let shownFor = '';
 	$effect(() => {
 		const key = data.album.key;
-		if (key !== shownFor) { shownFor = key; selectedId = null; visible = PAGE_SIZE; announce = ''; }
+		if (key !== shownFor) { shownFor = key; selectedId = null; visible = PAGE_SIZE; expanded = false; announce = ''; }
 	});
 
 	onMount(() => {
@@ -89,6 +93,7 @@
 	}
 	async function seeAll() {
 		visible = Math.max(visible, photos.length);
+		expanded = true;
 		await tick();
 		scrollToId('photos');
 		document.getElementById('photos')?.focus({ preventScroll: true });
@@ -123,6 +128,12 @@
 		announce = photo && !narrow() ? `Photo ${rank} selected: ${plural(photo.downloads, 'download request')}, ${plural(photo.opens, 'open')}. Its details are in the Selected photo panel.` : '';
 	}
 	const requested = (n: number) => `${n.toLocaleString()} requested`;
+	function showAllPhotos() {
+		expanded = true;
+		visible = photos.length;
+	}
+	// One list of what the page cannot tell the reader: the report's own limits, then the findings'.
+	const pageLimits = $derived(mergeLimits(recap.limits, data.findings.findings.flatMap((finding) => finding.limits ?? []), data.datesRecovered));
 </script>
 
 <svelte:head>
@@ -162,6 +173,7 @@
 				<p class="eyebrow">{recap.eyebrow}</p>
 				<h1 id="album-title">{data.album.name}</h1>
 				<p class="meta">{#if recap.published}<span>{@render words(recap.published)}</span>{' '}{/if}<span>{photos.length.toLocaleString()} {photos.length === 1 ? 'photo' : 'photos'} in the album.</span></p>
+					{#if data.datesRecovered}<p class="note recovered">{RECOVERED_NOTE}</p>{/if}
 				<p class="headline">{@render words(recap.headline)}</p>
 				{#each recap.sentences as sentence}
 					<p class="sentence">{@render words(sentence)}</p>
@@ -172,6 +184,11 @@
 				<LaunchDailyChart chart={data.charts.daily} {undated} />
 			</div>
 		</section>
+
+		<!-- On a phone the comparison sits under the chart, where it answers "how do its first days compare". A desktop keeps it beside the photos. -->
+		<div class="compare-early panel">
+			<LaunchComparison uid="compare-early" curves={data.charts.curves} rows={data.charts.table} hasLaunch={!undated} />
+		</div>
 
 		<section class="downloads panel" aria-labelledby="downloads-title">
 			<div class="downloads-main">
@@ -205,7 +222,7 @@
 			</div>
 			<div class="limits">
 				<h3>What this cannot tell you</h3>
-				<ul>{#each recap.limits as limit}<li>{limit}</li>{/each}</ul>
+				<ul>{#each pageLimits as limit}<li>{limit}</li>{/each}</ul>
 			</div>
 		</section>
 
@@ -218,7 +235,7 @@
 		{#if data.findings.findings.length}
 			<section class="worth" aria-labelledby="worth-title">
 				<h2 id="worth-title">Worth your attention</h2>
-				<LaunchFindings findings={data.findings.findings} checked={data.findings.checked} owner={signedIn} scope={launchScope(data.album.key)} />
+				<LaunchFindings findings={data.findings.findings} checked={data.findings.checked} owner={signedIn} scope={launchScope(data.album.key)} showLimits={false} />
 			</section>
 		{/if}
 
@@ -231,7 +248,7 @@
 				<h2 id="photos-title">{#if undated}Photos, most opened first{:else}Photos, most requested first{/if}</h2>
 				<p class="note">Ranked by download requests, then opens. Download requests are requests, not confirmed saved files.{#if topCount === 0}{' '}No photo was requested, so the order uses opens only.{:else if orderIsWeak}{' '}The most any photo got was {topCount.toLocaleString()}, so treat the order as weak.{/if}</p>
 				{#if photos.length}
-					<ul class="grid">
+					<ul class="grid" class:collapsed={!expanded}>
 						{#each shown as photo, index (photo.photoId)}
 							<li>
 								<button type="button" class="cell" class:active={selected?.photoId === photo.photoId} aria-pressed={selected?.photoId === photo.photoId}
@@ -243,8 +260,11 @@
 							</li>
 						{/each}
 					</ul>
-					{#if visible < photos.length}
-						<button type="button" class="secondary more" onclick={() => (visible = Math.min(photos.length, visible + PAGE_SIZE))}>{photos.length - visible <= PAGE_SIZE ? `Show the other ${(photos.length - visible).toLocaleString()} photos` : `Show ${PAGE_SIZE} more (${(photos.length - visible).toLocaleString()} left)`}</button>
+					{#if !expanded && photos.length > PHONE_FIRST}
+							<button type="button" class="secondary more more-phone" onclick={showAllPhotos}>Show all {photos.length.toLocaleString()} photos</button>
+						{/if}
+						{#if visible < photos.length}
+							<button type="button" class="secondary more more-page" class:collapsed={!expanded} onclick={() => (visible = Math.min(photos.length, visible + PAGE_SIZE))}>{photos.length - visible <= PAGE_SIZE ? `Show the other ${(photos.length - visible).toLocaleString()} photos` : `Show ${PAGE_SIZE} more (${(photos.length - visible).toLocaleString()} left)`}</button>
 					{/if}
 				{:else}
 					<p class="note">No photos are listed for this album.</p>
@@ -258,7 +278,7 @@
 			{/if}
 
 			<div class="compare panel">
-				<LaunchComparison curves={data.charts.curves} rows={data.charts.table} hasLaunch={!undated} />
+				<LaunchComparison uid="compare" curves={data.charts.curves} rows={data.charts.table} hasLaunch={!undated} />
 			</div>
 		</div>
 
@@ -336,12 +356,20 @@
 	.limits { border-top: 1px solid #e1e8f0; margin-top: .9rem; padding-top: .7rem; }
 	.limits ul { color: var(--muted); font-size: .82rem; line-height: 1.5; list-style: disc; margin: 0; padding-left: 1.1rem; }
 
+	.compare-early { display: block; }
+	.compare { display: none; }
+	@media (min-width: 1024px) { .compare-early { display: none; } .compare { display: block; } }
+	.recovered { margin: -.5rem 0 .8rem; }
 	.below { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 	.photos { scroll-margin-top: .75rem; }
 	.selected { display: none; }
 	.grid { display: grid; gap: .6rem .5rem; grid-template-columns: repeat(auto-fill, minmax(min(6rem, 100%), 1fr)); list-style: none; margin: .6rem 0; padding: 0; }
 	@media (min-width: 640px) { .grid { grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr)); } }
 	.more { margin-top: .5rem; }
+	/* A phone sees the first two rows until it asks for the rest; a wide screen is not cut. */
+	.more-phone { display: inline-flex; }
+	@media (max-width: 1023px) { .grid.collapsed li:nth-child(n + 13) { display: none; } .more-page.collapsed { display: none; } }
+	@media (min-width: 1024px) { .more-phone { display: none; } }
 	.selected-image { aspect-ratio: 3 / 2; background: #dfe6ef; border-radius: .6rem; margin: .5rem 0; overflow: hidden; }
 	.facts { display: grid; gap: .5rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .6rem 0; }
 	.facts div { background: #f4f7fb; border-radius: .5rem; padding: .5rem .6rem; }

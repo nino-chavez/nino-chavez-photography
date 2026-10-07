@@ -35,6 +35,8 @@ export interface HomeDeps {
 	env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_ANALYTICS_TOKEN?: string };
 	fetch: typeof fetch;
 	now?: Date;
+	/** The signed-in owner. A visitor reads that a reading is not available, never the setup the owner would do about it. */
+	owner?: boolean;
 	/** The gallery-wide launch scope's current findings (intelligence-panel.server's loadVisibleFindings). Absent: none are shown. */
 	findings?: () => Promise<VisibleFindings>;
 }
@@ -118,7 +120,7 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const incidents = ok(incidentRead);
 	const incidentIds = incidents && !incidents.error ? (incidents.data ?? []).map((row) => String(row.finding_id)) : null;
 
-	const siteReach: SiteReading = reachReading(ok(traffic));
+	const siteReach: SiteReading = reachReading(ok(traffic), deps.owner === true);
 	const actions7 = ok(actions);
 	const siteContacts: SiteReading = actions7 === null ? { available: false, reason: 'Link clicks could not be read. This is not a report of zero.' } : clickReading(actions7, 'contact_clicks', COMPLETED_DAYS_CHECKED);
 

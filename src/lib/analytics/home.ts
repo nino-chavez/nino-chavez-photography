@@ -206,16 +206,23 @@ function runningSentence(launch: Launch, all: readonly Launch[]): RecapSentence 
 }
 
 /**
- * The headline for a launch that has finished its first week: the short answer, with the name and where it stands. The
- * numbers (its week-1 total, its rank at day 7) are the first card's, directly below, so they are not said twice here.
+ * The headline for a launch that has finished its first week: the short answer, with the name, where it stands, the measure the
+ * place is a place in, and how far that is from the middle. A rank alone ("4th of 7") sounds mid-pack and says neither what it
+ * ranks nor whether the launch is above or below the median. The median is the album report's own: the launches published before it.
  */
-function finishedSentence(launch: Launch): RecapSentence {
+function finishedSentence(launch: Launch, all: readonly Launch[]): RecapSentence {
 	const name = b(launchName(launch));
 	const week = launch.totals.day7;
 	if (!week.complete || week.photoOpens === null) return sentence(name, ' finished its first week, but a day in it has incomplete records, so no total or rank is shown.');
 	const rank = launch.rank.day7;
 	if (rank.rank === null || rank.compared < 2) return sentence(name, ' finished its first week; no other launch has a complete first week to compare with.');
-	return sentence(name, ' finished its first week ', b(`${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)} of ${rank.compared} launches`), '.');
+	const earlier = earlierThan(all, launch).flatMap((other) => { const value = cumulativeOpens(other, 7); return value === null ? [] : [value]; });
+	const mid = median(earlier);
+	const place = b(`${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)} of ${rank.compared} launches`);
+	const mine = b(plural(week.photoOpens, 'photo open'));
+	if (mid === null) return sentence(name, ' finished its first week ', place, ', with ', mine, '.');
+	if (earlier.length === 1) return sentence(name, ' finished its first week ', place, ', with ', mine, ' against ', b(fmt(mid)), ' for the 1 earlier launch.');
+	return sentence(name, ' finished its first week ', place, ', with ', mine, ' against a median of ', b(fmt(mid)), ' for earlier launches.');
 }
 
 function overlappingSentence(relevant: readonly Launch[]): RecapSentence {
@@ -253,11 +260,11 @@ export function openingSentence(input: { launches: readonly Launch[] | null; sta
 		if (launch.elapsedDays === 0) return { state: 'published_today', sentence: sentence(b(launchName(launch)), ' was published today, and its first full day is counted tomorrow.') };
 		return { state: launch.elapsedDays < 3 ? 'first_days' : 'running', sentence: runningSentence(launch, launches) };
 	}
-	if (recent.length) return { state: 'just_finished', sentence: finishedSentence(recent[0]) };
+	if (recent.length) return { state: 'just_finished', sentence: finishedSentence(recent[0], launches) };
 	const last = newest[0];
 	const since = chicagoDate(last.firstPublishedAt);
 	// The newest launch's own like-for-like line leads. That nothing newer exists is the second line, computed from today.
-	return { state: 'quiet', sentence: finishedSentence(last), then: sentence('No new album since ', b(`${dayLabel(since, today)}${inferredTag(last)}`), `, ${plural(daysBetween(since, today), 'day')} ago.`) };
+	return { state: 'quiet', sentence: finishedSentence(last, launches), then: sentence('No new album since ', b(`${dayLabel(since, today)}${inferredTag(last)}`), `, ${plural(daysBetween(since, today), 'day')} ago.`) };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -573,6 +580,8 @@ export interface HomeView {
 	next: { text: string; items: string[] };
 	site: { reach: SiteFigure; contacts: SiteFigure };
 	problems: HomeProblem[];
+	/** True when a launch shown here has a date marked `*`. The page then says once what the mark means. */
+	datesRecovered: boolean;
 }
 
 export function buildHome(input: HomeInput): HomeView {
@@ -588,6 +597,7 @@ export function buildHome(input: HomeInput): HomeView {
 		cards, moreLaunches: Math.max(0, newest.length - cards.length), totalLaunches: newest.length,
 		next: launches === null ? { text: 'What is due cannot be said while the launch numbers are unavailable.', items: [] } : nextRecaps(launches, new Date(input.asOf)),
 		site: siteFigures(input.siteReach, input.siteContacts, today),
+		datesRecovered: newest.slice(0, HOME_LAUNCH_CARDS).some((launch) => launch.basis === 'inferred'),
 		problems: openProblems({
 			freshness: input.freshness, lastCompleteDay: input.lastCompleteDay, now: input.asOf, today, launchesRead: launches !== null, weekRead: input.week !== null,
 			incidents: input.incidents, diagnostics: input.diagnostics, siteActionsStale: input.siteActionsStale

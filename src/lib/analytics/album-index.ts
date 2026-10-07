@@ -13,6 +13,16 @@ import { cumulativePoints, type CumulativePoint } from './launch-report-view';
  *  - Only public albums are listed. An unlisted album is not counted, searched, compared or exported.
  */
 
+/**
+ * "130 had activity in the last 30 days and 117 had none": the albums without a launch date, split so the two buttons beneath it add up to the headline's count.
+ */
+export function undatedCounts(active: number, quiet: number, days: number): string {
+	const n = (value: number) => value.toLocaleString('en-US');
+	if (active === 0) return `none had activity in the last ${days} days`;
+	if (quiet === 0) return `all had activity in the last ${days} days`;
+	return `${n(active)} had activity in the last ${days} days and ${n(quiet)} had none`;
+}
+
 export const QUIET_DAYS = 30;
 export const MAX_COMPARED = 4;
 

@@ -57,6 +57,21 @@ export interface RecapView {
 }
 
 const FULL_REPORT_LINE = /^Full report: /;
+/** The sentence a recap carries about when it was written: late, or written afterwards from the records. */
+const TIMING_NOTE = /^This recap (is late\.|was written on )/;
+
+/**
+ * A recap stored before the timing note moved says it first, so the reader meets how late it is before what it found. The badge under the
+ * date already says it, so the sentence follows the findings: just above "What this cannot tell you", or last when there is no such list.
+ */
+export function timingNoteLast(blocks: RecapBlock[]): RecapBlock[] {
+	const at = blocks.findIndex((block) => block.kind === 'paragraph' && TIMING_NOTE.test(block.text));
+	if (at < 0) return blocks;
+	const rest = blocks.filter((_, index) => index !== at);
+	const before = rest.findIndex((block) => block.kind === 'heading' && block.text === 'What this cannot tell you');
+	rest.splice(before < 0 ? rest.length : before, 0, blocks[at]);
+	return rest;
+}
 const WRITTEN_LATER = 'Written later from the records';
 
 /** "Oct 6, 12:03 AM Chicago time", always with the day. */
@@ -107,10 +122,10 @@ export function buildRecapView(input: RecapViewInput): RecapView {
 			// The figures were read as of the moment the recap was due, whenever it was written. A recap written later says so in its flag and its text.
 			asOf: `As of ${stampWords(open.dueAt)}.`, covers: coversWords(open.window), flags,
 			// The first block is the subject line, which the page shows as its title; the address line is replaced by the page's own link.
-			blocks: recapBlocks(open.body)
+			blocks: timingNoteLast(recapBlocks(open.body)
 				.filter((block, at) => !(at === 0 && block.kind === 'paragraph') && !(block.kind === 'paragraph' && FULL_REPORT_LINE.test(block.text)))
 				.map((block): RecapBlock => (block.kind === 'paragraph' ? { ...block, text: withoutRepeatedWindow(block.text, open.window) } : block))
-				.filter((block) => block.kind !== 'paragraph' || block.text !== ''),
+				.filter((block) => block.kind !== 'paragraph' || block.text !== '')),
 			message: null,
 			snapshotNote: 'This is the recap as it was written. The live report counts later days and later launches, so its numbers can be different.',
 			others
