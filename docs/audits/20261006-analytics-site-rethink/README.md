@@ -180,7 +180,7 @@ The rules have to fit the launch pattern. Proposed rules: launch reach against a
 | Overview: trends, comparison, popular and rising work | Overview tab | Home |
 | Album reports, including zero-activity albums | Albums tab, side panel, album-scoped Overview | `/albums` index and `/albums/:id` |
 | Bounded multi-album comparison | Albums table with album picker | `/albums` index (same-age comparison by default; pick albums to compare) |
-| Photo explorer: real images, table, rankings, inspection, shortlist, export | Photos tab | Album report photo section; gallery-wide view from `/albums` |
+| Photo explorer: real images, table, rankings, inspection, shortlist, export | Photos tab | Album report photo section; gallery-wide view from `/albums` (built as `/photos`, [step 8](#old-addresses-build-step-8)) |
 | Sources and sharing annotations | Sources tab | Album report and `/site` (arrivals); `/data` (open locations) |
 | Analyst controls: dates, measures, filters, columns, CSV | Filter bar on every tab | Same controls on `/albums` and the album report; CSV from both |
 | Saved reports | Inside Sources (0 saved) | `/settings`, plus "save this view" on the index and report |
@@ -212,7 +212,7 @@ One release, built in dependency order. Each step is its own PR with its own che
 5. **Site report, data quality, settings.** `/sites` shrinks to one reach measure plus contact clicks. Measurement, open locations and traffic impact move to data quality. Preferences, recap settings and saved views move to settings.
 6. **Launch rules.** The intelligence rules are rewritten around launches: reach against earlier launches at the same age, launch finished, seen-but-rarely-opened photos, failures during a launch, and collection outage. Findings show inline on Home and the album report.
 7. **Launch recaps.** Day 3 and day 7 recaps replace the daily and weekly scheduler. Email stays off until Nino verifies a destination.
-8. **Old addresses.** `/gallery?section=…` links redirect to their new homes, then the old tabs are removed. Two things still live only on the old tabs after step 5 and must move before they go: the signed-in classification corrections (Measurement tab, linked from `/data`) and the signed-in sharing notes (Sources tab). Saved-view updates from the gallery filter bar also stay there; `/settings` saves, renames and deletes. Step 5 also keeps two things from the old site report: the report-intelligence panel returns on `/sites` the way it does on the album report (findings when a saved calculation exists for the site scope, the owner's record form when none does, nothing for visitors), and a single "Today so far" line for link clicks, kept apart from every total.
+8. **Old addresses.** (Built: [what moved where](#old-addresses-build-step-8).) `/gallery?section=…` links redirect to their new homes, then the old tabs are removed. Two things still live only on the old tabs after step 5 and must move before they go: the signed-in classification corrections (Measurement tab, linked from `/data`) and the signed-in sharing notes (Sources tab). Saved-view updates from the gallery filter bar also stay there; `/settings` saves, renames and deletes. Step 5 also keeps two things from the old site report: the report-intelligence panel returns on `/sites` the way it does on the album report (findings when a saved calculation exists for the site scope, the owner's record form when none does, nothing for visitors), and a single "Today so far" line for link clicks, kept apart from every total.
 9. **Acceptance.** A cold review of device captures for every surface, including largest text and increased contrast. Performance is compared with `scripts/measure-analytics-performance.mjs`.
 
 ## Launch rules (build step 6)
@@ -355,6 +355,137 @@ Options for Nino: (A) have the blog's deploy record each new page's first appear
 ### Replay and captures
 
 `scripts/replay-launch-recaps.ts` (read-only) builds each recap for the 7 real launches as if run one minute after 08:00; the text is in [`replay-launch-recaps.txt`](../../evidence/screen-reviews/analytics-launch-recaps-0ad62f3/replay-launch-recaps.txt). Two inputs differ from production: findings are the launch rules evaluated as of the due instant (stored snapshots hold only today's), and the photo counts use today's photo rows. Screens: [`analytics-launch-recaps-0ad62f3`](../../evidence/screen-reviews/analytics-launch-recaps-0ad62f3/), 1440 and 375 wide, with the walk notes in `walk.txt`. Stored recaps in those captures are the replayed or backfill-dry-run ones, presented by a preload; nothing was written.
+
+## Old addresses (build step 8)
+
+The old gallery report (`/gallery`, internally `/photography/analytics/operator`) is gone. Everything it still did has a working home, every old address redirects once to where its job went, and the route, its three components and its tests are removed. Branch `feat/analytics-old-addresses`, evidence in [`analytics-old-addresses-1b45d86`](../../evidence/screen-reviews/analytics-old-addresses-1b45d86/).
+
+### One page was missing from the map: the photo explorer
+
+The capability map said the gallery-wide photo view lives "from `/albums`" and the saved-view update "on `/albums` or the album report". Neither page has a filter bar, and the album index's CSV is album-level launch figures, not the photo file. So three things had no home: the gallery-wide photo ranking, `/gallery/export.csv`, and a saved view's filters (opening one, updating one). Step 8 adds one lean page for all three, `/photos`, linked from the album index and from the album report. It reads exactly the old report's query (dates, measure, albums, traffic, sport, category, source, event date, season, comparison), so an old link, a saved view and a CSV all say the same thing. It carries only what the map names: rankings, images or table, columns, shortlist, inspection, filters, CSV, and save or update a view. It does not bring back Overview, Albums, Sources or Measurement.
+
+**Deviation from the brief.** The brief asked for saved-view updates "on `/albums` or the album report". They are on `/photos`, because only that page has the filters a view stores. The album report's "Filter these photos" link opens it with that album and its dates, and the index links to it, so both named pages lead there. Say so if you want the update control on the report itself.
+
+### Inventory: every capability the operator route held
+
+Production holds no rows for any of the writes below (`analytics_sharing_annotations`, `analytics_saved_reports`, both correction tables: 0 each, [`counts.txt`](../../evidence/screen-reviews/analytics-old-addresses-1b45d86/counts.txt)), so nothing was stranded by the move.
+
+| Capability | Where it lived | Where it lives now | Status |
+| --- | --- | --- | --- |
+| **Overview** | | | |
+| Recorded actions and the change against the earlier period | Overview answer grid | Home's week line; Data's counting totals | Already there. The calendar-period "change" is the comparison the rethink rejected for launches. |
+| Browsers with any activity | Overview | Data, "How counting works" | **Moved.** It was only on Overview; Data now shows it with its limit ("a browser is not a person"). |
+| Freshness line (updated, history since) | Overview | Data, "Coverage and freshness" | Already there. |
+| "Today so far" for the whole gallery | Overview | The album report and Home show today's partial for each launch | **Dropped.** A gallery-wide partial day answers no launch question. |
+| Free-window daily trend chart | Overview | Each launch's daily chart (album report); the launch overlay (index) | **Dropped.** A free calendar window is the comparison the rethink rejected. |
+| Findings, the owner's record form, the assistant (gallery scope) | Overview panel | Home findings; the album report's findings, record form and assistant (album scope) | Already there. Production holds 0 actions and 0 assistant requests. |
+| "Albums getting attention", "Photos drawing attention" | Overview | Home launch log and the album index; the explorer's top photos | Already there. |
+| **Filter bar** | | | |
+| Album picker, dates (7, 30, 90, custom), measure (five), traffic, sport, category, source, event date, season, comparison, reset | Filter bar on every tab | `/photos` | **Moved** (this page is the one place with them). |
+| Album event type filter | Advanced filters | None | **Dropped.** The column was removed in June (`20260609060000_drop_dead_columns.sql`), so the only value was "unknown". An old address that carries it is still read. |
+| Same-age comparison mode | Advanced filters | The album index (same-age rank by default) | Already there. On `/photos` an old address that asks for it reads as no comparison. |
+| Mobile "Filters" toggle | Mobile bar | The filter form is always on the page | **Dropped.** |
+| **Albums tab** | | | |
+| Album table: current, previous, change, rank, search, paging, selected-album panel | Albums | The album index (launches ranked at the same age; search; compare up to the limit); each row opens its report | Already there. The calendar-period table by an arbitrary measure is **dropped**; `/photos/export.csv?measure=album_opens` still gives per-album totals for any dates. |
+| Same-age table and daily table | Albums, "publication age" | Index overlay; album report launch comparison | Already there. |
+| **Photos tab** | | | |
+| Popular, rising, recently active; images or table; column choice; shortlist; inspection dialog; paging; the note on what Rising leaves out | Photos | `/photos` | **Moved.** The shortlist is the owner's, on `/photos` as on the album report (one rule, `shortlist.ts`); visitors are told what signing in adds. |
+| Gallery-wide CSV and shortlist CSV, including an explicitly empty shortlist | `/gallery/export.csv` | `/photos/export.csv`, also used by the album report's two CSV links | **Moved.** |
+| **Sources tab** | | | |
+| Tagged arrivals; where albums and photos were opened; linked visits after an arrival | Sources | Album report (arrivals); Data (arrivals, open locations, linked visits) | Already there. |
+| Sharing notes: add, edit, delete | Sources, owner only | Album report, "Where you shared this album", owner only | **Moved.** Notes are always one album's (the table needs an album), so site scope is not needed. The old Sources list read notes only on Overview, so it never showed them; the report lists all of the album's notes. |
+| Saved views: save, update, delete | Sources, owner only | Settings (save, rename, delete; opens the explorer); `/photos` (save the filters on the page, update a saved view) | **Moved.** A name is unique per owner. |
+| **Measurement tab** | | | |
+| Cloudflare cross-check, traffic classes, counting rule, delivery health, volume estimate, recorded event counts, linked journeys, traffic impact, search and download evidence | Measurement | Data | Already there (step 5). |
+| Correct a retained traffic event, history, reverse latest, event paging | Measurement, owner only | Data, "Correcting how an event is classified", owner only | **Moved.** |
+| Correct a retained version 2 event (incl. "self excluded"), history, reverse latest | Measurement, owner only | Same | **Moved.** |
+| **Preferences, header, plumbing** | | | |
+| Analytics choices for this browser | Preferences | Settings | Already there. |
+| "All sites" link | Header | The header's Site link | Already there. |
+| "View gallery" link out | Header | None | **Dropped.** The public gallery is one click from any photo link. |
+| "Operator tools enabled / Available by direct link" badge | Header | Each owner block says what signing in adds | **Dropped.** |
+| `#section` anchors on old links; remembered selected album | Browser | None | **Dropped.** An old anchor survives the redirect and does nothing. |
+| Sign-in return to the old report; magic links already sent | `next=/analytics/operator…` | Home, or the page the old address maps to | **Moved** (one mapping serves all). |
+| Links stored in findings and briefs (`/analytics/operator?…`) | Stored snapshots | The same mapping, so they still open | **Moved.** New findings write the new links. |
+| Assistant "reachable from the album report" | | Album report, `#assistant` (record form for an owner; the assistant when a saved calculation exists) | Confirmed. |
+
+### Redirects
+
+One `308` from the app's own hook, GET and HEAD only (a form post to an old address is a 404, never replayed). Only the parameters the new page reads are carried; album keys are validated before they go into a path; Home never takes a query, because Page Rule 49cd0626 sends `/?*` to the site report before the app runs. The full table, one row per address, is [`redirects.md`](../../evidence/screen-reviews/analytics-old-addresses-1b45d86/redirects.md); the mapping is `src/lib/analytics/old-addresses.ts` with 43 unit tests.
+
+| Old address | New address |
+| --- | --- |
+| `/gallery`, `?section=overview`, any unknown `?section=` | `/` |
+| `/gallery?scope=album&albums=<key>` (overview, sources) | `/albums/<key>` |
+| `/gallery?section=albums` | `/albums` |
+| `/gallery?section=albums&scope=album&albums=<key>` | `/albums/<key>` |
+| `/gallery?section=albums&albums=<key>` (one album picked) | `/albums/<key>` |
+| `/gallery?section=albums&scope=selected&albums=a,b,c` | `/albums?compare=a,b,c` |
+| `/gallery?section=photos&…filters…` | `/photos?…the same filters…` |
+| `/gallery?section=sources` | `/data#arrivals` (`?period=7`, `30`, `90` kept) |
+| `/gallery?section=measurement` | `/data` (`?period=7`, `30`, `90` kept) |
+| `/gallery?section=analytics-preferences` (and `preferences`) | `/settings` |
+| `/gallery/export.csv?…` | `/photos/export.csv?…` (same query, same file) |
+| `/photography/analytics`, `/photography/analytics/operator[/export.csv]` | the same rows above, in one hop, on any host |
+| `/?period=30`, `/?section=writing&period=7` (the report host's root, with what the old site report read: `period`, `section`, `page`, `actionsPage`, `view`) | `/sites?period=30`, `/sites?period=7&section=writing` (a bare `/`, or any other root query, stays on Home) |
+
+Two facts about the platform found while building it. First, SvelteKit answers 404 to any path outside the app's `/photography` base before `handle` runs, and `/gallery` is outside it, so `hooks.ts` `reroute` places `/gallery` and `/gallery/export.csv` under the base; with that removed, the worker answers `/gallery` with a bare 404. The dev server cannot show this (it 404s every clean address), so the proof is a production build under `wrangler pages dev`. Second, the redirect table's "second hop" column is empty of 308s: no row chains.
+
+### Edge rules
+
+No Cloudflare change was made. Curl of the live host ([`redirects.md`](../../evidence/screen-reviews/analytics-old-addresses-1b45d86/redirects.md#production-edge-before-this-change-is-deployed)): no Page Rule touches `/gallery`, `/gallery/export.csv`, `/photos` or `/photos/export.csv`. Rule 49cd0626 (`analytics.ninochavez.co/?*`, a 301 to `/photography/analytics/sites?$1`) catches every root address with a query, so the app never saw one; the app then redirected the internal path again, two hops.
+
+The app now does that rule's job: a root address on the report host whose query carries a parameter the old site report read (`period`, `section`, `page`, `actionsPage`, `view`, taken from `/sites` before step 5, `git show bd99964^:src/routes/analytics/sites/+page.server.ts`) is one 308 to `/sites` with just those parameters. A bare `/` and a root query with none of them (`/?x=1`) stay on Home. **The rule is redundant once this deploys.** It still answers first until it is deleted, which is harmless (both end at `/sites`), and the app's version cannot be seen live while the rule exists. The coordinator will ask Nino to delete it, then check `curl -sI 'https://analytics.ninochavez.co/?period=30'`: `308` to `/sites?period=30` with `x-frame-options: DENY`.
+
+### What moved where
+
+| Page | Change | Captures (1440 and 375) |
+| --- | --- | --- |
+| `/photos` (new) | Photo explorer, filters, shortlist (owner only), CSV, saved views | `photos-visitor`, `photos-rising`, `photos-album-table`, `photos-dialog`, `photos-empty`, `photos-owner-views`, `photos-owner-no-views`, `photos-owner-shortlisted` |
+| `/data` | Corrections for the owner, in plain words; browser estimate | `data-visitor`, `data-owner-empty`, `data-owner-history` |
+| `/albums/<key>` | Sharing notes for the owner; CSV and "Filter these photos" links | `album-visitor`, `album-owner-no-notes`, `album-owner-notes` |
+| `/albums` | "Photos across all albums" link | `albums-index` |
+| `/settings` | A saved view opens the explorer | `settings-owner-views` |
+| Home | Only the site link's address | `home-visitor` |
+
+All under [`analytics-old-addresses-1b45d86`](../../evidence/screen-reviews/analytics-old-addresses-1b45d86/), with the walk's gates and the forced failures in `walk.txt`.
+
+### Rules settled in review
+
+1. **Unlisted albums in the corrections are read on purpose.** The owner's pickers and history on `/data` read actions from every album, unlisted ones included, as the old Measurement tab did and as the album report does for the owner. This is the owner's private surface and its job is to correct the owner's own traffic, which is mostly on albums that are not public yet; excluding them would hide the very actions to reclassify. It is safe because the caller has proved the owner, a correction writes a new private version rather than changing the action, and nothing read reaches a visitor. The rule is written beside the read in `corrections.server.ts`. Everything else new here reads public albums only, for everyone (the explorer, its CSV, its album picker and facets); for the owner that is a change, because the old picker listed unlisted albums that the report then left out.
+2. **Shortlisting is the owner's, on both pages.** One module, `src/lib/analytics/shortlist.ts`, owns the storage key, its limits and the sentence that tells a visitor what signing in adds. On `/photos` a visitor sees no shortlist checkboxes, no shortlist CSV and no "add to shortlist" in the photo dialog, and is told "Shortlisting and saved views need sign-in".
+3. **A saved view's name is unique per owner** (ignoring case and spaces), because "Open" and "Update" would otherwise point at two things with one name. The table has no unique constraint, so the check is in `saved-views.server.ts`. Settings saves, renames and deletes through the same module: a taken name is refused on save and on rename, and a rename or delete that matches none of the owner's views is reported as not found instead of as success.
+
+### What else changed in review
+
+- **Saving and updating a view** moved out of the route into `saved-views.server.ts`, with a fake-client test: signed out is refused; someone else's or a missing view is refused (an update that matched no row used to be reported as success); the stored filters equal what the page parsed from its address; a duplicate name is refused. Forced failure: removing the owner filter and the signed-out check made two of seven tests fail.
+- **Corrections wording** on `/data`. "Retained event", "version 2", "server-made control" and "provider" are gone. The page says what each form changes in the words the counts use (photo and album actions, detailed events, the six classes), describes detailed events by album, page and time with the identifier as small text, and says "This action's record is no longer kept" or "Its details could not be read just now" instead of "context unavailable". Precision kept: a correction changes counts at once, a record not yet sent to PostHog is held back, and for one PostHog already has only the identifier, the new class and the version number are sent.
+- **Mapping:** one album picked in `/gallery?section=albums` goes to that album's report; two or more go to the index comparison. The site report's root addresses are mapped (see Edge rules).
+- **Dead code deleted:** `bounded-singleflight-cache.server.ts`, `describe-filters.ts` and `report-evidence.server.ts`, with their tests and the `filters:test` script. Nothing imported them (src, scripts, tests, tools re-searched).
+
+### Playwright and the local verifier
+
+Run against the local synthetic stack (`supabase status` written to `.temp/analytics-local-rehearsal/runtime.json`; the resetting setup was not run). The shared local database lagged main, so the launch, first-publication and recap migrations were installed on it with `scripts/rehearse-analytics-scheduled.py --install-local` (additive, local only).
+
+| Spec | Passed | Failed | Skipped | Notes |
+| --- | --- | --- | --- | --- |
+| `public.spec.ts` | 4 | 0 | 0 | Rewritten: the one-hop redirects, the explorer without a shortlist for a visitor, filters and CSV, and every write action requiring sign-in on the explorer, Data, the album report and Settings. |
+| `journeys.spec.ts` | 7 | 0 | 0 | Real local writes: save, update, reopen and delete a view; an owner shortlist surviving paging; a sharing note added, edited and deleted; a classification correction recorded and reversed. |
+| `collection.spec.ts` | 2 | 0 | 0 | The preferences calls now send an `Origin` header, which the route has required; that was stale before this change. |
+| `scheduled.spec.ts` | 4 | 0 | 0 | The gallery half is the explorer's paging. The site half asserted the site report as it was before step 5, so it was rewritten for the current page. |
+| `intelligence-workspace.spec.ts` | 8 | 0 | 0 | The album report mounts the panel only when a saved calculation exists, and the local database has none, so the page is requested with that one server decision turned on. The panel's own behaviour is what is tested. One step (re-asking after the filters change) has no equivalent on a page whose scope cannot change, and was replaced by a check of the frozen scope. |
+
+The specs write dated screenshots into `docs/implementation/...`; those were restored after the run.
+
+`scripts/verify-analytics-local.mjs` is kept: it signs in the synthetic owner (writing the cookie file the browser suite needs), runs the load and failure rehearsals, and checks numbers and exports. Its failure rehearsal revoked a database function the report no longer reads, so it asserted nothing; it now revokes the one the report reads, and passes (report unavailable, CSV 503, collection 503, grants restored). Its numeric and export-row checks assume freshly reset fixtures (`analytics:rehearse`, which resets the shared synthetic database and was not run): on the shared database they read 6 for 7, 8 for 9 and 1 for 2 visitors, and 1,134 for 1,105 and 29 for 1 export rows, because earlier runs added events. Those four assertions are unverified, not failing for a reason in this change.
+
+### Not verified
+
+- No real write against production and no real sign-in. The harness owner is not a sign-in. The local run did exercise save, update, notes and corrections against a real (synthetic) database.
+- The numeric and export-row checks of `verify-analytics-local.mjs` on freshly reset fixtures, as above.
+- A cold review of device captures, physical devices, largest text size and increased contrast.
+- Cost: every `/data` load now runs the browser-estimate query, and `/photos` replaces `/gallery` in `scripts/measure-analytics-performance.mjs`'s default pages. Step 9's comparison should know both.
+- The root redirect on the live host, which cannot be seen while Page Rule 49cd0626 exists.
 
 ## Sources
 

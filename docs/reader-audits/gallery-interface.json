@@ -1,16 +1,18 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T02:38:15.417Z",
-  "reviewedBy": "Claude Sonnet 5.5 (implementing agent, self-review; not a cold reviewer)",
-  "method": "Self-review by the agent that wrote the change, on a local dev server reading production through a preload that blocks every write (read-only). Walked at 1440x900 and 375x812: the album report's Recaps section as a visitor (before any backfill, where it is absent; after a backfill; with recaps still to come; with one due and not yet stored), as a harness owner (nothing written; one due and waiting), an opened recap from a backfill, an opened on-time recap, a synthetic late and incomplete day 7 and a recap asked for that is not stored; Home's Next (live and two as-of shifts); and Settings (signed out, and a harness owner with the two private API reads stubbed in the browser: no retention, retention chosen, email on). Stored recaps in the captures are real production numbers replayed by the repository's own scripts and presented by the preload. All 14 recap texts for the 7 real launches were read in full after the wording changes. Gates per capture: overflow (forced to fail once per page and width, 34 of 34 fired), 44 px targets, text at 200 percent, Tab-only keyboard walk. Not covered: a cold reviewer; a real signed-in session; the email path end to end (no destination is verified and nothing was sent); album photos (images do not load in the sandbox); largest system text size and increased contrast beyond the 200 percent text and the prefers-contrast rules in the source; the owner-only IntelligenceWorkspace incident list and its Playwright tests (five of eight skip without the rehearsal owner cookie).",
-  "sourceDigest": "sha256:37145ea4059fdd0416e20b6a96ae5864c30174b3cae692085ff880a316127a1e",
-  "sourceFiles": 193,
+  "reviewedAt": "2026-10-07T04:14:24.162Z",
+  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer) over the step 8 subagent's walk",
+  "method": "Step 8 walk by the implementing subagent stands for every screen (method in docs/evidence/screen-reviews/analytics-old-addresses-1b45d86/walk.txt). On top of it the coordinator changed only the Settings saved-view actions (src/routes/analytics/settings/+page.server.ts) to write through saved-views.server.ts: a taken name is refused on save and rename, and a rename or delete matching none of the owner's views reports not found. No markup changed; the only reader-visible change is those three error sentences, checked in the unit tests, not in a rendered walk. The coordinator also opened the subagent's photos-visitor, album-owner-notes and data-owner-history captures and re-curled ten old addresses against the production build under wrangler. Not covered: a rendered Settings capture of the new error sentences, a cold reviewer, a real signed-in session, physical devices.",
+  "sourceDigest": "sha256:a08668b393e907adaec86cd0f1bee8578d378bb6fa4431837afde24f54b4c201",
+  "sourceFiles": 197,
   "scope": [
-    "Album report Recaps section and opened recap",
-    "Home Next line for recaps",
-    "Settings launch recap and private records block",
-    "Recap wording and the written-later, late and incomplete notes",
-    "IntelligenceWorkspace incident list heading"
+    "Photo explorer page, its shortlist rule and its CSV link",
+    "Data page corrections section and browser estimate",
+    "Album report sharing notes, shortlist note and photo explorer link",
+    "Settings saved view links",
+    "Album index link to the photo explorer",
+    "Header without the Gallery report link",
+    "Settings saved view save, rename and delete errors"
   ]
 }

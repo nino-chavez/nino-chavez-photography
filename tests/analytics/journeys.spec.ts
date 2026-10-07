@@ -1,5 +1,7 @@
 import {test, expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
+
+// Local rehearsal suite (npm run analytics:ui:local), signed in as the synthetic owner that analytics:verify:local saves.
 test.beforeEach(async({page,context,baseURL})=>{
 	const jar=JSON.parse(readFileSync('.temp/analytics-parent-local-cookies.json','utf8'));
 	const cookieDomain=process.env.ANALYTICS_COOKIE_DOMAIN ?? new URL(baseURL ?? 'http://127.0.0.1').hostname;
@@ -9,58 +11,65 @@ test.beforeEach(async({page,context,baseURL})=>{
  await page.route('https://imagedelivery.net/**',r=>r.fulfill({path:'static/images/hero/hero-1-mobile.webp',contentType:'image/webp'}));
 });
 const query='period=custom&start=2026-09-27&end=2026-09-27&compare=none';
-test('selecting a named album updates the inspector and its report link changes report scope',async({page})=>{
-	await page.goto('/photography/analytics/operator?'+query+'#albums');
-	const row=page.locator('#albums tr').filter({hasText:'Alpha Invitational'});
-	await row.getByRole('button',{name:/Alpha Invitational/}).click();
-	await expect(page.locator('.inspector')).toContainText('Alpha Invitational');
-	await row.getByRole('link',{name:'Open the report for Alpha Invitational'}).click();
- await expect.poll(()=>new URL(page.url()).searchParams.get('scope')).toBe('album');
- await expect.poll(()=>new URL(page.url()).searchParams.get('albums')).toBe('alpha');
-	await expect(page.locator('.inspector')).toContainText('Alpha Invitational');
-	// A one-album report has no peers in the table; it offers the way back instead of a no-op row link.
-	await expect(page.locator('#albums tr').getByRole('link',{name:/Open the report for/})).toHaveCount(0);
-	await expect(page.getByRole('link',{name:'Compare with all albums'})).toBeVisible();
-	await expect(page.locator('#report-filters summary',{hasText:'Advanced filters'})).toHaveText('Advanced filters');
- await page.goBack();
- await expect.poll(()=>new URL(page.url()).searchParams.get('scope')).toBeNull();
- await expect(page.locator('.album-picker summary')).toContainText('All albums');
+const photos='/photography/analytics/photos';
+test('the album index leads to the photo explorer, and an album scope narrows it',async({page})=>{
+	await page.goto('/photography/analytics/albums');
+	await page.getByRole('link',{name:'Photos across all albums'}).click();
+	await expect(page.getByRole('heading',{name:'Photos across the gallery'})).toBeVisible();
+	await page.goto(photos+'?'+query+'&scope=album&albums=alpha');
+	await expect(page.locator('.picker summary')).toContainText('Alpha Invitational');
+	await expect(page.getByRole('link',{name:'Reset all filters'})).toBeVisible();
+	await page.getByRole('link',{name:'Reset all filters'}).click();
+	await expect.poll(()=>new URL(page.url()).searchParams.get('scope')).toBeNull();
+	await expect(page.locator('.picker summary')).toContainText('All albums');
 });
-test('save and reopen preserves the chosen dates and album',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha#sources');
+test('save, update and reopen a view keeps the chosen dates and album',async({page})=>{
+ await page.goto(photos+'?'+query+'&scope=album&albums=alpha');
  const name='Parent acceptance '+Date.now();
- await page.getByLabel('View name').fill(name);
+ await page.getByLabel('Save the filters on this page as a new view').fill(name);
  await page.getByRole('button',{name:'Save view',exact:true}).click();
  const saved=page.getByRole('link',{name,exact:true});
  await expect(saved).toBeVisible();
- const href=await saved.getAttribute('href');
- const params=new URL(href!,page.url()).searchParams;
+ const params=new URL((await saved.getAttribute('href'))!,page.url()).searchParams;
  expect(params.get('start')).toBe('2026-09-27');
  expect(params.get('end')).toBe('2026-09-27');
  expect(params.get('albums')).toBe('alpha');
  await saved.click();
-	await expect.poll(()=>new URL(page.url()).searchParams.get('albums')).toBe('alpha');
-	await expect(page.getByRole('heading',{name:'Repeat this analysis'})).toBeVisible();
- await page.getByRole('combobox',{name:'Measure',exact:true}).selectOption('downloads');
+ await expect.poll(()=>new URL(page.url()).searchParams.get('albums')).toBe('alpha');
+ await page.getByRole('combobox',{name:'Count',exact:true}).selectOption('downloads');
  await page.getByRole('button',{name:'Apply',exact:true}).click();
  await expect.poll(()=>new URL(page.url()).searchParams.get('measure')).toBe('downloads');
- await page.locator('li').filter({has:saved}).getByRole('button',{name:'Update',exact:true}).click();
+ await page.locator('li').filter({has:saved}).getByRole('button',{name:/^Update/}).click();
  await expect.poll(async()=>new URL((await saved.getAttribute('href'))!,page.url()).searchParams.get('measure')).toBe('downloads');
  await saved.click();
- await expect(page.getByRole('combobox',{name:'Measure',exact:true})).toHaveValue('downloads');
- await page.locator('li').filter({has:saved}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(page.getByRole('link',{name,exact:true})).toHaveCount(0);
+ await expect(page.getByRole('combobox',{name:'Count',exact:true})).toHaveValue('downloads');
+ // Delete lives in Settings.
+ await page.goto('/photography/analytics/settings');
+ await page.locator('li').filter({hasText:name}).getByRole('button',{name:/^Delete/}).click();
+ await expect(page.getByText(name,{exact:true})).toHaveCount(0);
+});
+test('a shortlist survives paging and going back, and is offered only to the signed-in owner',async({page})=>{
+ await page.goto(photos+'?period=7');
+ await expect(page.getByRole('button',{name:'Table',exact:true})).toBeEnabled();
+ await page.getByRole('checkbox',{name:'Shortlist',exact:true}).first().check();
+ await page.getByRole('link',{name:'Next',exact:true}).click();
+ await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
+ await page.goBack();
+ await expect(page.getByText(/Page 1 of \d+/)).toBeVisible();
+ await expect(page.getByRole('checkbox',{name:'Shortlist',exact:true}).first()).toBeChecked();
+ await expect(page.getByRole('link',{name:/Shortlist CSV \(1\)/})).toBeVisible();
+ await expect(page.getByText(/Shortlisting and saved views need/)).toHaveCount(0);
 });
 test('photo inspection supports keyboard focus and shortlist export',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query+'#photos');
- const trigger=page.locator('.photo-inspect').first();
+ await page.goto(photos+'?'+query);
+ const trigger=page.locator('ul.grid .thumb').first();
  await trigger.click();
  const dialog=page.getByRole('dialog');
  await expect(dialog).toBeInViewport();
- await expect(dialog.getByRole('link',{name:'Open photo to share or download'})).toHaveAttribute('href',/^\/photography\/photo\//);
+ await expect(dialog.getByRole('link',{name:'Open photo to share or download'})).toHaveAttribute('href',/\/photography\/photo\//);
  await expect.poll(()=>dialog.evaluate(e=>e.contains(document.activeElement))).toBe(true);
  await dialog.getByRole('button',{name:'Add to shortlist',exact:true}).click();
-	await dialog.getByRole('button',{name:'Return to photos',exact:true}).click();
+	await dialog.getByRole('button',{name:'Close photo details'}).click();
 	await expect(dialog).toHaveCount(0);
  await expect(trigger).toBeFocused();
  const href=await page.getByRole('link',{name:'Shortlist CSV (1)',exact:true}).getAttribute('href');
@@ -69,53 +78,43 @@ test('photo inspection supports keyboard focus and shortlist export',async({page
  expect((await response.text()).trim().split('\n')).toHaveLength(2);
 });
 
-test('sharing note can be created, updated and deleted in the selected report',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha#sources');
+test('a sharing note can be created, updated and deleted on the album report',async({page})=>{
+ await page.goto('/photography/analytics/albums/alpha');
  const note='Synthetic sharing rehearsal '+Date.now();
- const add=page.locator('form[action*="addAnnotation"]');
- await add.getByRole('combobox',{name:'Album',exact:true}).selectOption('alpha');
- await add.getByLabel('Activity date').fill('2026-09-27');
+ const add=page.locator('form[action*="addNote"]');
+ await add.getByLabel('Day').fill('2026-09-27');
  await add.getByLabel('Channel').fill('Instagram');
  await add.getByLabel('What happened').fill(note);
  await add.getByRole('button',{name:'Save note'}).click();
- const notes=page.locator('li').filter({has:page.locator('textarea[name="note"]')});
- const noteIndex=()=>notes.evaluateAll((items, value)=>items.findIndex(item=>(item.querySelector('textarea[name="note"]') as HTMLTextAreaElement)?.value===value),note);
- await expect.poll(noteIndex).toBeGreaterThanOrEqual(0);
- const created=notes.nth(await noteIndex());
- const id=await created.locator('input[name="id"]').first().inputValue();
- const row=page.locator('li').filter({has:page.locator(`input[name="id"][value="${id}"]`)});
- await row.getByRole('textbox',{name:'Note',exact:true}).fill(note+' updated');
- await Promise.all([page.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('updateAnnotation')),row.getByRole('button',{name:'Update',exact:true}).click()]);
- await page.waitForLoadState('networkidle');
+ const item=page.locator('#sharing li').filter({hasText:note});
+ await expect(item).toHaveCount(1);
+ await item.getByText('Edit',{exact:false}).first().click();
+ await item.getByLabel('What happened').fill(note+' updated');
+ await item.getByRole('button',{name:'Update note'}).click();
  await page.reload();
- await expect(row.getByRole('textbox',{name:'Note',exact:true})).toHaveValue(note+' updated');
- await Promise.all([page.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('deleteAnnotation')),row.getByRole('button',{name:'Delete note'}).click()]);
- await expect(row).toHaveCount(0);
+ await expect(page.locator('#sharing li').filter({hasText:note+' updated'})).toHaveCount(1);
+ await page.locator('#sharing li').filter({hasText:note+' updated'}).getByRole('button',{name:/^Delete/}).click();
+ await expect(page.locator('#sharing li').filter({hasText:note})).toHaveCount(0);
 });
 
-test('classification correction changes the report and can be reversed',async({page})=>{
- await page.goto('/photography/analytics/operator?'+query+'&scope=album&albums=alpha#overview');
- await expect(page.locator('.answer-primary strong')).toHaveText('3');
- await page.getByRole('button',{name:'Measurement',exact:true}).click();
+test('a classification correction on the data page is recorded and can be reversed',async({page})=>{
+ await page.goto('/photography/analytics/data?period=30#corrections');
  const form=page.locator('form[action*="correctClassification"]');
- const id=await form.locator('select[name="eventId"] option').evaluateAll(options=>(options.find(o=>o.textContent?.includes(' · view ·')&&o.textContent?.includes('gallery-grid')) as HTMLOptionElement)?.value);
+ const id=await form.locator('select[name="eventId"] option').evaluateAll(options=>(options.find(o=>o.textContent?.startsWith('Photo opened')) as HTMLOptionElement)?.value);
  expect(id).toBeTruthy();
- await form.getByRole('combobox',{name:'Retained event',exact:true}).selectOption(id!);
- await form.getByRole('combobox',{name:'Classification',exact:true}).selectOption('test');
+ await form.getByRole('combobox',{name:'Action to correct',exact:true}).selectOption(id!);
+ await form.getByRole('combobox',{name:'New class',exact:true}).selectOption('test');
  const reason='Synthetic browser correction '+Date.now();
  await form.getByRole('textbox',{name:'Reason',exact:true}).fill(reason);
- await form.getByRole('button',{name:'Record',exact:true}).click();
- await page.getByRole('button',{name:'Overview',exact:true}).click();
- await expect(page.locator('.answer-primary strong')).toHaveText('2');
- await page.getByRole('button',{name:'Measurement',exact:true}).click();
- const correction=page.locator('tr').filter({hasText:reason});
- await correction.getByRole('button',{name:'Reverse latest',exact:true}).click();
- await page.getByRole('button',{name:'Overview',exact:true}).click();
- await expect(page.locator('.answer-primary strong')).toHaveText('3');
+ await form.getByRole('button',{name:'Record correction',exact:true}).click();
+ const correction=page.locator('.history li').filter({hasText:reason});
+ await expect(correction).toHaveCount(1);
+ await correction.getByRole('button',{name:/^Reverse latest/}).click();
+ await expect(page.locator('.history li').filter({hasText:'Reversal requested by the operator.'}).first()).toBeVisible();
 });
 
 test('an explicitly empty shortlist exports no photos',async({page})=>{
- const response=await page.request.get('/photography/analytics/operator/export.csv?'+query+'&shortlist=');
+ const response=await page.request.get(photos+'/export.csv?'+query+'&shortlist=');
  expect(response.status()).toBe(200);
  expect((await response.text()).trim().split('\n')).toHaveLength(1);
 });

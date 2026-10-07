@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
-	import { reportPath } from '$lib/analytics/report-paths';
+	import { photosPath } from '$lib/analytics/report-paths';
 	import { describeSavedView, MEASURE_WORDS, SAVED_VIEW_NAME_MAX, SAVED_VIEW_PERIODS, savedViewParams } from '$lib/analytics/saved-views';
 	import AnalyticsPreferences from '$lib/components/analytics/AnalyticsPreferences.svelte';
 	import PrivateIntelligenceControls from '$lib/components/analytics/PrivateIntelligenceControls.svelte';
@@ -16,9 +16,7 @@
 	const signInHref = $derived(`${base}/login?next=${encodeURIComponent('/analytics/settings')}`);
 	function openHref(query: unknown): string | null {
 		const params = savedViewParams(query);
-		if (!params) return null;
-		params.set('section', 'overview');
-		return reportPath(hostname, 'gallery', `?${params}`);
+		return params ? photosPath(hostname, `?${params}`) : null;
 	}
 	const updated = (value: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }).format(new Date(value));
 </script>
@@ -59,7 +57,7 @@
 				{#if data.owner}
 					<section class="block" aria-labelledby="views-title">
 						<h2 id="views-title">Saved views</h2>
-						<p class="note">A saved view keeps filters, not numbers: it opens the gallery report with the same dates, measure and albums, and the numbers are read fresh.</p>
+						<p class="note">A saved view keeps filters, not numbers: it opens the photo explorer with the same dates, measure and albums, and the numbers are read fresh.</p>
 						{#if !data.savedViewsAvailable}
 							<p class="alert" role="alert">Your saved views could not be read. They are not gone; reload in a few minutes.</p>
 						{:else if data.savedViews.length === 0}
@@ -69,7 +67,7 @@
 								{#each data.savedViews as view (view.id)}
 									<li>
 										<div class="view-head">
-											{#if openHref(view.query)}<a class="view-name" href={openHref(view.query)}>{view.name}<span class="sr-only"> (opens the gallery report with these filters)</span></a>{:else}<span class="view-name">{view.name}</span>{/if}
+											{#if openHref(view.query)}<a class="view-name" href={openHref(view.query)}>{view.name}<span class="sr-only"> (opens the photo explorer with these filters)</span></a>{:else}<span class="view-name">{view.name}</span>{/if}
 											<span class="view-meta">Updated {updated(view.updated_at)}</span>
 										</div>
 										<p class="view-filters">{describeSavedView(view.query)}</p>
@@ -95,7 +93,7 @@
 
 						<form class="save" method="POST" action="?/saveView" use:enhance>
 							<h3>Save a view</h3>
-							<p class="note">This saves the whole gallery over the last complete days. To save a view with album filters, use Save view on the gallery report, which has them.</p>
+							<p class="note">This saves the whole gallery over the last complete days. To save a view with album filters, or to change the filters of a saved one, use the photo explorer, which has them.</p>
 							<div class="fields">
 								<label class="entry"><span>Name</span><input name="name" maxlength={SAVED_VIEW_NAME_MAX} required placeholder="Name this view" /></label>
 								<label class="entry"><span>Days</span><select name="period">{#each SAVED_VIEW_PERIODS as period (period)}<option value={period} selected={period === 30}>Last {period} days</option>{/each}</select></label>

@@ -7,6 +7,7 @@ import { parseMeasurementHealth, type MeasurementHealth } from './measurement-he
 import { buildOperatorReport, type OperatorReport } from './operator-report.server';
 import { createPostHogQueryTransport, queryGalleryJourneys } from './posthog-queries.server';
 import { POSTHOG_JOURNEY_REPORTS, type JourneyAggregate } from './posthog.types';
+import { readAll } from './read-all.server';
 import { parseReportQuery } from './report-contract';
 import { loadSiteActions } from './site-actions.server';
 import { loadSiteJourneys, type SiteJourneys } from './site-journeys.server';
@@ -21,7 +22,7 @@ import { fetchV2ReportProjection, type V2ReportProjection } from './v2-report-pr
  *   catalogue         public albums only, so an unlisted album is never read for anyone
  *   freshness         the newest `reconciled_at`, the incidents, and delivery diagnostics: the same reads Home makes
  *   site              Cloudflare page loads and the site's own action summary
- *   delivery health   the outbox counts; only for the signed-in owner, as on the old Measurement tab
+ *   delivery health   the outbox counts; only for the signed-in owner
  *   journeys          PostHog; streamed after the page, so a slow provider never holds the page back
  */
 
@@ -52,16 +53,6 @@ function logFailure(what: string, result: PromiseSettledResult<unknown>) {
 	if (result.status === 'rejected') console.error(`[data quality] ${what} unavailable:`, result.reason instanceof Error ? result.reason.message : result.reason);
 }
 
-async function readAll<T>(page: (from: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<{ data: T[]; error: unknown }> {
-	const data: T[] = [];
-	for (let from = 0; ; from += 1000) {
-		const result = await page(from);
-		if (result.error) return { data: [], error: result.error };
-		data.push(...(result.data ?? []));
-		if ((result.data ?? []).length < 1000) return { data, error: null };
-	}
-}
-
 export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	const { admin, days } = deps;
 	const asOf = deps.now ?? new Date();
@@ -72,7 +63,7 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	const query = parseReportQuery(new URLSearchParams({ period: 'custom', start, end: lastCompleteDay, scope: 'all', measure: 'photo_opens', traffic: 'conservative', compare: 'none' }), asOf);
 
 	const [reportRead, summaries, settings, healthRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
-		buildOperatorReport(admin, query, { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: true, includeVisitorEstimate: false, includeToday: false, cacheRole: 'service_role' }),
+		buildOperatorReport(admin, query, { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: true, includeVisitorEstimate: true, includeToday: false, cacheRole: 'service_role' }),
 		readAll<{ album_key: string; album_name: string }>((from) => admin.from('albums_summary').select('album_key, album_name').order('album_key').range(from, from + 999)),
 		readAll<{ album_key: string; visibility: string | null }>((from) => admin.from('album_settings').select('album_key, visibility').order('album_key').range(from, from + 999)),
 		deps.owner ? admin.rpc('analytics_posthog_delivery_health') : Promise.resolve({ data: null, error: null }),

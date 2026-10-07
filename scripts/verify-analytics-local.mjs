@@ -1,9 +1,11 @@
 /** Synthetic loopback HTTP acceptance. Run after analytics:rehearse with analytics:dev:local running. */
 import {readFileSync,writeFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
-import {unflatten} from 'devalue';
+import {createClient} from '@supabase/supabase-js';
 import {createServerClient} from '@supabase/ssr';
 import {createAnalyticsTestMarker} from '../src/lib/analytics/collection-contract.ts';
+import {buildOperatorReport} from '../src/lib/analytics/operator-report.server.ts';
+import {parseReportQuery} from '../src/lib/analytics/report-contract.ts';
 {
 const r=JSON.parse(readFileSync('.temp/analytics-local-rehearsal/runtime.json','utf8'));
 if(new URL(r.API_URL).hostname!=='127.0.0.1') throw Error('Local API required');
@@ -16,9 +18,10 @@ for(const role of ['anonymous','user','operator']) {
  }
  const cookie=jar.map(x=>`${x.name}=${x.value}`).join('; ');
  if(role==='operator') writeFileSync('.temp/analytics-parent-local-cookies.json',JSON.stringify(jar),{mode:0o600});
- for(const path of ['/analytics/operator','/analytics/operator/export.csv']) {
+ // Report pages and the CSV are aggregate evidence about public albums, open by direct link: every role gets them.
+ for(const path of ['/analytics/photos','/analytics/photos/export.csv']) {
   const res=await fetch('http://127.0.0.1:5187/photography'+path,{headers:{cookie},redirect:'manual',signal:AbortSignal.timeout(20000)});
-  assert.equal(res.status,role==='anonymous'?302:role==='user'?403:200);
+  assert.equal(res.status,200);
   assert.equal(res.headers.get('cache-control'),'private, no-store, max-age=0');
   const body=await res.text();assert.equal(body.includes('session_hash'),false);
   console.log(role,path,res.status,res.headers.get('cache-control'),body.includes('session_hash')?'HASH FIELD PRESENT':'no hash field');
@@ -28,7 +31,10 @@ for(const role of ['anonymous','user','operator']) {
 {
 const jar=JSON.parse(readFileSync('.temp/analytics-parent-local-cookies.json','utf8'));
 const headers={cookie:jar.map(x=>`${x.name}=${x.value}`).join('; ')};
-const base='http://127.0.0.1:5187/photography/analytics/operator';
+const base='http://127.0.0.1:5187/photography/analytics/photos';
+const runtimeKeys=JSON.parse(readFileSync('.temp/analytics-local-rehearsal/runtime.json','utf8'));
+// No page shows the report's own totals any more, so the numbers are read from the report the pages are built on.
+const admin=createClient(runtimeKeys.API_URL,runtimeKeys.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const checks=[];
 for(const [name,extra,total,visitors] of [
  ['audience photo opens','',4,7],
@@ -40,10 +46,7 @@ for(const [name,extra,total,visitors] of [
  ['zero under a supported content filter','&sport=basketball',0,0]
 ]) {
  try {
-  const response=await fetch(base+'/__data.json?period=custom&start=2026-09-27&end=2026-09-27&compare=none'+extra,{headers,signal:AbortSignal.timeout(30000)});
-  assert.equal(response.status,200);
-  const data=await response.json();const node=data.nodes.find(n=>n?.data&&unflatten(n.data).report);
-  const report=unflatten(node.data).report;
+  const report=await buildOperatorReport(admin,parseReportQuery(new URLSearchParams('period=custom&start=2026-09-27&end=2026-09-27&compare=none'+extra)),{publicOnly:true,includeDiagnostics:false,includeVisitorEstimate:true,includeToday:false,cacheRole:'service_role'});
   assert.equal(report.available,true);assert.equal(report.total,total);assert.equal(report.visitorEstimate.value,visitors);
   checks.push({name,pass:true,total,visitors});
  }catch(error){checks.push({name,pass:false,error:error.message});}
@@ -95,16 +98,17 @@ assert.equal(sql("SELECT identity FROM public.analytics_rehearsal_identity;"),'p
 const jar=JSON.parse(readFileSync('.temp/analytics-parent-local-cookies.json','utf8'));
 const headers={cookie:jar.map(x=>`${x.name}=${x.value}`).join('; ')};
 const base='http://127.0.0.1:5187/photography';
+const failAdmin=createClient(runtime.API_URL,runtime.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 try {
- sql('REVOKE EXECUTE ON FUNCTION public.analytics_read_report_evidence(date,date) FROM service_role; REVOKE INSERT ON public.engagement_events FROM service_role;');
- const response=await fetch(base+'/analytics/operator/__data.json?period=custom&start=2026-09-27&end=2026-09-27',{headers,signal:AbortSignal.timeout(20000)});
- assert.equal(response.status,200);const body=await response.json();const report=unflatten(body.nodes.find(n=>n?.data&&unflatten(n.data).report).data).report;
+ // The report is read through the scheduled gallery report function, so that is the read to take away.
+ sql("DO $$ DECLARE f regprocedure; BEGIN FOR f IN SELECT oid::regprocedure FROM pg_proc WHERE proname = 'analytics_read_scheduled_gallery_report' LOOP EXECUTE 'REVOKE EXECUTE ON FUNCTION ' || f || ' FROM service_role'; END LOOP; END $$; REVOKE INSERT ON public.engagement_events FROM service_role;");
+ const report=await buildOperatorReport(failAdmin,parseReportQuery(new URLSearchParams('period=custom&start=2026-09-27&end=2026-09-27')),{publicOnly:true,includeDiagnostics:false,includeVisitorEstimate:false,includeToday:false,cacheRole:'service_role'});
  assert.equal(report.available,false);assert.equal(report.total,null);assert.equal(report.photos.length,0);
- const csv=await fetch(base+'/analytics/operator/export.csv?period=custom&start=2026-09-27&end=2026-09-27',{headers,signal:AbortSignal.timeout(20000)});assert.equal(csv.status,503);
- const html=await(await fetch(base+'/analytics/operator?period=custom&start=2026-09-27&end=2026-09-27',{headers,signal:AbortSignal.timeout(20000)})).text();assert(html.includes('Report unavailable'));
+ const csv=await fetch(base+'/analytics/photos/export.csv?period=custom&start=2026-09-27&end=2026-09-27',{headers,signal:AbortSignal.timeout(20000)});assert.equal(csv.status,503);
+ const html=await(await fetch(base+'/analytics/photos?period=custom&start=2026-09-27&end=2026-09-27',{headers,signal:AbortSignal.timeout(20000)})).text();assert(html.includes('The photo report is unavailable'));
  const write=await fetch(base+'/api/engagement',{method:'POST',headers:{'content-type':'application/json',origin:'http://127.0.0.1:5187','user-agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 failure-rehearsal'},body:JSON.stringify({event_type:'view',photo_id:'alpha-2'}),signal:AbortSignal.timeout(20000)});
  assert.equal(write.status,503);assert.equal((await write.json()).accepted,false);
-} finally {sql('GRANT EXECUTE ON FUNCTION public.analytics_read_report_evidence(date,date) TO service_role; GRANT INSERT ON public.engagement_events TO service_role;');}
+} finally {sql("DO $$ DECLARE f regprocedure; BEGIN FOR f IN SELECT oid::regprocedure FROM pg_proc WHERE proname = 'analytics_read_scheduled_gallery_report' LOOP EXECUTE 'GRANT EXECUTE ON FUNCTION ' || f || ' TO service_role'; END LOOP; END $$; GRANT INSERT ON public.engagement_events TO service_role;");}
 const receipt={checkedAt:new Date().toISOString(),synthetic:true,reportFailureIsUnavailable:true,failedExportStatus:503,failedCollectionStatus:503,grantsRestored:true};
 writeFileSync('.temp/analytics-parent-failure-result.json',JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));
 }

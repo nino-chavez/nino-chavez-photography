@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { albumIndexPath, albumReportPath, dataPath, reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, albumReportPath, dataPath, sitePath } from '$lib/analytics/report-paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { plural } from '$lib/analytics/launch-recap';
 	import type { HomeProblem } from '$lib/analytics/home';
@@ -119,7 +119,7 @@
 							<p class="detail">{figure.detail}</p>
 						</div>
 					{/each}
-					<a class="more" href={reportPath(hostname, 'sites')}>Open the site report</a>
+					<a class="more" href={sitePath(hostname)}>Open the site report</a>
 				</section>
 			</div>
 		</div>

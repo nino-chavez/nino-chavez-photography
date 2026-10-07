@@ -2,7 +2,7 @@
 import {chromium} from '@playwright/test';
 import {writeFile} from 'node:fs/promises';
 const origin=process.env.ANALYTICS_MEASURE_ORIGIN ?? 'https://analytics.ninochavez.co';
-const paths=(process.env.ANALYTICS_MEASURE_PATHS ?? '/sites,/gallery').split(',');
+const paths=(process.env.ANALYTICS_MEASURE_PATHS ?? '/sites,/photos').split(',');
 const runs=Number(process.env.ANALYTICS_MEASURE_RUNS ?? 3);
 if(!Number.isInteger(runs)||runs<1||runs>5)throw new Error('Use 1–5 runs per page and device.');
 const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH} : {})});

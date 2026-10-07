@@ -183,6 +183,8 @@ function measureTotal(report: OperatorReport, measure: 'photo_opens' | 'album_op
 export interface CountingView {
 	rule: string;
 	totals: Array<{ label: string; value: string }>;
+	/** The estimate of distinct browsers with any recorded action in these dates, with the limit that comes with it. A browser is not a person. */
+	browsers: { value: string | null; limit: string };
 	events: { label: string; counts: Array<{ label: string; count: number }> } | { label: string; counts: null };
 }
 
@@ -198,6 +200,7 @@ export function countingView(input: { report: OperatorReport; v2: V2ReportProjec
 			{ label: 'Album opens', value: word(measureTotal(report, 'album_opens')) },
 			{ label: 'Downloads, favorites and shares together', value: word(engagement.some((value) => value === null) ? null : engagement.reduce<number>((sum, value) => sum + (value ?? 0), 0)) }
 		],
+		browsers: { value: report.visitorEstimate.value === null ? null : fmt(report.visitorEstimate.value), limit: report.visitorEstimate.limit },
 		events: v2 && v2.available ? { label: v2.coverage.label, counts: v2.counts.map((item) => ({ label: item.label, count: item.count })) } : { label: v2?.coverage.label ?? 'Detailed event counts were not read.', counts: null }
 	};
 }

@@ -68,7 +68,7 @@ export function albumQuery(model: LaunchReadModel): ReportQuery {
 }
 
 /**
- * Tagged arrivals are not part of the launch read model. They come from the report the operator page uses.
+ * Tagged arrivals are not part of the launch read model. They come from the scheduled gallery report.
  * `read` is false only when the read failed; an album with no complete day has nothing to read and reports true.
  */
 export async function readArrivals(admin: Admin, model: LaunchReadModel): Promise<{ arrivals: ArrivalRow[] | null; read: boolean }> {

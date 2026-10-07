@@ -24,7 +24,7 @@ If a verified active prune job will run before aggregate preservation can safely
 
 ### Keep the public report and protect private operations
 
-Nino subsequently chose public access to the full aggregate report. `/analytics/operator` now permits anonymous report reads; its name does not make it a private page. Preserve this decision in the redesign. Apply current catalogue visibility before calculating public totals and exports. Never send private fields and merely hide them in the UI.
+Nino subsequently chose public access to the full aggregate report. The report (then `/analytics/operator`, since replaced by the pages in the [site rethink](audits/20261006-analytics-site-rethink/README.md)) permits anonymous report reads; its name did not make it a private page. Preserve this decision in the redesign. Apply current catalogue visibility before calculating public totals and exports. Never send private fields and merely hide them in the UI.
 
 Private notes, saved private reports, individual event investigation and classification changes still require verified Supabase operator identity. The browser never receives raw identifiers, search text, another owner's private rows or provider credentials. PostHog's project remains private; selected aggregate insights reach the public gallery through fixed server-side queries. Do not reintroduce a login requirement for reading the gallery report.
 

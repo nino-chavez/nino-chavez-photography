@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { page } from '$app/state';
-	import { dataPath, reportPath } from '$lib/analytics/report-paths';
+	import { dataPath } from '$lib/analytics/report-paths';
 	import { journeyName, notReadNote, siteJourneyNote } from '$lib/analytics/data-quality';
 	import type { DataAnchor } from '$lib/analytics/data-anchors';
+	import ClassificationCorrections from '$lib/components/analytics/ClassificationCorrections.svelte';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
-	import type { PageData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const view = $derived(data.view);
 	const hostname = $derived(page.url.hostname);
@@ -15,6 +17,7 @@
 	const anchor = (id: DataAnchor) => `#${id}`;
 	const asOfTime = (value: string | null) => (value ? new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(new Date(value)) : 'not recorded');
 	const PERIODS = [7, 30, 90] as const;
+	const signInHref = $derived(`${base}/login?next=${encodeURIComponent('/analytics/data')}`);
 </script>
 
 <svelte:head>
@@ -71,7 +74,9 @@
 				<p class="lead">What one number in the gallery reports stands for.</p>
 				{#if view.counting}
 					<p>{view.counting.rule}</p>
-					<dl class="facts">{#each view.counting.totals as item (item.label)}<div><dt>{item.label}</dt><dd>{item.value}</dd></div>{/each}</dl>
+					<dl class="facts">{#each view.counting.totals as item (item.label)}<div><dt>{item.label}</dt><dd>{item.value}</dd></div>{/each}
+						<div><dt>Browsers with any activity</dt><dd>{view.counting.browsers.value ?? 'Not shown'}</dd></div></dl>
+					<p class="detail">{view.counting.browsers.limit}</p>
 					<h3>Recorded event counts</h3>
 					<p class="detail">{view.counting.events.label}</p>
 					{#if view.counting.events.counts}
@@ -231,8 +236,12 @@
 				{/await}
 			</section>
 			<section id="corrections" class="panel" aria-labelledby="corrections-title">
-				<h2 id="corrections-title">Correcting how an event is classified</h2>
-				<p>When you are signed in you can reclassify a retained event, with a reason, and reverse it. That still lives on the gallery report's Measurement tab and moves here when the old tabs are retired. <a href={reportPath(hostname, 'gallery', '?section=measurement')}>Open the Measurement tab</a>{#if !view.owner}{' (sign-in required)'}{/if}.</p>
+				<h2 id="corrections-title">Correct how an action is classed</h2>
+				{#if data.corrections}
+					<ClassificationCorrections corrections={data.corrections} {form} pageHref={(pageNumber) => dataPath(hostname, `?period=${view.days}&event_page=${pageNumber}#corrections`)} />
+				{:else}
+					<p>When you are signed in you can give a counted action a different class, with a reason, and reverse it later. <a href={signInHref}>Sign in with a magic link</a> to see the actions and the corrections made so far.</p>
+				{/if}
 			</section>
 		</div>
 

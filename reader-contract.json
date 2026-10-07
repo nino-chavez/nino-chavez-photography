@@ -33,7 +33,13 @@
         "src/lib/analytics/site-readings.ts",
         "src/lib/analytics/data-quality.ts",
         "src/lib/analytics/measurement-health.ts",
-        "src/lib/analytics/saved-views.ts"
+        "src/lib/analytics/saved-views.ts",
+        "src/lib/analytics/photo-view.ts",
+        "src/lib/analytics/corrections.ts",
+        "src/lib/analytics/corrections.server.ts",
+        "src/lib/analytics/sharing-notes.ts",
+        "src/lib/analytics/sharing-notes.server.ts",
+        "src/lib/analytics/shortlist.ts"
       ],
       "manualReview": {
         "evidencePath": "docs/reader-audits/gallery-interface.json"

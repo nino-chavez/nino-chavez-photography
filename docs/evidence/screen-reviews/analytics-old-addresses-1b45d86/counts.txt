@@ -1,0 +1,5 @@
+Read-only row counts in production, taken 2026-10-07 03:4x UTC with HEAD requests (count=exact) through the service role; nothing was written.
+analytics_sharing_annotations           0
+analytics_saved_reports                 0
+engagement_classification_corrections   0
+analytics_event_v2_classifications      0

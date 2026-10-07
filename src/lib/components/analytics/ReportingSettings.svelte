@@ -7,7 +7,7 @@
 	/**
 	 * How long private records are kept, what that means for launch recaps, and the optional email
 	 * delivery. The owner's, never the visitors'. One owner for this form: the settings page and the
-	 * gallery report's report-intelligence panel both mount it. It loads whenever `owner` is true,
+	 * album report's report-intelligence panel both mount it. It loads whenever `owner` is true,
 	 * even when `visible` is false, because the panel needs the chosen retention before it saves an action.
 	 */
 	let { owner, preferences = $bindable(null), visible = true, id = 'reporting' }: {

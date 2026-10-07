@@ -43,19 +43,8 @@ const priorWindow = (start: string, end: string): { start: string; end: string }
 	return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
 };
 const siteLink = (period: number, section: string) => `/photography/analytics/sites?period=${period}&section=${encodeURIComponent(section)}`;
-const albumLink = (scope: Extract<IntelligenceScope, { kind: 'gallery' }>, albumKey: string) => {
-	const query = scope.query;
-	const params = new URLSearchParams({ period: 'custom', start: query.start, end: query.end, measure: query.measure, scope: 'album', albums: albumKey, compare: query.compare, traffic: query.traffic });
-	if (query.compareStart) params.set('compare_start', query.compareStart);
-	if (query.compareEnd) params.set('compare_end', query.compareEnd);
-	if (query.sport) params.set('sport', query.sport);
-	if (query.category) params.set('category', query.category);
-	if (query.source) params.set('source', query.source);
-	if (query.eventDate) params.set('event_date', query.eventDate);
-	if (query.season) params.set('season', query.season);
-	if (query.albumEventType) params.set('event_type', query.albumEventType);
-	return `/analytics/operator?${params.toString()}`;
-};
+/** Where one album's evidence is read: its launch report. */
+const albumLink = (albumKey: string) => `/analytics/albums/${albumKey}`;
 
 /** Converts stored reports and fixed provider aggregates into decision-rule inputs. */
 export async function loadIntelligenceEvidence(client: SupabaseClient, scope: IntelligenceScope, now = new Date(), journeys: IntelligenceJourneyContext = {}, loaders: EvidenceLoaders = {}): Promise<IntelligenceRuleInput> {
@@ -96,7 +85,7 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 			current: report.total, previous: report.previousTotal,
 			eligibility: scope.query.traffic === 'conservative' ? 'public eligible gallery actions; conservative traffic excludes known non-audience traffic' : 'public eligible gallery actions; inclusive traffic retains unclassified and suspected automation as requested',
 			...(providerLimitation ? { providerLimitation } : {}),
-			...(decision?.albumDiscovery.length ? { albumDiscovery: decision.albumDiscovery.map((row) => ({ ...row, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
+			...(decision?.albumDiscovery.length ? { albumDiscovery: decision.albumDiscovery.map((row) => ({ ...row, evidenceLinks: [albumLink(row.albumKey)] })) } : {}),
 			...(decision?.photoResponses.length ? { linkedPhotoResponse: decision.photoResponses.map((row) => ({ photoId: row.photoId, albumKey: row.albumKey, exposures: row.exposures, responses: row.responses, evidenceLinks: [`/photo/${encodeURIComponent(row.photoId)}`] })) } : {}),
 			...(decision?.rendering ? { rendering: { rendered: decision.rendering.rendered, failed: decision.rendering.failed, observedTerminal: decision.rendering.observedTerminal } } : {}),
 			...(submitted !== null || shown !== null ? { search: { submitted, resultsShown: shown, emptyResults: empty, failures, selections } } : {}),

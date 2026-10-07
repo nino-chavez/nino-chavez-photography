@@ -1,27 +1,26 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { albumIndexPath, dataPath, homePath, reportPath, settingsPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, dataPath, homePath, settingsPath, sitePath } from '$lib/analytics/report-paths';
 
 	/**
-	 * The one header of the launch reports: Home, Albums, Site, Data, Settings, Gallery report. `current` names the
-	 * page you are on. An album's own report is inside Albums, so it marks Albums with
+	 * The one header of the launch reports: Home, Albums, Site, Data, Settings. `current` names the page you are on.
+	 * An album's own report and the gallery-wide photo view are inside Albums, so they mark Albums with
 	 * `aria-current="true"` (you are in this section); only the page itself gets `"page"`.
 	 */
-	type Current = 'home' | 'albums' | 'album' | 'site' | 'data' | 'settings' | 'gallery';
+	type Current = 'home' | 'albums' | 'album' | 'photos' | 'site' | 'data' | 'settings';
 	let { current }: { current: Current } = $props();
 
 	const hostname = $derived(page.url.hostname);
 	const links = $derived([
 		{ key: 'home', label: 'Home', href: homePath(hostname) },
 		{ key: 'albums', label: 'Albums', href: albumIndexPath(hostname) },
-		{ key: 'site', label: 'Site', href: reportPath(hostname, 'sites') },
+		{ key: 'site', label: 'Site', href: sitePath(hostname) },
 		{ key: 'data', label: 'Data', href: dataPath(hostname) },
-		{ key: 'settings', label: 'Settings', href: settingsPath(hostname) },
-		{ key: 'gallery', label: 'Gallery report', href: reportPath(hostname, 'gallery') }
+		{ key: 'settings', label: 'Settings', href: settingsPath(hostname) }
 	] as const);
 	const mark = (key: string): 'page' | 'true' | undefined => {
 		if (key === current) return 'page';
-		if (key === 'albums' && current === 'album') return 'true';
+		if (key === 'albums' && (current === 'album' || current === 'photos')) return 'true';
 		return undefined;
 	};
 </script>

@@ -1,3 +1,4 @@
+import { filterParams } from './photo-view';
 import { comparisonWindow } from './report-contract';
 import { minimumSample, type Finding, type FindingEvidence, type IntelligenceCoverage, type IntelligenceScope, type IntelligenceSuppression } from './intelligence-contract';
 import { evaluateLaunchRules, type LaunchEvidence } from './launch-rules';
@@ -48,17 +49,9 @@ const completeComparison = (input: IntelligenceRuleInput) => input.coverage === 
 function reportHref(scope: Exclude<IntelligenceScope, { kind: 'launch' }>, albumKey?: string): string {
 	if (scope.kind === 'sites') return `/photography/analytics/sites?period=${scope.period}&section=${encodeURIComponent(scope.section)}`;
 	const query = { ...scope.query, ...(albumKey ? { scope: 'album' as const, albumKeys: [albumKey] } : {}) };
-	const params = new URLSearchParams({ period: 'custom', start: query.start, end: query.end, measure: query.measure, scope: query.scope, compare: query.compare, traffic: query.traffic });
-	if (query.albumKeys.length) params.set('albums', query.albumKeys.join(','));
-	if (query.compareStart) params.set('compare_start', query.compareStart);
-	if (query.compareEnd) params.set('compare_end', query.compareEnd);
-	if (query.sport) params.set('sport', query.sport);
-	if (query.category) params.set('category', query.category);
-	if (query.source) params.set('source', query.source);
-	if (query.eventDate) params.set('event_date', query.eventDate);
-	if (query.season) params.set('season', query.season);
-	if (query.albumEventType) params.set('event_type', query.albumEventType);
-	return `/analytics/operator?${params.toString()}`;
+	// One album's evidence is its report. Anything wider is the photo explorer with the same filters.
+	if (query.scope === 'album' && query.albumKeys.length === 1) return `/analytics/albums/${query.albumKeys[0]}`;
+	return `/analytics/photos?${filterParams(query)}`;
 }
 
 function windows(input: IntelligenceRuleInput): FindingEvidence['windows'] {

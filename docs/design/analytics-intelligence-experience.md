@@ -8,7 +8,8 @@ then opens a contextual inspector when someone needs to decide what to do.
 
 This is a refit. The existing report filters, album table, selected-album side
 panel, photo inspector, pagination, exports, and clean `/gallery` and `/sites`
-addresses remain the spine of the experience.
+addresses remain the spine of the experience. (Written before the October 6 rethink: `/gallery` has since
+been split into Home, the album index and report, the photo explorer, Data and Settings.)
 
 ## Composition check
 

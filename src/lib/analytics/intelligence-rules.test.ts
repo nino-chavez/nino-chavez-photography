@@ -27,14 +27,14 @@ test('photo response uses only the named favorite-or-download-item union and vis
 	assert.match(finding?.explanation ?? '', /quality/i);
 });
 
-test('per-album discovery keeps its target, calendar counts, and exact report filters', () => {
+test('per-album discovery keeps its target and calendar counts, and its evidence is that album\'s report', () => {
 	const result = evaluateIntelligenceRules(input({
-		albumDiscovery: [{ albumKey: 'album-1', exposures: 100, opens: 4, directEntries: 0, evidenceLinks: ['/analytics/operator?scope=album'] }]
+		albumDiscovery: [{ albumKey: 'album-1', exposures: 100, opens: 4, directEntries: 0, evidenceLinks: ['/analytics/albums/album-1'] }]
 	}));
 	const discovery = result.findings.find((item) => item.rule === 'discovery_friction');
 	assert.equal(discovery?.target.albumKey, 'album-1');
 	assert.deepEqual(discovery?.evidence, { ...discovery?.evidence, numerator: 4, denominator: 100 });
-	assert.match(discovery?.reportHref ?? '', /scope=album/);
+	assert.equal(discovery?.reportHref, '/analytics/albums/album-1');
 });
 
 test('gallery momentum is retired: two calendar periods never produce a gallery finding or suppression', () => {

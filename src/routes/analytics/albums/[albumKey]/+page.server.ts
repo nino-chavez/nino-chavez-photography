@@ -1,4 +1,6 @@
 import { error } from '@sveltejs/kit';
+import { requireOperator } from '$lib/analytics/operator-session.server';
+import { addSharingNote, deleteSharingNote, loadSharingNotes, updateSharingNote } from '$lib/analytics/sharing-notes.server';
 import { loadIntelligencePanelMode, loadVisibleFindings } from '$lib/analytics/intelligence-panel.server';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
@@ -9,11 +11,11 @@ import { recapRows } from '$lib/analytics/launch-recap-list';
 import { recapBlocks, recapTitle } from '$lib/analytics/launch-recap-text';
 import { isRecapCheckpoint, type RecapCheckpoint } from '$lib/analytics/launch-recap-schedule';
 import { cumulativeCurves, dailyChart, gridPhotos, launchTable } from '$lib/analytics/launch-report-view';
-import { isAlbumKey } from '$lib/analytics/report-paths';
+import { isAlbumKey } from '$lib/analytics/album-key';
 import { intelligenceScopeKey, launchScope } from '$lib/analytics/intelligence-contract';
 import { LAUNCH_FINDING_DAYS } from '$lib/analytics/launch-rules';
 import { findingsCheck } from '$lib/analytics/home';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, cookies, setHeaders, url }) => {
 	setHeaders({
@@ -28,7 +30,7 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 	const user = signedInUser && isAllowedAdmin(signedInUser.email) ? signedInUser : null;
 	const admin = createSupabaseAdminClient();
 
-	// Same rule as the operator report: an unlisted album is visible only to the signed-in owner. The
+	// Same rule as every report: an unlisted album is visible only to the signed-in owner. The
 	// launch function returns the requested album even when it is unlisted, so the gate is here.
 	const { data: setting, error: settingError } = await admin.from('album_settings').select('visibility').eq('album_key', albumKey).maybeSingle();
 	if (settingError) throw error(503, 'Album visibility could not be verified.');
@@ -52,17 +54,19 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 	}
 
 	const query = albumQuery(model);
-	// Tagged arrivals are not part of the launch read model. They come from the report the operator page uses.
+	// Tagged arrivals are not part of the launch read model. They come from the scheduled gallery report.
 	const { arrivals } = await readArrivals(admin, model);
 
 	const album = model.album;
 	// Launch findings for this album sit above the photo grid. Same rule as the panel: none, or none still public,
 	// shows nothing. A launch past its finding window has none to show, whatever an old snapshot holds.
 	const inWindow = album.status !== 'no_launch_date' && album.elapsedDays <= LAUNCH_FINDING_DAYS;
-	const [launchFindings, intelligence] = await Promise.all([
+	const [launchFindings, intelligence, sharing] = await Promise.all([
 		inWindow ? loadVisibleFindings(admin, launchScope(albumKey), 'album launch report') : Promise.resolve({ findings: [], checkedAt: null }),
 		// The record form and assistant below keep their own scope: this album over the days its numbers cover.
-		loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'gallery', query }), !!user, 'album launch report')
+		loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'gallery', query }), !!user, 'album launch report'),
+		// The owner's private notes on where this album was shared. A visitor is never offered them.
+		user ? loadSharingNotes(admin, albumKey, user.id) : Promise.resolve(null)
 	]);
 
 	// Recaps: what is stored, and the one the reader opened with ?recap=3 or ?recap=7.
@@ -80,6 +84,7 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 		user: user ? { id: user.id, email: user.email } : null,
 		intelligenceOwner: !!user,
 		intelligence,
+		sharing,
 		findings: { findings: launchFindings.findings, checked: launchFindings.findings.length ? findingsCheck(launchFindings.checkedAt, new Date().toISOString(), model.today) : null },
 		album: {
 			key: album.albumKey,
@@ -108,4 +113,11 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 		charts: { daily: dailyChart(model), curves: cumulativeCurves(model), table: launchTable(model) },
 		query
 	};
+};
+
+/** The owner's sharing notes for this album. Each write is scoped to the album in the address and to the owner. */
+export const actions: Actions = {
+	addNote: async ({ params, cookies, request }) => addSharingNote(createSupabaseAdminClient(), params.albumKey, (await requireOperator(cookies)).id, await request.formData()),
+	updateNote: async ({ params, cookies, request }) => updateSharingNote(createSupabaseAdminClient(), params.albumKey, (await requireOperator(cookies)).id, await request.formData()),
+	deleteNote: async ({ params, cookies, request }) => deleteSharingNote(createSupabaseAdminClient(), params.albumKey, (await requireOperator(cookies)).id, await request.formData())
 };

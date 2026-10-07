@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { currentOperator, requireOperator } from '$lib/analytics/operator-session.server';
 import { renamedViewFromForm, savedViewFromForm } from '$lib/analytics/saved-views';
+import { deleteView, insertView, renameView } from '$lib/analytics/saved-views.server';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -28,24 +29,18 @@ export const actions: Actions = {
 		const user = await requireOperator(cookies);
 		const view = savedViewFromForm(await request.formData());
 		if (!view.ok) return fail(400, { saveError: view.error });
-		const { error } = await createSupabaseAdminClient().from('analytics_saved_reports').insert({ owner_id: user.id, name: view.name, query: view.query });
-		if (error) return fail(503, { saveError: 'The view could not be saved. Nothing was created.' });
-		return { saved: true };
+		return insertView(createSupabaseAdminClient(), user.id, view.name, view.query);
 	},
 	renameView: async ({ cookies, request }) => {
 		const user = await requireOperator(cookies);
 		const view = renamedViewFromForm(await request.formData());
 		if (!view.ok) return fail(400, { renameError: view.error, renameId: null });
-		const { error } = await createSupabaseAdminClient().from('analytics_saved_reports').update({ name: view.name, updated_at: new Date().toISOString() }).eq('id', view.id).eq('owner_id', user.id);
-		if (error) return fail(503, { renameError: 'The view could not be renamed. Its name is unchanged.', renameId: view.id });
-		return { renamed: true };
+		return renameView(createSupabaseAdminClient(), user.id, view.id, view.name);
 	},
 	deleteView: async ({ cookies, request }) => {
 		const user = await requireOperator(cookies);
 		const id = (await request.formData()).get('id')?.toString();
 		if (!id) return fail(400, { deleteError: 'Choose a view to delete.' });
-		const { error } = await createSupabaseAdminClient().from('analytics_saved_reports').delete().eq('id', id).eq('owner_id', user.id);
-		if (error) return fail(503, { deleteError: 'The view could not be deleted. It is still saved.' });
-		return { deleted: true };
+		return deleteView(createSupabaseAdminClient(), user.id, id);
 	}
 };

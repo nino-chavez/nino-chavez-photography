@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 
-const galleryRoute = '/photography/analytics/operator?period=7';
+// The workspace is mounted by the album report, scoped to one album.
+const galleryRoute = '/photography/analytics/albums/alpha';
 const report = {
 	scope: { kind: 'gallery', query: { start: '2026-09-01', end: '2026-09-07', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } },
 	generatedAt: '2026-09-08T12:00:00.000Z', cutoff: '2026-09-08T06:00:00.000Z', coverage: 'complete', owner: false, page: 0, pageCount: 1,
@@ -42,6 +43,22 @@ async function mockReport(page: Page, next = report) {
 	});
 }
 
+/**
+ * The album report mounts the panel only when a saved calculation with findings exists for its scope, and the
+ * rehearsal database has none. So the page is asked for as if it did: the one value the server decides ("none" for a
+ * visitor, "record" for the owner) is turned into "report", and every call the panel then makes is answered by the
+ * mocks below. What is tested is the panel, not the server's decision to show it (that is in intelligence-panel.server.test.ts).
+ */
+async function openPanel(page: Page) {
+	await page.route(/\/analytics\/albums\/alpha(\?|$)/, async (route) => {
+		if (route.request().resourceType() !== 'document') return route.continue();
+		const response = await route.fetch();
+		const html = (await response.text()).replace(/intelligence:"(none|record)"/, 'intelligence:"report"');
+		return route.fulfill({ response, body: html });
+	});
+	await page.goto(galleryRoute);
+}
+
 async function addOwnerFixture(page: Page) {
 	const cookiesPath = '.temp/analytics-parent-local-cookies.json';
 	test.skip(!existsSync(cookiesPath), 'owner fixture is supplied by the local analytics rehearsal');
@@ -51,7 +68,7 @@ async function addOwnerFixture(page: Page) {
 
 test('shows the target and complete stored evidence without flattening windows', async ({ page }) => {
 	await mockReport(page);
-	await page.goto(galleryRoute);
+	await openPanel(page);
 	await expect(page.getByRole('heading', { name: 'Worth your attention' })).toBeVisible();
 	await expect(page.getByText('Album fall-classic')).toBeVisible();
 	await page.getByText('Read exact evidence').click();
@@ -77,26 +94,25 @@ test('keeps a pending poll pending and renders a completed result only from answ
 		}
 		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true }) });
 	});
-	await page.goto(galleryRoute);
+	await openPanel(page);
 	await page.getByRole('button', { name: 'Compare this album' }).click();
 	await expect(page.getByText('This calculation is still running against the captured report scope.')).toBeVisible();
 	await expect.poll(() => polls, { timeout: 15000 }).toBeGreaterThan(1);
 	await expect(page.getByText('The stored evidence supports the findings below.')).toBeVisible();
-	await page.getByRole('combobox', { name: 'Measure', exact: true }).selectOption('downloads');
-	await page.getByRole('button', { name: 'Apply', exact: true }).click();
-	await expect(page.getByRole('button', { name: 'Rerun for the current scope' })).toBeVisible();
+	// The answer says which scope it was frozen for. (The old report also re-asked when the filters changed; the album report's scope cannot change on the page.)
+	await expect(page.getByText('Frozen answer scope:')).toBeVisible();
 });
 
 test('reports a safe unavailable state when the intelligence response is invalid', async ({ page }) => {
 	await page.route('**/api/analytics/intelligence**', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ provider: 'private detail' }) }));
-	await page.goto(galleryRoute);
+	await openPanel(page);
 	await expect(page.getByText('Intelligence is unavailable', { exact: true })).toBeVisible();
 	await expect(page.getByText('Saved intelligence is unavailable right now. The rest of this report is still usable.')).toBeVisible();
 });
 
 test('keeps private controls out of the anonymous report', async ({ page }) => {
 	await mockReport(page);
-	await page.goto(galleryRoute);
+	await openPanel(page);
 	await expect(page.getByRole('heading', { name: 'Private records and launch recaps' })).toHaveCount(0);
 	await expect(page.getByLabel('Ask about this report')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Public explanation' })).toBeVisible();
@@ -111,7 +127,7 @@ test('requires an explicit private-retention choice before a standalone change a
 		if (url.pathname.endsWith('/actions')) { actionPayload = request.postDataJSON() as Record<string, unknown>; return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ action: {} }) }); }
 		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true }) });
 	});
-	await page.goto(galleryRoute);
+	await openPanel(page);
 	await page.getByRole('button', { name: 'Record a change' }).click();
 	await page.getByLabel('Target reference').fill('fall-classic');
 	await page.getByLabel('Actual action time').fill('2026-09-08T12:00');
@@ -138,7 +154,7 @@ test('renders stored private brief content and freezes an album question scope',
 		if (request.method() === 'POST') { questionScope = (request.postDataJSON() as { scope: Record<string, unknown> }).scope; return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ scope: questionScope, question: 'How is this album doing compared with similar albums?', operation: 'album_comparison', status: 'complete', summary: 'Comparable evidence is limited.', findings: report.findings, evidenceLinks: [report.findings[0].reportHref], limitations: ['No matching peer cohort was stored.'], generatedAt: '2026-09-08T12:00:00.000Z' }) }); }
 		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true, briefs: [{ id: 'brief-1', kind: 'operational', periodKey: '2026-09-08', createdAt: '2026-09-08T12:00:00.000Z', title: 'Morning review', body: 'Inspect the album before choosing a promotion.', findings: report.findings }] }) });
 	});
-	await page.goto(galleryRoute);
+	await openPanel(page);
 	await expect(page.getByText('Morning review')).toBeVisible();
 	await expect(page.getByText('Inspect the album before choosing a promotion.')).toBeVisible();
 	await page.getByRole('button', { name: 'Compare this album' }).click();
@@ -169,7 +185,7 @@ test('keeps stored brief provenance private, compact, and paged', async ({ page 
 			: pageOneBriefs;
 		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true, briefs, briefsPage: Number(requestedBriefPage), briefsPageCount: 2 }) });
 	});
-	await page.goto(galleryRoute);
+	await openPanel(page);
 	await expect(page.getByText('Morning review 1')).toBeVisible();
 	await expect(page.getByText('Morning review 4')).toHaveCount(0);
 	await page.getByRole('button', { name: 'Show all on this brief page' }).click();
@@ -195,7 +211,7 @@ test('owner can ask a supported question when no recommendation exists', async (
   }
   return route.fulfill({contentType:'application/json',body:JSON.stringify({...report,owner:true,findings:[],coverage:'partial'})});
  });
- await page.goto(galleryRoute);
+ await openPanel(page);
  await expect(page.getByText('No actionable findings for this scope')).toBeVisible();
  await page.getByRole('button',{name:'What does this support?',exact:true}).click();
  await expect(page.getByText('History is still incomplete.')).toBeVisible();

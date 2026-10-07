@@ -6,12 +6,12 @@ import { describeSavedView, renamedViewFromForm, savedQueryState, savedViewFromF
 const NOW = new Date('2026-10-06T15:00:00Z');
 const form = (fields: Record<string, string>) => { const data = new FormData(); for (const [key, value] of Object.entries(fields)) data.set(key, value); return data; };
 
-test('a view saved from settings has exactly the stored shape the gallery report writes', () => {
+test('a view saved from settings has exactly the stored shape the photo explorer writes', () => {
 	const fromSettings = savedViewFromForm(form({ name: '  Last 30 days, photo opens ', period: '30', measure: 'photo_opens' }), NOW);
 	assert.equal(fromSettings.ok, true);
 	if (!fromSettings.ok) return;
 	assert.equal(fromSettings.name, 'Last 30 days, photo opens');
-	// What the gallery report stores for the same filters is the same row.
+	// What the photo explorer stores for the same filters is the same row.
 	const gallery = savedQueryState(parseReportQuery(new URLSearchParams({ period: '30', measure: 'photo_opens', traffic: 'conservative', compare: 'previous' }), NOW));
 	assert.deepEqual(fromSettings.query, gallery);
 	assert.deepEqual(Object.keys(fromSettings.query).sort(), ['albums', 'compare', 'end', 'measure', 'period', 'scope', 'start', 'traffic']);
@@ -43,7 +43,7 @@ test('renaming changes the name and nothing else', () => {
 	assert.deepEqual(renamedViewFromForm(form({ id: 'abc', name: '' })), { ok: false, error: 'Give this view a name of 1–100 characters.' });
 });
 
-test('a saved view reopens the gallery report with the filters it stored', () => {
+test('a saved view reopens the photo explorer with the filters it stored', () => {
 	const stored = savedQueryState(parseReportQuery(new URLSearchParams({ period: 'custom', start: '2026-09-25', end: '2026-10-02', scope: 'album', albums: 'Re7kho', measure: 'downloads', traffic: 'inclusive', compare: 'none', sport: 'volleyball' }), NOW));
 	const params = savedViewParams(stored)!;
 	assert.equal(params.get('albums'), 'Re7kho');
