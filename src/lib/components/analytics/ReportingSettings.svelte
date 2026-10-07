@@ -87,9 +87,9 @@
 	h3 { font-size: 1rem; line-height: 1.3; margin: 0 0 .45rem; }
 	p { color: #526176; font-size: .85rem; line-height: 1.5; margin-top: 0; }
 	form { display: grid; gap: .6rem; margin-top: .9rem; }
-	fieldset { border: 0; margin: 0; padding: 0; }
+	fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
 	legend { color: #33445c; font-size: .85rem; font-weight: 700; margin-bottom: .35rem; }
-	label { color: #33445c; display: inline-flex; font-size: .85rem; font-weight: 700; gap: .35rem; margin-right: .8rem; min-height: 2.75rem; align-items: center; }
+	label { color: #33445c; display: inline-flex; flex-wrap: wrap; font-size: .85rem; font-weight: 700; gap: .35rem; margin-right: .8rem; min-height: 2.75rem; align-items: center; }
 	input[type='radio'] { accent-color: #1769e0; height: 1.1rem; width: 1.1rem; }
 	button { background: #1769e0; border: 1px solid #1769e0; border-radius: .4rem; color: #fff; cursor: pointer; font: inherit; font-size: .85rem; font-weight: 650; justify-self: start; min-height: 2.75rem; padding: 0 .9rem; }
 	button:disabled { cursor: not-allowed; opacity: .62; }

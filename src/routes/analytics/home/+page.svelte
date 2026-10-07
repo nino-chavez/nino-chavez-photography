@@ -135,7 +135,7 @@
 </div>
 
 <style>
-	.home { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.home { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .home { padding: 1rem 1.5rem 2.5rem; } }
 	@media (min-width: 1024px) { .home { padding-inline: 2rem; } }
 
@@ -156,7 +156,7 @@
 	.intro.trouble { border-left: 4px solid var(--warn); padding-left: .8rem; }
 	.intro.trouble .eyebrow { color: var(--warn); }
 
-	.problems { background: #fff7ec; border: 1px solid #e3b88a; border-radius: .8rem; padding: .7rem .9rem; }
+	.problems { background: #fff7ec; border: 1px solid #e3b88a; border-radius: .8rem; padding: .7rem min(.9rem, 3.6vw); }
 	.problems h2 { color: #6e3500; font-size: .92rem; }
 	.problems ul { display: grid; list-style: none; margin: 0; padding: 0; }
 	.problems li { align-items: center; display: flex; flex-wrap: wrap; font-size: .9rem; gap: 0 .7rem; line-height: 1.4; padding-block: .2rem; }
@@ -224,7 +224,7 @@
 		.spark figcaption { margin-top: .2rem; }
 	}
 
-	.panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .7rem .9rem; }
+	.panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .7rem min(.9rem, 3.6vw); }
 	.panel p { margin: .3rem 0 0; }
 	.panel > p:not(.label) { font-size: .92rem; }
 	.label { color: var(--muted); font-size: .8rem; font-weight: 650; }

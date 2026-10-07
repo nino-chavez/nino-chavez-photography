@@ -20,6 +20,8 @@
 	const peak = $derived(chart.bars.reduce((best, bar, index) => ((bar.opens ?? -1) > (chart.bars[best]?.opens ?? -1) ? index : best), 0));
 	const line = $derived(chart.bars.flatMap((bar, index) => (bar.median === null ? [] : [`${x(index).toFixed(1)},${y(bar.median).toFixed(1)}`])).join(' '));
 	const hasMedian = $derived(chart.bars.some((bar) => bar.median !== null));
+	// The axis name is dropped to its short form when the page's text is so large that the long form would run off the chart.
+	const axisName = $derived(undated || 21 * 0.56 * 12 * u > width - 8 ? 'Day' : 'Day since publication');
 	const labelEvery = $derived(Math.max(1, Math.ceil((undated ? 56 * u : 28 * u) / band)));
 	const medianOf = $derived(Math.max(0, ...chart.bars.map((bar) => bar.medianOf)));
 	const title = $derived(chart.title);
@@ -63,7 +65,7 @@
 					<text class="value" x={Math.min(Math.max(x(peak), pad.left + 14 * u), width - pad.right - 14 * u)} y={Math.max(12 * u, y(chart.bars[peak].opens ?? 0) - 6 * u)} text-anchor="middle">{chart.bars[peak].opens?.toLocaleString()}</text>
 				{/if}
 				{#if hasMedian}<polyline class="median" points={line} fill="none" />{/if}
-				<text class="tick axis-name" x={pad.left + inner / 2} y={height - 4} text-anchor="middle">{undated ? 'Day' : 'Day since publication'}</text>
+				<text class="tick axis-name" x={pad.left + inner / 2} y={height - 4} text-anchor="middle">{axisName}</text>
 			</svg>
 		{:else}
 			<p class="none">No full day to chart yet.</p>

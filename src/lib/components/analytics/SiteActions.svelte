@@ -40,7 +40,7 @@
 			<p class="empty" role="status">No page actions have been counted for these dates. This is not zero: counting had not started.</p>
 		{:else}
 			<ResponsiveTable label="Actions by page, most viewed first" headerLabel="Page" columns={metrics.map((metric) => ({ label: metric.label, numeric: true, help: metric.help }))}
-				rows={report.pages.map((row) => ({ key: row.path, title: row.path, href: `https://ninochavez.co${row.path}`, newTab: true, values: metrics.map((metric) => (applicable(metric.key, row.section) ? (row.measures[metric.key] ?? 0).toLocaleString() : '—')) }))} />
+				rows={report.pages.map((row) => ({ key: row.path, title: row.path, href: `https://ninochavez.co${row.path}`, newTab: true, values: metrics.map((metric) => (applicable(metric.key, row.section) ? (row.measures[metric.key] ?? 0).toLocaleString() : null)) }))} />
 			{#if report.pages.length === 0}<p class="note">No page actions match these dates and section.</p>{/if}
 			{#if report.pageCount > 1}
 				<nav class="pager" aria-label="Pages of actions">
@@ -54,7 +54,7 @@
 </section>
 
 <style>
-	.actions { background: #fff; border: 1px solid var(--line, #d8e0ea); border-radius: .8rem; color: var(--ink, #172033); min-width: 0; padding: .8rem .9rem; }
+	.actions { background: #fff; border: 1px solid var(--line, #d8e0ea); border-radius: .8rem; color: var(--ink, #172033); min-width: 0; padding: .8rem min(.9rem, 3.6vw); }
 	h2 { font-size: 1.02rem; font-weight: 700; margin: 0; }
 	.note { color: var(--muted, #526176); font-size: .85rem; line-height: 1.5; margin: .35rem 0 0; max-width: 62rem; }
 	.note a { color: var(--blue-ink, #174ea6); text-decoration: underline; text-underline-offset: 3px; }

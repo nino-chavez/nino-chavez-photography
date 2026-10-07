@@ -50,12 +50,12 @@
 </div>
 
 <style>
-	.recap-page { min-height: 100dvh; --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.recap-page { min-height: 100dvh; --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .recap-page { padding: 1.25rem 1.5rem 3.5rem; } }
 	@media (min-width: 1024px) { .recap-page { padding-inline: 2rem; } }
 	a:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 
-	.recap-view { background: #fff; border: 1px solid var(--line); border-radius: .9rem; margin-top: .5rem; max-width: 48rem; min-width: 0; padding: 1rem 1.1rem 1.2rem; }
+	.recap-view { background: #fff; border: 1px solid var(--line); border-radius: .9rem; margin-top: .5rem; max-width: 48rem; min-width: 0; padding: 1rem min(1.1rem, 4vw) 1.2rem; }
 	@media (min-width: 640px) { .recap-view { padding: 1.3rem 1.6rem 1.5rem; } }
 	.eyebrow { color: var(--blue-ink); font-size: .75rem; font-weight: 800; letter-spacing: .09em; margin: 0; text-transform: uppercase; }
 	h1 { font-size: 1.4rem; font-weight: 750; letter-spacing: -.01em; line-height: 1.25; margin: .35rem 0 .5rem; overflow-wrap: break-word; }

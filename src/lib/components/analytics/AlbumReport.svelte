@@ -280,14 +280,14 @@
 </div>
 
 <style>
-	.launch-report { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.launch-report { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .launch-report { padding: 1.25rem 1.5rem 3.5rem; } }
 	@media (min-width: 1024px) { .launch-report { padding-inline: 2rem; } }
 
 	a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 	#photos:focus-visible { outline-offset: 4px; }
 
-	.panel { background: #fff; border: 1px solid var(--line); border-radius: .9rem; min-width: 0; padding: 1rem; }
+	.panel { background: #fff; border: 1px solid var(--line); border-radius: .9rem; min-width: 0; padding: 1rem min(1rem, 4vw); }
 	/* The site layout already provides the page's <main>. */
 	.report-body { display: grid; gap: 1rem; min-width: 0; }
 

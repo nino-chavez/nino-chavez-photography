@@ -251,7 +251,7 @@
 </div>
 
 <style>
-	.data { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.data { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .data { padding: 1rem 1.5rem 2.5rem; } }
 	@media (min-width: 1024px) { .data { padding-inline: 2rem; } }
 	a:focus-visible, summary:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
@@ -284,7 +284,7 @@
 	.pair-cols { display: grid; gap: .9rem; min-width: 0; }
 	.stack { align-content: start; display: grid; gap: .9rem; min-width: 0; }
 	@media (min-width: 1024px) { .pair-cols { align-items: start; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-	.panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem .9rem; scroll-margin-top: .5rem; }
+	.panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem min(.9rem, 3.6vw); scroll-margin-top: .5rem; }
 	.panel > p { font-size: .92rem; line-height: 1.5; margin: .35rem 0 0; max-width: 62rem; }
 	.panel > p.detail { font-size: .85rem; }
 	.panel a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 3px; }

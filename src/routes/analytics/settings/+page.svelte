@@ -125,7 +125,7 @@
 </div>
 
 <style>
-	.settings { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.settings { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .settings { padding: 1rem 1.5rem 2.5rem; } }
 	@media (min-width: 1024px) { .settings { padding-inline: 2rem; } }
 	a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
@@ -139,7 +139,7 @@
 	.grid { display: grid; gap: .9rem; }
 	@media (min-width: 1000px) { .grid { align-items: start; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 	.column { display: grid; gap: .9rem; min-width: 0; }
-	.block { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem .9rem; }
+	.block { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem min(.9rem, 3.6vw); }
 	.block :global(.analytics-preferences) { margin-top: .6rem; }
 	.note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .35rem 0 0; max-width: 62rem; }
 	.note a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 3px; }

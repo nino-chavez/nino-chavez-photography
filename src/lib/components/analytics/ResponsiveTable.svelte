@@ -5,7 +5,8 @@
 	 * text size gets the cards too. The table keeps its sideways scroll region, with a name that says so, for a wide screen.
 	 */
 	interface Column { label: string; numeric?: boolean; help?: string }
-	interface Row { key: string; title: string; href?: string; newTab?: boolean; values: string[] }
+	/** A value of null is a figure that does not apply to this row: the table shows a dash, and the card leaves the field out. */
+	interface Row { key: string; title: string; href?: string; newTab?: boolean; values: Array<string | null> }
 	let { label, caption = null, headerLabel, columns, rows }: { label: string; caption?: string | null; headerLabel: string; columns: Column[]; rows: Row[] } = $props();
 </script>
 
@@ -19,7 +20,7 @@
 				{#each rows as row (row.key)}
 					<tr>
 						<th scope="row">{#if row.href}<a href={row.href} target={row.newTab ? '_blank' : undefined} rel={row.newTab ? 'noopener noreferrer' : undefined}>{row.title}{#if row.newTab}<span class="sr-only"> (opens in a new tab)</span>{/if}</a>{:else}{row.title}{/if}</th>
-						{#each columns as column, at (column.label)}<td class:num={column.numeric}>{row.values[at]}</td>{/each}
+						{#each columns as column, at (column.label)}<td class:num={column.numeric}>{row.values[at] ?? '—'}</td>{/each}
 					</tr>
 				{/each}
 			</tbody>
@@ -30,7 +31,7 @@
 			<li class="card">
 				<div class="card-head">{#if row.href}<a href={row.href} target={row.newTab ? '_blank' : undefined} rel={row.newTab ? 'noopener noreferrer' : undefined}>{row.title}{#if row.newTab}<span class="sr-only"> (opens in a new tab)</span>{/if}</a>{:else}<span class="name">{row.title}</span>{/if}</div>
 				<dl>
-					{#each columns as column, at (column.label)}<div><dt>{column.label}</dt><dd>{row.values[at]}</dd></div>{/each}
+					{#each columns as column, at (column.label)}{#if row.values[at] !== null}<div><dt>{column.label}</dt><dd>{row.values[at]}</dd></div>{/if}{/each}
 				</dl>
 			</li>
 		{/each}
@@ -50,10 +51,10 @@
 	td { white-space: nowrap; }
 	.num { font-variant-numeric: tabular-nums; text-align: right; }
 
-	.cards { display: grid; gap: .6rem; list-style: none; margin: 0; padding: 0; }
+	.cards { display: grid; gap: .6rem; grid-template-columns: minmax(0, 1fr); list-style: none; margin: 0; padding: 0; }
 	.card { border: 1px solid var(--line, #d8e0ea); border-radius: .7rem; padding: .6rem .75rem; }
 	.card-head { align-items: center; display: flex; min-height: 2.75rem; }
-	.card-head a, .name { color: var(--ink, #172033); flex: 1 1 9rem; font-size: .98rem; font-weight: 650; min-width: 0; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
+	.card-head a, .name { color: var(--ink, #172033); flex: 1 1 min(9rem, 100%); font-size: .98rem; font-weight: 650; min-width: 0; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
 	.card-head a { align-items: center; display: inline-flex; min-height: 2.75rem; }
 	.card dl { display: grid; gap: .25rem .75rem; grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr)); margin: .1rem 0 0; }
 	.card dl div { min-width: 0; }
