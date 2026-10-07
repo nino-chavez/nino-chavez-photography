@@ -65,10 +65,33 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	const start = addDays(lastCompleteDay, -(days - 1));
 	const query = parseReportQuery(new URLSearchParams({ period: 'custom', start, end: lastCompleteDay, scope: 'all', measure: 'photo_opens', traffic: 'conservative', compare: 'none' }), asOf);
 
-	const [reportRead, summaries, settings, healthRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
-		buildOperatorReport(admin, query, { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: true, includeVisitorEstimate: true, includeToday: false, cacheRole: 'service_role' }),
-		readAll<{ album_key: string; album_name: string }>((from) => admin.from('albums_summary').select('album_key, album_name').order('album_key').range(from, from + 999)),
-		readAll<{ album_key: string; visibility: string | null }>((from) => admin.from('album_settings').select('album_key, visibility').order('album_key').range(from, from + 999)),
+	// The public album names come first and alone: the event counts and the journeys need them and nothing else, so they start as soon as
+	// they are read, not after the gallery summary.
+	const summariesRead = readAll<{ album_key: string; album_name: string }>((from) => admin.from('albums_summary').select('album_key, album_name').order('album_key').range(from, from + 999));
+	const settingsRead = readAll<{ album_key: string; visibility: string | null }>((from) => admin.from('album_settings').select('album_key, visibility').order('album_key').range(from, from + 999));
+	const publicNames = Promise.allSettled([summariesRead, settingsRead]).then(([summaries, settings]) => {
+		logFailure('album names', summaries);
+		logFailure('album visibility', settings);
+		// Public albums only. An album whose visibility could not be read is not shown, rather than guessed public.
+		const found = new Map<string, string>();
+		const summaryRows = ok(summaries);
+		const settingRows = ok(settings);
+		if (summaryRows && !summaryRows.error && settingRows && !settingRows.error) {
+			const unlisted = new Set(settingRows.data.filter((row) => row.visibility === 'unlisted').map((row) => row.album_key));
+			for (const row of summaryRows.data) if (!unlisted.has(row.album_key)) found.set(row.album_key, row.album_name);
+		}
+		return found;
+	});
+
+	const reportPromise = buildOperatorReport(admin, query, { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: true, includeVisitorEstimate: true, includeToday: false, cacheRole: 'service_role' });
+	// The event counts read thousands of rows, so they start now and stream: the page is drawn without them. They are shown only
+	// when the gallery summary itself could be read, as before.
+	const eventsRaw = publicNames.then((found) => (found.size ? fetchV2ReportProjection(admin, query, { publicAlbumKeys: [...found.keys()] }) : null))
+		.catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; });
+	const events: Promise<EventsView> = Promise.all([eventsRaw, reportPromise.then((report) => report.available, () => false)]).then(([raw, reportOk]) => eventsView(reportOk ? raw : null));
+
+	const [reportRead, healthRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
+		reportPromise,
 		deps.owner ? admin.rpc('analytics_posthog_delivery_health') : Promise.resolve({ data: null, error: null }),
 		admin.from('analytics_daily_coverage').select('reconciled_at').order('reconciled_at', { ascending: false }).limit(1),
 		admin.from('analytics_intelligence_incidents').select('finding_id').eq('status', 'open').order('updated_at', { ascending: false }).limit(20),
@@ -76,25 +99,12 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 		loadSiteTraffic(days, deps.env.CLOUDFLARE_ACCOUNT_ID, deps.env.CLOUDFLARE_ANALYTICS_TOKEN, deps.fetch, { cache: siteTrafficCache }),
 		loadSiteActions(admin, days, 'all', 0)
 	]);
-	for (const [what, result] of [['gallery summary', reportRead], ['album names', summaries], ['album visibility', settings], ['delivery health', healthRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['delivery diagnostics', diagnosticRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
-
-	// Public albums only. An album whose visibility could not be read is not shown, rather than guessed public.
-	const names = new Map<string, string>();
-	const summaryRows = ok(summaries);
-	const settingRows = ok(settings);
-	if (summaryRows && !summaryRows.error && settingRows && !settingRows.error) {
-		const unlisted = new Set(settingRows.data.filter((row) => row.visibility === 'unlisted').map((row) => row.album_key));
-		for (const row of summaryRows.data) if (!unlisted.has(row.album_key)) names.set(row.album_key, row.album_name);
-	}
+	for (const [what, result] of [['gallery summary', reportRead], ['delivery health', healthRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['delivery diagnostics', diagnosticRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
+	const names = await publicNames;
 	const publicAlbumKeys = [...names.keys()];
 
 	const report: OperatorReport | null = ok(reportRead);
 	const transport = createPostHogQueryTransport(deps.env);
-	// The event counts read thousands of rows, so they start now and stream: the page is drawn without them.
-	const events: Promise<EventsView> = report && names.size
-		? fetchV2ReportProjection(admin, query, { publicAlbumKeys }).catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; }).then(eventsView)
-		: Promise.resolve(eventsView(null));
-
 	// Provider journeys start now and stream: the page does not wait for them.
 	const journeys: Promise<JourneysView> = names.size
 		? Promise.all(POSTHOG_JOURNEY_REPORTS.map((name) => queryGalleryJourneys(transport, { report: name, start: query.start, end: query.end, source: query.source, sport: query.sport, category: query.category }, { publicOnly: true, allowedAlbumKeys: publicAlbumKeys })))
