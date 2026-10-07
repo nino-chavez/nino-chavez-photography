@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "negativeControl": false,
+  "passed": false,
+  "migrations": [
+    "supabase/migrations/20260930084000_analytics_intelligence_refresh_health.sql"
+  ],
+  "assertions": [
+    "supabase/rehearsal/launch-recap-assertions.sql"
+  ],
+  "output": "",
+  "diagnostics": "ERROR:  the recap table is missing\nCONTEXT:  PL/pgSQL function inline_code_block line 10 at RAISE\n"
+}

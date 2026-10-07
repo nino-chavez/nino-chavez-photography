@@ -1,16 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T00:59:12.376Z",
-  "reviewedBy": "Claude Opus 5.5 (implementing agent, self-review; not a cold reviewer)",
-  "method": "Self-review by the agent that wrote the change, on a local dev server reading production (read-only). Home and the Millikin album report were captured at 1440x900 and 375x812: live (production has no launch snapshot yet, so nothing shows), and with findings replayed from production history as of Oct 6, mounted on the real page components through a throwaway harness route deleted before this receipt. Home was captured with a fresh check (12 minutes) and a late one (3 hours); the owner view was captured with the dismiss form open on Home and the snooze form open on the album report. The harness forces the owner flag; it proves how the real components render, not that the scheduler writes these snapshots or that a signed-in dismiss round-trips through the endpoint. Checked: no sideways scroll and no content cut off at the right edge (gate forced to fail once earlier), Tab reaches every finding control and the owner's Dismiss with a 3px focus ring, Enter opens the evidence disclosure and the dismiss form with focus in the reason box, every finding control is at least 44px tall, no collection or non-GET request during the walk. Not covered: a real signed-in session (sign-in, submit, undo against the database), largest text and increased contrast, and a cold review.",
-  "sourceDigest": "sha256:8805f94dc3b7dc43cf59f19b0480b49f0467e2a85aade1faf0e6a3ee5ea18e09",
-  "sourceFiles": 189,
+  "reviewedAt": "2026-10-07T02:38:15.417Z",
+  "reviewedBy": "Claude Sonnet 5.5 (implementing agent, self-review; not a cold reviewer)",
+  "method": "Self-review by the agent that wrote the change, on a local dev server reading production through a preload that blocks every write (read-only). Walked at 1440x900 and 375x812: the album report's Recaps section as a visitor (before any backfill, where it is absent; after a backfill; with recaps still to come; with one due and not yet stored), as a harness owner (nothing written; one due and waiting), an opened recap from a backfill, an opened on-time recap, a synthetic late and incomplete day 7 and a recap asked for that is not stored; Home's Next (live and two as-of shifts); and Settings (signed out, and a harness owner with the two private API reads stubbed in the browser: no retention, retention chosen, email on). Stored recaps in the captures are real production numbers replayed by the repository's own scripts and presented by the preload. All 14 recap texts for the 7 real launches were read in full after the wording changes. Gates per capture: overflow (forced to fail once per page and width, 34 of 34 fired), 44 px targets, text at 200 percent, Tab-only keyboard walk. Not covered: a cold reviewer; a real signed-in session; the email path end to end (no destination is verified and nothing was sent); album photos (images do not load in the sandbox); largest system text size and increased contrast beyond the 200 percent text and the prefers-contrast rules in the source; the owner-only IntelligenceWorkspace incident list and its Playwright tests (five of eight skip without the rehearsal owner cookie).",
+  "sourceDigest": "sha256:37145ea4059fdd0416e20b6a96ae5864c30174b3cae692085ff880a316127a1e",
+  "sourceFiles": 193,
   "scope": [
-    "Home launch findings under launch cards with last-checked line",
-    "Album report findings above the photo grid",
-    "Owner dismiss and snooze forms",
-    "Zero-findings state on both pages",
-    "IntelligenceWorkspace launch scope labels"
+    "Album report Recaps section and opened recap",
+    "Home Next line for recaps",
+    "Settings launch recap and private records block",
+    "Recap wording and the written-later, late and incomplete notes",
+    "IntelligenceWorkspace incident list heading"
   ]
 }

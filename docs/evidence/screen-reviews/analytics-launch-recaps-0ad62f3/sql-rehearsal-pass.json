@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "negativeControl": false,
+  "passed": true,
+  "migrations": [
+    "supabase/migrations/20261007120000_analytics_launch_recaps.sql"
+  ],
+  "assertions": [
+    "supabase/rehearsal/launch-recap-assertions.sql"
+  ],
+  "output": "",
+  "diagnostics": ""
+}

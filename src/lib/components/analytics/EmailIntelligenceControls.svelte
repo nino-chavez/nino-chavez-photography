@@ -41,18 +41,18 @@
 </script>
 
 <section class="email-delivery" aria-labelledby="email-delivery-heading">
-	<div><p class="kicker">Optional email delivery</p><h4 id="email-delivery-heading">Send future private briefs to your confirmed email</h4></div>
+	<div><p class="kicker">Optional email delivery</p><h4 id="email-delivery-heading">Send launch recaps to your confirmed email</h4></div>
 	{#if loading && !deliveryState}<p class="state" role="status">Checking email delivery settings.</p>
 	{:else if deliveryState}
 		{#if deliveryState.destination}<p><strong>Confirmed destination:</strong> {deliveryState.destination}</p>{:else}<p>Confirm the owner account email before email delivery can be activated.</p>{/if}
 		{#if !deliveryState.retentionChosen}<p>Choose private record retention above before activating email delivery.</p>{/if}
 		{#if !deliveryState.configured}<p>Email delivery is unavailable because the server sender is not configured. You can still keep it disabled.</p>{/if}
 		{#if deliveryState.enabled}
-			<p>Email delivery is enabled for future briefs. {deliveryState.configured ? 'Turning it off stops queued email; a message already submitted cannot be recalled.' : 'Sending is paused because the server sender is unavailable.'}</p>
+			<p>Email delivery is enabled for launch recaps. {deliveryState.configured ? 'Turning it off stops queued email; a message already submitted cannot be recalled.' : 'Sending is paused because the server sender is unavailable.'}</p>
 			<button type="button" disabled={saving} onclick={() => void save(false)}>Disable email delivery</button>
 		{:else}
 			<button type="button" disabled={saving || !deliveryState.configured || !deliveryState.retentionChosen || !deliveryState.emailVerified} onclick={() => void save(true)}>Enable email delivery</button>
-			<p>Enabling records your explicit choice. A provider acceptance for a future brief is not proof that it reached this inbox.</p>
+			<p>Enabling records your explicit choice and sends nothing now. A provider acceptance for a future recap is not proof that it reached this inbox.</p>
 		{/if}
 	{:else}<div class="state unavailable"><p>{failure ?? 'Email delivery settings are unavailable.'}</p><button type="button" onclick={() => void load()}>Try email settings again</button></div>{/if}
 	{#if failure && deliveryState}<p class="answer-error" role="alert">{failure}</p>{/if}

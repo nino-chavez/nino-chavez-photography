@@ -10,6 +10,7 @@
 	import LaunchComparison from '$lib/components/analytics/LaunchComparison.svelte';
 	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
 	import LaunchFindings from '$lib/components/analytics/LaunchFindings.svelte';
+	import LaunchRecaps from '$lib/components/analytics/LaunchRecaps.svelte';
 	import { launchScope } from '$lib/analytics/intelligence-contract';
 	import type { PageData } from './$types';
 
@@ -208,6 +209,10 @@
 				<h2 id="worth-title">Worth your attention</h2>
 				<LaunchFindings findings={data.findings.findings} checked={data.findings.checked} owner={signedIn} scope={launchScope(data.album.key)} />
 			</section>
+		{/if}
+
+		{#if data.recaps}
+			<LaunchRecaps rows={data.recaps.rows} open={data.recaps.open} openMissing={data.recaps.openMissing} />
 		{/if}
 
 		<div class="below">

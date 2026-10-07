@@ -46,7 +46,7 @@ function decodeSuppression(value: unknown): IntelligenceSuppression | null {
 }
 /** Decode stored private delivery data without turning a missing value into a claim. */
 export function decodeIntelligenceBrief(row: Record<string, unknown>): IntelligenceBrief | null {
-	if (!uuid(row.id) || typeof row.period_key !== 'string' || !['daily', 'weekly', 'operational'].includes(String(row.kind)) || !safeInstant(row.created_at)) return null;
+	if (!uuid(row.id) || typeof row.period_key !== 'string' || row.kind !== 'operational' || !safeInstant(row.created_at)) return null;
 	return {
 		id: row.id,
 		periodKey: row.period_key,
@@ -164,7 +164,7 @@ export async function loadIntelligence(client: SupabaseClient, scope: Intelligen
 	if (options.ownerId) {
 		const [{ data: actionRows, count: actionCount, error: actionError }, { data: briefRows, count: briefCount, error: briefError }, { data: lifecycleRows }] = await Promise.all([
 			client.from('analytics_intelligence_actions').select('id, kind, finding_id, target, actual_at, hypothesis, primary_measure, follow_up_at, note, created_at, reverses_action_id, change_type, channel, campaign, release, variant, outcome, outcome_count, observation_days', { count: 'exact' }).eq('owner_id', options.ownerId).in('target->>kind', checked.kind === 'sites' ? ['site', 'page'] : ['gallery', 'album', 'photo']).order('created_at', { ascending: false }).order('id', { ascending: false }).range(actionsPage * ACTION_PAGE_SIZE, (actionsPage + 1) * ACTION_PAGE_SIZE - 1),
-			client.from('analytics_intelligence_briefs').select('id, period_key, kind, created_at, body, findings, snapshot_ids, source_windows, suppressions, late', { count: 'exact' }).eq('owner_id', options.ownerId).order('created_at', { ascending: false }).order('id', { ascending: false }).range(briefsPage * INTELLIGENCE_BRIEF_PAGE_SIZE, (briefsPage + 1) * INTELLIGENCE_BRIEF_PAGE_SIZE - 1),
+			client.from('analytics_intelligence_briefs').select('id, period_key, kind, created_at, body, findings, snapshot_ids, source_windows, suppressions, late', { count: 'exact' }).eq('owner_id', options.ownerId).eq('kind', 'operational').order('created_at', { ascending: false }).order('id', { ascending: false }).range(briefsPage * INTELLIGENCE_BRIEF_PAGE_SIZE, (briefsPage + 1) * INTELLIGENCE_BRIEF_PAGE_SIZE - 1),
 			client.from('analytics_intelligence_finding_lifecycle').select('finding_id, status, snoozed_until').eq('owner_id', options.ownerId).eq('scope_key', scopeKey)
 		]);
 		if (actionError) throw new Error('private action history unavailable');
