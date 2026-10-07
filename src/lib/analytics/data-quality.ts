@@ -1,12 +1,13 @@
 import type { DataAnchor } from './data-anchors';
 import { chicagoTime, openProblems, staleness, type Freshness, type HomeProblem, type ProblemInput } from './home';
-import { formatDay, plural } from './launch-recap';
+import { formatDay, ordinal, plural } from './launch-recap';
 import type { MeasurementHealth, RejectionDay, RejectionReading } from './measurement-health';
 import { UNSTORED_REJECTION_REASONS } from './rejection-reasons';
 import type { OperatorReport } from './operator-report.server';
 import type { JourneyAggregate } from './posthog.types';
 import type { SiteActionReport } from './site-actions';
 import { providerFix } from './site-report';
+import { PAGE_LOADS_UNAVAILABLE } from './site-readings';
 import type { SiteTrafficResult } from './site-traffic.server';
 import type { V2ReportProjection } from './v2-report-projection.server';
 
@@ -28,6 +29,14 @@ const MEASURE_NOUN: Record<string, string> = { photo_opens: 'photo open', album_
 /** What it means that a part is missing, and what to do. Never the word alone. */
 export interface Unavailable { what: string; todo: string }
 
+/**
+ * What a visitor may be told to do about a part that is missing. Reloading is theirs to try. Server settings, the database and the
+ * delivery job are the owner's, so a visitor is not handed that setup and is not told to fix what they cannot reach.
+ */
+export function forReader(note: Unavailable, owner: boolean): Unavailable {
+	return owner ? note : { what: note.what, todo: /^Reload in a few minutes/.test(note.todo) ? 'Reload in a few minutes.' : '' };
+}
+
 /** The places on this page a status line can point at. A subset of the page's anchors. */
 export type StatusAnchor = Extract<DataAnchor, 'status' | 'coverage' | 'delivery' | 'site-measures' | 'journeys' | 'counting' | 'traffic' | 'arrivals'>;
 
@@ -47,6 +56,8 @@ export type StatusState = 'current' | 'limited' | 'partial' | 'attention';
 
 export interface StatusView {
 	state: StatusState;
+	/** Whether the reader is the signed-in owner. Delivery and collection health are the owner's only, so a visitor's page cannot speak for them. */
+	owner: boolean;
 	headline: string;
 	/** When the gallery counts were last refreshed and what they cover, or why that is not known, then what the numbers do not reach back to. */
 	detail: string;
@@ -58,10 +69,20 @@ export interface StatusView {
 	limits: string[];
 }
 
-const partialHeadline = (parts: number) => `Nothing is wrong, but ${plural(parts, 'part')} of this page could not be read.`;
+/**
+ * A page with a part missing cannot say nothing is wrong. It says what could not be read. The owner sees every check, so for the
+ * owner it can add that nothing was found in the rest; a visitor is not shown delivery and collection health, so a visitor's
+ * page says that instead of an all-clear it cannot vouch for.
+ */
+const partialHeadline = (parts: number, owner: boolean) => `${plural(parts, 'part')} of this page could not be read. ${owner ? 'No problem was found in the rest.' : 'Collection health is shown to the owner only.'}`;
 
-export function statusView(input: { problems: HomeProblem[]; notRead: NotRead[]; limits?: string[]; refreshedAt: string | null; lastCompleteDay: string; today: string }): StatusView {
-	const { problems, notRead, refreshedAt, lastCompleteDay, today } = input;
+export function statusView(input: {
+	problems: HomeProblem[]; notRead: NotRead[]; limits?: string[]; refreshedAt: string | null; lastCompleteDay: string; today: string;
+	/** A problem that has its own headline: said in full, instead of "One thing needs attention.", when it is the only problem. */
+	lead?: { id: string; headline: string } | null;
+	owner: boolean;
+}): StatusView {
+	const { problems, notRead, refreshedAt, lastCompleteDay, today, owner } = input;
 	const limits = input.limits ?? [];
 	const state: StatusState = problems.length ? 'attention' : notRead.length ? 'partial' : limits.length ? 'limited' : 'current';
 	const headline = state === 'current'
@@ -69,14 +90,17 @@ export function statusView(input: { problems: HomeProblem[]; notRead: NotRead[];
 		: state === 'limited'
 			? `The gallery counts are current. ${limits[0]}`
 			: state === 'partial'
-				? partialHeadline(notRead.length)
-				: problems.length === 1 ? 'One thing needs attention.' : `${problems.length} things need attention.`;
+				? partialHeadline(notRead.length, owner)
+				: problems.length === 1 ? (input.lead && problems[0].id === input.lead.id ? input.lead.headline : 'One thing needs attention.') : `${problems.length} things need attention.`;
+	// A headline that is the problem's own first sentence is not said again beside it: the list carries only what the headline leaves out.
+	const lead = input.lead && state === 'attention' && problems.length === 1 && problems[0].id === input.lead.id ? input.lead : null;
+	const listed = lead ? problems.map((problem) => ({ ...problem, text: problem.text.startsWith(lead.headline) ? problem.text.slice(lead.headline.length).trim() || problem.text : problem.text })) : problems;
 	const refreshed = refreshedAt === null
 		? `When the gallery counts were last refreshed could not be read, so whether they are current is unknown. They cover complete days through ${formatDay(lastCompleteDay)}.`
 		: `The gallery counts were last refreshed at ${chicagoTime(refreshedAt, today)} Chicago time and cover every complete day through ${formatDay(lastCompleteDay)}. They normally refresh every 30 minutes.`;
 	// The headline of a limited page already says the first limit; the detail says the others, and every one when something worse leads.
 	const rest = state === 'limited' ? limits.slice(1) : state === 'partial' || state === 'attention' ? limits : [];
-	return { state, headline, detail: [refreshed, ...rest].join(' '), refreshed, problems, notRead, limits };
+	return { state, owner, headline, detail: [refreshed, ...rest].join(' '), refreshed, problems: listed, notRead, limits };
 }
 
 /**
@@ -88,7 +112,7 @@ export function withNotRead(status: StatusView, extra: NotRead): StatusView {
 	if (status.notRead.some((item) => item.id === extra.id)) return status;
 	const notRead = [...status.notRead, extra];
 	if (status.problems.length) return { ...status, notRead };
-	return { ...status, notRead, state: 'partial', headline: partialHeadline(notRead.length), detail: [status.refreshed, ...status.limits].join(' ') };
+	return { ...status, notRead, state: 'partial', headline: partialHeadline(notRead.length, status.owner), detail: [status.refreshed, ...status.limits].join(' ') };
 }
 
 /** The detailed event counts, which arrive after the rest of the page. */
@@ -161,13 +185,22 @@ const CLASS_WORDS: Record<string, string> = {
 };
 export const trafficClassWords = (classification: string) => CLASS_WORDS[classification] ?? classification.replaceAll('_', ' ');
 
-export interface ImpactRow { albumKey: string; name: string; all: number; counted: number; left: number; rankChange: string; changed: boolean }
+export interface ImpactRow {
+	albumKey: string; name: string; all: number; counted: number; left: number;
+	/** "18th to 20th" or "18th, no change": the place with all traffic, then with only the counted traffic. */
+	rankChange: string;
+	changed: boolean;
+	/** For a row whose place changes: the move in words, with the counts behind it. */
+	movement: string;
+}
 
 export interface TrafficView {
 	classes: Array<{ id: string; label: string; count: number; counted: boolean }>;
 	countedTotal: number;
 	leftOutTotal: number;
 	summary: string;
+	/** What the classes mean for the numbers on the other pages, in two sentences; null when nothing is unclassified. */
+	meaning: string | null;
 	impact: { rows: ImpactRow[]; changed: ImpactRow[]; scope: string; changes: string | null };
 }
 
@@ -188,11 +221,15 @@ export function trafficView(input: { report: OperatorReport; names: ReadonlyMap<
 	const leftOutTotal = classes.filter((item) => !item.counted).reduce((sum, item) => sum + item.count, 0);
 	const rows = report.trafficImpact.map((item): ImpactRow => ({
 		albumKey: item.albumKey, name: names.get(item.albumKey) ?? 'An album with no name on record', all: item.inclusive, counted: item.conservative, left: item.excluded,
-		rankChange: item.inclusiveRank === item.conservativeRank ? `${item.inclusiveRank}, no change` : `${item.inclusiveRank} to ${item.conservativeRank}`, changed: item.inclusiveRank !== item.conservativeRank
-	}));
+			rankChange: item.inclusiveRank === item.conservativeRank ? `${ordinal(item.inclusiveRank)}, no change` : `${ordinal(item.inclusiveRank)} to ${ordinal(item.conservativeRank)}`, changed: item.inclusiveRank !== item.conservativeRank,
+			movement: item.inclusiveRank === item.conservativeRank ? '' : `Goes from ${ordinal(item.inclusiveRank)} to ${ordinal(item.conservativeRank)} when the left-out traffic is removed: ${fmt(item.inclusive)} with all traffic, ${fmt(item.conservative)} counted.`
+		}));
+		const unclassified = classes.find((item) => item.id === 'unclassified')?.count ?? 0;
+		const share = countedTotal > 0 ? Math.round((unclassified / countedTotal) * 100) : 0;
 	const changed = rows.filter((row) => row.changed).length;
 	return {
 		classes, countedTotal, leftOutTotal,
+			meaning: unclassified === 0 ? null : `${share}% of the counted actions came from browsers the collector could not sort as audience, operator, test or automated. They are counted, and they are not called human${share >= 50 ? ', so read these totals as an upper limit on what real visitors did' : ''}.`,
 		summary: `Reports count ${fmt(countedTotal)} of these ${MEASURE_NOUN[report.query.measure] ?? 'action'}s and leave out ${fmt(leftOutTotal)}. Operator, test, known crawler and suspected automated activity is left out. Unclassified activity is counted and is not called human.`,
 		impact: {
 			rows,
@@ -245,9 +282,9 @@ export interface EventsView {
 }
 
 /** The recorded event counts. They are read after the page is drawn, so a slow read never holds the rest back. */
-export function eventsView(v2: V2ReportProjection | null): EventsView {
+export function eventsView(v2: V2ReportProjection | null, owner: boolean): EventsView {
 	if (v2 && v2.available) return { available: true, label: v2.coverage.label, counts: v2.counts.map((item) => ({ label: item.label, count: item.count })), down: null };
-	return { available: false, label: v2?.coverage.label ?? 'Detailed event counts were not read.', counts: null, down: notReadNote('events') };
+	return { available: false, label: v2?.coverage.label ?? 'Detailed event counts were not read.', counts: null, down: notReadNote('events', owner) };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -300,12 +337,12 @@ export interface SiteMeasuresView {
 const UTC_DAY = 86_400_000;
 const daysThrough = (first: string, end: string) => Math.max(0, Math.round((Date.parse(`${end}T12:00:00Z`) - Date.parse(`${first}T12:00:00Z`)) / UTC_DAY) + 1);
 
-export function siteMeasuresView(input: { traffic: SiteTrafficResult | null; actions: SiteActionReport | null; days: number }): SiteMeasuresView {
-	const { traffic, actions, days } = input;
+export function siteMeasuresView(input: { traffic: SiteTrafficResult | null; actions: SiteActionReport | null; days: number; owner: boolean }): SiteMeasuresView {
+	const { traffic, actions, days, owner } = input;
 	const sampling = 'Cloudflare adapts how much it samples to the size of the question, so page loads can be estimates, and the same page can be rounded differently in two questions. Treat small differences as noise.';
 	const cf = traffic && traffic.available
 		? { value: fmt(traffic.pageviews), detail: `${formatDay(traffic.start)} – ${formatDay(traffic.end)}, complete UTC days, known bots removed.` }
-		: { value: null, detail: `${traffic ? traffic.reason : 'Cloudflare Web Analytics could not be read. No traffic total is shown.'} ${providerFix(traffic ? traffic.reason : 'could not be read')}` };
+		: { value: null, detail: `${owner ? (traffic ? traffic.reason : 'Cloudflare Web Analytics could not be read. No traffic total is shown.') : PAGE_LOADS_UNAVAILABLE} ${providerFix(traffic ? traffic.reason : 'could not be read', owner)}`.trim() };
 	let first: SiteMeasuresView['firstParty'];
 	if (actions === null) first = { value: null, detail: 'The site\'s own page-view count could not be read. This is not zero. Reload in a few minutes.' };
 	else if (!actions.available) first = { value: null, detail: `${actions.reason} This is not zero. Reload in a few minutes.` };
@@ -350,7 +387,7 @@ export const DELIVERY_TERMS: DeliveryView['terms'] = [
 	{ term: 'Submitted', means: 'sent to PostHog, and waiting for PostHog to confirm it.' },
 	{ term: 'Confirmed', means: 'PostHog confirmed it received the event.' },
 	{ term: 'Failed', means: 'sending to PostHog did not work.' },
-	{ term: 'Traffic corrections waiting', means: 'changes you made to how an action is classed that have not reached PostHog yet.' }
+	{ term: 'Classification changes waiting', means: 'changes you made to how an action is classed that have not reached PostHog yet.' }
 ];
 
 export const PROVIDER_NOTE = 'Linked-journey results show when PostHog was last asked a question. That is not confirmation that events were delivered; the counts above are.';
@@ -389,7 +426,7 @@ export function deliveryView(health: MeasurementHealth | null, today: string, re
 			{ label: 'Why events were rejected, last 30 days', value: rejectionSplit(health.rejectedDays) },
 			rejectedOnDay(rejections, health.rejectedDays, lastCompleteDay),
 			{ label: 'Waiting to be sent', value: `${n(health.pending)} pending · ${n(health.submitted)} submitted · ${n(health.confirmed)} confirmed · ${n(health.failed)} failed` },
-			{ label: 'Event format and corrections', value: `Format ${health.schemaVersion ?? 'not read'} · ${n(health.controlPending)} traffic corrections waiting` },
+			{ label: 'Event format and your classification changes', value: `Event format ${health.schemaVersion ?? 'not read'} · ${n(health.controlPending)} classification changes waiting to reach PostHog` },
 			{ label: 'Oldest event waiting', value: health.pending === 0 && health.failed === 0 ? 'None waiting' : instant(health.oldestPendingAt, today) },
 			{ label: 'Oldest event awaiting confirmation', value: health.submitted === 0 ? 'None' : instant(health.oldestSubmittedAt, today) },
 			{ label: 'Most recent confirmed event', value: instant(health.confirmedWatermark, today) }
@@ -435,9 +472,9 @@ export interface JourneysView {
 	unavailable: Unavailable | null;
 }
 
-export function journeysView(journeys: readonly JourneyAggregate[] | null): JourneysView {
+export function journeysView(journeys: readonly JourneyAggregate[] | null, owner: boolean): JourneysView {
 	if (journeys === null) {
-		return { available: [], unavailable: { what: 'The linked-journey reports could not be read, so no journey figure is shown. This is not zero.', todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' } };
+		return { available: [], unavailable: forReader({ what: 'The linked-journey reports could not be read, so no journey figure is shown. This is not zero.', todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' }, owner) };
 	}
 	const available = journeys.filter((item) => item.available);
 	const missing = journeys.filter((item) => !item.available);
@@ -447,21 +484,28 @@ export function journeysView(journeys: readonly JourneyAggregate[] | null): Jour
 	const pending = missing.some((item) => item.error === 'provider_query_pending');
 	return {
 		available,
-		unavailable: unconfigured
+		unavailable: forReader(unconfigured
 			? { what: `${missing.length === journeys.length ? 'All' : `${missing.length} of ${journeys.length}`} linked-journey reports need PostHog, which is not connected here (${names}). No figure is shown, and that is not zero.`, todo: 'Add the PostHog query settings to the site\'s server settings. Nothing needs fixing on the public site.' }
-			: { what: `${missing.length === journeys.length ? 'All' : `${missing.length} of ${journeys.length}`} linked-journey reports could not be read (${names}). No figure is shown for them, and that is not zero.${pending ? ' Some were still being calculated when the page loaded.' : ''}`, todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' }
+			: { what: `${missing.length === journeys.length ? 'All' : `${missing.length} of ${journeys.length}`} linked-journey reports could not be read (${names}). No figure is shown for them, and that is not zero.${pending ? ' Some were still being calculated when the page loaded.' : ''}`, todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' }, owner)
 	};
 }
 
 /** What a site-journey read that could not be taken means, in this page's words, not the loader's. */
-export function siteJourneyNote(reason: string): Unavailable {
+export function siteJourneyNote(reason: string, owner: boolean): Unavailable {
+	return forReader(siteJourneyText(reason), owner);
+}
+function siteJourneyText(reason: string): Unavailable {
 	if (/not configured/i.test(reason)) return { what: 'PostHog is not connected here, so no linked-journey figure is shown for the site. This is not zero.', todo: 'See the linked journeys section below for what to add.' };
 	if (/pending/i.test(reason)) return { what: 'PostHog was still calculating when the page loaded, so no linked-journey figure is shown for the site. This is not zero.', todo: 'Reload in a few minutes.' };
-	return notReadNote('posthog');
+	return notReadText('posthog');
 }
 
 /** The home of each part that can fail, so the status line can point at it. */
-export function notReadNote(kind: 'cloudflare' | 'posthog' | 'events' | 'report' | 'delivery'): Unavailable {
+export function notReadNote(kind: NotReadKind, owner: boolean): Unavailable {
+	return forReader(notReadText(kind), owner);
+}
+type NotReadKind = 'cloudflare' | 'posthog' | 'events' | 'report' | 'delivery';
+function notReadText(kind: NotReadKind): Unavailable {
 	switch (kind) {
 		case 'report': return { what: 'The gallery\'s daily summary could not be read, so none of the gallery counts on this page are shown. This is not a report of zero.', todo: 'Reload in a few minutes. If it keeps failing, the database is the thing to check.' };
 		case 'events': return { what: 'The detailed event counts could not be read, so none is shown. This is not zero.', todo: 'Reload in a few minutes.' };
@@ -547,10 +591,12 @@ export function buildDataView(input: DataInput): DataView {
 		weekRead: !!report && report.available, incidents: input.incidents, diagnostics: input.diagnostics, rejections: input.rejections,
 		siteActionsStale: input.actions && input.actions.available && input.actions.freshness.status === 'stale' ? { refreshedAt: input.actions.freshness.refreshedAt } : null
 	});
+	// When a collection surge is the only problem, the headline says what it is instead of "One thing needs attention.".
+	const surge = problems.find((problem) => problem.id === 'collection-surge');
 	const notRead: NotRead[] = [];
 	if (!input.traffic || !input.traffic.available) notRead.push({ id: 'cloudflare', section: 'site-measures', name: 'Cloudflare page loads' });
 	if (!input.actions || !input.actions.available) notRead.push({ id: 'site-actions', section: 'site-measures', name: 'the site\'s own page views' });
-	if (!input.posthogConfigured) notRead.push({ id: 'posthog', section: 'journeys', name: 'linked journeys (PostHog)' });
+	if (!input.posthogConfigured) notRead.push({ id: 'posthog', section: 'journeys', name: 'what visitors did after arriving (PostHog)' });
 	if (report && report.available && report.diagnosticsCoverage.error) notRead.push({ id: 'evidence', section: 'delivery', name: 'search and download evidence' });
 	const limits = reachLimits(report, start);
 
@@ -560,19 +606,19 @@ export function buildDataView(input: DataInput): DataView {
 		: null;
 	return {
 		days, window: { start, end: lastCompleteDay, label: `${formatDay(start)} – ${formatDay(lastCompleteDay)}` }, today, lastCompleteDay, owner: input.owner,
-		status: statusView({ problems, notRead, limits, refreshedAt: input.refreshedAt, lastCompleteDay, today }),
+		status: statusView({ problems, notRead, limits, refreshedAt: input.refreshedAt, lastCompleteDay, today, lead: surge ? { id: surge.id, headline: surge.text.split(/(?<=\.)\s/)[0] } : null, owner: input.owner }),
 		coverage: report ? coverageView({ report, days, refreshedAt: input.refreshedAt, lastCompleteDay, now: input.asOf, today }) : null,
 		traffic: report ? trafficView({ report, names: input.names }) : null,
 		counting: report ? countingView({ report }) : null,
 		arrivals,
-		reportDown: report && report.available ? null : notReadNote('report'),
-		site: siteMeasuresView({ traffic: input.traffic, actions: input.actions, days }),
+		reportDown: report && report.available ? null : notReadNote('report', input.owner),
+		site: siteMeasuresView({ traffic: input.traffic, actions: input.actions, days, owner: input.owner }),
 		delivery: deliveryView(deliveryState === 'shown' ? input.health : null, today, input.rejections, lastCompleteDay),
 		evidence: report ? evidenceView(report, today) : null,
 		deliveryState,
 		deliveryNote: deliveryState === 'owner_only'
-			? 'The counts of events waiting, sent and confirmed are shown when you are signed in. Whether delivery has failed or is late is already in the status above.'
-			: deliveryState === 'failed' ? notReadNote('delivery').what + ' ' + notReadNote('delivery').todo : null
+			? 'The counts of events accepted, rejected, waiting, sent and confirmed are shown when you are signed in. Whether delivery to the analytics provider has failed or is late is already in the status above.'
+			: deliveryState === 'failed' ? notReadNote('delivery', true).what + ' ' + notReadNote('delivery', true).todo : null
 	};
 }
 

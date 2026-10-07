@@ -85,12 +85,16 @@ test('the due morning reads day N as exactly N complete days, so a late run repo
 	}
 });
 
-test('a late recap says so in its second block and keeps the due date and the same days', () => {
+test('a late recap says so after what it found, not before, and keeps the due date and the same days', () => {
 	const onTime = doc(3, { late: false }).doc;
 	const late = doc(3, { late: true }).doc;
 	assert.doesNotMatch(onTime.body, /This recap is late/);
 	const blocks = late.body.split('\n\n');
-	assert.equal(blocks[1], 'This recap is late. It was due Mon, Sep 28 at 8:00 AM Chicago time. It reports the same days it would have then, not the days since.');
+	const note = 'This recap is late. It was due Mon, Sep 28 at 8:00 AM Chicago time. It reports the same days it would have then, not the days since.';
+	// The finding comes first; how late it is follows it, just above what the recap cannot tell the reader.
+	assert.notEqual(blocks[1], note);
+	assert.match(blocks[1], /^Published Sep 25/);
+	assert.equal(blocks.indexOf(note), blocks.indexOf('What this cannot tell you:') - 1);
 	assert.deepEqual(late.window, onTime.window);
 	assert.equal(late.complete, true, 'late is not incomplete');
 });

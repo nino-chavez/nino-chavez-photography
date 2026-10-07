@@ -20,10 +20,11 @@ export const load: PageServerLoad = async ({ setHeaders, fetch, cookies }) => {
 	});
 	const { data: { user } } = await createSupabaseServerClient(cookies).auth.getUser();
 	const admin = createSupabaseAdminClient();
+	const owner = !!user && isAllowedAdmin(user.email);
 	const view = await loadHome({
-		admin, env: { CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ANALYTICS_TOKEN: env.CLOUDFLARE_ANALYTICS_TOKEN }, fetch,
+		owner, admin, env: { CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ANALYTICS_TOKEN: env.CLOUDFLARE_ANALYTICS_TOKEN }, fetch,
 		// The gallery-wide launch scope. Its findings pass the same public check as every report; none means nothing shows.
 		findings: () => loadVisibleFindings(admin, GALLERY_LAUNCH_SCOPE, 'home')
 	});
-	return { view, owner: !!user && isAllowedAdmin(user.email) };
+	return { view, owner };
 };

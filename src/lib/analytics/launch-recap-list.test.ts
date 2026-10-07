@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { MISSING_NOTE, nextRecapItems, NO_RECAP_DUE, recapRows, UNREADABLE_NOTE, WAITING_NOTE, type StoredRecapSummary } from './launch-recap-list';
+import { MISSING_NOTE, nextRecapItems, NO_RECAP_DUE, recapRows, sharedFlag, UNREADABLE_NOTE, WAITING_NOTE, type StoredRecapSummary } from './launch-recap-list';
 import type { RecapLaunch } from './launch-recap-schedule';
 
 const JCA: RecapLaunch = { albumKey: 'Re7kho', albumName: 'HS Girls VB - JCA at ACC', firstPublishedAt: '2026-09-26T01:10:52Z', basis: 'inferred' };
@@ -76,4 +76,17 @@ test('next items: only recaps still to come, soonest first; due, stored and laps
 	// A launch not yet published at the clock is not listed.
 	assert.deepEqual(nextRecapItems({ launches: [{ ...JCA, firstPublishedAt: '2026-10-01T00:00:00Z' }], now: at('2026-09-29T15:00:00Z') }), []);
 	assert.equal(NO_RECAP_DUE, 'No recap is due. Publishing an album schedules its day 3 and day 7 recaps.');
+});
+
+test('a flag every stored recap carries is said once above the list; one recap, or a flag only some carry, stays on its row', () => {
+	const later = recapRows({ launch: JCA, now: at('2026-10-08T15:00:00Z'), stored: [{ ...stored3, late: true, source: 'backfill' }, { ...stored7, late: false, source: 'backfill', evidence: 'complete' }], owner: false });
+	assert.equal(sharedFlag(later), 'Written later from the records');
+	// A single recap has nothing to be the rule against.
+	assert.equal(sharedFlag(later.slice(0, 1)), null);
+	// One written on time and one written later: the flag marks an exception, so it stays on its row.
+	const mixed = recapRows({ launch: JCA, now: at('2026-10-08T15:00:00Z'), stored: [{ ...stored3, source: 'scheduled' }, { ...stored7, late: false, source: 'backfill', evidence: 'complete' }], owner: false });
+	assert.equal(sharedFlag(mixed), null);
+	// Rows that are not stored recaps (one still to come) are not part of the comparison.
+	const upcoming = recapRows({ launch: JCA, now: at('2026-09-29T15:00:00Z'), stored: [{ ...stored3, late: true, source: 'backfill' }], owner: false });
+	assert.equal(sharedFlag(upcoming), null);
 });

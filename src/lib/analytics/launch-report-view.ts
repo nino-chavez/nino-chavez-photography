@@ -13,6 +13,25 @@ export function nameWithoutDate(name: string): string {
 	return stripped || name;
 }
 
+/**
+ * One list of what a page cannot tell the reader. The page's own limits come first, then its findings'. The same fact said two ways
+ * ("not people", "a request, not a saved file") is said once, and the note that a date was recovered from a log is left out when the
+ * page already carries the note beside the date.
+ */
+export function mergeLimits(own: readonly string[], found: readonly string[], datesRecoveredNoted: boolean): string[] {
+	const key = (text: string) => (/not people/i.test(text) ? 'people' : /request, not a confirmed saved file|requests, not confirmed saved/i.test(text) ? 'requests' : /first publication time was worked out|recovered afterwards from a log/i.test(text) ? 'recovered' : text);
+	const seen = new Set<string>();
+	const list: string[] = [];
+	for (const text of [...own, ...found]) {
+		const k = key(text);
+		if (k === 'recovered' && datesRecoveredNoted) continue;
+		if (seen.has(k)) continue;
+		seen.add(k);
+		list.push(text);
+	}
+	return list;
+}
+
 export interface DailyBar {
 	day: number | null;
 	date: string;
@@ -87,19 +106,32 @@ export function cumulativePoints(launch: Pick<Launch, 'series'>): { points: Cumu
 	return { points, cutByGap: false };
 }
 
-/** Every launch's opens added up by day since publication, this album marked. Newest launches first. */
-export function cumulativeCurves(model: LaunchReadModel): CumulativeCurve[] {
+/** The comparison on the album report is the first week, days 0 to 6: the same window as the table beside it, the rank and the headline. */
+export const COMPARISON_DAYS = 7;
+
+/** The first `through` days of a launch's cumulative line. A line that reaches that far is whole; one that stops sooner stops for its own reason. */
+function firstWeek(launch: Pick<Launch, 'series'>, through: number): { points: CumulativePoint[]; cutByGap: boolean } {
+	const whole = cumulativePoints(launch);
+	return whole.points.length >= through ? { points: whole.points.slice(0, through), cutByGap: false } : whole;
+}
+
+/**
+ * Every launch's opens added up by day since publication, this album marked, over the first week only. Newest launches first.
+ * One window for the whole comparison: a launch's line past day 6 would give the same launch a second number (its week-1 total in the
+ * table and its total by day 13 on the chart), and the two would read as a mistake.
+ */
+export function cumulativeCurves(model: LaunchReadModel, through = COMPARISON_DAYS): CumulativeCurve[] {
 	const currentKey = model.album.albumKey;
 	const curves = model.launches.map((launch) => ({
 		albumKey: launch.albumKey,
 		name: launch.albumName ?? launch.albumKey,
 		current: launch.albumKey === currentKey,
 		inferred: launch.basis === 'inferred',
-		...cumulativePoints(launch)
+		...firstWeek(launch, through)
 	}));
 	// An album kept out of the comparison set (not public) still draws, so the reader sees their own line.
 	if (model.album.status !== 'no_launch_date' && !curves.some((curve) => curve.current)) {
-		curves.unshift({ albumKey: currentKey, name: model.album.albumName ?? currentKey, current: true, inferred: model.album.basis === 'inferred', ...cumulativePoints(model.album) });
+		curves.unshift({ albumKey: currentKey, name: model.album.albumName ?? currentKey, current: true, inferred: model.album.basis === 'inferred', ...firstWeek(model.album, through) });
 	}
 	return curves;
 }

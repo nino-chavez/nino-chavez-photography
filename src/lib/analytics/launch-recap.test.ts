@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { DatedLaunchAlbum, Launch, LaunchDay, LaunchPhoto, LaunchReadModel, UndatedLaunchAlbum } from './launch-read-model.server';
 import { addDays, ALL, D, day, model, NAMES, photos, shape, START, sum, type Shape } from './launch-recap.fixture';
 import { buildRecap, cumulativeOpens, launchAhead, median, ordinal, recapToPlain, type ArrivalRow } from './launch-recap';
-import { cumulativeCurves, dailyChart, gridPhotos, launchTable, nameWithoutDate } from './launch-report-view';
+import { cumulativeCurves, dailyChart, gridPhotos, launchTable, mergeLimits, nameWithoutDate } from './launch-report-view';
 
 const ids = (n: number) => new Set(Array.from({ length: n }, (_, i) => `p${i + 1}`));
 const recap = (m: LaunchReadModel, arrivals: ArrivalRow[] | null = null, photoIds = ids(4)) => buildRecap({ model: m, arrivals, photoIds });
@@ -16,7 +16,7 @@ test('finished launch: week-1 total, rank, the launch ahead, peak day and every 
 	const r = recap(m);
 	assert.equal(r.state, 'finished');
 	assert.equal(r.eyebrow, 'Week 1 recap');
-	assert.equal(recapToPlain(r.published!), 'Published Sep 25 (date recovered afterwards from a log).');
+	assert.equal(recapToPlain(r.published!), 'Published Sep 25*.');
 	assert.equal(recapToPlain(r.headline), '931 photo opens in its first week.');
 	const lines = r.sentences.map((s) => recapToPlain(s));
 	assert.match(lines[0], /^At the same age, the 5 earlier launches had a median of 125 photo opens\.$/);
@@ -29,7 +29,9 @@ test('finished launch: week-1 total, rank, the launch ahead, peak day and every 
 test('the day Chicago says a launch began is the day it is dated, not the UTC day', () => {
 	const m = model(shape('Re7kho'), ALL);
 	m.album.firstPublishedAt = '2026-09-26T01:10:52.556+00:00';
-	assert.equal(recapToPlain(recap(m).published!), 'Published Sep 25 (date recovered afterwards from a log).');
+	assert.equal(recapToPlain(recap(m).published!), 'Published Sep 25*.');
+	// Text read away from a page has no footnote to hold the mark, so a stored recap says the words.
+	assert.equal(recapToPlain(buildRecap({ model: m, arrivals: null, photoIds: ids(4), stored: true }).published!), 'Published Sep 25 (date recovered afterwards from a log).');
 });
 
 test('a recorded date is not marked inferred', () => {
@@ -196,8 +198,8 @@ test('the photo total is the grid size, so a photo left out of the grid is not c
 test('arrivals: tagged arrivals by tag when they exist, and a limit when none do', () => {
 	const m = model(shape('Re7kho'), ALL);
 	const r = recap(m, [{ source: 'links', count: 3 }, { source: 'profile', count: 19 }]);
-	assert.equal(recapToPlain(r.arrivals!), 'Over Sep 25 to Oct 5, 22 arrivals came through tagged links: profile 19 (86%), links 3 (14%). Arrivals that did not use a tagged link cannot be traced to a source.');
-	assert.equal(recapToPlain(recap(m, [{ source: 'profile', count: 4 }]).arrivals!), 'Over Sep 25 to Oct 5, 4 arrivals came through tagged links, all from the tag "profile". Arrivals that did not use a tagged link cannot be traced to a source.');
+	assert.equal(recapToPlain(r.arrivals!), 'Over Sep 25 to Oct 5, 22 arrivals came through tagged links: profile 19 (86%), links 3 (14%). A tag is the label on a shared link, and an arrival is one browser landing from it, counted once a day. Arrivals without a tag cannot be traced to a source.');
+	assert.equal(recapToPlain(recap(m, [{ source: 'profile', count: 4 }]).arrivals!), 'Over Sep 25 to Oct 5, 4 arrivals came through tagged links, all with the tag "profile". A tag is the label on a shared link, and an arrival is one browser landing from it, counted once a day. Arrivals without a tag cannot be traced to a source.');
 	assert.ok(!r.limits.some((l) => /came from/.test(l)));
 	const none = recap(m, []);
 	assert.equal(none.arrivals, null);
@@ -338,8 +340,29 @@ test('cumulative curves stop at the first incomplete day and mark this album', (
 	assert.deepEqual(mine.points.map((p) => p.total), [103, 678, 804, 827]);
 	const whole = curves.find((c) => c.albumKey === 'fJKdsB')!;
 	assert.equal(whole.cutByGap, false);
-	assert.equal(whole.points.length, 14);
-	assert.equal(whole.points[13].total, sum(D.fJKdsB, 14));
+	// The comparison is the first week, days 0 to 6, whatever age the launch has reached: a second window would give one launch two totals.
+	assert.equal(whole.points.length, 7);
+	assert.equal(whole.points[6].total, sum(D.fJKdsB, 7));
+});
+
+test('one window in the comparison: the chart\'s highest line ends at the table\'s week-1 figure and the recap\'s "behind" figure, not at its day-13 total', () => {
+	// Production, 2026-10-07: HS Girls VB - JCA vs PNHS had 1,258 photo opens in week 1 and 1,259 by day 13. The chart used to end its line at its last day
+	// while the table and the sentence said 1,258, and a reader took the two numbers for one launch to be an error.
+	assert.equal(sum(D.fJKdsB, 7), 1258);
+	assert.ok(sum(D.fJKdsB, 14) > 1258, 'the longer window is a different number for the same launch');
+	const m = model(shape('Re7kho'), ALL);
+	const curves = cumulativeCurves(m);
+	const others = curves.filter((c) => !c.current);
+	const leader = others.reduce((best, c) => (c.points.at(-1)!.total > best.points.at(-1)!.total ? c : best));
+	assert.equal(leader.albumKey, 'fJKdsB');
+	assert.equal(leader.points.at(-1)!.day, 6);
+	assert.equal(leader.points.at(-1)!.total, 1258);
+	assert.equal(leader.points.at(-1)!.total, launchTable(m)[0].day7);
+	assert.match(text(m), /behind HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)/);
+	// This album's own line ends at its week-1 total, the headline's number, not at the 1,035 it had by day 11.
+	const mine = curves.find((c) => c.current)!;
+	assert.equal(mine.points.at(-1)!.total, 931);
+	assert.equal(recapToPlain(recap(m).headline), '931 photo opens in its first week.');
 });
 
 test('an album outside the comparison set still draws its own curve and row', () => {
@@ -416,4 +439,24 @@ test('one earlier launch is "had 10 photo opens", never a median of one', () => 
 	const m = model(shape('Re7kho', '2026-09-28'), [shape('Re7kho', '2026-09-28'), shape('fJKdsB', '2026-09-28')], {}, '2026-09-28');
 	const line = recap(m).sentences.map((sentence) => recapToPlain(sentence)).find((text) => /^At the same age/.test(text));
 	assert.equal(line, 'At the same age, the 1 earlier launch had 1,167 photo opens.');
+});
+
+test('one list of limits per page: the same fact said two ways is said once, and a recovered-date note the page already carries is not said again', () => {
+	const own = ['Which photos people saw but did not open is recorded only from Sep 29.', 'Counts are browser actions, not people.'];
+	const found = [
+		'Counts are photo opens, not people. One person opening ten photos counts ten times.',
+		'A download request is a request, not a confirmed saved file.',
+		'The rank says how this launch compares, not why.',
+		'The first publication time was worked out from server logs, not recorded when the album was published.',
+		'The rank says how this launch compares, not why.'
+	];
+	assert.deepEqual(mergeLimits(own, found, true), [
+		'Which photos people saw but did not open is recorded only from Sep 29.',
+		'Counts are browser actions, not people.',
+		'A download request is a request, not a confirmed saved file.',
+		'The rank says how this launch compares, not why.'
+	]);
+	// A page with no marked date has nowhere else that says it, so the finding's own note stays.
+	assert.ok(mergeLimits(own, found, false).includes('The first publication time was worked out from server logs, not recorded when the album was published.'));
+	assert.deepEqual(mergeLimits([], [], false), []);
 });

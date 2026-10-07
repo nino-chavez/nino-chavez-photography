@@ -2,10 +2,12 @@
 	import type { CumulativeCurve, LaunchTableRow } from '$lib/analytics/launch-report-view';
 	import { ordinal, recoveredTag } from '$lib/analytics/launch-recap';
 	import { nameWithoutDate } from '$lib/analytics/launch-report-view';
+	import { COMPARISON_DAYS } from '$lib/analytics/launch-report-view';
 	import RemProbe from '$lib/components/analytics/RemProbe.svelte';
 
-	interface Props { curves: CumulativeCurve[]; rows: LaunchTableRow[]; hasLaunch: boolean }
-	let { curves, rows, hasLaunch }: Props = $props();
+	/** `uid` keeps the ids apart when the report draws this twice (once under the chart on a phone, once beside the photos on a desktop). */
+	interface Props { curves: CumulativeCurve[]; rows: LaunchTableRow[]; hasLaunch: boolean; uid?: string }
+	let { curves, rows, hasLaunch, uid = 'compare' }: Props = $props();
 
 	// The chart is drawn in pixels, so its size and its text follow the page's text size (`rem`, one rem in pixels).
 	let rem = $state(16);
@@ -13,7 +15,8 @@
 	const height = $derived(250 * u);
 	const pad = $derived({ top: 22 * u, right: 14 * u, bottom: 36 * u, left: 46 * u });
 	let width = $state(520);
-	const days = $derived(Math.max(8, ...curves.map((curve) => (curve.points.at(-1)?.day ?? 0) + 1)));
+	// The first week, days 0 to 6: the same window as the table, the rank and the headline.
+	const days = COMPARISON_DAYS;
 	const max = $derived(Math.max(1, ...curves.flatMap((curve) => curve.points.map((point) => point.total))));
 	const inner = $derived(Math.max(120, width - pad.left - pad.right));
 	const plotHeight = $derived(height - pad.top - pad.bottom);
@@ -23,16 +26,20 @@
 	const current = $derived(curves.find((curve) => curve.current) ?? null);
 	const others = $derived(curves.filter((curve) => !curve.current));
 	const leader = $derived(others.reduce<CumulativeCurve | null>((best, curve) => ((curve.points.at(-1)?.total ?? -1) > (best?.points.at(-1)?.total ?? -1) ? curve : best), null));
-	const ticks = $derived([0, 3, 7, 13].filter((day) => day < days));
+	const ticks = [0, 3, 6];
 	// Lines are named where they end, not only in the legend. If the two ends sit close, the album's label moves below its point.
 	const mineEnd = $derived(current?.points.at(-1) ?? null);
 	const leaderEnd = $derived(leader?.points.at(-1) ?? null);
 	const crowded = $derived(mineEnd !== null && leaderEnd !== null && Math.abs(y(mineEnd.total) - y(leaderEnd.total)) < 16 * u && Math.abs(x(mineEnd.day) - x(leaderEnd.day)) < 120 * u);
-	const weekPoint = $derived(current?.points.find((point) => point.day === 6) ?? null);
+	/** A line that reaches day 6 is the week-1 total, said as that. One that stops sooner says where, because its week is not over. */
+	const upTo = (curve: CumulativeCurve | null) => {
+		const end = curve?.points.at(-1);
+		return end ? `${end.total.toLocaleString()} ${end.day === COMPARISON_DAYS - 1 ? 'in week 1' : `by day ${end.day}`}` : '';
+	};
 	const summary = $derived(
 		current && current.points.length
-			? `This album has ${current.points.at(-1)!.total.toLocaleString()} photo opens by day ${current.points.at(-1)!.day}. ${others.length} other launches are in grey.`
-			: 'Every launch with a first publication, added up by day since publication.'
+			? `This album has ${upTo(current)} photo opens. ${others.length} other launches are in grey.`
+			: 'Every launch with a first publication, added up over its first week.'
 	);
 </script>
 
@@ -58,12 +65,12 @@
 	</div>
 {/snippet}
 
-<section class="compare" aria-labelledby="compare-title">
-	<h2 id="compare-title">Against other launches</h2>
+<section class="compare" aria-labelledby={`${uid}-title`}>
+	<h2 id={`${uid}-title`}>Against other launches, first week</h2>
 	{#if !hasLaunch}
 		<p class="lead">This album has no launch date, so it has no place in this comparison. The ranking below shows the launches it would be compared with.</p>
 	{:else}
-		<p class="lead lead-chart">Each line adds up one launch's photo opens by day since publication. This album is the blue line. The table has the same numbers.</p>
+		<p class="lead lead-chart">Each line adds up one launch's photo opens over its first week, day by day. This album is the thick line. The table has the same numbers.</p>
 		<p class="lead lead-table">Each launch's photo opens in its first three days and first week, best week first.</p>
 	{/if}
 	<div class="chart-only" bind:clientWidth={width}>
@@ -78,26 +85,22 @@
 				<text class="tick" x={pad.left - 6 * u} y={y(0) + 4 * u} text-anchor="end">0</text>
 				{#each others as curve}
 					{#if curve.points.length}
-						<polyline class="other" points={path(curve)} fill="none"><title>{curve.name}: {curve.points.at(-1)?.total.toLocaleString()} photo opens by day {curve.points.at(-1)?.day}</title></polyline>
+						<polyline class="other" points={path(curve)} fill="none"><title>{curve.name}: {upTo(curve)} photo opens</title></polyline>
 					{/if}
 				{/each}
 				{#if current.points.length}
 					<polyline class="mine" points={path(current)} fill="none" />
 					{@const end = current.points.at(-1)!}
 					<circle class="mine-dot" cx={x(end.day)} cy={y(end.total)} r={4 * u} />
-					{#if weekPoint && weekPoint !== end}
-						<circle class="mine-dot" cx={x(weekPoint.day)} cy={y(weekPoint.total)} r={3 * u} />
-						<text class="label" x={x(weekPoint.day) + 6 * u} y={y(weekPoint.total) + 14 * u}>Week 1: {weekPoint.total.toLocaleString()}</text>
-					{/if}
-					<text class="label mine-label" x={x(end.day) - 8 * u} y={y(end.total) + (crowded ? 18 * u : -8 * u)} text-anchor="end">This album: {end.total.toLocaleString()}</text>
+					<text class="label mine-label" x={x(end.day) - 8 * u} y={y(end.total) + (crowded ? 18 * u : -8 * u)} text-anchor="end">This album: {upTo(current)}</text>
 					{#if current.cutByGap}<text class="tick" x={pad.left + 4 * u} y={pad.top + 10 * u}>Records incomplete after day {end.day}</text>{/if}
 				{/if}
-				{#if leader && leaderEnd}<text class="label other-label" x={x(leaderEnd.day) - 6 * u} y={y(leaderEnd.total) - 7 * u} text-anchor="end">{nameWithoutDate(leader.name)}: {leaderEnd.total.toLocaleString()}</text>{/if}
+				{#if leader && leaderEnd}<text class="label other-label" x={x(leaderEnd.day) - 6 * u} y={y(leaderEnd.total) - 7 * u} text-anchor="end">{nameWithoutDate(leader.name)}: {upTo(leader)}</text>{/if}
 				<text class="tick" x={pad.left + inner / 2} y={height - 2 * u} text-anchor="middle">Days since publication</text>
 			</svg>
 			<p class="legend">
-				<span><span class="swatch mine-swatch" aria-hidden="true"></span> This album{#if current.points.length}: {current.points.at(-1)?.total.toLocaleString()} by day {current.points.at(-1)?.day}{/if}</span>
-				<span><span class="swatch other-swatch" aria-hidden="true"></span> Other launches{#if leader && leader.points.length}{' '}(highest: {nameWithoutDate(leader.name)}, {leader.points.at(-1)?.total.toLocaleString()} by day {leader.points.at(-1)?.day}){/if}</span>
+				<span><span class="swatch mine-swatch" aria-hidden="true"></span> This album{#if current.points.length}: {upTo(current)}{/if}</span>
+				<span><span class="swatch other-swatch" aria-hidden="true"></span> Other launches{#if leader && leader.points.length}{' '}(highest: {nameWithoutDate(leader.name)}, {upTo(leader)}){/if}</span>
 			</p>
 		{/if}
 	</div>

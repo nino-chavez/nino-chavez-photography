@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildHome, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, type Freshness, type HomeInput, type HomeView, type SiteReading, type WeekInput } from './home';
+import { buildHome, COMPLETED_DAYS_CHECKED, HOME_FINDINGS, HOME_LAUNCH_CARDS, type Freshness, type HomeInput, type HomeView, type SiteReading, type WeekInput } from './home';
+import type { Finding } from './intelligence-contract';
 import { diagnosticsFromHealth, readDeliveryHealth } from './intelligence-source.server';
 import { rejectionsFromHealth } from './measurement-health';
 import type { VisibleFindings } from './intelligence-panel.server';
@@ -8,6 +9,8 @@ import { buildOperatorReport, type OperatorReport } from './operator-report.serv
 import { chicagoDate } from './launch-recap';
 import { parseReportQuery } from './report-contract';
 import { loadSiteActions } from './site-actions.server';
+import { failureScale, type FailureScale } from './failure-scale';
+import { readGalleryPhotoLoads } from './launch-evidence.server';
 import { clickReading, reachReading } from './site-readings';
 import { loadSiteTraffic, siteTrafficCache } from './site-traffic.server';
 
@@ -19,6 +22,7 @@ import { loadSiteTraffic, siteTrafficCache } from './site-traffic.server';
  *   week line       the scheduled gallery report: last 7 complete days against the 7 before
  *   site line       Cloudflare page loads and the site action summary, 7 days each
  *   problems        open incidents, delivery health, and the gallery report's own coverage
+ *   failure scale   two head-only counts for each photo-load failure note shown (at most three), over every album
  *
  * No query per album. Everything is read with the service role, so the visibility rule is applied
  * here: launches and the week line are `publicOnly`, covers are read only for public launches, and an
@@ -36,6 +40,8 @@ export interface HomeDeps {
 	env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_ANALYTICS_TOKEN?: string };
 	fetch: typeof fetch;
 	now?: Date;
+	/** The signed-in owner. A visitor reads that a reading is not available, never the setup the owner would do about it. */
+	owner?: boolean;
 	/** The gallery-wide launch scope's current findings (intelligence-panel.server's loadVisibleFindings). Absent: none are shown. */
 	findings?: () => Promise<VisibleFindings>;
 }
@@ -87,6 +93,24 @@ function freshnessFrom(report: OperatorReport | null, lastCompleteDay: string, r
 	return { incompleteDays, refreshedAt, checked: true };
 }
 
+/**
+ * The scale of each photo-load failure note: the same days, over every album, so "2 of 64" has a usual share beside it. At most one read
+ * for each note Home can show, and a read that fails leaves that note as it was, without a scale, rather than guessing one.
+ */
+async function readFailureScales(admin: SupabaseClient, findings: readonly Finding[]): Promise<Map<string, FailureScale>> {
+	const scales = new Map<string, FailureScale>();
+	const photoFailures = findings.filter((finding) => finding.rule === 'launch_failures' && finding.id.startsWith('launch-photo-failures-') && finding.evidence.numerator !== undefined && finding.evidence.denominator !== undefined).slice(0, HOME_FINDINGS);
+	await Promise.all(photoFailures.map(async (finding) => {
+		try {
+			const gallery = await readGalleryPhotoLoads(admin, finding.evidence.windows.current);
+			scales.set(finding.id, failureScale(finding.id, { loads: finding.evidence.denominator as number, failures: finding.evidence.numerator as number }, gallery));
+		} catch (cause) {
+			console.error('[home] failure scale unavailable:', cause instanceof Error ? cause.message : cause);
+		}
+	}));
+	return scales;
+}
+
 export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const { admin } = deps;
 	const asOf = deps.now ?? new Date();
@@ -120,7 +144,7 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const incidents = ok(incidentRead);
 	const incidentIds = incidents && !incidents.error ? (incidents.data ?? []).map((row) => String(row.finding_id)) : null;
 
-	const siteReach: SiteReading = reachReading(ok(traffic));
+	const siteReach: SiteReading = reachReading(ok(traffic), deps.owner === true);
 	const actions7 = ok(actions);
 	const siteContacts: SiteReading = actions7 === null ? { available: false, reason: 'Link clicks could not be read. This is not a report of zero.' } : clickReading(actions7, 'contact_clicks', COMPLETED_DAYS_CHECKED);
 
@@ -128,15 +152,18 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const newest = list ? [...list.launches].sort((x, y) => Date.parse(y.firstPublishedAt) - Date.parse(x.firstPublishedAt)).slice(0, HOME_LAUNCH_CARDS) : [];
 	const covers = await readCovers(admin, newest.map((launch) => launch.albumKey));
 
+	const findings = ok(findingsRead)?.findings ?? [];
+	const failureScales = await readFailureScales(admin, findings);
+
 	const input: HomeInput = {
-		asOf: asOfIso, today, lastCompleteDay, launches: list ? list.launches : null, covers,
+		asOf: asOfIso, today, lastCompleteDay, launches: list ? list.launches : null, covers, failureScales,
 		week: report ? weekFrom(report) : null, freshness: freshnessFrom(report, lastCompleteDay, refreshTimeFrom(ok(refreshRead))),
 		siteReach, siteContacts,
 		siteActionsStale: actions7 && actions7.available && actions7.freshness.status === 'stale' ? { refreshedAt: actions7.freshness.refreshedAt } : null,
 		incidents: incidentIds,
 		diagnostics: health ? diagnosticsFromHealth(health, asOf) : null,
 		rejections: health && !health.error ? rejectionsFromHealth(health.data, lastCompleteDay) : null,
-		findings: ok(findingsRead)?.findings ?? [],
+		findings,
 		findingsCheckedAt: ok(findingsRead)?.checkedAt ?? null
 	};
 	return buildHome(input);

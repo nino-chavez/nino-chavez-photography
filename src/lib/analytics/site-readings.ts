@@ -34,9 +34,15 @@ export function clickReading(report: SiteActionReport, metric: ClickMetric, days
 	return { available: true, start: report.start, end: report.end, current: report.totals[metric] ?? 0, previous: hasPrevious ? report.previousTotals[metric] ?? 0 : null };
 }
 
-/** Cloudflare page loads over the same window; the reason it could not be read is kept as the page's words. */
-export function reachReading(result: SiteTrafficResult | null): SiteReading {
-	if (result === null) return { available: false, reason: 'Cloudflare Web Analytics could not be read. No traffic total is shown.' };
-	if (!result.available) return { available: false, reason: result.reason };
+/** What a visitor reads when page loads cannot be shown. They cannot set anything up, so they are told the plain fact and nothing else. */
+export const PAGE_LOADS_UNAVAILABLE = 'Page loads are not available right now.';
+
+/**
+ * Cloudflare page loads over the same window. The owner reads why they could not be read, in the page's words; a visitor reads only
+ * that they are not available.
+ */
+export function reachReading(result: SiteTrafficResult | null, owner: boolean): SiteReading {
+	if (result === null) return { available: false, reason: owner ? 'Cloudflare Web Analytics could not be read. No traffic total is shown.' : PAGE_LOADS_UNAVAILABLE };
+	if (!result.available) return { available: false, reason: owner ? result.reason : PAGE_LOADS_UNAVAILABLE };
 	return { available: true, start: result.start, end: result.end, current: result.pageviews, previous: result.previousPageviews };
 }

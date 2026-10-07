@@ -40,7 +40,7 @@ export interface RecapSettingsLines {
  * records are kept changes nothing about it; only email depends on the saved choices, and the text says what email will not do.
  */
 export function recapSettingsLines(preferences: IntelligencePreferences | null): RecapSettingsLines {
-	const storage = 'Recaps are written for every album on their own and listed on its report. They are public and are not deleted with your private records.';
+	const storage = 'Recaps are not private reports. They are written for every album on their own and listed on its report, and they are public, so how long your private records are kept does not change them.';
 	if (!preferences) return { schedule: RECAP_SCHEDULE_COPY, storage, email: 'Whether recap email is on could not be read.' };
 	const email = !preferences.externalEnabled
 		? `Email is off, so no recap is emailed.${preferences.destinationVerified ? '' : ' There is no verified address yet.'}`

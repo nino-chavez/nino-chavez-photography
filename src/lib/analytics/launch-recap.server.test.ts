@@ -402,7 +402,11 @@ test('a backfill says it was written later and is never late', async () => {
 	assert.equal(lapsed.phase, 'lapsed');
 	const built = await buildSlotDocument(reads(), lapsed, at('2026-10-08T15:00:00Z'), { writtenOn: '2026-10-08' });
 	const body = built.state === 'built' ? built.document.body : '';
-	assert.equal(body.split('\n\n')[1], 'This recap was written on Oct 8, after its checkpoint, from the records for those days. It was not written on the morning it was due.');
+	const blocks = body.split('\n\n');
+	const note = 'This recap was written on Oct 8, after its checkpoint, from the records for those days. It was not written on the morning it was due.';
+	// The finding leads; when it was written follows it, just above what the recap cannot tell the reader.
+	assert.notEqual(blocks[1], note);
+	assert.equal(blocks.indexOf(note), blocks.indexOf('What this cannot tell you:') - 1);
 	assert.doesNotMatch(body, /This recap is late/);
 });
 

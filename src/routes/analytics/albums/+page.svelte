@@ -4,7 +4,8 @@
 	import { replaceState } from '$app/navigation';
 	import { albumIndexPath, albumReportPath, photosPath } from '$lib/analytics/report-paths';
 	import { dayLabel, figureText, matchesName, MAX_COMPARED, QUIET_DAYS, rankText, statusText, undatedReasonShort, type IndexLaunchRow, type IndexUndatedRow } from '$lib/analytics/album-index';
-	import { formatDay, plural, recoveredTag } from '$lib/analytics/launch-recap';
+	import { formatDay, plural, RECOVERED_NOTE, recoveredTag } from '$lib/analytics/launch-recap';
+	import { undatedCounts } from '$lib/analytics/album-index';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchOverlay from '$lib/components/analytics/LaunchOverlay.svelte';
 	import type { PageData } from './$types';
@@ -32,6 +33,8 @@
 	const undatedMatches = $derived(index.undated.filter((row) => matchesName(row.name, term)));
 	const active = $derived(index.undated.filter((row) => !row.noActivity));
 	const quiet = $derived(index.undated.filter((row) => row.noActivity));
+	const undatedLine = $derived(undatedCounts(active.length, quiet.length, QUIET_DAYS));
+	const anyRecovered = $derived(index.launches.some((row) => row.inferred));
 	// A search looks through every album, including the quiet ones, so a known event is never hidden by the collapsed list.
 	const shownUndated = $derived(searching ? undatedMatches.slice(0, visible) : active.slice(0, visible));
 	const hiddenUndated = $derived((searching ? undatedMatches.length : active.length) - shownUndated.length);
@@ -87,7 +90,7 @@
 		<section class="intro" aria-labelledby="index-title">
 			<p class="eyebrow">Album index</p>
 			<h1 id="index-title">Albums</h1>
-			<p class="headline"><strong>{index.publicAlbums.toLocaleString('en-US')}</strong> public albums. <strong>{index.launches.length.toLocaleString('en-US')}</strong> have a launch date, the day they were first published. {#if index.undated.length}The other <strong>{index.undated.length.toLocaleString('en-US')}</strong> do not.{/if}</p>
+			<p class="headline"><strong>{index.publicAlbums.toLocaleString('en-US')}</strong> public albums. <strong>{index.launches.length.toLocaleString('en-US')}</strong> have a launch date, the day they were first published. {#if index.undated.length}The other <strong>{index.undated.length.toLocaleString('en-US')}</strong> do not{#if index.activityAvailable}: {undatedLine}{/if}.{/if}</p>
 			<p class="note">Counts are browser actions, not people, and download requests are requests, not saved files. Counted over complete days in Chicago time. Albums that are not public are not listed.</p>
 			<div class="tools">
 				<div class="search">
@@ -106,6 +109,7 @@
 				<p class="note">No album has a launch date yet. An album gets one when it is first published.</p>
 			{:else}
 				<p class="lead">Each launch is counted from its first publication and compared with the other launches at the same age. First 3 days and week 1 are photo opens in complete days. Rank at day 7 is among the launches with a complete first week. A launch younger than that shows its figure so far and is not ranked.</p>
+					{#if anyRecovered}<p class="note">{RECOVERED_NOTE}</p>{/if}
 				{#if launchMatches.length === 0}
 					<p class="note">No launch matches "{term}".</p>
 				{:else}
@@ -135,7 +139,8 @@
 							</tbody>
 						</table>
 					</div>
-					<ul class="cards card-view" aria-label="Launches, newest first">
+					<p class="note card-view">To compare launches on one chart, tick Compare on up to {MAX_COMPARED} of them. The chart is under the list.</p>
+						<ul class="cards card-view" aria-label="Launches, newest first">
 						{#each launchMatches as row (row.albumKey)}
 							<li class="card" class:picked={selected.includes(row.albumKey)}>
 								<div class="card-head"><a href={reportHref(row.albumKey)}>{row.name}</a>{@render pick(row, true)}</div>
@@ -145,7 +150,7 @@
 									<div><dt>First 3 days</dt><dd>{figureText(row.day3)}</dd></div>
 									<div><dt>Week 1</dt><dd>{figureText(row.week1)}</dd></div>
 									<div><dt>Rank at day 7</dt><dd>{rankText(row.rank)}</dd></div>
-									<div><dt>Download requests, week 1</dt><dd>{figureText(row.downloads)}</dd></div>
+									<div><dt>Downloads, week 1</dt><dd>{figureText(row.downloads)}</dd></div>
 								</dl>
 							</li>
 						{/each}
@@ -173,7 +178,7 @@
 				<p class="lead">These cannot be compared with launches. They are ordered by photo opens in the last {QUIET_DAYS} complete days, {formatDay(index.window.start)} to {formatDay(index.window.end)}.{#if !index.activityAvailable} <strong>Those counts could not be read just now, so none is shown rather than a wrong one.</strong>{/if}</p>
 				{#if !searching}
 					<button type="button" class="secondary" aria-expanded={showUndated} aria-controls="undated-list" onclick={() => (showUndated = !showUndated)} disabled={!hydrated}>
-						{showUndated ? `Hide the ${active.length.toLocaleString('en-US')} albums without a launch date` : `Show the ${active.length.toLocaleString('en-US')} albums without a launch date`}
+						{showUndated ? `Hide the ${active.length.toLocaleString('en-US')} albums with activity` : `Show the ${active.length.toLocaleString('en-US')} albums without a launch date that had activity`}
 					</button>
 				{/if}
 				<div id="undated-list" hidden={!undatedOpen}>
@@ -289,11 +294,12 @@
 	.pick { align-items: center; cursor: pointer; display: inline-flex; font-size: .85rem; gap: .35rem; min-height: 2.75rem; min-width: 2.75rem; padding-inline: .25rem; }
 	.pick input { cursor: pointer; flex: none; height: 1.3rem; margin: 0; width: 1.3rem; }
 	.pick input:disabled { cursor: default; }
-	.pick-text { white-space: nowrap; }
-	.card-head .pick { flex: none; }
+	/* The word may break at the largest text sizes, or it pushes the card past the panel's edge (measured at 312%). */
+	.pick-text { min-width: 0; overflow-wrap: anywhere; }
+	.card-head .pick { flex: 0 1 auto; max-width: 100%; min-width: 0; }
 
 	.cards { display: none; gap: .6rem; list-style: none; margin: .5rem 0 0; padding: 0; }
-	.card { border: 1px solid var(--line); border-radius: .7rem; padding: .6rem .75rem; }
+	.card { border: 1px solid var(--line); border-radius: .7rem; min-width: 0; padding: .6rem .75rem; }
 	.card.picked { background: #eaf1fd; border-color: #9db8e6; }
 	.card-head { align-items: center; display: flex; flex-wrap: wrap; gap: .1rem .5rem; justify-content: space-between; }
 	.card-head a { align-items: center; color: var(--ink); display: inline-flex; flex: 1 1 min(9rem, 100%); min-height: 2.75rem; min-width: 0; font-size: .98rem; font-weight: 650; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
@@ -303,9 +309,10 @@
 	.card dt { color: var(--muted); font-size: .74rem; }
 	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: break-word; }
 
+	.note.card-view { display: none; }
 	@media (max-width: 959px) {
 		.table-view { display: none; }
-		.cards { display: grid; }
+		.cards, .note.card-view { display: grid; }
 	}
 
 	.compare { border-top: 1px solid #e1e8f0; margin-top: 1rem; padding-top: .8rem; }

@@ -17,7 +17,7 @@ test('the form saves one thing, how long private records are kept; the old daily
 	assert.deepEqual(['until_deleted', '90_days', 'one_year', 'undecided'].map((retention) => retentionDays(retention as never)), [null, 90, 365, null]);
 });
 
-const STORAGE = 'Recaps are written for every album on their own and listed on its report. They are public and are not deleted with your private records.';
+const STORAGE = 'Recaps are not private reports. They are written for every album on their own and listed on its report, and they are public, so how long your private records are kept does not change them.';
 
 test('the recap settings copy: the schedule, that recaps do not depend on the owner, and what email will and will not do', () => {
 	assert.equal(RECAP_SCHEDULE_COPY, 'Each album gets a recap on day 3 and day 7 after it is first public, at 8:00 AM Chicago time.');

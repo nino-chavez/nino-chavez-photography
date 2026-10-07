@@ -86,9 +86,9 @@ function fixture(over: Over = {}) {
 }
 
 const noProvider = async () => new Response('down', { status: 500 });
-const run = (over: Over = {}, env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_ANALYTICS_TOKEN?: string } = {}, now = AS_OF) => {
+const run = (over: Over = {}, env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_ANALYTICS_TOKEN?: string } = {}, now = AS_OF, owner = false) => {
 	const { client, reads, rpcs } = fixture(over);
-	return loadHome({ admin: client, env, fetch: noProvider as unknown as typeof fetch, now }).then((view) => ({ view, reads, rpcs }));
+	return loadHome({ admin: client, env, fetch: noProvider as unknown as typeof fetch, now, owner }).then((view) => ({ view, reads, rpcs }));
 };
 
 test('Home reads each source once and never once per album; only public launches, only the first three covers', async () => {
@@ -118,13 +118,14 @@ test('Home reads each source once and never once per album; only public launches
 test('the quiet gallery on a fresh day reads as quiet, with no open problem except the provider that is not configured', async () => {
 	const { view } = await run();
 	assert.equal(view.state, 'quiet');
-	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches\.$/);
-	assert.equal(sentenceText(view.then!), 'No new album since Sep 26 (date recovered afterwards from a log), 10 days ago.');
+	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches, with [\d,]+ photo opens( against (a median of )?[\d,]+ for (the 1 )?earlier launches?)?\.$/);
+	assert.equal(sentenceText(view.then!), 'No new album since Sep 26*, 10 days ago.');
 	// Both windows hold the first week of the launches in the fixture (published Sep 26), so there is no calendar-week line at all.
 	assert.equal(view.week, null);
 	assert.deepEqual(view.problems, []);
 	assert.equal(view.site.reach.value, null);
-	assert.match(view.site.reach.detail, /not configured/);
+	// A visitor reads that page loads are not available. The setup is the owner's, and Home is open by direct link.
+	assert.equal(view.site.reach.detail, 'Page loads are not available right now.');
 	assert.equal(view.site.contacts.value, '4');
 	assert.equal(view.site.contacts.detail, 'Sep 29 – Oct 5, against 2 in the 7 days before. These are links opened, not messages sent.');
 });
@@ -250,4 +251,63 @@ test('Home shows no finding for an album unlisted after its snapshot was written
 	assert.deepEqual(hidden.cards[1].findingsCheck, { text: 'Last checked 10:45 AM Chicago time.', late: false });
 	const listed = await loadHome({ admin: client, env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: () => loadVisibleFindings(world([]), HOME, 'test') });
 	assert.deepEqual(listed.cards[0].findings.map((f) => f.id), ['launch-failed-A'], 'control: the same snapshot while A is public');
+});
+
+test('the owner reads why the page loads are missing; a visitor does not', async () => {
+	const owner = (await run({}, {}, AS_OF, true)).view;
+	assert.match(owner.site.reach.detail, /not configured/);
+}
+);
+
+test('S7: a photo-load failure note is read against every other album over the same days, from head-only counts, and a failed read leaves the note as it was', async () => {
+	const { launchFinding } = await import('./intelligence-public.fixture');
+	const note = launchFinding('launch-photo-failures-A', 'A', {
+		rule: 'launch_failures', severity: 'high', title: '2 of 64 photo loads failed during the launch',
+		evidence: { windows: { current: { start: '2026-09-29', end: '2026-10-02' }, previous: null }, cutoff: null, coverage: 'complete', units: 'photo loads with a recorded result', numerator: 2, denominator: 64, strength: 'exploratory' } as never
+	});
+	const calls: Array<{ names: string[]; from: string; to: string; head: boolean }> = [];
+	const base = fixture();
+	const events = (counts: { loads: number; failures: number } | 'down') => ({
+		from(table: string) {
+			if (table !== 'analytics_events_v2') return (base.client as unknown as { from: (name: string) => unknown }).from(table);
+			const entry = { names: [] as string[], from: '', to: '', head: false };
+			const chain: Json = {
+				select: (_c: string, options: { head?: boolean }) => { entry.head = !!options?.head; return chain; },
+				in: (_c: string, values: string[]) => { entry.names = values; return chain; },
+				eq: () => chain,
+				gte: (_c: string, value: string) => { entry.from = value; return chain; },
+				lt: (_c: string, value: string) => { entry.to = value; return chain; },
+				then: (resolve: (value: unknown) => unknown) => { calls.push(entry); return resolve(counts === 'down' ? { count: null, error: { message: 'down' } } : { count: entry.names.length === 2 ? counts.loads : counts.failures, error: null }); }
+			};
+			return chain;
+		},
+		rpc: (base.client as unknown as { rpc: unknown }).rpc
+	}) as unknown as SupabaseClient;
+	const findings = async () => ({ findings: [note], checkedAt: '2026-10-06T15:45:00Z' });
+	const routine = await loadHome({ admin: events({ loads: 1500, failures: 42 }), env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings });
+	const scale = routine.cards[0].failureScale!;
+	assert.equal(scale.findingId, 'launch-photo-failures-A');
+	assert.equal(scale.routine, true);
+	assert.match(scale.sentence, /^2 of 64 photo loads with a recorded result failed \(3%\)\. Every other album, over the same days, had 3% \(40 of 1,436\)/);
+	// Two counts, no rows, over the note's own days in Chicago time (Sep 29 00:00 to Oct 3 00:00 CDT).
+	assert.equal(calls.length, 2);
+	assert.ok(calls.every((call) => call.head && call.from === '2026-09-29T05:00:00.000Z' && call.to === '2026-10-03T05:00:00.000Z'), JSON.stringify(calls));
+	assert.deepEqual(calls.map((call) => call.names.length).sort(), [1, 2]);
+	// Two failures on 64 loads against a clean rest of the gallery are higher but too few to tell: still a line, not an alarm.
+	const tooFew = await loadHome({ admin: events({ loads: 210, failures: 2 }), env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings });
+	assert.equal(tooFew.cards[0].failureScale!.routine, true);
+	assert.match(tooFew.cards[0].failureScale!.sentence, /too few to say this launch loads worse\.$/);
+	// Well above the rest: not routine.
+	const many = launchFinding('launch-photo-failures-A', 'A', { rule: 'launch_failures', severity: 'high', evidence: { ...note.evidence, numerator: 12 } as never });
+	const alarm = await loadHome({ admin: events({ loads: 2000, failures: 18 }), env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: async () => ({ findings: [many], checkedAt: null }) });
+	assert.equal(alarm.cards[0].failureScale!.routine, false);
+	// A read that fails: the note shows without a scale, and nothing else changes.
+	const down = await loadHome({ admin: events('down'), env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings });
+	assert.equal(down.cards[0].failureScale, null);
+	assert.deepEqual(down.cards[0].findings.map((item) => item.id), ['launch-photo-failures-A']);
+	// A note that is not about photo loads is not scaled, and reads nothing.
+	calls.length = 0;
+	const other = await loadHome({ admin: events({ loads: 1, failures: 1 }), env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: async () => ({ findings: [launchFinding('launch-download-failures-A', 'A', { rule: 'launch_failures', severity: 'high' })], checkedAt: null }) });
+	assert.equal(other.cards[0].failureScale, null);
+	assert.equal(calls.length, 0);
 });

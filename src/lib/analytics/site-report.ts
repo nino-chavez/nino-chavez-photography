@@ -28,7 +28,9 @@ export function sectionLabel(section: SiteFilter): string {
 }
 
 /** What to do about a reading that could not be taken, said once, in plain words. */
-export function providerFix(reason: string): string {
+export function providerFix(reason: string, owner: boolean): string {
+	// Setting Cloudflare up is the owner's to do. A visitor cannot act on it, so is not told.
+	if (!owner) return '';
 	return /not configured/i.test(reason)
 		? 'This report has no Cloudflare access set up here, so there is nothing to retry. Add the Cloudflare analytics settings to the site\'s server settings.'
 		: 'This is not zero. Reload in a few minutes. If it keeps failing, check the Cloudflare analytics token in the site\'s server settings.';
@@ -43,21 +45,22 @@ export function siteLead(input: {
 	period: SitePeriod;
 	section: SiteFilter;
 	today: string;
+	owner: boolean;
 }): SiteFigures {
-	const { traffic, actions, period, section, today } = input;
+	const { traffic, actions, period, section, today, owner } = input;
 	return {
-		reach: reachFigure(traffic, period, section, today),
+		reach: reachFigure(traffic, period, section, today, owner),
 		contacts: clickFigure(SITE_CONTACT_LABEL, actions, 'contact_clicks', period, today, ' These are links opened, not messages sent.'),
 		outbound: clickFigure(SITE_OUTBOUND_LABEL, actions, 'external_clicks', period, today, ' These are links opened, not visits that happened.')
 	};
 }
 
-function reachFigure(traffic: SiteTrafficResult | null, period: SitePeriod, section: SiteFilter, today: string): SiteFigure {
+function reachFigure(traffic: SiteTrafficResult | null, period: SitePeriod, section: SiteFilter, today: string, owner: boolean): SiteFigure {
 	if (section === 'photography') {
 		return { label: SITE_REACH_LABEL, value: null, detail: 'Not shown for photography. The gallery is one app page, so page loads undercount what people do in it. Home and Albums count the gallery itself.' };
 	}
-	const reading = reachReading(traffic);
-	if (!reading.available) return { label: SITE_REACH_LABEL, value: null, detail: `${reading.reason} ${providerFix(reading.reason)}` };
+	const reading = reachReading(traffic, owner);
+	if (!reading.available) return { label: SITE_REACH_LABEL, value: null, detail: `${reading.reason} ${providerFix(reading.reason, owner)}`.trim() };
 	if (section === 'all' || !traffic || !traffic.available) return { ...siteFigure(SITE_REACH_LABEL, reading, today, ' Includes the photography pages; gallery activity is counted on Home and Albums.', period) };
 	const picked = traffic.sections.find((item) => item.key === section);
 	if (!picked) return { label: SITE_REACH_LABEL, value: null, detail: 'This section was not in the report. This is not zero.' };

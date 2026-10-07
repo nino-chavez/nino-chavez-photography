@@ -115,6 +115,8 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 			today: model.today
 		},
 		recap,
+		// One note per page explains every `*` on it: the header's date and any row of the comparison table.
+		datesRecovered: (album.status !== 'no_launch_date' && album.basis === 'inferred') || launchTable(model).some((row) => row.inferred),
 		// Nothing to list (an album with no launch date, or a visitor and no recap yet) means no section at all.
 		recaps: recapRowList && recapRowList.length ? { rows: recapRowList } : null,
 		photos,

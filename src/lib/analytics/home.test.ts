@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { Launch, LaunchAgeTotals, LaunchDay } from './launch-read-model.server';
 import { surgeWords,
 	buildHome, changeWords, lastOpenedNote, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, nextRecaps,
-	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, staleness, statusLabel, trailingGap, weekLine,
+	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, sparkCaption, staleness, statusLabel, trailingGap, weekLine,
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
 } from './home';
 import { minimumSample } from './intelligence-rules';
@@ -67,17 +67,18 @@ const FRESH: Freshness = { incompleteDays: [], refreshedAt: null, checked: false
 const open = (launches: Launch[] | null, today: string, stale = staleness(FRESH, addDays(today, -1), `${today}T15:00:00Z`)) => openingSentence({ launches, stale, today });
 const text = (value: ReturnType<typeof openingSentence>) => sentenceText(value.sentence);
 
-test('production on October 6: the newest launch leads, then that no new album came since Sep 26, the recovered date said in the album report\'s words', () => {
+test('production on October 6: the newest launch leads with its measure and its median, then that no new album came since Sep 26, the recovered date marked', () => {
 	const launches = world('2026-10-06', ALL);
 	const opening = open(launches, '2026-10-06');
 	assert.equal(opening.state, 'quiet');
 	// The like-for-like line of the newest launch, with the days its week covers.
-	assert.equal(text(opening), 'College Women\'s VB - Millikin at North Central finished its first week 4th of 7 launches.');
-	assert.equal(sentenceText(opening.then!), 'No new album since Sep 26 (date recovered afterwards from a log), 10 days ago.');
+	// The place, what it is a place in, and how far from the middle: a rank alone ("4th of 7") sounds mid-pack, and 266 is below the median of 381.
+	assert.equal(text(opening), 'College Women\'s VB - Millikin at North Central finished its first week 4th of 7 launches, with 266 photo opens against a median of 381 for earlier launches.');
+	assert.equal(sentenceText(opening.then!), 'No new album since Sep 26*, 10 days ago.');
 	// A recorded date carries no mark.
 	assert.equal(sentenceText(open(world('2026-10-06', ALL, {}, []), '2026-10-06').then!), 'No new album since Sep 26, 10 days ago.');
 	// The "days ago" count is computed from today, not from the window: a week later it says 17.
-	assert.equal(sentenceText(open(world('2026-10-13', ALL), '2026-10-13').then!), 'No new album since Sep 26 (date recovered afterwards from a log), 17 days ago.');
+	assert.equal(sentenceText(open(world('2026-10-13', ALL), '2026-10-13').then!), 'No new album since Sep 26*, 17 days ago.');
 });
 
 test('a launch published today waits for its first full day', () => {
@@ -111,12 +112,12 @@ test('a launch that just finished: its rank at day 7', () => {
 	const launches = world('2026-10-02', ['fJKdsB', 'Re7kho', 'dKe567', 'Big', 'Bump', 'jq1Rp7']);
 	const opening = open(launches, '2026-10-02');
 	assert.equal(opening.state, 'just_finished');
-	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week 2nd of 6 launches.');
+	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week 2nd of 6 launches, with 931 photo opens against a median of 125 for earlier launches.');
 	// Alone with a week, there is no rank to state.
 	assert.equal(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), 'HS Girls VB - JCA at ACC finished its first week; no other launch has a complete first week to compare with.');
 	// A tie says tie.
 	const tied = world('2026-10-02', ['Re7kho', 'Big']).map((launch) => ({ ...launch, rank: { ...launch.rank, day7: { rank: 1, compared: 2, tied: true } } }));
-	assert.match(text(open(tied, '2026-10-02')), /finished its first week tied for 1st of 2 launches\.$/);
+	assert.match(text(open(tied, '2026-10-02')), /finished its first week tied for 1st of 2 launches, with \d+ photo opens against \d+ for the 1 earlier launch\.$/);
 });
 
 test('a launch that finished with a day missing says so and states no total or rank', () => {
@@ -243,7 +244,7 @@ test('a card says what it is, and each number says what it is compared with', ()
 	const launches = world('2026-10-02', ALL);
 	const day7 = launchCard(launches.find((l) => l.albumKey === 'Re7kho')!, launches, '2026-10-02', 'cf-id');
 	assert.equal(day7.status, 'Day 7 reached');
-	assert.equal(day7.published, 'First published Sep 25 (date recovered afterwards from a log)');
+	assert.equal(day7.published, 'First published Sep 25*');
 	assert.equal(day7.opens, '931 photo opens in week 1');
 	assert.equal(day7.comparison, '2nd of 6 launches at day 7.');
 	assert.equal(day7.cover, 'cf-id');
@@ -478,13 +479,17 @@ test('Home says it once, on the newest launch only, and leaves out the stored "l
 	assert.equal(view.state, 'quiet');
 });
 
-test('the headline says where the newest launch stands and leaves its numbers to the card below it', () => {
+test('the headline says where the newest launch stands, what that place is a place in, and the median it is measured against', () => {
 	const launches = world('2026-10-06', ALL);
 	const tied = launches.map((launch, i) => (i === 0 ? { ...launch, rank: { ...launch.rank, day7: { rank: 4, compared: 7, tied: true } } } : launch));
-	assert.equal(text(open(tied, '2026-10-06')), 'College Women\'s VB - Millikin at North Central finished its first week tied for 4th of 7 launches.');
-	// No count, no date and no "photo opens" in the headline: the card under it carries them.
-	assert.doesNotMatch(text(open(launches, '2026-10-06')), /\d{3}|photo open|Sep|Oct/);
-	assert.ok(text(open(launches, '2026-10-06')).length <= 100);
+	assert.equal(text(open(tied, '2026-10-06')), 'College Women\'s VB - Millikin at North Central finished its first week tied for 4th of 7 launches, with 266 photo opens against a median of 381 for earlier launches.');
+	// The measure is named, and no date is in the headline: the card under it carries the window.
+	assert.match(text(open(launches, '2026-10-06')), /with 266 photo opens against a median of 381/);
+	assert.doesNotMatch(text(open(launches, '2026-10-06')), /Sep|Oct/);
+	// With no earlier launch there is no median, and the sentence says no more than it knows.
+	assert.doesNotMatch(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), /median|against/);
+	// A headline that names its measure and its median is longer than a rank alone; it stays one sentence under 160 characters, and Home's two-screen height is measured on the page.
+	assert.ok(text(open(launches, '2026-10-06')).length <= 160);
 });
 
 test('the overlapping sentence carries no counts, so it fits two lines; the card carries the numbers', () => {
@@ -531,4 +536,18 @@ test('findings say when they were last checked: fresh, late past four refresh ca
 	const late = findingsCheck(null, '2026-10-06T17:00:00Z', '2026-10-06');
 	const placed = placeFindings([{ albumKey: 'A', findings: [], findingsCheck: null }, { albumKey: 'B', findings: [], findingsCheck: null }] as never, [f], late);
 	assert.deepEqual(placed.map((card) => card.findingsCheck), [late, null], 'only a card with findings says when they were checked');
+});
+
+test('the page says once what a marked date means, and only when a launch it shows has one', () => {
+	const build = (launches: Launch[]) => buildHome(baseInput('2026-10-06', ALL, { launches }));
+	assert.equal(build(world('2026-10-06', ALL)).datesRecovered, true);
+	assert.equal(build(world('2026-10-06', ALL, {}, [])).datesRecovered, false);
+});
+
+test('the caption under the small bars says what a thin mark and a dashed line are, only when they are drawn', () => {
+	const bar = (state: 'value' | 'gap' | 'future', opens: number | null) => ({ day: 1, state, opens, height: 0 });
+	assert.equal(sparkCaption([bar('value', 103), bar('value', 575)]), 'Opens by day, week 1.');
+	assert.equal(sparkCaption([bar('value', 103), bar('value', 0)]), 'Opens by day, week 1. A thin mark is a day with no opens.');
+	assert.equal(sparkCaption([bar('value', 103), bar('gap', null), bar('future', null)]), 'Opens by day, week 1. A dashed line is a day not counted.');
+	assert.equal(sparkCaption([bar('value', 0), bar('gap', null)]), 'Opens by day, week 1. A thin mark is a day with no opens. A dashed line is a day not counted.');
 });

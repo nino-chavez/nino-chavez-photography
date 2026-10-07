@@ -18,7 +18,7 @@
 	const hostname = $derived(page.url.hostname);
 	const traffic = $derived(data.traffic);
 	const report = $derived(traffic && traffic.available ? traffic : null);
-	const lead = $derived(siteLead({ traffic, actions: data.actions, period: data.period, section: data.section, today: data.today }));
+	const lead = $derived(siteLead({ traffic, actions: data.actions, period: data.period, section: data.section, today: data.today, owner: data.intelligenceOwner }));
 	const figures = $derived([lead.reach, lead.contacts, lead.outbound]);
 	const today = $derived(todayLine(data.actions, data.today));
 	const pages = $derived(report ? pagesFor(report, data.section) : []);
@@ -142,7 +142,7 @@
 		{#if !report}
 			<section class="panel" role="status" aria-labelledby="down-title">
 				<h2 id="down-title">The page-load lists are not available</h2>
-				<p class="note">Top pages and visit sources come from Cloudflare, which could not be read, so they are not shown. That is not the same as there being none. {providerFix(traffic && !traffic.available ? traffic.reason : 'could not be read')} The click counts above and the page actions below do not depend on Cloudflare.</p>
+				<p class="note">Top pages and visit sources come from Cloudflare, which could not be read, so they are not shown. That is not the same as there being none. {providerFix(traffic && !traffic.available ? traffic.reason : 'could not be read', data.intelligenceOwner)} The click counts above and the page actions below do not depend on Cloudflare.</p>
 			</section>
 		{/if}
 

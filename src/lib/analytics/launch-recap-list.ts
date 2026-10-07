@@ -57,6 +57,16 @@ export const WAITING_NOTE = `Not stored yet. It waits for complete records for i
 export const MISSING_NOTE = `No recap was written. It was not stored within ${RECAP_CATCH_UP_DAYS} days of its due time.`;
 
 const FLAG_WRITTEN_LATER = 'Written later from the records';
+
+/**
+ * A flag every listed recap carries is the rule, not an exception: it is said once above the list, not on each row. With one row
+ * there is nothing to compare it with, so its flag stays on the row.
+ */
+export function sharedFlag(rows: readonly Pick<RecapRow, 'flags' | 'query'>[]): string | null {
+	const stored = rows.filter((row) => row.query !== null);
+	if (stored.length < 2) return null;
+	return stored[0].flags.find((flag) => stored.every((row) => row.flags.includes(flag))) ?? null;
+}
 const FLAG_LATE = 'Late';
 
 function evidenceFlag(evidence: RecapEvidence): string | null {

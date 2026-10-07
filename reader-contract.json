@@ -33,6 +33,7 @@
         "src/lib/analytics/site-report.ts",
         "src/lib/analytics/site-readings.ts",
         "src/lib/analytics/data-quality.ts",
+        "src/lib/analytics/failure-scale.ts",
         "src/lib/analytics/measurement-health.ts",
         "src/lib/analytics/saved-views.ts",
         "src/lib/analytics/photo-view.ts",

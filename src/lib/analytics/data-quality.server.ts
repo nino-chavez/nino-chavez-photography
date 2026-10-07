@@ -88,7 +88,7 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	// when the gallery summary itself could be read, as before.
 	const eventsRaw = publicNames.then((found) => (found.size ? fetchV2ReportProjection(admin, query, { publicAlbumKeys: [...found.keys()] }) : null))
 		.catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; });
-	const events: Promise<EventsView> = Promise.all([eventsRaw, reportPromise.then((report) => report.available, () => false)]).then(([raw, reportOk]) => eventsView(reportOk ? raw : null));
+	const events: Promise<EventsView> = Promise.all([eventsRaw, reportPromise.then((report) => report.available, () => false)]).then(([raw, reportOk]) => eventsView(reportOk ? raw : null, deps.owner));
 
 	// One health read: everyone's status line takes its problems from it, and only the owner sees its counts.
 	const [reportRead, healthRead, refreshRead, incidentRead, trafficRead, actionsRead] = await Promise.allSettled([
@@ -108,10 +108,10 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	// Provider journeys start now and stream: the page does not wait for them.
 	const journeys: Promise<JourneysView> = names.size
 		? Promise.all(POSTHOG_JOURNEY_REPORTS.map((name) => queryGalleryJourneys(transport, { report: name, start: query.start, end: query.end, source: query.source, sport: query.sport, category: query.category }, { publicOnly: true, allowedAlbumKeys: publicAlbumKeys })))
-			.then((rows: JourneyAggregate[]) => journeysView(rows))
-			.catch(() => journeysView(null))
-		: Promise.resolve(journeysView(null));
-	const siteJourneys = loadSiteJourneys(transport, query.start, query.end, 'all').catch(() => ({ available: false as const, reason: notReadNote('posthog').what }));
+			.then((rows: JourneyAggregate[]) => journeysView(rows, deps.owner))
+			.catch(() => journeysView(null, deps.owner))
+		: Promise.resolve(journeysView(null, deps.owner));
+	const siteJourneys = loadSiteJourneys(transport, query.start, query.end, 'all').catch(() => ({ available: false as const, reason: notReadNote('posthog', deps.owner).what }));
 
 	const incidents = ok(incidentRead);
 	const health = ok(healthRead);

@@ -18,8 +18,10 @@
 		owner?: boolean;
 		/** The launch scope the findings were read from; dismissals are recorded against it. */
 		scope?: IntelligenceScope | null;
+		/** False when the page lists what its findings cannot tell the reader once, for all of them, instead of under each. */
+		showLimits?: boolean;
 	}
-	let { findings, compact = false, checked = null, level = 3, owner = false, scope = null }: Props = $props();
+	let { findings, compact = false, checked = null, level = 3, owner = false, scope = null, showLimits = true }: Props = $props();
 
 	const hostname = $derived(page.url.hostname);
 	const href = (value: string) => intelligenceEvidenceHref(hostname, value);
@@ -102,7 +104,7 @@
 				</details>
 			{:else}
 				{#if finding.evidenceText}<p class="evidence"><strong>Evidence:</strong> {finding.evidenceText}</p>{/if}
-				{#if finding.limits?.length}
+				{#if showLimits && finding.limits?.length}
 					<p class="limits-title">What this cannot tell you</p>
 					<ul class="limits">{#each finding.limits as limit (limit)}<li>{limit}</li>{/each}</ul>
 				{/if}
@@ -120,8 +122,8 @@
 					</form>
 				{:else}
 					<div class="buttons owner">
-						<button type="button" onclick={() => void open(finding, 'dismiss')}>Dismiss<span class="sr-only">: {finding.title}</span></button>
-						<button type="button" onclick={() => void open(finding, 'snooze')}>Snooze 7 days<span class="sr-only">: {finding.title}</span></button>
+						<button type="button" onclick={() => void open(finding, 'dismiss')}>Dismiss this note<span class="sr-only">: {finding.title}</span></button>
+						<button type="button" onclick={() => void open(finding, 'snooze')}>Snooze this note for 7 days<span class="sr-only">: {finding.title}</span></button>
 					</div>
 				{/if}
 			{/if}
