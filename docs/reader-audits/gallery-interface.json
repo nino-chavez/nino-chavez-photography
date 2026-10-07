@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T14:54:09.214Z",
-  "reviewedBy": "Claude Sonnet 5.5 (fix-pass session, self-review; not a cold reviewer)",
-  "method": "Walked every analytics screen this pass changed in rendered captures (Home, Albums, album report, recap view for Re7kho and DWdCET at checkpoints 3, 7 and 5, Photos, Site, Data, Settings; visitor and owner; phone and desktop; Chromium and WebKit; default, 200 and 312 percent text, contrast-more, forced colors) at docs/evidence/screen-reviews/analytics-acceptance-fixes-0e9680a, opened a sample of the frames, and ran the overflow, 44 px, text growth, keyboard, axe, contrast, console and non-GET gates (all clean; each gate was made to fail once). After the coordinator's two corrections (the recap's as-of time is its due time; Home's headline is the short answer) Home and every recap view were captured again in both engines and both roles and the phone frames opened. Checked iOS Safari in the Simulator at the default and Accessibility XXL text sizes on Home and Photos. Not covered: a cold reviewer, a real device, a real sign-in, Settings as the report host serves it, a launch in its first days, screen readers. The stored findings are read from the database, so the new wording of two findings is verified in unit tests, not on the page.",
-  "sourceDigest": "sha256:aec1c7d1e61a6c5dd83f5ad0bca8ccac176d0fb22abf9d1c415fcb0d93ea613d",
+  "reviewedAt": "2026-10-07T15:07:28.120Z",
+  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer) over the fix-pass subagent's walk and the second cold review",
+  "method": "The fix-pass walk (docs/evidence/screen-reviews/analytics-acceptance-fixes-0e9680a/mechanical.md) and the second blind cold review (cold-review-2.md, same folder) stand for every changed screen. After both, the coordinator changed one sentence in AlbumReport.svelte, the selected photo's grid-and-opens note, which the cold review found garbled. It was checked by fetching /albums/Re7kho and /albums/DWdCET from a local dev server reading production read-only: 'Shown in a gallery grid 13 times and opened 3 times, Sep 29 to Oct 6. Grid showings are recorded only from Sep 29.' Not covered: a rendered capture of that sentence, a real device, a real sign-in, and screen readers.",
+  "sourceDigest": "sha256:6fad52cbf14e4a257668fc99c6c4b1d5c7a46b31aedfe96e18906396e30978c7",
   "sourceFiles": 202,
   "scope": [
     "Home headline is the short answer and drops the calendar-week comparison",

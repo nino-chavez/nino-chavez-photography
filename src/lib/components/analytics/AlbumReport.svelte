@@ -145,7 +145,7 @@
 						<div><dt>Favorites</dt><dd>{selected.favorites.toLocaleString()}</dd></div>
 					</dl>
 					{#if selected.exposureRecorded && selected.exposures !== null && selected.opensInExposureWindow !== null}
-						<p class="note">Over {daysWords(data.album.exposure.since && data.album.exposure.since > data.album.window.start ? data.album.exposure.since : data.album.window.start, data.album.window.end)}, the days tiles on screen were recorded, this photo's tile appeared on screen in a gallery grid {plural(selected.exposures, 'time')}, and the photo was opened {plural(selected.opensInExposureWindow, 'time')} on those same days.{#if selected.opensInExposureWindow > selected.exposures}{' '}An open can also come from a direct link, without the tile ever appearing in a grid.{/if}</p>
+						<p class="note">Shown in a gallery grid {plural(selected.exposures, 'time')} and opened {plural(selected.opensInExposureWindow, 'time')}, {daysWords(data.album.exposure.since && data.album.exposure.since > data.album.window.start ? data.album.exposure.since : data.album.window.start, data.album.window.end)}.{#if data.album.exposure.since && data.album.exposure.since > data.album.window.start}{' '}Grid showings are recorded only from {formatDay(data.album.exposure.since)}.{/if}{#if selected.opensInExposureWindow > selected.exposures}{' '}An open can also come from a direct link, without the tile ever appearing in a grid.{/if}</p>
 					{/if}
 					<div class="selected-actions">
 						{#if selected.cfImageId}<a class="secondary" href={`https://ninochavez.co${base}/photo/${encodeURIComponent(selected.cfImageId)}`}>Open photo to share or download</a>{/if}
