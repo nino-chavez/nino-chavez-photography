@@ -77,9 +77,19 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
   too, but only so that the old-address redirect runs: SvelteKit answers 404 to any path outside
   `/photography` before `handle`, so without that reroute the redirect would never fire.
 - One Cloudflare Page Rule acts on this host: `49cd0626a9c5fe0e70031b988f948c2c` matches
-  `analytics.ninochavez.co/?*` (the root with a query string) and forwards it with a 301 to the
-  site report, so old links that carried site-report filters on the root keep working. Page
-  Rules run at the edge before the app, so a rule on a path the app serves hides that page.
+  `analytics.ninochavez.co/?*` (the root with a query string) and forwards it with a 301 to
+  `https://analytics.ninochavez.co/photography/analytics/sites?$1` (the internal path, which the app
+  then redirects again to `/sites`: two hops). Page Rules run at the edge before the app, so a rule on
+  a path the app serves hides that page.
+  **The rule becomes redundant once this release deploys.** `src/lib/analytics/old-addresses.ts`
+  (`oldRootTarget`) now sends a root address whose query carries something the old site report read
+  (`period`, `section`, `page`, `actionsPage`, `view`) to `/sites` with just those parameters, in one
+  308; a bare root or any other root query stays on Home. Until the rule is deleted the edge still
+  answers first, which is harmless because both end at `/sites`. The app's redirect cannot be seen on
+  this host while the rule exists, so the coordinator will ask Nino to delete the rule and then check
+  `curl -sI 'https://analytics.ninochavez.co/?period=30'`: it should answer `308` to
+  `https://analytics.ninochavez.co/sites?period=30` with `x-frame-options: DENY`. Do not change
+  Cloudflare as part of the deploy.
   The bare-root rule `4abee86fac06ab509ec6e74a93c4019e` (`analytics.ninochavez.co/` → the site
   report) was deleted on 2026-10-06 so the root reaches Home. Browsers that followed its 301
   may have cached it; a private window shows the current behaviour.
@@ -109,8 +119,12 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
   | `https://analytics.ninochavez.co/gallery?section=measurement&period=7` | `https://analytics.ninochavez.co/data?period=7` |
   | `https://analytics.ninochavez.co/gallery/export.csv?period=7` | `https://analytics.ninochavez.co/photos/export.csv?period=7` |
   | `https://analytics.ninochavez.co/photography/analytics/operator` | `https://analytics.ninochavez.co/` |
+  | `https://analytics.ninochavez.co/gallery?section=albums&albums=Re7kho` | `https://analytics.ninochavez.co/albums/Re7kho` |
 
   Following any of them once must not redirect again. A POST to `/gallery` answers 404.
+- Root addresses (only once Page Rule `49cd0626` is deleted; until then the edge answers them with a
+  301): `/?period=30` answers `308` to `/sites?period=30`; `/?period=7&section=writing` to
+  `/sites?period=7&section=writing`; `/` and `/?x=1` answer 200 (Home) with no redirect.
 - `/photos` on the analytics subdomain returns 200 with a page titled "Photos · Photography
   reports", and `/photos/export.csv?period=7` returns 200 with `content-type: text/csv`. Before this
   release both returned a bare 404 with no `x-frame-options` (checked 2026-10-07).
