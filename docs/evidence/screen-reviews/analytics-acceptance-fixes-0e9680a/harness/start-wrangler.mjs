@@ -9,5 +9,5 @@ const [dir, port] = process.argv.slice(2);
 const launcher = fileURLToPath(new URL('../../../../../scripts/wrangler-pages-dev.mjs', import.meta.url));
 const args = [dir, '--port', port, '--ip', '127.0.0.1', '--compatibility-date', '2024-03-20', '--compatibility-flag', 'nodejs_compat', ...(process.env.INSPECTOR ? ['--inspector-port', process.env.INSPECTOR] : [])];
 const child = spawn(process.execPath, [launcher, process.env.WRANGLER_CWD ?? process.cwd(), ...args], { stdio: 'inherit' });
-for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => child.kill(sig));
+for (const sig of /** @type {const} */ (['SIGINT', 'SIGTERM', 'SIGHUP'])) process.on(sig, () => child.kill(sig));
 child.on('exit', (code) => process.exit(code ?? 0));

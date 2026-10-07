@@ -9,5 +9,5 @@ const [dir, port] = process.argv.slice(2);
 const launcher = fileURLToPath(new URL('../../../../../scripts/wrangler-pages-dev.mjs', import.meta.url));
 const args = ['.svelte-kit/cloudflare', '--port', port, '--ip', '127.0.0.1', '--persist-to', `/private/tmp/claude-501/wrangler-state-${port}`, '--show-interactive-dev-session=false'];
 const child = spawn(process.execPath, [launcher, dir, ...args], { stdio: 'inherit' });
-for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => child.kill(sig));
+for (const sig of /** @type {const} */ (['SIGINT', 'SIGTERM', 'SIGHUP'])) process.on(sig, () => child.kill(sig));
 child.on('exit', (c) => process.exit(c ?? 0));
