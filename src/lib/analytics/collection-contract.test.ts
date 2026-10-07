@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { COLLECTION_REJECTION_REASONS, UNSTORED_REJECTION_REASONS } from './rejection-reasons';
 import {
 	collectionOutcome,
 	createAnalyticsTestMarker,
@@ -184,4 +186,12 @@ test('v2 accepts the actual photo and mixed ZIP payloads and derives album facts
  assert.equal(parseEventV2Request(payload('download_prepared',{album_key:'album-one',download_request_id:id,mode:'album_zip',requested_item_count:2,item_count_known:false,byte_count:20,duration_ms:10})).ok,true);
  assert.equal(parseEventV2Request(payload('album_opened',{view_id:id,entry_surface:'album'})).ok,false);
  assert.equal(parseEventV2Request(payload('photo_rendered',{photo_id:'photo-one',view_id:id,load_duration_ms:10,raw_search:'private query'})).ok,false);
+});
+
+test('the collector reasons are the ones the counter table accepts, plus not_recorded for earlier refusals', () => {
+	const migration = readFileSync(new URL('../../../supabase/migrations/20261007180000_analytics_collection_rejection_reasons.sql', import.meta.url), 'utf8');
+	const lists = [...migration.matchAll(/reason (?:NOT )?IN \(([^)]*)\)/g)].map((match) => match[1].split(',').map((item) => item.trim().replace(/'/g, '')).sort());
+	assert.equal(lists.length, 2, 'the table CHECK and the function check');
+	for (const list of lists) assert.deepEqual(list, [...COLLECTION_REJECTION_REASONS, 'not_recorded'].sort());
+	for (const reason of UNSTORED_REJECTION_REASONS) assert.ok((COLLECTION_REJECTION_REASONS as readonly string[]).includes(reason));
 });

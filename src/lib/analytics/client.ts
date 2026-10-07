@@ -5,14 +5,22 @@ import { eventPropertiesMatchContract, type EventV2Name, type EventV2Properties 
 import { getAnalyticsPreferences, getVisitContext } from '$lib/analytics/visit';
 import { deliverWithSingleRetry } from '$lib/analytics/delivery';
 import { createExperimentExposureEmitter, type ExperimentAssignment } from '$lib/analytics/experiment-exposure';
+import { isBotUserAgent } from '$lib/analytics/bot-detection';
 
 export type EngagementType = 'view' | 'favorite' | 'download' | 'share' | 'album_open';
+
+/**
+ * Whether this page may send analytics at all. A crawler that runs the gallery's JavaScript sends an event for
+ * everything it renders: Meta's began on Oct 2, 2026, at about 33,000 requests a day. The collector refuses a
+ * known crawler anyway, so its browser does not send; the server keeps the same check for crawlers that post directly.
+ */
+const collecting = (): boolean => browser && !isBotUserAgent(navigator.userAgent);
 
 export interface V2TrackInput { eventName: EventV2Name; properties?: EventV2Properties; eventId?: string; occurredAt?: string; }
 
 /** Delivery failure is deliberately invisible to gallery interaction, but the client retries once with the same ID. */
 export async function sendAnalyticsEventV2(input: V2TrackInput, fetcher: typeof fetch = fetch): Promise<'accepted' | 'duplicate' | 'failed'> {
-	if (!browser) return 'failed';
+	if (!collecting()) return 'failed';
 	const preferences = getAnalyticsPreferences();
 	const visit = getVisitContext();
 	const body = JSON.stringify({
@@ -28,7 +36,7 @@ export async function sendAnalyticsEventV2(input: V2TrackInput, fetcher: typeof 
 }
 
 export function trackAnalyticsEventV2(input: V2TrackInput): void {
-	if (!browser || !eventPropertiesMatchContract(input.eventName, input.properties ?? {})) return;
+	if (!collecting() || !eventPropertiesMatchContract(input.eventName, input.properties ?? {})) return;
 	void sendAnalyticsEventV2(input).catch(() => {});
 }
 
@@ -49,7 +57,7 @@ export function trackEngagement(
 	eventType: EngagementType,
 	target: { photoId?: string; albumKey?: string; source?: string }
 ): void {
-	if (!browser || getAnalyticsPreferences().excludeThisBrowser) return;
+	if (!collecting() || getAnalyticsPreferences().excludeThisBrowser) return;
 	if (!target.photoId && !target.albumKey) return;
 	try {
 		void fetch(`${base}/api/engagement`, {
@@ -70,7 +78,7 @@ export function trackEngagement(
 
 /** A browser can prove it requested a download, not that a file completed after navigation. */
 export function trackDownloadDiagnostic(target: { photoId?: string; albumKey?: string; source?: string; status: 'requested' | 'failed'; errorCode?: string }): void {
-	if (!browser || (!target.photoId && !target.albumKey)) return;
+	if (!collecting() || (!target.photoId && !target.albumKey)) return;
 	try {
 		void fetch(`${base}/api/analytics/diagnostics`, {
 			method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,

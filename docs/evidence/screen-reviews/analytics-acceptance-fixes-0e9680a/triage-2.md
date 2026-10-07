@@ -22,6 +22,7 @@ The second reviewer judged the fixed build blind. It had not seen the first revi
 ## Confirmed, and more than a screen defect
 
 - **B1, the Data headline against the delivery numbers.** The rejected count is real. In production, `analytics_collection_delivery_counters` (read-only, 2026-10-07) shows rejections jump from about 400 a day (Sep 29 to Oct 1) to 24,882 on Oct 2, then between 12,865 and 27,842 a day through Oct 6. Accepted events stay in their usual range. No deploy landed between Oct 1 01:04 CDT and Oct 3. The collector records no reason for a rejection, so the cause is unknown. Some of its refusal paths (503 `recording_unavailable`) would be lost data. The investigation is filed as its own task. The headline rule needs a baseline: a surge against the usual rate is a problem to report, not "Nothing is wrong".
+  - **Cause found (2026-10-07):** Meta's crawler began running the gallery's JavaScript on Oct 2. Every surge rejection was the known-crawler path (HTTP 202), and no 503 appeared in nine days, so no visitor events were lost. Evidence: [`docs/evidence/collection-rejections-2026-10-07.md`](../../collection-rejections-2026-10-07.md). The fix records a reason for each rejection, stops crawler browsers from sending, and puts a surge against the usual rate on Home and Data.
 
 ## For the next fix pass, ranked
 
