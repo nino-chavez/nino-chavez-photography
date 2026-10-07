@@ -332,7 +332,7 @@ export const RECOVERED_DATE_WORDS = 'date recovered afterwards from a log';
 /** What a page says once, beside its first recovered date, for every `*` on that page. */
 export const RECOVERED_NOTE = '* Date recovered afterwards from a log. The album\'s first publication was not recorded when it happened.';
 /** What a page says instead when every launch date on it was recovered: a mark on all of them would flag nothing. */
-export const RECOVERED_ALL_NOTE = 'Every launch date here was recovered afterwards from a log. The first publications were not recorded when they happened.';
+export const RECOVERED_ALL_NOTE = 'Every launch date here was recovered afterwards from a log.';
 /**
  * How a page shows recovered dates, from the dates it actually shows. When some are recovered and some were recorded, the `*` picks the
  * recovered ones out and the page carries RECOVERED_NOTE once. When all are recovered the mark picks out nothing, so there is no mark and
@@ -355,9 +355,10 @@ function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>, inTe
 /**
  * What share of the counted photo opens came from browsers the gallery's counter could not sort as visitors, test traffic or bots. They are counted and not
  * called human, so every total next to this sentence includes them. `whose` names the totals ("the gallery’s", "this album’s") and `dates` the days they cover.
- * "Most" only when more than half; the real share is always said. Null when nothing is unsorted, or the classes were not read.
+ * "Most" only when more than half; the real share is always said. Null when nothing is unsorted, or the classes were not read. `brief` is for Home, which holds to a
+ * screen: it keeps the share, the days and the upper limit, and leaves out the sentence the album report and the Data page carry in full.
  */
-export function unsortedSentence(classes: ReadonlyArray<{ classification: string; count: number }> | null, whose: string, dates: string): string | null {
+export function unsortedSentence(classes: ReadonlyArray<{ classification: string; count: number }> | null, whose: string, dates: string, brief = false): string | null {
 	if (!classes) return null;
 	const count = (id: string) => classes.find((item) => item.classification === id)?.count ?? 0;
 	const unsorted = count('unclassified');
@@ -366,6 +367,7 @@ export function unsortedSentence(classes: ReadonlyArray<{ classification: string
 	const share = Math.round((unsorted / counted) * 100);
 	const most = unsorted * 2 > counted;
 	const lead = most ? `Most of ${whose} counted photo opens, ${dates} (${share}%),` : `${share}% of ${whose} counted photo opens, ${dates},`;
+	if (brief) return `${most ? `Most (${share}%)` : `${share}%`} of ${whose} counted opens, ${dates}, came from browsers the counter could not sort${most ? ', so read them as an upper limit' : ''}.`;
 	return `${lead} came from browsers the gallery’s counter could not sort. They are counted, and they are not called human${most ? ', so read these totals as an upper limit on what visitors did' : ''}.`;
 }
 

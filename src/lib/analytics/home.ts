@@ -557,7 +557,7 @@ export function openProblems(input: ProblemInput): HomeProblem[] {
 
 /** The newest launch's share of unsorted photo opens, over the days Home's headline counts; see `unsortedSentence`. */
 export function unsortedLine(traffic: HomeInput['traffic'], today: string): string | null {
-	return traffic ? unsortedSentence(traffic.classes, 'the newest launch’s', range({ start: traffic.start, end: traffic.end }, today)) : null;
+	return traffic ? unsortedSentence(traffic.classes, 'the newest launch’s', range({ start: traffic.start, end: traffic.end }, today), true) : null;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
