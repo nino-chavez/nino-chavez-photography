@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { albumIndexPath, dataPath, homePath, settingsPath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAlbumKey, isAnalyticsWorkspace } from './report-paths';
+import { isAlbumKey } from './album-key';
+import { albumIndexPath, dataPath, homePath, hostAddress, photosPath, settingsPath, sitePath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAnalyticsWorkspace } from './report-paths';
 
 const HOST = 'analytics.ninochavez.co';
 
@@ -28,10 +29,48 @@ test('anything that is not exactly one album key is not an album address', () =>
 	}
 });
 
-test('existing report addresses are unchanged', () => {
+test('existing report addresses are unchanged, and the old gallery report has no internal route left', () => {
 	assert.equal(internalReportPath('/sites'), '/photography/analytics/sites');
-	assert.equal(internalReportPath('/gallery'), '/photography/analytics/operator');
-	assert.equal(cleanReportPath('/photography/analytics/operator'), '/gallery');
+	// /gallery and its CSV moved: they are redirected before routing, so nothing maps to them or from them.
+	for (const old of ['/gallery', '/gallery/export.csv']) assert.equal(internalReportPath(old), null, old);
+	for (const old of ['/photography/analytics/operator', '/photography/analytics/operator/export.csv', '/photography/analytics']) assert.equal(cleanReportPath(old), null, old);
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/gallery'), false);
+	assert.equal(isAnalyticsWorkspace('/analytics/operator', 'localhost', '/photography/analytics/operator'), false);
+});
+
+test('the photo explorer and its CSV have clean addresses that map in both directions, and nothing else maps to them', () => {
+	for (const [clean, internal] of [['/photos', '/photography/analytics/photos'], ['/photos/export.csv', '/photography/analytics/photos/export.csv']] as const) {
+		assert.equal(internalReportPath(clean), internal);
+		assert.equal(cleanReportPath(internal), clean);
+		assert.equal(cleanReportPath(internalReportPath(clean)!), clean);
+		assert.equal(cleanReportPath(`${internal}/extra`), null);
+		assert.equal(internalReportPath(`${clean}/extra`), null);
+	}
+	assert.equal(photosPath(HOST), '/photos');
+	assert.equal(photosPath(HOST, '/export.csv?period=7'), '/photos/export.csv?period=7');
+	assert.equal(photosPath(HOST, '?scope=album&albums=Re7kho'), '/photos?scope=album&albums=Re7kho');
+	assert.equal(photosPath('localhost'), '/photography/analytics/photos');
+	assert.equal(photosPath('ninochavez.co', '/export.csv'), '/photography/analytics/photos/export.csv');
+	assert.equal(isAnalyticsWorkspace(null, HOST, '/photos'), true);
+	assert.equal(isAnalyticsWorkspace('/analytics/photos', 'localhost', '/photography/analytics/photos'), true);
+	// On the gallery host, /photos is not an analytics page.
+	assert.equal(isAnalyticsWorkspace(null, 'ninochavez.co', '/photos'), false);
+	// An album whose key is "photos" is still an album report.
+	assert.equal(internalReportPath('/albums/photos'), '/photography/analytics/albums/photos');
+});
+
+test('the site report has its own address on the report host and an internal one elsewhere', () => {
+	assert.equal(sitePath(HOST), '/sites');
+	assert.equal(sitePath(HOST, '?period=7'), '/sites?period=7');
+	assert.equal(sitePath('localhost'), '/photography/analytics/sites');
+});
+
+test('a clean report address is placed on whichever host asks', () => {
+	assert.equal(hostAddress(HOST, { pathname: '/photos', search: '?period=7', hash: '' }), '/photos?period=7');
+	assert.equal(hostAddress('localhost', { pathname: '/photos', search: '?period=7', hash: '' }), '/photography/analytics/photos?period=7');
+	assert.equal(hostAddress('localhost', { pathname: '/', search: '', hash: '' }), '/photography/analytics/home');
+	assert.equal(hostAddress('localhost', { pathname: '/data', search: '?period=7', hash: '#arrivals' }), '/photography/analytics/data?period=7#arrivals');
+	assert.equal(hostAddress('localhost', { pathname: '/albums/Re7kho', search: '', hash: '' }), '/photography/analytics/albums/Re7kho');
 });
 
 test('albumReportPath is the clean address on the report host and the internal route elsewhere', () => {
@@ -78,7 +117,22 @@ test('evidence links to an album report stay in the analytics shell; public albu
 	assert.equal(intelligenceEvidenceHref(HOST, '/photography/analytics/albums/..'), null);
 	// /albums/<slug> is the gallery's public album page and must keep its meaning.
 	assert.equal(intelligenceEvidenceHref(HOST, '/albums/Re7kho'), 'https://ninochavez.co/photography/albums/Re7kho');
-	assert.equal(intelligenceEvidenceHref(HOST, '/gallery?period=7'), '/gallery?period=7');
+});
+
+test('a link stored in a finding or a brief before the old gallery report moved goes to where that report went', () => {
+	// The shapes the rules wrote: the internal path with no base, the full internal path, and the clean address.
+	assert.equal(intelligenceEvidenceHref(HOST, '/gallery?period=7'), '/');
+	assert.equal(intelligenceEvidenceHref(HOST, '/analytics/operator?period=custom&start=2026-09-01&end=2026-09-30&scope=album&albums=Re7kho&measure=photo_opens'), '/albums/Re7kho');
+	assert.equal(intelligenceEvidenceHref('localhost', '/analytics/operator?period=custom&start=2026-09-01&end=2026-09-30&scope=album&albums=Re7kho'), '/photography/analytics/albums/Re7kho');
+	assert.equal(intelligenceEvidenceHref(HOST, '/photography/analytics/operator?section=photos&period=7&measure=downloads'), '/photos?period=7&measure=downloads');
+	assert.equal(intelligenceEvidenceHref('localhost', '/analytics/operator?section=measurement&period=7'), '/photography/analytics/data?period=7');
+	assert.equal(intelligenceEvidenceHref(HOST, '/analytics/operator?intelligence_snapshot=abc#albums'), '/#albums');
+	// A stored link never carries an album key that is not a key into a path.
+	assert.equal(intelligenceEvidenceHref(HOST, '/analytics/operator?scope=album&albums=../sites'), '/');
+	// The links the rules write now.
+	assert.equal(intelligenceEvidenceHref(HOST, '/analytics/albums/Re7kho'), '/albums/Re7kho');
+	assert.equal(intelligenceEvidenceHref(HOST, '/analytics/photos?period=custom&start=2026-09-01&end=2026-09-30'), '/photos?period=custom&start=2026-09-01&end=2026-09-30');
+	assert.equal(intelligenceEvidenceHref('localhost', '/analytics/photos?period=7'), '/photography/analytics/photos?period=7');
 });
 
 test('Home is the root of the report host, with an internal route that maps back, and the old root mapping is untouched', () => {
@@ -86,8 +140,8 @@ test('Home is the root of the report host, with an internal route that maps back
 	assert.equal(cleanReportPath('/photography/analytics/home'), '/');
 	assert.equal(cleanReportPath(internalReportPath('/')!), '/');
 	assert.equal(internalReportPath(cleanReportPath('/photography/analytics/home')!), '/photography/analytics/home');
-	// The legacy bookmark address still lands on the gallery report, not on Home.
-	assert.equal(cleanReportPath('/photography/analytics'), '/gallery');
+	// The legacy bookmark address is redirected to Home by the old-address rules before it is routed.
+	assert.equal(cleanReportPath('/photography/analytics'), null);
 	assert.equal(cleanReportPath('/photography/analytics/home/extra'), null);
 	assert.equal(internalReportPath('/home'), null);
 	assert.equal(homePath(HOST), '/');

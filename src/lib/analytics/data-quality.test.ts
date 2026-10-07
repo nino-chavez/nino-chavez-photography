@@ -252,6 +252,15 @@ test('counting rules and event counts say what a number stands for', () => {
 	assert.equal(partial.counting!.totals[0].value, '2,290 recorded');
 });
 
+test('the browser estimate is a figure with its limit, or says it is not shown, and never a zero it cannot prove', () => {
+	const limit = 'Estimated browsers with recorded activity, counted once across the report. This is not a verified people count.';
+	const counted = buildDataView(input({ report: report({ visitorEstimate: { value: 125, limit } }) }));
+	assert.deepEqual(counted.counting!.browsers, { value: '125', limit });
+	const unread = buildDataView(input({ report: report({ visitorEstimate: { value: null, limit: 'Estimated visitors are unavailable because the protected retained-data query could not run.' } }) }));
+	assert.equal(unread.counting!.browsers.value, null);
+	assert.match(unread.counting!.browsers.limit, /unavailable/);
+});
+
 test('search and download evidence: nothing is silent, and nothing is called a completed transfer', () => {
 	const view = evidenceView(report(), TODAY)!;
 	assert.deepEqual(view.rows[0], { path: 'download failed', status: 'failed', recorded: '2', results: 'not recorded', errors: 'E1', latest: 'Oct 3, 7:00 AM' });

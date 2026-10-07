@@ -6,12 +6,12 @@ for(const width of [1440,390]) for(const view of ['gallery','sites'])test(`sched
  await page.setViewportSize({width,height:width===390?844:1000});
  await page.route('https://imagedelivery.net/**',r=>r.fulfill({path:'static/images/hero/hero-1-mobile.webp',contentType:'image/webp'}));
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(view==='gallery'?'/photography/analytics/operator?period=custom&start=2026-09-28&end=2026-09-28&section=photos':'/photography/analytics/sites?view=actions&section=writing&period=7');
+ await page.goto(view==='gallery'?'/photography/analytics/photos?period=custom&start=2026-09-28&end=2026-09-28':'/photography/analytics/sites?view=actions&section=writing&period=7');
  if(view==='gallery'){
-  await expect(page.locator('.photo-card')).toHaveCount(12);
+  await expect(page.locator('ul.grid > li')).toHaveCount(12);
   await page.getByRole('link',{name:'Next',exact:true}).click();
   await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
-  await expect(page.locator('.photo-card')).toHaveCount(12);
+  await expect(page.locator('ul.grid > li')).toHaveCount(12);
  }else{
   await expect(page.getByRole('heading',{name:'What visitors did'})).toBeVisible();
   await expect(page.getByText(/summary refresh is overdue or failed/)).toBeVisible();

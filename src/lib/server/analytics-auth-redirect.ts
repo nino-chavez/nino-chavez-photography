@@ -1,3 +1,4 @@
+import { oldAddressTarget } from '../analytics/old-addresses';
 import { ANALYTICS_HOST, cleanReportPath } from '../analytics/report-paths';
 
 /** Keep the PKCE verifier and resulting session on the initiating public host. */
@@ -19,8 +20,11 @@ export function authReturnPath(value: string | null, fallback = '/admin/tags'): 
 }
 
 
-/** An existing owner session returns to the same public report address. */
+/** An existing owner session returns to the same public report address. A return address from the old gallery report goes straight to where that report went. */
 export function signedInReturnPath(hostname: string, appBase: string, value: string | null): string {
- const next = authReturnPath(value, hostname === ANALYTICS_HOST ? '/gallery' : `${appBase}/admin/tags`);
- return hostname === ANALYTICS_HOST ? cleanReportPath(`${appBase}${next}`) ?? next : next;
+ const next = authReturnPath(value, hostname === ANALYTICS_HOST ? '/analytics/home' : `${appBase}/admin/tags`);
+ if (hostname !== ANALYTICS_HOST) return next;
+ const full = new URL(`${appBase}${next}`, 'https://auth.invalid');
+ const moved = oldAddressTarget(full.pathname, full.search);
+ return moved ? `${moved.pathname}${moved.search}${moved.hash}` : cleanReportPath(full.pathname) ? `${cleanReportPath(full.pathname)}${full.search}${full.hash}` : next;
 }

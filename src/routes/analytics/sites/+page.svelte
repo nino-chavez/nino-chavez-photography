@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { albumIndexPath, dataPath, homePath, reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, dataPath, homePath, sitePath } from '$lib/analytics/report-paths';
 	import { pageLabel, pagesFor, providerFix, referrersFor, sectionCards, sectionLabel, siteLead, SITE_PERIODS, todayLine, windowNote } from '$lib/analytics/site-report';
 	import { SITE_SECTIONS } from '$lib/analytics/site-traffic';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
@@ -35,7 +35,7 @@
 		const params = new URLSearchParams({ period: String(period) });
 		if (section !== 'all') params.set('section', section);
 		if (pageIndex > 0) params.set('page', String(pageIndex));
-		return `${reportPath(hostname, 'sites')}?${params}`;
+		return `${sitePath(hostname)}?${params}`;
 	}
 	const shortDate = (date: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
 </script>

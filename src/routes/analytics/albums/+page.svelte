@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
-	import { albumIndexPath, albumReportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, albumReportPath, photosPath } from '$lib/analytics/report-paths';
 	import { dayLabel, figureText, matchesName, MAX_COMPARED, QUIET_DAYS, rankText, statusText, undatedReasonShort, type IndexLaunchRow, type IndexUndatedRow } from '$lib/analytics/album-index';
 	import { formatDay, plural } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
@@ -91,6 +91,7 @@
 					<input id="find-album" type="search" name="q" autocomplete="off" bind:value={query} disabled={!hydrated} placeholder="Type part of an album name" />
 				</div>
 				<a class="secondary" href={albumIndexPath(hostname, '/export.csv')} download="album-index.csv">Export CSV</a>
+				<a class="secondary" href={photosPath(hostname)}>Photos across all albums</a>
 			</div>
 			<p class="results" role="status" aria-live="polite">{results}</p>
 		</section>

@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 
-const galleryRoute = '/photography/analytics/operator?period=7';
+// The workspace is mounted by the album report, scoped to one album. The local rehearsal's album "alpha" must have a saved calculation for the panel to appear.
+const galleryRoute = '/photography/analytics/albums/alpha';
 const report = {
 	scope: { kind: 'gallery', query: { start: '2026-09-01', end: '2026-09-07', measure: 'photo_opens', scope: 'all', albumKeys: [], compare: 'previous', traffic: 'conservative' } },
 	generatedAt: '2026-09-08T12:00:00.000Z', cutoff: '2026-09-08T06:00:00.000Z', coverage: 'complete', owner: false, page: 0, pageCount: 1,

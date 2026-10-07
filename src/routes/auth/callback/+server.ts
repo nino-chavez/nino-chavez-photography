@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ url, cookies, setHeaders }) => {
  const code = url.searchParams.get('code');
  const tokenHash = url.searchParams.get('token_hash');
  const type = url.searchParams.get('type');
- const next = authReturnPath(url.searchParams.get('next'), url.hostname === ANALYTICS_HOST ? '/analytics/operator' : '/admin/tags');
+ const next = authReturnPath(url.searchParams.get('next'), url.hostname === ANALYTICS_HOST ? '/analytics/home' : '/admin/tags');
  if (!code && !(tokenHash && (type === 'magiclink' || type === 'recovery' || type === 'email'))) redirect(303, `${base}/login?error=auth_callback_failed`);
  const supabase = createSupabaseServerClient(cookies);
  // Supports Supabase's server-side token-hash email template as well as the

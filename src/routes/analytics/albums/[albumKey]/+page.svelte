@@ -2,7 +2,8 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { onMount, tick } from 'svelte';
-	import { albumIndexPath, reportPath } from '$lib/analytics/report-paths';
+	import { albumIndexPath, photosPath } from '$lib/analytics/report-paths';
+	import { photoParams } from '$lib/analytics/photo-view';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
@@ -12,9 +13,10 @@
 	import LaunchFindings from '$lib/components/analytics/LaunchFindings.svelte';
 	import LaunchRecaps from '$lib/components/analytics/LaunchRecaps.svelte';
 	import { launchScope } from '$lib/analytics/intelligence-contract';
-	import type { PageData } from './$types';
+	import SharingNotes from '$lib/components/analytics/SharingNotes.svelte';
+	import type { ActionData, PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const signedIn = $derived(data.user !== null);
 	const recap = $derived(data.recap);
@@ -44,8 +46,10 @@
 	const csvQuery = $derived((measure: string) => new URLSearchParams({
 		period: 'custom', start: data.query.start, end: data.query.end, scope: 'album', albums: data.album.key, measure, traffic: 'conservative', compare: 'none'
 	}).toString());
-	const csvHref = $derived(`${reportPath(hostname, 'gallery', '/export.csv')}?${csvQuery('photo_opens')}`);
-	const shortlistCsvHref = $derived(`${reportPath(hostname, 'gallery', '/export.csv')}?${csvQuery('downloads')}&shortlist=${encodeURIComponent(shortlist.join(','))}`);
+	const csvHref = $derived(`${photosPath(hostname, '/export.csv')}?${csvQuery('photo_opens')}`);
+	const shortlistCsvHref = $derived(`${photosPath(hostname, '/export.csv')}?${csvQuery('downloads')}&shortlist=${encodeURIComponent(shortlist.join(','))}`);
+	// The same album over the same days in the photo explorer, which has the filters, columns and saved views this report does not.
+	const explorerHref = $derived(photosPath(hostname, `?${photoParams({ ...data.query, compare: 'none' }, 'popular', 0)}`));
 	const topSix = $derived(mostRequested.map((photo) => photo.photoId));
 	const topSixShortlisted = $derived(topSix.length > 0 && topSix.every((id) => shortlist.includes(id)));
 	const scope = $derived({ kind: 'gallery' as const, query: data.query });
@@ -193,9 +197,10 @@
 					<button type="button" class="secondary" onclick={recordChange} disabled={!hydrated}>Record what you did</button>
 				{/if}
 				<a class="secondary" href={csvHref}>Export CSV</a>
+				<a class="secondary" href={explorerHref}>Filter these photos</a>
 				{#if signedIn && shortlist.length}<a class="secondary" href={shortlistCsvHref}>Shortlist CSV ({shortlist.length})</a>{/if}
 			</div>
-			{#if !signedIn}<p class="note">Shortlisting and recording what you did need <a href={signInHref}>sign-in</a>. Everything else on this page is open by direct link.</p>{/if}
+			{#if !signedIn}<p class="note">Shortlisting, recording what you did and private sharing notes need <a href={signInHref}>sign-in</a>. Everything else on this page is open by direct link.</p>{/if}
 			<p class="sr-only" role="status" aria-live="polite">{announce}</p>
 			</div>
 			<div class="limits">
@@ -203,6 +208,12 @@
 				<ul>{#each recap.limits as limit}<li>{limit}</li>{/each}</ul>
 			</div>
 		</section>
+
+		{#if data.sharing}
+			<div class="panel">
+				<SharingNotes notes={data.sharing.notes} available={data.sharing.available} today={data.album.today} {form} />
+			</div>
+		{/if}
 
 		{#if data.findings.findings.length}
 			<section class="worth" aria-labelledby="worth-title">

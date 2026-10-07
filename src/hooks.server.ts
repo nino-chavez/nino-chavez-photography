@@ -32,7 +32,8 @@
  */
 
 import type { Handle } from '@sveltejs/kit';
-import { ANALYTICS_HOST, cleanReportPath, isReportHost } from '$lib/analytics/report-paths';
+import { oldAddressTarget } from '$lib/analytics/old-addresses';
+import { ANALYTICS_HOST, cleanReportPath, hostAddress, isReportHost } from '$lib/analytics/report-paths';
 
 const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
@@ -51,9 +52,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost');
 	let response: Response;
 	const cleanPath = cleanReportPath(pathname);
-	if (isAnalyticsRoute && ((!isLocal && hostname !== ANALYTICS_HOST) || (isReportHost(hostname) && cleanPath))) {
+	// The old gallery report moved in pieces. One permanent redirect straight to the page that took over, never a chain.
+	// Only reads are redirected: a 308 would replay a form post against a page that has no such action.
+	const isRead = event.request.method === 'GET' || event.request.method === 'HEAD';
+	const moved = isRead && (isReportHost(hostname) || isAnalyticsRoute) ? oldAddressTarget(pathname, search) : null;
+	if (moved) {
+		response = analyticsRedirect(isLocal ? `${event.url.origin}${hostAddress(hostname, moved)}` : `https://${ANALYTICS_HOST}${moved.pathname}${moved.search}${moved.hash}`);
+	} else if (isAnalyticsRoute && ((!isLocal && hostname !== ANALYTICS_HOST) || (isReportHost(hostname) && cleanPath))) {
 		const destination = cleanPath ?? pathname;
-		response = event.request.method === 'GET' || event.request.method === 'HEAD'
+		response = isRead
 			? analyticsRedirect(`${isLocal ? event.url.origin : `https://${ANALYTICS_HOST}`}${destination}${search}`)
 			: new Response('Analytics actions must use analytics.ninochavez.co.', { status: 404 });
 	} else {

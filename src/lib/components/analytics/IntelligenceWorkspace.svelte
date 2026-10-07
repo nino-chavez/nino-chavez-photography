@@ -32,7 +32,7 @@
 		recordOnly?: boolean;
 	}
 	let { scope, owner, kind, contextTarget = null, class: className = '', signInNext, recordRequest = 0, recordOnly = false }: Props = $props();
-	const ownerSignInHref = $derived(`${base}/login?next=${encodeURIComponent(signInNext ?? (kind === 'sites' ? '/analytics/sites' : '/analytics/operator'))}`);
+	const ownerSignInHref = $derived(`${base}/login?next=${encodeURIComponent(signInNext ?? (kind === 'sites' ? '/analytics/sites' : '/analytics/home'))}`);
 
 	type ActionMode = 'record' | 'dismiss' | 'snooze' | null;
 	type PollResponse = { status: 'pending' | 'complete' | 'unavailable'; answer: AssistantAnswer | null };
@@ -115,8 +115,11 @@
 		const params = new URLSearchParams({ intelligence_snapshot: window.snapshotId });
 		if (window.scope.kind === 'sites') { params.set('period', String(window.scope.period)); params.set('section', window.scope.section); return evidenceHref(`/photography/analytics/sites?${params}`); }
 		if (window.scope.kind === 'launch') return window.scope.albumKey ? evidenceHref(`/analytics/albums/${window.scope.albumKey}`) : null;
-		for (const [key,value] of Object.entries(window.scope.query)) { if (value !== undefined) params.set(({albumKeys:'albums',compareStart:'compare_start',compareEnd:'compare_end',eventDate:'event_date',albumEventType:'event_type'} as Record<string,string>)[key] ?? key, Array.isArray(value) ? value.join(',') : String(value)); }
-		params.set('period','custom'); return evidenceHref(`/analytics/operator?${params}`);
+		// A saved calculation over one album is that album's report; over more, it is the photo explorer with the same filters.
+		const saved = window.scope.query;
+		if (saved.scope === 'album' && saved.albumKeys.length === 1) return evidenceHref(`/analytics/albums/${saved.albumKeys[0]}?intelligence_snapshot=${encodeURIComponent(window.snapshotId)}`);
+		for (const [key,value] of Object.entries(saved)) { if (value !== undefined) params.set(({albumKeys:'albums',compareStart:'compare_start',compareEnd:'compare_end',eventDate:'event_date',albumEventType:'event_type'} as Record<string,string>)[key] ?? key, Array.isArray(value) ? value.join(',') : String(value)); }
+		params.set('period','custom'); return evidenceHref(`/analytics/photos?${params}`);
 	}
 	function evidenceHref(value: string) { return intelligenceEvidenceHref(page.url.hostname, value) ?? '#'; }
 	function validEvidence(value: unknown): value is FindingEvidence {

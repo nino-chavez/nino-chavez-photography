@@ -5,7 +5,7 @@ test.use({userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit
 
 test('actual browser senders produce accepted photo, item, ZIP and exclusion events', async ({ page, baseURL }) => {
  if (!baseURL || !['127.0.0.1','localhost','analytics-review.localhost'].includes(new URL(baseURL).hostname)) throw Error('Collection rehearsal is loopback-only');
- await page.goto('/photography/analytics/operator?period=7');
+ await page.goto('/photography/analytics/data?period=7');
  const observed: {name:string,status:number,body:any,payload:any}[]=[];
  const pending: Promise<void>[]=[];
  page.on('response',response=>{
@@ -45,7 +45,7 @@ test('actual browser senders produce accepted photo, item, ZIP and exclusion eve
 
 test('permission binds a server identity before collection and withdrawal cancels later export', async ({page,baseURL})=>{
  if(!baseURL || !['127.0.0.1','localhost','analytics-review.localhost'].includes(new URL(baseURL).hostname))throw Error('Loopback only');
- await page.goto('/photography/analytics/operator');
+ await page.goto('/photography/analytics/data');
  const permission=await page.request.post('/photography/api/analytics/preferences',{data:{linkedAnalytics:true,excludeThisBrowser:false}});
  expect(permission.ok()).toBe(true);
  const binding=(await page.context().cookies()).find(x=>x.name==='gallery_analytics_identity_v2');

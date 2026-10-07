@@ -1,9 +1,11 @@
+import type { Parsed } from './parsed';
 import { parseReportQuery, REPORT_MEASURES, type ReportMeasure, type ReportQuery } from './report-contract';
 
 /**
- * Saved views: a name and the gallery filters it stands for. The stored shape is the one the gallery
- * report has always written to `analytics_saved_reports.query`; this file is its single owner, so a
- * view saved here and a view saved there are the same row. Copy here is reader-facing.
+ * Saved views: a name and the gallery filters it stands for. The stored shape is the one the old gallery
+ * report wrote to `analytics_saved_reports.query` and the photo explorer reads and writes today; this file
+ * is its single owner, so a view saved in settings and a view saved in the explorer are the same row.
+ * Copy here is reader-facing.
  */
 
 export const SAVED_VIEW_NAME_MAX = 100;
@@ -29,8 +31,6 @@ export const MEASURE_WORDS: Record<ReportMeasure, string> = {
 };
 export const SAVED_VIEW_PERIODS = [7, 30, 90] as const;
 
-export type SavedViewResult<T> = ({ ok: true } & T) | { ok: false; error: string };
-
 function cleanName(value: FormDataEntryValue | null): string | null {
 	const name = typeof value === 'string' ? value.trim() : '';
 	return name.length >= 1 && name.length <= SAVED_VIEW_NAME_MAX ? name : null;
@@ -40,9 +40,9 @@ const NAME_ERROR = `Give this view a name of 1–${SAVED_VIEW_NAME_MAX} characte
 /**
  * A new view from the settings page. It has no filter bar, so it saves the whole gallery over the last
  * 7, 30 or 90 complete days for one measure. A view with album or other filters is saved from the
- * gallery report, which has the filters; both write the same stored shape.
+ * photo explorer, which has the filters; both write the same stored shape.
  */
-export function savedViewFromForm(form: FormData, now = new Date()): SavedViewResult<{ name: string; query: ReturnType<typeof savedQueryState> }> {
+export function savedViewFromForm(form: FormData, now = new Date()): Parsed<{ name: string; query: ReturnType<typeof savedQueryState> }> {
 	const name = cleanName(form.get('name'));
 	if (!name) return { ok: false, error: NAME_ERROR };
 	const period = Number(form.get('period'));
@@ -54,7 +54,7 @@ export function savedViewFromForm(form: FormData, now = new Date()): SavedViewRe
 }
 
 /** A new name for a view. The filters it stands for are not touched. */
-export function renamedViewFromForm(form: FormData): SavedViewResult<{ id: string; name: string }> {
+export function renamedViewFromForm(form: FormData): Parsed<{ id: string; name: string }> {
 	const id = form.get('id')?.toString();
 	if (!id) return { ok: false, error: 'Choose a view to rename.' };
 	const name = cleanName(form.get('name'));
@@ -66,7 +66,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** The gallery report address (as a query string) that reopens a saved view, or null when what was stored is not a view. */
+/** The photo explorer's query string that reopens a saved view, or null when what was stored is not a view. */
 export function savedViewParams(query: unknown): URLSearchParams | null {
 	if (!isObject(query)) return null;
 	const params = new URLSearchParams();
