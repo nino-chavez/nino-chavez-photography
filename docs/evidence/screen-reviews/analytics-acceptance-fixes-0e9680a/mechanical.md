@@ -2,7 +2,7 @@
 
 Measured results of automated gates on the captured screens after the fixes, kept apart from the captures so a second cold reviewer can judge the screens from the images alone. This file states what was run, what each gate returned and what was not covered. It makes no judgement of how a screen looks. The method is the one in `analytics-acceptance-a8bfd28/mechanical.md`; this file lists only what differs.
 
-Source tree: branch `fix/analytics-acceptance`, code as of commit `0e9680a`. Run on 2026-10-07 UTC, between 14:00 and 14:40 UTC for the final loads of each surface (Chicago date 2026-10-07).
+Source tree: branch `fix/analytics-acceptance`, code as of commit `04405eb`. Run on 2026-10-07 UTC, between 14:00 and 14:40 UTC for the final loads of each surface (Chicago date 2026-10-07).
 
 ## Result in one table
 
@@ -32,7 +32,7 @@ The one intermittent finding: `keyboard default: focused element outside the vie
 | Server | This worktree's `vite dev` on Node 22.22.0, reading production Supabase with `.env.local` exported into the process by `node --env-file`. `preload.mjs` aborts the process on any Supabase write, any RPC outside the read allowlist, any auth call other than the user check, and any non-GET to another host |
 | Engines | Chromium 153.0.8010.12 (Playwright headless shell), WebKit 26.0 (Playwright build v2227) as before. WebKit is not Safari |
 | Added surfaces | `?recap=3` and `?recap=7` for both Re7kho and DWdCET, and `?recap=5` for Re7kho (a checkpoint that does not exist) |
-| Repeated loads | The Data and Settings pages were loaded again after two late code changes (the event counts streaming, the email heading); the rows below are the later loads |
+| Repeated loads | The Data, Settings, Home and recap pages were loaded again after late code changes (the event counts streaming, the email heading, the recap's as-of time and Home's headline); the rows below are the later loads |
 
 ## Forced failures
 
@@ -40,7 +40,7 @@ Every gate was made to fail once on purpose, on the local harness, in each engin
 
 ## Home at the experience brief's density target
 
-See `heights.md`. Home: 900 px at 1440 x 900, 1,677 px on a 390 x 844 phone (visitor), 1,727 px for the owner.
+See `heights.md`. Home: 900 px at 1440 x 900, 1,652 px on a 390 x 844 phone (visitor), 1,702 px for the owner.
 
 ## Not covered
 
@@ -54,14 +54,14 @@ See `heights.md`. Home: 900 px at 1440 x 900, 1,677 px on a 390 x 844 phone (vis
 
 | surface | role | engine | width | captured (UTC) | Chicago date | HTTP | final URL path | title | images (broken/incomplete/total) | requests | non-GET aborted | console | page errors | failed | >=400 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| home | owner | chromium | desktop-1440 | 2026-10-07 14:00:48 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
-| home | owner | chromium | phone-390 | 2026-10-07 14:00:36 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
-| home | owner | webkit | desktop-1440 | 2026-10-07 14:00:48 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
-| home | owner | webkit | phone-390 | 2026-10-07 14:00:37 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
-| home | visitor | chromium | desktop-1440 | 2026-10-07 14:00:49 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
-| home | visitor | chromium | phone-390 | 2026-10-07 14:00:36 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
-| home | visitor | webkit | desktop-1440 | 2026-10-07 14:00:49 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
-| home | visitor | webkit | phone-390 | 2026-10-07 14:00:37 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | owner | chromium | desktop-1440 | 2026-10-07 14:50:12 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | owner | chromium | phone-390 | 2026-10-07 14:50:00 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | owner | webkit | desktop-1440 | 2026-10-07 14:50:11 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | owner | webkit | phone-390 | 2026-10-07 14:50:00 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | visitor | chromium | desktop-1440 | 2026-10-07 14:50:13 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | visitor | chromium | phone-390 | 2026-10-07 14:50:00 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | visitor | webkit | desktop-1440 | 2026-10-07 14:50:13 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
+| home | visitor | webkit | phone-390 | 2026-10-07 14:50:00 | 2026-10-07 | 200 | /photography/analytics/home | Home · Photography reports | 0/0/3 | 122 | 0 | 0 | 0 | 0 | 0 |
 | albums | owner | chromium | desktop-1440 | 2026-10-07 14:01:08 | 2026-10-07 | 200 | /photography/analytics/albums | Albums · Photography reports | 0/0/0 | 120 | 0 | 0 | 0 | 0 | 0 |
 | albums | owner | chromium | phone-390 | 2026-10-07 14:00:53 | 2026-10-07 | 200 | /photography/analytics/albums | Albums · Photography reports | 0/0/0 | 120 | 0 | 0 | 0 | 0 | 0 |
 | albums | owner | webkit | desktop-1440 | 2026-10-07 14:01:07 | 2026-10-07 | 200 | /photography/analytics/albums | Albums · Photography reports | 0/0/0 | 120 | 0 | 0 | 0 | 0 | 0 |
@@ -86,46 +86,46 @@ See `heights.md`. Home: 900 px at 1440 x 900, 1,677 px on a 390 x 844 phone (vis
 | album-DWdCET | visitor | chromium | phone-390 | 2026-10-07 14:02:32 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET | College Women's VB - Millikin at North Central - 0 | 0/1/50 | 197 | 0 | 0 | 0 | 0 | 0 |
 | album-DWdCET | visitor | webkit | desktop-1440 | 2026-10-07 14:03:07 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET | College Women's VB - Millikin at North Central - 0 | 0/0/50 | 198 | 0 | 0 | 0 | 0 | 0 |
 | album-DWdCET | visitor | webkit | phone-390 | 2026-10-07 14:02:23 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET | College Women's VB - Millikin at North Central - 0 | 0/1/50 | 197 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | owner | chromium | desktop-1440 | 2026-10-07 14:03:38 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | owner | chromium | phone-390 | 2026-10-07 14:03:29 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | owner | webkit | desktop-1440 | 2026-10-07 14:03:23 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | owner | webkit | phone-390 | 2026-10-07 14:03:14 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | visitor | chromium | desktop-1440 | 2026-10-07 14:03:48 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | visitor | chromium | phone-390 | 2026-10-07 14:03:36 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | visitor | webkit | desktop-1440 | 2026-10-07 14:03:31 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap3 | visitor | webkit | phone-390 | 2026-10-07 14:03:20 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | owner | chromium | desktop-1440 | 2026-10-07 14:03:53 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | owner | chromium | phone-390 | 2026-10-07 14:03:44 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | owner | webkit | desktop-1440 | 2026-10-07 14:03:37 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | owner | webkit | phone-390 | 2026-10-07 14:03:28 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | visitor | chromium | desktop-1440 | 2026-10-07 14:04:07 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | visitor | chromium | phone-390 | 2026-10-07 14:03:55 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | visitor | webkit | desktop-1440 | 2026-10-07 14:03:50 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap7 | visitor | webkit | phone-390 | 2026-10-07 14:03:39 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | owner | chromium | desktop-1440 | 2026-10-07 14:04:08 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | owner | chromium | phone-390 | 2026-10-07 14:03:59 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | owner | webkit | desktop-1440 | 2026-10-07 14:03:51 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | owner | webkit | phone-390 | 2026-10-07 14:03:42 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | visitor | chromium | desktop-1440 | 2026-10-07 14:04:26 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | visitor | chromium | phone-390 | 2026-10-07 14:04:15 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | visitor | webkit | desktop-1440 | 2026-10-07 14:04:08 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap3 | visitor | webkit | phone-390 | 2026-10-07 14:03:57 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | owner | chromium | desktop-1440 | 2026-10-07 14:04:23 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | owner | chromium | phone-390 | 2026-10-07 14:04:14 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | owner | webkit | desktop-1440 | 2026-10-07 14:04:05 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | owner | webkit | phone-390 | 2026-10-07 14:03:56 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | visitor | chromium | desktop-1440 | 2026-10-07 14:04:46 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | visitor | chromium | phone-390 | 2026-10-07 14:04:34 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | visitor | webkit | desktop-1440 | 2026-10-07 14:04:27 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-DWdCET-recap7 | visitor | webkit | phone-390 | 2026-10-07 14:04:16 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | owner | chromium | desktop-1440 | 2026-10-07 14:04:35 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | owner | chromium | phone-390 | 2026-10-07 14:04:29 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | owner | webkit | desktop-1440 | 2026-10-07 14:04:16 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | owner | webkit | phone-390 | 2026-10-07 14:04:11 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | visitor | chromium | desktop-1440 | 2026-10-07 14:05:02 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | visitor | chromium | phone-390 | 2026-10-07 14:04:54 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | visitor | webkit | desktop-1440 | 2026-10-07 14:04:42 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
-| album-Re7kho-recap5 | visitor | webkit | phone-390 | 2026-10-07 14:04:34 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | owner | chromium | desktop-1440 | 2026-10-07 14:50:28 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | owner | chromium | phone-390 | 2026-10-07 14:50:19 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | owner | webkit | desktop-1440 | 2026-10-07 14:50:28 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | owner | webkit | phone-390 | 2026-10-07 14:50:19 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | visitor | chromium | desktop-1440 | 2026-10-07 14:50:33 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | visitor | chromium | phone-390 | 2026-10-07 14:50:22 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | visitor | webkit | desktop-1440 | 2026-10-07 14:50:33 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap3 | visitor | webkit | phone-390 | 2026-10-07 14:50:22 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=3 | Day 3 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | owner | chromium | desktop-1440 | 2026-10-07 14:50:44 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | owner | chromium | phone-390 | 2026-10-07 14:50:34 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | owner | webkit | desktop-1440 | 2026-10-07 14:50:43 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | owner | webkit | phone-390 | 2026-10-07 14:50:34 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | visitor | chromium | desktop-1440 | 2026-10-07 14:50:53 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | visitor | chromium | phone-390 | 2026-10-07 14:50:42 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | visitor | webkit | desktop-1440 | 2026-10-07 14:50:52 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap7 | visitor | webkit | phone-390 | 2026-10-07 14:50:41 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=7 | Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | owner | chromium | desktop-1440 | 2026-10-07 14:50:59 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | owner | chromium | phone-390 | 2026-10-07 14:50:50 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | owner | webkit | desktop-1440 | 2026-10-07 14:50:57 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | owner | webkit | phone-390 | 2026-10-07 14:50:48 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | visitor | chromium | desktop-1440 | 2026-10-07 14:51:13 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | visitor | chromium | phone-390 | 2026-10-07 14:51:01 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | visitor | webkit | desktop-1440 | 2026-10-07 14:51:10 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap3 | visitor | webkit | phone-390 | 2026-10-07 14:50:59 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=3 | Day 3 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | owner | chromium | desktop-1440 | 2026-10-07 14:51:14 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | owner | chromium | phone-390 | 2026-10-07 14:51:04 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | owner | webkit | desktop-1440 | 2026-10-07 14:51:11 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | owner | webkit | phone-390 | 2026-10-07 14:51:02 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | visitor | chromium | desktop-1440 | 2026-10-07 14:51:32 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | visitor | chromium | phone-390 | 2026-10-07 14:51:21 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | visitor | webkit | desktop-1440 | 2026-10-07 14:51:30 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-DWdCET-recap7 | visitor | webkit | phone-390 | 2026-10-07 14:51:18 | 2026-10-07 | 200 | /photography/analytics/albums/DWdCET?recap=7 | Day 7 recap: College Women's VB - Millikin at Nort | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | owner | chromium | desktop-1440 | 2026-10-07 14:51:26 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | owner | chromium | phone-390 | 2026-10-07 14:51:20 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | owner | webkit | desktop-1440 | 2026-10-07 14:51:23 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | owner | webkit | phone-390 | 2026-10-07 14:51:16 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | visitor | chromium | desktop-1440 | 2026-10-07 14:51:48 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | visitor | chromium | phone-390 | 2026-10-07 14:51:40 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | visitor | webkit | desktop-1440 | 2026-10-07 14:51:45 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
+| album-Re7kho-recap5 | visitor | webkit | phone-390 | 2026-10-07 14:51:37 | 2026-10-07 | 200 | /photography/analytics/albums/Re7kho?recap=5 | No such recap: HS Girls VB - JCA at ACC - 09-22-20 | 0/0/0 | 148 | 0 | 0 | 0 | 0 | 0 |
 | photos | owner | chromium | desktop-1440 | 2026-10-07 14:04:59 | 2026-10-07 | 200 | /photography/analytics/photos | Photos · Photography reports | 0/0/12 | 131 | 0 | 0 | 0 | 0 | 0 |
 | photos | owner | chromium | phone-390 | 2026-10-07 14:04:40 | 2026-10-07 | 200 | /photography/analytics/photos | Photos · Photography reports | 0/0/12 | 131 | 0 | 0 | 0 | 0 | 0 |
 | photos | owner | webkit | desktop-1440 | 2026-10-07 14:04:38 | 2026-10-07 | 200 | /photography/analytics/photos | Photos · Photography reports | 0/0/12 | 131 | 0 | 0 | 0 | 0 | 0 |
