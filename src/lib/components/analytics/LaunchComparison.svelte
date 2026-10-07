@@ -48,7 +48,7 @@
 <RemProbe bind:rem />
 
 {#snippet launchTable()}
-	<ResponsiveTable compact label="Launches ranked by photo opens in the first week" caption="Launches ranked by photo opens in the first week, with the first three days beside it" headerLabel="Album"
+	<ResponsiveTable compact label="Launches ranked by photo opens in the first week" headerLabel="Album"
 		columns={[{ label: 'First 3 days', numeric: true }, { label: 'Week 1', numeric: true }, { label: 'Rank', numeric: true }]}
 		rows={rows.map((row) => ({
 			key: row.albumKey, title: row.name, sub: `Published ${row.published}${markRecovered ? recoveredTag(row.inferred) : ''}`, current: row.current,

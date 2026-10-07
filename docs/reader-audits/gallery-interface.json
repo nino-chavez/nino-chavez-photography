@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T21:29:33.275Z",
+  "reviewedAt": "2026-10-07T22:11:10.748Z",
   "reviewedBy": "Claude Sonnet 5.5 (the worker for the third acceptance fix pass, self-review; not a cold reviewer)",
-  "method": "Walked the changed screens in the worker's own captures (Home, Albums, album report, day 3 and day 7 recaps, Data) as visitor and owner, in Chromium and WebKit, at default, 200% and 312% text, contrast-more and forced-colors, on a local development server reading production data. Checked the rendered words of all 13 surfaces for both roles against the internal terms this pass removed (collector, linked-journey, denominator, backfill, Grid showings, src=, Downloads, week): 0 hits in 52 loads, and a planted term fired the check. Checked that no ISO date remains in the Data page's words. Found with the new navigation gate that a tabbed-to link at 312% text stayed partly under the fade, and fixed it. Findings text on Home and the album report was seen from a read-only dry run of the next scheduled refresh, because the stored snapshot only changes when the job writes a new one. Not covered: a cold reviewer, a real device or an accessibility text size on iOS, a real sign-in, screen readers, real Cloudflare and PostHog panels.",
-  "sourceDigest": "sha256:6511f1157907140946c448f3feff4c866255aa614c19fcdb5c35f8a283291fa1",
+  "method": "Walked the changed screens in the worker's own captures (Home, Albums, album report, day 3 and day 7 recaps, Data) as visitor and owner, in Chromium and WebKit, at default, 200% and 312% text, contrast-more and forced-colors, on a local development server reading production data. Checked the rendered words of all 13 surfaces for both roles against the internal terms this pass removed (collector, linked-journey, denominator, backfill, Grid showings, src=, Downloads, week): 0 hits in 52 loads, and a planted term fired the check. Checked that no ISO date remains in the Data page's words. Found with the new navigation gate that a tabbed-to link at 312% text stayed partly under the fade, and fixed it. A late look at the album report found the comparison table's caption drawn twice, and removed one. Findings text on Home and the album report was seen from a read-only dry run of the next scheduled refresh, because the stored snapshot only changes when the job writes a new one. Not covered: a cold reviewer, a real device or an accessibility text size on iOS, a real sign-in, screen readers, real Cloudflare and PostHog panels, the Playwright specs.",
+  "sourceDigest": "sha256:b7947fe9f6adfc7e187ab95b54459be5387e208793afdb36984ebe288e1d1bb2",
   "sourceFiles": 203,
   "scope": [
     "Album report order and merged findings",
