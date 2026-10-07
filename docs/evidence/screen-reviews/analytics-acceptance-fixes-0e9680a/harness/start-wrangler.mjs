@@ -1,17 +1,13 @@
-// Serve a built .svelte-kit/cloudflare directory with wrangler pages dev, passing the project's .env.local as bindings
-// to this one process only (nothing is copied or written). Usage: node start-wrangler.mjs <buildDir> <port>
-import { readFileSync } from 'node:fs';
+// Serve a built .svelte-kit/cloudflare directory with wrangler pages dev, with the project's .env.local as
+// local secrets. Usage: node start-wrangler.mjs <buildDir> <port>
+// Changed 2026-10-07: values used to be passed as `--binding KEY=value`, which put live secrets in this
+// process's argv where `ps`/`pgrep -fl` print them. scripts/wrangler-pages-dev.mjs now writes them to a
+// 0600 .dev.vars in the wrangler working directory and removes it on exit; the wrangler arguments are unchanged.
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 const [dir, port] = process.argv.slice(2);
-const envFile = '/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.env.local';
-const bindings = [];
-for (const line of readFileSync(envFile, 'utf8').split('\n')) {
-	const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-	if (!m) continue;
-	let v = m[2];
-	if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
-	bindings.push('--binding', `${m[1]}=${v}`);
-}
-const args = ['wrangler', 'pages', 'dev', dir, '--port', port, '--ip', '127.0.0.1', '--compatibility-date', '2024-03-20', '--compatibility-flag', 'nodejs_compat', ...(process.env.INSPECTOR ? ['--inspector-port', process.env.INSPECTOR] : []), ...bindings];
-const child = spawn('npx', args, { stdio: 'inherit', cwd: process.env.WRANGLER_CWD ?? process.cwd() });
+const launcher = fileURLToPath(new URL('../../../../../scripts/wrangler-pages-dev.mjs', import.meta.url));
+const args = [dir, '--port', port, '--ip', '127.0.0.1', '--compatibility-date', '2024-03-20', '--compatibility-flag', 'nodejs_compat', ...(process.env.INSPECTOR ? ['--inspector-port', process.env.INSPECTOR] : [])];
+const child = spawn(process.execPath, [launcher, process.env.WRANGLER_CWD ?? process.cwd(), ...args], { stdio: 'inherit' });
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => child.kill(sig));
 child.on('exit', (code) => process.exit(code ?? 0));
