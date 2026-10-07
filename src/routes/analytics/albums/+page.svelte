@@ -296,11 +296,11 @@
 	.card { border: 1px solid var(--line); border-radius: .7rem; padding: .6rem .75rem; }
 	.card.picked { background: #eaf1fd; border-color: #9db8e6; }
 	.card-head { align-items: center; display: flex; flex-wrap: wrap; gap: .1rem .5rem; justify-content: space-between; }
-	.card-head a { align-items: center; color: var(--ink); display: inline-flex; flex: 1 1 9rem; min-height: 2.75rem; min-width: 0; font-size: .98rem; font-weight: 650; overflow-wrap: anywhere; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
+	.card-head a { align-items: center; color: var(--ink); display: inline-flex; flex: 1 1 9rem; min-height: 2.75rem; min-width: 0; font-size: .98rem; font-weight: 650; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
 	.card dl { display: grid; gap: .25rem .75rem; grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr)); margin: .4rem 0 0; }
 	.card dl div { min-width: 0; }
 	.card dt { color: var(--muted); font-size: .74rem; }
-	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: anywhere; }
+	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: break-word; }
 
 	@media (max-width: 959px) {
 		.table-view { display: none; }
@@ -315,7 +315,7 @@
 	@media (min-width: 1100px) { .quiet-list { columns: 3; } }
 	.quiet-list li { break-inside: avoid; }
 	.quiet-list a { color: var(--ink); display: grid; gap: .05rem; min-height: 2.75rem; padding: .35rem 0; text-decoration: none; }
-	.quiet-list .name { font-size: .9rem; font-weight: 600; overflow-wrap: anywhere; text-decoration: underline; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
+	.quiet-list .name { font-size: .9rem; font-weight: 600; overflow-wrap: break-word; text-decoration: underline; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
 	.quiet-list a:hover .name { color: var(--blue-ink); }
 	.why { color: var(--muted); font-size: .78rem; }
 

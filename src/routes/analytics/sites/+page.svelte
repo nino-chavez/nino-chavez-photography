@@ -177,6 +177,8 @@
 	.chips { display: flex; flex-wrap: wrap; gap: .3rem; }
 	.choice { align-items: center; background: #fff; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
 	.choice[aria-current='true'] { background: #dce9fa; border-color: var(--blue-ink); box-shadow: inset 0 -3px 0 var(--blue-ink); }
+	/* Selected is also a tick, so it does not depend on the colour of the fill. */
+	.choice[aria-current='true']::before { content: '\2713\00a0' / ''; }
 
 	.lead { min-width: 0; }
 	.figures { display: grid; gap: .6rem; grid-template-columns: 1fr; }
@@ -202,7 +204,7 @@
 	.card a { background: #fff; border: 1px solid var(--line); border-radius: .8rem; color: var(--ink); display: grid; gap: .2rem; height: 100%; min-height: 2.75rem; padding: .7rem .8rem; text-decoration: none; }
 	.card a:hover { border-color: var(--blue-ink); }
 	.card .name { font-weight: 700; }
-	.card span, .card strong { overflow-wrap: anywhere; }
+	.card span, .card strong { overflow-wrap: break-word; }
 	.card strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
 
 	.grid { display: grid; gap: .9rem; }
@@ -212,13 +214,13 @@
 	.ranked li:first-child { border-top: 0; }
 	.rank { color: var(--muted); font-variant-numeric: tabular-nums; }
 	.ranked a { align-content: center; color: var(--ink); display: grid; min-height: 2.75rem; min-width: 0; text-decoration: none; }
-	.ranked a strong { overflow-wrap: anywhere; text-transform: capitalize; }
-	.ranked small { color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }
+	.ranked a strong { overflow-wrap: break-word; text-transform: capitalize; }
+	.ranked small { color: var(--muted); font-size: .75rem; overflow-wrap: break-word; }
 	.count { font-variant-numeric: tabular-nums; font-weight: 700; }
 	.sources { margin: 0; }
 	.sources div { border-top: 1px solid #e6ecf3; display: flex; gap: .8rem; justify-content: space-between; padding: .5rem 0; }
 	.sources div:first-child { border-top: 0; }
-	.sources dt { overflow-wrap: anywhere; }
+	.sources dt { overflow-wrap: break-word; }
 	.sources dd { font-variant-numeric: tabular-nums; font-weight: 700; margin: 0; }
 	.pager { align-items: center; display: flex; flex-wrap: wrap; font-size: .85rem; gap: .5rem 1rem; justify-content: space-between; margin-top: .6rem; }
 	.pager-links { display: flex; gap: .4rem; }
@@ -228,6 +230,10 @@
 	.record:disabled { cursor: not-allowed; opacity: .62; }
 	.record:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-	@media (forced-colors: active) { .figure, .panel, .card a, .choice { border: 1px solid CanvasText; } .trend svg { color: CanvasText; } }
+	@media (forced-colors: active) {
+		.figure, .panel, .card a, .choice { border: 1px solid CanvasText; }
+		.choice[aria-current='true'] { background: Highlight; border: 2px solid CanvasText; color: HighlightText; forced-color-adjust: none; }
+		.trend svg { color: CanvasText; }
+	}
 	@media (prefers-contrast: more) { .site { --muted: #36445a; --line: #5c6b80; } .detail, .note, .sub, .label { color: #2b3748; } }
 </style>

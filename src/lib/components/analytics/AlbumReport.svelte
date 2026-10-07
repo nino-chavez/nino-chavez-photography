@@ -6,7 +6,7 @@
 	import { photoParams } from '$lib/analytics/photo-view';
 	import { readShortlist, signInNeeds, writeShortlist } from '$lib/analytics/shortlist';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
-	import { formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
+	import { daysWords, formatDay, plural, type RecapSentence } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchDailyChart from '$lib/components/analytics/LaunchDailyChart.svelte';
 	import LaunchComparison from '$lib/components/analytics/LaunchComparison.svelte';
@@ -138,13 +138,14 @@
 					<div class="selected-image">
 						{#if selected.cfImageId}<img src={cfImageUrl(selected.cfImageId, 'medium')} alt={`Selected photo, number ${selectedRank} in this ranking`} loading={where === 'dialog' ? 'eager' : 'lazy'} decoding="async" />{:else}<span class="no-image">No preview</span>{/if}
 					</div>
-					<dl class="facts">
+					<p class="note">Counted over {daysWords(data.album.window.start, data.album.window.end)}, complete days.</p>
+					<dl class="facts" aria-label={`This photo's counts, ${daysWords(data.album.window.start, data.album.window.end)}`}>
 						<div><dt>Download requests</dt><dd>{selected.downloads.toLocaleString()}</dd></div>
 						<div><dt>Opens</dt><dd>{selected.opens.toLocaleString()}</dd></div>
 						<div><dt>Favorites</dt><dd>{selected.favorites.toLocaleString()}</dd></div>
 					</dl>
 					{#if selected.exposureRecorded && selected.exposures !== null && selected.opensInExposureWindow !== null}
-						<p class="note">Since {data.album.exposure.since ? formatDay(data.album.exposure.since) : 'collection began'}, this photo's tile appeared on screen in a gallery grid {plural(selected.exposures, 'time')}, and the photo was opened {plural(selected.opensInExposureWindow, 'time')} on those days.{#if selected.opensInExposureWindow > selected.exposures}{' '}An open can also come from a direct link, without the tile ever appearing in a grid.{/if}</p>
+						<p class="note">Over {daysWords(data.album.exposure.since && data.album.exposure.since > data.album.window.start ? data.album.exposure.since : data.album.window.start, data.album.window.end)}, the days tiles on screen were recorded, this photo's tile appeared on screen in a gallery grid {plural(selected.exposures, 'time')}, and the photo was opened {plural(selected.opensInExposureWindow, 'time')} on those same days.{#if selected.opensInExposureWindow > selected.exposures}{' '}An open can also come from a direct link, without the tile ever appearing in a grid.{/if}</p>
 					{/if}
 					<div class="selected-actions">
 						{#if selected.cfImageId}<a class="secondary" href={`https://ninochavez.co${base}/photo/${encodeURIComponent(selected.cfImageId)}`}>Open photo to share or download</a>{/if}
@@ -293,7 +294,7 @@
 	.recap { display: grid; gap: 1rem; min-width: 0; }
 	.recap-text { min-width: 0; padding-block: .25rem; }
 	.eyebrow { color: var(--blue-ink); font-size: .75rem; font-weight: 800; letter-spacing: .09em; margin: 0; text-transform: uppercase; }
-	h1 { font-size: 1.55rem; font-weight: 750; letter-spacing: -.01em; line-height: 1.2; margin: .35rem 0 .2rem; overflow-wrap: anywhere; }
+	h1 { font-size: 1.55rem; font-weight: 750; letter-spacing: -.01em; line-height: 1.2; margin: .35rem 0 .2rem; overflow-wrap: break-word; }
 	h2 { font-size: 1.05rem; font-weight: 700; margin: 0; }
 	h3 { font-size: .9rem; font-weight: 700; margin: 0 0 .3rem; }
 	.meta { color: var(--muted); font-size: .88rem; margin: 0 0 .9rem; }
@@ -311,16 +312,17 @@
 	@media (min-width: 1024px) { .downloads { grid-template-columns: minmax(0, 1fr) 20rem; } .downloads .limits { align-self: start; border-left: 1px solid #e1e8f0; border-top: 0; margin-top: 0; padding: 0 0 0 1.5rem; } }
 	.downloads .sentence { margin: .4rem 0 .2rem; }
 	.arrivals { margin-top: .7rem; }
-	.strip { display: grid; gap: .6rem; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; margin: .5rem 0; padding: 0; }
-	@media (min-width: 640px) { .strip { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 52rem; } }
+	/* As many photos as fit at 6.25rem or more, so a larger text size gives fewer, wider photos and a caption never has to break a word. */
+	.strip { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(min(6.25rem, 100%), 1fr)); list-style: none; margin: .5rem 0; padding: 0; }
+	@media (min-width: 640px) { .strip { max-width: 52rem; } }
 	.strip li, .grid li { display: grid; gap: .25rem; min-width: 0; }
-	.cap { color: var(--muted); font-size: .76rem; line-height: 1.3; overflow-wrap: anywhere; }
+	.cap { color: var(--muted); font-size: .8rem; line-height: 1.3; overflow-wrap: break-word; }
 	.strip-photo, .cell { background: #dfe6ef; border: 2px solid transparent; border-radius: .5rem; cursor: pointer; display: block; min-height: 2.75rem; overflow: hidden; padding: 0; position: relative; width: 100%; }
 	.strip-photo { aspect-ratio: 3 / 2; }
 	.cell { aspect-ratio: 3 / 2; }
 	.cell.active { border-color: var(--blue); box-shadow: 0 0 0 2px #fff inset; }
 	img { display: block; height: 100%; object-fit: cover; width: 100%; }
-	.no-image { align-items: center; color: var(--muted); display: flex; font-size: .78rem; height: 100%; justify-content: center; }
+	.no-image { align-items: center; color: var(--muted); display: flex; font-size: .8rem; height: 100%; justify-content: center; }
 	.tag { background: var(--blue); border-radius: .3rem; bottom: .25rem; color: #fff; font-size: .68rem; font-weight: 700; left: .25rem; padding: .1rem .35rem; position: absolute; }
 
 	.actions { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
@@ -337,9 +339,8 @@
 	.below { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 	.photos { scroll-margin-top: .75rem; }
 	.selected { display: none; }
-	.grid { display: grid; gap: .6rem .5rem; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; margin: .6rem 0; padding: 0; }
-	@media (min-width: 640px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-	@media (min-width: 1280px) { .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+	.grid { display: grid; gap: .6rem .5rem; grid-template-columns: repeat(auto-fill, minmax(min(6rem, 100%), 1fr)); list-style: none; margin: .6rem 0; padding: 0; }
+	@media (min-width: 640px) { .grid { grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr)); } }
 	.more { margin-top: .5rem; }
 	.selected-image { aspect-ratio: 3 / 2; background: #dfe6ef; border-radius: .6rem; margin: .5rem 0; overflow: hidden; }
 	.facts { display: grid; gap: .5rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .6rem 0; }
@@ -353,7 +354,7 @@
 		h1 { font-size: 1.85rem; }
 		.below { align-items: start; grid-template-columns: minmax(0, 1fr) 24rem; grid-template-areas: "photos selected" "photos compare" "photos ."; grid-template-rows: auto auto 1fr; }
 		.photos { grid-area: photos; }
-		.selected { display: block; grid-area: selected; position: sticky; top: .75rem; }
+		.selected { display: block; grid-area: selected; }
 		.compare { grid-area: compare; }
 	}
 	@media (min-width: 1280px) { .recap { grid-template-columns: minmax(0, 1fr) minmax(0, 36rem); } }

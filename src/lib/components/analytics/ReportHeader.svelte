@@ -59,5 +59,8 @@
 	.masthead-links a[aria-current] { background: #dce9fa; }
 	.masthead-links a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--blue-ink, #174ea6); }
 	a:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
-	@media (forced-colors: active) { .masthead-links a[aria-current] { border: 1px solid CanvasText; } }
+	@media (forced-colors: active) {
+		.masthead-links a[aria-current] { border: 1px solid CanvasText; }
+		.masthead-links a[aria-current='page'] { background: Highlight; border-width: 2px; color: HighlightText; forced-color-adjust: none; }
+	}
 </style>

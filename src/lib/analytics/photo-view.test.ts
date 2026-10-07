@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { changeLabel, countLabel, csvRowCount, measureLabel, periodFor, filterParams, photoParams } from './photo-view';
+import { changeLabel, countLabel, countWithUnit, csvRowCount, measureLabel, periodFor, filterParams, photoParams } from './photo-view';
 import { parseReportQuery } from './report-contract';
 import { savedQueryState } from './saved-views';
 
@@ -67,6 +67,12 @@ test('a change says what kind of comparison it is, and never invents one', () =>
 test('a count says when it is only what was recorded', () => {
 	assert.equal(countLabel(1234, 'complete'), '1,234');
 	assert.equal(countLabel(1234, 'partial'), '1,234 recorded');
+	// A tile's badge says what it counts, so a bare 13 is never left to the dropdown above it to explain.
+	assert.equal(countWithUnit(13, 'complete', 'photo_opens'), '13 opens');
+	assert.equal(countWithUnit(1, 'complete', 'photo_opens'), '1 open');
+	assert.equal(countWithUnit(4, 'complete', 'downloads'), '4 download requests');
+	assert.equal(countWithUnit(2, 'partial', 'favorites'), '2 recorded favorites');
+	assert.equal(countWithUnit(null, 'complete', 'shares'), 'Unavailable');
 	assert.equal(countLabel(null, 'complete'), 'Unavailable');
 	assert.equal(measureLabel('photo_opens'), 'Photo opens');
 	assert.equal(measureLabel('downloads'), 'Downloads');

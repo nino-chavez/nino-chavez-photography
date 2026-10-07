@@ -277,6 +277,8 @@
 	.chips { display: flex; flex-wrap: wrap; gap: .3rem; }
 	.choice { align-items: center; background: #fff; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
 	.choice[aria-current='true'] { background: #dce9fa; border-color: var(--blue-ink); box-shadow: inset 0 -3px 0 var(--blue-ink); }
+	/* Selected is also a tick, so it does not depend on the colour of the fill. */
+	.choice[aria-current='true']::before { content: '\2713\00a0' / ''; }
 
 	.grid { display: grid; gap: .9rem; min-width: 0; }
 	.pair-cols { display: grid; gap: .9rem; min-width: 0; }
@@ -292,8 +294,8 @@
 	.facts { margin: .4rem 0 0; }
 	.facts div { align-items: baseline; border-top: 1px solid #e6ecf3; display: flex; flex-wrap: wrap; font-size: .9rem; gap: .1rem .8rem; justify-content: space-between; padding: .4rem 0; }
 	.facts div:first-child { border-top: 0; }
-	.facts dt { color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
-	.facts dd { font-variant-numeric: tabular-nums; font-weight: 650; margin: 0; overflow-wrap: anywhere; text-align: right; }
+	.facts dt { color: var(--ink); min-width: 0; overflow-wrap: break-word; }
+	.facts dd { font-variant-numeric: tabular-nums; font-weight: 650; margin: 0; overflow-wrap: break-word; text-align: right; }
 	.tag { background: #eef2f7; border-radius: .3rem; color: var(--muted); font-size: .72rem; font-weight: 650; margin-left: .5rem; padding: .05rem .4rem; }
 	.pair { display: grid; gap: .6rem; margin-top: .3rem; }
 	@media (min-width: 700px) { .pair { grid-template-columns: 1fr 1fr; } }
@@ -315,6 +317,9 @@
 	.moves span { color: var(--muted); font-size: .88rem; }
 	.note { color: var(--muted); font-size: .82rem; line-height: 1.5; margin: .2rem 0 0; max-width: 62rem; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-	@media (forced-colors: active) { .panel, .issues, .choice, .metric { border: 1px solid CanvasText; } }
+	@media (forced-colors: active) {
+		.panel, .issues, .choice, .metric { border: 1px solid CanvasText; }
+		.choice[aria-current='true'] { background: Highlight; border: 2px solid CanvasText; color: HighlightText; forced-color-adjust: none; }
+	}
 	@media (prefers-contrast: more) { .data { --muted: #36445a; --line: #5c6b80; } .detail, .lead, .note, .label { color: #2b3748; } }
 </style>

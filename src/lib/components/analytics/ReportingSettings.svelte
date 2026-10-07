@@ -63,7 +63,8 @@
 	<div class="wrap"><section class="settings" aria-labelledby={`${id}-settings-heading`}>
 		<div><p class="kicker">Private reporting settings</p><h3 id={`${id}-settings-heading`}>Private records and launch recaps</h3><p>These settings apply to private records only. Visitor privacy and public aggregate reporting follow their separate contracts.</p></div>
 		{#if loading && !preferences}<p class="state" role="status">Loading private settings.</p>{:else if preferences}<form onsubmit={(event) => { event.preventDefault(); void save(event.currentTarget as HTMLFormElement); }}>
-			<fieldset><legend>Keep private records for</legend><label><input type="radio" name="retention" value="until_deleted" checked={preferences.retention === 'until_deleted'} /> Until I delete them</label><label><input type="radio" name="retention" value="90_days" checked={preferences.retention === '90_days'} /> 90 days</label><label><input type="radio" name="retention" value="one_year" checked={preferences.retention === 'one_year'} /> One year</label></fieldset>
+			<fieldset><legend>Keep private records for</legend><label><input type="radio" name="retention" value="until_deleted" required checked={preferences.retention === 'until_deleted'} /> Until I delete them</label><label><input type="radio" name="retention" value="90_days" required checked={preferences.retention === '90_days'} /> 90 days</label><label><input type="radio" name="retention" value="one_year" required checked={preferences.retention === 'one_year'} /> One year</label></fieldset>
+			{#if preferences.retention === 'undecided'}<p class="state" role="status">Not chosen yet. Pick one to save these settings.</p>{/if}
 			<div class="recaps" role="group" aria-labelledby={`${id}-recaps-heading`}>
 				<h4 id={`${id}-recaps-heading`}>Launch recaps</h4>
 				<p>{recapLines.schedule}</p>
@@ -84,19 +85,19 @@
 	@container (min-width: 46rem) { .settings { grid-template-columns: minmax(14rem, .55fr) minmax(0, 1fr); } }
 	.kicker { color: #174ea6; font-size: .68rem; font-weight: 800; letter-spacing: .07em; margin: 0 0 .35rem; text-transform: uppercase; }
 	h3 { font-size: 1rem; line-height: 1.3; margin: 0 0 .45rem; }
-	p { color: #526176; font-size: .78rem; line-height: 1.5; margin-top: 0; }
+	p { color: #526176; font-size: .85rem; line-height: 1.5; margin-top: 0; }
 	form { display: grid; gap: .6rem; margin-top: .9rem; }
 	fieldset { border: 0; margin: 0; padding: 0; }
-	legend { color: #33445c; font-size: .78rem; font-weight: 700; margin-bottom: .35rem; }
-	label { color: #33445c; display: inline-flex; font-size: .78rem; font-weight: 700; gap: .35rem; margin-right: .8rem; min-height: 2.75rem; align-items: center; }
+	legend { color: #33445c; font-size: .85rem; font-weight: 700; margin-bottom: .35rem; }
+	label { color: #33445c; display: inline-flex; font-size: .85rem; font-weight: 700; gap: .35rem; margin-right: .8rem; min-height: 2.75rem; align-items: center; }
 	input[type='radio'] { accent-color: #1769e0; height: 1.1rem; width: 1.1rem; }
 	button { background: #1769e0; border: 1px solid #1769e0; border-radius: .4rem; color: #fff; cursor: pointer; font: inherit; font-size: .85rem; font-weight: 650; justify-self: start; min-height: 2.75rem; padding: 0 .9rem; }
 	button:disabled { cursor: not-allowed; opacity: .62; }
 	button:focus-visible, input:focus-visible { outline: 3px solid #174ea6; outline-offset: 2px; }
 	.recaps { border-top: 1px solid #d8e0ea; padding-top: .6rem; }
-	.recaps h4 { color: #33445c; font-size: .78rem; font-weight: 700; margin: 0 0 .3rem; }
+	.recaps h4 { color: #33445c; font-size: .85rem; font-weight: 700; margin: 0 0 .3rem; }
 	.recaps p { margin: 0 0 .4rem; }
-	.state, .answer-error, .action-message { font-size: .78rem; line-height: 1.5; }
+	.state, .answer-error, .action-message { font-size: .85rem; line-height: 1.5; }
 	.answer-error { color: #a42424; }
 	.action-message { color: #195b33; }
 	@media (max-width: 900px) { label { display: flex; margin: .2rem 0; } }

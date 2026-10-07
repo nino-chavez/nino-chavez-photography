@@ -102,6 +102,9 @@
 	.wide { grid-column: span 2; }
 	@media (max-width: 639px) { .wide { grid-column: 1 / -1; } }
 	select, input:not([type='hidden']) { background: #fff; border: 1px solid #8fa1b8; border-radius: .4rem; color: var(--ink, #172033); font: inherit; font-size: .9rem; min-height: 2.75rem; min-width: 0; padding: 0 .6rem; width: 100%; }
+	/* WebKit keeps a native select at its own height unless the native look is dropped; the chevron stands in for it. */
+	select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23526176' stroke-width='2'/%3E%3C/svg%3E"); background-position: right .7rem center; background-repeat: no-repeat; background-size: .75rem; padding-right: 2rem; }
+	@media (forced-colors: active) { select { appearance: auto; background-image: none; padding-right: .6rem; } }
 	button { align-items: center; background: var(--blue-ink, #174ea6); border: 1px solid var(--blue-ink, #174ea6); border-radius: .5rem; color: #fff; cursor: pointer; display: inline-flex; font: inherit; font-size: .85rem; font-weight: 650; justify-content: center; min-height: 2.75rem; padding: 0 .9rem; }
 	button.link { background: none; border: 0; color: var(--blue-ink, #174ea6); min-width: 2.75rem; padding: 0 .4rem; text-decoration: underline; text-underline-offset: 3px; }
 	select:focus-visible, input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
@@ -110,7 +113,7 @@
 	.history { display: grid; gap: 0; list-style: none; margin: 0; padding: 0; }
 	.history li { border-top: 1px solid #e6ecf3; display: grid; gap: .1rem; padding: .6rem 0; }
 	.history li:first-child { border-top: 0; }
-	.history p { font-size: .88rem; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
+	.history p { font-size: .88rem; line-height: 1.45; margin: 0; overflow-wrap: break-word; }
 	.event { font-weight: 650; }
 	.when { color: var(--muted, #526176); font-size: .78rem; }
 	.why { white-space: pre-wrap; }

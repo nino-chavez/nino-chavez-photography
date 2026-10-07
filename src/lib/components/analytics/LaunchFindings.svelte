@@ -142,7 +142,7 @@
 	.finding[data-severity='low'] { border-left-color: #6b7f99; }
 	.kind { color: #174ea6; font-size: .7rem; font-weight: 800; letter-spacing: .08em; margin: 0 0 .2rem; text-transform: uppercase; }
 	.finding[data-severity='high'] .kind { color: #8a4200; }
-	.title { font-size: 1rem; font-weight: 700; line-height: 1.35; margin: 0 0 .3rem; overflow-wrap: anywhere; }
+	.title { font-size: 1rem; font-weight: 700; line-height: 1.35; margin: 0 0 .3rem; overflow-wrap: break-word; }
 	p { line-height: 1.5; margin: 0 0 .35rem; max-width: 46rem; }
 	.what { font-size: .93rem; }
 	.why, .evidence { color: #3d4c63; font-size: .86rem; }

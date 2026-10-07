@@ -1,22 +1,26 @@
 <script lang="ts">
 	import type { DailyChart } from '$lib/analytics/launch-report-view';
+	import RemProbe from '$lib/components/analytics/RemProbe.svelte';
 
 	interface Props { chart: DailyChart; undated?: boolean }
 	let { chart, undated = false }: Props = $props();
 
-	const height = 190;
-	const pad = { top: 22, right: 12, bottom: 44, left: 40 };
+	// The chart is drawn in pixels, so its size and its text follow the page's text size (`rem`, one rem in pixels).
+	let rem = $state(16);
+	const u = $derived(rem / 16);
+	const height = $derived(190 * u);
+	const pad = $derived({ top: 22 * u, right: 12 * u, bottom: 44 * u, left: 44 * u });
 	let width = $state(640);
 	const inner = $derived(Math.max(120, width - pad.left - pad.right));
 	const band = $derived(inner / Math.max(1, chart.bars.length));
-	const barWidth = $derived(Math.max(6, Math.min(44, band - 6)));
-	const plotHeight = height - pad.top - pad.bottom;
+	const barWidth = $derived(Math.max(6 * u, Math.min(44 * u, band - 6 * u)));
+	const plotHeight = $derived(height - pad.top - pad.bottom);
 	const y = (value: number) => pad.top + plotHeight - (value / chart.max) * plotHeight;
 	const x = (index: number) => pad.left + band * index + band / 2;
 	const peak = $derived(chart.bars.reduce((best, bar, index) => ((bar.opens ?? -1) > (chart.bars[best]?.opens ?? -1) ? index : best), 0));
 	const line = $derived(chart.bars.flatMap((bar, index) => (bar.median === null ? [] : [`${x(index).toFixed(1)},${y(bar.median).toFixed(1)}`])).join(' '));
 	const hasMedian = $derived(chart.bars.some((bar) => bar.median !== null));
-	const labelEvery = $derived(Math.max(1, Math.ceil((undated ? 56 : 28) / band)));
+	const labelEvery = $derived(Math.max(1, Math.ceil((undated ? 56 * u : 28 * u) / band)));
 	const medianOf = $derived(Math.max(0, ...chart.bars.map((bar) => bar.medianOf)));
 	const title = $derived(chart.title);
 	const gaps = $derived(chart.bars.filter((bar) => bar.opens === null).length);
@@ -24,6 +28,8 @@
 		`${chart.bars.length} full days. Most photo opens: ${chart.bars[peak]?.opens?.toLocaleString() ?? 'unknown'} on ${chart.bars[peak]?.date ?? 'no day'}.${gaps ? ` ${gaps} ${gaps === 1 ? 'day has' : 'days have'} incomplete records and no bar.` : ''} The full numbers follow in a table.`
 	);
 </script>
+
+<RemProbe bind:rem />
 
 <figure class="daily">
 	<figcaption>
@@ -35,13 +41,13 @@
 			<svg {width} {height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title}. ${description}`}>
 				<line class="axis" x1={pad.left} x2={width - pad.right} y1={y(0)} y2={y(0)} />
 				<line class="grid" x1={pad.left} x2={width - pad.right} y1={y(chart.max)} y2={y(chart.max)} />
-				<text class="tick" x={pad.left - 6} y={y(chart.max) + 4} text-anchor="end">{chart.max.toLocaleString()}</text>
-				<text class="tick" x={pad.left - 6} y={y(0) + 4} text-anchor="end">0</text>
+				<text class="tick" x={pad.left - 6 * u} y={y(chart.max) + 4 * u} text-anchor="end">{chart.max.toLocaleString()}</text>
+				<text class="tick" x={pad.left - 6 * u} y={y(0) + 4 * u} text-anchor="end">0</text>
 				{#each chart.bars as bar, index}
 					{#if bar.opens === null}
 						<g>
 							<title>{bar.date}: records incomplete, no count</title>
-							<rect class="gap" x={x(index) - barWidth / 2} y={y(0) - 14} width={barWidth} height="14" rx="2" />
+							<rect class="gap" x={x(index) - barWidth / 2} y={y(0) - 14 * u} width={barWidth} height={14 * u} rx="2" />
 						</g>
 					{:else}
 						<g>
@@ -50,11 +56,11 @@
 						</g>
 					{/if}
 					{#if index % labelEvery === 0}
-						<text class="tick" x={x(index)} y={height - 24} text-anchor="middle">{bar.label}</text>
+						<text class="tick" x={x(index)} y={height - 24 * u} text-anchor="middle">{bar.label}</text>
 					{/if}
 				{/each}
 				{#if chart.bars[peak]?.opens}
-					<text class="value" x={Math.min(Math.max(x(peak), pad.left + 14), width - pad.right - 14)} y={Math.max(12, y(chart.bars[peak].opens ?? 0) - 6)} text-anchor="middle">{chart.bars[peak].opens?.toLocaleString()}</text>
+					<text class="value" x={Math.min(Math.max(x(peak), pad.left + 14 * u), width - pad.right - 14 * u)} y={Math.max(12 * u, y(chart.bars[peak].opens ?? 0) - 6 * u)} text-anchor="middle">{chart.bars[peak].opens?.toLocaleString()}</text>
 				{/if}
 				{#if hasMedian}<polyline class="median" points={line} fill="none" />{/if}
 				<text class="tick axis-name" x={pad.left + inner / 2} y={height - 4} text-anchor="middle">{undated ? 'Day' : 'Day since publication'}</text>
@@ -96,8 +102,8 @@
 	svg { display: block; max-width: 100%; }
 	.axis { stroke: #6f7f95; stroke-width: 1; }
 	.grid { stroke: #e1e8f0; stroke-width: 1; stroke-dasharray: 3 3; }
-	.tick { fill: #526176; font-size: 12px; font-variant-numeric: tabular-nums; }
-	.value { fill: #172033; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+	.tick { fill: #526176; font-size: .75rem; font-variant-numeric: tabular-nums; }
+	.value { fill: #172033; font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 	.bar { fill: #5b8fe0; }
 	.bar.peak { fill: #1458c4; }
 	.gap { fill: none; stroke: #6f7f95; stroke-width: 1.5; stroke-dasharray: 3 2; }

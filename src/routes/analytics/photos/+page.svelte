@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { onMount, tick } from 'svelte';
 	import { albumIndexPath, photosPath, settingsPath } from '$lib/analytics/report-paths';
-	import { changeLabel, countLabel, csvRowCount, measureLabel, periodFor, PHOTO_RANK_LABELS, filterParams, photoParams } from '$lib/analytics/photo-view';
+	import { changeLabel, countLabel, countWithUnit, csvRowCount, measureLabel, periodFor, PHOTO_RANK_LABELS, filterParams, photoParams } from '$lib/analytics/photo-view';
 	import { describeSavedView, SAVED_VIEW_NAME_MAX, savedViewParams } from '$lib/analytics/saved-views';
 	import { PHOTO_RANKS, type PhotoRank } from '$lib/analytics/report-contract';
 	import { readShortlist, signInNeeds, writeShortlist } from '$lib/analytics/shortlist';
@@ -244,14 +244,15 @@
 					<p class="note">No photo actions match these filters. Album-level actions are in the CSV.</p>
 				{:else if layout === 'images'}
 					<ul class="grid">
-						{#each report.photos as photo (photo.photoId)}
+						{#each report.photos as photo, at (photo.photoId)}
 							<li class="card" class:picked={shortlist.includes(photo.photoId)}>
 								<button type="button" class="thumb" disabled={!hydrated} aria-label={`Inspect a photo from ${albumName(photo.albumKey)}: ${countLabel(photo.count, report.coverage)} ${measure.toLowerCase()}`} onclick={(event) => void open(photo, event.currentTarget)}>
 									{#if photo.imageUrl && !failedPreviews.has(photo.imageUrl)}<img src={photo.imageUrl} alt="" loading="lazy" decoding="async" onerror={() => previewFailed(photo.imageUrl!)} />{:else}<span class="none">Preview unavailable</span>{/if}
-									<span class="count">{countLabel(photo.count, report.coverage)}</span>
+									<span class="count">{countWithUnit(photo.count, report.coverage, query.measure)}</span>
 								</button>
 								<div class="card-body">
 									<p class="name">{albumName(photo.albumKey)}</p>
+									<p class="meta">Number {(pageIndex * (report.photoPagination?.pageSize ?? report.photos.length) + at + 1).toLocaleString('en-US')} of {total.toLocaleString('en-US')}</p>
 									{#if cardNote(photo)}<p class="meta">{cardNote(photo)}</p>{/if}
 									{#if data.owner}<label class="check"><input type="checkbox" checked={shortlist.includes(photo.photoId)} disabled={!hydrated} onchange={() => toggleShortlist(photo.photoId)} /><span>Shortlist</span></label>{/if}
 								</div>
@@ -389,12 +390,19 @@
 	@media (min-width: 900px) { .slot.wide { grid-column: auto; } .row:first-of-type { grid-template-columns: minmax(14rem, 1.6fr) repeat(2, minmax(10.5rem, 1fr)) auto; } }
 	.field-label { color: var(--muted); font-size: .8rem; font-weight: 650; }
 	input:not([type='hidden']):not([type='checkbox']), select { background: #fff; border: 1px solid #8fa1b8; border-radius: .45rem; color: var(--ink); font: inherit; font-size: .92rem; min-height: 2.75rem; min-width: 0; padding: 0 .6rem; width: 100%; }
+	/* WebKit keeps a native select at its own height unless the native look is dropped; the chevron stands in for it. */
+	select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23526176' stroke-width='2'/%3E%3C/svg%3E"); background-position: right .7rem center; background-repeat: no-repeat; background-size: .75rem; padding-right: 2rem; }
+	@media (forced-colors: active) { select { appearance: auto; background-image: none; padding-right: .6rem; } }
 	input[type='checkbox'] { block-size: 1.25rem; inline-size: 1.25rem; margin: 0; }
 	.primary, .secondary { align-items: center; border: 1px solid var(--blue-ink); border-radius: .5rem; cursor: pointer; display: inline-flex; font: inherit; font-size: .88rem; font-weight: 650; justify-content: center; min-height: 2.75rem; padding: 0 .9rem; text-decoration: none; }
 	.primary { background: var(--blue-ink); color: #fff; }
 	.secondary { background: #fff; color: var(--blue-ink); }
 	.secondary[aria-pressed='true'] { background: #dce9fa; }
-	.secondary:disabled, .off { cursor: default; opacity: .6; }
+	/* Selected is also a tick, so it does not depend on the colour of the fill. */
+	.secondary[aria-pressed='true']::before, .rank[aria-current='page']::before { content: '\2713\00a0' / ''; }
+	.secondary:disabled { cursor: default; opacity: .6; }
+	/* An inactive pager item keeps its text contrast and says so with a dashed edge. */
+	.off { border-style: dashed; color: var(--muted); cursor: default; }
 	.apply { justify-self: start; }
 
 	.picker { min-width: 0; }
@@ -406,7 +414,7 @@
 	.choice { align-items: center; background: none; border: 0; color: var(--ink); cursor: pointer; display: flex; font: inherit; gap: .6rem; justify-content: space-between; min-height: 2.75rem; padding: 0 .3rem; text-align: left; width: 100%; }
 	.choice:hover { background: #eef4fc; }
 	.choice-text { display: grid; min-width: 0; }
-	.choice-name { overflow-wrap: anywhere; }
+	.choice-name { overflow-wrap: break-word; }
 	.more { border-top: 1px solid var(--line); padding-top: .3rem; }
 
 	.head { align-items: start; display: flex; flex-wrap: wrap; gap: .6rem 1rem; justify-content: space-between; }
@@ -416,10 +424,9 @@
 	.rank[aria-current='page'] { background: #dce9fa; border-color: var(--blue-ink); }
 	.rank.off { color: var(--muted); }
 
-	.grid { display: grid; gap: .8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; margin: .8rem 0 0; padding: 0; }
-	@media (min-width: 640px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-	@media (min-width: 900px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-	@media (min-width: 1200px) { .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+	/* As many tiles as fit at 9rem or more, so a larger text size gives fewer, wider tiles, and one at a time when 9rem is most of the width. */
+	.grid { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr)); list-style: none; margin: .8rem 0 0; padding: 0; }
+	@media (min-width: 900px) { .grid { grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr)); } }
 	.card { background: #fff; border: 1px solid var(--line); border-radius: .7rem; min-width: 0; overflow: hidden; }
 	.card.picked, tr.picked { box-shadow: inset 0 0 0 2px var(--blue-ink); }
 	.thumb { align-items: center; aspect-ratio: 3 / 2; background: #e8edf3; border: 0; color: var(--muted); cursor: pointer; display: grid; overflow: hidden; padding: 0; position: relative; width: 100%; }
@@ -428,7 +435,7 @@
 	.thumb .none { font-size: .75rem; padding: .3rem; text-align: center; }
 	.count { background: rgb(23 32 51 / .9); border-radius: .35rem; bottom: .4rem; color: #fff; font-size: .78rem; font-weight: 650; left: .4rem; padding: .1rem .45rem; position: absolute; }
 	.card-body { padding: .5rem .6rem .6rem; }
-	.name { font-size: .9rem; font-weight: 650; margin: 0; overflow-wrap: anywhere; }
+	.name { font-size: .9rem; font-weight: 650; margin: 0; overflow-wrap: break-word; }
 	.meta { color: var(--muted); font-size: .78rem; line-height: 1.4; margin: .15rem 0 .3rem; }
 	.check { align-items: center; cursor: pointer; display: inline-flex; font-size: .85rem; gap: .5rem; min-height: 2.75rem; }
 	.columns { margin-top: .6rem; }
@@ -440,7 +447,7 @@
 	th[scope='row'] { font-weight: 500; }
 	td { white-space: nowrap; }
 	.num { font-variant-numeric: tabular-nums; text-align: right; }
-	.ref { color: var(--muted); display: block; font-family: ui-monospace, monospace; font-size: .75rem; overflow-wrap: anywhere; }
+	.ref { color: var(--muted); display: block; font-family: ui-monospace, monospace; font-size: .75rem; overflow-wrap: break-word; }
 
 	.pager { align-items: center; display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; }
 	.count-line { color: var(--muted); font-size: .85rem; }
@@ -449,7 +456,7 @@
 	.views { display: grid; gap: .6rem; list-style: none; margin: .6rem 0 0; padding: 0; }
 	.views li { align-items: start; border-top: 1px solid #e6ecf3; display: flex; flex-wrap: wrap; gap: .4rem 1rem; justify-content: space-between; padding-top: .6rem; }
 	.views li:first-child { border-top: 0; padding-top: 0; }
-	.view-name { align-items: center; color: var(--blue-ink); display: inline-flex; font-weight: 700; min-height: 2.75rem; overflow-wrap: anywhere; text-underline-offset: 3px; }
+	.view-name { align-items: center; color: var(--blue-ink); display: inline-flex; font-weight: 700; min-height: 2.75rem; overflow-wrap: break-word; text-underline-offset: 3px; }
 	.save { align-items: end; border-top: 1px solid #e6ecf3; display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; padding-top: .8rem; }
 	.save .entry { flex: 1 1 16rem; }
 
@@ -460,8 +467,12 @@
 	.facts { display: grid; gap: .5rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: .6rem 0; }
 	.facts div { background: #f4f7fb; border-radius: .5rem; padding: .5rem .6rem; }
 	.facts dt { color: var(--muted); font-size: .74rem; }
-	.facts dd { font-size: 1.1rem; font-variant-numeric: tabular-nums; font-weight: 750; margin: .1rem 0 0; overflow-wrap: anywhere; }
+	.facts dd { font-size: 1.1rem; font-variant-numeric: tabular-nums; font-weight: 750; margin: .1rem 0 0; overflow-wrap: break-word; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-	@media (forced-colors: active) { .panel, .card, input, select, .primary, .secondary, .rank { border: 1px solid CanvasText; } }
+	@media (forced-colors: active) {
+		.panel, .card, input, select, .primary, .secondary, .rank { border: 1px solid CanvasText; }
+		.secondary[aria-pressed='true'], .rank[aria-current='page'] { background: Highlight; border: 2px solid CanvasText; color: HighlightText; forced-color-adjust: none; }
+		.off { border-style: dashed; }
+	}
 	@media (prefers-contrast: more) { .photos { --muted: #36445a; --line: #5c6b80; } .note, .lead, .meta, .field-label, .hint, .count-line { color: #2b3748; } }
 </style>

@@ -45,7 +45,7 @@
 	caption { color: var(--muted, #526176); font-size: .8rem; padding-bottom: .35rem; text-align: left; }
 	th, td { border-bottom: 1px solid #e6ecf3; padding: .45rem .6rem; text-align: left; vertical-align: top; }
 	thead th { font-weight: 650; vertical-align: bottom; }
-	tbody th { font-weight: 500; overflow-wrap: anywhere; }
+	tbody th { font-weight: 500; overflow-wrap: break-word; }
 	tbody th a { color: var(--blue-ink, #174ea6); display: inline-flex; min-height: 2.75rem; align-items: center; text-underline-offset: 3px; }
 	td { white-space: nowrap; }
 	.num { font-variant-numeric: tabular-nums; text-align: right; }
@@ -53,12 +53,12 @@
 	.cards { display: grid; gap: .6rem; list-style: none; margin: 0; padding: 0; }
 	.card { border: 1px solid var(--line, #d8e0ea); border-radius: .7rem; padding: .6rem .75rem; }
 	.card-head { align-items: center; display: flex; min-height: 2.75rem; }
-	.card-head a, .name { color: var(--ink, #172033); flex: 1 1 9rem; font-size: .98rem; font-weight: 650; min-width: 0; overflow-wrap: anywhere; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
+	.card-head a, .name { color: var(--ink, #172033); flex: 1 1 9rem; font-size: .98rem; font-weight: 650; min-width: 0; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
 	.card-head a { align-items: center; display: inline-flex; min-height: 2.75rem; }
 	.card dl { display: grid; gap: .25rem .75rem; grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr)); margin: .1rem 0 0; }
 	.card dl div { min-width: 0; }
 	.card dt { color: var(--muted, #526176); font-size: .74rem; }
-	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: anywhere; }
+	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: break-word; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
 	@container (min-width: 40rem) {
