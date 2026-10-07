@@ -361,7 +361,7 @@ const REJECTION_GROUPS: Array<{ words: string; match: (reason: string) => boolea
 	{ words: 'could not be stored', match: (reason) => UNSTORED_REJECTION_REASONS.has(reason) },
 	{ words: 'not valid', match: (reason) => reason === 'invalid_json' || reason === 'invalid_event' },
 	{ words: 'album or photo not found', match: (reason) => reason === 'unknown_target' },
-	{ words: 'reason not recorded (before Oct 7)', match: (reason) => reason === 'not_recorded' }
+	{ words: 'counted before reasons were kept', match: (reason) => reason === 'not_recorded' }
 ];
 
 export function rejectionSplit(days: RejectionDay[] | null): string {

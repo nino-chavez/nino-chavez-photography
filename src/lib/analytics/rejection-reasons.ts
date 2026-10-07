@@ -2,7 +2,7 @@
 
 /**
  * Why the collector refused an event. The counter table's CHECK holds the same list, plus `not_recorded` for
- * refusals counted before reasons were kept (2026-10-07).
+ * refusals counted before migration 20261007180000 was applied.
  */
 export const COLLECTION_REJECTION_REASONS = ['known_crawler', 'invalid_json', 'invalid_event', 'unknown_target', 'target_lookup_failed', 'album_lookup_failed', 'accept_failed'] as const;
 export type CollectionRejectionReason = (typeof COLLECTION_REJECTION_REASONS)[number];

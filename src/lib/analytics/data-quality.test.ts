@@ -348,7 +348,7 @@ const SURGE: RejectionDay[] = [
 test('delivery rows split refusals by reason and compare the last complete day with the usual rate', () => {
 	assert.equal(rejectionSplit([]), 'None rejected');
 	assert.equal(rejectionSplit([...SURGE, { day: '2026-10-07', reason: 'known_crawler', count: 900 }, { day: '2026-10-07', reason: 'accept_failed', count: 2 }, { day: '2026-10-07', reason: 'invalid_event', count: 1 }, { day: '2026-10-07', reason: 'invalid_json', count: 1 }]),
-		'97,816 reason not recorded (before Oct 7) · 900 from known crawlers · 2 could not be stored · 2 not valid');
+		'97,816 counted before reasons were kept · 900 from known crawlers · 2 could not be stored · 2 not valid');
 	assert.deepEqual(rejectedOnDay(rejectionReading(SURGE, LAST), SURGE, LAST), { label: 'Rejected on Oct 5', value: '20,528 (usual 412 a day)' });
 	assert.equal(rejectedOnDay(rejectionReading(SURGE, '2026-09-30'), SURGE, '2026-09-30').value, '431 (usual not known yet)');
 	assert.equal(rejectedOnDay(null, [], LAST).value, 'None');

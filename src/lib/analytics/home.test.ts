@@ -371,7 +371,7 @@ test('a refusal surge is a problem, said by what the refusals were; events that 
 	// The real Oct 5: counted before reasons were kept.
 	const before = openProblems({ ...base, rejections: reading });
 	assert.deepEqual(before.map((p) => [p.id, p.href]), [['collection-surge', 'delivery']]);
-	assert.equal(before[0].text, 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day. Why they were rejected was not recorded: reasons are kept from Oct 7, 2026.');
+	assert.equal(before[0].text, 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day. Why was not recorded: they were counted before reasons were kept.');
 	// A crawler-only surge is still reported, and says nothing was lost.
 	assert.equal(surgeWords({ ...reading, crawler: 20528, notRecorded: 0 }), 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day. All came from known crawlers, which it rejects on purpose. No visitor events were lost.');
 	assert.equal(surgeWords({ ...reading, usual: 0, crawler: 20000, notRecorded: 0, other: 528 }), 'The collector rejected 20,528 events on Oct 5, when it usually rejects none. 20,000 came from known crawlers, which it rejects on purpose. 528 were not valid or named an album or photo that does not exist.');

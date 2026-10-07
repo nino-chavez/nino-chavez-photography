@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T18:39:47.264Z",
+  "reviewedAt": "2026-10-07T18:44:15.791Z",
   "reviewedBy": "Claude Opus 5.5 (implementing session, self-review; not a cold reviewer)",
-  "method": "Walked Data and Home in the in-app browser (Chromium, desktop and 375px phone) on this worktree's vite dev server reading production Supabase read-only through a preload that aborts on any write or non-read RPC (0 blocked in 672 outbound calls), with a stand-in owner session. Two states: production as it is (no rejection reasons yet; the new rows read 'Not recorded yet' and no surge is claimed) and a planted health reading carrying the real Oct 2-6 counter totals as the migration would return them (surge leads the status on both pages; the Home link opens Data at #delivery). A third state, a crawler surge with 5 unstored events, was checked by fetching the page text. The walk found and fixed a client crash (a browser module importing a server-only one) and mixed 'refused'/'rejected' wording. Not covered: WebKit, a real sign-in, screen readers, forced colors, large text, and the page after the migration is applied for real.",
-  "sourceDigest": "sha256:63f9bd0aa7c2b6e4a7cd1fbb6470242ad7095e49afe1b96cd59739b77443bd3b",
+  "method": "Walked Data and Home in the in-app browser (Chromium, desktop and 375px phone) on this worktree's vite dev server reading production Supabase read-only through a preload that aborts on any write or non-read RPC (0 blocked in 672 outbound calls), with a stand-in owner session. Two states: production as it is (no rejection reasons yet; the new rows read 'Not recorded yet' and no surge is claimed) and a planted health reading carrying the real Oct 2-6 counter totals as the migration would return them (surge leads the status on both pages; the Home link opens Data at #delivery). A third state, a crawler surge with 5 unstored events, was checked by fetching the page text. The walk found and fixed a client crash (a browser module importing a server-only one) and mixed 'refused'/'rejected' wording. Not covered: WebKit, a real sign-in, screen readers, forced colors, large text, and the page after the migration is applied for real. After the walk, the date was taken out of two strings because reasons start when the migration is applied, not on a fixed day: the surge sentence now ends 'Why was not recorded: they were counted before reasons were kept.' and the split label reads 'counted before reasons were kept'. Checked by unit tests and page text, not re-walked in the browser.",
+  "sourceDigest": "sha256:2e47548529abe17f74b444ede551685bd7bf722736cc7c2c91d55f501b80b599",
   "sourceFiles": 202,
   "scope": [
     "Data status and delivery rows",

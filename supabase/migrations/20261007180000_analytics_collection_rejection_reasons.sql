@@ -21,7 +21,7 @@ ALTER TABLE public.analytics_collection_delivery_counters
   ADD PRIMARY KEY (bucket_date, schema_version, outcome, reason);
 
 COMMENT ON COLUMN public.analytics_collection_delivery_counters.reason IS
-  'Why the collector refused the event; none for accepted and duplicate. not_recorded marks rejections counted before 2026-10-07, when no reason was kept. target_lookup_failed, album_lookup_failed and accept_failed answered 503: the event was not stored, and the browser retries it once.';
+  'Why the collector refused the event; none for accepted and duplicate. not_recorded marks rejections counted before this column existed, when no reason was kept. target_lookup_failed, album_lookup_failed and accept_failed answered 503: the event was not stored, and the browser retries it once.';
 
 DROP FUNCTION public.analytics_record_collection_delivery(smallint, text);
 CREATE FUNCTION public.analytics_record_collection_delivery(p_schema_version smallint, p_outcome text, p_reason text DEFAULT NULL)

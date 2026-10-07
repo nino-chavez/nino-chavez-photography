@@ -6,7 +6,7 @@ export type MeasurementHealth = {
 	controlPending:number | null; oldestPendingAt:string | null; oldestSubmittedAt:string | null; confirmedWatermark:string | null;
 	accepted:number | null; rejected:number | null; duplicate:number | null; quotaBillingState:'unknown'; eligibleObservations:number | null; eligibleDays:number | null;
 	forecast30Days:number | null; forecastLimit:string;
-	/** Refused events by Chicago day and reason, last 30 days; null when the reading has no such list (before 2026-10-07's migration). */
+	/** Refused events by Chicago day and reason, last 30 days; null when the reading has no such list (before migration 20261007180000). */
 	rejectedDays:RejectionDay[] | null;
 };
 

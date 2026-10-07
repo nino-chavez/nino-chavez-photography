@@ -83,6 +83,10 @@ query($zone:String!,$since:Time!,$until:Time!){viewer{zones(filter:{zoneTag:$zon
     count dimensions{clientRequestPath edgeResponseStatus}}}}}
 ```
 
+## Production matches what the migration expects
+
+Read-only, 2026-10-07, through `supabase db query --linked`: the live `analytics_record_collection_delivery(smallint, text)` and `analytics_posthog_delivery_health()` are identical to the repository's definitions (from `20260929190000`), with the same grants, and the counter table's constraints carry the default names the migration drops and replaces. Applying it overwrites nothing that exists only in production.
+
 ## Not checked
 
 - Which pages Meta rendered, and whether it reads `robots.txt` for them. `ninochavez.co/robots.txt` is served by the apex router, not this repository.
