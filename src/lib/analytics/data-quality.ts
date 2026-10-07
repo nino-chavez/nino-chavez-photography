@@ -85,12 +85,15 @@ export function statusView(input: {
 			: state === 'partial'
 				? partialHeadline(notRead.length)
 				: problems.length === 1 ? (input.lead && problems[0].id === input.lead.id ? input.lead.headline : 'One thing needs attention.') : `${problems.length} things need attention.`;
+	// A headline that is the problem's own first sentence is not said again beside it: the list carries only what the headline leaves out.
+	const lead = input.lead && state === 'attention' && problems.length === 1 && problems[0].id === input.lead.id ? input.lead : null;
+	const listed = lead ? problems.map((problem) => ({ ...problem, text: problem.text.startsWith(lead.headline) ? problem.text.slice(lead.headline.length).trim() || problem.text : problem.text })) : problems;
 	const refreshed = refreshedAt === null
 		? `When the gallery counts were last refreshed could not be read, so whether they are current is unknown. They cover complete days through ${formatDay(lastCompleteDay)}.`
 		: `The gallery counts were last refreshed at ${chicagoTime(refreshedAt, today)} Chicago time and cover every complete day through ${formatDay(lastCompleteDay)}. They normally refresh every 30 minutes.`;
 	// The headline of a limited page already says the first limit; the detail says the others, and every one when something worse leads.
 	const rest = state === 'limited' ? limits.slice(1) : state === 'partial' || state === 'attention' ? limits : [];
-	return { state, headline, detail: [refreshed, ...rest].join(' '), refreshed, problems, notRead, limits };
+	return { state, headline, detail: [refreshed, ...rest].join(' '), refreshed, problems: listed, notRead, limits };
 }
 
 /**

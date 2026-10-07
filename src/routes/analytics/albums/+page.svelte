@@ -294,11 +294,12 @@
 	.pick { align-items: center; cursor: pointer; display: inline-flex; font-size: .85rem; gap: .35rem; min-height: 2.75rem; min-width: 2.75rem; padding-inline: .25rem; }
 	.pick input { cursor: pointer; flex: none; height: 1.3rem; margin: 0; width: 1.3rem; }
 	.pick input:disabled { cursor: default; }
-	.pick-text { white-space: nowrap; }
-	.card-head .pick { flex: none; }
+	/* The word may break at the largest text sizes, or it pushes the card past the panel's edge (measured at 312%). */
+	.pick-text { min-width: 0; overflow-wrap: anywhere; }
+	.card-head .pick { flex: 0 1 auto; max-width: 100%; min-width: 0; }
 
 	.cards { display: none; gap: .6rem; list-style: none; margin: .5rem 0 0; padding: 0; }
-	.card { border: 1px solid var(--line); border-radius: .7rem; padding: .6rem .75rem; }
+	.card { border: 1px solid var(--line); border-radius: .7rem; min-width: 0; padding: .6rem .75rem; }
 	.card.picked { background: #eaf1fd; border-color: #9db8e6; }
 	.card-head { align-items: center; display: flex; flex-wrap: wrap; gap: .1rem .5rem; justify-content: space-between; }
 	.card-head a { align-items: center; color: var(--ink); display: inline-flex; flex: 1 1 min(9rem, 100%); min-height: 2.75rem; min-width: 0; font-size: .98rem; font-weight: 650; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }

@@ -352,13 +352,15 @@ test('a rejection surge against the usual rate is the owner\'s headline, said in
 	assert.equal(owner.status.headline, 'Rejected events are about 55 times their usual rate since Oct 2. The cause is not recorded yet.');
 	assert.deepEqual(owner.status.problems.map((p) => p.id), ['rejections-unusual']);
 	assert.equal(owner.status.problems[0].href, 'delivery');
+	// The list under the headline carries what the headline leaves out, not the headline again.
+	assert.equal(owner.status.problems[0].text, 'They have averaged 24,142 a day against about 420 before. Accepted events are at about their usual rate.');
 	// The row beside the totals says whether the count is usual, in the same words.
 	const row = owner.delivery.rows!.find((item) => item.label === 'Rejected events, against the usual rate')!;
 	assert.match(row.value, /^Rejected events are about 55 times their usual rate since Oct 2\. The cause is not recorded yet\. They have averaged 24,142 a day against about 420 before\. Accepted events are at about their usual rate\.$/);
 	// With another problem the headline is a count, and the surge is still one of the listed problems.
 	const two = buildDataView(input({ owner: true, health, rejections: surge, refreshedAt: '2026-10-06T12:00:00Z' }));
 	assert.equal(two.status.headline, '2 things need attention.');
-	assert.ok(two.status.problems.some((p) => p.id === 'rejections-unusual'));
+	assert.ok(two.status.problems.some((p) => p.id === 'rejections-unusual' && p.text.startsWith('Rejected events are about 55 times')), 'with a count for a headline, the list says it in full');
 });
 
 test('a visitor never sees the rejection counts or the surge: the counters are the owner\'s', () => {
