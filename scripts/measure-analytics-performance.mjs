@@ -15,11 +15,14 @@
  *   ANALYTICS_MEASURE_OUTPUT        default .temp/analytics-performance.json
  *   PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
  *
- * Reported per page and device: responseStartMs (navigation start to first byte, includes connection setup),
- * serverMs (request sent to first byte), documentMs (request sent to the last byte of the HTML document: these pages stream, so
- * the first byte arrives early and documentMs is the server-time figure that follows the data), responseEndMs, the document's transfer size, the transfer
- * size of resources the browser is allowed to measure, wireBytes (everything received, counted by the browser's network layer,
- * including cross-origin images), largest contentful paint and layout shift.
+ * Reported per page and device: responseStartMs (navigation start to the first response, includes connection setup),
+ * serverMs (request sent to that first response), documentMs (request sent to the last byte of the HTML document),
+ * finalHeadersMs (request sent to the final response headers), responseEndMs, the document's transfer size, the transfer
+ * size of resources the browser is allowed to measure, wireBytes (everything received, counted by the browser's network
+ * layer, including cross-origin images), largest contentful paint and layout shift.
+ * On the production host the first response is Cloudflare's 103 Early Hints, sent before the app answers, so responseStartMs
+ * and serverMs are not server time there. documentMs and finalHeadersMs follow the app; they are almost equal because the
+ * app does not stream the document.
  */
 import {chromium} from '@playwright/test';
 import {mkdir, writeFile} from 'node:fs/promises';
@@ -68,7 +71,7 @@ try {
   await page.waitForTimeout(1500);
   const metrics=await page.evaluate(()=>{
    const n=performance.getEntriesByType('navigation')[0],resources=performance.getEntriesByType('resource');
-   return {...window.__lab,requestStartMs:n.requestStart,responseStartMs:n.responseStart,serverMs:n.responseStart-n.requestStart,documentMs:n.responseEnd-n.requestStart,responseEndMs:n.responseEnd,domContentLoadedMs:n.domContentLoadedEventEnd,loadMs:n.loadEventEnd,documentBytes:n.transferSize,resourceBytes:resources.reduce((sum,r)=>sum+r.transferSize,0),resourceCount:resources.length,crossOriginResources:resources.filter(r=>new URL(r.name).origin!==location.origin).length,scriptBytes:resources.filter(r=>r.initiatorType==='script').reduce((sum,r)=>sum+r.transferSize,0)};
+   return {...window.__lab,requestStartMs:n.requestStart,responseStartMs:n.responseStart,serverMs:n.responseStart-n.requestStart,finalHeadersMs:n.finalResponseHeadersStart>0?n.finalResponseHeadersStart-n.requestStart:null,firstInterimMs:n.firstInterimResponseStart>0?n.firstInterimResponseStart-n.requestStart:null,documentMs:n.responseEnd-n.requestStart,responseEndMs:n.responseEnd,domContentLoadedMs:n.domContentLoadedEventEnd,loadMs:n.loadEventEnd,documentBytes:n.transferSize,resourceBytes:resources.reduce((sum,r)=>sum+r.transferSize,0),resourceCount:resources.length,crossOriginResources:resources.filter(r=>new URL(r.name).origin!==location.origin).length,scriptBytes:resources.filter(r=>r.initiatorType==='script').reduce((sum,r)=>sum+r.transferSize,0)};
   }).catch(error=>{errors.push(`metrics: ${error.message}`);return {};});
   const interactions=[];
   const unavailable=await page.getByRole('heading',{name:/report unavailable/i}).count();
@@ -98,12 +101,12 @@ const summary=[];
 for(const device of ['desktop','mobile']) for(const path of paths){
  const rows=results.filter(r=>r.device===device&&r.path===path&&r.status===200&&!r.unavailable);
  const stat=key=>({median:percentile(rows.map(r=>r[key]),0.5),p90:percentile(rows.map(r=>r[key]),0.9)});
- summary.push({device,path,n:rows.length,failed:results.filter(r=>r.device===device&&r.path===path).length-rows.length,responseStartMs:stat('responseStartMs'),serverMs:stat('serverMs'),documentMs:stat('documentMs'),responseEndMs:stat('responseEndMs'),documentBytes:stat('documentBytes'),resourceBytes:stat('resourceBytes'),wireBytes:stat('wireBytes'),lcp:stat('lcp'),resourceCount:stat('resourceCount'),cls:stat('cls')});
+ summary.push({device,path,n:rows.length,failed:results.filter(r=>r.device===device&&r.path===path).length-rows.length,responseStartMs:stat('responseStartMs'),serverMs:stat('serverMs'),finalHeadersMs:stat('finalHeadersMs'),documentMs:stat('documentMs'),responseEndMs:stat('responseEndMs'),documentBytes:stat('documentBytes'),resourceBytes:stat('resourceBytes'),wireBytes:stat('wireBytes'),lcp:stat('lcp'),resourceCount:stat('resourceCount'),cls:stat('cls')});
 }
 const output=process.env.ANALYTICS_MEASURE_OUTPUT ?? '.temp/analytics-performance.json';
 await mkdir(dirname(output),{recursive:true});
 await writeFile(output,JSON.stringify({measuredAt:new Date().toISOString(),origin,runsPerPageAndDevice:runs,gapMs,kind:'Lab measurements; cold browser cache on every load; mobile simulates 150ms RTT, 1.6Mbps down, 4x CPU. Not real-user INP or field Core Web Vitals. Percentiles are nearest-rank.',summary,results},null,2));
 const f=(v,d=0)=>v===null||v===undefined?'-':Number(v).toFixed(d);
-console.log(['device','path','n','first byte med/p90','request to document complete med/p90','end med/p90','doc B med','wire B med/p90','lcp med/p90'].join(' | '));
+console.log(['device','path','n','first response med/p90 (production: Cloudflare 103)','request to document complete med/p90','end med/p90','doc B med','wire B med/p90','lcp med/p90'].join(' | '));
 for(const s of summary)console.log([s.device,s.path,s.n,`${f(s.serverMs.median)}/${f(s.serverMs.p90)}`,`${f(s.documentMs.median)}/${f(s.documentMs.p90)}`,`${f(s.responseEndMs.median)}/${f(s.responseEndMs.p90)}`,f(s.documentBytes.median),`${f(s.wireBytes.median)}/${f(s.wireBytes.p90)}`,`${f(s.lcp.median)}/${f(s.lcp.p90)}`].join(' | '));
 if(results.some(result=>result.status!==200||result.unavailable||result.errors.length))process.exitCode=1;
