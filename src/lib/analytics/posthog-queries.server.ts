@@ -27,6 +27,9 @@ const galleryJourneyCache = createProviderCache({
 	maxBytes: 2 * 1024 * 1024
 });
 
+/** PostHog's documented per-project limit on queries running at once. */
+const POSTHOG_CONCURRENT_QUERIES = 3;
+
 class PostHogQueryPendingError extends Error {
 	constructor() {
 		super('PostHog query did not finish before the report deadline');
@@ -688,46 +691,67 @@ export function createPostHogQueryTransport(source: Record<string, string | unde
 		}
 		signal.addEventListener('abort', aborted, { once: true });
 	}));
+	// PostHog runs three queries at once per project and queues the rest on its side, where they keep running after
+	// this caller gives up. Each request's transport queues its own queries here instead, so the deadline below
+	// measures PostHog's work, not its queue. Other requests still share the project's three slots. The wait for a
+	// slot has its own bound; a query that never gets a slot is pending and was never sent.
+	let active = 0;
+	const waiting: Array<() => void> = [];
+	const acquire = () => new Promise<void>((resolve, reject) => {
+		if (active < POSTHOG_CONCURRENT_QUERIES) { active += 1; return resolve(); }
+		const grant = () => { cancelAbort(timer); active += 1; resolve(); };
+		const timer = scheduleAbort(() => {
+			const index = waiting.indexOf(grant);
+			if (index >= 0) waiting.splice(index, 1);
+			reject(new PostHogQueryPendingError());
+		}, totalDeadlineMs);
+		waiting.push(grant);
+	});
+	const release = () => { active -= 1; waiting.shift()?.(); };
 	return {
 		providerCache: { origin, account: projectId, credentialIdentity: credentialIdentity(apiKey) },
 		async query(body) {
-			const headers = { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' };
-			const endpoint = `${origin}/api/projects/${projectId}/query/`;
-			const controller = new AbortController();
-			const deadline = now() + totalDeadlineMs;
-			const abortHandle = scheduleAbort(() => controller.abort(), totalDeadlineMs);
-			try {
-				const response = await fetcher(endpoint, {
-					method: 'POST', headers,
-					body: JSON.stringify({ refresh: 'async', ...(body as object) }), signal: controller.signal
-				});
-				if (!response.ok) throw new Error(`PostHog query failed with ${response.status}`);
-				let result = await response.json() as {results?: unknown; query_status?: {id?: string; complete?: boolean; error?: boolean; results?: unknown}};
-				if (Array.isArray(result.results)) return result;
-				if (result.query_status?.error) throw new Error('PostHog query failed');
-				if (result.query_status?.complete) return result.query_status.results;
-				const id = result.query_status?.id;
-				if (!id) throw new Error('PostHog query status unavailable');
-				for (let attempt = 0; attempt < 12; attempt++) {
-					const remaining = deadline - now();
-					if (remaining <= 0 || controller.signal.aborted) throw new PostHogQueryPendingError();
-					await sleep(Math.min(pollIntervalMs, remaining), controller.signal);
-					if (deadline - now() <= 0 || controller.signal.aborted) throw new PostHogQueryPendingError();
-					const poll = await fetcher(`${endpoint}${encodeURIComponent(id)}/`, { headers, signal: controller.signal });
-					if (!poll.ok) throw new Error(`PostHog query status failed with ${poll.status}`);
-					result = await poll.json() as typeof result;
-					if (result.query_status?.error) throw new Error('PostHog query failed');
-					if (result.query_status?.complete) return result.query_status.results;
-				}
-				throw new PostHogQueryPendingError();
-			} catch (cause) {
-				if (controller.signal.aborted) throw new PostHogQueryPendingError();
-				throw cause;
-			} finally {
-				cancelAbort(abortHandle);
-			}
+			await acquire();
+			try { return await send(body); } finally { release(); }
 		}
 	};
+	async function send(body: Parameters<PostHogQueryTransport['query']>[0]): Promise<unknown> {
+		const headers = { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' };
+		const endpoint = `${origin}/api/projects/${projectId}/query/`;
+		const controller = new AbortController();
+		const deadline = now() + totalDeadlineMs;
+		const abortHandle = scheduleAbort(() => controller.abort(), totalDeadlineMs);
+		try {
+			const response = await fetcher(endpoint, {
+				method: 'POST', headers,
+				body: JSON.stringify({ refresh: 'async', ...(body as object) }), signal: controller.signal
+			});
+			if (!response.ok) throw new Error(`PostHog query failed with ${response.status}`);
+			let result = await response.json() as {results?: unknown; query_status?: {id?: string; complete?: boolean; error?: boolean; results?: unknown}};
+			if (Array.isArray(result.results)) return result;
+			if (result.query_status?.error) throw new Error('PostHog query failed');
+			if (result.query_status?.complete) return result.query_status.results;
+			const id = result.query_status?.id;
+			if (!id) throw new Error('PostHog query status unavailable');
+			for (let attempt = 0; attempt < 12; attempt++) {
+				const remaining = deadline - now();
+				if (remaining <= 0 || controller.signal.aborted) throw new PostHogQueryPendingError();
+				await sleep(Math.min(pollIntervalMs, remaining), controller.signal);
+				if (deadline - now() <= 0 || controller.signal.aborted) throw new PostHogQueryPendingError();
+				const poll = await fetcher(`${endpoint}${encodeURIComponent(id)}/`, { headers, signal: controller.signal });
+				if (!poll.ok) throw new Error(`PostHog query status failed with ${poll.status}`);
+				result = await poll.json() as typeof result;
+				if (result.query_status?.error) throw new Error('PostHog query failed');
+				if (result.query_status?.complete) return result.query_status.results;
+			}
+			throw new PostHogQueryPendingError();
+		} catch (cause) {
+			if (controller.signal.aborted) throw new PostHogQueryPendingError();
+			throw cause;
+		} finally {
+			cancelAbort(abortHandle);
+		}
+	}
 }
 
 /** Reconciliation only confirms provider-returned UUIDs; it never treats capture success as confirmation. */
