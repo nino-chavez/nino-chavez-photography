@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	basisWords, buildDataView, coverageView, deliveryView, rejectionSplit, rejectedOnDay, EVENTS_NOT_READ, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
+	basisWords, buildDataView, coverageView, deliveryView, rejectionSplit, rejectedOnDay, diagnosticsLabel, EVENTS_NOT_READ, eventsLabel, galleryDay, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
 	siteJourneyNote, siteMeasuresView, statusView, trafficClassWords, trafficView, withNotRead, type DataInput, type NotRead
 } from './data-quality';
 import { DATA_ANCHORS } from './data-anchors';
@@ -219,7 +219,7 @@ test('delivery detail waits for the owner; everyone else is told why and where t
 	assert.deepEqual(terms, ['Accepted', 'Rejected', 'Duplicate', 'Usual', 'Pending', 'Submitted', 'Confirmed', 'Failed', 'Classification changes waiting']);
 	assert.match(owner.delivery.terms.find((item) => item.term === 'Rejected')!.means, /Crawlers are rejected on purpose\. An event that could not be stored is lost unless the browser's one retry worked\.$/);
 	// Before the reasons migration the reading has no day list: the rows say so, never a zero.
-	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Why events were rejected, last 30 days')!.value, 'Not recorded yet. Reasons are kept from the day the collector update is installed.');
+	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Why events were rejected, last 30 days')!.value, 'Not recorded yet. Reasons are kept from the day the counting update is installed.');
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Rejected on Oct 5')!.value, 'Not recorded yet');
 	assert.deepEqual(signedOut.delivery.terms, []);
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Oldest event waiting')!.value, 'None waiting');
@@ -270,11 +270,11 @@ test('linked journeys: unavailable reports are said once, with what to do, not a
 	const make = (report: JourneyAggregate['report'], available: boolean, error?: JourneyAggregate['error']): JourneyAggregate => ({ report, available, error, asOf: null, coverage: { start: '', end: '', timezone: 'America/Chicago', definitionVersion: 2, cohort: '', excluded: '', metadata: '' }, totals: {}, breakdown: [] });
 	const none = journeysView(['discovery', 'album_use', 'search_usefulness'].map((name) => make(name as JourneyAggregate['report'], false, 'provider_unavailable')), true);
 	assert.equal(none.available.length, 0);
-	assert.match(none.unavailable!.what, /^All linked-journey reports need PostHog, which is not connected here \(Discovery, Album use, Search usefulness\)\. No figure is shown, and that is not zero\.$/);
+	assert.match(none.unavailable!.what, /^All reports on what visitors did after arriving need PostHog, which is not connected here \(Discovery, Album use, Search usefulness\)\. No figure is shown, and that is not zero\.$/);
 	assert.match(none.unavailable!.todo, /Add the PostHog query settings/);
 	const some = journeysView([make('discovery', true), make('album_use', false, 'provider_query_failed')], true);
 	assert.equal(some.available.length, 1);
-	assert.match(some.unavailable!.what, /^1 of 2 linked-journey reports could not be read \(Album use\)\./);
+	assert.match(some.unavailable!.what, /^1 of 2 reports on what visitors did after arriving could not be read \(Album use\)\./);
 	assert.equal(journeysView([make('discovery', true)], true).unavailable, null);
 	assert.match(journeysView(null, true).unavailable!.what, /not zero/);
 	assert.match(notReadNote('posthog', true).todo, /Reload in a few minutes/);
@@ -332,11 +332,11 @@ test('search and download evidence: nothing is silent, and nothing is called a c
 });
 
 test('the catalogue basis reads as words, and a site-journey failure is said in this page\'s words', () => {
-	assert.equal(basisWords('backfill_current_catalogue, event_snapshot, mixed'), 'a backfill from the current catalogue, event snapshots and a mix of both');
-	assert.equal(basisWords('event_snapshot'), 'event snapshots');
+	assert.equal(basisWords('backfill_current_catalogue, event_snapshot, mixed'), 'details filled in later from the current catalogue, details saved when each event happened and a mix of both');
+	assert.equal(basisWords('event_snapshot'), 'details saved when each event happened');
 	assert.equal(basisWords('something_new'), 'something new');
 	assert.equal(basisWords(''), 'an unknown source');
-	assert.match(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.', true).what, /^PostHog is not connected here, so no linked-journey figure is shown for the site\. This is not zero\.$/);
+	assert.match(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.', true).what, /^PostHog is not connected here, so no figure for what visitors did after arriving is shown for the site\. This is not zero\.$/);
 	assert.doesNotMatch(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.', true).what, /above/);
 	assert.match(siteJourneyNote('PostHog linked journeys are still pending after the report deadline. This is not zero activity.', true).todo, /Reload in a few minutes/);
 	assert.match(siteJourneyNote('PostHog linked journeys could not be read.', true).todo, /check the PostHog query settings/);
@@ -374,10 +374,10 @@ test('S11: a visitor is told that a part is not available, and never handed the 
 test('S13: the traffic classes say what they mean for the numbers, in the share they come to', () => {
 	// Production, 2026-10-07: 454 audience and 1,893 unclassified, so 81% of the counted actions could not be sorted.
 	const heavy = trafficView({ report: report({ traffic: [{ classification: 'audience', count: 454 }, { classification: 'unclassified', count: 1893 }, { classification: 'operator', count: 1 }] }), names: new Map() })!;
-	assert.equal(heavy.meaning, '81% of the counted actions came from browsers the collector could not sort as audience, operator, test or automated. They are counted, and they are not called human, so read these totals as an upper limit on what real visitors did.');
+	assert.equal(heavy.meaning, '81% of the counted actions came from browsers the gallery’s counter could not sort as audience, operator, test or automated. They are counted, and they are not called human, so read these totals as an upper limit on what real visitors did.');
 	// A small share is said without the warning.
 	const light = trafficView({ report: report({ traffic: [{ classification: 'audience', count: 2000 }, { classification: 'unclassified', count: 290 }] }), names: new Map() })!;
-	assert.equal(light.meaning, '13% of the counted actions came from browsers the collector could not sort as audience, operator, test or automated. They are counted, and they are not called human.');
+	assert.equal(light.meaning, '13% of the counted actions came from browsers the gallery’s counter could not sort as audience, operator, test or automated. They are counted, and they are not called human.');
 	// Nothing unclassified, nothing to explain.
 	assert.equal(trafficView({ report: report({ traffic: [{ classification: 'audience', count: 100 }] }), names: new Map() })!.meaning, null);
 });
@@ -412,10 +412,42 @@ test('delivery rows split refusals by reason and compare the last complete day w
 	assert.deepEqual(view.status.problems.map((problem) => problem.id), ['collection-surge']);
 	assert.equal(view.status.problems[0].href, 'delivery');
 	// The surge alone is the headline in its own words, and the list under it carries only what the headline leaves out.
-	assert.equal(view.status.headline, 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day.');
-	assert.ok(!view.status.problems[0].text.startsWith('The collector rejected'), 'the headline is not said again under itself');
+	assert.equal(view.status.headline, 'The gallery’s counter rejected 20,528 events on Oct 5, 50 times its usual 412 a day.');
+	assert.ok(!view.status.problems[0].text.startsWith('The gallery’s counter rejected'), 'the headline is not said again under itself');
 	// With another problem the headline is a count, and the surge is said in full in the list.
 	const two = buildDataView(input({ owner: true, health, rejections: rejectionReading(SURGE, LAST), refreshedAt: '2026-10-06T12:00:00Z' }));
 	assert.equal(two.status.headline, '2 things need attention.');
-	assert.ok(two.status.problems.some((problem) => problem.id === 'collection-surge' && problem.text.startsWith('The collector rejected 20,528 events')));
+	assert.ok(two.status.problems.some((problem) => problem.id === 'collection-surge' && problem.text.startsWith('The gallery’s counter rejected 20,528 events')));
+});
+
+test('every start date on this page is in one format: the event counts say "Sep 29", never 2026-09-29, and the other two already do', () => {
+	const bounds = { start: '2026-09-06', end: '2026-10-05', firstRecordedAt: '2026-09-29T14:03:11.000Z', rawRetainedFrom: '2026-09-29T14:03:11.000Z', archivedFrom: '2026-09-01', archivedThrough: '2026-09-14', label: 'Detailed event counts begin 2026-09-29. Archived aggregate snapshots cover 2026-09-01 through 2026-09-14.' };
+	const label = eventsLabel(bounds);
+	assert.equal(label, 'Detailed event counts begin Sep 29. Raw retained observations begin Sep 29. Archived aggregate snapshots cover Sep 1 through Sep 14. Counts are observations, not people or a conversion funnel.');
+	assert.doesNotMatch(label, /\d{4}-\d{2}-\d{2}/);
+	// Nothing archived and nothing raw kept: only the start is said.
+	assert.equal(eventsLabel({ ...bounds, rawRetainedFrom: null, archivedFrom: null, archivedThrough: null }), 'Detailed event counts begin Sep 29. Counts are observations, not people or a conversion funnel.');
+	// No bound recorded: the projection's own sentence stands, because it names no date.
+	assert.equal(eventsLabel({ ...bounds, firstRecordedAt: null, label: 'No collection-bound record is available.' }), 'No collection-bound record is available.');
+	// The view carries it, and the page's other start date is in the same format.
+	assert.equal(eventsView({ available: true, coverage: bounds, counts: [] } as unknown as V2ReportProjection, true).label, label);
+	assert.equal(coverageView({ report: { ...report(), preservedSince: '2026-06-30' } as OperatorReport, days: 30, refreshedAt: REFRESHED, lastCompleteDay: LAST, now: NOW, today: TODAY })?.since, 'Jun 30');
+	// The search and download evidence says where it starts in the same format; with no start or a failed read its own sentence stands.
+	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30T14:00:00.000Z', label: 'First recorded diagnostic evidence: 2026-09-30. Earlier coverage is unknown.', error: null }), 'First recorded diagnostic evidence: Sep 30. Earlier coverage is unknown.');
+	assert.equal(diagnosticsLabel({ availableFrom: null, label: 'Diagnostic evidence was not loaded for this section.', error: null }), 'Diagnostic evidence was not loaded for this section.');
+	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30', label: 'Diagnostic evidence could not be read.', error: 'x' }), 'Diagnostic evidence could not be read.');
+});
+
+test('a coverage bound is the gallery\'s Chicago day: an instant after midnight UTC but before midnight in Chicago is the day before', () => {
+	// 04:00 UTC on Sep 30 is 11:00 PM on Sep 29 in Chicago.
+	assert.equal(galleryDay('2026-09-30T04:00:00Z'), '2026-09-29');
+	assert.equal(galleryDay('2026-09-30T05:00:00Z'), '2026-09-30');
+	// A bound that is already a date is kept as it is.
+	assert.equal(galleryDay('2026-09-30'), '2026-09-30');
+	const bounds = { start: '2026-09-06', end: '2026-10-05', firstRecordedAt: '2026-09-30T04:00:00Z', rawRetainedFrom: '2026-09-30T04:30:00Z', archivedFrom: '2026-09-01', archivedThrough: '2026-09-14', label: 'x' };
+	assert.equal(eventsLabel(bounds), 'Detailed event counts begin Sep 29. Raw retained observations begin Sep 29. Archived aggregate snapshots cover Sep 1 through Sep 14. Counts are observations, not people or a conversion funnel.');
+	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30T04:00:00Z', label: 'x', error: null }), 'First recorded diagnostic evidence: Sep 29. Earlier coverage is unknown.');
+	// The status line's limit names the same day as the evidence line.
+	const view = buildDataView(input({ report: report({ diagnosticsCoverage: { availableFrom: '2026-09-30T04:00:00Z', label: 'x', error: null } }) }));
+	assert.ok(view.status.limits.includes('Search and download evidence starts on Sep 29; earlier days have no record.'), view.status.limits.join(' | '));
 });

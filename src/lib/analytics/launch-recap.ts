@@ -57,6 +57,11 @@ export interface RecapInput {
 	 * how late the run was, and it points to the report where the page says "below".
 	 */
 	stored?: boolean;
+	/**
+	 * On a page, a recovered launch date carries `*` unless every date on that page is recovered (see `recoveredDates`), when the page says so once in words
+	 * and no mark is drawn. Defaults to marking. Stored text has no page to hold a note, so it says the words beside the date either way.
+	 */
+	markRecovered?: boolean;
 }
 
 type Piece = string | number | { b: string | number };
@@ -169,7 +174,7 @@ function rankSentence(model: LaunchReadModel, album: DatedLaunchAlbum, age: 'day
 		? (rank.tied ? 'tied for first' : 'first')
 		: `${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)}`;
 	const ahead = rank.rank > 1 ? launchAhead(model, album, age) : null;
-	return sentence(...lead, b(place), ' of the ', b(rank.compared), ' launches with ', label, tail, ahead ? `, behind ${ahead.name} (${fmt(ahead.total)}).` : '.');
+	return sentence(...lead, b(place), ' of the ', b(rank.compared), ' launches with ', label, tail, ahead ? `, and the next one up is ${ahead.name} (${fmt(ahead.total)}).` : '.');
 }
 
 function peakSentence(series: LaunchDay[], total: number, launchDated: boolean, ofWhat = 'the total'): RecapSentence | null {
@@ -205,7 +210,15 @@ function openedSentence(photos: Photos): RecapSentence | null {
 }
 
 /** Download requests in the first week (or so far), against the median of earlier launches at the same age. */
-function downloadComparison(model: LaunchReadModel, launch: DatedLaunchAlbum): RecapSentence | null {
+interface DownloadComparison {
+	mine: number;
+	mid: number;
+	earlier: number;
+	/** True when the launch is older than a week, so the comparison is week 1 and the page's total covers more days than it. */
+	weekOne: boolean;
+	week: string;
+}
+function downloadComparison(model: LaunchReadModel, launch: DatedLaunchAlbum): DownloadComparison | null {
 	const n = launch.series.length;
 	if (n === 0) return null;
 	const k = Math.min(n, 7);
@@ -214,28 +227,46 @@ function downloadComparison(model: LaunchReadModel, launch: DatedLaunchAlbum): R
 	const others = earlierLaunches(model, launch).flatMap((other) => { const value = cumulativeCount(other, k, 'downloads'); return value === null ? [] : [value]; });
 	const mid = median(others);
 	if (mid === null) return null;
-	const count = plural(others.length, 'earlier launch', 'earlier launches');
-	if (others.length === 1 && !(n > 7 && k === 7)) return earlierHad(1, String(mid));
-	return n > 7 && k === 7
-		? sentence(`In week 1 (${daysWords(launch.series[0].date, launch.series[6].date)}) that was `, b(mine), ', against a median of ', b(mid), ' for the ', count, '.')
-		: sentence('At the same age, the ', count, ' had a median of ', b(mid), '.');
+	return { mine, mid, earlier: others.length, weekOne: n > 7 && k === 7, week: daysWords(launch.series[0].date, launch.series[k - 1].date) };
 }
 
-function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Photos, compare: RecapSentence | null = null, stored = false): RecapSentence | null {
+/** What the earlier launches had. One earlier launch is a figure, not a median. */
+function againstEarlier(c: DownloadComparison): Piece[] {
+	const count = plural(c.earlier, 'earlier launch', 'earlier launches');
+	return c.earlier === 1 ? [', against ', b(c.mid), ` for the ${count}`] : [', against a median of ', b(c.mid), ` for the ${count}`];
+}
+
+/** A sentence without empty parts or a trailing space. */
+function tidy(value: RecapSentence): RecapSentence {
+	const parts = value.filter((part) => part.text !== '');
+	if (parts.length) parts[parts.length - 1] = { ...parts[parts.length - 1], text: parts[parts.length - 1].text.trimEnd() };
+	return parts;
+}
+
+function downloadsLine(album: DatedLaunchAlbum | UndatedLaunchAlbum, photos: Photos, compare: DownloadComparison | null = null, stored = false): RecapSentence | null {
 	const { total, gaps } = sumComplete(album.series, 'downloads');
 	if (!album.series.length) return null;
 	// The days the count covers: every full day on the page, which is more than week 1 once the launch is older than a week.
 	const span = daysWords(album.series[0].date, album.series.at(-1)!.date);
 	const photoSum = photos.cut ? null : photos.list.reduce((sum, photo) => sum + photo.downloads, 0);
 	const top = photos.cut ? null : Math.max(0, ...photos.list.map((photo) => photo.downloads));
-	const compared: Piece[] = !gaps.length && compare ? [' ', ...compare.map((part): Piece => (part.strong ? { b: part.text } : part.text))] : [];
-	if (total === 0 && !gaps.length) return sentence(`No download requests were made over ${span}.`, ...compared);
-	const parts: Piece[] = [`Over ${span}, `, gaps.length ? 'at least ' : '', b(plural(total, 'download request')), ' ', gaps.length ? 'were counted on days with complete records. ' : 'were made.', ...compared, ' '];
-	if (photoSum !== null && !gaps.length && total > photoSum) parts.push(`${fmt(photoSum)} named a photo and ${fmt(total - photoSum)} asked for the whole album. `);
-	if (top === 0) parts.push('No single photo was requested, so there is no photo order to show.');
-	else if (top !== null && top <= 3) parts.push('No single photo was requested more than ', b(plural(top, 'time')), ', so there are too few requests to tell which photos people want most.');
-	else if (top !== null) parts.push(stored ? 'The album report lists the photos requested most.' : 'The photos below were requested most.');
-	return sentence(...parts.filter((part) => part !== ''));
+	const usable = !gaps.length ? compare : null;
+	const tail: Piece[] = [];
+	if (photoSum !== null && !gaps.length && total > photoSum) tail.push(`${fmt(photoSum)} named a photo and ${fmt(total - photoSum)} asked for the whole album. `);
+	if (top === 0) tail.push('No single photo was requested, so there is no photo order to show.');
+	else if (top !== null && top <= 3) tail.push('No single photo was requested more than ', b(plural(top, 'time')), ', so there are too few requests to tell which photos people want most.');
+	else if (top !== null) tail.push(stored ? 'The album report lists the photos requested most.' : 'The photos below were requested most.');
+	// Each number leads with the days it covers. Once a launch is older than a week the comparison is week 1 and the page's total is longer,
+	// so week 1 comes first, with its comparison, and the longer window follows.
+	if (usable?.weekOne) {
+		const whole: Piece[] = usable.mine === total ? ['. '] : [`. Over all ${plural(album.series.length, 'full day')} (${span}) there were `, b(plural(total, 'download request')), '. '];
+		return tidy(sentence(`In week 1 (${usable.week}) there ${usable.mine === 1 ? 'was ' : 'were '}`, b(plural(usable.mine, 'download request')), ...againstEarlier(usable), ...whole, ...tail));
+	}
+	const compared: Piece[] = usable
+		? [' ', ...(usable.earlier === 1 ? ['At the same age, the ', b('1 earlier launch'), ' had ', b(usable.mid), '.'] : ['At the same age, the ', b(plural(usable.earlier, 'earlier launch', 'earlier launches')), ' had a median of ', b(usable.mid), '.'])]
+		: [];
+	if (total === 0 && !gaps.length) return tidy(sentence(`No download requests were made over ${span}.`, ...compared, ' ', ...tail));
+	return tidy(sentence(`Over ${span}, `, gaps.length ? 'at least ' : '', b(plural(total, 'download request')), ' ', gaps.length ? 'were counted on days with complete records. ' : 'were made.', ...compared, ' ', ...tail));
 }
 
 /** The days a series covers, in words. Arrivals are read over the same days as the series. */
@@ -244,21 +275,23 @@ function seriesSpan(series: LaunchDay[]): string {
 }
 
 /**
- * What an arrival and a tag are, said where they are used. A tag is the `src=` label in a shared link's address (see share.ts); an arrival is one
- * browser landing from such a link, and like every other action it counts once a day. Neither is a person.
+ * What an arrival is, said where arrivals are counted. A label is the `src=` part of a shared link's address (see share.ts), and the report words say
+ * "label" so a reader does not meet the address. An arrival is one browser landing from such a link, counted once a day. It is a browser, not a person.
  */
-export const ARRIVAL_WORDS = 'A tag is the label on a shared link, and an arrival is one browser landing from it, counted once a day. Arrivals without a tag cannot be traced to a source.';
+export const ARRIVAL_WORDS = 'An arrival is one browser landing from a labeled link, counted once a day, so no one can be named. A visit with no label cannot be traced to a source.';
+/** The limit a report states when no labeled link was recorded. A stored recap leaves it out when the arrivals could not be read. */
+export const NO_LABELED_ARRIVALS = 'Where people came from is only known for links with a label, and none were recorded.';
 
 function arrivalsLine(arrivals: ArrivalRow[] | null, span: string): RecapSentence | null {
 	if (!arrivals) return null;
 	const rows = arrivals.filter((row) => row.count > 0).sort((x, y) => y.count - x.count || x.source.localeCompare(y.source));
 	if (!rows.length) return null;
 	const total = rows.reduce((sum, row) => sum + row.count, 0);
-	// Other launches' arrivals are not in the launch read model, so the only comparison is between this album's own tags.
-	if (rows.length === 1) return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links, all with the tag "', rows[0].source, `". ${ARRIVAL_WORDS}`);
+	// Other launches' arrivals are not in the launch read model, so the only comparison is between this album's own labels.
+	if (rows.length === 1) return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came in through shared links, all labeled "', rows[0].source, `". ${ARRIVAL_WORDS}`);
 	const named = rows.slice(0, 3).map((row) => `${row.source} ${fmt(row.count)} (${Math.round((row.count / total) * 100)}%)`).join(', ');
 	const more = rows.length > 3 ? `, and ${rows.length - 3} more` : '';
-	return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came through tagged links: ', named, more, `. ${ARRIVAL_WORDS}`);
+	return sentence(`Over ${span}, `, b(plural(total, 'arrival')), ' came in through shared links: ', named, more, `. ${ARRIVAL_WORDS}`);
 }
 
 function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: string, weekFigures = false, omitToday = false): RecapSentence {
@@ -267,7 +300,7 @@ function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: st
 	const week = series[6]?.date;
 	const counted = first && last
 		? weekFigures && week && week !== last
-			? sentence('Week-1 figures use ', b('7 full days'), ', ', formatDay(first), ' to ', formatDay(week), '. The chart, downloads and photo counts use all ', b(plural(series.length, 'full day')), ', to ', formatDay(last), '. ')
+			? sentence('Week-1 figures use ', b('7 full days'), ', ', formatDay(first), ' to ', formatDay(week), '. The chart, download requests and photo counts use all ', b(plural(series.length, 'full day')), ', to ', formatDay(last), '. ')
 			: sentence('Counts cover ', b(plural(series.length, 'full day')), ', ', first === last ? formatDay(first) : `${formatDay(first)} to ${formatDay(last)}`, '. ')
 		: sentence('No full day is counted yet. ');
 	if (omitToday) return counted.map((part, i) => (i === counted.length - 1 ? { ...part, text: part.text.trimEnd() } : part));
@@ -298,13 +331,44 @@ export function chicagoDate(instant: string): string {
 export const RECOVERED_DATE_WORDS = 'date recovered afterwards from a log';
 /** What a page says once, beside its first recovered date, for every `*` on that page. */
 export const RECOVERED_NOTE = '* Date recovered afterwards from a log. The album\'s first publication was not recorded when it happened.';
+/** What a page says instead when every launch date on it was recovered: a mark on all of them would flag nothing. */
+export const RECOVERED_ALL_NOTE = 'Every launch date here was recovered afterwards from a log.';
+/**
+ * How a page shows recovered dates, from the dates it actually shows. When some are recovered and some were recorded, the `*` picks the
+ * recovered ones out and the page carries RECOVERED_NOTE once. When all are recovered the mark picks out nothing, so there is no mark and
+ * the page says it once, in words. When none is, there is neither.
+ */
+export function recoveredDates(recovered: readonly boolean[]): { mark: boolean; note: string | null } {
+	const some = recovered.some(Boolean);
+	const all = some && recovered.every(Boolean);
+	return { mark: some && !all, note: all ? RECOVERED_ALL_NOTE : some ? RECOVERED_NOTE : null };
+}
 /**
  * A recovered date is marked `*` on a page, and the page carries RECOVERED_NOTE once. Text read away from a page (a stored recap,
  * an email) has no page to hold the note, so there `inText` says the words beside the date instead.
  */
 export const recoveredTag = (basis: 'recorded' | 'inferred' | boolean, inText = false): string => (basis === 'inferred' || basis === true ? (inText ? ` (${RECOVERED_DATE_WORDS})` : '*') : '');
-function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>, inText: boolean): string {
-	return `${formatDay(chicagoDate(album.firstPublishedAt))}${recoveredTag(album.basis, inText)}`;
+function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>, inText: boolean, mark: boolean): string {
+	return `${formatDay(chicagoDate(album.firstPublishedAt))}${inText || mark ? recoveredTag(album.basis, inText) : ''}`;
+}
+
+/**
+ * What share of the counted photo opens came from browsers the gallery's counter could not sort as visitors, test traffic or bots. They are counted and not
+ * called human, so every total next to this sentence includes them. `whose` names the totals ("the gallery’s", "this album’s") and `dates` the days they cover.
+ * "Most" only when more than half; the real share is always said. Null when nothing is unsorted, or the classes were not read. `brief` is for Home, which holds to a
+ * screen: it keeps the share, the days and the upper limit, and leaves out the sentence the album report and the Data page carry in full.
+ */
+export function unsortedSentence(classes: ReadonlyArray<{ classification: string; count: number }> | null, whose: string, dates: string, brief = false): string | null {
+	if (!classes) return null;
+	const count = (id: string) => classes.find((item) => item.classification === id)?.count ?? 0;
+	const unsorted = count('unclassified');
+	const counted = count('audience') + unsorted;
+	if (unsorted <= 0 || counted <= 0) return null;
+	const share = Math.round((unsorted / counted) * 100);
+	const most = unsorted * 2 > counted;
+	const lead = most ? `Most of ${whose} counted photo opens, ${dates} (${share}%),` : `${share}% of ${whose} counted photo opens, ${dates},`;
+	if (brief) return `${most ? `Most (${share}%)` : `${share}%`} of ${whose} counted opens, ${dates}, came from browsers the counter could not sort${most ? ': an upper limit' : ''}.`;
+	return `${lead} came from browsers the gallery’s counter could not sort. They are counted, and they are not called human${most ? ', so read these totals as an upper limit on what visitors did' : ''}.`;
 }
 
 export function undatedReason(code: 'unobserved' | 'not_published' | 'no_record'): string {
@@ -320,7 +384,7 @@ export function buildRecap(input: RecapInput): Recap {
 	const limits: string[] = [];
 	const exposure = exposureLimit(album);
 	if (exposure) limits.push(exposure);
-	if (!arrivals?.some((row) => row.count > 0)) limits.push('Where people came from is only known for tagged links, and none were recorded.');
+	if (!arrivals?.some((row) => row.count > 0)) limits.push(NO_LABELED_ARRIVALS);
 	limits.push('Counts are browser actions, not people.');
 
 	if (album.status === 'no_launch_date') {
@@ -345,7 +409,7 @@ export function buildRecap(input: RecapInput): Recap {
 
 	const launch = album;
 	const n = launch.series.length;
-	const published = sentence(`Published ${publishedPhrase(launch, !!input.stored)}.`);
+	const published = sentence(`Published ${publishedPhrase(launch, !!input.stored, input.markRecovered !== false)}.`);
 	const weekFigures = launch.elapsedDays >= 7;
 	const windowSentence = windowLine(launch.series, launch.currentDay, model.today, weekFigures, input.stored);
 	const { total: opens, gaps } = sumComplete(launch.series, 'photoOpens');

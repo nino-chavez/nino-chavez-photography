@@ -1,14 +1,19 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T19:32:24.682Z",
-  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer), merging #212 into the second acceptance pass",
-  "method": "Merge of origin/main (#212, collection rejection reasons) into fix/analytics-acceptance-2. #212's surge rule (lower quartile of the 14 days before, with reasons) is kept as the only rule; the branch's own median-based rule (collection-rejections.ts) is removed, with its reader-contract entry. The branch keeps its visitor wording, its owner-aware partial headline, and its headline-names-the-problem rule, now wired to #212's collection-surge problem. Checked by fetching /data and / as a visitor from a local dev server reading production read-only: Data's headline reads 'The collector rejected 12,865 events on Oct 6, 31 times its usual 420 a day.' and Home lists the same line under 'Needs attention'. The walk and the third cold review (docs/evidence/screen-reviews/analytics-acceptance-fixes2-f851062/) stand for the rest. Not covered: rendered captures of the merged pages, a real device, a real sign-in, and screen readers.",
-  "sourceDigest": "sha256:cc453f51fcacbf142ecaa228f51626a6c307a18d08f770e7b7b527bb75c6878c",
+  "reviewedAt": "2026-10-07T22:40:09.284Z",
+  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer)",
+  "method": "Review fix on top of the third fix pass (walk: docs/evidence/screen-reviews/analytics-acceptance-fixes3-423551e/mechanical.md; fourth cold review in the same folder). Only data-quality.ts changed: the Data page's gallery coverage dates (event counts start, raw observations start, diagnostic evidence start, and the status limit naming it) now convert an instant to its Chicago day instead of cutting the UTC date. An instant at 04:00 UTC on Sep 30 now reads Sep 29. Date-only bounds and the site's own UTC-day page views are unchanged. Checked by unit tests, with a forced failure that restores the UTC cut. Not covered: a rendered capture, a real device, a real sign-in, screen readers.",
+  "sourceDigest": "sha256:1ca4605138f09368440530210e0cf61bedd7fa24c9c4a1a7da8c5fe934682dd5",
   "sourceFiles": 203,
   "scope": [
-    "Data status and delivery rows",
-    "Home needs-attention box",
-    "delivery word list"
+    "Album report order and merged findings",
+    "Navigation at large text",
+    "Comparison table as cards",
+    "Recap lead and list",
+    "Home verdict, notes inside cards, unsorted share",
+    "Albums cards",
+    "Data wording and dates",
+    "Plain-word rewrites"
   ]
 }

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildRecapView, stampWords, timingNoteLast, type RecapViewInput, type StoredRecapText } from './launch-recap-view';
+import { buildRecapView, splitLead, stampWords, withoutStaleSteps, withoutTimingNote, type RecapViewInput, type StoredRecapText } from './launch-recap-view';
 import { recapBlocks } from './launch-recap-text';
+import { WHILE_ARRIVING_STEP } from './launch-rules';
 import type { StoredRecapSummary } from './launch-recap-list';
 
 /*
@@ -29,9 +30,11 @@ test('a stored recap opens as its own page: its title, the date it is as of, the
 	// The figures were read as of the due instant (Oct 2, 8:00 AM), not when the backfill wrote the row (Oct 6, 12:03 AM).
 	assert.equal(view.asOf, 'As of Oct 2, 8:00 AM Chicago time.');
 	assert.equal(view.covers, 'Covers Sep 25 to Oct 1, 7 full days.');
-	assert.deepEqual(view.flags, ['Written later from the records']);
+	// "Written later" is said once, here, with the day it was written (Oct 6 at 12:03 AM Chicago time).
+	assert.deepEqual(view.flags, ['Written later from the records, on Oct 6']);
 	assert.equal(view.message, null);
 	assert.match(view.snapshotNote ?? '', /live report counts later days and later launches/);
+	assert.ok(!(view.snapshotNote ?? '').includes('as it was written'));
 	// The text is kept as written; the subject line is the title and the plain-text address line is the page's own link.
 	assert.deepEqual(view.blocks.map((block) => block.kind), ['paragraph', 'heading', 'list']);
 	assert.ok(!JSON.stringify(view.blocks).includes('Full report'));
@@ -64,7 +67,7 @@ test('a recap that is not stored says so plainly, never shows the report, and te
 	const none = buildRecapView(base({ open: null, stored: [day3] }));
 	assert.equal(none.state, 'not_stored');
 	assert.equal(none.message, 'There is no day 7 recap for this album.');
-	assert.deepEqual([none.asOf, none.covers, none.blocks, none.snapshotNote], [null, null, [], null]);
+	assert.deepEqual([none.asOf, none.covers, none.blocks, none.snapshotNote, none.lead], [null, null, [], null, null]);
 	assert.deepEqual(none.others, [{ checkpoint: 3, title: 'Day 3 recap', query: '?recap=3' }]);
 	// Still to come: the date it is due.
 	const soon = buildRecapView(base({ open: null, stored: [], now: new Date('2026-10-01T14:00:00Z') }));
@@ -81,7 +84,7 @@ test('an unknown checkpoint is a plain message that never echoes the address', (
 	for (const asked of ['5', '0', 'abc', '', '  ', '7abc', '<script>alert(1)</script>']) {
 		const view = buildRecapView(base({ asked, open: null }));
 		assert.equal(view.state, 'unknown_checkpoint', asked);
-		assert.equal(view.message, 'Recaps are written for day 3 and day 7 of a launch. This address asks for neither.');
+		assert.equal(view.message, 'This address is not a day 3 or day 7 recap. Recaps are written at day 3 and day 7 of a launch.');
 		assert.ok(!JSON.stringify(view).includes('script'), 'nothing that was asked is shown');
 		assert.deepEqual(view.others.map((other) => other.checkpoint), [3, 7]);
 	}
@@ -93,16 +96,61 @@ test('an album with no launch date has no recaps', () => {
 	assert.equal(view.message, 'This album has no launch date, so it has no recaps.');
 });
 
-test('a recap stored with its timing note first is read with the finding first: the note moves to just above what it cannot tell you', () => {
+test('how late a stored recap was is said once, in the badge: the stored sentence is left out wherever it sits, and the stored row is unchanged', () => {
 	const note = 'This recap was written on Oct 6, after its checkpoint, from the records for those days. It was not written on the morning it was due.';
 	const old = ['subject', note, 'Published Sep 25. 931 photo opens in its first 7 days.', 'What to look at:', '- A finding.', 'What this cannot tell you:', '- Counts are browser actions, not people.'].join('\n\n');
-	const moved = timingNoteLast(recapBlocks(old));
-	assert.deepEqual(moved.map((block) => (block.kind === 'paragraph' ? block.text.slice(0, 22) : block.kind === 'heading' ? block.text : 'list')), [
-		'subject', 'Published Sep 25. 931 ', 'What to look at', 'list', 'This recap was written', 'What this cannot tell you', 'list'
-	]);
-	// Without a list of limits it goes last; a late recap's note moves the same way; a recap with no note is returned as it is.
-	assert.equal(timingNoteLast(recapBlocks(['x', 'This recap is late. It was due Mon.', 'Body.'].join('\n\n'))).at(-1)!.kind, 'paragraph');
-	assert.equal((timingNoteLast(recapBlocks(['x', 'This recap is late. It was due Mon.', 'Body.'].join('\n\n'))).at(-1) as { text: string }).text, 'This recap is late. It was due Mon.');
+	const kept = withoutTimingNote(recapBlocks(old));
+	assert.deepEqual(kept.map((block) => (block.kind === 'paragraph' ? block.text.slice(0, 22) : block.kind === 'heading' ? block.text : 'list')), ['subject', 'Published Sep 25. 931 ', 'What to look at', 'list', 'What this cannot tell you', 'list']);
+	// A late recap's sentence goes the same way, in the newer position (after the findings) too; a recap with no such sentence is returned as it is.
+	const late = withoutTimingNote(recapBlocks(['x', 'Body.', 'This recap is late. It was due Mon, Sep 28 at 8:00 AM Chicago time. It reports the same days it would have then, not the days since.'].join('\n\n')));
+	assert.deepEqual(late.map((block) => (block as { text: string }).text), ['x', 'Body.']);
 	const plain = recapBlocks(['x', 'Body.'].join('\n\n'));
-	assert.equal(timingNoteLast(plain), plain);
+	assert.deepEqual(withoutTimingNote(plain), plain);
+	// On the page, the sentence of a recap written later does not appear, and the badge says it.
+	const view = buildRecapView(base({ open: { ...day7, body: [BODY, note].join('\n\n') } }));
+	assert.ok(!JSON.stringify(view.blocks).includes('was written on'));
+	assert.ok(view.flags[0].startsWith('Written later'));
+});
+
+const STEP = `Next step: ${WHILE_ARRIVING_STEP}`;
+const day3Body = ['subject', 'Published Sep 25. 207 photo opens in its first 3 days. At the same age, the 6 earlier launches had a median of 120 photo opens.', 'What to look at:', `- ${STEP}`, 'What this cannot tell you:', '- Counts are browser actions, not people.'].join('\n\n');
+const day3Text: StoredRecapText = { ...day3, body: day3Body };
+const read = (now: string, open: StoredRecapText = day3Text) => buildRecapView(base({ asked: '3', open, now: new Date(now) }));
+
+test('a next step that only makes sense mid-launch is left out once the first week is over, and kept while it runs', () => {
+	// JCA at ACC was first published Sep 25 (Chicago). Its first week is over on Oct 2, the day its day 7 recap is due.
+	const during = read('2026-09-29T14:00:00Z');
+	assert.ok(JSON.stringify(during.blocks).includes('while attention is still arriving'));
+	assert.ok(JSON.stringify(read('2026-10-02T04:00:00Z').blocks).includes('while attention is still arriving'), 'Oct 1 in Chicago is still inside the first week');
+	const after = read('2026-10-02T06:00:00Z');
+	assert.ok(!JSON.stringify(after.blocks).includes('attention is still arriving'));
+	// The list and the heading it sat under go with it; the rest of the page is untouched.
+	assert.deepEqual(after.blocks.filter((block) => block.kind === 'heading').map((block) => (block as { text: string }).text), ['What this cannot tell you']);
+	assert.equal(after.blocks.length, during.blocks.length - 2);
+	assert.ok(day3Body.includes('while attention is still arriving'), 'the stored text is unchanged');
+	// Another step in the same list stays.
+	const two = read('2026-10-09T14:00:00Z', { ...day3, body: day3Body.replace(`- ${STEP}`, `- ${STEP}\n- Next step: Check where the album was shared.`) });
+	assert.deepEqual(two.blocks.find((block) => block.kind === 'list'), { kind: 'list', items: ['Next step: Check where the album was shared.'] });
+	// A text with no such step is returned as it is, whenever it is read.
+	assert.deepEqual(withoutStaleSteps(recapBlocks('Body.'), LAUNCH, new Date('2026-10-09T14:00:00Z')), recapBlocks('Body.'));
+});
+
+test('a recap leads with its headline and sets the other facts in a short list', () => {
+	const text = 'Published Sep 26 (date recovered afterwards from a log). 266 photo opens in its first week. At the same age, the 6 earlier launches had a median of 381 photo opens. That is 4th of the 7 launches with a week-1 total, behind Chicago Big Dig 2026 - North Avenue Beach (636). Every one of the 43 photos was opened at least once.';
+	const { lead, blocks } = splitLead(recapBlocks(['Subject: day 7 recap', text, 'What to look at:', '- A finding.'].join('\n\n')).slice(1));
+	assert.equal(lead?.published, 'Published Sep 26 (date recovered afterwards from a log).');
+	assert.equal(lead?.headline, '266 photo opens in its first week.');
+	assert.deepEqual(lead?.facts, ['At the same age, the 6 earlier launches had a median of 381 photo opens.', 'That is 4th of the 7 launches with a week-1 total, behind Chicago Big Dig 2026 - North Avenue Beach (636).', 'Every one of the 43 photos was opened at least once.']);
+	assert.deepEqual(blocks.map((block) => block.kind), ['heading', 'list']);
+	// An abbreviation in an album name does not end a sentence.
+	const abbreviated = splitLead(recapBlocks('Published Sep 25. 10 photo opens, behind St. Louis Open (12). Next fact.')).lead;
+	assert.equal(abbreviated?.headline, '10 photo opens, behind St. Louis Open (12).');
+	assert.deepEqual(abbreviated?.facts, ['Next fact.']);
+	// A recap whose text does not have that shape is shown as written.
+	const odd = recapBlocks('This recap is incomplete. What is missing: a day.');
+	assert.deepEqual(splitLead(odd), { lead: null, blocks: odd });
+	// On the page, a stored recap's text has its own lead, and the paragraph it came from is not shown twice.
+	const view = buildRecapView(base({ open: { ...day7, body: ['subject', text].join('\n\n') } }));
+	assert.equal(view.lead?.headline, '266 photo opens in its first week.');
+	assert.ok(!JSON.stringify(view.blocks).includes('266 photo opens'));
 });

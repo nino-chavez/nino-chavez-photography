@@ -93,12 +93,20 @@ const run = (over: Over = {}, env: { CLOUDFLARE_ACCOUNT_ID?: string; CLOUDFLARE_
 
 test('Home reads each source once and never once per album; only public launches, only the first three covers', async () => {
 	const { view, reads, rpcs } = await run({ covers: [{ album_key: 'A', cover_cf_image_id: 'cover-a' }] });
-	assert.deepEqual(rpcs.map((call) => call.name).sort(), ['analytics_posthog_delivery_health', 'analytics_read_launches', 'analytics_read_scheduled_gallery_report', 'analytics_site_actions']);
+	// Two gallery reports: the week of the whole gallery, and one for the newest launch (how its counted opens were sorted). Never one per album.
+	assert.deepEqual(rpcs.map((call) => call.name).sort(), ['analytics_posthog_delivery_health', 'analytics_read_launches', 'analytics_read_scheduled_gallery_report', 'analytics_read_scheduled_gallery_report', 'analytics_site_actions']);
 	const launches = rpcs.find((call) => call.name === 'analytics_read_launches')!.args;
 	assert.equal(launches.p_public_only, true);
 	assert.equal(launches.p_traffic, 'conservative');
 	assert.deepEqual(Object.keys(launches).sort(), ['p_as_of', 'p_days', 'p_public_only', 'p_traffic']);
-	const report = rpcs.find((call) => call.name === 'analytics_read_scheduled_gallery_report')!.args;
+	const reports = rpcs.filter((call) => call.name === 'analytics_read_scheduled_gallery_report').map((call) => call.args);
+	const report = reports.find((args) => args.p_scope === 'all')!;
+	const newest = reports.find((args) => args.p_scope === 'album')!;
+	assert.equal(newest.p_measure, 'photo_opens');
+	assert.equal(newest.p_traffic, 'conservative');
+	assert.equal(newest.p_public_only, true);
+	assert.deepEqual(newest.p_album_keys, ['A']);
+	assert.equal(reports.filter((args) => args.p_scope === 'album').length, 1, 'one read for the headline launch, not one per card');
 	assert.equal(report.p_public_only, true);
 	assert.equal(report.p_scope, 'all');
 	assert.equal(report.p_measure, 'photo_opens');
@@ -118,8 +126,8 @@ test('Home reads each source once and never once per album; only public launches
 test('the quiet gallery on a fresh day reads as quiet, with no open problem except the provider that is not configured', async () => {
 	const { view } = await run();
 	assert.equal(view.state, 'quiet');
-	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches, with [\d,]+ photo opens( against (a median of )?[\d,]+ for (the 1 )?earlier launches?)?\.$/);
-	assert.equal(sentenceText(view.then!), 'No new album since Sep 26*, 10 days ago.');
+	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches, with [\d,]+ photo opens(, (above|below|level with) the (usual )?[\d,]+( for earlier launches| of the 1 earlier launch))?\.$/);
+	assert.equal(sentenceText(view.then!), 'No new album since Sep 26, 10 days ago.');
 	// Both windows hold the first week of the launches in the fixture (published Sep 26), so there is no calendar-week line at all.
 	assert.equal(view.week, null);
 	assert.deepEqual(view.problems, []);
@@ -176,7 +184,7 @@ test('a refusal surge in the delivery health read reaches Home, from the same si
 		.map(([day, count]) => ({ day, reason: 'not_recorded', count }));
 	const { view, rpcs } = await run({ delivery: { failed: 0, pending: 0, oldest_pending_at: null, collection_rejected_days: days } });
 	assert.deepEqual(view.problems.map((problem) => problem.id), ['collection-surge']);
-	assert.match(view.problems[0].text, /^The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day\./);
+	assert.match(view.problems[0].text, /^The gallery’s counter rejected 20,528 events on Oct 5, 50 times its usual 412 a day\./);
 	assert.equal(rpcs.filter((call) => call.name === 'analytics_posthog_delivery_health').length, 1);
 	// Before the reasons migration the list is absent: no surge is claimed either way.
 	assert.deepEqual((await run({ delivery: { failed: 0, pending: 0, oldest_pending_at: null } })).view.problems, []);

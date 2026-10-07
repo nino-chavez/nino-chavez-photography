@@ -1,6 +1,6 @@
 import type { DataAnchor } from './data-anchors';
 import { chicagoTime, openProblems, staleness, type Freshness, type HomeProblem, type ProblemInput } from './home';
-import { formatDay, ordinal, plural } from './launch-recap';
+import { chicagoDate, formatDay, ordinal, plural } from './launch-recap';
 import type { MeasurementHealth, RejectionDay, RejectionReading } from './measurement-health';
 import { UNSTORED_REJECTION_REASONS } from './rejection-reasons';
 import type { OperatorReport } from './operator-report.server';
@@ -135,7 +135,7 @@ export function freshnessForStatus(freshness: Freshness, lastCompleteDay: string
 /* Coverage and freshness                                                                           */
 /* ---------------------------------------------------------------------------------------------- */
 
-const BASIS_WORDS: Record<string, string> = { event_snapshot: 'event snapshots', backfill_current_catalogue: 'a backfill from the current catalogue', mixed: 'a mix of both' };
+const BASIS_WORDS: Record<string, string> = { event_snapshot: 'details saved when each event happened', backfill_current_catalogue: 'details filled in later from the current catalogue', mixed: 'a mix of both' };
 /** "backfill_current_catalogue, event_snapshot" as words a reader can follow. */
 export function basisWords(basis: string): string {
 	const parts = basis.split(',').map((part) => part.trim()).filter(Boolean).map((part) => BASIS_WORDS[part] ?? part.replaceAll('_', ' '));
@@ -166,7 +166,7 @@ export function coverageView(input: { report: OperatorReport; days: number; refr
 	return {
 		headline, incompleteDays: incompleteDays.map(formatDay), refresh, lateRefresh: stale.kind === 'refresh_late',
 		since: report.preservedSince ? formatDay(report.preservedSince) : null,
-		basis: `Album facts in these counts come from ${basisWords(report.catalogueBasis)}. An event snapshot keeps the facts that were true when the event was recorded; a backfilled row keeps the facts known at the first backfill.`
+		basis: `Album details in these counts come from ${basisWords(report.catalogueBasis)}. Details saved when an event happened are the ones true at that moment; details filled in later are the ones known when they were filled in.`
 	};
 }
 
@@ -229,7 +229,7 @@ export function trafficView(input: { report: OperatorReport; names: ReadonlyMap<
 	const changed = rows.filter((row) => row.changed).length;
 	return {
 		classes, countedTotal, leftOutTotal,
-			meaning: unclassified === 0 ? null : `${share}% of the counted actions came from browsers the collector could not sort as audience, operator, test or automated. They are counted, and they are not called human${share >= 50 ? ', so read these totals as an upper limit on what real visitors did' : ''}.`,
+			meaning: unclassified === 0 ? null : `${share}% of the counted actions came from browsers the gallery’s counter could not sort as audience, operator, test or automated. They are counted, and they are not called human${share >= 50 ? ', so read these totals as an upper limit on what real visitors did' : ''}.`,
 		summary: `Reports count ${fmt(countedTotal)} of these ${MEASURE_NOUN[report.query.measure] ?? 'action'}s and leave out ${fmt(leftOutTotal)}. Operator, test, known crawler and suspected automated activity is left out. Unclassified activity is counted and is not called human.`,
 		impact: {
 			rows,
@@ -266,7 +266,7 @@ export function countingView(input: { report: OperatorReport }): CountingView | 
 		totals: [
 			{ label: 'Photo opens', value: word(measureTotal(report, 'photo_opens')) },
 			{ label: 'Album opens', value: word(measureTotal(report, 'album_opens')) },
-			{ label: 'Downloads, favorites and shares together', value: word(engagement.some((value) => value === null) ? null : engagement.reduce<number>((sum, value) => sum + (value ?? 0), 0)) }
+			{ label: 'Download requests, favorites and shares together', value: word(engagement.some((value) => value === null) ? null : engagement.reduce<number>((sum, value) => sum + (value ?? 0), 0)) }
 		],
 		browsers: { value: report.visitorEstimate.value === null ? null : fmt(report.visitorEstimate.value), limit: report.visitorEstimate.limit }
 	};
@@ -281,9 +281,29 @@ export interface EventsView {
 	down: Unavailable | null;
 }
 
+/**
+ * Where the detailed event counts start, in the date format the rest of this page uses ("Sep 29", never "2026-09-29"). The projection's own label
+ * carries ISO dates for the public report; this page reads the same bounds in its own words. With no bound recorded the projection's sentence stands.
+ */
+/**
+ * The gallery's day for a coverage bound. Gallery records are counted in Chicago days, so an instant is converted to its
+ * Chicago date (an event at 2026-09-30T04:00Z belongs to Sep 29); a bound that is already a date is kept as it is.
+ */
+export function galleryDay(value: string): string {
+	return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : chicagoDate(value);
+}
+
+export function eventsLabel(coverage: V2ReportProjection['coverage']): string {
+	if (!coverage.firstRecordedAt) return coverage.label;
+	const day = (value: string) => formatDay(galleryDay(value));
+	const raw = coverage.rawRetainedFrom ? ` Raw retained observations begin ${day(coverage.rawRetainedFrom)}.` : '';
+	const archive = coverage.archivedFrom && coverage.archivedThrough ? ` Archived aggregate snapshots cover ${day(coverage.archivedFrom)} through ${day(coverage.archivedThrough)}.` : '';
+	return `Detailed event counts begin ${day(coverage.firstRecordedAt)}.${raw}${archive} Counts are observations, not people or a conversion funnel.`;
+}
+
 /** The recorded event counts. They are read after the page is drawn, so a slow read never holds the rest back. */
 export function eventsView(v2: V2ReportProjection | null, owner: boolean): EventsView {
-	if (v2 && v2.available) return { available: true, label: v2.coverage.label, counts: v2.counts.map((item) => ({ label: item.label, count: item.count })), down: null };
+	if (v2 && v2.available) return { available: true, label: eventsLabel(v2.coverage), counts: v2.counts.map((item) => ({ label: item.label, count: item.count })), down: null };
 	return { available: false, label: v2?.coverage.label ?? 'Detailed event counts were not read.', counts: null, down: notReadNote('events', owner) };
 }
 
@@ -348,6 +368,7 @@ export function siteMeasuresView(input: { traffic: SiteTrafficResult | null; act
 	else if (!actions.available) first = { value: null, detail: `${actions.reason} This is not zero. Reload in a few minutes.` };
 	else if (!actions.firstRecordedAt) first = { value: null, detail: 'The site\'s own counter has not recorded a page view yet. This is not zero.' };
 	else {
+		// The site's own page views are counted in UTC days (unlike the gallery's Chicago days), so its first day is the UTC date.
 		const since = actions.firstRecordedAt.slice(0, 10);
 		const covered = Math.min(days, daysThrough(since > actions.start ? since : actions.start, actions.end));
 		first = { value: fmt(actions.totals.page_views ?? 0), detail: `${formatDay(since > actions.start ? since : actions.start)} – ${formatDay(actions.end)}. The site's own counter began ${formatDay(since)}, so it covers ${covered} of the last ${days} days.` };
@@ -379,8 +400,8 @@ function instant(value: string | null, today: string): string {
 
 /** The words in the delivery rows, said once where they appear. */
 export const DELIVERY_TERMS: DeliveryView['terms'] = [
-	{ term: 'Accepted', means: 'the collector stored the event as a counted action.' },
-	{ term: 'Rejected', means: 'the collector refused the event: it came from a known crawler, was not valid, named an album or photo that does not exist, or could not be stored. Crawlers are rejected on purpose. An event that could not be stored is lost unless the browser\'s one retry worked.' },
+	{ term: 'Accepted', means: 'the gallery’s counter stored the event as a counted action.' },
+	{ term: 'Rejected', means: 'the gallery’s counter refused the event: it came from a known crawler, was not valid, named an album or photo that does not exist, or could not be stored. Crawlers are rejected on purpose. An event that could not be stored is lost unless the browser\'s one retry worked.' },
 	{ term: 'Duplicate', means: 'a repeat of an action already stored, so it was not stored again.' },
 	{ term: 'Usual', means: 'a quiet day among the 14 complete days before: a quarter of those days had fewer rejections. A surge that lasts several days does not become the usual.' },
 	{ term: 'Pending', means: 'stored, and waiting to be sent to PostHog.' },
@@ -390,7 +411,7 @@ export const DELIVERY_TERMS: DeliveryView['terms'] = [
 	{ term: 'Classification changes waiting', means: 'changes you made to how an action is classed that have not reached PostHog yet.' }
 ];
 
-export const PROVIDER_NOTE = 'Linked-journey results show when PostHog was last asked a question. That is not confirmation that events were delivered; the counts above are.';
+export const PROVIDER_NOTE = 'Results about what visitors did after arriving show when PostHog was last asked a question. That is not confirmation that events were delivered; the counts above are.';
 
 /** Rejections grouped by what a reader can act on, largest first. */
 const REJECTION_GROUPS: Array<{ words: string; match: (reason: string) => boolean }> = [
@@ -402,7 +423,7 @@ const REJECTION_GROUPS: Array<{ words: string; match: (reason: string) => boolea
 ];
 
 export function rejectionSplit(days: RejectionDay[] | null): string {
-	if (days === null) return 'Not recorded yet. Reasons are kept from the day the collector update is installed.';
+	if (days === null) return 'Not recorded yet. Reasons are kept from the day the counting update is installed.';
 	const groups = REJECTION_GROUPS.map((group) => ({ words: group.words, count: days.filter((row) => group.match(row.reason)).reduce((total, row) => total + row.count, 0) }))
 		.filter((group) => group.count > 0).sort((a, b) => b.count - a.count);
 	return groups.length ? groups.map((group) => `${fmt(group.count)} ${group.words}`).join(' · ') : 'None rejected';
@@ -446,6 +467,15 @@ export interface EvidenceView {
 	note: string;
 }
 
+/**
+ * Where the search and download evidence starts, in the date format the rest of this page uses. The report's own label carries an ISO date; with no start recorded,
+ * or a read that failed, its own sentence stands because it names no date.
+ */
+export function diagnosticsLabel(coverage: OperatorReport['diagnosticsCoverage']): string {
+	if (coverage.error || !coverage.availableFrom) return coverage.label;
+	return `First recorded diagnostic evidence: ${formatDay(galleryDay(coverage.availableFrom))}. Earlier coverage is unknown.`;
+}
+
 /** Search and download evidence: what was recorded when a search or download was attempted. Downloads record requests and failures, never completed transfers. */
 export function evidenceView(report: OperatorReport, today: string): EvidenceView | null {
 	if (!report.available) return null;
@@ -454,7 +484,7 @@ export function evidenceView(report: OperatorReport, today: string): EvidenceVie
 			path: item.type.replaceAll('_', ' '), status: item.status, recorded: fmt(item.count), results: item.resultCount === null ? 'none counted' : fmt(item.resultCount),
 			errors: item.errorCodes.length ? item.errorCodes.join(', ') : 'none', latest: item.latestAt ? chicagoTime(item.latestAt, today) : 'none recorded'
 		})),
-		label: report.diagnosticsCoverage.label,
+		label: diagnosticsLabel(report.diagnosticsCoverage),
 		failed: !!report.diagnosticsCoverage.error,
 		note: 'Results is how many results a search returned. A "requested" row is written before any result exists, so it reads "none counted"; the search\'s count is on its "accepted" row. A download has no result count. Search text and visitor identifiers are never shown. Browser downloads record requests and failures, not completed transfers. A missing row is not evidence that nothing happened.'
 	};
@@ -474,7 +504,7 @@ export interface JourneysView {
 
 export function journeysView(journeys: readonly JourneyAggregate[] | null, owner: boolean): JourneysView {
 	if (journeys === null) {
-		return { available: [], unavailable: forReader({ what: 'The linked-journey reports could not be read, so no journey figure is shown. This is not zero.', todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' }, owner) };
+		return { available: [], unavailable: forReader({ what: 'The reports on what visitors did after arriving could not be read, so no such figure is shown. This is not zero.', todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' }, owner) };
 	}
 	const available = journeys.filter((item) => item.available);
 	const missing = journeys.filter((item) => !item.available);
@@ -485,8 +515,8 @@ export function journeysView(journeys: readonly JourneyAggregate[] | null, owner
 	return {
 		available,
 		unavailable: forReader(unconfigured
-			? { what: `${missing.length === journeys.length ? 'All' : `${missing.length} of ${journeys.length}`} linked-journey reports need PostHog, which is not connected here (${names}). No figure is shown, and that is not zero.`, todo: 'Add the PostHog query settings to the site\'s server settings. Nothing needs fixing on the public site.' }
-			: { what: `${missing.length === journeys.length ? 'All' : `${missing.length} of ${journeys.length}`} linked-journey reports could not be read (${names}). No figure is shown for them, and that is not zero.${pending ? ' Some were still being calculated when the page loaded.' : ''}`, todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' }, owner)
+			? { what: `${missing.length === journeys.length ? 'All' : `${missing.length} of ${journeys.length}`} reports on what visitors did after arriving need PostHog, which is not connected here (${names}). No figure is shown, and that is not zero.`, todo: 'Add the PostHog query settings to the site\'s server settings. Nothing needs fixing on the public site.' }
+			: { what: `${missing.length === journeys.length ? 'All' : `${missing.length} of ${journeys.length}`} reports on what visitors did after arriving could not be read (${names}). No figure is shown for them, and that is not zero.${pending ? ' Some were still being calculated when the page loaded.' : ''}`, todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' }, owner)
 	};
 }
 
@@ -495,8 +525,8 @@ export function siteJourneyNote(reason: string, owner: boolean): Unavailable {
 	return forReader(siteJourneyText(reason), owner);
 }
 function siteJourneyText(reason: string): Unavailable {
-	if (/not configured/i.test(reason)) return { what: 'PostHog is not connected here, so no linked-journey figure is shown for the site. This is not zero.', todo: 'See the linked journeys section below for what to add.' };
-	if (/pending/i.test(reason)) return { what: 'PostHog was still calculating when the page loaded, so no linked-journey figure is shown for the site. This is not zero.', todo: 'Reload in a few minutes.' };
+	if (/not configured/i.test(reason)) return { what: 'PostHog is not connected here, so no figure for what visitors did after arriving is shown for the site. This is not zero.', todo: 'See the section on what visitors did after arriving below for what to add.' };
+	if (/pending/i.test(reason)) return { what: 'PostHog was still calculating when the page loaded, so no figure for what visitors did after arriving is shown for the site. This is not zero.', todo: 'Reload in a few minutes.' };
 	return notReadText('posthog');
 }
 
@@ -511,7 +541,7 @@ function notReadText(kind: NotReadKind): Unavailable {
 		case 'events': return { what: 'The detailed event counts could not be read, so none is shown. This is not zero.', todo: 'Reload in a few minutes.' };
 		case 'delivery': return { what: 'Delivery to the analytics provider could not be checked, so no delivery count is shown. This is not a healthy result.', todo: 'Reload in a few minutes. If it keeps failing, check the delivery job.' };
 		case 'cloudflare': return { what: 'Cloudflare\'s page loads could not be read, so no page-load figure is shown. This is not zero.', todo: 'Reload in a few minutes. If it keeps failing, check the Cloudflare analytics token in the site\'s server settings.' };
-		case 'posthog': return { what: 'PostHog could not be read, so no linked-journey figure is shown. This is not zero.', todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' };
+		case 'posthog': return { what: 'PostHog could not be read, so no figure for what visitors did after arriving is shown. This is not zero.', todo: 'Reload in a few minutes. If it keeps failing, check the PostHog query settings in the site\'s server settings.' };
 	}
 }
 
@@ -573,8 +603,8 @@ export function reachLimits(report: OperatorReport | null, start: string): strin
 	if (!error) {
 		if (availableFrom === null) limits.push('No search or download attempt has been recorded yet.');
 		else {
-			// The same day the evidence line below the table names: the date part of the first recorded instant.
-			const from = new Date(availableFrom).toISOString().slice(0, 10);
+			// The same day the evidence line below the table names: the Chicago day of the first recorded instant.
+			const from = galleryDay(availableFrom);
 			if (from > start) limits.push(`Search and download evidence starts on ${formatDay(from)}; earlier days have no record.`);
 		}
 	}

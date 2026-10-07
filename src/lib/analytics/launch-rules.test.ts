@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	compareAtAge, evaluateLaunchRules, FINISHED_MAX_OPENS, LAUNCH_FINDING_DAYS, MIN_EARLIER_LAUNCHES, quietSince, SEEN_MIN_EXPOSURES,
+	compareAtAge, evaluateLaunchRules, FINISHED_MAX_OPENS, LAUNCH_FINDING_DAYS, MIN_EARLIER_LAUNCHES, quietSince, SEEN_MIN_EXPOSURES, WHILE_ARRIVING_STEP,
 	type LaunchEvidence, type LaunchFailureEvidence, type LaunchFocus, type LaunchPeer, type LaunchPhotoEvidence
 } from './launch-rules';
 import { evaluateIntelligenceRules } from './intelligence-rules';
@@ -79,6 +79,16 @@ test('Millikin at day 7: an even count of earlier launches gives a median betwee
 	assert.equal(reach?.action, 'Check where the album was shared, and whether the people in it have the link.');
 });
 
+test('the next step of a launch that is ahead of the usual: while attention is arriving at day 3, the photos people asked for at day 7, never "open the page you are on"', () => {
+	const day3 = run(evidence([focus('Re7kho', 'HS Girls VB - JCA at ACC - 09-22-2026', '2026-09-26T01:10:52Z', '2026-09-25', RE7KHO.slice(0, 3))], peersAsOf('2026-09-28T17:00:00Z', { Re7kho: { day3: 804, day7: null } }))).findings.find((f) => f.rule === 'launch_reach');
+	assert.equal(day3?.action, WHILE_ARRIVING_STEP);
+	assert.equal(WHILE_ARRIVING_STEP, 'See which photos people are opening and downloading while attention is still arriving.');
+	const day7 = run(evidence([focus('Re7kho', 'HS Girls VB - JCA at ACC - 09-22-2026', '2026-09-26T01:10:52Z', '2026-09-25', RE7KHO.slice(0, 7))], peersAsOf('2026-10-02T17:00:00Z', { Re7kho: { day3: 804, day7: 931 } }))).findings.find((f) => f.rule === 'launch_reach');
+	assert.equal(day7?.id, 'launch-reach-day7-Re7kho');
+	assert.equal(day7?.action, 'Look at the photos people asked to download.');
+	for (const finding of [day3, day7]) assert.doesNotMatch(finding?.action ?? '', /open the (album )?report|album report/i);
+});
+
 test('tied totals share a rank and say so', () => {
 	const peers: LaunchPeer[] = ['a', 'b', 'c'].map((key, i) => ({ albumKey: key, firstPublishedAt: `2026-08-0${i + 1}T12:00:00Z`, day3: [500, 300, 300][i], day7: null }));
 	const mine = focus('d', 'Delta (synthetic)', '2026-09-01T17:00:00Z', '2026-09-01', [100, 150, 50]);
@@ -137,10 +147,18 @@ test('launch finished: three quiet complete days after the first week recap the 
 	const result = run(evidence([re], PEERS));
 	const done = result.findings.find((f) => f.rule === 'launch_finished');
 	assert.equal(done?.title, 'The launch is over');
-	assert.match(done?.explanation ?? '', /^No one has opened a photo since Oct 2, counting complete days through Oct 5\. In its first 7 days it had 931 photo opens and \d+ download requests\. 1 of the 5 launches before it had more photo opens by day 7; their median was 125\.$/);
+	assert.match(done?.explanation ?? '', /^No one has opened a photo since Oct 2, counting complete days through Oct 5\. In its first 7 days it had 931 photo opens and \d+ download requests\.$/);
+	assert.equal(done?.evidence.comparison?.median, 125, 'the comparison stays in the evidence');
 	assert.ok(done?.evidenceLinks?.some((link) => link.endsWith('#downloads-title')));
 	assert.equal(result.findings.some((f) => f.rule === 'launch_reach'), false, 'the recap replaces the reach comparison');
 	assert.match(result.suppressions.find((s) => s.rule === 'launch_reach')?.reason ?? '', /recap replaces/);
+});
+
+test('launch finished: the evidence names every quiet day after the last open one, so no day between them is skipped', () => {
+	const long = focus('DWdCET', 'Millikin at North Central', '2026-09-26T18:50:36Z', '2026-09-26', [...DWDCET, 0]);
+	const done = run(evidence([long], PEERS)).findings.find((f) => f.rule === 'launch_finished');
+	assert.match(done?.explanation ?? '', /^No one has opened a photo since Oct 2, counting complete days through Oct 6\./);
+	assert.match(done?.evidenceText ?? '', /; 0 photo opens on Oct 3–6\. Complete Chicago days only\.$/);
 });
 
 test('quietSince is read from every complete day: the last open day, and only when every later day is complete and zero', () => {
@@ -209,6 +227,9 @@ test('failures during a launch: two photo-load failures in the first week, with 
 	assert.match(found?.action ?? '', /If they all do, nothing needs fixing\.$/);
 	assert.ok(found?.limits?.some((l) => /day 3 of this launch/.test(l)));
 	assert.ok(found?.limits?.some((l) => /small sample/.test(l)));
+	// How the visits were sorted is said in the gallery's own words, not the implementation's.
+	assert.ok(found?.limits?.includes('Each visit is counted as the gallery’s counter sorted it when it arrived. Later corrections to how a visit was sorted do not change these failure counts.'));
+	assert.doesNotMatch(JSON.stringify(found), /collector/);
 	assert.equal(found?.evidence.strength, 'limited');
 
 	const one = focus('x', 'One failure (synthetic)', '2026-09-26T18:50:36Z', '2026-09-26', DWDCET.slice(0, 7), { failures: { recordedSince: '2026-09-29', window: { start: '2026-09-29', end: '2026-10-02' }, photoLoads: 30, photoLoadFailures: 1, downloadRequests: 7, downloadFailures: 1 } });

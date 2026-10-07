@@ -71,16 +71,17 @@ export function albumQuery(model: LaunchReadModel): ReportQuery {
  * Tagged arrivals are not part of the launch read model. They come from the scheduled gallery report.
  * `read` is false only when the read failed; an album with no complete day has nothing to read and reports true.
  */
-export async function readArrivals(admin: Admin, model: LaunchReadModel): Promise<{ arrivals: ArrivalRow[] | null; read: boolean }> {
-	if (model.album.series.length === 0) return { arrivals: null, read: true };
+export async function readArrivals(admin: Admin, model: LaunchReadModel): Promise<{ arrivals: ArrivalRow[] | null; read: boolean; traffic: Array<{ classification: string; count: number }> | null }> {
+	if (model.album.series.length === 0) return { arrivals: null, read: true, traffic: null };
 	try {
 		const report = await buildOperatorReport(admin, albumQuery(model), {
 			publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: false, includeVisitorEstimate: false, includeToday: false, cacheRole: 'service_role'
 		});
-		return report.available ? { arrivals: report.sources.arrivals, read: true } : { arrivals: null, read: false };
+		// The same read says how this album's counted photo opens were sorted, so the page can say how much of its total is unsorted.
+		return report.available ? { arrivals: report.sources.arrivals, read: true, traffic: report.traffic } : { arrivals: null, read: false, traffic: null };
 	} catch (cause) {
 		console.error('[launch recap] arrivals unavailable:', cause instanceof Error ? cause.message : cause);
-		return { arrivals: null, read: false };
+		return { arrivals: null, read: false, traffic: null };
 	}
 }
 

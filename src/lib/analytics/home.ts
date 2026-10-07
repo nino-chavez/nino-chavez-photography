@@ -1,5 +1,5 @@
 import type { Launch, LaunchDay } from './launch-read-model.server';
-import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, recoveredTag, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
+import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, recoveredDates, recoveredTag, sumComplete, unsortedSentence, type RecapPart, type RecapSentence } from './launch-recap';
 import { nameWithoutDate } from './launch-report-view';
 import { NO_RECAP_DUE, nextRecapItems } from './launch-recap-list';
 import type { HomeProblemTarget } from './data-anchors';
@@ -81,7 +81,8 @@ export function findingsCheck(checkedAt: string | null, now: string, today: stri
 	if (Date.parse(now) - Date.parse(checkedAt) > FINDINGS_LATE_AFTER_MS) return { text: `Last checked ${time}, more than an hour ago. These may be out of date.`, late: true };
 	return { text: `Last checked ${time}.`, late: false };
 }
-const inferredTag = (launch: Pick<Launch, 'basis'>) => recoveredTag(launch.basis);
+/** The mark beside a recovered date, or nothing when the page says once that every date here was recovered (`recoveredDates`). */
+const inferredTag = (launch: Pick<Launch, 'basis'>, mark: boolean) => (mark ? recoveredTag(launch.basis) : '');
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Launch status                                                                                    */
@@ -223,8 +224,10 @@ function finishedSentence(launch: Launch, all: readonly Launch[]): RecapSentence
 	const place = b(`${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)} of ${rank.compared} launches`);
 	const mine = b(plural(week.photoOpens, 'photo open'));
 	if (mid === null) return sentence(name, ' finished its first week ', place, ', with ', mine, '.');
-	if (earlier.length === 1) return sentence(name, ' finished its first week ', place, ', with ', mine, ' against ', b(fmt(mid)), ' for the 1 earlier launch.');
-	return sentence(name, ' finished its first week ', place, ', with ', mine, ' against a median of ', b(fmt(mid)), ' for earlier launches.');
+	// The verdict is the plain comparison of the two numbers: the reader should not have to do the arithmetic. One earlier launch is a figure, not a usual.
+	const against = week.photoOpens > mid ? 'above' : week.photoOpens < mid ? 'below' : 'level with';
+	if (earlier.length === 1) return sentence(name, ' finished its first week ', place, ', with ', mine, ', ', b(against), ' the ', b(fmt(mid)), ' of the 1 earlier launch.');
+	return sentence(name, ' finished its first week ', place, ', with ', mine, ', ', b(against), ' the usual ', b(fmt(mid)), ' for earlier launches.');
 }
 
 function overlappingSentence(relevant: readonly Launch[]): RecapSentence {
@@ -246,7 +249,7 @@ export interface Opening { state: HomeState; sentence: RecapSentence; then?: Rec
  * The one sentence under the page title. Precedence: unavailable, then stale, then a launch in
  * progress, then one just finished, then quiet. A stale or unavailable gallery never reads as quiet.
  */
-export function openingSentence(input: { launches: readonly Launch[] | null; stale: Staleness; today: string }): Opening {
+export function openingSentence(input: { launches: readonly Launch[] | null; stale: Staleness; today: string; markRecovered?: boolean }): Opening {
 	const { launches, stale, today } = input;
 	if (launches === null) return { state: 'unavailable', sentence: sentence('Launch numbers could not be read just now. This is not a quiet day.') };
 	if (stale.kind !== 'fresh') return { state: 'stale', sentence: staleSentence(stale, today) };
@@ -266,7 +269,7 @@ export function openingSentence(input: { launches: readonly Launch[] | null; sta
 	const last = newest[0];
 	const since = chicagoDate(last.firstPublishedAt);
 	// The newest launch's own like-for-like line leads. That nothing newer exists is the second line, computed from today.
-	return { state: 'quiet', sentence: finishedSentence(last, launches), then: sentence('No new album since ', b(`${dayLabel(since, today)}${inferredTag(last)}`), `, ${plural(daysBetween(since, today), 'day')} ago.`) };
+	return { state: 'quiet', sentence: finishedSentence(last, launches), then: sentence('No new album since ', b(`${dayLabel(since, today)}${inferredTag(last, input.markRecovered !== false)}`), `, ${plural(daysBetween(since, today), 'day')} ago.`) };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -401,7 +404,7 @@ export interface HomeCard {
 	failureScale: FailureScale | null;
 }
 
-export function launchCard(launch: Launch, all: readonly Launch[], today: string, cover: string | null): HomeCard {
+export function launchCard(launch: Launch, all: readonly Launch[], today: string, cover: string | null, markRecovered = true): HomeCard {
 	const phase = launchPhase(launch);
 	const n = launch.elapsedDays;
 	const spark = sparkBars(launch.series);
@@ -426,7 +429,7 @@ export function launchCard(launch: Launch, all: readonly Launch[], today: string
 	}
 	return {
 		albumKey: launch.albumKey, name: launch.albumName ?? launch.albumKey, cover,
-		published: `First published ${dayLabel(chicagoDate(launch.firstPublishedAt), today)}${inferredTag(launch)}`,
+		published: `First published ${dayLabel(chicagoDate(launch.firstPublishedAt), today)}${inferredTag(launch, markRecovered)}`,
 		status: statusLabel(launch), phase, opens, comparison, bars: spark.bars, sparkLabel: spark.label, note: null, findings: [], findingsCheck: null, failureScale: null
 	};
 }
@@ -506,10 +509,10 @@ export function surgeWords(reading: RejectionReading): string {
 	const day = formatDay(reading.day);
 	const usual = reading.usual ?? 0;
 	const times = usual > 0 ? `${fmt(Math.round(reading.count / usual))} times its usual ${fmt(usual)} a day` : 'when it usually rejects none';
-	const parts = [`The collector rejected ${plural(reading.count, 'event')} on ${day}, ${times}.`];
+	const parts = [`The gallery’s counter rejected ${plural(reading.count, 'event')} on ${day}, ${times}.`];
 	if (reading.crawler === reading.count) parts.push('All came from known crawlers, which it rejects on purpose. No visitor events were lost.');
 	else if (reading.crawler > 0) parts.push(`${fmt(reading.crawler)} came from known crawlers, which it rejects on purpose.`);
-	if (reading.notRecorded > 0) parts.push(reading.notRecorded === reading.count ? 'Why was not recorded: they were counted before reasons were kept.' : `Why ${fmt(reading.notRecorded)} were rejected was not recorded: they were counted before reasons were kept.`);
+	if (reading.notRecorded > 0) parts.push(reading.notRecorded === reading.count ? 'Their reasons were not recorded, because they were counted before reasons were kept.' : `The reasons for ${fmt(reading.notRecorded)} of them were not recorded, because they were counted before reasons were kept.`);
 	if (reading.other > 0) parts.push(`${fmt(reading.other)} were not valid or named an album or photo that does not exist.`);
 	return parts.join(' ');
 }
@@ -552,6 +555,11 @@ export function openProblems(input: ProblemInput): HomeProblem[] {
 	return problems.filter((problem, i) => problems.findIndex((other) => other.id === problem.id) === i);
 }
 
+/** The newest launch's share of unsorted photo opens, over the days Home's headline counts; see `unsortedSentence`. */
+export function unsortedLine(traffic: HomeInput['traffic'], today: string): string | null {
+	return traffic ? unsortedSentence(traffic.classes, 'the newest launch’s', range({ start: traffic.start, end: traffic.end }, today), true) : null;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 /* The whole page                                                                                   */
 /* ---------------------------------------------------------------------------------------------- */
@@ -577,6 +585,8 @@ export interface HomeInput {
 	findingsCheckedAt: string | null;
 	/** The scale of each photo-load failure note against the rest of the gallery, by finding id. Absent: the notes show without one. */
 	failureScales?: ReadonlyMap<string, FailureScale>;
+	/** The newest launch's counted photo opens over the days its headline counts, by the class the counter gave each browser; null when they could not be read. */
+	traffic?: { start: string; end: string; classes: ReadonlyArray<{ classification: string; count: number }> } | null;
 }
 
 /**
@@ -615,24 +625,29 @@ export interface HomeView {
 	next: { text: string; items: string[] };
 	site: { reach: SiteFigure; contacts: SiteFigure };
 	problems: HomeProblem[];
-	/** True when a launch shown here has a date marked `*`. The page then says once what the mark means. */
-	datesRecovered: boolean;
+	/** How the dates shown here were recovered: the mark that picks out some of them, and the one note the page carries (see `recoveredDates`). */
+	recovered: { mark: boolean; note: string | null };
+	/** The share of counted photo opens from browsers the counter could not sort, said once near the totals; null when there is none to say. */
+	unsorted: string | null;
 }
 
 export function buildHome(input: HomeInput): HomeView {
 	const { today } = input;
 	const launches = input.launches;
 	const stale = staleness(input.freshness, input.lastCompleteDay, input.asOf);
-	const opening = openingSentence({ launches, stale, today });
 	const newest = launches ? [...launches].sort((x, y) => Date.parse(y.firstPublishedAt) - Date.parse(x.firstPublishedAt)) : [];
-	const cards = placeFindings(newest.slice(0, HOME_LAUNCH_CARDS).map((launch, i) => ({ ...launchCard(launch, newest, today, input.covers.get(launch.albumKey) ?? null), note: i === 0 ? lastOpenedNote(launch, input.lastCompleteDay) : null })), input.findings, findingsCheck(input.findingsCheckedAt, input.asOf, today), input.failureScales);
+	// The dates this page shows are the cards' (the newest launch's is also in the quiet line), so what a mark would flag is judged from them.
+	const recovered = recoveredDates(newest.slice(0, HOME_LAUNCH_CARDS).map((launch) => launch.basis === 'inferred'));
+	const opening = openingSentence({ launches, stale, today, markRecovered: recovered.mark });
+	const cards = placeFindings(newest.slice(0, HOME_LAUNCH_CARDS).map((launch, i) => ({ ...launchCard(launch, newest, today, input.covers.get(launch.albumKey) ?? null, recovered.mark), note: i === 0 ? lastOpenedNote(launch, input.lastCompleteDay) : null })), input.findings, findingsCheck(input.findingsCheckedAt, input.asOf, today), input.failureScales);
 	return {
 		state: opening.state, asOf: input.asOf, today, lastCompleteDay: input.lastCompleteDay,
 		opening: opening.sentence, then: opening.then ?? null, week: weekLine(input.week, today, input.launches),
 		cards, moreLaunches: Math.max(0, newest.length - cards.length), totalLaunches: newest.length,
 		next: launches === null ? { text: 'What is due cannot be said while the launch numbers are unavailable.', items: [] } : nextRecaps(launches, new Date(input.asOf)),
 		site: siteFigures(input.siteReach, input.siteContacts, today),
-		datesRecovered: newest.slice(0, HOME_LAUNCH_CARDS).some((launch) => launch.basis === 'inferred'),
+		recovered,
+		unsorted: unsortedLine(input.traffic ?? null, today),
 		problems: openProblems({
 			freshness: input.freshness, lastCompleteDay: input.lastCompleteDay, now: input.asOf, today, launchesRead: launches !== null, weekRead: input.week !== null,
 			incidents: input.incidents, diagnostics: input.diagnostics, siteActionsStale: input.siteActionsStale, rejections: input.rejections

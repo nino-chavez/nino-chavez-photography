@@ -3,10 +3,11 @@ import test from 'node:test';
 import type { Launch, LaunchAgeTotals, LaunchDay } from './launch-read-model.server';
 import { surgeWords,
 	buildHome, changeWords, lastOpenedNote, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, nextRecaps,
-	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, sparkCaption, staleness, statusLabel, trailingGap, weekLine,
+	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, sparkCaption, staleness, statusLabel, trailingGap, unsortedLine, weekLine,
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
 } from './home';
 import { minimumSample } from './intelligence-rules';
+import { RECOVERED_ALL_NOTE, RECOVERED_NOTE } from './launch-recap';
 import { NO_RECAP_DUE } from './launch-recap-list';
 import { DATA_ANCHORS } from './data-anchors';
 
@@ -73,7 +74,7 @@ test('production on October 6: the newest launch leads with its measure and its 
 	assert.equal(opening.state, 'quiet');
 	// The like-for-like line of the newest launch, with the days its week covers.
 	// The place, what it is a place in, and how far from the middle: a rank alone ("4th of 7") sounds mid-pack, and 266 is below the median of 381.
-	assert.equal(text(opening), 'College Women\'s VB - Millikin at North Central finished its first week 4th of 7 launches, with 266 photo opens against a median of 381 for earlier launches.');
+	assert.equal(text(opening), 'College Women\'s VB - Millikin at North Central finished its first week 4th of 7 launches, with 266 photo opens, below the usual 381 for earlier launches.');
 	assert.equal(sentenceText(opening.then!), 'No new album since Sep 26*, 10 days ago.');
 	// A recorded date carries no mark.
 	assert.equal(sentenceText(open(world('2026-10-06', ALL, {}, []), '2026-10-06').then!), 'No new album since Sep 26, 10 days ago.');
@@ -112,12 +113,12 @@ test('a launch that just finished: its rank at day 7', () => {
 	const launches = world('2026-10-02', ['fJKdsB', 'Re7kho', 'dKe567', 'Big', 'Bump', 'jq1Rp7']);
 	const opening = open(launches, '2026-10-02');
 	assert.equal(opening.state, 'just_finished');
-	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week 2nd of 6 launches, with 931 photo opens against a median of 125 for earlier launches.');
+	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week 2nd of 6 launches, with 931 photo opens, above the usual 125 for earlier launches.');
 	// Alone with a week, there is no rank to state.
 	assert.equal(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), 'HS Girls VB - JCA at ACC finished its first week; no other launch has a complete first week to compare with.');
 	// A tie says tie.
 	const tied = world('2026-10-02', ['Re7kho', 'Big']).map((launch) => ({ ...launch, rank: { ...launch.rank, day7: { rank: 1, compared: 2, tied: true } } }));
-	assert.match(text(open(tied, '2026-10-02')), /finished its first week tied for 1st of 2 launches, with \d+ photo opens against \d+ for the 1 earlier launch\.$/);
+	assert.match(text(open(tied, '2026-10-02')), /finished its first week tied for 1st of 2 launches, with \d+ photo opens, (above|below|level with) the \d+ of the 1 earlier launch\.$/);
 });
 
 test('a launch that finished with a day missing says so and states no total or rank', () => {
@@ -372,10 +373,12 @@ test('a refusal surge is a problem, said by what the refusals were; events that 
 	// The real Oct 5: counted before reasons were kept.
 	const before = openProblems({ ...base, rejections: reading });
 	assert.deepEqual(before.map((p) => [p.id, p.href]), [['collection-surge', 'delivery']]);
-	assert.equal(before[0].text, 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day. Why was not recorded: they were counted before reasons were kept.');
+	assert.equal(before[0].text, 'The gallery’s counter rejected 20,528 events on Oct 5, 50 times its usual 412 a day. Their reasons were not recorded, because they were counted before reasons were kept.');
+	// Some counted before reasons were kept, the rest with a reason.
+	assert.equal(surgeWords({ ...reading, crawler: 20000, notRecorded: 528 }), 'The gallery’s counter rejected 20,528 events on Oct 5, 50 times its usual 412 a day. 20,000 came from known crawlers, which it rejects on purpose. The reasons for 528 of them were not recorded, because they were counted before reasons were kept.');
 	// A crawler-only surge is still reported, and says nothing was lost.
-	assert.equal(surgeWords({ ...reading, crawler: 20528, notRecorded: 0 }), 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day. All came from known crawlers, which it rejects on purpose. No visitor events were lost.');
-	assert.equal(surgeWords({ ...reading, usual: 0, crawler: 20000, notRecorded: 0, other: 528 }), 'The collector rejected 20,528 events on Oct 5, when it usually rejects none. 20,000 came from known crawlers, which it rejects on purpose. 528 were not valid or named an album or photo that does not exist.');
+	assert.equal(surgeWords({ ...reading, crawler: 20528, notRecorded: 0 }), 'The gallery’s counter rejected 20,528 events on Oct 5, 50 times its usual 412 a day. All came from known crawlers, which it rejects on purpose. No visitor events were lost.');
+	assert.equal(surgeWords({ ...reading, usual: 0, crawler: 20000, notRecorded: 0, other: 528 }), 'The gallery’s counter rejected 20,528 events on Oct 5, when it usually rejects none. 20,000 came from known crawlers, which it rejects on purpose. 528 were not valid or named an album or photo that does not exist.');
 	// Events that could not be stored are a problem with or without a surge.
 	const lost = openProblems({ ...base, rejections: { ...reading, count: 3, surge: false, notRecorded: 0, unstored: 3 } });
 	assert.deepEqual(lost.map((p) => p.text), ['3 events could not be stored on Oct 5. The browser retries each one once, so some may have been stored on the retry.']);
@@ -482,9 +485,9 @@ test('Home says it once, on the newest launch only, and leaves out the stored "l
 test('the headline says where the newest launch stands, what that place is a place in, and the median it is measured against', () => {
 	const launches = world('2026-10-06', ALL);
 	const tied = launches.map((launch, i) => (i === 0 ? { ...launch, rank: { ...launch.rank, day7: { rank: 4, compared: 7, tied: true } } } : launch));
-	assert.equal(text(open(tied, '2026-10-06')), 'College Women\'s VB - Millikin at North Central finished its first week tied for 4th of 7 launches, with 266 photo opens against a median of 381 for earlier launches.');
+	assert.equal(text(open(tied, '2026-10-06')), 'College Women\'s VB - Millikin at North Central finished its first week tied for 4th of 7 launches, with 266 photo opens, below the usual 381 for earlier launches.');
 	// The measure is named, and no date is in the headline: the card under it carries the window.
-	assert.match(text(open(launches, '2026-10-06')), /with 266 photo opens against a median of 381/);
+	assert.match(text(open(launches, '2026-10-06')), /with 266 photo opens, below the usual 381 for earlier launches\.$/);
 	assert.doesNotMatch(text(open(launches, '2026-10-06')), /Sep|Oct/);
 	// With no earlier launch there is no median, and the sentence says no more than it knows.
 	assert.doesNotMatch(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), /median|against/);
@@ -538,10 +541,53 @@ test('findings say when they were last checked: fresh, late past four refresh ca
 	assert.deepEqual(placed.map((card) => card.findingsCheck), [late, null], 'only a card with findings says when they were checked');
 });
 
-test('the page says once what a marked date means, and only when a launch it shows has one', () => {
+test('recovered dates: a mark only where it picks some out; when every date shown is recovered the page says so once and draws none', () => {
 	const build = (launches: Launch[]) => buildHome(baseInput('2026-10-06', ALL, { launches }));
-	assert.equal(build(world('2026-10-06', ALL)).datesRecovered, true);
-	assert.equal(build(world('2026-10-06', ALL, {}, [])).datesRecovered, false);
+	// Every date on the page is recovered: no mark anywhere, one sentence.
+	const every = build(world('2026-10-06', ALL));
+	assert.deepEqual(every.recovered, { mark: false, note: RECOVERED_ALL_NOTE });
+	assert.deepEqual(every.cards.map((card) => card.published.includes('*')), [false, false, false]);
+	assert.equal(sentenceText(every.then!), 'No new album since Sep 26, 10 days ago.');
+	// Only some are: the mark picks those out, and the one note says what it means.
+	const some = build(world('2026-10-06', ALL, {}, ['Re7kho']));
+	assert.deepEqual(some.recovered, { mark: true, note: RECOVERED_NOTE });
+	assert.deepEqual(some.cards.map((card) => card.published), ['First published Sep 26', 'First published Sep 25*', 'First published Sep 5']);
+	// The mark follows what the cards show: only the three newest cards count, so an older recovered date elsewhere does not make the page mark.
+	assert.deepEqual(build(world('2026-10-06', ALL, {}, ['jq1Rp7'])).recovered, { mark: false, note: null });
+	// None are: nothing to say.
+	assert.deepEqual(build(world('2026-10-06', ALL, {}, [])).recovered, { mark: false, note: null });
+});
+
+test('the verdict word is the plain comparison of the week with the usual: above, below, or level; one earlier launch is a figure, not a usual', () => {
+	const launches = world('2026-10-06', ALL);
+	assert.match(text(open(launches, '2026-10-06')), /, below the usual 381 for earlier launches\.$/);
+	// One earlier launch.
+	const one = world('2026-10-06', ['Re7kho', 'DWdCET']);
+	assert.match(text(open(one, '2026-10-06')), /with 266 photo opens, below the 931 of the 1 earlier launch\.$/);
+	// The same numbers the other way round, and level.
+	const withWeek = (own: number) => open(world('2026-10-06', ALL).map((launch, i) => (i === 0 ? { ...launch, totals: { ...launch.totals, day7: { ...launch.totals.day7, photoOpens: own } } } : launch)), '2026-10-06');
+	const lead = (own: number) => text(withWeek(own)).replace(/^.* photo opens?, /, '');
+	assert.equal(lead(500), 'above the usual 381 for earlier launches.');
+	assert.equal(lead(381), 'level with the usual 381 for earlier launches.');
+});
+
+test('one sentence says what share of the counted photo opens came from browsers the counter could not sort, with the real share and its dates', () => {
+	const classes = (audience: number, unclassified: number) => ({ start: '2026-09-30', end: '2026-10-06', classes: [{ classification: 'audience', count: audience }, { classification: 'unclassified', count: unclassified }, { classification: 'known_crawler', count: 900 }] });
+	// Most: the real share, computed over the counted classes only (a crawler is left out of the counting), with the upper-limit clause.
+	assert.equal(unsortedLine(classes(190, 810), '2026-10-07'), 'Most (81%) of the newest launch’s counted opens, Sep 30 – Oct 6, came from browsers the counter could not sort: an upper limit.');
+	// Not most: the share, and no upper-limit clause.
+	assert.equal(unsortedLine(classes(880, 120), '2026-10-07'), '12% of the newest launch’s counted opens, Sep 30 – Oct 6, came from browsers the counter could not sort.');
+	// Exactly half is not most.
+	assert.match(unsortedLine(classes(500, 500), '2026-10-07')!, /^50% of the newest launch/);
+	// 50.4% rounds to 50 and is still most.
+	assert.match(unsortedLine(classes(496, 504), '2026-10-07')!, /^Most \(50%\) of the newest launch’s counted opens, Sep 30 – Oct 6,/);
+	// Nothing unsorted, nothing counted, or nothing read: nothing to say.
+	assert.equal(unsortedLine(classes(100, 0), '2026-10-07'), null);
+	assert.equal(unsortedLine({ start: '2026-09-30', end: '2026-10-06', classes: [] }, '2026-10-07'), null);
+	assert.equal(unsortedLine(null, '2026-10-07'), null);
+	// It reaches the page.
+	assert.match(buildHome(baseInput('2026-10-06', ALL, { traffic: classes(190, 810) })).unsorted ?? '', /^Most \(81%\) of the newest launch’s counted opens/);
+	assert.equal(buildHome(baseInput('2026-10-06', ALL)).unsorted, null);
 });
 
 test('the caption under the small bars says what a thin mark and a dashed line are, only when they are drawn', () => {
