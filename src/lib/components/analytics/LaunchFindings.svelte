@@ -90,10 +90,11 @@
 			<svelte:element this={`h${level}`} class="title">{finding.title}</svelte:element>
 			<p class="what">{finding.explanation}</p>
 			{#if !compact && finding.why}<p class="why">{finding.why}</p>{/if}
-			<p class="next"><strong>Next step:</strong> {finding.action}</p>
+			{#if !compact}<p class="next"><strong>Next step:</strong> {finding.action}</p>{/if}
 			{#if compact}
 				<details>
-					<summary>Evidence and limits<span class="sr-only"> for: {finding.title}</span></summary>
+					<summary>Next step, evidence and limits<span class="sr-only"> for: {finding.title}</span></summary>
+					<p class="next"><strong>Next step:</strong> {finding.action}</p>
 					{#if finding.why}<p class="why">{finding.why}</p>{/if}
 					{#if finding.evidenceText}<p class="evidence"><strong>Evidence:</strong> {finding.evidenceText}</p>{/if}
 					{#if finding.limits?.length}<ul class="limits">{#each finding.limits as limit (limit)}<li>{limit}</li>{/each}</ul>{/if}
@@ -130,7 +131,7 @@
 {#if owner}
 	<p class="status" role="status">{#if message}{message.text}{#if message.settings}{' '}<a href={settingsPath(hostname)}>Open settings</a>{/if}{#if message.undo}{' '}<button type="button" class="inline" onclick={() => void undo()} disabled={saving}>Undo</button>{/if}{/if}</p>
 {/if}
-{#if checked && shown.length}<p class="checked" class:late={checked.late}>{#if !compact}Worked out from complete days only.{' '}{/if}{checked.text}</p>{/if}
+{#if checked && shown.length && (!compact || checked.late)}<p class="checked" class:late={checked.late}>{#if !compact}Worked out from complete days only.{' '}{/if}{checked.text}</p>{/if}
 
 <style>
 	.findings { display: grid; gap: .6rem; list-style: none; margin: 0; padding: 0; }
@@ -141,7 +142,7 @@
 	.finding[data-severity='low'] { border-left-color: #6b7f99; }
 	.kind { color: #174ea6; font-size: .7rem; font-weight: 800; letter-spacing: .08em; margin: 0 0 .2rem; text-transform: uppercase; }
 	.finding[data-severity='high'] .kind { color: #8a4200; }
-	.title { font-size: 1rem; font-weight: 700; line-height: 1.35; margin: 0 0 .3rem; overflow-wrap: anywhere; }
+	.title { font-size: 1rem; font-weight: 700; line-height: 1.35; margin: 0 0 .3rem; overflow-wrap: break-word; }
 	p { line-height: 1.5; margin: 0 0 .35rem; max-width: 46rem; }
 	.what { font-size: .93rem; }
 	.why, .evidence { color: #3d4c63; font-size: .86rem; }
@@ -168,7 +169,7 @@
 	textarea { border: 1px solid #8fa1b8; border-radius: .45rem; color: #172033; font: inherit; font-size: .88rem; max-width: 100%; min-height: 2.75rem; padding: .45rem .6rem; resize: vertical; }
 	.status { color: #195b33; font-size: .84rem; margin: .4rem 0 0; }
 	.status:empty { display: none; }
-	.status a { color: #174ea6; font-weight: 700; }
+	.status a { color: #174ea6; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 	.compact .finding { padding: .55rem .75rem; }
 	.compact .title { font-size: .95rem; }
 	.compact .what, .compact .next { font-size: .87rem; }

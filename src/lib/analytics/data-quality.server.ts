@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildDataView, journeysView, notReadNote, type DataView, type JourneysView } from './data-quality';
+import { buildDataView, eventsView, journeysView, notReadNote, type DataView, type EventsView, type JourneysView } from './data-quality';
 import { refreshTimeFrom } from './home.server';
 import { collectionDiagnostics } from './intelligence-source.server';
 import { chicagoDate } from './launch-recap';
@@ -12,7 +12,7 @@ import { parseReportQuery } from './report-contract';
 import { loadSiteActions } from './site-actions.server';
 import { loadSiteJourneys, type SiteJourneys } from './site-journeys.server';
 import { loadSiteTraffic, siteTrafficCache } from './site-traffic.server';
-import { fetchV2ReportProjection, type V2ReportProjection } from './v2-report-projection.server';
+import { fetchV2ReportProjection } from './v2-report-projection.server';
 
 /**
  * The reads behind the data quality page. One parallel round, and each part fails alone: a part that
@@ -23,6 +23,7 @@ import { fetchV2ReportProjection, type V2ReportProjection } from './v2-report-pr
  *   freshness         the newest `reconciled_at`, the incidents, and delivery diagnostics: the same reads Home makes
  *   site              Cloudflare page loads and the site's own action summary
  *   delivery health   the outbox counts; only for the signed-in owner
+ *   event counts      the recorded events, the slowest read here; streamed after the page like the journeys
  *   journeys          PostHog; streamed after the page, so a slow provider never holds the page back
  */
 
@@ -43,6 +44,8 @@ export interface DataDeps {
 
 export interface DataPage {
 	view: DataView;
+	/** Never rejects: a failure is an `EventsView` that says so. Read after the page is drawn. */
+	events: Promise<EventsView>;
 	/** Never rejects: a failure is a `JourneysView` that says so. */
 	journeys: Promise<JourneysView>;
 	siteJourneys: Promise<SiteJourneys>;
@@ -62,10 +65,33 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	const start = addDays(lastCompleteDay, -(days - 1));
 	const query = parseReportQuery(new URLSearchParams({ period: 'custom', start, end: lastCompleteDay, scope: 'all', measure: 'photo_opens', traffic: 'conservative', compare: 'none' }), asOf);
 
-	const [reportRead, summaries, settings, healthRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
-		buildOperatorReport(admin, query, { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: true, includeVisitorEstimate: true, includeToday: false, cacheRole: 'service_role' }),
-		readAll<{ album_key: string; album_name: string }>((from) => admin.from('albums_summary').select('album_key, album_name').order('album_key').range(from, from + 999)),
-		readAll<{ album_key: string; visibility: string | null }>((from) => admin.from('album_settings').select('album_key, visibility').order('album_key').range(from, from + 999)),
+	// The public album names come first and alone: the event counts and the journeys need them and nothing else, so they start as soon as
+	// they are read, not after the gallery summary.
+	const summariesRead = readAll<{ album_key: string; album_name: string }>((from) => admin.from('albums_summary').select('album_key, album_name').order('album_key').range(from, from + 999));
+	const settingsRead = readAll<{ album_key: string; visibility: string | null }>((from) => admin.from('album_settings').select('album_key, visibility').order('album_key').range(from, from + 999));
+	const publicNames = Promise.allSettled([summariesRead, settingsRead]).then(([summaries, settings]) => {
+		logFailure('album names', summaries);
+		logFailure('album visibility', settings);
+		// Public albums only. An album whose visibility could not be read is not shown, rather than guessed public.
+		const found = new Map<string, string>();
+		const summaryRows = ok(summaries);
+		const settingRows = ok(settings);
+		if (summaryRows && !summaryRows.error && settingRows && !settingRows.error) {
+			const unlisted = new Set(settingRows.data.filter((row) => row.visibility === 'unlisted').map((row) => row.album_key));
+			for (const row of summaryRows.data) if (!unlisted.has(row.album_key)) found.set(row.album_key, row.album_name);
+		}
+		return found;
+	});
+
+	const reportPromise = buildOperatorReport(admin, query, { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: true, includeVisitorEstimate: true, includeToday: false, cacheRole: 'service_role' });
+	// The event counts read thousands of rows, so they start now and stream: the page is drawn without them. They are shown only
+	// when the gallery summary itself could be read, as before.
+	const eventsRaw = publicNames.then((found) => (found.size ? fetchV2ReportProjection(admin, query, { publicAlbumKeys: [...found.keys()] }) : null))
+		.catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; });
+	const events: Promise<EventsView> = Promise.all([eventsRaw, reportPromise.then((report) => report.available, () => false)]).then(([raw, reportOk]) => eventsView(reportOk ? raw : null));
+
+	const [reportRead, healthRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
+		reportPromise,
 		deps.owner ? admin.rpc('analytics_posthog_delivery_health') : Promise.resolve({ data: null, error: null }),
 		admin.from('analytics_daily_coverage').select('reconciled_at').order('reconciled_at', { ascending: false }).limit(1),
 		admin.from('analytics_intelligence_incidents').select('finding_id').eq('status', 'open').order('updated_at', { ascending: false }).limit(20),
@@ -73,24 +99,12 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 		loadSiteTraffic(days, deps.env.CLOUDFLARE_ACCOUNT_ID, deps.env.CLOUDFLARE_ANALYTICS_TOKEN, deps.fetch, { cache: siteTrafficCache }),
 		loadSiteActions(admin, days, 'all', 0)
 	]);
-	for (const [what, result] of [['gallery summary', reportRead], ['album names', summaries], ['album visibility', settings], ['delivery health', healthRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['delivery diagnostics', diagnosticRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
-
-	// Public albums only. An album whose visibility could not be read is not shown, rather than guessed public.
-	const names = new Map<string, string>();
-	const summaryRows = ok(summaries);
-	const settingRows = ok(settings);
-	if (summaryRows && !summaryRows.error && settingRows && !settingRows.error) {
-		const unlisted = new Set(settingRows.data.filter((row) => row.visibility === 'unlisted').map((row) => row.album_key));
-		for (const row of summaryRows.data) if (!unlisted.has(row.album_key)) names.set(row.album_key, row.album_name);
-	}
+	for (const [what, result] of [['gallery summary', reportRead], ['delivery health', healthRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['delivery diagnostics', diagnosticRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
+	const names = await publicNames;
 	const publicAlbumKeys = [...names.keys()];
 
 	const report: OperatorReport | null = ok(reportRead);
 	const transport = createPostHogQueryTransport(deps.env);
-	const v2: Promise<V2ReportProjection | null> = report && names.size
-		? fetchV2ReportProjection(admin, query, { publicAlbumKeys }).catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; })
-		: Promise.resolve(null);
-
 	// Provider journeys start now and stream: the page does not wait for them.
 	const journeys: Promise<JourneysView> = names.size
 		? Promise.all(POSTHOG_JOURNEY_REPORTS.map((name) => queryGalleryJourneys(transport, { report: name, start: query.start, end: query.end, source: query.source, sport: query.sport, category: query.category }, { publicOnly: true, allowedAlbumKeys: publicAlbumKeys })))
@@ -104,12 +118,12 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	const parsedHealth: MeasurementHealth | null = deps.owner && health && !health.error ? parseMeasurementHealth(health.data) : null;
 	const view = buildDataView({
 		asOf: asOfIso, today, lastCompleteDay, days, owner: deps.owner,
-		report, names, v2: await v2, health: parsedHealth,
+		report, names, health: parsedHealth,
 		refreshedAt: refreshTimeFrom(ok(refreshRead)),
 		incidents: incidents && !incidents.error ? (incidents.data ?? []).map((row) => String(row.finding_id)) : null,
 		diagnostics: ok(diagnosticRead) ?? null,
 		traffic: ok(trafficRead), actions: ok(actionsRead),
 		posthogConfigured: transport !== null
 	});
-	return { view, journeys, siteJourneys };
+	return { view, events, journeys, siteJourneys };
 }

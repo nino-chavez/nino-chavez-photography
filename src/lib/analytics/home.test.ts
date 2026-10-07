@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Launch, LaunchAgeTotals, LaunchDay } from './launch-read-model.server';
 import {
-	buildHome, changeWords, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, nextRecaps,
+	buildHome, changeWords, lastOpenedNote, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, nextRecaps,
 	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, staleness, statusLabel, trailingGap, weekLine,
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
 } from './home';
@@ -67,13 +67,17 @@ const FRESH: Freshness = { incompleteDays: [], refreshedAt: null, checked: false
 const open = (launches: Launch[] | null, today: string, stale = staleness(FRESH, addDays(today, -1), `${today}T15:00:00Z`)) => openingSentence({ launches, stale, today });
 const text = (value: ReturnType<typeof openingSentence>) => sentenceText(value.sentence);
 
-test('production on October 6: no new album since Sep 26, the inferred date marked', () => {
+test('production on October 6: the newest launch leads, then that no new album came since Sep 26, the recovered date said in the album report\'s words', () => {
 	const launches = world('2026-10-06', ALL);
 	const opening = open(launches, '2026-10-06');
 	assert.equal(opening.state, 'quiet');
-	assert.equal(text(opening), 'No new album since Sep 26 (inferred), 10 days ago.');
+	// The like-for-like line of the newest launch, with the days its week covers.
+	assert.equal(text(opening), 'College Women\'s VB - Millikin at North Central finished its first week 4th of 7 launches.');
+	assert.equal(sentenceText(opening.then!), 'No new album since Sep 26 (date recovered afterwards from a log), 10 days ago.');
 	// A recorded date carries no mark.
-	assert.equal(text(open(world('2026-10-06', ALL, {}, []), '2026-10-06')), 'No new album since Sep 26, 10 days ago.');
+	assert.equal(sentenceText(open(world('2026-10-06', ALL, {}, []), '2026-10-06').then!), 'No new album since Sep 26, 10 days ago.');
+	// The "days ago" count is computed from today, not from the window: a week later it says 17.
+	assert.equal(sentenceText(open(world('2026-10-13', ALL), '2026-10-13').then!), 'No new album since Sep 26 (date recovered afterwards from a log), 17 days ago.');
 });
 
 test('a launch published today waits for its first full day', () => {
@@ -107,12 +111,12 @@ test('a launch that just finished: its rank at day 7', () => {
 	const launches = world('2026-10-02', ['fJKdsB', 'Re7kho', 'dKe567', 'Big', 'Bump', 'jq1Rp7']);
 	const opening = open(launches, '2026-10-02');
 	assert.equal(opening.state, 'just_finished');
-	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week in 2nd place of 6 launches with 931 photo opens.');
+	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week 2nd of 6 launches.');
 	// Alone with a week, there is no rank to state.
-	assert.equal(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), 'HS Girls VB - JCA at ACC finished its first week with 931 photo opens; no other launch has a complete first week to compare with.');
+	assert.equal(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), 'HS Girls VB - JCA at ACC finished its first week; no other launch has a complete first week to compare with.');
 	// A tie says tie.
 	const tied = world('2026-10-02', ['Re7kho', 'Big']).map((launch) => ({ ...launch, rank: { ...launch.rank, day7: { rank: 1, compared: 2, tied: true } } }));
-	assert.match(text(open(tied, '2026-10-02')), /in tied for 1st place of 2 launches with/);
+	assert.match(text(open(tied, '2026-10-02')), /finished its first week tied for 1st of 2 launches\.$/);
 });
 
 test('a launch that finished with a day missing says so and states no total or rank', () => {
@@ -216,12 +220,12 @@ test('no sentence on Home claims a recap was sent, emailed or delivered; the ope
 
 test('the week line compares the last 7 complete days with the 7 before, and says when it cannot', () => {
 	const week: WeekInput = { window: { start: '2026-09-29', end: '2026-10-05' }, previous: { start: '2026-09-22', end: '2026-09-28' }, current: 396, previousTotal: 3102, coverage: 'complete', previousCoverage: 'complete' };
-	assert.equal(sentenceText(weekLine(week, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 396, down 87% from 3,102 in the 7 days before (Sep 22 – 28).');
-	assert.equal(sentenceText(weekLine({ ...week, current: 100, previousTotal: 0 }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 100, against 0 in the 7 days before (Sep 22 – 28).');
-	assert.equal(sentenceText(weekLine({ ...week, current: 5, previousTotal: 5 }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 5, the same as 5 in the 7 days before (Sep 22 – 28).');
-	assert.equal(sentenceText(weekLine({ ...week, previousCoverage: 'partial', previousTotal: null }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: 396, with nothing to compare it with: the 7 days before (Sep 22 – 28) have incomplete records.');
-	assert.equal(sentenceText(weekLine({ ...week, coverage: 'partial', current: null }, '2026-10-06', NO_LAUNCHES)), 'Gallery photo opens, Sep 29 – Oct 5: not stated: a day in it has incomplete records, so a short total is not shown.');
-	assert.match(sentenceText(weekLine(null, '2026-10-06', NO_LAUNCHES)), /could not be read\. No number is shown rather than a wrong one\.$/);
+	assert.equal(sentenceText(weekLine(week, '2026-10-06', NO_LAUNCHES)!), 'Gallery photo opens, Sep 29 – Oct 5: 396, down 87% from 3,102 in the 7 days before (Sep 22 – 28).');
+	assert.equal(sentenceText(weekLine({ ...week, current: 100, previousTotal: 0 }, '2026-10-06', NO_LAUNCHES)!), 'Gallery photo opens, Sep 29 – Oct 5: 100, against 0 in the 7 days before (Sep 22 – 28).');
+	assert.equal(sentenceText(weekLine({ ...week, current: 5, previousTotal: 5 }, '2026-10-06', NO_LAUNCHES)!), 'Gallery photo opens, Sep 29 – Oct 5: 5, the same as 5 in the 7 days before (Sep 22 – 28).');
+	assert.equal(sentenceText(weekLine({ ...week, previousCoverage: 'partial', previousTotal: null }, '2026-10-06', NO_LAUNCHES)!), 'Gallery photo opens, Sep 29 – Oct 5: 396, with nothing to compare it with: the 7 days before (Sep 22 – 28) have incomplete records.');
+	assert.equal(sentenceText(weekLine({ ...week, coverage: 'partial', current: null }, '2026-10-06', NO_LAUNCHES)!), 'Gallery photo opens, Sep 29 – Oct 5: not stated: a day in it has incomplete records, so a short total is not shown.');
+	assert.match(sentenceText(weekLine(null, '2026-10-06', NO_LAUNCHES)!), /could not be read\. No number is shown rather than a wrong one\.$/);
 	assert.equal(changeWords(1001, 1000), 'up less than 1% from');
 	// Below the intelligence rules' sample of 20 in either period, two plain counts, never a percentage.
 	assert.equal(minimumSample, 20);
@@ -239,7 +243,7 @@ test('a card says what it is, and each number says what it is compared with', ()
 	const launches = world('2026-10-02', ALL);
 	const day7 = launchCard(launches.find((l) => l.albumKey === 'Re7kho')!, launches, '2026-10-02', 'cf-id');
 	assert.equal(day7.status, 'Day 7 reached');
-	assert.equal(day7.published, 'First published Sep 25 (inferred)');
+	assert.equal(day7.published, 'First published Sep 25 (date recovered afterwards from a log)');
 	assert.equal(day7.opens, '931 photo opens in week 1');
 	assert.equal(day7.comparison, '2nd of 6 launches at day 7.');
 	assert.equal(day7.cover, 'cf-id');
@@ -398,7 +402,7 @@ test('Home: a launch in progress lists what is due, and unreadable launches say 
 	assert.deepEqual(down.problems.map((p) => p.id), ['launches-unreadable']);
 });
 
-test('the week line names launch weeks and states no percentage; only windows with no launch days get a plain comparison', () => {
+test('the week line is shown only for two weeks that are alike; a launch week in either window leaves it out', () => {
 	const week: WeekInput = { window: { start: '2026-09-29', end: '2026-10-05' }, previous: { start: '2026-09-22', end: '2026-09-28' }, current: 384, previousTotal: 1451, coverage: 'complete', previousCoverage: 'complete' };
 	const jca = world('2026-10-06', ['Re7kho'])[0]; // first week Sep 25 - Oct 1: touches both windows
 	const millikin = world('2026-10-06', ['DWdCET'])[0]; // Sep 26 - Oct 2: both windows
@@ -406,28 +410,65 @@ test('the week line names launch weeks and states no percentage; only windows wi
 	const late = world('2026-10-06', ['DWdCET']).map((l) => ({ ...l, albumKey: 'Late', albumName: 'Late Launch - 10-01-2026', firstPublishedAt: '2026-10-01T20:00:00Z' }))[0]; // Oct 1 - Oct 7: current only
 	const early = world('2026-10-06', ['DWdCET']).map((l) => ({ ...l, albumKey: 'Early', albumName: 'Early Launch - 09-14-2026', firstPublishedAt: '2026-09-14T20:00:00Z' }))[0]; // Sep 14 - Sep 20: neither window
 	const prevOnly = { ...early, albumKey: 'Prev', albumName: 'Previous Only - 09-17-2026', firstPublishedAt: '2026-09-17T20:00:00Z' }; // Sep 17 - Sep 23: previous window only (Sep 22, 23)
-	const line = (launches: Launch[] | null) => sentenceText(weekLine(week, '2026-10-06', launches));
+	const line = (launches: Launch[] | null) => { const value = weekLine(week, '2026-10-06', launches); return value === null ? null : sentenceText(value); };
 	// No launch in either window: a plain comparison.
 	assert.equal(line([big, early]), 'Gallery photo opens, Sep 29 – Oct 5: 384, down 74% from 1,451 in the 7 days before (Sep 22 – 28).');
 	assert.equal(line([]), 'Gallery photo opens, Sep 29 – Oct 5: 384, down 74% from 1,451 in the 7 days before (Sep 22 – 28).');
-	// A launch in the previous window only.
-	assert.equal(line([prevOnly, big]), 'Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451, during the first week of Previous Only.');
-	// A launch in the current window only.
-	assert.equal(line([late, big]), 'Gallery photo opens, Sep 29 – Oct 5: 384, during the first week of Late Launch. The 7 days before (Sep 22 – 28) had 1,451.');
-	// Launches in both, different ones in each.
-	assert.equal(line([late, prevOnly]), 'Gallery photo opens, Sep 29 – Oct 5: 384, during the first week of Late Launch. The 7 days before (Sep 22 – 28) had 1,451, during the first week of Previous Only.');
-	// The same launches in both windows: said once, and not a fair comparison. Production today.
-	assert.equal(line([millikin, jca, big]), 'Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women\'s VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.');
-	// No line that touches a launch week states a percentage or a direction.
-	for (const launches of [[prevOnly], [late], [late, prevOnly], [millikin, jca]]) assert.doesNotMatch(line(launches), /%|\bup\b|\bdown\b/);
-	// Launch dates that could not be read: nothing says the windows are alike.
+	// A launch week in the previous window, the current window, both, or the same ones in both (production today): no line at all.
+	for (const launches of [[prevOnly, big], [late, big], [late, prevOnly], [millikin, jca, big]]) assert.equal(line(launches), null);
+	// Launch dates that could not be read: nothing says the windows are alike, so no change is stated.
 	assert.equal(line(null), 'Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Launch dates could not be read, so no change is stated.');
+	// A number that could not be read is still said: unknown is never left out.
+	assert.match(sentenceText(weekLine(null, '2026-10-06', [big])!), /could not be read/);
+	assert.match(sentenceText(weekLine({ ...week, coverage: 'partial' }, '2026-10-06', [millikin])!), /not stated/);
 	// Day 6 is inside the first week; day 7 is not.
 	const edge = (day0: string) => ({ ...big, firstPublishedAt: `${day0}T20:00:00Z`, albumName: 'Edge', albumKey: 'Edge' });
-	assert.match(line([edge('2026-09-16')]), /during the first week of Edge\.$/, 'Sep 16 + 6 = Sep 22 is the first day of the earlier window');
-	assert.doesNotMatch(line([edge('2026-09-15')]), /Edge/, 'Sep 15 + 6 = Sep 21 is before it');
-	assert.doesNotMatch(line([edge('2026-10-06')]), /Edge/, 'a launch published today starts after the window ends');
-	assert.match(line([edge('2026-10-05')]), /during the first week of Edge\. The 7 days/, 'a launch published on the last day of the window is in it');
+	assert.equal(line([edge('2026-09-16')]), null, 'Sep 16 + 6 = Sep 22 is the first day of the earlier window');
+	assert.notEqual(line([edge('2026-09-15')]), null, 'Sep 15 + 6 = Sep 21 is before it');
+	assert.notEqual(line([edge('2026-10-06')]), null, 'a launch published today starts after the window ends');
+	assert.equal(line([edge('2026-10-05')]), null, 'a launch published on the last day of the window is in it');
+});
+
+test('"No one has opened a photo since" is computed from every complete day, and only when the days after it are complete and zero', () => {
+	// Millikin on Oct 6: days Sep 26 to Oct 5 are complete (10 of them), 90 106 40 12 9 6 3 2 1 0. The last open day is Oct 4 (day 8, 1 open): the days after it hold none.
+	const millikin = world('2026-10-06', ['DWdCET'])[0];
+	assert.equal(lastOpenedNote(millikin, '2026-10-05'), 'No one has opened a photo since Oct 4 (complete days, through Oct 5).');
+	// Not inferred from a few quiet days at the end: with an open on the final complete day there is no such claim.
+	const active = { ...millikin, series: millikin.series.map((day, i, all) => (i === all.length - 1 ? { ...day, photoOpens: 2 } : day)) };
+	assert.equal(lastOpenedNote(active, '2026-10-05'), null);
+	// A day with incomplete records after the last open day is not a quiet day.
+	const holed = { ...millikin, series: millikin.series.map((day, i, all) => (i === all.length - 1 ? { ...day, photoOpens: null, coverage: 'partial' as const } : day)) };
+	assert.equal(lastOpenedNote(holed, '2026-10-05'), null);
+	// A series that stops before the last complete day says nothing about the days since.
+	assert.equal(lastOpenedNote({ ...millikin, series: millikin.series.slice(0, 8) }, '2026-10-05'), null);
+	// A launch inside its first week has no such note.
+	assert.equal(lastOpenedNote({ ...millikin, elapsedDays: 6 }, '2026-10-05'), null);
+	// A launch with no open day at all makes no claim about "since".
+	assert.equal(lastOpenedNote({ ...millikin, series: millikin.series.map((day) => ({ ...day, photoOpens: 0 })) }, '2026-10-05'), null);
+	// The date moves with the data: one more open day at the end shifts "since", it is not a fixed window.
+	const later = world('2026-10-08', ['DWdCET'])[0];
+	assert.equal(lastOpenedNote(later, '2026-10-07'), 'No one has opened a photo since Oct 4 (complete days, through Oct 7).');
+});
+
+test('Home says it once, on the newest launch only, and leaves out the stored "launch is over" findings and the unfair week', () => {
+	const finished = { id: 'launch-finished-DWdCET', rule: 'launch_finished', severity: 'low', target: { kind: 'album', albumKey: 'DWdCET' }, title: 'The launch is over' } as never;
+	const failed = { id: 'launch-photo-failures-DWdCET', rule: 'launch_failures', severity: 'high', target: { kind: 'album', albumKey: 'DWdCET' }, title: 'x' } as never;
+	const finishedOther = { id: 'launch-finished-Re7kho', rule: 'launch_finished', severity: 'low', target: { kind: 'album', albumKey: 'Re7kho' }, title: 'The launch is over' } as never;
+	const view = buildHome(baseInput('2026-10-06', ALL, { findings: [finished, failed, finishedOther] }));
+	assert.deepEqual(view.cards.map((card) => card.findings.map((f) => f.rule)), [['launch_failures'], [], []]);
+	assert.match(view.cards[0].note ?? '', /^No one has opened a photo since Oct 4 /);
+	assert.deepEqual(view.cards.slice(1).map((card) => card.note), [null, null]);
+	assert.equal(view.week, null, 'both windows hold a launch week');
+	assert.equal(view.state, 'quiet');
+});
+
+test('the headline says where the newest launch stands and leaves its numbers to the card below it', () => {
+	const launches = world('2026-10-06', ALL);
+	const tied = launches.map((launch, i) => (i === 0 ? { ...launch, rank: { ...launch.rank, day7: { rank: 4, compared: 7, tied: true } } } : launch));
+	assert.equal(text(open(tied, '2026-10-06')), 'College Women\'s VB - Millikin at North Central finished its first week tied for 4th of 7 launches.');
+	// No count, no date and no "photo opens" in the headline: the card under it carries them.
+	assert.doesNotMatch(text(open(launches, '2026-10-06')), /\d{3}|photo open|Sep|Oct/);
+	assert.ok(text(open(launches, '2026-10-06')).length <= 100);
 });
 
 test('the overlapping sentence carries no counts, so it fits two lines; the card carries the numbers', () => {
@@ -451,11 +492,13 @@ test('every place a Home problem links to exists on the data quality page', () =
 
 test('Home places at most three findings, each on the card of the launch it concerns', async () => {
 	const { placeFindings, HOME_FINDINGS } = await import('./home');
-	const f = (id: string, albumKey: string | null) => ({ id, rule: 'launch_reach', target: albumKey ? { kind: 'album' as const, albumKey } : { kind: 'gallery' as const }, title: id, explanation: '', action: '', evidence: { windows: { current: { start: '2026-10-01', end: '2026-10-01' } }, cutoff: null, coverage: 'complete' as const, units: '', strength: 'limited' as const }, reportHref: '/', status: 'open' as const });
+	const f = (id: string, albumKey: string | null, severity: 'high' | 'medium' | 'low' = 'medium') => ({ id, rule: 'launch_reach', severity, target: albumKey ? { kind: 'album' as const, albumKey } : { kind: 'gallery' as const }, title: id, explanation: '', action: '', evidence: { windows: { current: { start: '2026-10-01', end: '2026-10-01' } }, cutoff: null, coverage: 'complete' as const, units: '', strength: 'limited' as const }, reportHref: '/', status: 'open' as const });
 	const card = (albumKey: string) => ({ albumKey, findings: [] }) as never;
-	const placed = placeFindings([card('A'), card('B')], [f('gap-A', 'A'), f('gallery', null), f('old', 'Z'), f('reach-A', 'A'), f('fail-B', 'B'), f('reach-B', 'B')]);
+	const placed = placeFindings([card('A'), card('B')], [f('gap-A', 'A'), f('gallery', null), f('old', 'Z'), f('reach-A', 'A'), f('fail-B', 'B', 'high'), f('reach-B', 'B')]);
 	assert.equal(HOME_FINDINGS, 3);
+	// The newest launch (A) shows everything it has; an older one (B) only what needs action, so its reach note stays on its report.
 	assert.deepEqual(placed.map((c) => c.findings.map((x) => x.id)), [['gap-A', 'reach-A'], ['fail-B']]);
+	assert.deepEqual(placeFindings([card('A'), card('B')], [f('reach-B', 'B')])[1].findings, []);
 	const none = placeFindings([card('A')], []);
 	assert.deepEqual(none[0].findings, []);
 });

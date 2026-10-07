@@ -137,7 +137,7 @@ function coverageLabel(bounds: V2CoverageBounds): string {
 	const archive = bounds.archivedFrom && bounds.archivedThrough
 		? ` Archived aggregate snapshots cover ${bounds.archivedFrom} through ${bounds.archivedThrough}.`
 		: '';
-	return `Recorded version-2 collection begins ${dateOnly(new Date(bounds.firstRecordedAt))}.${raw}${archive} Counts are observations, not people or a conversion funnel.`;
+	return `Detailed event counts begin ${dateOnly(new Date(bounds.firstRecordedAt))}.${raw}${archive} Counts are observations, not people or a conversion funnel.`;
 }
 
 /**
@@ -176,7 +176,7 @@ export function buildV2ReportProjection(
 	};
 }
 
-export function unavailableV2ReportProjection(query: ReportQuery, label = 'Version-2 observations could not be read. This is not a zero-result or complete-coverage report.'): V2ReportProjection {
+export function unavailableV2ReportProjection(query: ReportQuery, label = 'Detailed event counts could not be read. This is not a zero-result or complete-coverage report.'): V2ReportProjection {
 	return {
 		available: false,
 		coverage: {

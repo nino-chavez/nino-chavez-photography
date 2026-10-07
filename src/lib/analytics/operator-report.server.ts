@@ -92,8 +92,9 @@ export async function buildOperatorReport(client: SupabaseClient, query: ReportQ
 	assertReportDateBounds(query, options.rangeMode ?? 'interactive');
 	const previous = comparisonWindow(query) ?? { start: query.start, end: query.end };
 	try {
-		const report = await fetchScheduledGalleryReport(client, query, options);
-		const [diagnosticRead, visitorEstimate] = await Promise.all([
+		// The three reads do not depend on one another, so they run together; the page waits for the slowest, not their sum.
+		const [report, diagnosticRead, visitorEstimate] = await Promise.all([
+			fetchScheduledGalleryReport(client, query, options),
 			options.includeDiagnostics === false ? Promise.resolve({ rows: [] as DiagnosticRow[], first: null, error: null }) : readDiagnostics(client, query, options.publicOnly ?? false),
 			options.includeVisitorEstimate === false ? Promise.resolve({ value: null, limit: 'Distinct-browser evidence was not loaded for this section.' }) : distinctVisitors(client, query, options.publicOnly ?? false)
 		]);

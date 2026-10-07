@@ -37,30 +37,61 @@ export interface NotRead { id: string; section: StatusAnchor; name: string }
 /* Status                                                                                           */
 /* ---------------------------------------------------------------------------------------------- */
 
-export type StatusState = 'current' | 'partial' | 'attention';
+/**
+ * The worst state on the page, worst first: something needs attention; a part could not be read; a part reaches back
+ * less far than the dates asked for (`limited`); nothing found. The headline says only that state, so it can never sit
+ * above a part of the page that says something worse.
+ */
+export type StatusState = 'current' | 'limited' | 'partial' | 'attention';
 
 export interface StatusView {
 	state: StatusState;
 	headline: string;
-	/** When the gallery counts were last refreshed and what they cover, or why that is not known. */
+	/** When the gallery counts were last refreshed and what they cover, or why that is not known, then what the numbers do not reach back to. */
 	detail: string;
+	/** The first sentence of `detail` alone: when the gallery counts were last refreshed, or why that is not known. */
+	refreshed: string;
 	problems: HomeProblem[];
 	notRead: NotRead[];
+	/** What the page's numbers do not reach back to, said in words; empty when every part covers the dates asked for. */
+	limits: string[];
 }
 
-export function statusView(input: { problems: HomeProblem[]; notRead: NotRead[]; refreshedAt: string | null; lastCompleteDay: string; today: string }): StatusView {
+const partialHeadline = (parts: number) => `Nothing is wrong, but ${plural(parts, 'part')} of this page could not be read.`;
+
+export function statusView(input: { problems: HomeProblem[]; notRead: NotRead[]; limits?: string[]; refreshedAt: string | null; lastCompleteDay: string; today: string }): StatusView {
 	const { problems, notRead, refreshedAt, lastCompleteDay, today } = input;
-	const state: StatusState = problems.length ? 'attention' : notRead.length ? 'partial' : 'current';
+	const limits = input.limits ?? [];
+	const state: StatusState = problems.length ? 'attention' : notRead.length ? 'partial' : limits.length ? 'limited' : 'current';
 	const headline = state === 'current'
-		? 'Everything is current.'
-		: state === 'partial'
-			? `Nothing is wrong, but ${plural(notRead.length, 'part')} of this page could not be read.`
-			: problems.length === 1 ? 'One thing needs attention.' : `${problems.length} things need attention.`;
-	const detail = refreshedAt === null
+		? 'The gallery counts are current.'
+		: state === 'limited'
+			? `The gallery counts are current. ${limits[0]}`
+			: state === 'partial'
+				? partialHeadline(notRead.length)
+				: problems.length === 1 ? 'One thing needs attention.' : `${problems.length} things need attention.`;
+	const refreshed = refreshedAt === null
 		? `When the gallery counts were last refreshed could not be read, so whether they are current is unknown. They cover complete days through ${formatDay(lastCompleteDay)}.`
 		: `The gallery counts were last refreshed at ${chicagoTime(refreshedAt, today)} Chicago time and cover every complete day through ${formatDay(lastCompleteDay)}. They normally refresh every 30 minutes.`;
-	return { state, headline, detail, problems, notRead };
+	// The headline of a limited page already says the first limit; the detail says the others, and every one when something worse leads.
+	const rest = state === 'limited' ? limits.slice(1) : state === 'partial' || state === 'attention' ? limits : [];
+	return { state, headline, detail: [refreshed, ...rest].join(' '), refreshed, problems, notRead, limits };
 }
+
+/**
+ * The status once a part that arrives after the page could not be read. The page is first drawn with the status it knows;
+ * a part that then fails must change the headline, not sit beneath a headline that says nothing is missing. Something
+ * that needs attention stays the headline; otherwise the page is now partial.
+ */
+export function withNotRead(status: StatusView, extra: NotRead): StatusView {
+	if (status.notRead.some((item) => item.id === extra.id)) return status;
+	const notRead = [...status.notRead, extra];
+	if (status.problems.length) return { ...status, notRead };
+	return { ...status, notRead, state: 'partial', headline: partialHeadline(notRead.length), detail: [status.refreshed, ...status.limits].join(' ') };
+}
+
+/** The detailed event counts, which arrive after the rest of the page. */
+export const EVENTS_NOT_READ: NotRead = { id: 'events', section: 'counting', name: 'detailed event counts' };
 
 /** The same problem list Home shows, from the same rule. `launchesRead` is not this page's to say, so it never adds that problem. */
 export function statusProblems(input: Omit<ProblemInput, 'launchesRead'>): HomeProblem[] {
@@ -185,11 +216,10 @@ export interface CountingView {
 	totals: Array<{ label: string; value: string }>;
 	/** The estimate of distinct browsers with any recorded action in these dates, with the limit that comes with it. A browser is not a person. */
 	browsers: { value: string | null; limit: string };
-	events: { label: string; counts: Array<{ label: string; count: number }> } | { label: string; counts: null };
 }
 
-export function countingView(input: { report: OperatorReport; v2: V2ReportProjection | null }): CountingView | null {
-	const { report, v2 } = input;
+export function countingView(input: { report: OperatorReport }): CountingView | null {
+	const { report } = input;
 	if (!report.available) return null;
 	const word = (value: number | null) => (value === null ? 'Not shown: a day in these dates has incomplete records' : `${fmt(value)}${report.coverage === 'complete' ? '' : ' recorded'}`);
 	const engagement = (['downloads', 'favorites', 'shares'] as const).map((measure) => measureTotal(report, measure));
@@ -200,9 +230,23 @@ export function countingView(input: { report: OperatorReport; v2: V2ReportProjec
 			{ label: 'Album opens', value: word(measureTotal(report, 'album_opens')) },
 			{ label: 'Downloads, favorites and shares together', value: word(engagement.some((value) => value === null) ? null : engagement.reduce<number>((sum, value) => sum + (value ?? 0), 0)) }
 		],
-		browsers: { value: report.visitorEstimate.value === null ? null : fmt(report.visitorEstimate.value), limit: report.visitorEstimate.limit },
-		events: v2 && v2.available ? { label: v2.coverage.label, counts: v2.counts.map((item) => ({ label: item.label, count: item.count })) } : { label: v2?.coverage.label ?? 'Detailed event counts were not read.', counts: null }
+		browsers: { value: report.visitorEstimate.value === null ? null : fmt(report.visitorEstimate.value), limit: report.visitorEstimate.limit }
 	};
+}
+
+export interface EventsView {
+	available: boolean;
+	label: string;
+	/** Null when they could not be read; never a list of zeros. */
+	counts: Array<{ label: string; count: number }> | null;
+	/** What it means that they are missing, and what to do; null when they are shown. */
+	down: Unavailable | null;
+}
+
+/** The recorded event counts. They are read after the page is drawn, so a slow read never holds the rest back. */
+export function eventsView(v2: V2ReportProjection | null): EventsView {
+	if (v2 && v2.available) return { available: true, label: v2.coverage.label, counts: v2.counts.map((item) => ({ label: item.label, count: item.count })), down: null };
+	return { available: false, label: v2?.coverage.label ?? 'Detailed event counts were not read.', counts: null, down: notReadNote('events') };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -283,6 +327,8 @@ export function siteMeasuresView(input: { traffic: SiteTrafficResult | null; act
 
 export interface DeliveryView {
 	rows: Array<{ label: string; value: string }> | null;
+	/** What each word in the rows means, in the order it appears. Empty when there are no rows. */
+	terms: Array<{ term: string; means: string }>;
 	volume: string | null;
 	volumeLimit: string;
 	provider: string;
@@ -293,21 +339,34 @@ function instant(value: string | null, today: string): string {
 	return value ? `${chicagoTime(value, today)} Chicago time` : 'none recorded';
 }
 
+/** The words in the delivery rows, said once where they appear. */
+export const DELIVERY_TERMS: DeliveryView['terms'] = [
+	{ term: 'Accepted', means: 'the collector stored the event as a counted action.' },
+	{ term: 'Rejected', means: 'the collector refused the event: it was not valid, named an album or photo that does not exist, came from a known crawler, or could not be stored. This page does not split rejected events by reason.' },
+	{ term: 'Duplicate', means: 'a repeat of an action already stored, so it was not stored again.' },
+	{ term: 'Pending', means: 'stored, and waiting to be sent to PostHog.' },
+	{ term: 'Submitted', means: 'sent to PostHog, and waiting for PostHog to confirm it.' },
+	{ term: 'Confirmed', means: 'PostHog confirmed it received the event.' },
+	{ term: 'Failed', means: 'sending to PostHog did not work.' },
+	{ term: 'Traffic corrections waiting', means: 'changes you made to how an action is classed that have not reached PostHog yet.' }
+];
+
 export const PROVIDER_NOTE = 'Linked-journey results show when PostHog was last asked a question. That is not confirmation that events were delivered; the counts above are.';
 
 export function deliveryView(health: MeasurementHealth | null, today: string): DeliveryView {
 	const quota = 'Quota and billing state: unknown. This page does not infer a quota, spend or approval from delivery counts.';
-	if (!health || !health.available) return { rows: null, volume: null, volumeLimit: '', provider: PROVIDER_NOTE, quota };
+	if (!health || !health.available) return { rows: null, terms: [], volume: null, volumeLimit: '', provider: PROVIDER_NOTE, quota };
 	const n = (value: number | null) => (value === null ? 'not read' : fmt(value));
 	return {
 		rows: [
 			{ label: 'Collection, last 30 days', value: `${n(health.accepted)} accepted · ${n(health.rejected)} rejected · ${n(health.duplicate)} duplicate` },
 			{ label: 'Waiting to be sent', value: `${n(health.pending)} pending · ${n(health.submitted)} submitted · ${n(health.confirmed)} confirmed · ${n(health.failed)} failed` },
-			{ label: 'Event version and corrections', value: `Version ${health.schemaVersion ?? 'not read'} · ${n(health.controlPending)} traffic corrections waiting` },
+			{ label: 'Event format and corrections', value: `Format ${health.schemaVersion ?? 'not read'} · ${n(health.controlPending)} traffic corrections waiting` },
 			{ label: 'Oldest event waiting', value: health.pending === 0 && health.failed === 0 ? 'None waiting' : instant(health.oldestPendingAt, today) },
 			{ label: 'Oldest event awaiting confirmation', value: health.submitted === 0 ? 'None' : instant(health.oldestSubmittedAt, today) },
 			{ label: 'Most recent confirmed event', value: instant(health.confirmedWatermark, today) }
 		],
+		terms: DELIVERY_TERMS,
 		volume: health.forecast30Days === null ? null : `About ${fmt(health.forecast30Days)} eligible observations in a future 30-day period at the measured rate.`,
 		volumeLimit: `${health.forecastLimit} It is an event-volume estimate, not people, provider quota, cost or spend approval.`,
 		provider: PROVIDER_NOTE,
@@ -327,12 +386,12 @@ export function evidenceView(report: OperatorReport, today: string): EvidenceVie
 	if (!report.available) return null;
 	return {
 		rows: report.diagnostics.map((item) => ({
-			path: item.type.replaceAll('_', ' '), status: item.status, recorded: fmt(item.count), results: item.resultCount === null ? 'not recorded' : fmt(item.resultCount),
+			path: item.type.replaceAll('_', ' '), status: item.status, recorded: fmt(item.count), results: item.resultCount === null ? 'none counted' : fmt(item.resultCount),
 			errors: item.errorCodes.length ? item.errorCodes.join(', ') : 'none', latest: item.latestAt ? chicagoTime(item.latestAt, today) : 'none recorded'
 		})),
 		label: report.diagnosticsCoverage.label,
 		failed: !!report.diagnosticsCoverage.error,
-		note: 'Search text and visitor identifiers are never shown. Browser downloads record requests and failures, not completed transfers. A missing row is not evidence that nothing happened.'
+		note: 'Results is how many results a search returned. A "requested" row is written before any result exists, so it reads "none counted"; the search\'s count is on its "accepted" row. A download has no result count. Search text and visitor identifiers are never shown. Browser downloads record requests and failures, not completed transfers. A missing row is not evidence that nothing happened.'
 	};
 }
 
@@ -400,7 +459,6 @@ export interface DataInput {
 	report: OperatorReport | null;
 	/** Names of the public albums, to label the traffic-impact table. */
 	names: ReadonlyMap<string, string>;
-	v2: V2ReportProjection | null;
 	/** Parsed delivery health. Read only for the signed-in owner; null otherwise. */
 	health: MeasurementHealth | null;
 	refreshedAt: string | null;
@@ -424,7 +482,6 @@ export interface DataView {
 	counting: CountingView | null;
 	arrivals: { tagged: Array<{ source: string; count: number }>; openLocations: Array<{ source: string; count: number }>; withoutSource: number; open: OpenLocationsView } | null;
 	reportDown: Unavailable | null;
-	eventsDown: Unavailable | null;
 	site: SiteMeasuresView;
 	delivery: DeliveryView;
 	evidence: EvidenceView | null;
@@ -432,8 +489,28 @@ export interface DataView {
 	deliveryNote: string | null;
 }
 
+/**
+ * What a part of this page does not reach back to: the dates asked for begin before the part's records do.
+ * Nothing here is a fault. It is what "recorded" and "not recorded" mean for these dates, said once, first.
+ */
+export function reachLimits(report: OperatorReport | null, start: string): string[] {
+	if (!report || !report.available) return [];
+	const limits: string[] = [];
+	const { availableFrom, error } = report.diagnosticsCoverage;
+	if (!error) {
+		if (availableFrom === null) limits.push('No search or download attempt has been recorded yet.');
+		else {
+			// The same day the evidence line below the table names: the date part of the first recorded instant.
+			const from = new Date(availableFrom).toISOString().slice(0, 10);
+			if (from > start) limits.push(`Search and download evidence starts on ${formatDay(from)}; earlier days have no record.`);
+		}
+	}
+	if (report.preservedSince && report.preservedSince > start) limits.push(`History is kept since ${formatDay(report.preservedSince)}; earlier days have no record.`);
+	return limits;
+}
+
 export function buildDataView(input: DataInput): DataView {
-	const { report, v2, today, lastCompleteDay, days } = input;
+	const { report, today, lastCompleteDay, days } = input;
 	const start = report && report.available ? report.query.start : addDays(lastCompleteDay, -(days - 1));
 	const freshness: Freshness = { incompleteDays: report && report.available ? report.daily.filter((day) => day.date <= lastCompleteDay && day.coverage !== 'complete').map((day) => day.date).sort() : [], refreshedAt: input.refreshedAt, checked: true };
 	const problems = statusProblems({
@@ -445,7 +522,8 @@ export function buildDataView(input: DataInput): DataView {
 	if (!input.traffic || !input.traffic.available) notRead.push({ id: 'cloudflare', section: 'site-measures', name: 'Cloudflare page loads' });
 	if (!input.actions || !input.actions.available) notRead.push({ id: 'site-actions', section: 'site-measures', name: 'the site\'s own page views' });
 	if (!input.posthogConfigured) notRead.push({ id: 'posthog', section: 'journeys', name: 'linked journeys (PostHog)' });
-	if (report && report.available && (!v2 || !v2.available)) notRead.push({ id: 'events', section: 'counting', name: 'detailed event counts' });
+	if (report && report.available && report.diagnosticsCoverage.error) notRead.push({ id: 'evidence', section: 'delivery', name: 'search and download evidence' });
+	const limits = reachLimits(report, start);
 
 	const deliveryState: DeliveryState = !input.owner ? 'owner_only' : input.health && input.health.available ? 'shown' : 'failed';
 	const arrivals = report && report.available
@@ -453,13 +531,12 @@ export function buildDataView(input: DataInput): DataView {
 		: null;
 	return {
 		days, window: { start, end: lastCompleteDay, label: `${formatDay(start)} – ${formatDay(lastCompleteDay)}` }, today, lastCompleteDay, owner: input.owner,
-		status: statusView({ problems, notRead, refreshedAt: input.refreshedAt, lastCompleteDay, today }),
+		status: statusView({ problems, notRead, limits, refreshedAt: input.refreshedAt, lastCompleteDay, today }),
 		coverage: report ? coverageView({ report, days, refreshedAt: input.refreshedAt, lastCompleteDay, now: input.asOf, today }) : null,
 		traffic: report ? trafficView({ report, names: input.names }) : null,
-		counting: report ? countingView({ report, v2 }) : null,
+		counting: report ? countingView({ report }) : null,
 		arrivals,
 		reportDown: report && report.available ? null : notReadNote('report'),
-		eventsDown: v2 && v2.available ? null : notReadNote('events'),
 		site: siteMeasuresView({ traffic: input.traffic, actions: input.actions, days }),
 		delivery: deliveryView(deliveryState === 'shown' ? input.health : null, today),
 		evidence: report ? evidenceView(report, today) : null,

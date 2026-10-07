@@ -52,7 +52,7 @@
 			<button type="button" disabled={saving} onclick={() => void save(false)}>Disable email delivery</button>
 		{:else}
 			<button type="button" disabled={saving || !deliveryState.configured || !deliveryState.retentionChosen || !deliveryState.emailVerified} onclick={() => void save(true)}>Enable email delivery</button>
-			<p>Enabling records your explicit choice and sends nothing now. A provider acceptance for a future recap is not proof that it reached this inbox.</p>
+			<p>Turning this on records your choice and sends nothing now. A provider accepting a future recap is not proof that it reached this inbox.</p>
 		{/if}
 	{:else}<div class="state unavailable"><p>{failure ?? 'Email delivery settings are unavailable.'}</p><button type="button" onclick={() => void load()}>Try email settings again</button></div>{/if}
 	{#if failure && deliveryState}<p class="answer-error" role="alert">{failure}</p>{/if}
@@ -61,10 +61,11 @@
 
 <style>
 	.email-delivery { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d8e0ea; }
-	.email-delivery h4 { margin: .15rem 0 .5rem; }
-	.email-delivery p { margin: .45rem 0; overflow-wrap: anywhere; }
+	.email-delivery h4 { font-size: 1rem; font-weight: 700; margin: .15rem 0 .5rem; }
+	.email-delivery .kicker { color: #174ea6; font-size: .7rem; font-weight: 800; letter-spacing: .07em; margin: 0; text-transform: uppercase; }
+	.email-delivery p { margin: .45rem 0; overflow-wrap: break-word; }
 
- button{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#174ea6;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;min-height:2.75rem;padding:.5rem .65rem}
+ button{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#174ea6;cursor:pointer;font:inherit;font-size:.85rem;font-weight:700;min-height:2.75rem;padding:.5rem .65rem}
  button:disabled{opacity:.55;cursor:not-allowed}button:focus-visible{outline:3px solid #1769e0;outline-offset:2px}
- .state,.answer-error,.action-message{font-size:.78rem;line-height:1.5}.answer-error{color:#a42424}.action-message{color:#195b33}
+ .state,.answer-error,.action-message{font-size:.85rem;line-height:1.5}.answer-error{color:#a42424}.action-message{color:#195b33}
 </style>

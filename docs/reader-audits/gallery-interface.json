@@ -1,18 +1,22 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T04:14:24.162Z",
-  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer) over the step 8 subagent's walk",
-  "method": "Step 8 walk by the implementing subagent stands for every screen (method in docs/evidence/screen-reviews/analytics-old-addresses-1b45d86/walk.txt). On top of it the coordinator changed only the Settings saved-view actions (src/routes/analytics/settings/+page.server.ts) to write through saved-views.server.ts: a taken name is refused on save and rename, and a rename or delete matching none of the owner's views reports not found. No markup changed; the only reader-visible change is those three error sentences, checked in the unit tests, not in a rendered walk. The coordinator also opened the subagent's photos-visitor, album-owner-notes and data-owner-history captures and re-curled ten old addresses against the production build under wrangler. Not covered: a rendered Settings capture of the new error sentences, a cold reviewer, a real signed-in session, physical devices.",
-  "sourceDigest": "sha256:a08668b393e907adaec86cd0f1bee8578d378bb6fa4431837afde24f54b4c201",
-  "sourceFiles": 197,
+  "reviewedAt": "2026-10-07T15:07:28.120Z",
+  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer) over the fix-pass subagent's walk and the second cold review",
+  "method": "The fix-pass walk (docs/evidence/screen-reviews/analytics-acceptance-fixes-0e9680a/mechanical.md) and the second blind cold review (cold-review-2.md, same folder) stand for every changed screen. After both, the coordinator changed one sentence in AlbumReport.svelte, the selected photo's grid-and-opens note, which the cold review found garbled. It was checked by fetching /albums/Re7kho and /albums/DWdCET from a local dev server reading production read-only: 'Shown in a gallery grid 13 times and opened 3 times, Sep 29 to Oct 6. Grid showings are recorded only from Sep 29.' Not covered: a rendered capture of that sentence, a real device, a real sign-in, and screen readers.",
+  "sourceDigest": "sha256:6fad52cbf14e4a257668fc99c6c4b1d5c7a46b31aedfe96e18906396e30978c7",
+  "sourceFiles": 202,
   "scope": [
-    "Photo explorer page, its shortlist rule and its CSV link",
-    "Data page corrections section and browser estimate",
-    "Album report sharing notes, shortlist note and photo explorer link",
-    "Settings saved view links",
-    "Album index link to the photo explorer",
-    "Header without the Gallery report link",
-    "Settings saved view save, rename and delete errors"
+    "Home headline is the short answer and drops the calendar-week comparison",
+    "Recap address shows the recap alone, as of its due time",
+    "Rank, download and arrival sentences name their days",
+    "Data headline from the worst state, delivery words defined, event counts stream",
+    "Tables become cards on a narrow width",
+    "Album report selected-photo card and comparison chart labels",
+    "Large text, Dynamic Type and chart text scaling",
+    "Forced-colors toggle state",
+    "Settings card for visitors, retention and email copy",
+    "Albums list of albums without a launch date",
+    "One wording for recovered dates"
   ]
 }

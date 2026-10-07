@@ -8,8 +8,8 @@ import { fetchLaunchReadModel, type LaunchReadModel } from '$lib/analytics/launc
 import { buildRecap } from '$lib/analytics/launch-recap';
 import { albumQuery, LAUNCH_DAYS, readArrivals, readPhotoRows, readStoredRecap, readStoredRecaps } from '$lib/analytics/launch-recap.server';
 import { recapRows } from '$lib/analytics/launch-recap-list';
-import { recapBlocks, recapTitle } from '$lib/analytics/launch-recap-text';
-import { isRecapCheckpoint, type RecapCheckpoint } from '$lib/analytics/launch-recap-schedule';
+import { buildRecapView } from '$lib/analytics/launch-recap-view';
+import { isRecapCheckpoint } from '$lib/analytics/launch-recap-schedule';
 import { cumulativeCurves, dailyChart, gridPhotos, launchTable } from '$lib/analytics/launch-report-view';
 import { isAlbumKey } from '$lib/analytics/album-key';
 import { intelligenceScopeKey, launchScope } from '$lib/analytics/intelligence-contract';
@@ -36,13 +36,32 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 	if (settingError) throw error(503, 'Album visibility could not be verified.');
 	if (!user && setting?.visibility === 'unlisted') throw error(404, 'Album not found');
 
+	// One recap on its own page. The address is what a stored recap and an email link to; it shows that recap and nothing of the report.
+	// It comes after the visibility check above, so an unlisted album shows nothing here either, and it reads no photo, arrival, finding or note.
+	const recapAsked = url.searchParams.get('recap');
+	const recapOnly = url.searchParams.has('recap');
+
 	let model: LaunchReadModel;
 	try {
-		model = await fetchLaunchReadModel(admin, { albumKey, days: LAUNCH_DAYS, traffic: 'conservative', publicOnly: true, photoLimit: 2000 });
+		model = await fetchLaunchReadModel(admin, { albumKey, days: LAUNCH_DAYS, traffic: 'conservative', publicOnly: true, photoLimit: recapOnly ? 1 : 2000 });
 	} catch (cause) {
 		if (cause instanceof Error && cause.message.startsWith('Unknown album')) throw error(404, 'Album not found');
 		console.error('[album launch report] unavailable:', cause instanceof Error ? cause.message : cause);
 		throw error(503, 'The launch report could not be built. No number is shown rather than a wrong one.');
+	}
+
+	if (recapOnly) {
+		const checkpoint = Number(recapAsked);
+		const storedRecaps = await readStoredRecaps(admin, albumKey);
+		const open = isRecapCheckpoint(checkpoint) && storedRecaps?.some((stored) => stored.checkpoint === checkpoint) ? await readStoredRecap(admin, albumKey, checkpoint) : null;
+		return {
+			mode: 'recap' as const,
+			albumKey,
+			recapView: buildRecapView({
+				albumKey, albumName: model.album.albumName ?? albumKey, launch: model.album.status === 'no_launch_date' ? null : model.album,
+				now: new Date(model.asOf), asked: recapAsked, stored: storedRecaps, open, owner: !!user
+			})
+		};
 	}
 
 	let photoRows: Awaited<ReturnType<typeof readPhotoRows>>;
@@ -69,11 +88,8 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 		user ? loadSharingNotes(admin, albumKey, user.id) : Promise.resolve(null)
 	]);
 
-	// Recaps: what is stored, and the one the reader opened with ?recap=3 or ?recap=7.
-	const asked = Number(url.searchParams.get('recap'));
-	const openCheckpoint: RecapCheckpoint | null = isRecapCheckpoint(asked) ? asked : null;
+	// Recaps: what is stored. Each opens on its own page (`?recap=3`, `?recap=7`).
 	const storedRecaps = await readStoredRecaps(admin, albumKey);
-	const openRecap = openCheckpoint !== null && storedRecaps?.some((stored) => stored.checkpoint === openCheckpoint) ? await readStoredRecap(admin, albumKey, openCheckpoint) : null;
 	const recapRowList = album.status === 'no_launch_date' ? null : recapRows({ launch: album, now: new Date(model.asOf), stored: storedRecaps, owner: !!user });
 
 	const photoIds = new Set(photoRows.map((row) => row.photoId));
@@ -81,6 +97,7 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 	const photos = gridPhotos(photoRows, album.photos, album.exposure.coverage !== 'none');
 
 	return {
+		mode: 'report' as const,
 		user: user ? { id: user.id, email: user.email } : null,
 		intelligenceOwner: !!user,
 		intelligence,
@@ -99,16 +116,7 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 		},
 		recap,
 		// Nothing to list (an album with no launch date, or a visitor and no recap yet) means no section at all.
-		recaps: recapRowList && (recapRowList.length || openCheckpoint !== null) ? {
-			rows: recapRowList,
-			open: openRecap ? {
-				title: recapTitle(openRecap.checkpoint), subject: openRecap.subject,
-				flags: [...(openRecap.source === 'backfill' ? ['Written later from the records'] : openRecap.late ? ['Late'] : []), ...(openRecap.evidence === 'partial' ? ['Some records were incomplete'] : openRecap.evidence === 'unavailable' ? ['Could not be built'] : [])],
-				// The page links to the full report itself, so the plain-text address line is left out.
-				blocks: recapBlocks(openRecap.body).filter((block) => !(block.kind === 'paragraph' && block.text.startsWith('Full report: ')))
-			} : null,
-			openMissing: openCheckpoint !== null && !openRecap ? openCheckpoint : null
-		} : null,
+		recaps: recapRowList && recapRowList.length ? { rows: recapRowList } : null,
 		photos,
 		charts: { daily: dailyChart(model), curves: cumulativeCurves(model), table: launchTable(model) },
 		query

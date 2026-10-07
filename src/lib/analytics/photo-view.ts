@@ -71,6 +71,17 @@ export function changeLabel(item: ChangeInput, context: ChangeContext): string {
 	return item.difference === 0 ? 'No change' : `${item.difference > 0 ? '+' : ''}${item.difference.toLocaleString('en-US')}`;
 }
 
+/** What a count counts, in the plural, for the label on a photo tile: "13 opens", "4 download requests". */
+const COUNT_UNITS: Record<ReportMeasure, [string, string]> = {
+	photo_opens: ['open', 'opens'], album_opens: ['open', 'opens'], downloads: ['download request', 'download requests'], favorites: ['favorite', 'favorites'], shares: ['share', 'shares']
+};
+/** The number with the word for what it counts, so a tile never shows a bare figure. */
+export function countWithUnit(count: number | null, coverage: 'complete' | 'partial' | 'unavailable', measure: ReportMeasure): string {
+	if (count === null) return 'Unavailable';
+	const [one, many] = COUNT_UNITS[measure];
+	return `${countLabel(count, coverage)} ${count === 1 ? one : many}`;
+}
+
 /** A count that says when it is only what was recorded, never a total it cannot prove. */
 export function countLabel(count: number | null, coverage: 'complete' | 'partial' | 'unavailable'): string {
 	return count === null ? 'Unavailable' : `${count.toLocaleString('en-US')}${coverage === 'complete' ? '' : ' recorded'}`;

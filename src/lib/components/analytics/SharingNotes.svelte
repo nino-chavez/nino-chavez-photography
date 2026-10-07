@@ -74,7 +74,7 @@
 	.list { display: grid; gap: .7rem; list-style: none; margin: 0; padding: 0; }
 	.list li { border-left: 3px solid var(--blue-ink, #174ea6); padding-left: .7rem; }
 	.when { color: var(--muted, #526176); font-size: .8rem; font-weight: 650; margin: 0; }
-	.text { font-size: .95rem; line-height: 1.5; margin: .15rem 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+	.text { font-size: .95rem; line-height: 1.5; margin: .15rem 0 0; overflow-wrap: break-word; white-space: pre-wrap; }
 	.actions { align-items: start; display: flex; flex-wrap: wrap; gap: .2rem 1rem; }
 	summary { align-items: center; color: var(--blue-ink, #174ea6); cursor: pointer; display: flex; font-weight: 650; min-height: 2.75rem; min-width: 2.75rem; }
 	.edit, .add { display: grid; gap: .5rem; max-width: 40rem; }

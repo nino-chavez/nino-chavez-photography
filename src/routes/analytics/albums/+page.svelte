@@ -4,7 +4,7 @@
 	import { replaceState } from '$app/navigation';
 	import { albumIndexPath, albumReportPath, photosPath } from '$lib/analytics/report-paths';
 	import { dayLabel, figureText, matchesName, MAX_COMPARED, QUIET_DAYS, rankText, statusText, undatedReasonShort, type IndexLaunchRow, type IndexUndatedRow } from '$lib/analytics/album-index';
-	import { formatDay, plural } from '$lib/analytics/launch-recap';
+	import { formatDay, plural, recoveredTag } from '$lib/analytics/launch-recap';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchOverlay from '$lib/components/analytics/LaunchOverlay.svelte';
 	import type { PageData } from './$types';
@@ -19,6 +19,7 @@
 	let query = $state('');
 	let picked = $state<string[] | null>(null);
 	let showQuiet = $state(false);
+	let showUndated = $state(false);
 	let visible = $state(PAGE_SIZE);
 	onMount(() => { hydrated = true; });
 
@@ -34,6 +35,9 @@
 	// A search looks through every album, including the quiet ones, so a known event is never hidden by the collapsed list.
 	const shownUndated = $derived(searching ? undatedMatches.slice(0, visible) : active.slice(0, visible));
 	const hiddenUndated = $derived((searching ? undatedMatches.length : active.length) - shownUndated.length);
+
+	// The albums with no launch date are most of the page and none of its five questions, so they wait behind one button. A search opens them.
+	const undatedOpen = $derived(showUndated || searching);
 
 	const results = $derived(searching
 		? `${plural(launchMatches.length, 'launch', 'launches')} and ${plural(undatedMatches.length, 'album')} without a launch date match "${term}".`
@@ -59,7 +63,7 @@
 	}
 	const full = $derived(selected.length >= MAX_COMPARED);
 	const reportHref = (key: string) => albumReportPath(hostname, key);
-	const published = (row: IndexLaunchRow) => `${dayLabel(row.published, index.today)}${row.inferred ? ' (inferred)' : ''}`;
+	const published = (row: IndexLaunchRow) => `${dayLabel(row.published, index.today)}${recoveredTag(row.inferred)}`;
 	const count = (value: number | null) => (value === null ? 'Unknown' : value.toLocaleString('en-US'));
 	const lastActivity = (row: IndexUndatedRow) => (row.lastActivity ? dayLabel(row.lastActivity, index.today) : 'None in the window');
 </script>
@@ -106,7 +110,7 @@
 					<p class="note">No launch matches "{term}".</p>
 				{:else}
 					<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-					<div class="scroll table-view" role="region" aria-label="Launches, newest first" tabindex="0">
+					<div class="scroll table-view" role="region" aria-label="Launches table. Scroll sideways for every column." tabindex="0">
 						<table>
 							<caption class="sr-only">Launches, newest first, with photo opens in the first 3 days and first week, rank at day 7, and download requests in the first week</caption>
 							<thead>
@@ -167,78 +171,87 @@
 				<p class="note">Every public album has a launch date.</p>
 			{:else}
 				<p class="lead">These cannot be compared with launches. They are ordered by photo opens in the last {QUIET_DAYS} complete days, {formatDay(index.window.start)} to {formatDay(index.window.end)}.{#if !index.activityAvailable} <strong>Those counts could not be read just now, so none is shown rather than a wrong one.</strong>{/if}</p>
-				{#if shownUndated.length === 0}
-					<p class="note">{searching ? `No album without a launch date matches "${term}".` : 'Every one of these albums had no activity in the window.'}</p>
-				{:else}
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-					<div class="scroll table-view" role="region" aria-label="Albums without a launch date" tabindex="0">
-						<table>
-							<caption class="sr-only">Albums without a launch date, with photo opens in the last {QUIET_DAYS} complete days and the reason they have no launch date</caption>
-							<thead>
-								<tr><th scope="col">Album</th><th scope="col" class="num">Photos</th><th scope="col" class="num">Photo opens, last {QUIET_DAYS} days</th><th scope="col">Last activity</th><th scope="col">Why no launch date</th></tr>
-							</thead>
-							<tbody>
-								{#each shownUndated as row (row.albumKey)}
-									<tr>
-										<th scope="row"><a href={reportHref(row.albumKey)}>{row.name}</a></th>
-										<td class="num">{row.photos.toLocaleString('en-US')}</td>
-										<td class="num">{count(row.photoOpens)}</td>
-										<td>{lastActivity(row)}</td>
-										<td>{undatedReasonShort(row.reason)}</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-					<ul class="cards card-view" aria-label="Albums without a launch date">
-						{#each shownUndated as row (row.albumKey)}
-							<li class="card">
-								<div class="card-head"><a href={reportHref(row.albumKey)}>{row.name}</a></div>
-								<dl>
-									<div><dt>Photos</dt><dd>{row.photos.toLocaleString('en-US')}</dd></div>
-									<div><dt>Photo opens, last {QUIET_DAYS} days</dt><dd>{count(row.photoOpens)}</dd></div>
-									<div><dt>Last activity</dt><dd>{lastActivity(row)}</dd></div>
-									<div><dt>Why no launch date</dt><dd>{undatedReasonShort(row.reason)}</dd></div>
-								</dl>
-							</li>
-						{/each}
-					</ul>
+				{#if !searching}
+					<button type="button" class="secondary" aria-expanded={showUndated} aria-controls="undated-list" onclick={() => (showUndated = !showUndated)} disabled={!hydrated}>
+						{showUndated ? `Hide the ${active.length.toLocaleString('en-US')} albums without a launch date` : `Show the ${active.length.toLocaleString('en-US')} albums without a launch date`}
+					</button>
 				{/if}
-				{#if hiddenUndated > 0}
-					<button type="button" class="secondary more" onclick={() => (visible += PAGE_SIZE)}>{hiddenUndated <= PAGE_SIZE ? `Show the other ${hiddenUndated.toLocaleString('en-US')}` : `Show ${PAGE_SIZE} more (${hiddenUndated.toLocaleString('en-US')} left)`}</button>
-				{/if}
-
-				{#if !searching && quiet.length}
-					<div class="quiet">
-						<button type="button" class="secondary" aria-expanded={showQuiet} aria-controls="quiet-list" onclick={() => (showQuiet = !showQuiet)} disabled={!hydrated}>
-							{showQuiet ? `Hide the ${quiet.length.toLocaleString('en-US')} albums with no activity` : `Show ${quiet.length.toLocaleString('en-US')} ${quiet.length === 1 ? 'album' : 'albums'} with no activity in the last ${QUIET_DAYS} days`}
-						</button>
-						<div id="quiet-list" hidden={!showQuiet}>
-							{#if showQuiet}
-								<p class="lead">No photo opens, album opens, download requests, favorites or shares in the window. This is a recorded zero, not a gap in the records.</p>
-								<ul class="quiet-list" aria-label="Albums with no activity">
-									{#each quiet as row (row.albumKey)}
-										<li><a href={reportHref(row.albumKey)}><span class="name">{row.name}</span><span class="why">{row.photos.toLocaleString('en-US')} photos · {undatedReasonShort(row.reason)}</span></a></li>
+				<div id="undated-list" hidden={!undatedOpen}>
+					{#if undatedOpen}
+					{#if shownUndated.length === 0}
+						<p class="note">{searching ? `No album without a launch date matches "${term}".` : 'Every one of these albums had no activity in the window.'}</p>
+					{:else}
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
+						<div class="scroll table-view" role="region" aria-label="Albums without a launch date, table. Scroll sideways for every column." tabindex="0">
+							<table>
+								<caption class="sr-only">Albums without a launch date, with photo opens in the last {QUIET_DAYS} complete days and the reason they have no launch date</caption>
+								<thead>
+									<tr><th scope="col">Album</th><th scope="col" class="num">Photos</th><th scope="col" class="num">Photo opens, last {QUIET_DAYS} days</th><th scope="col">Last activity</th><th scope="col">Why no launch date</th></tr>
+								</thead>
+								<tbody>
+									{#each shownUndated as row (row.albumKey)}
+										<tr>
+											<th scope="row"><a href={reportHref(row.albumKey)}>{row.name}</a></th>
+											<td class="num">{row.photos.toLocaleString('en-US')}</td>
+											<td class="num">{count(row.photoOpens)}</td>
+											<td>{lastActivity(row)}</td>
+											<td>{undatedReasonShort(row.reason)}</td>
+										</tr>
 									{/each}
-								</ul>
-							{/if}
+								</tbody>
+							</table>
 						</div>
-					</div>
-				{/if}
+						<ul class="cards card-view" aria-label="Albums without a launch date">
+							{#each shownUndated as row (row.albumKey)}
+								<li class="card">
+									<div class="card-head"><a href={reportHref(row.albumKey)}>{row.name}</a></div>
+									<dl>
+										<div><dt>Photos</dt><dd>{row.photos.toLocaleString('en-US')}</dd></div>
+										<div><dt>Photo opens, last {QUIET_DAYS} days</dt><dd>{count(row.photoOpens)}</dd></div>
+										<div><dt>Last activity</dt><dd>{lastActivity(row)}</dd></div>
+										<div><dt>Why no launch date</dt><dd>{undatedReasonShort(row.reason)}</dd></div>
+									</dl>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+					{#if hiddenUndated > 0}
+						<button type="button" class="secondary more" onclick={() => (visible += PAGE_SIZE)}>{hiddenUndated <= PAGE_SIZE ? `Show the other ${hiddenUndated.toLocaleString('en-US')}` : `Show ${PAGE_SIZE} more (${hiddenUndated.toLocaleString('en-US')} left)`}</button>
+					{/if}
+
+					{#if !searching && quiet.length}
+						<div class="quiet">
+							<button type="button" class="secondary" aria-expanded={showQuiet} aria-controls="quiet-list" onclick={() => (showQuiet = !showQuiet)} disabled={!hydrated}>
+								{showQuiet ? `Hide the ${quiet.length.toLocaleString('en-US')} albums with no activity` : `Show ${quiet.length.toLocaleString('en-US')} ${quiet.length === 1 ? 'album' : 'albums'} with no activity in the last ${QUIET_DAYS} days`}
+							</button>
+							<div id="quiet-list" hidden={!showQuiet}>
+								{#if showQuiet}
+									<p class="lead">No photo opens, album opens, download requests, favorites or shares in the window. This is a recorded zero, not a gap in the records.</p>
+									<ul class="quiet-list" aria-label="Albums with no activity">
+										{#each quiet as row (row.albumKey)}
+											<li><a href={reportHref(row.albumKey)}><span class="name">{row.name}</span><span class="why">{row.photos.toLocaleString('en-US')} photos · {undatedReasonShort(row.reason)}</span></a></li>
+										{/each}
+									</ul>
+								{/if}
+							</div>
+						</div>
+					{/if}
+					{/if}
+				</div>
 			{/if}
 		</section>
 	</div>
 </div>
 
 <style>
-	.album-index { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.album-index { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .album-index { padding: 1.25rem 1.5rem 3.5rem; } }
 	@media (min-width: 1024px) { .album-index { padding-inline: 2rem; } }
 
 	a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 
 	.body { display: grid; gap: 1rem; min-width: 0; }
-	.panel { background: #fff; border: 1px solid var(--line); border-radius: .9rem; min-width: 0; padding: 1rem; }
+	.panel { background: #fff; border: 1px solid var(--line); border-radius: .9rem; min-width: 0; padding: 1rem min(1rem, 4vw); }
 	.intro { min-width: 0; padding-block: .25rem; }
 	.eyebrow { color: var(--blue-ink); font-size: .75rem; font-weight: 800; letter-spacing: .09em; margin: 0; text-transform: uppercase; }
 	h1 { font-size: 1.55rem; font-weight: 750; letter-spacing: -.01em; line-height: 1.2; margin: .35rem 0 .4rem; }
@@ -283,11 +296,12 @@
 	.card { border: 1px solid var(--line); border-radius: .7rem; padding: .6rem .75rem; }
 	.card.picked { background: #eaf1fd; border-color: #9db8e6; }
 	.card-head { align-items: center; display: flex; flex-wrap: wrap; gap: .1rem .5rem; justify-content: space-between; }
-	.card-head a { align-items: center; color: var(--ink); display: inline-flex; flex: 1 1 9rem; min-height: 2.75rem; min-width: 0; font-size: .98rem; font-weight: 650; overflow-wrap: anywhere; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
+	.card-head a { align-items: center; color: var(--ink); display: inline-flex; flex: 1 1 min(9rem, 100%); min-height: 2.75rem; min-width: 0; font-size: .98rem; font-weight: 650; overflow-wrap: break-word; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
 	.card dl { display: grid; gap: .25rem .75rem; grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr)); margin: .4rem 0 0; }
 	.card dl div { min-width: 0; }
+	.card dl div:first-child { grid-column: 1 / -1; }
 	.card dt { color: var(--muted); font-size: .74rem; }
-	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: anywhere; }
+	.card dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: break-word; }
 
 	@media (max-width: 959px) {
 		.table-view { display: none; }
@@ -302,7 +316,7 @@
 	@media (min-width: 1100px) { .quiet-list { columns: 3; } }
 	.quiet-list li { break-inside: avoid; }
 	.quiet-list a { color: var(--ink); display: grid; gap: .05rem; min-height: 2.75rem; padding: .35rem 0; text-decoration: none; }
-	.quiet-list .name { font-size: .9rem; font-weight: 600; overflow-wrap: anywhere; text-decoration: underline; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
+	.quiet-list .name { font-size: .9rem; font-weight: 600; overflow-wrap: break-word; text-decoration: underline; text-decoration-color: #8fa1b8; text-underline-offset: 3px; }
 	.quiet-list a:hover .name { color: var(--blue-ink); }
 	.why { color: var(--muted); font-size: .78rem; }
 

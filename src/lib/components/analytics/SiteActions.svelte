@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { dataPath, photosPath, sitePath } from '$lib/analytics/report-paths';
 	import { SITE_ACTION_METRICS, type SiteActionReport } from '$lib/analytics/site-actions';
+	import ResponsiveTable from '$lib/components/analytics/ResponsiveTable.svelte';
 
 	/**
 	 * What visitors did on each page: link clicks and article and demo progress. The count of pages
@@ -38,18 +39,8 @@
 		{#if !hasHistory}
 			<p class="empty" role="status">No page actions have been counted for these dates. This is not zero: counting had not started.</p>
 		{:else}
-			<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-			<div class="table-box" tabindex="0" role="region" aria-label="Actions by page. Scroll sideways for every column.">
-				<table>
-					<caption>Most viewed pages first</caption>
-					<thead><tr><th scope="col">Page</th>{#each metrics as metric (metric.key)}<th scope="col" title={metric.help}>{metric.label}</th>{/each}</tr></thead>
-					<tbody>
-						{#each report.pages as row (row.path)}
-							<tr><th scope="row"><a href={`https://ninochavez.co${row.path}`} target="_blank" rel="noopener noreferrer">{row.path}<span class="sr-only"> (opens the page on ninochavez.co in a new tab)</span></a></th>{#each metrics as metric (metric.key)}<td>{applicable(metric.key, row.section) ? (row.measures[metric.key] ?? 0).toLocaleString() : '—'}</td>{/each}</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+			<ResponsiveTable label="Actions by page, most viewed first" headerLabel="Page" columns={metrics.map((metric) => ({ label: metric.label, numeric: true, help: metric.help }))}
+				rows={report.pages.map((row) => ({ key: row.path, title: row.path, href: `https://ninochavez.co${row.path}`, newTab: true, values: metrics.map((metric) => (applicable(metric.key, row.section) ? (row.measures[metric.key] ?? 0).toLocaleString() : null)) }))} />
 			{#if report.pages.length === 0}<p class="note">No page actions match these dates and section.</p>{/if}
 			{#if report.pageCount > 1}
 				<nav class="pager" aria-label="Pages of actions">
@@ -63,25 +54,14 @@
 </section>
 
 <style>
-	.actions { background: #fff; border: 1px solid var(--line, #d8e0ea); border-radius: .8rem; color: var(--ink, #172033); min-width: 0; padding: .8rem .9rem; }
+	.actions { background: #fff; border: 1px solid var(--line, #d8e0ea); border-radius: .8rem; color: var(--ink, #172033); min-width: 0; padding: .8rem min(.9rem, 3.6vw); }
 	h2 { font-size: 1.02rem; font-weight: 700; margin: 0; }
 	.note { color: var(--muted, #526176); font-size: .85rem; line-height: 1.5; margin: .35rem 0 0; max-width: 62rem; }
-	.note a, th a { color: var(--blue-ink, #174ea6); text-underline-offset: 3px; }
-	th a { align-items: center; display: flex; min-height: 2.75rem; min-width: 2.75rem; }
+	.note a { color: var(--blue-ink, #174ea6); text-decoration: underline; text-underline-offset: 3px; }
 	.empty { background: #eef4fc; border-radius: .5rem; font-size: .9rem; line-height: 1.45; margin: .6rem 0 0; padding: .6rem .75rem; }
-	.table-box { margin-top: .6rem; max-width: 100%; overflow-x: auto; }
-	.table-box:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
-	table { border-collapse: collapse; font-size: .85rem; min-width: 36rem; width: 100%; }
-	caption { color: var(--muted, #526176); font-size: .8rem; padding-bottom: .35rem; text-align: left; }
-	th, td { border-bottom: 1px solid #e6ecf3; padding: .5rem .6rem; }
-	thead th { font-weight: 650; text-align: right; vertical-align: bottom; }
-	thead th:first-child, tbody th { text-align: left; }
-	tbody th { font-weight: 500; max-width: 22rem; overflow-wrap: anywhere; }
-	td { font-variant-numeric: tabular-nums; text-align: right; }
 	.pager { align-items: center; display: flex; flex-wrap: wrap; font-size: .85rem; gap: .5rem 1rem; justify-content: space-between; margin-top: .6rem; }
 	.pager-links { display: flex; gap: .4rem; }
 	.pager-links a { align-items: center; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink, #174ea6); display: inline-flex; font-weight: 650; min-height: 2.75rem; padding: 0 .8rem; text-decoration: none; }
 	a:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
-	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-	@media (prefers-contrast: more) { .note, caption { color: #2b3748; } }
+	@media (prefers-contrast: more) { .note { color: #2b3748; } }
 </style>

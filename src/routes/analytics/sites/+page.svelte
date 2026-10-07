@@ -29,6 +29,7 @@
 	const cards = $derived(report ? sectionCards(report) : []);
 	const days = $derived(report ? (data.section === 'all' ? report.daily : report.sections.find((item) => item.key === data.section)?.daily ?? []) : []);
 	const largest = $derived(Math.max(1, ...days.map((day) => day.pageviews)));
+	const peakDay = $derived(days.find((day) => day.pageviews === largest) ?? null);
 	const points = $derived(days.map((day, index) => `${(index / Math.max(1, days.length - 1)) * 100},${100 - (day.pageviews / largest) * 88}`).join(' '));
 
 	function href(period: number, section: string, pageIndex = 0) {
@@ -87,6 +88,7 @@
 				<svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Page loads by day, ${days.length} days, the most in one day ${largest.toLocaleString()}. The values are listed below.`}>
 					<polyline fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" {points} />
 				</svg>
+				{#if days.length && peakDay}<p class="note">{shortDate(days[0].date)} to {shortDate(days[days.length - 1].date)}, one point a day. The most loads in one day were {peakDay.pageviews.toLocaleString()}, on {shortDate(peakDay.date)}; the line's baseline is zero.</p>{/if}
 				<details>
 					<summary>Daily values</summary>
 					<dl class="daily">{#each days as day (day.date)}<div><dt>{shortDate(day.date)}</dt><dd>{day.pageviews.toLocaleString()}</dd></div>{/each}</dl>
@@ -160,7 +162,7 @@
 </div>
 
 <style>
-	.site { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.site { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .site { padding: 1rem 1.5rem 2.5rem; } }
 	@media (min-width: 1024px) { .site { padding-inline: 2rem; } }
 	a:focus-visible, summary:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
@@ -175,19 +177,21 @@
 	.group { align-items: center; display: flex; flex-wrap: wrap; gap: .25rem .6rem; }
 	.label { color: var(--muted); font-size: .8rem; font-weight: 650; margin: 0; }
 	.chips { display: flex; flex-wrap: wrap; gap: .3rem; }
-	.choice { align-items: center; background: #fff; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
+	.choice { text-align: center; align-items: center; background: #fff; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
 	.choice[aria-current='true'] { background: #dce9fa; border-color: var(--blue-ink); box-shadow: inset 0 -3px 0 var(--blue-ink); }
+	/* Selected is also a tick, so it does not depend on the colour of the fill. */
+	.choice[aria-current='true']::before { content: '\2713\00a0' / ''; }
 
 	.lead { min-width: 0; }
 	.figures { display: grid; gap: .6rem; grid-template-columns: 1fr; }
 	@media (min-width: 900px) { .figures { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-	.figure, .panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem .9rem; }
+	.figure, .panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem min(.9rem, 3.6vw); }
 	.figure p { margin: .2rem 0 0; }
 	@media (max-width: 899px) { .figure { column-gap: .8rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; } .figure .label { align-self: center; } .figure .value { grid-column: 2; grid-row: 1; margin: 0; text-align: right; } .figure .detail { grid-column: 1 / -1; } }
 	.value { font-size: 1.7rem; font-variant-numeric: tabular-nums; font-weight: 750; line-height: 1.1; }
 	.detail { color: var(--muted); font-size: .85rem; line-height: 1.4; }
 	.note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .4rem 0 0; max-width: 62rem; }
-	.note a { color: var(--blue-ink); text-underline-offset: 3px; }
+	.note a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 3px; }
 	.sub { color: var(--muted); font-size: .8rem; margin: .1rem 0 .3rem; }
 
 	.trend svg { color: var(--blue); display: block; height: 3.25rem; margin: .5rem 0; width: 100%; }
@@ -202,7 +206,7 @@
 	.card a { background: #fff; border: 1px solid var(--line); border-radius: .8rem; color: var(--ink); display: grid; gap: .2rem; height: 100%; min-height: 2.75rem; padding: .7rem .8rem; text-decoration: none; }
 	.card a:hover { border-color: var(--blue-ink); }
 	.card .name { font-weight: 700; }
-	.card span, .card strong { overflow-wrap: anywhere; }
+	.card span, .card strong { overflow-wrap: break-word; }
 	.card strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
 
 	.grid { display: grid; gap: .9rem; }
@@ -212,13 +216,13 @@
 	.ranked li:first-child { border-top: 0; }
 	.rank { color: var(--muted); font-variant-numeric: tabular-nums; }
 	.ranked a { align-content: center; color: var(--ink); display: grid; min-height: 2.75rem; min-width: 0; text-decoration: none; }
-	.ranked a strong { overflow-wrap: anywhere; text-transform: capitalize; }
-	.ranked small { color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }
+	.ranked a strong { overflow-wrap: break-word; text-transform: capitalize; }
+	.ranked small { color: var(--muted); font-size: .75rem; overflow-wrap: break-word; }
 	.count { font-variant-numeric: tabular-nums; font-weight: 700; }
 	.sources { margin: 0; }
 	.sources div { border-top: 1px solid #e6ecf3; display: flex; gap: .8rem; justify-content: space-between; padding: .5rem 0; }
 	.sources div:first-child { border-top: 0; }
-	.sources dt { overflow-wrap: anywhere; }
+	.sources dt { overflow-wrap: break-word; }
 	.sources dd { font-variant-numeric: tabular-nums; font-weight: 700; margin: 0; }
 	.pager { align-items: center; display: flex; flex-wrap: wrap; font-size: .85rem; gap: .5rem 1rem; justify-content: space-between; margin-top: .6rem; }
 	.pager-links { display: flex; gap: .4rem; }
@@ -228,6 +232,10 @@
 	.record:disabled { cursor: not-allowed; opacity: .62; }
 	.record:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-	@media (forced-colors: active) { .figure, .panel, .card a, .choice { border: 1px solid CanvasText; } .trend svg { color: CanvasText; } }
+	@media (forced-colors: active) {
+		.figure, .panel, .card a, .choice { border: 1px solid CanvasText; }
+		.choice[aria-current='true'] { background: Highlight; border: 2px solid CanvasText; color: HighlightText; forced-color-adjust: none; }
+		.trend svg { color: CanvasText; }
+	}
 	@media (prefers-contrast: more) { .site { --muted: #36445a; --line: #5c6b80; } .detail, .note, .sub, .label { color: #2b3748; } }
 </style>

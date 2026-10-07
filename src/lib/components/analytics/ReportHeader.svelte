@@ -25,6 +25,20 @@
 	};
 </script>
 
+<svelte:head>
+	<!--
+		Dynamic Type. On iOS and iPadOS the root font size comes from the reader's text size setting (-apple-system-body, 17px at the
+		default size), and every size on these pages is in rem or em, so the text, the spacing and the charts follow it. The rule
+		sits here, in the head of the report pages only, so it goes when a reader leaves them and never reaches the public gallery.
+		Other browsers keep their own default size and are not changed. macOS keeps its own: -apple-system-body is 13px there.
+	-->
+	<style>
+		@supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+			html { font: -apple-system-body; line-height: 1.5; }
+		}
+	</style>
+</svelte:head>
+
 <header class="masthead">
 	<div class="identity"><span class="mark" aria-hidden="true">NC</span><span>Nino Chavez <span class="divider">/</span> Photography reports</span></div>
 	<nav class="masthead-links" aria-label="Report navigation">
@@ -36,14 +50,18 @@
 
 <style>
 	.masthead { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; margin-bottom: .5rem; padding: .35rem 0; }
-	.identity { align-items: center; color: var(--ink, #172033); display: flex; font-size: .85rem; font-weight: 650; gap: .6rem; }
-	.mark { background: var(--blue-ink, #174ea6); border-radius: .45rem; color: #fff; display: inline-grid; font-size: .7rem; height: 2rem; place-items: center; width: 2rem; }
+	.identity { align-items: center; color: var(--ink, #172033); display: flex; flex-wrap: wrap; font-size: .85rem; font-weight: 650; gap: .3rem .6rem; min-width: 0; }
+	.identity > span:last-child { min-width: 0; overflow-wrap: break-word; }
+	.mark { background: var(--blue-ink, #174ea6); border-radius: .45rem; color: #fff; display: inline-grid; flex: none; font-size: .7rem; height: 2rem; place-items: center; width: 2rem; }
 	.divider { color: var(--muted, #526176); }
 	.masthead-links { display: flex; flex-wrap: wrap; gap: .25rem; }
-	.masthead-links a { align-items: center; border-radius: .5rem; color: var(--blue-ink, #174ea6); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .7rem; text-decoration: none; }
+	.masthead-links a { align-items: center; border-radius: .5rem; color: var(--blue-ink, #174ea6); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: max(44px, 1.75rem); padding: 0 .7rem; text-decoration: none; }
 	.masthead-links a:hover { background: #dce9fa; }
 	.masthead-links a[aria-current] { background: #dce9fa; }
 	.masthead-links a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--blue-ink, #174ea6); }
 	a:focus-visible { outline: 3px solid var(--blue-ink, #174ea6); outline-offset: 2px; }
-	@media (forced-colors: active) { .masthead-links a[aria-current] { border: 1px solid CanvasText; } }
+	@media (forced-colors: active) {
+		.masthead-links a[aria-current] { border: 1px solid CanvasText; }
+		.masthead-links a[aria-current='page'] { background: Highlight; border-width: 2px; color: HighlightText; forced-color-adjust: none; }
+	}
 </style>

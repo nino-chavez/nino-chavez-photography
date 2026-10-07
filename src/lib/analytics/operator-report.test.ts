@@ -52,7 +52,8 @@ test('scheduled adapter maps bounded aggregate payloads and paging', async () =>
 test('missing scheduled RPC is honest and never falls back to evidence', async () => {
 	const f = fixture({ error: { code: 'PGRST202', message: 'missing' } });
 	const report = await buildOperatorReport(f.client, query);
-	assert.equal(report.available, false); assert.deepEqual(f.calls, ['analytics_read_scheduled_gallery_report']);
+	// The browser estimate is its own protected read and starts with the report; nothing else reads evidence in its place.
+	assert.equal(report.available, false); assert.deepEqual(f.calls.filter((name) => name !== 'analytics_count_scheduled_gallery_browsers'), ['analytics_read_scheduled_gallery_report']);
 });
 test('invalid scheduled payload is rejected', () => assert.throws(() => decodeScheduledGalleryReport({ coverage: 'complete' }), /Invalid scheduled gallery report/));
 test('decoder rejects unsafe counts and broken coverage null semantics', () => {

@@ -9,7 +9,7 @@ import { cumulativePoints, type CumulativePoint } from './launch-report-view';
  * Rules the rows keep, the same as the album report:
  *  - Unknown is never zero. A day that is not complete adds nothing, and a figure with a gap says so.
  *  - A launch younger than its age shows "so far" and is never ranked at that age.
- *  - An inferred first publication says "(inferred)".
+ *  - A first publication worked out afterwards from a log says so, in the same words the album report uses.
  *  - Only public albums are listed. An unlisted album is not counted, searched, compared or exported.
  */
 

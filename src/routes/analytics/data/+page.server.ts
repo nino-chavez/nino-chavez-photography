@@ -22,13 +22,13 @@ export const load: PageServerLoad = async ({ url, cookies, setHeaders, fetch }) 
 	const days = requested === 7 || requested === 90 ? requested : 30;
 	const owner = (await currentOperator(cookies)) !== null;
 	const admin = createSupabaseAdminClient();
-	const { view, journeys, siteJourneys } = await loadDataQuality({ admin, env, fetch, owner, days });
-	if (!owner) return { view, journeys, siteJourneys, corrections: null };
+	const { view, events, journeys, siteJourneys } = await loadDataQuality({ admin, env, fetch, owner, days });
+	if (!owner) return { view, events, journeys, siteJourneys, corrections: null };
 
 	// The owner's corrections cover the same days as the numbers above them.
 	const names = await readAll<{ album_key: string; album_name: string }>((from) => admin.from('albums_summary').select('album_key, album_name').order('album_key').range(from, from + 999));
 	const corrections = await loadCorrections(admin, view.window, eventPage(url.searchParams.get('event_page')), new Map(names.error ? [] : names.data.map((row) => [row.album_key, row.album_name])));
-	return { view, journeys, siteJourneys, corrections };
+	return { view, events, journeys, siteJourneys, corrections };
 };
 
 export const actions: Actions = {

@@ -2,10 +2,11 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { dataPath } from '$lib/analytics/report-paths';
-	import { journeyName, notReadNote, siteJourneyNote } from '$lib/analytics/data-quality';
+	import { EVENTS_NOT_READ, journeyName, notReadNote, siteJourneyNote, withNotRead } from '$lib/analytics/data-quality';
 	import type { DataAnchor } from '$lib/analytics/data-anchors';
 	import ClassificationCorrections from '$lib/components/analytics/ClassificationCorrections.svelte';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
+	import ResponsiveTable from '$lib/components/analytics/ResponsiveTable.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -13,6 +14,16 @@
 	const view = $derived(data.view);
 	const hostname = $derived(page.url.hostname);
 	const trouble = $derived(view.status.state === 'attention');
+	// The event counts arrive after the page. If they cannot be read, the headline and the list of parts not read change with them,
+	// so the page never says nothing is missing above a part that says it is.
+	let eventsRead = $state<'pending' | 'read' | 'failed'>('pending');
+	$effect(() => {
+		let live = true;
+		eventsRead = 'pending';
+		void data.events.then((events) => { if (live) eventsRead = events.available ? 'read' : 'failed'; });
+		return () => { live = false; };
+	});
+	const status = $derived(eventsRead === 'failed' ? withNotRead(view.status, EVENTS_NOT_READ) : view.status);
 	const through = $derived(new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${view.window.end}T12:00:00Z`)));
 	const anchor = (id: DataAnchor) => `#${id}`;
 	const asOfTime = (value: string | null) => (value ? new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(new Date(value)) : 'not recorded');
@@ -31,19 +42,19 @@
 	<div class="body">
 		<section id="status" class="intro" class:trouble aria-labelledby="status-title">
 			<p class="eyebrow">{trouble ? 'Data problem' : 'Data quality'} · {view.window.label}</p>
-			<h1 id="status-title">{view.status.headline}</h1>
-			<p class="detail">{view.status.detail}</p>
+			<h1 id="status-title">{status.headline}</h1>
+			<p class="detail">{status.detail}</p>
 
-			{#if view.status.problems.length}
+			{#if status.problems.length}
 				<ul class="issues" aria-label="What needs attention">
-					{#each view.status.problems as problem (problem.id)}
+					{#each status.problems as problem (problem.id)}
 						<li><span>{problem.text}</span>{#if problem.href !== 'status'}<a href={anchor(problem.href)}>{problem.linkText}<span class="sr-only"> for: {problem.text}</span></a>{/if}</li>
 					{/each}
 				</ul>
 			{/if}
-			{#if view.status.notRead.length}
+			{#if status.notRead.length}
 				<ul class="issues quiet" aria-label="Parts that could not be read here">
-					{#each view.status.notRead as item (item.id)}
+					{#each status.notRead as item (item.id)}
 						<li><span>Could not be read: {item.name}.</span><a href={anchor(item.section)}>What this means<span class="sr-only"> for {item.name}</span></a></li>
 					{/each}
 				</ul>
@@ -78,19 +89,19 @@
 						<div><dt>Browsers with any activity</dt><dd>{view.counting.browsers.value ?? 'Not shown'}</dd></div></dl>
 					<p class="detail">{view.counting.browsers.limit}</p>
 					<h3>Recorded event counts</h3>
-					<p class="detail">{view.counting.events.label}</p>
-					{#if view.counting.events.counts}
-						<details>
-							<summary>Inspect every event count</summary>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-							<div class="table-box" tabindex="0" role="region" aria-label="Recorded event counts. Scroll sideways for every column.">
-								<table><thead><tr><th scope="col">Event</th><th scope="col" class="num">Recorded observations</th></tr></thead>
-									<tbody>{#each view.counting.events.counts as item (item.label)}<tr><th scope="row">{item.label}</th><td class="num">{item.count.toLocaleString()}</td></tr>{/each}</tbody></table>
-							</div>
-						</details>
-					{:else if view.eventsDown}
-						<p class="gap"><strong>Not shown.</strong> {view.eventsDown.what} <span>{view.eventsDown.todo}</span></p>
-					{/if}
+					{#await data.events}
+						<p class="detail" role="status">Loading the detailed event counts. The rest of this page is ready.</p>
+					{:then events}
+						<p class="detail">{events.label}</p>
+						{#if events.counts}
+							<details>
+								<summary>Inspect every event count</summary>
+								<dl class="facts" aria-label="Recorded event counts">{#each events.counts as item (item.label)}<div><dt>{item.label}</dt><dd>{item.count.toLocaleString()}</dd></div>{/each}</dl>
+							</details>
+						{:else if events.down}
+							<p class="gap"><strong>Not shown.</strong> {events.down.what} <span>{events.down.todo}</span></p>
+						{/if}
+					{/await}
 				{:else if view.reportDown}
 					<p class="gap"><strong>Not shown.</strong> {view.reportDown.what} <span>{view.reportDown.todo}</span></p>
 				{/if}
@@ -102,6 +113,8 @@
 				<p class="lead">Is collection reaching the analytics provider, and how much is being sent?</p>
 				{#if view.deliveryState === 'shown' && view.delivery.rows}
 					<dl class="facts">{#each view.delivery.rows as row (row.label)}<div><dt>{row.label}</dt><dd>{row.value}</dd></div>{/each}</dl>
+						<h3>What these words mean</h3>
+						<dl class="terms">{#each view.delivery.terms as item (item.term)}<div><dt>{item.term}</dt><dd>{item.means}</dd></div>{/each}</dl>
 					{#if view.delivery.volume}<p>{view.delivery.volume}</p>{:else}<p>No volume estimate is available yet. This does not mean no traffic.</p>{/if}
 					<p class="detail">{view.delivery.volumeLimit}</p>
 				{:else if view.deliveryNote}
@@ -111,11 +124,7 @@
 				{#if view.evidence}
 					<h3>Search and download evidence</h3>
 					{#if view.evidence.rows.length}
-						<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-						<div class="table-box" tabindex="0" role="region" aria-label="Search and download evidence. Scroll sideways for every column.">
-							<table><thead><tr><th scope="col">What was attempted</th><th scope="col">Status</th><th scope="col" class="num">Recorded</th><th scope="col" class="num">Results</th><th scope="col">Errors</th><th scope="col">Latest, Chicago time</th></tr></thead>
-								<tbody>{#each view.evidence.rows as row (row.path + row.status)}<tr><th scope="row">{row.path}</th><td>{row.status}</td><td class="num">{row.recorded}</td><td class="num">{row.results}</td><td>{row.errors}</td><td>{row.latest}</td></tr>{/each}</tbody></table>
-						</div>
+							<ResponsiveTable label="Search and download evidence" headerLabel="What was attempted" columns={[{ label: 'Status' }, { label: 'Recorded', numeric: true }, { label: 'Results', numeric: true }, { label: 'Errors' }, { label: 'Latest, Chicago time' }]} rows={view.evidence.rows.map((row) => ({ key: row.path + row.status, title: row.path, values: [row.status, row.recorded, row.results, row.errors, row.latest] }))} />
 					{:else}<p>No search or download attempts were recorded in these dates. That is not evidence that nothing happened.</p>{/if}
 					<p class="detail" class:alert={view.evidence.failed}>{view.evidence.label} {view.evidence.note}</p>
 				{/if}
@@ -137,11 +146,7 @@
 					{#if view.traffic.impact.rows.length}
 						<details>
 							<summary>Show all {view.traffic.impact.rows.length.toLocaleString()} albums with their counts</summary>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-							<div class="table-box" tabindex="0" role="region" aria-label="Every album with at least one recorded photo open. Scroll sideways for every column.">
-								<table><thead><tr><th scope="col">Album</th><th scope="col" class="num">All traffic</th><th scope="col" class="num">Counted</th><th scope="col" class="num">Left out</th><th scope="col">Place, all traffic to counted</th></tr></thead>
-									<tbody>{#each view.traffic.impact.rows as row (row.albumKey)}<tr><th scope="row">{row.name}</th><td class="num">{row.all.toLocaleString()}</td><td class="num">{row.counted.toLocaleString()}</td><td class="num">{row.left.toLocaleString()}</td><td>{row.rankChange}</td></tr>{/each}</tbody></table>
-							</div>
+								<ResponsiveTable label="Every album with at least one recorded photo open" headerLabel="Album" columns={[{ label: 'All traffic', numeric: true }, { label: 'Counted', numeric: true }, { label: 'Left out', numeric: true }, { label: 'Place, all traffic to counted' }]} rows={view.traffic.impact.rows.map((row) => ({ key: row.albumKey, title: row.name, values: [row.all.toLocaleString(), row.counted.toLocaleString(), row.left.toLocaleString(), row.rankChange] }))} />
 						</details>
 					{/if}
 				{:else if view.reportDown}
@@ -172,11 +177,7 @@
 						{@const linked = loaded.available.find((item) => item.report === 'sources_return')}
 						{#if linked && linked.breakdown.length}
 							<p class="detail">For browsers that allowed linked analytics. A visit can appear under more than one tag, so these rows cannot be added together.</p>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex -- a sideways-scrolling table must take keyboard focus so it can be scrolled without a mouse (WCAG 2.1.1) -->
-							<div class="table-box" tabindex="0" role="region" aria-label="What happened after a tagged arrival. Scroll sideways for every column.">
-								<table><thead><tr><th scope="col">Source tag</th><th scope="col" class="num">Arrival visits</th><th scope="col" class="num">Album opens</th><th scope="col" class="num">Photo opens</th><th scope="col" class="num">Download requests</th><th scope="col" class="num">Favorites</th><th scope="col" class="num">Returning browsers</th></tr></thead>
-									<tbody>{#each linked.breakdown as row (row.source)}<tr><th scope="row">{row.source}</th><td class="num">{row.tagged_arrival_visits}</td><td class="num">{row.subsequent_album_open_visits}</td><td class="num">{row.subsequent_photo_open_visits}</td><td class="num">{row.subsequent_download_request_visits}</td><td class="num">{row.subsequent_favorite_visits}</td><td class="num">{row.before_window_returning_browsers}</td></tr>{/each}</tbody></table>
-							</div>
+								<ResponsiveTable label="What happened after a tagged arrival" headerLabel="Source tag" columns={[{ label: 'Arrival visits', numeric: true }, { label: 'Album opens', numeric: true }, { label: 'Photo opens', numeric: true }, { label: 'Download requests', numeric: true }, { label: 'Favorites', numeric: true }, { label: 'Returning browsers', numeric: true }]} rows={linked.breakdown.map((row) => ({ key: row.source, title: row.source, values: [row.tagged_arrival_visits, row.subsequent_album_open_visits, row.subsequent_photo_open_visits, row.subsequent_download_request_visits, row.subsequent_favorite_visits, row.before_window_returning_browsers].map((value) => String(value)) }))} />
 							<p class="detail">Returning means seen before this period, within a 90-day look back. As of {asOfTime(linked.asOf)}. These are associations, not proof that a channel caused an action.</p>
 						{:else if linked}<p>No tagged linked visits match these dates.</p>
 						{:else}<p class="gap"><strong>Not shown.</strong> This comes from the linked-journey reports, which could not be read. <a href="#journeys">What that means and what to do</a>.</p>{/if}
@@ -250,7 +251,7 @@
 </div>
 
 <style>
-	.data { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem 1rem 3rem; }
+	.data { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; --warn: #9a4a00; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .data { padding: 1rem 1.5rem 2.5rem; } }
 	@media (min-width: 1024px) { .data { padding-inline: 2rem; } }
 	a:focus-visible, summary:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
@@ -276,23 +277,25 @@
 	.chips { display: flex; flex-wrap: wrap; gap: .3rem; }
 	.choice { align-items: center; background: #fff; border: 1px solid #b9c7da; border-radius: .5rem; color: var(--blue-ink); display: inline-flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .75rem; text-decoration: none; }
 	.choice[aria-current='true'] { background: #dce9fa; border-color: var(--blue-ink); box-shadow: inset 0 -3px 0 var(--blue-ink); }
+	/* Selected is also a tick, so it does not depend on the colour of the fill. */
+	.choice[aria-current='true']::before { content: '\2713\00a0' / ''; }
 
 	.grid { display: grid; gap: .9rem; min-width: 0; }
 	.pair-cols { display: grid; gap: .9rem; min-width: 0; }
 	.stack { align-content: start; display: grid; gap: .9rem; min-width: 0; }
 	@media (min-width: 1024px) { .pair-cols { align-items: start; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-	.panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem .9rem; scroll-margin-top: .5rem; }
+	.panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem min(.9rem, 3.6vw); scroll-margin-top: .5rem; }
 	.panel > p { font-size: .92rem; line-height: 1.5; margin: .35rem 0 0; max-width: 62rem; }
 	.panel > p.detail { font-size: .85rem; }
-	.panel a { color: var(--blue-ink); text-underline-offset: 3px; }
+	.panel a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 3px; }
 	.gap { background: #eef4fc; border-radius: .5rem; padding: .55rem .7rem; }
 	.gap span { display: block; margin-top: .15rem; }
 	.alert { color: var(--warn); }
 	.facts { margin: .4rem 0 0; }
 	.facts div { align-items: baseline; border-top: 1px solid #e6ecf3; display: flex; flex-wrap: wrap; font-size: .9rem; gap: .1rem .8rem; justify-content: space-between; padding: .4rem 0; }
 	.facts div:first-child { border-top: 0; }
-	.facts dt { color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
-	.facts dd { font-variant-numeric: tabular-nums; font-weight: 650; margin: 0; overflow-wrap: anywhere; text-align: right; }
+	.facts dt { color: var(--ink); min-width: 0; overflow-wrap: break-word; }
+	.facts dd { font-variant-numeric: tabular-nums; font-weight: 650; margin: 0; overflow-wrap: break-word; text-align: right; }
 	.tag { background: #eef2f7; border-radius: .3rem; color: var(--muted); font-size: .72rem; font-weight: 650; margin-left: .5rem; padding: .05rem .4rem; }
 	.pair { display: grid; gap: .6rem; margin-top: .3rem; }
 	@media (min-width: 700px) { .pair { grid-template-columns: 1fr 1fr; } }
@@ -303,21 +306,20 @@
 	details { font-size: .9rem; margin-top: .5rem; }
 	summary { align-items: center; color: var(--blue-ink); cursor: pointer; display: flex; font-weight: 650; min-height: 2.75rem; }
 	.journey { border-top: 1px solid #e6ecf3; margin-top: 0; }
+	.terms { margin: .3rem 0 0; }
+	.terms div { border-top: 1px solid #e6ecf3; display: grid; gap: .1rem; padding: .35rem 0; }
+	.terms div:first-child { border-top: 0; }
+	.terms dt { font-size: .85rem; font-weight: 650; }
+	.terms dd { color: var(--muted); font-size: .85rem; line-height: 1.45; margin: 0; }
 	.moves { list-style: none; margin: .4rem 0 0; padding: 0; }
 	.moves li { border-top: 1px solid #e6ecf3; display: grid; gap: .1rem; padding: .5rem 0; }
 	.moves li:first-child { border-top: 0; }
 	.moves span { color: var(--muted); font-size: .88rem; }
-	.table-box { margin-top: .5rem; max-width: 100%; overflow-x: auto; }
-	.table-box:focus-visible { outline: 3px solid var(--blue-ink); outline-offset: 2px; }
-	table { border-collapse: collapse; font-size: .85rem; min-width: 32rem; width: 100%; }
-	th, td { border-bottom: 1px solid #e6ecf3; padding: .45rem .6rem; text-align: left; vertical-align: top; }
-	td { white-space: nowrap; }
-	thead th { font-weight: 650; vertical-align: bottom; }
-	tbody th { font-weight: 500; overflow-wrap: anywhere; }
-	.num { font-variant-numeric: tabular-nums; text-align: right; }
-	thead .num { text-align: right; }
 	.note { color: var(--muted); font-size: .82rem; line-height: 1.5; margin: .2rem 0 0; max-width: 62rem; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-	@media (forced-colors: active) { .panel, .issues, .choice, .metric { border: 1px solid CanvasText; } }
+	@media (forced-colors: active) {
+		.panel, .issues, .choice, .metric { border: 1px solid CanvasText; }
+		.choice[aria-current='true'] { background: Highlight; border: 2px solid CanvasText; color: HighlightText; forced-color-adjust: none; }
+	}
 	@media (prefers-contrast: more) { .data { --muted: #36445a; --line: #5c6b80; } .detail, .lead, .note, .label { color: #2b3748; } }
 </style>

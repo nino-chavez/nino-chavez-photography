@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { figureText, rankText, type IndexLaunchRow } from '$lib/analytics/album-index';
 	import { nameWithoutDate } from '$lib/analytics/launch-report-view';
+	import RemProbe from '$lib/components/analytics/RemProbe.svelte';
 
 	/** The launches the reader chose, in the order they chose them. Two to four. */
 	interface Props { rows: IndexLaunchRow[] }
@@ -14,14 +15,17 @@
 		{ color: '#7a3b9e', dash: '11 3 2 3', marker: 'diamond', name: 'dash-dot line, diamond' }
 	] as const;
 
-	const height = 260;
-	const pad = { top: 22, right: 16, bottom: 38, left: 48 };
+	// The chart is drawn in pixels, so its size and its text follow the page's text size (`rem`, one rem in pixels).
+	let rem = $state(16);
+	const u = $derived(rem / 16);
+	const height = $derived(260 * u);
+	const pad = $derived({ top: 22 * u, right: 16 * u, bottom: 38 * u, left: 48 * u });
 	let width = $state(560);
 	const lines = $derived(rows.map((row, i) => ({ row, look: looks[i % looks.length], end: row.curve.points.at(-1) ?? null })));
 	const days = $derived(Math.max(8, ...lines.map((line) => (line.end?.day ?? 0) + 1)));
 	const max = $derived(Math.max(1, ...lines.flatMap((line) => line.row.curve.points.map((point) => point.total))));
 	const inner = $derived(Math.max(120, width - pad.left - pad.right));
-	const plotHeight = height - pad.top - pad.bottom;
+	const plotHeight = $derived(height - pad.top - pad.bottom);
 	const x = (day: number) => pad.left + (day / (days - 1)) * inner;
 	const y = (total: number) => pad.top + plotHeight - (total / max) * plotHeight;
 	const path = (points: Array<{ day: number; total: number }>) => points.map((point) => `${x(point.day).toFixed(1)},${y(point.total).toFixed(1)}`).join(' ');
@@ -64,23 +68,25 @@
 	</div>
 {/snippet}
 
+<RemProbe bind:rem />
+
 <div class="overlay">
 	<div class="chart-only" bind:clientWidth={width}>
 		<svg {width} {height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Photo opens added up by day since publication, for ${lines.length} launches. ${summary}`}>
 			{#each ticks as tick}
 				<line class="grid" x1={x(tick)} x2={x(tick)} y1={pad.top} y2={y(0)} />
-				<text class="tick" x={x(tick)} y={height - 20} text-anchor={x(tick) > width - 36 ? 'end' : 'middle'}>day {tick}</text>
+				<text class="tick" x={x(tick)} y={height - 20 * u} text-anchor={x(tick) > width - 36 * u ? 'end' : 'middle'}>day {tick}</text>
 			{/each}
 			<line class="axis" x1={pad.left} x2={width - pad.right} y1={y(0)} y2={y(0)} />
-			<text class="tick" x={pad.left - 6} y={y(max) + 4} text-anchor="end">{max.toLocaleString()}</text>
-			<text class="tick" x={pad.left - 6} y={y(0) + 4} text-anchor="end">0</text>
+			<text class="tick" x={pad.left - 6 * u} y={y(max) + 4 * u} text-anchor="end">{max.toLocaleString()}</text>
+			<text class="tick" x={pad.left - 6 * u} y={y(0) + 4 * u} text-anchor="end">0</text>
 			{#each lines as line}
 				{#if line.row.curve.points.length}
 					<polyline points={path(line.row.curve.points)} fill="none" stroke={line.look.color} stroke-width="2.6" stroke-dasharray={line.look.dash || undefined} stroke-linejoin="round" />
-					{#if line.end}{@render marker(line.look, x(line.end.day), y(line.end.total), 4.5)}{/if}
+					{#if line.end}{@render marker(line.look, x(line.end.day), y(line.end.total), 4.5 * u)}{/if}
 				{/if}
 			{/each}
-			<text class="tick" x={pad.left + inner / 2} y={height - 3} text-anchor="middle">Days since publication</text>
+			<text class="tick" x={pad.left + inner / 2} y={height - 3 * u} text-anchor="middle">Days since publication</text>
 		</svg>
 		<ul class="legend" aria-label="Which line is which launch">
 			{#each lines as line}
@@ -114,10 +120,10 @@
 	.sample { display: inline-block; flex: none; vertical-align: middle; margin-right: .45rem; }
 	.axis { stroke: #6f7f95; }
 	.grid { stroke: #e1e8f0; stroke-dasharray: 3 3; }
-	.tick { fill: #526176; font-size: 12px; font-variant-numeric: tabular-nums; }
+	.tick { fill: #526176; font-size: .75rem; font-variant-numeric: tabular-nums; }
 	.legend { display: grid; gap: .3rem .9rem; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); list-style: none; margin: .5rem 0 .2rem; padding: 0; color: #172033; font-size: .85rem; line-height: 1.4; }
 	.legend li { align-items: center; display: flex; min-width: 0; }
-	.legend span { min-width: 0; overflow-wrap: anywhere; }
+	.legend span { min-width: 0; overflow-wrap: break-word; }
 	.numbers-wide { border-top: 1px solid #e1e8f0; margin-top: .5rem; padding-top: .3rem; }
 	summary { align-items: center; color: #174ea6; cursor: pointer; display: flex; font-size: .85rem; font-weight: 650; min-height: 2.75rem; }
 	summary:focus-visible, .scroll:focus-visible { outline: 3px solid #174ea6; outline-offset: 2px; }
@@ -125,16 +131,16 @@
 	table { border-collapse: collapse; font-size: .85rem; width: 100%; }
 	th, td { border-bottom: 1px solid #e1e8f0; color: #172033; padding: .45rem .4rem; text-align: left; vertical-align: middle; }
 	thead th { color: #526176; font-size: .76rem; font-weight: 650; }
-	tbody th { font-size: .82rem; font-weight: 600; overflow-wrap: anywhere; }
+	tbody th { font-size: .82rem; font-weight: 600; overflow-wrap: break-word; }
 	.num { font-variant-numeric: tabular-nums; text-align: right; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 	.numbers-phone { display: none; list-style: none; margin: 0; padding: 0; }
 	.numbers-phone li { border: 1px solid #d8e0ea; border-radius: .7rem; color: #172033; padding: .6rem .75rem; }
 	.numbers-phone li + li { margin-top: .6rem; }
-	.numbers-phone strong { font-size: .95rem; overflow-wrap: anywhere; }
+	.numbers-phone strong { font-size: .95rem; overflow-wrap: break-word; }
 	.numbers-phone dl { display: grid; gap: .25rem .75rem; grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr)); margin: .4rem 0 0; }
 	.numbers-phone dt { color: #526176; font-size: .74rem; }
-	.numbers-phone dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: anywhere; }
+	.numbers-phone dd { font-size: .92rem; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: break-word; }
 	@media (max-width: 639px) {
 		.chart-only { display: none; }
 		.numbers-phone { display: block; }

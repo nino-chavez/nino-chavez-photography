@@ -1,9 +1,10 @@
 import type { Launch, LaunchDay } from './launch-read-model.server';
-import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
+import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, recoveredTag, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
 import { nameWithoutDate } from './launch-report-view';
 import { NO_RECAP_DUE, nextRecapItems } from './launch-recap-list';
 import type { HomeProblemTarget } from './data-anchors';
 import { minimumSample } from './intelligence-rules';
+import { quietSince } from './launch-rules';
 import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligence-contract';
 
 /**
@@ -15,7 +16,7 @@ import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligen
  *  - Unknown is never zero. A day that is not complete adds nothing to a total and is drawn as a gap.
  *  - Data that is stale or unavailable is said first and is never shown as a quiet day.
  *  - Today is partial and never part of a number here. Counts are browser actions, not people.
- *  - An inferred first publication says "(inferred)".
+ *  - A first publication worked out afterwards from a log says so, in the same words the album report uses.
  *  - Every number says what it is compared with, or says that there is nothing to compare it with.
  *  - A recap is called due only from the clock. Nothing here says one was sent.
  */
@@ -78,7 +79,7 @@ export function findingsCheck(checkedAt: string | null, now: string, today: stri
 	if (Date.parse(now) - Date.parse(checkedAt) > FINDINGS_LATE_AFTER_MS) return { text: `Last checked ${time}, more than an hour ago. These may be out of date.`, late: true };
 	return { text: `Last checked ${time}.`, late: false };
 }
-const inferredTag = (launch: Pick<Launch, 'basis'>) => (launch.basis === 'inferred' ? ' (inferred)' : '');
+const inferredTag = (launch: Pick<Launch, 'basis'>) => recoveredTag(launch.basis);
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Launch status                                                                                    */
@@ -204,13 +205,17 @@ function runningSentence(launch: Launch, all: readonly Launch[]): RecapSentence 
 	return sentence(...lead, mid !== null ? `; earlier launches had a median of ${fmt(mid)} by day ${n}.` : '; no earlier launch has a complete record to compare with.');
 }
 
+/**
+ * The headline for a launch that has finished its first week: the short answer, with the name and where it stands. The
+ * numbers (its week-1 total, its rank at day 7) are the first card's, directly below, so they are not said twice here.
+ */
 function finishedSentence(launch: Launch): RecapSentence {
 	const name = b(launchName(launch));
 	const week = launch.totals.day7;
 	if (!week.complete || week.photoOpens === null) return sentence(name, ' finished its first week, but a day in it has incomplete records, so no total or rank is shown.');
-	const place = rankPhrase(launch.rank.day7, true);
-	if (!place) return sentence(name, ' finished its first week with ', b(plural(week.photoOpens, 'photo open')), '; no other launch has a complete first week to compare with.');
-	return sentence(name, ' finished its first week in ', b(place), ' with ', b(plural(week.photoOpens, 'photo open')), '.');
+	const rank = launch.rank.day7;
+	if (rank.rank === null || rank.compared < 2) return sentence(name, ' finished its first week; no other launch has a complete first week to compare with.');
+	return sentence(name, ' finished its first week ', b(`${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)} of ${rank.compared} launches`), '.');
 }
 
 function overlappingSentence(relevant: readonly Launch[]): RecapSentence {
@@ -225,7 +230,8 @@ function overlappingSentence(relevant: readonly Launch[]): RecapSentence {
 	return sentence(...pieces);
 }
 
-export interface Opening { state: HomeState; sentence: RecapSentence }
+/** `then` is one short line under the headline, for a state that has a second thing to say. */
+export interface Opening { state: HomeState; sentence: RecapSentence; then?: RecapSentence }
 
 /**
  * The one sentence under the page title. Precedence: unavailable, then stale, then a launch in
@@ -250,7 +256,8 @@ export function openingSentence(input: { launches: readonly Launch[] | null; sta
 	if (recent.length) return { state: 'just_finished', sentence: finishedSentence(recent[0]) };
 	const last = newest[0];
 	const since = chicagoDate(last.firstPublishedAt);
-	return { state: 'quiet', sentence: sentence('No new album since ', b(`${dayLabel(since, today)}${inferredTag(last)}`), `, ${plural(daysBetween(since, today), 'day')} ago.`) };
+	// The newest launch's own like-for-like line leads. That nothing newer exists is the second line, computed from today.
+	return { state: 'quiet', sentence: finishedSentence(last), then: sentence('No new album since ', b(`${dayLabel(since, today)}${inferredTag(last)}`), `, ${plural(daysBetween(since, today), 'day')} ago.`) };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -293,22 +300,16 @@ export function launchesInWindow(launches: readonly Launch[], window: { start: s
 		.sort((x, y) => Date.parse(y.firstPublishedAt) - Date.parse(x.firstPublishedAt));
 }
 
-function nameList(launches: readonly Launch[]): string {
-	const names = launches.slice(0, 3).map(launchName);
-	const rest = launches.length - names.length;
-	if (rest > 0) return `${names.join(', ')} and ${plural(rest, 'other')}`;
-	return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : (names[0] ?? '');
-}
-
 /**
- * One line: the last 7 complete days of gallery photo opens against the 7 days before them.
+ * One line, or null: the last 7 complete days of gallery photo opens against the 7 days before them.
  *
- * An album gets most of its attention in its first days, so a week that holds a launch's first week
- * is not like another week. When either window holds days 0 to 6 of any launch, the line names those
- * launches and states no percentage. Only two windows with no launch days in either get a plain
- * comparison. If the launches could not be read, nothing says the windows are alike, so no percentage.
+ * An album gets most of its attention in its first days, so a calendar week that holds a launch's first week
+ * describes when albums were published, not how the gallery is doing. When either window holds days 0 to 6 of any
+ * launch there is no line at all: Home leads with the newest launch's own like-for-like line instead. Only two windows
+ * with no launch days in either get a plain comparison. If the launches could not be read, nothing says the windows
+ * are alike, so no percentage.
  */
-export function weekLine(week: WeekInput | null, today: string, launches: readonly Launch[] | null): RecapSentence {
+export function weekLine(week: WeekInput | null, today: string, launches: readonly Launch[] | null): RecapSentence | null {
 	if (week === null) return sentence('Gallery photo opens for the last 7 days could not be read. No number is shown rather than a wrong one.');
 	const head = `Gallery photo opens, ${range(week.window, today)}: `;
 	if (week.coverage !== 'complete' || week.current === null) return sentence(head, b('not stated'), ': a day in it has incomplete records, so a short total is not shown.');
@@ -317,14 +318,19 @@ export function weekLine(week: WeekInput | null, today: string, launches: readon
 	}
 	const before = `The 7 days before (${range(week.previous, today)}) had `;
 	if (launches === null) return sentence(head, b(week.current), `. ${before}`, b(week.previousTotal), '. Launch dates could not be read, so no change is stated.');
-	const now = launchesInWindow(launches, week.window);
-	const earlier = launchesInWindow(launches, week.previous);
-	if (now.length === 0 && earlier.length === 0) {
-		return sentence(head, b(week.current), `, ${changeWords(week.current, week.previousTotal)} ${fmt(week.previousTotal)} in the 7 days before (${range(week.previous, today)}).`);
-	}
-	const same = now.length === earlier.length && now.every((launch, i) => launch.albumKey === earlier[i].albumKey);
-	if (same) return sentence(head, b(week.current), `. ${before}`, b(week.previousTotal), `. Both include the first week of ${nameList(now)}, so this is not a fair comparison.`);
-	return sentence(head, b(week.current), now.length ? `, during the first week of ${nameList(now)}. ` : '. ', before, b(week.previousTotal), earlier.length ? `, during the first week of ${nameList(earlier)}.` : '.');
+	// A launch's first week in either window makes the two weeks unlike. Home then shows no calendar-week comparison.
+	if (launchesInWindow(launches, week.window).length || launchesInWindow(launches, week.previous).length) return null;
+	return sentence(head, b(week.current), `, ${changeWords(week.current, week.previousTotal)} ${fmt(week.previousTotal)} in the 7 days before (${range(week.previous, today)}).`);
+}
+
+/**
+ * The note on the newest finished launch's card: when a photo was last opened, said only as far as the complete days show it.
+ * The claim itself is `quietSince`: read from the whole series, only when every later day is complete and zero.
+ */
+export function lastOpenedNote(launch: Pick<Launch, 'series' | 'elapsedDays'>, lastCompleteDay: string): string | null {
+	if (launch.elapsedDays < 7) return null;
+	const since = quietSince(launch.series, lastCompleteDay);
+	return since ? `No one has opened a photo since ${formatDay(since)} (complete days, through ${formatDay(lastCompleteDay)}).` : null;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -366,6 +372,8 @@ export interface HomeCard {
 	comparison: string;
 	bars: SparkBar[];
 	sparkLabel: string;
+	/** When a photo was last opened, for the newest launch once it is over; null otherwise. See `lastOpenedNote`. */
+	note: string | null;
 	/** Current findings about this launch, most urgent first. Empty when there are none; Home then shows nothing. */
 	findings: Finding[];
 	/** When those findings were last checked. Null when there are none. */
@@ -398,7 +406,7 @@ export function launchCard(launch: Launch, all: readonly Launch[], today: string
 	return {
 		albumKey: launch.albumKey, name: launch.albumName ?? launch.albumKey, cover,
 		published: `First published ${dayLabel(chicagoDate(launch.firstPublishedAt), today)}${inferredTag(launch)}`,
-		status: statusLabel(launch), phase, opens, comparison, bars: spark.bars, sparkLabel: spark.label, findings: [], findingsCheck: null
+		status: statusLabel(launch), phase, opens, comparison, bars: spark.bars, sparkLabel: spark.label, note: null, findings: [], findingsCheck: null
 	};
 }
 
@@ -532,11 +540,16 @@ export interface HomeInput {
 
 /**
  * Up to HOME_FINDINGS findings, each placed on the card of the launch it concerns. A finding about a launch with
- * no card stays on that album's report; Home does not list it apart from its launch.
+ * no card stays on that album's report; Home does not list it apart from its launch. The newest launch shows all of
+ * its findings; an older launch shows only what needs action (a failure or a data gap), so its reach and photo
+ * notes, which an older launch repeats, stay on its own report.
  */
 export function placeFindings(cards: HomeCard[], findings: readonly Finding[], check: FindingsCheck | null = null): HomeCard[] {
 	const onCards = new Set(cards.map((card) => card.albumKey));
-	const shown = findings.filter((finding) => finding.target.albumKey && onCards.has(finding.target.albumKey)).slice(0, HOME_FINDINGS);
+	// "The launch is over" is not shown as a finding here. The newest launch's card says it in its own line (`lastOpenedNote`),
+	// computed from the days; a stored finding repeated under every finished launch said it once per card.
+	const newest = cards[0]?.albumKey;
+	const shown = findings.filter((finding) => finding.rule !== 'launch_finished' && finding.target.albumKey && onCards.has(finding.target.albumKey) && (finding.target.albumKey === newest || finding.severity === 'high')).slice(0, HOME_FINDINGS);
 	return cards.map((card) => {
 		const mine = shown.filter((finding) => finding.target.albumKey === card.albumKey);
 		return { ...card, findings: mine, findingsCheck: mine.length ? check : null };
@@ -549,7 +562,10 @@ export interface HomeView {
 	today: string;
 	lastCompleteDay: string;
 	opening: RecapSentence;
-	week: RecapSentence;
+	/** One short line under the headline, for the states that have a second thing to say. */
+	then: RecapSentence | null;
+	/** The calendar-week line, or null when it would compare unlike weeks. See `weekLine`. */
+	week: RecapSentence | null;
 	cards: HomeCard[];
 	/** Launches beyond the cards, for the "see all" link. */
 	moreLaunches: number;
@@ -565,10 +581,10 @@ export function buildHome(input: HomeInput): HomeView {
 	const stale = staleness(input.freshness, input.lastCompleteDay, input.asOf);
 	const opening = openingSentence({ launches, stale, today });
 	const newest = launches ? [...launches].sort((x, y) => Date.parse(y.firstPublishedAt) - Date.parse(x.firstPublishedAt)) : [];
-	const cards = placeFindings(newest.slice(0, HOME_LAUNCH_CARDS).map((launch) => launchCard(launch, newest, today, input.covers.get(launch.albumKey) ?? null)), input.findings, findingsCheck(input.findingsCheckedAt, input.asOf, today));
+	const cards = placeFindings(newest.slice(0, HOME_LAUNCH_CARDS).map((launch, i) => ({ ...launchCard(launch, newest, today, input.covers.get(launch.albumKey) ?? null), note: i === 0 ? lastOpenedNote(launch, input.lastCompleteDay) : null })), input.findings, findingsCheck(input.findingsCheckedAt, input.asOf, today));
 	return {
 		state: opening.state, asOf: input.asOf, today, lastCompleteDay: input.lastCompleteDay,
-		opening: opening.sentence, week: weekLine(input.week, today, input.launches),
+		opening: opening.sentence, then: opening.then ?? null, week: weekLine(input.week, today, input.launches),
 		cards, moreLaunches: Math.max(0, newest.length - cards.length), totalLaunches: newest.length,
 		next: launches === null ? { text: 'What is due cannot be said while the launch numbers are unavailable.', items: [] } : nextRecaps(launches, new Date(input.asOf)),
 		site: siteFigures(input.siteReach, input.siteContacts, today),
