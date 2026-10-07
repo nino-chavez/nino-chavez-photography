@@ -23,7 +23,7 @@ The coordinating session wrote this after `cold-review-3.md`. The reviewer did n
 
 ## For the next pass, ranked
 
-1. **B2.** Home gives the owner no hint of a collection problem, while Data shows the rejection surge. Add an owner-only line on Home linking to Data whenever Data's headline is a problem. Visitors see nothing new.
+1. **B2: resolved by #212.** #212 merged first and reports a collection surge on Home and Data from one rule: the lower quartile of the 14 days before, with reasons. Merging it into this branch removed the branch's own median rule. Home now lists "The collector rejected 12,865 events on Oct 6, 31 times its usual 420 a day." under "Needs attention", and Data uses the same sentence as its headline (checked locally against production, 2026-10-07).
 2. **S3, S1, S2.** The album report on a phone:
    - The "Worth your attention" findings sit about four screens down.
    - The same comparison is stated three or four times.

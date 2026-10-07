@@ -1,8 +1,8 @@
 import type { DataAnchor } from './data-anchors';
 import { chicagoTime, openProblems, staleness, type Freshness, type HomeProblem, type ProblemInput } from './home';
 import { formatDay, ordinal, plural } from './launch-recap';
-import type { RejectionReading } from './collection-rejections';
-import type { MeasurementHealth } from './measurement-health';
+import type { MeasurementHealth, RejectionDay, RejectionReading } from './measurement-health';
+import { UNSTORED_REJECTION_REASONS } from './rejection-reasons';
 import type { OperatorReport } from './operator-report.server';
 import type { JourneyAggregate } from './posthog.types';
 import type { SiteActionReport } from './site-actions';
@@ -380,8 +380,9 @@ function instant(value: string | null, today: string): string {
 /** The words in the delivery rows, said once where they appear. */
 export const DELIVERY_TERMS: DeliveryView['terms'] = [
 	{ term: 'Accepted', means: 'the collector stored the event as a counted action.' },
-	{ term: 'Rejected', means: 'the collector refused the event: it was not valid, named an album or photo that does not exist, came from a known crawler, or could not be stored. This page does not split rejected events by reason.' },
+	{ term: 'Rejected', means: 'the collector refused the event: it came from a known crawler, was not valid, named an album or photo that does not exist, or could not be stored. Crawlers are rejected on purpose. An event that could not be stored is lost unless the browser\'s one retry worked.' },
 	{ term: 'Duplicate', means: 'a repeat of an action already stored, so it was not stored again.' },
+	{ term: 'Usual', means: 'a quiet day among the 14 complete days before: a quarter of those days had fewer rejections. A surge that lasts several days does not become the usual.' },
 	{ term: 'Pending', means: 'stored, and waiting to be sent to PostHog.' },
 	{ term: 'Submitted', means: 'sent to PostHog, and waiting for PostHog to confirm it.' },
 	{ term: 'Confirmed', means: 'PostHog confirmed it received the event.' },
@@ -391,19 +392,39 @@ export const DELIVERY_TERMS: DeliveryView['terms'] = [
 
 export const PROVIDER_NOTE = 'Linked-journey results show when PostHog was last asked a question. That is not confirmation that events were delivered; the counts above are.';
 
-/** The collector's refusals against their own usual rate, as a row. Null when the daily counters could not be read: the row then says so. */
-export function rejectionRow(reading: RejectionReading | null): { label: string; value: string } {
-	return { label: 'Rejected events, against the usual rate', value: reading ? reading.sentence : 'Whether the rejected count is usual could not be checked, because the daily counters could not be read.' };
+/** Rejections grouped by what a reader can act on, largest first. */
+const REJECTION_GROUPS: Array<{ words: string; match: (reason: string) => boolean }> = [
+	{ words: 'from known crawlers', match: (reason) => reason === 'known_crawler' },
+	{ words: 'could not be stored', match: (reason) => UNSTORED_REJECTION_REASONS.has(reason) },
+	{ words: 'not valid', match: (reason) => reason === 'invalid_json' || reason === 'invalid_event' },
+	{ words: 'album or photo not found', match: (reason) => reason === 'unknown_target' },
+	{ words: 'counted before reasons were kept', match: (reason) => reason === 'not_recorded' }
+];
+
+export function rejectionSplit(days: RejectionDay[] | null): string {
+	if (days === null) return 'Not recorded yet. Reasons are kept from the day the collector update is installed.';
+	const groups = REJECTION_GROUPS.map((group) => ({ words: group.words, count: days.filter((row) => group.match(row.reason)).reduce((total, row) => total + row.count, 0) }))
+		.filter((group) => group.count > 0).sort((a, b) => b.count - a.count);
+	return groups.length ? groups.map((group) => `${fmt(group.count)} ${group.words}`).join(' · ') : 'None rejected';
 }
 
-export function deliveryView(health: MeasurementHealth | null, today: string, rejections: RejectionReading | null = null): DeliveryView {
+export function rejectedOnDay(reading: RejectionReading | null, days: RejectionDay[] | null, lastCompleteDay: string): { label: string; value: string } {
+	const label = `Rejected on ${formatDay(lastCompleteDay)}`;
+	if (days === null) return { label, value: 'Not recorded yet' };
+	if (reading === null) return { label, value: 'None' };
+	// A short value: whether it is a surge, and what it was, is the status line's to say.
+	return { label, value: `${fmt(reading.count)} (${reading.usual === null ? 'usual not known yet' : `usual ${fmt(reading.usual)} a day`})` };
+}
+
+export function deliveryView(health: MeasurementHealth | null, today: string, rejections: RejectionReading | null, lastCompleteDay: string): DeliveryView {
 	const quota = 'Quota and billing state: unknown. This page does not infer a quota, spend or approval from delivery counts.';
 	if (!health || !health.available) return { rows: null, terms: [], volume: null, volumeLimit: '', provider: PROVIDER_NOTE, quota };
 	const n = (value: number | null) => (value === null ? 'not read' : fmt(value));
 	return {
 		rows: [
 			{ label: 'Collection, last 30 days', value: `${n(health.accepted)} accepted · ${n(health.rejected)} rejected · ${n(health.duplicate)} duplicate` },
-			rejectionRow(rejections),
+			{ label: 'Why events were rejected, last 30 days', value: rejectionSplit(health.rejectedDays) },
+			rejectedOnDay(rejections, health.rejectedDays, lastCompleteDay),
 			{ label: 'Waiting to be sent', value: `${n(health.pending)} pending · ${n(health.submitted)} submitted · ${n(health.confirmed)} confirmed · ${n(health.failed)} failed` },
 			{ label: 'Event format and your classification changes', value: `Event format ${health.schemaVersion ?? 'not read'} · ${n(health.controlPending)} classification changes waiting to reach PostHog` },
 			{ label: 'Oldest event waiting', value: health.pending === 0 && health.failed === 0 ? 'None waiting' : instant(health.oldestPendingAt, today) },
@@ -515,12 +536,11 @@ export interface DataInput {
 	refreshedAt: string | null;
 	incidents: string[] | null;
 	diagnostics: ProblemInput['diagnostics'];
+	rejections: ProblemInput['rejections'];
 	traffic: SiteTrafficResult | null;
 	actions: SiteActionReport | null;
 	/** False when PostHog queries are not set up at all, which is known before any journey is asked for. */
 	posthogConfigured: boolean;
-	/** Rejected events against their usual rate, from the collector's daily counters. Read only for the signed-in owner; null otherwise or when it could not be read. */
-	rejections?: RejectionReading | null;
 }
 
 export interface DataView {
@@ -568,12 +588,11 @@ export function buildDataView(input: DataInput): DataView {
 	const freshness: Freshness = { incompleteDays: report && report.available ? report.daily.filter((day) => day.date <= lastCompleteDay && day.coverage !== 'complete').map((day) => day.date).sort() : [], refreshedAt: input.refreshedAt, checked: true };
 	const problems = statusProblems({
 		freshness: freshnessForStatus(freshness, lastCompleteDay, 7), lastCompleteDay, now: input.asOf, today,
-		weekRead: !!report && report.available, incidents: input.incidents, diagnostics: input.diagnostics,
+		weekRead: !!report && report.available, incidents: input.incidents, diagnostics: input.diagnostics, rejections: input.rejections,
 		siteActionsStale: input.actions && input.actions.available && input.actions.freshness.status === 'stale' ? { refreshedAt: input.actions.freshness.refreshedAt } : null
 	});
-	const rejections = input.owner ? input.rejections ?? null : null;
-	// A refusal rate far above the usual one is a problem to report, whatever the gallery counts say. Owner only: the counters are.
-	if (rejections && rejections.kind === 'unusual') problems.push({ id: 'rejections-unusual', text: rejections.sentence, href: 'delivery', linkText: 'See the delivery counts' });
+	// When a collection surge is the only problem, the headline says what it is instead of "One thing needs attention.".
+	const surge = problems.find((problem) => problem.id === 'collection-surge');
 	const notRead: NotRead[] = [];
 	if (!input.traffic || !input.traffic.available) notRead.push({ id: 'cloudflare', section: 'site-measures', name: 'Cloudflare page loads' });
 	if (!input.actions || !input.actions.available) notRead.push({ id: 'site-actions', section: 'site-measures', name: 'the site\'s own page views' });
@@ -587,14 +606,14 @@ export function buildDataView(input: DataInput): DataView {
 		: null;
 	return {
 		days, window: { start, end: lastCompleteDay, label: `${formatDay(start)} – ${formatDay(lastCompleteDay)}` }, today, lastCompleteDay, owner: input.owner,
-		status: statusView({ problems, notRead, limits, refreshedAt: input.refreshedAt, lastCompleteDay, today, lead: rejections && rejections.kind === 'unusual' ? { id: 'rejections-unusual', headline: rejections.headline } : null, owner: input.owner }),
+		status: statusView({ problems, notRead, limits, refreshedAt: input.refreshedAt, lastCompleteDay, today, lead: surge ? { id: surge.id, headline: surge.text.split(/(?<=\.)\s/)[0] } : null, owner: input.owner }),
 		coverage: report ? coverageView({ report, days, refreshedAt: input.refreshedAt, lastCompleteDay, now: input.asOf, today }) : null,
 		traffic: report ? trafficView({ report, names: input.names }) : null,
 		counting: report ? countingView({ report }) : null,
 		arrivals,
 		reportDown: report && report.available ? null : notReadNote('report', input.owner),
 		site: siteMeasuresView({ traffic: input.traffic, actions: input.actions, days, owner: input.owner }),
-		delivery: deliveryView(deliveryState === 'shown' ? input.health : null, today, rejections),
+		delivery: deliveryView(deliveryState === 'shown' ? input.health : null, today, input.rejections, lastCompleteDay),
 		evidence: report ? evidenceView(report, today) : null,
 		deliveryState,
 		deliveryNote: deliveryState === 'owner_only'

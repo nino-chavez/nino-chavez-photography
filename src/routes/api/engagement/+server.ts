@@ -16,6 +16,13 @@ import {
 // visitor navigates. The per-photo and album-level indexes cap each event to one
 // visitor/target/day, so re-renders and repeat opens cannot inflate the totals.
 export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
+	// Same crawler gate as every other engagement write path (tracker.ts). It runs before the body is read
+	// and before the two target lookups: a rendering crawler sent about 8,600 of these a day from Oct 2, 2026.
+	if (isBotUserAgent(request.headers.get('user-agent'))) {
+		await recordBotFiltered();
+		return json({ ok: false, accepted: false, reason: 'known_crawler' }, { status: 202 });
+	}
+
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -55,14 +62,6 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 	}
 	if (!target.ok) throw httpError(400, target.error);
 	const { event_type, photo_id, album_key, source } = target.value;
-
-	// Same crawler gate as every other engagement write path (tracker.ts) — this
-	// endpoint previously had none, so bot hits on download/favorite/share landed
-	// straight in engagement_events uncounted and unfiltered.
-	if (isBotUserAgent(request.headers.get('user-agent'))) {
-		await recordBotFiltered();
-		return json({ ok: false, accepted: false, reason: 'known_crawler' }, { status: 202 });
-	}
 
 	const traffic_context = await resolveAnalyticsContext(request, cookies);
 	if (traffic_context === 'self_excluded') return json({ ok: true, accepted: false, reason: 'self_excluded' }, { status: 202 });
