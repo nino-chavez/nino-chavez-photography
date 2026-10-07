@@ -1,14 +1,19 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T19:32:24.682Z",
-  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer), merging #212 into the second acceptance pass",
-  "method": "Merge of origin/main (#212, collection rejection reasons) into fix/analytics-acceptance-2. #212's surge rule (lower quartile of the 14 days before, with reasons) is kept as the only rule; the branch's own median-based rule (collection-rejections.ts) is removed, with its reader-contract entry. The branch keeps its visitor wording, its owner-aware partial headline, and its headline-names-the-problem rule, now wired to #212's collection-surge problem. Checked by fetching /data and / as a visitor from a local dev server reading production read-only: Data's headline reads 'The collector rejected 12,865 events on Oct 6, 31 times its usual 420 a day.' and Home lists the same line under 'Needs attention'. The walk and the third cold review (docs/evidence/screen-reviews/analytics-acceptance-fixes2-f851062/) stand for the rest. Not covered: rendered captures of the merged pages, a real device, a real sign-in, and screen readers.",
-  "sourceDigest": "sha256:cc453f51fcacbf142ecaa228f51626a6c307a18d08f770e7b7b527bb75c6878c",
+  "reviewedAt": "2026-10-07T20:54:41.299Z",
+  "reviewedBy": "Claude Sonnet 5.5 (the worker for the third acceptance fix pass, self-review; not a cold reviewer)",
+  "method": "Walked the changed screens in the worker's own captures (Home, Albums, album report, day 3 and day 7 recaps, Data) as visitor and owner, in Chromium and WebKit, at default, 200% and 312% text, contrast-more and forced-colors, on a local development server reading production data. Checked the rendered words of all 13 surfaces for both roles against the internal terms this pass removed (collector, linked-journey, denominator, backfill, Grid showings, src=, Downloads, week): 0 hits in 52 loads, and a planted term fired the check. Checked that no ISO date remains in the Data page's words. Found with the new navigation gate that a tabbed-to link at 312% text stayed partly under the fade, and fixed it. Findings text on the album report is shown from a read-only dry run of the next scheduled refresh, because the stored snapshot only changes when the job writes a new one. Not covered: a cold reviewer, a real device or an accessibility text size on iOS, a real sign-in, screen readers, real Cloudflare and PostHog panels.",
+  "sourceDigest": "sha256:05f14216830191718abb5ac54286fa1bebf6b4f722014b63e0080a42f4428aac",
   "sourceFiles": 203,
   "scope": [
-    "Data status and delivery rows",
-    "Home needs-attention box",
-    "delivery word list"
+    "Album report order and merged findings",
+    "Navigation at large text",
+    "Comparison table as cards",
+    "Recap lead and list",
+    "Home verdict, notes inside cards, unsorted share",
+    "Albums cards",
+    "Data wording and dates",
+    "Plain-word rewrites"
   ]
 }
