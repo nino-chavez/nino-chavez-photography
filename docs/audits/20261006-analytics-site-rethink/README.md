@@ -213,7 +213,7 @@ One release, built in dependency order. Each step is its own PR with its own che
 6. **Launch rules.** The intelligence rules are rewritten around launches: reach against earlier launches at the same age, launch finished, seen-but-rarely-opened photos, failures during a launch, and collection outage. Findings show inline on Home and the album report.
 7. **Launch recaps.** Day 3 and day 7 recaps replace the daily and weekly scheduler. Email stays off until Nino verifies a destination.
 8. **Old addresses.** (Built: [what moved where](#old-addresses-build-step-8).) `/gallery?section=…` links redirect to their new homes, then the old tabs are removed. Two things still live only on the old tabs after step 5 and must move before they go: the signed-in classification corrections (Measurement tab, linked from `/data`) and the signed-in sharing notes (Sources tab). Saved-view updates from the gallery filter bar also stay there; `/settings` saves, renames and deletes. Step 5 also keeps two things from the old site report: the report-intelligence panel returns on `/sites` the way it does on the album report (findings when a saved calculation exists for the site scope, the owner's record form when none does, nothing for visitors), and a single "Today so far" line for link clicks, kept apart from every total.
-9. **Acceptance.** A cold review of device captures for every surface, including largest text and increased contrast. Performance is compared with `scripts/measure-analytics-performance.mjs`.
+9. **Acceptance.** (Done: [four blind reviews, no blocker left](#acceptance-build-step-9).) A cold review of device captures for every surface, including largest text and increased contrast. Performance is compared with `scripts/measure-analytics-performance.mjs`.
 
 ## Launch rules (build step 6)
 
@@ -488,6 +488,23 @@ The specs write dated screenshots into `docs/implementation/...`; those were res
 - A cold review of device captures, physical devices, largest text size and increased contrast.
 - Cost: every `/data` load now runs the browser-estimate query, and `/photos` replaces `/gallery` in `scripts/measure-analytics-performance.mjs`'s default pages. Step 9's comparison should know both.
 - The root redirect on the live host, which cannot be seen while Page Rule 49cd0626 exists.
+
+## Acceptance (build step 9)
+
+Step 9 is done. On 2026-10-07 the last of four blind cold reviews found no finding that blocks the job. Each reviewer was a fresh session that saw only device captures, a neutral index of them and the five job questions in `docs/design/experience-brief.md`. None saw the code, this document or an earlier review. After each review, a fix pass worked from a triage the coordinator checked against the captures and production.
+
+| Review | Build | Evidence | Blocks | Fixed in |
+| --- | --- | --- | --- | --- |
+| 1 | a8bfd28 | `docs/evidence/screen-reviews/analytics-acceptance-a8bfd28/` (`cold-review.md`, `triage.md`, `mechanical.md`, `performance.md`) | recap view, Data headline | #210 |
+| 2 | 15f5f71 | `analytics-acceptance-fixes-0e9680a/` (`cold-review-2.md`, `triage-2.md`) | Data headline vs a real rejection surge | #213 (with #212) |
+| 3 | a891661 | `analytics-acceptance-fixes2-f851062/` (`cold-review-3.md`, `triage-3.md`) | visitor all-clear on Data; no collection hint on Home | #213, #212 |
+| 4 | a648e2b | `analytics-acceptance-fixes3-423551e/` (`cold-review-4.md`, `triage-4.md`) | none | #214 |
+
+What each pass changed, with page heights and gate results, is in its evidence folder. The mechanical gates (overflow, 44 px targets, text growth, keyboard focus, axe, contrast, console, non-GET, rendered words) were each forced to fail once before their results were trusted.
+
+What review 4 still lists as slowing the job is ranked in `triage-4.md`. None of it was taken up: a link to the latest recap from Home, the album report's phone length, a one-line "collection is working" verdict on Data, wrapping versus scrolling the nav at 312% text (trade-off measured in `analytics-acceptance-fixes3-423551e/navigation-measurements.md`), the Photos filters on a phone, and Settings' undecided retention.
+
+Not verified by any review: a physical iPhone (iOS Safari at an accessibility text size never applied in the Simulator), the Cloudflare and PostHog panels with real credentials, a screen reader, and a real signed-in session.
 
 ## Sources
 
