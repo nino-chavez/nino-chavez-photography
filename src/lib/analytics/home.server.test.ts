@@ -169,6 +169,18 @@ test('each source fails alone: the rest of Home still reads', async () => {
 	assert.deepEqual(deliveryDown.view.problems.map((problem) => problem.id), ['delivery-unknown']);
 });
 
+test('a refusal surge in the delivery health read reaches Home, from the same single read', async () => {
+	// Oct 2 to Oct 5 are the counter's exact figures (read 2026-10-07); Sep 29 to Oct 1 are stand-ins inside its reported 400 to 430.
+	const days = [['2026-09-29', 412], ['2026-09-30', 431], ['2026-10-01', 405], ['2026-10-02', 24882], ['2026-10-03', 27842], ['2026-10-04', 23316], ['2026-10-05', 20528]]
+		.map(([day, count]) => ({ day, reason: 'not_recorded', count }));
+	const { view, rpcs } = await run({ delivery: { failed: 0, pending: 0, oldest_pending_at: null, collection_rejected_days: days } });
+	assert.deepEqual(view.problems.map((problem) => problem.id), ['collection-surge']);
+	assert.match(view.problems[0].text, /^The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day\./);
+	assert.equal(rpcs.filter((call) => call.name === 'analytics_posthog_delivery_health').length, 1);
+	// Before the reasons migration the list is absent: no surge is claimed either way.
+	assert.deepEqual((await run({ delivery: { failed: 0, pending: 0, oldest_pending_at: null } })).view.problems, []);
+});
+
 test('a refresh that has stopped is said first, and a gap in the last complete day is a stop in the counts', async () => {
 	const late = await run({ refreshAt: '2026-10-06T13:00:00Z' });
 	assert.equal(late.view.state, 'stale');

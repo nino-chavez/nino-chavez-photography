@@ -21,8 +21,16 @@ async function scheduledSiteReport(client: SupabaseClient, scope: Extract<Intell
 	return loadSiteActions(client, scope.period, scope.section, 0);
 }
 
+/** One read of the delivery health check, for a page that shows both its diagnostics and its collection counts. */
+export type DeliveryHealthRead = { data: unknown; error: unknown };
+export async function readDeliveryHealth(client: SupabaseClient): Promise<DeliveryHealthRead> {
+ const { data, error } = await client.rpc('analytics_posthog_delivery_health');
+ return { data, error };
+}
 export async function collectionDiagnostics(client: SupabaseClient, now: Date): Promise<IntelligenceRuleInput['diagnostics']> {
- const {data,error} = await client.rpc('analytics_posthog_delivery_health');
+ return diagnosticsFromHealth(await readDeliveryHealth(client), now);
+}
+export function diagnosticsFromHealth({ data, error }: DeliveryHealthRead, now: Date): NonNullable<IntelligenceRuleInput['diagnostics']> {
  if (error || !data || typeof data !== 'object' || Array.isArray(data)) return [{type:'delivery_health_unavailable',status:'failed',count:1}];
  const row=data as Record<string,unknown>; const diagnostics: NonNullable<IntelligenceRuleInput['diagnostics']>=[];
  if(count(row.failed)===null || count(row.pending)===null) return [{type:'delivery_health_unavailable',status:'failed',count:1}];

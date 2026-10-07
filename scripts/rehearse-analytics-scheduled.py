@@ -8,6 +8,7 @@ import urllib.parse
 
 root = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
+parser.add_argument('--before', action='append', default=[], help='Fixture SQL run before the migrations, for rows a migration must convert')
 parser.add_argument('--migration', action='append', default=[])
 parser.add_argument('--migrations-for', metavar='FUNCTION', help='Apply, oldest first, every migration that defines public.FUNCTION')
 parser.add_argument('--assertions', action='append', default=[])
@@ -41,9 +42,9 @@ def read_sql(name):
     if not path.is_relative_to(root / 'supabase'):
         raise RuntimeError('SQL must be owned by this project')
     return re.sub(r'^\s*(BEGIN|COMMIT|ROLLBACK);\s*$', '', path.read_text(), flags=re.M)
-if args.install_local and (args.assertions or args.negative_control):
+if args.install_local and (args.before or args.assertions or args.negative_control):
     raise RuntimeError('Local installation accepts migrations only, never assertion fixtures')
-parts = [read_sql(name) for name in args.migration + args.assertions]
+parts = [read_sql(name) for name in args.before + args.migration + args.assertions]
 if args.negative_control:
     parts.append("DO $$ BEGIN RAISE EXCEPTION 'scheduled-report-negative-control'; END $$;")
 result = run('BEGIN;\n' + '\n'.join(parts) + ('\nCOMMIT;' if args.install_local else '\nROLLBACK;'))
@@ -52,7 +53,7 @@ if args.negative_control:
 else:
     passed = result.returncode == 0
 receipt = {'synthetic': True, 'rolledBack': not args.install_local, 'negativeControl': args.negative_control,
-    'passed': passed, 'migrations': args.migration, 'assertions': args.assertions,
+    'passed': passed, 'before': args.before, 'migrations': args.migration, 'assertions': args.assertions,
     'output': result.stdout.strip(), 'diagnostics': result.stderr[-12000:]}
 output = (root / args.output).resolve()
 if not output.is_relative_to(root):

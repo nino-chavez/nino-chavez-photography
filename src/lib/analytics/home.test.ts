@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Launch, LaunchAgeTotals, LaunchDay } from './launch-read-model.server';
-import {
+import { surgeWords,
 	buildHome, changeWords, lastOpenedNote, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, nextRecaps,
 	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, staleness, statusLabel, trailingGap, weekLine,
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
@@ -328,7 +328,7 @@ test('the site line names its measures, compares each with the 7 days before, an
 });
 
 test('open problems: none when everything is current, and each cause links to where it can be looked into', () => {
-	const base: ProblemInput = { freshness: { incompleteDays: [], refreshedAt: '2026-10-06T14:40:00Z', checked: true }, lastCompleteDay: '2026-10-05', now: '2026-10-06T15:00:00Z', today: '2026-10-06', launchesRead: true, weekRead: true, incidents: [], diagnostics: [], siteActionsStale: null };
+	const base: ProblemInput = { freshness: { incompleteDays: [], refreshedAt: '2026-10-06T14:40:00Z', checked: true }, lastCompleteDay: '2026-10-05', now: '2026-10-06T15:00:00Z', today: '2026-10-06', launchesRead: true, weekRead: true, incidents: [], diagnostics: [], siteActionsStale: null, rejections: null };
 	assert.deepEqual(openProblems(base), []);
 	const coverage = openProblems({ ...base, freshness: { ...base.freshness, incompleteDays: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05'] } });
 	assert.equal(coverage.length, 1);
@@ -365,6 +365,22 @@ test('open problems: none when everything is current, and each cause links to wh
 	assert.equal(incidentWords('download-failed-for-Re7kho'), 'Download requests are failing for visitors');
 });
 
+test('a refusal surge is a problem, said by what the refusals were; events that could not be stored are their own', () => {
+	const base: ProblemInput = { freshness: { incompleteDays: [], refreshedAt: '2026-10-06T14:40:00Z', checked: true }, lastCompleteDay: '2026-10-05', now: '2026-10-06T15:00:00Z', today: '2026-10-06', launchesRead: true, weekRead: true, incidents: [], diagnostics: [], siteActionsStale: null, rejections: null };
+	const reading = { day: '2026-10-05', count: 20528, usual: 412, surge: true, crawler: 0, unstored: 0, notRecorded: 20528, other: 0 };
+	// The real Oct 5: counted before reasons were kept.
+	const before = openProblems({ ...base, rejections: reading });
+	assert.deepEqual(before.map((p) => [p.id, p.href]), [['collection-surge', 'delivery']]);
+	assert.equal(before[0].text, 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day. Why was not recorded: they were counted before reasons were kept.');
+	// A crawler-only surge is still reported, and says nothing was lost.
+	assert.equal(surgeWords({ ...reading, crawler: 20528, notRecorded: 0 }), 'The collector rejected 20,528 events on Oct 5, 50 times its usual 412 a day. All came from known crawlers, which it rejects on purpose. No visitor events were lost.');
+	assert.equal(surgeWords({ ...reading, usual: 0, crawler: 20000, notRecorded: 0, other: 528 }), 'The collector rejected 20,528 events on Oct 5, when it usually rejects none. 20,000 came from known crawlers, which it rejects on purpose. 528 were not valid or named an album or photo that does not exist.');
+	// Events that could not be stored are a problem with or without a surge.
+	const lost = openProblems({ ...base, rejections: { ...reading, count: 3, surge: false, notRecorded: 0, unstored: 3 } });
+	assert.deepEqual(lost.map((p) => p.text), ['3 events could not be stored on Oct 5. The browser retries each one once, so some may have been stored on the retry.']);
+	assert.deepEqual(openProblems({ ...base, rejections: { ...reading, surge: false } }), []);
+});
+
 test('chicagoTime is Chicago time on any day', () => {
 	assert.equal(chicagoTime('2026-10-06T13:40:00Z', '2026-10-06'), '8:40 AM');
 	assert.equal(chicagoTime('2026-10-05T03:00:00Z', '2026-10-06'), 'Oct 4, 10:00 PM');
@@ -373,7 +389,7 @@ test('chicagoTime is Chicago time on any day', () => {
 const baseInput = (asOfDay: string, keys: readonly Key[], over: Partial<HomeInput> = {}): HomeInput => ({
 	asOf: `${asOfDay}T15:00:00Z`, today: asOfDay, lastCompleteDay: addDays(asOfDay, -1), launches: world(asOfDay, keys),
 	covers: new Map([['Re7kho', 'cover-re']]), week: { window: { start: addDays(asOfDay, -7), end: addDays(asOfDay, -1) }, previous: { start: addDays(asOfDay, -14), end: addDays(asOfDay, -8) }, current: 1, previousTotal: 2, coverage: 'complete', previousCoverage: 'complete' }, freshness: { incompleteDays: [], refreshedAt: `${asOfDay}T14:45:00Z`, checked: true },
-	siteReach: { available: false, reason: 'x' }, siteContacts: { available: false, reason: 'y' }, siteActionsStale: null, incidents: [], diagnostics: [], findings: [], findingsCheckedAt: null, ...over
+	siteReach: { available: false, reason: 'x' }, siteContacts: { available: false, reason: 'y' }, siteActionsStale: null, incidents: [], diagnostics: [], rejections: null, findings: [], findingsCheckedAt: null, ...over
 });
 
 test('Home: three cards, newest first, the rest behind a link; the quiet gallery has nothing due and no problem', () => {
@@ -479,7 +495,7 @@ test('the overlapping sentence carries no counts, so it fits two lines; the card
 });
 
 test('every place a Home problem links to exists on the data quality page', () => {
-	const base: ProblemInput = { freshness: { incompleteDays: ['2026-10-04'], refreshedAt: '2026-10-06T12:00:00Z', checked: true }, lastCompleteDay: '2026-10-05', now: '2026-10-06T15:00:00Z', today: '2026-10-06', launchesRead: false, weekRead: false, incidents: ['a', 'b', 'c', 'd', 'e'], diagnostics: [{ type: 'delivery_health_unavailable', status: 'failed', count: 1 }, { type: 'provider_delivery_failures', status: 'failed', count: 3 }, { type: 'provider_delivery_overdue', status: 'failed', count: 2 }], siteActionsStale: { refreshedAt: '2026-10-05T03:00:00Z' } };
+	const base: ProblemInput = { freshness: { incompleteDays: ['2026-10-04'], refreshedAt: '2026-10-06T12:00:00Z', checked: true }, lastCompleteDay: '2026-10-05', now: '2026-10-06T15:00:00Z', today: '2026-10-06', launchesRead: false, weekRead: false, incidents: ['a', 'b', 'c', 'd', 'e'], diagnostics: [{ type: 'delivery_health_unavailable', status: 'failed', count: 1 }, { type: 'provider_delivery_failures', status: 'failed', count: 3 }, { type: 'provider_delivery_overdue', status: 'failed', count: 2 }], siteActionsStale: { refreshedAt: '2026-10-05T03:00:00Z' }, rejections: null };
 	const all = [
 		...openProblems(base),
 		...openProblems({ ...base, incidents: null, diagnostics: null, freshness: { incompleteDays: [], refreshedAt: null, checked: true } })

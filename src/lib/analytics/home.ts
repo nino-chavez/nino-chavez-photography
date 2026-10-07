@@ -6,6 +6,7 @@ import type { HomeProblemTarget } from './data-anchors';
 import { minimumSample } from './intelligence-rules';
 import { quietSince } from './launch-rules';
 import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligence-contract';
+import type { RejectionReading } from './measurement-health';
 
 /**
  * Home: what happened since you last looked, across both sites, from reads that already exist.
@@ -476,6 +477,21 @@ export interface ProblemInput {
 	/** Collection diagnostics from the delivery health check, or null when the check could not run. */
 	diagnostics: Array<{ type: string; status: string; count: number }> | null;
 	siteActionsStale: { refreshedAt: string } | null;
+	/** The last complete day's rejected events against the usual rate, or null when that could not be read. */
+	rejections: RejectionReading | null;
+}
+
+/** What a rejection surge was, in words. Crawlers are rejected on purpose; events that could not be stored are their own problem. */
+export function surgeWords(reading: RejectionReading): string {
+	const day = formatDay(reading.day);
+	const usual = reading.usual ?? 0;
+	const times = usual > 0 ? `${fmt(Math.round(reading.count / usual))} times its usual ${fmt(usual)} a day` : 'when it usually rejects none';
+	const parts = [`The collector rejected ${plural(reading.count, 'event')} on ${day}, ${times}.`];
+	if (reading.crawler === reading.count) parts.push('All came from known crawlers, which it rejects on purpose. No visitor events were lost.');
+	else if (reading.crawler > 0) parts.push(`${fmt(reading.crawler)} came from known crawlers, which it rejects on purpose.`);
+	if (reading.notRecorded > 0) parts.push(reading.notRecorded === reading.count ? 'Why was not recorded: they were counted before reasons were kept.' : `Why ${fmt(reading.notRecorded)} were rejected was not recorded: they were counted before reasons were kept.`);
+	if (reading.other > 0) parts.push(`${fmt(reading.other)} were not valid or named an album or photo that does not exist.`);
+	return parts.join(' ');
 }
 
 /** A finding id says what kind of incident it is. The words never include an album or photo name. */
@@ -510,6 +526,8 @@ export function openProblems(input: ProblemInput): HomeProblem[] {
 		else if (diagnostic.type === 'provider_delivery_failures') problems.push({ id: 'delivery-failed', text: `${plural(diagnostic.count, 'event')} could not be delivered to the analytics provider.`, href: 'delivery', linkText: 'Check delivery' });
 		else if (diagnostic.type === 'provider_delivery_overdue') problems.push({ id: 'delivery-late', text: `${plural(diagnostic.count, 'event')} are waiting for delivery to the analytics provider, longer than expected.`, href: 'delivery', linkText: 'Check delivery' });
 	}
+	if (input.rejections?.surge) problems.push({ id: 'collection-surge', text: surgeWords(input.rejections), href: 'delivery', linkText: 'See why events were rejected' });
+	if (input.rejections && input.rejections.unstored > 0) problems.push({ id: 'collection-unstored', text: `${plural(input.rejections.unstored, 'event')} could not be stored on ${formatDay(input.rejections.day)}. The browser retries each one once, so some may have been stored on the retry.`, href: 'delivery', linkText: 'Check collection' });
 	// One problem per cause: two checks reaching the same words must not show twice.
 	return problems.filter((problem, i) => problems.findIndex((other) => other.id === problem.id) === i);
 }
@@ -532,6 +550,7 @@ export interface HomeInput {
 	siteActionsStale: { refreshedAt: string } | null;
 	incidents: string[] | null;
 	diagnostics: ProblemInput['diagnostics'];
+	rejections: ProblemInput['rejections'];
 	/** Findings from the gallery-wide launch scope, most urgent first, already checked for visibility. */
 	findings: readonly Finding[];
 	/** When the scheduler last checked them; null when unknown. */
@@ -590,7 +609,7 @@ export function buildHome(input: HomeInput): HomeView {
 		site: siteFigures(input.siteReach, input.siteContacts, today),
 		problems: openProblems({
 			freshness: input.freshness, lastCompleteDay: input.lastCompleteDay, now: input.asOf, today, launchesRead: launches !== null, weekRead: input.week !== null,
-			incidents: input.incidents, diagnostics: input.diagnostics, siteActionsStale: input.siteActionsStale
+			incidents: input.incidents, diagnostics: input.diagnostics, siteActionsStale: input.siteActionsStale, rejections: input.rejections
 		})
 	};
 }

@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	basisWords, buildDataView, coverageView, deliveryView, EVENTS_NOT_READ, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
+	basisWords, buildDataView, coverageView, deliveryView, rejectionSplit, rejectedOnDay, EVENTS_NOT_READ, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
 	siteJourneyNote, siteMeasuresView, statusView, trafficClassWords, trafficView, withNotRead, type DataInput, type NotRead
 } from './data-quality';
 import { DATA_ANCHORS } from './data-anchors';
 import type { Freshness } from './home';
-import { parseMeasurementHealth } from './measurement-health';
+import { parseMeasurementHealth, rejectionReading, type RejectionDay } from './measurement-health';
 import type { OperatorReport } from './operator-report.server';
 import type { JourneyAggregate } from './posthog.types';
 import type { SiteActionReport } from './site-actions';
@@ -75,7 +75,7 @@ const health = parseMeasurementHealth({ schema_version: 2, pending: 0, submitted
 function input(over: Partial<DataInput> = {}): DataInput {
 	return {
 		asOf: NOW, today: TODAY, lastCompleteDay: LAST, days: 30, owner: false, report: report(), names: new Map(), health: null, refreshedAt: REFRESHED,
-		incidents: [], diagnostics: [], traffic, actions: actions(), posthogConfigured: true, ...over
+		incidents: [], diagnostics: [], rejections: null, traffic, actions: actions(), posthogConfigured: true, ...over
 	};
 }
 
@@ -212,8 +212,11 @@ test('delivery detail waits for the owner; everyone else is told why and where t
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Collection, last 30 days')!.value, '500 accepted · 1 rejected · 3 duplicate');
 	// Every word in those rows is defined where the rows are, and a signed-out reader has no rows and so no terms.
 	const terms = owner.delivery.terms.map((item) => item.term);
-	assert.deepEqual(terms, ['Accepted', 'Rejected', 'Duplicate', 'Pending', 'Submitted', 'Confirmed', 'Failed', 'Traffic corrections waiting']);
-	assert.match(owner.delivery.terms.find((item) => item.term === 'Rejected')!.means, /^the collector refused the event: it was not valid, named an album or photo that does not exist, came from a known crawler, or could not be stored\. This page does not split rejected events by reason\.$/);
+	assert.deepEqual(terms, ['Accepted', 'Rejected', 'Duplicate', 'Usual', 'Pending', 'Submitted', 'Confirmed', 'Failed', 'Traffic corrections waiting']);
+	assert.match(owner.delivery.terms.find((item) => item.term === 'Rejected')!.means, /Crawlers are rejected on purpose\. An event that could not be stored is lost unless the browser's one retry worked\.$/);
+	// Before the reasons migration the reading has no day list: the rows say so, never a zero.
+	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Why events were rejected, last 30 days')!.value, 'Not recorded yet. Reasons are kept from the day the collector update is installed.');
+	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Rejected on Oct 5')!.value, 'Not recorded yet');
 	assert.deepEqual(signedOut.delivery.terms, []);
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Oldest event waiting')!.value, 'None waiting');
 	assert.match(owner.delivery.volume!, /^About 300 eligible observations in a future 30-day period/);
@@ -221,7 +224,7 @@ test('delivery detail waits for the owner; everyone else is told why and where t
 	const failed = buildDataView(input({ owner: true, health: parseMeasurementHealth(null) }));
 	assert.equal(failed.deliveryState, 'failed');
 	assert.match(failed.deliveryNote!, /not a healthy result\. Reload in a few minutes\./);
-	assert.match(deliveryView(null, TODAY).quota, /unknown/);
+	assert.match(deliveryView(null, TODAY, null, '2026-10-05').quota, /unknown/);
 });
 
 test('coverage names the days, the refresh and what the history keeps', () => {
@@ -332,4 +335,28 @@ test('the catalogue basis reads as words, and a site-journey failure is said in 
 	assert.doesNotMatch(siteJourneyNote('PostHog linked journeys are not configured. First-party action counts above remain available.').what, /above/);
 	assert.match(siteJourneyNote('PostHog linked journeys are still pending after the report deadline. This is not zero activity.').todo, /Reload in a few minutes/);
 	assert.match(siteJourneyNote('PostHog linked journeys could not be read.').todo, /check the PostHog query settings/);
+});
+
+/* Daily rejections, Chicago days, from analytics_collection_delivery_counters read on 2026-10-07. Oct 2 to Oct 5 are its
+ * exact figures. Sep 29 to Oct 1 are stand-ins inside the range that read reported, about 400 to 430 a day. */
+const SURGE: RejectionDay[] = [
+	{ day: '2026-09-29', reason: 'not_recorded', count: 412 }, { day: '2026-09-30', reason: 'not_recorded', count: 431 }, { day: '2026-10-01', reason: 'not_recorded', count: 405 },
+	{ day: '2026-10-02', reason: 'not_recorded', count: 24882 }, { day: '2026-10-03', reason: 'not_recorded', count: 27842 }, { day: '2026-10-04', reason: 'not_recorded', count: 23316 },
+	{ day: '2026-10-05', reason: 'not_recorded', count: 20528 }
+];
+
+test('delivery rows split refusals by reason and compare the last complete day with the usual rate', () => {
+	assert.equal(rejectionSplit([]), 'None rejected');
+	assert.equal(rejectionSplit([...SURGE, { day: '2026-10-07', reason: 'known_crawler', count: 900 }, { day: '2026-10-07', reason: 'accept_failed', count: 2 }, { day: '2026-10-07', reason: 'invalid_event', count: 1 }, { day: '2026-10-07', reason: 'invalid_json', count: 1 }]),
+		'97,816 counted before reasons were kept · 900 from known crawlers · 2 could not be stored · 2 not valid');
+	assert.deepEqual(rejectedOnDay(rejectionReading(SURGE, LAST), SURGE, LAST), { label: 'Rejected on Oct 5', value: '20,528 (usual 412 a day)' });
+	assert.equal(rejectedOnDay(rejectionReading(SURGE, '2026-09-30'), SURGE, '2026-09-30').value, '431 (usual not known yet)');
+	assert.equal(rejectedOnDay(null, [], LAST).value, 'None');
+	const health = parseMeasurementHealth({ schema_version: 2, pending: 0, submitted: 0, confirmed: 1, failed: 0, collection: { accepted: 1, rejected: 1, duplicate: 0 }, collection_rejected_days: SURGE });
+	const view = buildDataView(input({ owner: true, health, rejections: rejectionReading(SURGE, LAST) }));
+	assert.equal(view.delivery.rows!.find((row) => row.label === 'Rejected on Oct 5')!.value, '20,528 (usual 412 a day)');
+	// A surge leads the status: the headline can never say nothing is wrong above it.
+	assert.equal(view.status.state, 'attention');
+	assert.deepEqual(view.status.problems.map((problem) => problem.id), ['collection-surge']);
+	assert.equal(view.status.problems[0].href, 'delivery');
 });

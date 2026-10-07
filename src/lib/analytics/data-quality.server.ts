@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildDataView, eventsView, journeysView, notReadNote, type DataView, type EventsView, type JourneysView } from './data-quality';
 import { refreshTimeFrom } from './home.server';
-import { collectionDiagnostics } from './intelligence-source.server';
+import { diagnosticsFromHealth, readDeliveryHealth } from './intelligence-source.server';
 import { chicagoDate } from './launch-recap';
-import { parseMeasurementHealth, type MeasurementHealth } from './measurement-health';
+import { parseMeasurementHealth, rejectionsFromHealth, type MeasurementHealth } from './measurement-health';
 import { buildOperatorReport, type OperatorReport } from './operator-report.server';
 import { createPostHogQueryTransport, queryGalleryJourneys } from './posthog-queries.server';
 import { POSTHOG_JOURNEY_REPORTS, type JourneyAggregate } from './posthog.types';
@@ -90,16 +90,16 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 		.catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; });
 	const events: Promise<EventsView> = Promise.all([eventsRaw, reportPromise.then((report) => report.available, () => false)]).then(([raw, reportOk]) => eventsView(reportOk ? raw : null));
 
-	const [reportRead, healthRead, refreshRead, incidentRead, diagnosticRead, trafficRead, actionsRead] = await Promise.allSettled([
+	// One health read: everyone's status line takes its problems from it, and only the owner sees its counts.
+	const [reportRead, healthRead, refreshRead, incidentRead, trafficRead, actionsRead] = await Promise.allSettled([
 		reportPromise,
-		deps.owner ? admin.rpc('analytics_posthog_delivery_health') : Promise.resolve({ data: null, error: null }),
+		readDeliveryHealth(admin),
 		admin.from('analytics_daily_coverage').select('reconciled_at').order('reconciled_at', { ascending: false }).limit(1),
 		admin.from('analytics_intelligence_incidents').select('finding_id').eq('status', 'open').order('updated_at', { ascending: false }).limit(20),
-		collectionDiagnostics(admin, asOf),
 		loadSiteTraffic(days, deps.env.CLOUDFLARE_ACCOUNT_ID, deps.env.CLOUDFLARE_ANALYTICS_TOKEN, deps.fetch, { cache: siteTrafficCache }),
 		loadSiteActions(admin, days, 'all', 0)
 	]);
-	for (const [what, result] of [['gallery summary', reportRead], ['delivery health', healthRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['delivery diagnostics', diagnosticRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
+	for (const [what, result] of [['gallery summary', reportRead], ['delivery health', healthRead], ['refresh time', refreshRead], ['incidents', incidentRead], ['site traffic', trafficRead], ['site actions', actionsRead]] as const) logFailure(what, result);
 	const names = await publicNames;
 	const publicAlbumKeys = [...names.keys()];
 
@@ -121,7 +121,8 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 		report, names, health: parsedHealth,
 		refreshedAt: refreshTimeFrom(ok(refreshRead)),
 		incidents: incidents && !incidents.error ? (incidents.data ?? []).map((row) => String(row.finding_id)) : null,
-		diagnostics: ok(diagnosticRead) ?? null,
+		diagnostics: health ? diagnosticsFromHealth(health, asOf) : null,
+		rejections: health && !health.error ? rejectionsFromHealth(health.data, lastCompleteDay) : null,
 		traffic: ok(trafficRead), actions: ok(actionsRead),
 		posthogConfigured: transport !== null
 	});
