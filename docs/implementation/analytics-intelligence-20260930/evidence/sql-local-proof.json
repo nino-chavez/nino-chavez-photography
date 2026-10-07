@@ -8,12 +8,13 @@
   "migrations": [
     "supabase/migrations/20260930040614_analytics_intelligence_storage.sql",
     "supabase/migrations/20260930062000_analytics_intelligence_private_controls.sql",
-    "supabase/migrations/20260930084000_analytics_intelligence_refresh_health.sql"
+    "supabase/migrations/20260930084000_analytics_intelligence_refresh_health.sql",
+    "supabase/migrations/20261007140000_analytics_intelligence_job_retry_reason.sql"
   ],
   "outerMigrationTransactionRemoved": true,
   "passed": true,
   "proof": "analytics-intelligence-local-sql",
-  "ranAt": "2026-09-30T08:32:32+00:00",
+  "ranAt": "2026-10-07T03:04:03+00:00",
   "rolledBack": true,
   "source": {
     "loopbackRuntime": true,
