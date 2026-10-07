@@ -1,15 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T02:10:05.292Z",
+  "reviewedAt": "2026-10-07T02:38:15.417Z",
   "reviewedBy": "Claude Sonnet 5.5 (implementing agent, self-review; not a cold reviewer)",
-  "method": "Self-review by the agent that wrote the change, on a local dev server reading production through a preload that blocks every write (read-only). Walked at 1440x900 and 375x812: the album report's Recaps list (live today, as-of shifts to day 2 and the morning of day 3, stored recaps replayed from production history and presented by the preload, a synthetic late and incomplete day 7, an opened day 3 and day 7 recap, a recap asked for that is not stored), Home's Next (live, two as-of shifts, one with a stored recap) and Settings (signed out, and a harness owner with the two private API reads stubbed in the browser: no retention, retention chosen, email on). Gates run per capture: overflow (forced to fail once per page and width), 44 px targets, text at 200 percent, Tab-only keyboard walk. Not covered: a cold reviewer; a real signed-in session or any real owner state (no preference row exists in production); the email path end to end (no destination is verified and nothing was sent); album photos (images do not load in the sandbox); largest system text size and increased contrast beyond the 200 percent text and the prefers-contrast rules in the source; the owner-only IntelligenceWorkspace incident list and its Playwright tests (five of eight skip without the rehearsal owner cookie, one fails on a production count unrelated to this change).",
-  "sourceDigest": "sha256:7f588ec2c9be9d31b5604a4dc9e2fe920d8754464b32bb5100ed5ca51a7ad54d",
+  "method": "Self-review by the agent that wrote the change, on a local dev server reading production through a preload that blocks every write (read-only). Walked at 1440x900 and 375x812: the album report's Recaps section as a visitor (before any backfill, where it is absent; after a backfill; with recaps still to come; with one due and not yet stored), as a harness owner (nothing written; one due and waiting), an opened recap from a backfill, an opened on-time recap, a synthetic late and incomplete day 7 and a recap asked for that is not stored; Home's Next (live and two as-of shifts); and Settings (signed out, and a harness owner with the two private API reads stubbed in the browser: no retention, retention chosen, email on). Stored recaps in the captures are real production numbers replayed by the repository's own scripts and presented by the preload. All 14 recap texts for the 7 real launches were read in full after the wording changes. Gates per capture: overflow (forced to fail once per page and width, 34 of 34 fired), 44 px targets, text at 200 percent, Tab-only keyboard walk. Not covered: a cold reviewer; a real signed-in session; the email path end to end (no destination is verified and nothing was sent); album photos (images do not load in the sandbox); largest system text size and increased contrast beyond the 200 percent text and the prefers-contrast rules in the source; the owner-only IntelligenceWorkspace incident list and its Playwright tests (five of eight skip without the rehearsal owner cookie).",
+  "sourceDigest": "sha256:37145ea4059fdd0416e20b6a96ae5864c30174b3cae692085ff880a316127a1e",
   "sourceFiles": 193,
   "scope": [
-    "Album report Recaps list and opened stored recap",
+    "Album report Recaps section and opened recap",
     "Home Next line for recaps",
     "Settings launch recap and private records block",
-    "Recap wording, email and storage notes in settings, IntelligenceWorkspace incident list heading"
+    "Recap wording and the written-later, late and incomplete notes",
+    "IntelligenceWorkspace incident list heading"
   ]
 }

@@ -1,0 +1,16 @@
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+{
+  message: 'TypeError: fetch failed',
+  details: 'TypeError: fetch failed\n' +
+    '\n' +
+    'Caused by: Error: getaddrinfo ENOTFOUND skywzpcekhntecegyjoj.supabase.co (ENOTFOUND)\n' +
+    'Error: getaddrinfo ENOTFOUND skywzpcekhntecegyjoj.supabase.co\n' +
+    '    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)',
+  hint: '',
+  code: ''
+}
+
+Node.js v22.22.0
