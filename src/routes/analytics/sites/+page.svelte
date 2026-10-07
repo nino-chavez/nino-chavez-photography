@@ -29,6 +29,7 @@
 	const cards = $derived(report ? sectionCards(report) : []);
 	const days = $derived(report ? (data.section === 'all' ? report.daily : report.sections.find((item) => item.key === data.section)?.daily ?? []) : []);
 	const largest = $derived(Math.max(1, ...days.map((day) => day.pageviews)));
+	const peakDay = $derived(days.find((day) => day.pageviews === largest) ?? null);
 	const points = $derived(days.map((day, index) => `${(index / Math.max(1, days.length - 1)) * 100},${100 - (day.pageviews / largest) * 88}`).join(' '));
 
 	function href(period: number, section: string, pageIndex = 0) {
@@ -87,6 +88,7 @@
 				<svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Page loads by day, ${days.length} days, the most in one day ${largest.toLocaleString()}. The values are listed below.`}>
 					<polyline fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" {points} />
 				</svg>
+				{#if days.length && peakDay}<p class="note">{shortDate(days[0].date)} to {shortDate(days[days.length - 1].date)}, one point a day. The most loads in one day were {peakDay.pageviews.toLocaleString()}, on {shortDate(peakDay.date)}; the line's baseline is zero.</p>{/if}
 				<details>
 					<summary>Daily values</summary>
 					<dl class="daily">{#each days as day (day.date)}<div><dt>{shortDate(day.date)}</dt><dd>{day.pageviews.toLocaleString()}</dd></div>{/each}</dl>
