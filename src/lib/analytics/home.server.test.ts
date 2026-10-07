@@ -230,7 +230,7 @@ test('contact link clicks need a full 7 days of history; the week before needs i
 test('Home shows no finding for an album unlisted after its snapshot was written, with the real visibility read', async () => {
 	const { loadVisibleFindings } = await import('./intelligence-panel.server');
 	const { HOME, launchFinding, publicClient } = await import('./intelligence-public.fixture');
-	const world = (unlisted: string[]) => publicClient({ snapshots: [{ scope: HOME, findings: [launchFinding('launch-failed-A', 'A', { rule: 'launch_failures' }), launchFinding('launch-failed-B', 'B', { rule: 'launch_failures' })], checkedAt: '2026-10-06T15:45:00Z' }], albums: ['A', 'B', 'C'], unlisted });
+	const world = (unlisted: string[]) => publicClient({ snapshots: [{ scope: HOME, findings: [launchFinding('launch-failed-A', 'A', { rule: 'launch_failures', severity: 'high' }), launchFinding('launch-failed-B', 'B', { rule: 'launch_failures', severity: 'high' })], checkedAt: '2026-10-06T15:45:00Z' }], albums: ['A', 'B', 'C'], unlisted });
 	const { client } = fixture();
 	const hidden = await loadHome({ admin: client, env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: () => loadVisibleFindings(world(['A']), HOME, 'test') });
 	assert.deepEqual(hidden.cards.map((card) => [card.albumKey, card.findings.map((f) => f.id)]), [['A', []], ['B', ['launch-failed-B']], ['C', []]]);

@@ -543,13 +543,16 @@ export interface HomeInput {
 
 /**
  * Up to HOME_FINDINGS findings, each placed on the card of the launch it concerns. A finding about a launch with
- * no card stays on that album's report; Home does not list it apart from its launch.
+ * no card stays on that album's report; Home does not list it apart from its launch. The newest launch shows all of
+ * its findings; an older launch shows only what needs action (a failure or a data gap), so its reach and photo
+ * notes, which an older launch repeats, stay on its own report.
  */
 export function placeFindings(cards: HomeCard[], findings: readonly Finding[], check: FindingsCheck | null = null): HomeCard[] {
 	const onCards = new Set(cards.map((card) => card.albumKey));
 	// "The launch is over" is not shown as a finding here. The newest launch's card says it in its own line (`lastOpenedNote`),
 	// computed from the days; a stored finding repeated under every finished launch said it once per card.
-	const shown = findings.filter((finding) => finding.rule !== 'launch_finished' && finding.target.albumKey && onCards.has(finding.target.albumKey)).slice(0, HOME_FINDINGS);
+	const newest = cards[0]?.albumKey;
+	const shown = findings.filter((finding) => finding.rule !== 'launch_finished' && finding.target.albumKey && onCards.has(finding.target.albumKey) && (finding.target.albumKey === newest || finding.severity === 'high')).slice(0, HOME_FINDINGS);
 	return cards.map((card) => {
 		const mine = shown.filter((finding) => finding.target.albumKey === card.albumKey);
 		return { ...card, findings: mine, findingsCheck: mine.length ? check : null };

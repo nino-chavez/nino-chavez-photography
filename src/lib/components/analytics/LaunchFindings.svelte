@@ -90,10 +90,11 @@
 			<svelte:element this={`h${level}`} class="title">{finding.title}</svelte:element>
 			<p class="what">{finding.explanation}</p>
 			{#if !compact && finding.why}<p class="why">{finding.why}</p>{/if}
-			<p class="next"><strong>Next step:</strong> {finding.action}</p>
+			{#if !compact}<p class="next"><strong>Next step:</strong> {finding.action}</p>{/if}
 			{#if compact}
 				<details>
-					<summary>Evidence and limits<span class="sr-only"> for: {finding.title}</span></summary>
+					<summary>Next step, evidence and limits<span class="sr-only"> for: {finding.title}</span></summary>
+					<p class="next"><strong>Next step:</strong> {finding.action}</p>
 					{#if finding.why}<p class="why">{finding.why}</p>{/if}
 					{#if finding.evidenceText}<p class="evidence"><strong>Evidence:</strong> {finding.evidenceText}</p>{/if}
 					{#if finding.limits?.length}<ul class="limits">{#each finding.limits as limit (limit)}<li>{limit}</li>{/each}</ul>{/if}
@@ -130,7 +131,7 @@
 {#if owner}
 	<p class="status" role="status">{#if message}{message.text}{#if message.settings}{' '}<a href={settingsPath(hostname)}>Open settings</a>{/if}{#if message.undo}{' '}<button type="button" class="inline" onclick={() => void undo()} disabled={saving}>Undo</button>{/if}{/if}</p>
 {/if}
-{#if checked && shown.length}<p class="checked" class:late={checked.late}>{#if !compact}Worked out from complete days only.{' '}{/if}{checked.text}</p>{/if}
+{#if checked && shown.length && (!compact || checked.late)}<p class="checked" class:late={checked.late}>{#if !compact}Worked out from complete days only.{' '}{/if}{checked.text}</p>{/if}
 
 <style>
 	.findings { display: grid; gap: .6rem; list-style: none; margin: 0; padding: 0; }

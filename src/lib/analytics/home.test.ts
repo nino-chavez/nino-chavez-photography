@@ -483,11 +483,13 @@ test('every place a Home problem links to exists on the data quality page', () =
 
 test('Home places at most three findings, each on the card of the launch it concerns', async () => {
 	const { placeFindings, HOME_FINDINGS } = await import('./home');
-	const f = (id: string, albumKey: string | null) => ({ id, rule: 'launch_reach', target: albumKey ? { kind: 'album' as const, albumKey } : { kind: 'gallery' as const }, title: id, explanation: '', action: '', evidence: { windows: { current: { start: '2026-10-01', end: '2026-10-01' } }, cutoff: null, coverage: 'complete' as const, units: '', strength: 'limited' as const }, reportHref: '/', status: 'open' as const });
+	const f = (id: string, albumKey: string | null, severity: 'high' | 'medium' | 'low' = 'medium') => ({ id, rule: 'launch_reach', severity, target: albumKey ? { kind: 'album' as const, albumKey } : { kind: 'gallery' as const }, title: id, explanation: '', action: '', evidence: { windows: { current: { start: '2026-10-01', end: '2026-10-01' } }, cutoff: null, coverage: 'complete' as const, units: '', strength: 'limited' as const }, reportHref: '/', status: 'open' as const });
 	const card = (albumKey: string) => ({ albumKey, findings: [] }) as never;
-	const placed = placeFindings([card('A'), card('B')], [f('gap-A', 'A'), f('gallery', null), f('old', 'Z'), f('reach-A', 'A'), f('fail-B', 'B'), f('reach-B', 'B')]);
+	const placed = placeFindings([card('A'), card('B')], [f('gap-A', 'A'), f('gallery', null), f('old', 'Z'), f('reach-A', 'A'), f('fail-B', 'B', 'high'), f('reach-B', 'B')]);
 	assert.equal(HOME_FINDINGS, 3);
+	// The newest launch (A) shows everything it has; an older one (B) only what needs action, so its reach note stays on its report.
 	assert.deepEqual(placed.map((c) => c.findings.map((x) => x.id)), [['gap-A', 'reach-A'], ['fail-B']]);
+	assert.deepEqual(placeFindings([card('A'), card('B')], [f('reach-B', 'B')])[1].findings, []);
 	const none = placeFindings([card('A')], []);
 	assert.deepEqual(none[0].findings, []);
 });

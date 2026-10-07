@@ -127,9 +127,10 @@
 				</div>
 				<a class="more" href={sitePath(hostname)}>Open the site report</a>
 			</section>
+
+			<p class="note">Counts are browser actions, not people. Gallery numbers cover complete days in Chicago time through {through}. Page loads are Cloudflare's count of UTC days, a different measure from photo opens.</p>
 		</div>
 
-		<p class="note">Counts are browser actions, not people. Gallery numbers cover complete days in Chicago time through {through}. Page loads are Cloudflare's count of UTC days, a different measure from photo opens. A first-publication date marked "date recovered afterwards from a log" was worked out from the records, not noted when the album was published.</p>
 	</div>
 </div>
 
@@ -164,10 +165,11 @@
 	/* Phone: Next, then the launches, then the site. Desktop: the launches on the left, Next and the site stacked on the right. */
 	.grid { display: grid; gap: .9rem; min-width: 0; }
 	@media (min-width: 960px) {
-		.grid { align-items: start; grid-template-areas: 'launches next' 'launches site'; grid-template-columns: minmax(0, 1fr) 21rem; grid-template-rows: auto 1fr; }
+		.grid { align-items: start; grid-template-areas: 'launches next' 'launches site' 'launches note'; grid-template-columns: minmax(0, 1fr) 21rem; grid-template-rows: auto auto 1fr; }
 		.launches { grid-area: launches; }
 		.next { grid-area: next; }
 		.site { grid-area: site; }
+		.note { grid-area: note; }
 	}
 	@media (min-width: 1280px) { .grid { grid-template-columns: minmax(0, 1fr) 24rem; } }
 
@@ -211,6 +213,10 @@
 		.cover { max-width: none; }
 		.spark { grid-column: 2; }
 	}
+	/* On a phone, only the newest launch draws its bars. An older launch is finished: its week-1 total and rank say the same. */
+	@container (min-width: 20rem) and (max-width: 35.99rem) {
+		.launch:not(:first-child) .spark { display: none; }
+	}
 	/* At least 36rem wide: the bars sit to the right of the text. */
 	@container (min-width: 36rem) {
 		.card { grid-template-columns: 5.25rem minmax(0, 1fr) auto; }
@@ -227,12 +233,12 @@
 	/* On a phone the two site numbers sit side by side; a narrow panel or a larger text size stacks them. */
 	.site { container-type: inline-size; }
 	.metrics { display: grid; gap: 0 .9rem; grid-template-columns: minmax(0, 1fr); }
-	@container (min-width: 22rem) { .metrics { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-	@media (min-width: 960px) { @container (min-width: 22rem) { .metrics { grid-template-columns: minmax(0, 1fr); } } }
+	@container (min-width: 20rem) { .metrics { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+	@media (min-width: 960px) { @container (min-width: 20rem) { .metrics { grid-template-columns: minmax(0, 1fr); } } }
 	.metric { border-top: 1px solid #e6ecf3; margin-top: .55rem; padding-top: .45rem; }
 	.metric:first-child { border-top: 0; margin-top: .2rem; padding-top: 0; }
-	@container (min-width: 22rem) { .metric { border-top: 0; margin-top: .2rem; padding-top: 0; } }
-	@media (min-width: 960px) { @container (min-width: 22rem) { .metric:not(:first-child) { border-top: 1px solid #e6ecf3; margin-top: .55rem; padding-top: .45rem; } } }
+	@container (min-width: 20rem) { .metric { border-top: 0; margin-top: .2rem; padding-top: 0; } }
+	@media (min-width: 960px) { @container (min-width: 20rem) { .metric:not(:first-child) { border-top: 1px solid #e6ecf3; margin-top: .55rem; padding-top: .45rem; } } }
 	.value { font-size: 1.5rem; font-variant-numeric: tabular-nums; font-weight: 750; line-height: 1.1; margin: .1rem 0 0; }
 	.detail { color: var(--muted); font-size: .85rem; line-height: 1.4; }
 
