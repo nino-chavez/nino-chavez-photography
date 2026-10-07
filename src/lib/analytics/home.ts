@@ -1,5 +1,5 @@
 import type { Launch, LaunchDay } from './launch-read-model.server';
-import { chicagoDate, cumulativeOpens, daysWords, formatDay, median, ordinal, plural, recoveredTag, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
+import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, recoveredTag, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
 import { nameWithoutDate } from './launch-report-view';
 import { NO_RECAP_DUE, nextRecapItems } from './launch-recap-list';
 import type { HomeProblemTarget } from './data-anchors';
@@ -205,20 +205,17 @@ function runningSentence(launch: Launch, all: readonly Launch[]): RecapSentence 
 	return sentence(...lead, mid !== null ? `; earlier launches had a median of ${fmt(mid)} by day ${n}.` : '; no earlier launch has a complete record to compare with.');
 }
 
-/** The first 7 complete days of a launch, in words: "Sep 26 to Oct 2". Null when they are not all in the series. */
-function firstWeekDays(launch: Launch): string | null {
-	return launch.series.length >= 7 ? daysWords(launch.series[0].date, launch.series[6].date) : null;
-}
-
+/**
+ * The headline for a launch that has finished its first week: the short answer, with the name and where it stands. The
+ * numbers (its week-1 total, its rank at day 7) are the first card's, directly below, so they are not said twice here.
+ */
 function finishedSentence(launch: Launch): RecapSentence {
 	const name = b(launchName(launch));
 	const week = launch.totals.day7;
 	if (!week.complete || week.photoOpens === null) return sentence(name, ' finished its first week, but a day in it has incomplete records, so no total or rank is shown.');
-	const place = rankPhrase(launch.rank.day7, true);
-	const days = firstWeekDays(launch);
-	const dated: Piece[] = days ? [` (${days})`] : [];
-	if (!place) return sentence(name, ' finished its first week with ', b(plural(week.photoOpens, 'photo open')), ...dated, '; no other launch has a complete first week to compare with.');
-	return sentence(name, ' finished its first week in ', b(place), ' with ', b(plural(week.photoOpens, 'photo open')), ...dated, '.');
+	const rank = launch.rank.day7;
+	if (rank.rank === null || rank.compared < 2) return sentence(name, ' finished its first week; no other launch has a complete first week to compare with.');
+	return sentence(name, ' finished its first week ', b(`${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)} of ${rank.compared} launches`), '.');
 }
 
 function overlappingSentence(relevant: readonly Launch[]): RecapSentence {

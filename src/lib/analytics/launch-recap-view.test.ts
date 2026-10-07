@@ -11,6 +11,7 @@ const LAUNCH = { albumKey: 'Re7kho', albumName: 'HS Girls VB - JCA at ACC - 09-2
 const BODY = [
 	'HS Girls VB - JCA at ACC - 09-22-2026: day 7 recap',
 	'It was not written on the morning it was due.',
+	'Counts cover 7 full days, Sep 25 to Oct 1.',
 	'What happened:',
 	'- 931 photo opens in its first 7 days.\n- 2nd of the 6 launches.',
 	'Full report: https://analytics.ninochavez.co/albums/Re7kho?recap=7'
@@ -24,7 +25,8 @@ test('a stored recap opens as its own page: its title, the date it is as of, the
 	const view = buildRecapView(base());
 	assert.equal(view.state, 'stored');
 	assert.equal(view.title, 'Day 7 recap: HS Girls VB - JCA at ACC - 09-22-2026');
-	assert.equal(view.asOf, 'As of Oct 6, 12:03 AM Chicago time.');
+	// The figures were read as of the due instant (Oct 2, 8:00 AM), not when the backfill wrote the row (Oct 6, 12:03 AM).
+	assert.equal(view.asOf, 'As of Oct 2, 8:00 AM Chicago time.');
 	assert.equal(view.covers, 'Covers Sep 25 to Oct 1, 7 full days.');
 	assert.deepEqual(view.flags, ['Written later from the records']);
 	assert.equal(view.message, null);
@@ -32,12 +34,19 @@ test('a stored recap opens as its own page: its title, the date it is as of, the
 	// The text is kept as written; the subject line is the title and the plain-text address line is the page's own link.
 	assert.deepEqual(view.blocks.map((block) => block.kind), ['paragraph', 'heading', 'list']);
 	assert.ok(!JSON.stringify(view.blocks).includes('Full report'));
+	// The days are said once, in the header; the stored sentence that repeats them is left out of the text, and the stored row is unchanged.
+	assert.ok(!JSON.stringify(view.blocks).includes('Counts cover'));
+	assert.ok(BODY.includes('Counts cover 7 full days, Sep 25 to Oct 1.'));
+	// A different window in the text is not removed.
+	assert.ok(JSON.stringify(buildRecapView(base({ open: { ...day7, window: { start: '2026-09-25', end: '2026-09-30' } } })).blocks).includes('Counts cover 7 full days'));
 	assert.deepEqual(view.others, [{ checkpoint: 3, title: 'Day 3 recap', query: '?recap=3' }]);
 });
 
 test('a recap written on schedule says it is as of that morning; a late one and one on incomplete records say so', () => {
 	const scheduled = buildRecapView(base({ asked: '3', open: { ...day3, body: BODY } }));
 	assert.equal(scheduled.asOf, 'As of Sep 28, 8:00 AM Chicago time.');
+	// A scheduled recap stored late is still as of its due instant: a later run reads the same days.
+	assert.equal(buildRecapView(base({ asked: '3', open: { ...day3, late: true, createdAt: '2026-09-28T15:20:00Z', body: BODY } })).asOf, 'As of Sep 28, 8:00 AM Chicago time.');
 	assert.equal(scheduled.covers, 'Covers Sep 25 to Sep 27, 3 full days.');
 	assert.deepEqual(scheduled.flags, []);
 	assert.deepEqual(buildRecapView(base({ open: { ...day7, source: 'scheduled', late: true, evidence: 'partial' } })).flags, ['Late', 'Some records were incomplete']);

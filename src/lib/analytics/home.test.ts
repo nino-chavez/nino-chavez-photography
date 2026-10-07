@@ -72,7 +72,7 @@ test('production on October 6: the newest launch leads, then that no new album c
 	const opening = open(launches, '2026-10-06');
 	assert.equal(opening.state, 'quiet');
 	// The like-for-like line of the newest launch, with the days its week covers.
-	assert.equal(text(opening), 'College Women\'s VB - Millikin at North Central finished its first week in 4th place of 7 launches with 266 photo opens (Sep 26 to Oct 2).');
+	assert.equal(text(opening), 'College Women\'s VB - Millikin at North Central finished its first week 4th of 7 launches.');
 	assert.equal(sentenceText(opening.then!), 'No new album since Sep 26 (date recovered afterwards from a log), 10 days ago.');
 	// A recorded date carries no mark.
 	assert.equal(sentenceText(open(world('2026-10-06', ALL, {}, []), '2026-10-06').then!), 'No new album since Sep 26, 10 days ago.');
@@ -111,12 +111,12 @@ test('a launch that just finished: its rank at day 7', () => {
 	const launches = world('2026-10-02', ['fJKdsB', 'Re7kho', 'dKe567', 'Big', 'Bump', 'jq1Rp7']);
 	const opening = open(launches, '2026-10-02');
 	assert.equal(opening.state, 'just_finished');
-	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week in 2nd place of 6 launches with 931 photo opens (Sep 25 to Oct 1).');
+	assert.equal(text(opening), 'HS Girls VB - JCA at ACC finished its first week 2nd of 6 launches.');
 	// Alone with a week, there is no rank to state.
-	assert.equal(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), 'HS Girls VB - JCA at ACC finished its first week with 931 photo opens (Sep 25 to Oct 1); no other launch has a complete first week to compare with.');
+	assert.equal(text(open(world('2026-10-02', ['Re7kho']), '2026-10-02')), 'HS Girls VB - JCA at ACC finished its first week; no other launch has a complete first week to compare with.');
 	// A tie says tie.
 	const tied = world('2026-10-02', ['Re7kho', 'Big']).map((launch) => ({ ...launch, rank: { ...launch.rank, day7: { rank: 1, compared: 2, tied: true } } }));
-	assert.match(text(open(tied, '2026-10-02')), /in tied for 1st place of 2 launches with/);
+	assert.match(text(open(tied, '2026-10-02')), /finished its first week tied for 1st of 2 launches\.$/);
 });
 
 test('a launch that finished with a day missing says so and states no total or rank', () => {
@@ -460,6 +460,15 @@ test('Home says it once, on the newest launch only, and leaves out the stored "l
 	assert.deepEqual(view.cards.slice(1).map((card) => card.note), [null, null]);
 	assert.equal(view.week, null, 'both windows hold a launch week');
 	assert.equal(view.state, 'quiet');
+});
+
+test('the headline says where the newest launch stands and leaves its numbers to the card below it', () => {
+	const launches = world('2026-10-06', ALL);
+	const tied = launches.map((launch, i) => (i === 0 ? { ...launch, rank: { ...launch.rank, day7: { rank: 4, compared: 7, tied: true } } } : launch));
+	assert.equal(text(open(tied, '2026-10-06')), 'College Women\'s VB - Millikin at North Central finished its first week tied for 4th of 7 launches.');
+	// No count, no date and no "photo opens" in the headline: the card under it carries them.
+	assert.doesNotMatch(text(open(launches, '2026-10-06')), /\d{3}|photo open|Sep|Oct/);
+	assert.ok(text(open(launches, '2026-10-06')).length <= 100);
 });
 
 test('the overlapping sentence carries no counts, so it fits two lines; the card carries the numbers', () => {

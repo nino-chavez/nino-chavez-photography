@@ -9,7 +9,7 @@ import { recapBlocks, recapTitle, type RecapBlock } from './launch-recap-text';
  * the full live report. Pure: the loader reads, this file decides the words. Reader-facing copy, so a reader-contract source.
  *
  * Rules the copy keeps:
- *  - The date comes first. The text was written on one morning from the records of the days before it; the live report
+ *  - The date comes first, and it is the moment the figures were read as of: when the recap was due, not when a later run stored it. The text was written from the records of the days before it; the live report
  *    counts later days and later launches, so a number in the two can differ. The page says so once and does not compare them.
  *  - A recap that is not stored says so plainly. It never falls back to the full report, and it never echoes what was asked.
  *  - Nothing private is read here: no note, no owner choice, no destination. A visitor reads the same page.
@@ -41,7 +41,7 @@ export interface RecapView {
 	state: RecapViewState;
 	eyebrow: string;
 	title: string;
-	/** "As of Oct 6, 12:03 AM Chicago time." The first thing under the title. */
+	/** "As of Oct 2, 8:00 AM Chicago time." The due instant the figures were read as of. The first thing under the title. */
 	asOf: string | null;
 	/** "Covers Sep 22 to Sep 28, 7 full days." */
 	covers: string | null;
@@ -71,6 +71,16 @@ function coversWords(window: StoredRecapSummary['window']): string {
 	return `Covers ${daysWords(window.start, window.end)}, ${plural(days, 'full day')}.`;
 }
 
+/**
+ * The stored text states its window in its own words ("Counts cover 7 full days, Sep 25 to Oct 1."). The page's first lines already
+ * say it, so that one sentence is left out of the text here, only when it says the same days. The stored row is not changed.
+ */
+function withoutRepeatedWindow(text: string, window: StoredRecapSummary['window']): string {
+	if (!window) return text;
+	const days = Math.round((Date.parse(`${window.end}T12:00:00Z`) - Date.parse(`${window.start}T12:00:00Z`)) / 86_400_000) + 1;
+	return text.replace(`Counts cover ${plural(days, 'full day')}, ${daysWords(window.start, window.end)}.`, '').replace(/\s{2,}/g, ' ').trim();
+}
+
 function evidenceFlag(evidence: StoredRecapSummary['evidence']): string[] {
 	return evidence === 'complete' ? [] : [evidence === 'partial' ? 'Some records were incomplete' : 'Could not be built'];
 }
@@ -94,9 +104,13 @@ export function buildRecapView(input: RecapViewInput): RecapView {
 		const flags = [...(open.source === 'backfill' ? [WRITTEN_LATER] : open.late ? ['Late'] : []), ...evidenceFlag(open.evidence)];
 		return {
 			state: 'stored', eyebrow: title, title: heading,
-			asOf: `As of ${stampWords(open.createdAt)}.`, covers: coversWords(open.window), flags,
+			// The figures were read as of the moment the recap was due, whenever it was written. A recap written later says so in its flag and its text.
+			asOf: `As of ${stampWords(open.dueAt)}.`, covers: coversWords(open.window), flags,
 			// The first block is the subject line, which the page shows as its title; the address line is replaced by the page's own link.
-			blocks: recapBlocks(open.body).filter((block, at) => !(at === 0 && block.kind === 'paragraph') && !(block.kind === 'paragraph' && FULL_REPORT_LINE.test(block.text))),
+			blocks: recapBlocks(open.body)
+				.filter((block, at) => !(at === 0 && block.kind === 'paragraph') && !(block.kind === 'paragraph' && FULL_REPORT_LINE.test(block.text)))
+				.map((block): RecapBlock => (block.kind === 'paragraph' ? { ...block, text: withoutRepeatedWindow(block.text, open.window) } : block))
+				.filter((block) => block.kind !== 'paragraph' || block.text !== ''),
 			message: null,
 			snapshotNote: 'This is the recap as it was written. The live report counts later days and later launches, so its numbers can be different.',
 			others

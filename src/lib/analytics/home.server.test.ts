@@ -118,7 +118,7 @@ test('Home reads each source once and never once per album; only public launches
 test('the quiet gallery on a fresh day reads as quiet, with no open problem except the provider that is not configured', async () => {
 	const { view } = await run();
 	assert.equal(view.state, 'quiet');
-	assert.match(sentenceText(view.opening), /^Alpha finished its first week in .* \(Sep 26 to Oct 2\)\.$/);
+	assert.match(sentenceText(view.opening), /^Alpha finished its first week (tied for )?\d(st|nd|rd|th) of \d+ launches\.$/);
 	assert.equal(sentenceText(view.then!), 'No new album since Sep 26 (date recovered afterwards from a log), 10 days ago.');
 	// Both windows hold the first week of the launches in the fixture (published Sep 26), so there is no calendar-week line at all.
 	assert.equal(view.week, null);
