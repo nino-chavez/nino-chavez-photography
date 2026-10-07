@@ -15,7 +15,8 @@ test('missing linked cohorts suppresses behavior rules instead of manufacturing 
 test('partial coverage suppresses behavior without inventing an outage', () => {
 	const result = evaluateIntelligenceRules(input({ coverage: 'partial' }));
 	assert.deepEqual(result.findings, []);
-	assert.ok(result.suppressions.some((item) => item.rule === 'momentum'));
+	assert.ok(result.suppressions.some((item) => item.rule === 'strong_photo_response'));
+	assert.ok(!result.suppressions.some((item) => item.rule === 'momentum'), 'gallery momentum is retired, not suppressed');
 });
 
 test('photo response uses only the named favorite-or-download-item union and visible photo route', () => {
@@ -26,31 +27,36 @@ test('photo response uses only the named favorite-or-download-item union and vis
 	assert.match(finding?.explanation ?? '', /quality/i);
 });
 
-test('per-album discovery and momentum keep targets, calendar counts, and exact report filters', () => {
+test('per-album discovery keeps its target, calendar counts, and exact report filters', () => {
 	const result = evaluateIntelligenceRules(input({
-		albumMomentum: [{ albumKey: 'album-1', current: 40, previous: 20, evidenceLinks: ['/analytics/operator?scope=album'] }],
 		albumDiscovery: [{ albumKey: 'album-1', exposures: 100, opens: 4, directEntries: 0, evidenceLinks: ['/analytics/operator?scope=album'] }]
 	}));
 	const discovery = result.findings.find((item) => item.rule === 'discovery_friction');
-	const momentum = result.findings.find((item) => item.rule === 'momentum');
 	assert.equal(discovery?.target.albumKey, 'album-1');
 	assert.deepEqual(discovery?.evidence, { ...discovery?.evidence, numerator: 4, denominator: 100 });
-	assert.equal(momentum?.target.albumKey, 'album-1');
-	assert.match(momentum?.reportHref ?? '', /scope=album/);
+	assert.match(discovery?.reportHref ?? '', /scope=album/);
 });
 
-test('an album published after the comparison period is new activity, not a momentum gain', () => {
-	const result = evaluateIntelligenceRules(input({
-		albumMomentum: [
-			{ albumKey: 'new-album', current: 1011, previous: 0, publishedAfterComparison: true, evidenceLinks: [] },
-			{ albumKey: 'older-album', current: 40, previous: 20, publishedAfterComparison: false, evidenceLinks: [] }
-		]
-	}));
-	const momentum = result.findings.filter((item) => item.rule === 'momentum');
-	assert.deepEqual(momentum.map((item) => item.target.albumKey), ['older-album']);
-	const suppression = result.suppressions.find((item) => item.rule === 'momentum' && item.target?.kind === 'album' && item.target.albumKey === 'new-album');
-	assert.match(suppression?.reason ?? '', /published after the comparison period/);
-	assert.match(suppression?.reason ?? '', /new, not growth/);
+test('gallery momentum is retired: two calendar periods never produce a gallery finding or suppression', () => {
+	// A burst like JCA at ACC's (1,011 photo opens against 0 the month before) and a steady album both stay silent:
+	// the launch rules compare albums at the same age instead.
+	const result = evaluateIntelligenceRules(input({ current: 1011, previous: 0 }));
+	assert.equal(result.findings.some((item) => item.rule === 'momentum'), false);
+	assert.equal(result.suppressions.some((item) => item.rule === 'momentum'), false);
+	const steady = evaluateIntelligenceRules(input({ current: 400, previous: 200 }));
+	assert.equal(steady.findings.some((item) => item.rule === 'momentum'), false);
+});
+
+test('site momentum still compares two complete periods of page views', () => {
+	const sites = { kind: 'sites' as const, period: 7 as const, section: 'all' as const };
+	const result = evaluateIntelligenceRules(input({ scope: sites, current: 40, previous: 20 }));
+	const momentum = result.findings.find((item) => item.rule === 'momentum');
+	assert.equal(momentum?.target.kind, 'site');
+	assert.match(momentum?.explanation ?? '', /40 page views versus 20/);
+	assert.equal(momentum?.severity, 'low');
+	assert.equal(momentum?.evidence.strength, 'exploratory');
+	const small = evaluateIntelligenceRules(input({ scope: sites, current: 19, previous: 30 }));
+	assert.match(small.suppressions.find((item) => item.rule === 'momentum')?.reason ?? '', /at least 20 page views/);
 });
 
 test('search and distribution retain distinct cohorts without adding overlapping source actions', () => {
@@ -101,7 +107,6 @@ test('render union measures failed views without summing retry successes and fai
 test('observed failures rank before promotion without changing evidence strength', () => {
  const result=evaluateIntelligenceRules(input({download:{requests:30,failed:3,unknownTerminal:0,handedOff:27}, diagnostics:[{type:'relay',status:'failed',count:2}]}));
  assert.equal(result.findings[0].severity,'high');
- assert.equal(result.findings.find(f=>f.rule==='momentum')?.severity,'low');
- assert.equal(result.findings.find(f=>f.rule==='momentum')?.evidence.strength,'exploratory');
- assert.ok(result.findings.findIndex(f=>f.rule==='rendering_download_reliability')<result.findings.findIndex(f=>f.rule==='momentum'));
+ const sites=evaluateIntelligenceRules(input({scope:{kind:'sites',period:7,section:'all'},current:40,previous:20,diagnostics:[{type:'relay',status:'failed',count:2}]}));
+ assert.ok(sites.findings.findIndex(f=>f.rule==='collection_health')<sites.findings.findIndex(f=>f.rule==='momentum'));
 });

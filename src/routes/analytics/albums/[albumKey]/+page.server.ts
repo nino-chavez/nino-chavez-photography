@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { loadIntelligencePanelMode } from '$lib/analytics/intelligence-panel.server';
+import { loadIntelligencePanelMode, loadVisibleFindings } from '$lib/analytics/intelligence-panel.server';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { buildOperatorReport } from '$lib/analytics/operator-report.server';
@@ -8,7 +8,9 @@ import { fetchLaunchReadModel, type LaunchReadModel } from '$lib/analytics/launc
 import { buildRecap, type ArrivalRow } from '$lib/analytics/launch-recap';
 import { cumulativeCurves, dailyChart, gridPhotos, launchTable } from '$lib/analytics/launch-report-view';
 import { isAlbumKey } from '$lib/analytics/report-paths';
-import { intelligenceScopeKey } from '$lib/analytics/intelligence-contract';
+import { intelligenceScopeKey, launchScope } from '$lib/analytics/intelligence-contract';
+import { LAUNCH_FINDING_DAYS } from '$lib/analytics/launch-rules';
+import { findingsCheck } from '$lib/analytics/home';
 import type { PageServerLoad } from './$types';
 
 /** The window every report on this page covers: the launch's first two weeks, as the read model returns them. */
@@ -95,11 +97,16 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders }) => {
 		}
 	}
 
-	// Findings show only when this scope's saved calculation holds at least one (launch rules, build step 6, will
-	// produce them); the owner keeps the private record form. See intelligence-panel.server.ts.
-	const intelligence = await loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'gallery', query }), !!user, 'album launch report');
-
 	const album = model.album;
+	// Launch findings for this album sit above the photo grid. Same rule as the panel: none, or none still public,
+	// shows nothing. A launch past its finding window has none to show, whatever an old snapshot holds.
+	const inWindow = album.status !== 'no_launch_date' && album.elapsedDays <= LAUNCH_FINDING_DAYS;
+	const [launchFindings, intelligence] = await Promise.all([
+		inWindow ? loadVisibleFindings(admin, launchScope(albumKey), 'album launch report') : Promise.resolve({ findings: [], checkedAt: null }),
+		// The record form and assistant below keep their own scope: this album over the days its numbers cover.
+		loadIntelligencePanelMode(admin, intelligenceScopeKey({ kind: 'gallery', query }), !!user, 'album launch report')
+	]);
+
 	const photoIds = new Set(photoRows.map((row) => row.photoId));
 	const recap = buildRecap({ model, arrivals, photoIds });
 	const photos = gridPhotos(photoRows, album.photos, album.exposure.coverage !== 'none');
@@ -108,6 +115,7 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders }) => {
 		user: user ? { id: user.id, email: user.email } : null,
 		intelligenceOwner: !!user,
 		intelligence,
+		findings: { findings: launchFindings.findings, checked: launchFindings.findings.length ? findingsCheck(launchFindings.checkedAt, new Date().toISOString(), model.today) : null },
 		album: {
 			key: album.albumKey,
 			name: album.albumName ?? album.albumKey,

@@ -5,12 +5,13 @@ import type { GalleryDecisionEvidence } from './posthog-queries.server';
 import type { SiteJourneyRow } from './site-journeys.server';
 import type { IntelligenceScope } from './intelligence-contract';
 import type { IntelligenceRuleInput } from './intelligence-rules';
-import { publishedAfterComparison } from './report-contract';
+import { loadLaunchEvidence, type LaunchEvidenceLoaders } from './launch-evidence.server';
+import { chicagoWallTimeToUtc } from './intelligence-schedule';
 
 export type IntelligenceJourneyContext = { gallery?: JourneyAggregate[]; site?: SiteJourneyRow[]; decision?: GalleryDecisionEvidence };
 type GalleryReport = { dataAsOf: string | null; coverage: IntelligenceRuleInput['coverage']; previousCoverage: IntelligenceRuleInput['coverage']; total: number | null; previousTotal: number | null; photos: unknown[]; publicationAge: { missingAlbumKeys: string[] }; albums: Array<{ albumKey: string; count: number | null; previousCount: number | null; publicationAt?: string | null }> };
 type SiteReport = Awaited<ReturnType<typeof import('./site-actions.server').loadSiteActions>>;
-type EvidenceLoaders = { diagnostics?: (client: SupabaseClient, now: Date) => Promise<IntelligenceRuleInput['diagnostics']>; galleryReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryReport>; siteReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>) => Promise<SiteReport> };
+type EvidenceLoaders = { launch?: LaunchEvidenceLoaders; diagnostics?: (client: SupabaseClient, now: Date) => Promise<IntelligenceRuleInput['diagnostics']>; galleryReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>) => Promise<GalleryReport>; siteReport?: (client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'sites' }>) => Promise<SiteReport> };
 async function scheduledGalleryReport(client: SupabaseClient, scope: Extract<IntelligenceScope, { kind: 'gallery' }>): Promise<GalleryReport> {
 	const { fetchScheduledGalleryReport } = await import('./scheduled-gallery-report.server');
 	return fetchScheduledGalleryReport(client, scope.query, { publicOnly: true, includeToday: false, photoWindow: { page: 0, pageSize: 100, rank: 'popular' } });
@@ -58,6 +59,14 @@ const albumLink = (scope: Extract<IntelligenceScope, { kind: 'gallery' }>, album
 
 /** Converts stored reports and fixed provider aggregates into decision-rule inputs. */
 export async function loadIntelligenceEvidence(client: SupabaseClient, scope: IntelligenceScope, now = new Date(), journeys: IntelligenceJourneyContext = {}, loaders: EvidenceLoaders = {}): Promise<IntelligenceRuleInput> {
+	if (scope.kind === 'launch') {
+		const base = { scope, diagnostics: [], generatedAt: now.toISOString(), previousCoverage: null, current: null, previous: null, eligibility: 'public albums; conservative traffic counts audience and unclassified actions on complete Chicago days' };
+		// A failed launch read throws, as a failed gallery report does: the job retries and the last good snapshot
+		// stays current, with its own check time. Writing an empty snapshot instead would make an outage look quiet.
+		const launch = await loadLaunchEvidence(client, scope.albumKey, now, loaders.launch);
+		// Complete days only: the evidence is cut off at the start of the as-of Chicago day.
+		return { ...base, cutoff: chicagoWallTimeToUtc(launch.today, 0, 0), coverage: 'complete', launch };
+	}
 	const diagnostics = await (loaders.diagnostics ?? collectionDiagnostics)(client, now);
 	if (scope.kind === 'gallery') {
 		const providerLimitation = unsupportedProviderScope(scope);
@@ -87,7 +96,6 @@ export async function loadIntelligenceEvidence(client: SupabaseClient, scope: In
 			current: report.total, previous: report.previousTotal,
 			eligibility: scope.query.traffic === 'conservative' ? 'public eligible gallery actions; conservative traffic excludes known non-audience traffic' : 'public eligible gallery actions; inclusive traffic retains unclassified and suspected automation as requested',
 			...(providerLimitation ? { providerLimitation } : {}),
-			...(report.albums.length ? { albumMomentum: report.albums.map((row) => ({ albumKey: row.albumKey, current: row.count, previous: row.previousCount, publishedAfterComparison: publishedAfterComparison(row.publicationAt, scope.query), evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
 			...(decision?.albumDiscovery.length ? { albumDiscovery: decision.albumDiscovery.map((row) => ({ ...row, evidenceLinks: [albumLink(scope, row.albumKey)] })) } : {}),
 			...(decision?.photoResponses.length ? { linkedPhotoResponse: decision.photoResponses.map((row) => ({ photoId: row.photoId, albumKey: row.albumKey, exposures: row.exposures, responses: row.responses, evidenceLinks: [`/photo/${encodeURIComponent(row.photoId)}`] })) } : {}),
 			...(decision?.rendering ? { rendering: { rendered: decision.rendering.rendered, failed: decision.rendering.failed, observedTerminal: decision.rendering.observedTerminal } } : {}),

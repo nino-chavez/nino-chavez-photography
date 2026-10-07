@@ -360,7 +360,7 @@ test('chicagoTime is Chicago time on any day', () => {
 const baseInput = (asOfDay: string, keys: readonly Key[], over: Partial<HomeInput> = {}): HomeInput => ({
 	asOf: `${asOfDay}T15:00:00Z`, today: asOfDay, lastCompleteDay: addDays(asOfDay, -1), launches: world(asOfDay, keys),
 	covers: new Map([['Re7kho', 'cover-re']]), week: { window: { start: addDays(asOfDay, -7), end: addDays(asOfDay, -1) }, previous: { start: addDays(asOfDay, -14), end: addDays(asOfDay, -8) }, current: 1, previousTotal: 2, coverage: 'complete', previousCoverage: 'complete' }, freshness: { incompleteDays: [], refreshedAt: `${asOfDay}T14:45:00Z`, checked: true },
-	siteReach: { available: false, reason: 'x' }, siteContacts: { available: false, reason: 'y' }, siteActionsStale: null, incidents: [], diagnostics: [], ...over
+	siteReach: { available: false, reason: 'x' }, siteContacts: { available: false, reason: 'y' }, siteActionsStale: null, incidents: [], diagnostics: [], findings: [], findingsCheckedAt: null, ...over
 });
 
 test('Home: three cards, newest first, the rest behind a link; the quiet gallery has nothing due and no problem', () => {
@@ -438,4 +438,29 @@ test('every place a Home problem links to exists on the data quality page', () =
 	const known = new Set<string>(DATA_ANCHORS);
 	for (const problem of all) assert.ok(known.has(problem.href), `${problem.id} links to ${problem.href}, which the data page does not have`);
 	assert.deepEqual([...new Set(all.map((p) => p.href))].sort(), ['coverage', 'delivery', 'site-measures', 'status']);
+});
+
+test('Home places at most three findings, each on the card of the launch it concerns', async () => {
+	const { placeFindings, HOME_FINDINGS } = await import('./home');
+	const f = (id: string, albumKey: string | null) => ({ id, rule: 'launch_reach', target: albumKey ? { kind: 'album' as const, albumKey } : { kind: 'gallery' as const }, title: id, explanation: '', action: '', evidence: { windows: { current: { start: '2026-10-01', end: '2026-10-01' } }, cutoff: null, coverage: 'complete' as const, units: '', strength: 'limited' as const }, reportHref: '/', status: 'open' as const });
+	const card = (albumKey: string) => ({ albumKey, findings: [] }) as never;
+	const placed = placeFindings([card('A'), card('B')], [f('gap-A', 'A'), f('gallery', null), f('old', 'Z'), f('reach-A', 'A'), f('fail-B', 'B'), f('reach-B', 'B')]);
+	assert.equal(HOME_FINDINGS, 3);
+	assert.deepEqual(placed.map((c) => c.findings.map((x) => x.id)), [['gap-A', 'reach-A'], ['fail-B']]);
+	const none = placeFindings([card('A')], []);
+	assert.deepEqual(none[0].findings, []);
+});
+
+test('findings say when they were last checked: fresh, late past four refresh cadences, and unknown', async () => {
+	const { findingsCheck, FINDINGS_LATE_AFTER_MS, placeFindings } = await import('./home');
+	assert.equal(FINDINGS_LATE_AFTER_MS, 60 * 60_000);
+	assert.deepEqual(findingsCheck('2026-10-06T16:45:00Z', '2026-10-06T17:00:00Z', '2026-10-06'), { text: 'Last checked 11:45 AM Chicago time.', late: false });
+	assert.deepEqual(findingsCheck('2026-10-06T16:00:00Z', '2026-10-06T17:00:00Z', '2026-10-06'), { text: 'Last checked 11:00 AM Chicago time.', late: false }, 'exactly an hour is not late');
+	assert.deepEqual(findingsCheck('2026-10-06T15:59:00Z', '2026-10-06T17:00:00Z', '2026-10-06'), { text: 'Last checked 10:59 AM Chicago time, more than an hour ago. These may be out of date.', late: true });
+	assert.deepEqual(findingsCheck('2026-10-04T03:00:00Z', '2026-10-06T17:00:00Z', '2026-10-06'), { text: 'Last checked Oct 3, 10:00 PM Chicago time, more than an hour ago. These may be out of date.', late: true });
+	assert.deepEqual(findingsCheck(null, '2026-10-06T17:00:00Z', '2026-10-06'), { text: 'When these were last checked is not known, so they may be out of date.', late: true });
+	const f = { id: 'x', rule: 'launch_reach', target: { kind: 'album' as const, albumKey: 'A' }, title: '', explanation: '', action: '', evidence: { windows: { current: { start: '2026-10-01', end: '2026-10-01' } }, cutoff: null, coverage: 'complete' as const, units: '', strength: 'limited' as const }, reportHref: '/', status: 'open' as const };
+	const late = findingsCheck(null, '2026-10-06T17:00:00Z', '2026-10-06');
+	const placed = placeFindings([{ albumKey: 'A', findings: [], findingsCheck: null }, { albumKey: 'B', findings: [], findingsCheck: null }] as never, [f], late);
+	assert.deepEqual(placed.map((card) => card.findingsCheck), [late, null], 'only a card with findings says when they were checked');
 });

@@ -9,6 +9,8 @@
 	import LaunchDailyChart from '$lib/components/analytics/LaunchDailyChart.svelte';
 	import LaunchComparison from '$lib/components/analytics/LaunchComparison.svelte';
 	import IntelligenceWorkspace from '$lib/components/analytics/IntelligenceWorkspace.svelte';
+	import LaunchFindings from '$lib/components/analytics/LaunchFindings.svelte';
+	import { launchScope } from '$lib/analytics/intelligence-contract';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -161,7 +163,7 @@
 				{/each}
 				<p class="window">{@render words(recap.window)}</p>
 			</div>
-			<div class="panel chart-panel">
+			<div class="panel chart-panel" id="launch-chart">
 				<LaunchDailyChart chart={data.charts.daily} {undated} />
 			</div>
 		</section>
@@ -200,6 +202,13 @@
 				<ul>{#each recap.limits as limit}<li>{limit}</li>{/each}</ul>
 			</div>
 		</section>
+
+		{#if data.findings.findings.length}
+			<section class="worth" aria-labelledby="worth-title">
+				<h2 id="worth-title">Worth your attention</h2>
+				<LaunchFindings findings={data.findings.findings} checked={data.findings.checked} owner={signedIn} scope={launchScope(data.album.key)} />
+			</section>
+		{/if}
 
 		<div class="below">
 			<section id="photos" class="photos panel" aria-labelledby="photos-title" tabindex="-1">
@@ -339,6 +348,9 @@
 	.dialog-bar { display: flex; justify-content: flex-end; margin-bottom: .25rem; }
 	@media (min-width: 1024px) { .photo-dialog { display: none; } }
 	.assistant { padding: .25rem 1rem 1rem; }
+	.worth { display: grid; gap: .5rem; min-width: 0; }
+	.worth h2 { font-size: 1.05rem; }
+	#launch-chart, #downloads-title { scroll-margin-top: .75rem; }
 	/* The shared assistant's own buttons are 37px tall; this page holds every control to 44px. */
 	.assistant :global(button), .assistant :global(.finding-actions a) { min-height: 2.75rem; }
 	.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }

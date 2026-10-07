@@ -5,6 +5,8 @@
 	import { plural } from '$lib/analytics/launch-recap';
 	import type { HomeProblem } from '$lib/analytics/home';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
+	import LaunchFindings from '$lib/components/analytics/LaunchFindings.svelte';
+	import { GALLERY_LAUNCH_SCOPE } from '$lib/analytics/intelligence-contract';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -61,7 +63,8 @@
 				{:else}
 					<ul class="cards">
 						{#each view.cards as card (card.albumKey)}
-							<li class="card">
+							<li class="launch">
+								<div class="card">
 								<div class="cover">{#if card.cover}<img src={cfImageUrl(card.cover, 'thumbnail')} alt="" width="150" height="150" loading="lazy" decoding="async" />{:else}<span class="no-image" aria-hidden="true">No cover</span>{/if}</div>
 								<div class="text">
 									<h3><a href={albumReportPath(hostname, card.albumKey)}>{card.name}</a></h3>
@@ -84,6 +87,12 @@
 									</svg>
 									<figcaption>Daily opens, week 1</figcaption>
 								</figure>
+								</div>
+								{#if card.findings.length}
+									<div class="card-findings" aria-label={`Worth your attention: ${card.name}`} role="group">
+										<LaunchFindings findings={card.findings} checked={card.findingsCheck} compact level={4} owner={data.owner} scope={GALLERY_LAUNCH_SCOPE} />
+									</div>
+								{/if}
 							</li>
 						{/each}
 					</ul>
@@ -156,6 +165,10 @@
 	.empty { background: #fff; border: 1px solid var(--line); border-radius: .8rem; color: var(--muted); margin: 0; padding: .9rem; }
 
 	.cards { display: grid; gap: .6rem; list-style: none; margin: 0; padding: 0; }
+	.launch { display: grid; gap: .35rem; min-width: 0; }
+	/* Beside the launch it concerns: indented under its card, outside the card's single link. */
+	.card-findings { margin-left: .9rem; min-width: 0; }
+	@media (min-width: 640px) { .card-findings { margin-left: 2rem; } }
 	.card { background: #fff; border: 1px solid var(--line); border-radius: .8rem; display: grid; gap: .4rem .8rem; grid-template-columns: 4.75rem minmax(0, 1fr); padding: .65rem; position: relative; }
 	.card:hover { border-color: #9db8e6; }
 	.card:focus-within { border-color: var(--blue-ink); }

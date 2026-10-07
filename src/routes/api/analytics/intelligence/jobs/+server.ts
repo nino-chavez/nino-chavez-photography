@@ -3,7 +3,8 @@ import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { createOwnedIntelligenceDeliveryProvider, deliverIntelligenceBriefs } from '$lib/analytics/intelligence-delivery.server';
-import { loadFixedIntelligenceJourneys, runIntelligenceJobs } from '$lib/analytics/intelligence-jobs.server';
+import { launchIntelligenceScopes, loadFixedIntelligenceJourneys, runIntelligenceJobs } from '$lib/analytics/intelligence-jobs.server';
+import { fetchLaunches } from '$lib/analytics/launch-read-model.server';
 import { createPostHogQueryTransport, queryGalleryJourneys, queryGalleryDecisionEvidence } from '$lib/analytics/posthog-queries.server';
 import { hasPostHogScheduleAuthorization } from '$lib/analytics/posthog-delivery.server';
 import { createProviderCache } from '$lib/analytics/provider-cache.server';
@@ -69,7 +70,11 @@ export const POST: RequestHandler = async ({ request, setHeaders }) => {
 				const window = utcCompletedWindow(current.period, now);
 				return loadSiteJourneys(transport, window.start, window.end, current.section, { cache: providerCache });
 			}
-		}), { now, deadlineMs: 25_000, concurrency: 2 });
+		}), {
+			now, deadlineMs: 25_000, concurrency: 2,
+			// Public launches only, the same list Home reads. One bounded read per wake-up.
+			launchScopes: async () => launchIntelligenceScopes(await fetchLaunches(client, { asOf: now, days: 14, traffic: 'conservative', publicOnly: true }), now)
+		});
 		const provider = createOwnedIntelligenceDeliveryProvider({
 			enabled: env.ANALYTICS_INTELLIGENCE_DELIVERY_ENABLED === 'true',
 			from: env.ANALYTICS_INTELLIGENCE_EMAIL_FROM,

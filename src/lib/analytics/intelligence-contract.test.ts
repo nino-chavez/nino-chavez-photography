@@ -38,3 +38,15 @@ test('brief provenance preserves complete saved windows and rejects malformed un
 	assert.equal(parseIntelligenceBriefSourceWindow({ scope: gallery, cutoff: 'not-a-date', timezone: 'America/Chicago', current: { start: '2026-09-31', end: '2026-09-30' } }), null);
 	assert.equal(parseIntelligenceBriefSourceWindow({ scope: gallery, cutoff: null, timezone: 'not/a-timezone' }), null);
 });
+
+test('launch scopes: one per album and one for every launch, keyed exactly as PostgreSQL prints the jsonb', () => {
+	// Read back from production on 2026-10-06: analytics_intelligence_scope_key('{"albumKey":"Re7kho","kind":"launch"}').
+	assert.equal(intelligenceScopeKey({ kind: 'launch', albumKey: 'Re7kho' }), '{"kind": "launch", "albumKey": "Re7kho"}');
+	assert.equal(intelligenceScopeKey({ kind: 'launch', albumKey: null }), '{"kind": "launch", "albumKey": null}');
+	assert.deepEqual(parseIntelligenceScope({ albumKey: 'Re7kho', kind: 'launch' }), { kind: 'launch', albumKey: 'Re7kho' });
+	assert.equal(parseIntelligenceScope({ kind: 'launch' }), null, 'the album key is stated, even when it is null');
+	assert.equal(parseIntelligenceScope({ kind: 'launch', albumKey: '../x' }), null);
+	assert.equal(parseIntelligenceScope({ kind: 'launch', albumKey: 'Re7kho', start: '2026-09-25' }), null, 'a launch key never holds a date');
+	const window = parseIntelligenceBriefSourceWindow({ scope: { kind: 'launch', albumKey: null }, cutoff: null, timezone: 'America/Chicago', current: null, previous: null });
+	assert.deepEqual(window?.scope, { kind: 'launch', albumKey: null });
+});

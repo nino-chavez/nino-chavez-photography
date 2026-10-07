@@ -3,9 +3,9 @@ import type { AssistantAnswer, IntelligenceReport, IntelligenceScope } from './i
 export type IntelligenceOperation = 'explain_report' | 'album_comparison' | 'promote_photos' | 'download_reliability' | 'action_follow_up' | 'site_retention';
 const OPERATIONS: Record<IntelligenceOperation, { rules: readonly string[]; needsJob: boolean; limit: string }> = {
 	explain_report: { rules: [], needsJob: false, limit: 'This answer explains only the stored evidence. It does not refresh collection.' },
-	album_comparison: { rules: ['momentum', 'discovery_friction', 'collection_health'], needsJob: true, limit: 'Comparable albums require known catalogue facts and a completed bounded calculation.' },
-	promote_photos: { rules: ['strong_photo_response'], needsJob: false, limit: 'Response patterns do not judge photographic quality.' },
-	download_reliability: { rules: ['rendering_download_reliability'], needsJob: false, limit: 'A handoff is not evidence that a visitor saved a file.' },
+	album_comparison: { rules: ['launch_reach', 'launch_finished', 'discovery_friction', 'collection_health'], needsJob: true, limit: 'Comparable albums require known catalogue facts and a completed bounded calculation.' },
+	promote_photos: { rules: ['strong_photo_response', 'seen_rarely_opened'], needsJob: false, limit: 'Response patterns do not judge photographic quality.' },
+	download_reliability: { rules: ['rendering_download_reliability', 'launch_failures'], needsJob: false, limit: 'A handoff is not evidence that a visitor saved a file.' },
 	action_follow_up: { rules: ['follow_up'], needsJob: false, limit: 'An observed difference is not causal proof.' },
 	site_retention: { rules: ['profile_response', 'writing_demo_response'], needsJob: true, limit: 'A completed bounded calculation needs eligible same-view journey evidence.' }
 };

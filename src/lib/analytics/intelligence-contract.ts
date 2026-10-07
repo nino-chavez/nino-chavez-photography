@@ -5,7 +5,13 @@ import type { AlbumComparison } from './intelligence-comparison.server';
 
 export type IntelligenceScope =
 	| { kind: 'gallery'; query: ReportQuery }
-	| { kind: 'sites'; period: 7 | 30 | 90; section: SiteSection | 'all' };
+	| { kind: 'sites'; period: 7 | 30 | 90; section: SiteSection | 'all' }
+	/**
+	 * A launch is the time since an album's first publication. `albumKey` names one album's launch (the album
+	 * report reads it); null is every recent launch at once (Home reads it). The key never holds a date, so the
+	 * scheduler and the pages agree on it from one day to the next.
+	 */
+	| { kind: 'launch'; albumKey: string | null };
 
 export type IntelligenceCoverage = 'complete' | 'partial' | 'unavailable';
 export type FindingStatus = 'open' | 'dismissed' | 'snoozed' | 'recorded' | 'recovered' | 'acknowledged';
@@ -25,6 +31,8 @@ export interface FindingEvidence {
 	current?: number;
 	previous?: number;
 	strength: EvidenceStrength;
+	/** A launch compared with the launches published before it, at the same age. */
+	comparison?: { age: 3 | 7; rank: number; launches: number; tied: boolean; median: number; lowest: number; highest: number; excluded: number };
 }
 
 export interface Finding {
@@ -36,6 +44,10 @@ export interface Finding {
 	explanation: string;
 	action: string;
 	evidence: FindingEvidence;
+	/** Launch findings say why the change matters, the evidence in a sentence, and what the evidence cannot say. */
+	why?: string;
+	evidenceText?: string;
+	limits?: string[];
 	reportHref: string;
 	/** Stored only when the linked public photo still exists; projection rechecks it. */
 	evidenceLinks?: string[];
@@ -149,6 +161,8 @@ export interface IntelligenceReport {
 	snapshotId?: string;
 	scope: IntelligenceScope;
 	generatedAt: string;
+	/** When the scheduler last confirmed this snapshot still matches its evidence. A snapshot is written only when something changes. */
+	checkedAt?: string;
 	cutoff: string | null;
 	coverage: IntelligenceCoverage;
 	findings: Finding[];
@@ -178,7 +192,11 @@ export interface AssistantAnswer {
 	comparison?: AlbumComparison;
 }
 
-export const INTELLIGENCE_RULE_VERSION = 3;
+export const INTELLIGENCE_RULE_VERSION = 4;
+/** How often the scheduler refreshes a saved scope. The worker wakes every minute; a scope is re-queued once its pointer is this old. */
+export const INTELLIGENCE_REFRESH_CADENCE_SECONDS = 15 * 60;
+/** Fewest actions a rule may state a change, rank or rate from. Shared by the calendar and launch rules. */
+export const minimumSample = 20;
 export const INTELLIGENCE_PAGE_SIZE = 20;
 export const INTELLIGENCE_BRIEF_PAGE_SIZE = 10;
 export const STANDARD_SITE_INTELLIGENCE_SCOPES: readonly IntelligenceScope[] = [
@@ -237,6 +255,11 @@ export function parseIntelligenceScope(value: unknown): IntelligenceScope | null
 		&& ['all', 'profile', 'writing', 'demos', 'photography', 'other'].includes(raw.section as string)) {
 		return { kind: 'sites', period: raw.period as 7 | 30 | 90, section: raw.section as SiteSection | 'all' };
 	}
+	if (raw.kind === 'launch') {
+		if (Object.keys(raw).length !== 2 || !('albumKey' in raw)) return null;
+		if (raw.albumKey === null) return { kind: 'launch', albumKey: null };
+		return typeof raw.albumKey === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(raw.albumKey) ? { kind: 'launch', albumKey: raw.albumKey } : null;
+	}
 	if (raw.kind !== 'gallery' || Object.keys(raw).some((key) => key !== 'kind' && key !== 'query')) return null;
 	const query = normalizeQuery(raw.query);
 	return query ? { kind: 'gallery', query } : null;
@@ -270,6 +293,18 @@ export function standardIntelligenceScopes(now = new Date()): IntelligenceScope[
 		return { kind: 'gallery' as const, query: { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10), measure: 'photo_opens' as const, scope: 'all' as const, albumKeys: [], compare: 'previous' as const, traffic: 'conservative' as const } };
 	});
 	return [...gallery, ...STANDARD_SITE_INTELLIGENCE_SCOPES];
+}
+
+/** Home's scope: every recent launch. */
+export const GALLERY_LAUNCH_SCOPE: IntelligenceScope = { kind: 'launch', albumKey: null };
+
+/** One album's launch scope. */
+export function launchScope(albumKey: string): IntelligenceScope {
+	return { kind: 'launch', albumKey };
+}
+
+export function isLaunchScope(scope: IntelligenceScope): scope is Extract<IntelligenceScope, { kind: 'launch' }> {
+	return scope.kind === 'launch';
 }
 
 export function declaredComparison(scope: IntelligenceScope) {

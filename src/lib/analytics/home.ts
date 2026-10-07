@@ -3,6 +3,7 @@ import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, sumCo
 import { nameWithoutDate } from './launch-report-view';
 import type { HomeProblemTarget } from './data-anchors';
 import { minimumSample } from './intelligence-rules';
+import { INTELLIGENCE_REFRESH_CADENCE_SECONDS, type Finding } from './intelligence-contract';
 
 /**
  * Home: what happened since you last looked, across both sites, from reads that already exist.
@@ -23,6 +24,15 @@ export const JUST_FINISHED_DAYS = 3;
 /** Days since the newest first publication after which Home says the gallery is quiet. */
 export const QUIET_AFTER_DAYS = 7 + JUST_FINISHED_DAYS;
 export const HOME_LAUNCH_CARDS = 3;
+/** At most this many current findings show on Home, each beside the launch it concerns. */
+export const HOME_FINDINGS = 3;
+/**
+ * Findings checked longer ago than this are said to be possibly out of date. The scheduler re-checks a scope every
+ * 15 minutes (INTELLIGENCE_REFRESH_CADENCE_SECONDS). A normal check can be later than that by the queue (about 25
+ * scopes at 4 a minute, so a few minutes) and by a failed refresh's retries (30 s doubling: 1, 2, 4, 8 minutes).
+ * Four cadences, one hour, clears all of that, so a check older than an hour means the worker has stalled.
+ */
+export const FINDINGS_LATE_AFTER_MS = 4 * INTELLIGENCE_REFRESH_CADENCE_SECONDS * 1000;
 /** The current day's counts refresh every 30 minutes; two missed runs plus slack. The same limit the intelligence evidence uses (`gallery_summary_overdue`). */
 export const REFRESH_STALE_MS = 75 * 60_000;
 export const SPARK_DAYS = 7;
@@ -61,6 +71,14 @@ export function chicagoTime(instant: string, today: string): string {
 	const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }).format(at);
 	const day = chicagoDate(instant);
 	return day === today ? time : `${dayLabel(day, today)}, ${time}`;
+}
+/** When a group of findings was last checked, said plainly; late or unknown says the findings may be out of date. */
+export interface FindingsCheck { text: string; late: boolean }
+export function findingsCheck(checkedAt: string | null, now: string, today: string): FindingsCheck {
+	if (!checkedAt || Number.isNaN(Date.parse(checkedAt))) return { text: 'When these were last checked is not known, so they may be out of date.', late: true };
+	const time = `${chicagoTime(checkedAt, today)} Chicago time`;
+	if (Date.parse(now) - Date.parse(checkedAt) > FINDINGS_LATE_AFTER_MS) return { text: `Last checked ${time}, more than an hour ago. These may be out of date.`, late: true };
+	return { text: `Last checked ${time}.`, late: false };
 }
 const inferredTag = (launch: Pick<Launch, 'basis'>) => (launch.basis === 'inferred' ? ' (inferred)' : '');
 
@@ -350,6 +368,10 @@ export interface HomeCard {
 	comparison: string;
 	bars: SparkBar[];
 	sparkLabel: string;
+	/** Current findings about this launch, most urgent first. Empty when there are none; Home then shows nothing. */
+	findings: Finding[];
+	/** When those findings were last checked. Null when there are none. */
+	findingsCheck: FindingsCheck | null;
 }
 
 export function launchCard(launch: Launch, all: readonly Launch[], today: string, cover: string | null): HomeCard {
@@ -378,7 +400,7 @@ export function launchCard(launch: Launch, all: readonly Launch[], today: string
 	return {
 		albumKey: launch.albumKey, name: launch.albumName ?? launch.albumKey, cover,
 		published: `First published ${dayLabel(chicagoDate(launch.firstPublishedAt), today)}${inferredTag(launch)}`,
-		status: statusLabel(launch), phase, opens, comparison, bars: spark.bars, sparkLabel: spark.label
+		status: statusLabel(launch), phase, opens, comparison, bars: spark.bars, sparkLabel: spark.label, findings: [], findingsCheck: null
 	};
 }
 
@@ -513,6 +535,23 @@ export interface HomeInput {
 	siteActionsStale: { refreshedAt: string } | null;
 	incidents: string[] | null;
 	diagnostics: ProblemInput['diagnostics'];
+	/** Findings from the gallery-wide launch scope, most urgent first, already checked for visibility. */
+	findings: readonly Finding[];
+	/** When the scheduler last checked them; null when unknown. */
+	findingsCheckedAt: string | null;
+}
+
+/**
+ * Up to HOME_FINDINGS findings, each placed on the card of the launch it concerns. A finding about a launch with
+ * no card stays on that album's report; Home does not list it apart from its launch.
+ */
+export function placeFindings(cards: HomeCard[], findings: readonly Finding[], check: FindingsCheck | null = null): HomeCard[] {
+	const onCards = new Set(cards.map((card) => card.albumKey));
+	const shown = findings.filter((finding) => finding.target.albumKey && onCards.has(finding.target.albumKey)).slice(0, HOME_FINDINGS);
+	return cards.map((card) => {
+		const mine = shown.filter((finding) => finding.target.albumKey === card.albumKey);
+		return { ...card, findings: mine, findingsCheck: mine.length ? check : null };
+	});
 }
 
 export interface HomeView {
@@ -537,7 +576,7 @@ export function buildHome(input: HomeInput): HomeView {
 	const stale = staleness(input.freshness, input.lastCompleteDay, input.asOf);
 	const opening = openingSentence({ launches, stale, today });
 	const newest = launches ? [...launches].sort((x, y) => Date.parse(y.firstPublishedAt) - Date.parse(x.firstPublishedAt)) : [];
-	const cards = newest.slice(0, HOME_LAUNCH_CARDS).map((launch) => launchCard(launch, newest, today, input.covers.get(launch.albumKey) ?? null));
+	const cards = placeFindings(newest.slice(0, HOME_LAUNCH_CARDS).map((launch) => launchCard(launch, newest, today, input.covers.get(launch.albumKey) ?? null)), input.findings, findingsCheck(input.findingsCheckedAt, input.asOf, today));
 	const due = launches ? nextItems(launches) : [];
 	return {
 		state: opening.state, asOf: input.asOf, today, lastCompleteDay: input.lastCompleteDay,

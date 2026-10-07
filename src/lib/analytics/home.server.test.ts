@@ -225,3 +225,16 @@ test('contact link clicks need a full 7 days of history; the week before needs i
 	assert.deepEqual(stale.view.problems.map((problem) => problem.id), ['site-actions-stale']);
 	assert.equal(stale.view.problems[0].href, 'site-measures');
 });
+
+test('Home shows no finding for an album unlisted after its snapshot was written, with the real visibility read', async () => {
+	const { loadVisibleFindings } = await import('./intelligence-panel.server');
+	const { HOME, launchFinding, publicClient } = await import('./intelligence-public.fixture');
+	const world = (unlisted: string[]) => publicClient({ snapshots: [{ scope: HOME, findings: [launchFinding('launch-finished-A', 'A'), launchFinding('launch-finished-B', 'B')], checkedAt: '2026-10-06T15:45:00Z' }], albums: ['A', 'B', 'C'], unlisted });
+	const { client } = fixture();
+	const hidden = await loadHome({ admin: client, env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: () => loadVisibleFindings(world(['A']), HOME, 'test') });
+	assert.deepEqual(hidden.cards.map((card) => [card.albumKey, card.findings.map((f) => f.id)]), [['A', []], ['B', ['launch-finished-B']], ['C', []]]);
+	assert.equal(hidden.cards[0].findingsCheck, null);
+	assert.deepEqual(hidden.cards[1].findingsCheck, { text: 'Last checked 10:45 AM Chicago time.', late: false });
+	const listed = await loadHome({ admin: client, env: {}, fetch: noProvider as unknown as typeof fetch, now: AS_OF, findings: () => loadVisibleFindings(world([]), HOME, 'test') });
+	assert.deepEqual(listed.cards[0].findings.map((f) => f.id), ['launch-finished-A'], 'control: the same snapshot while A is public');
+});
