@@ -1,0 +1,107 @@
+NC
+Nino Chavez / Photography reports
+Home
+Albums
+Site
+Data
+Settings
+
+SETTINGS
+
+Your analytics choices, private reports and saved views.
+This browser
+
+Whether this browser is counted when you look at your own site. Visitors set the same choices for themselves on the public analytics preferences page
+(opens in a new tab)
+, which this page does not change.
+
+YOUR CHOICE
+
+Analytics preferences
+
+Linked analytics is optional. It uses random browser and visit IDs. Turning it off stops new linked collection and cancels queued exports. Records already being sent or stored by the provider are not automatically deleted.
+
+Allow linked analytics
+Exclude this browser from audience analytics
+Private reports
+
+A launch recap is the day 3 and day 7 summary of each new album. These settings say how long private records are kept and whether recaps are emailed.
+
+PRIVATE REPORTING SETTINGS
+
+Private records and launch recaps
+
+These settings apply to private records only. Visitor privacy and public aggregate reporting follow their separate contracts.
+
+Keep private records for
+Until I delete them
+90 days
+One year
+Launch recaps
+
+Each album gets a recap on day 3 and day 7 after it is first public, at 8:00 AM Chicago time.
+
+Recaps are written for every album on their own and listed on its report. They are public and are not deleted with your private records.
+
+Email is off, so no recap is emailed. There is no verified address yet.
+
+Save private settings
+
+Optional email delivery
+
+Send launch recaps to your confirmed email
+
+Confirmed destination: walk-owner@example.test
+
+Email delivery is unavailable because the server sender is not configured. You can still keep it disabled.
+
+Enable email delivery
+
+Enabling records your explicit choice and sends nothing now. A provider acceptance for a future recap is not proof that it reached this inbox.
+
+Private results and history
+Show
+Saved views
+
+A saved view keeps filters, not numbers: it opens the photo explorer with the same dates, measure and albums, and the numbers are read fresh.
+
+JCA at ACC, first week (invented view)
+(opens the photo explorer with these filters)
+Updated Oct 5, 2026
+
+Sep 25, 2026 to Oct 2, 2026 · download requests · one album · audience traffic
+
+Rename
+Rename
+JCA at ACC, first week (invented view)
+Delete
+JCA at ACC, first week (invented view)
+Whole gallery, last 30 days (invented view)
+(opens the photo explorer with these filters)
+Updated Oct 4, 2026
+
+Sep 6, 2026 to Oct 5, 2026 · photo opens · all albums · audience traffic
+
+Rename
+Rename
+Whole gallery, last 30 days (invented view)
+Delete
+Whole gallery, last 30 days (invented view)
+Save a view
+
+This saves the whole gallery over the last complete days. To save a view with album filters, or to change the filters of a saved one, use the photo explorer, which has them.
+
+Name
+Days
+Last 7 days
+Last 30 days
+Last 90 days
+Count
+photo opens
+album opens
+download requests
+favorites
+shares
+Save view
+
+These choices belong to this page. They do not change what visitors see or what the public site counts.

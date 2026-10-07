@@ -64,16 +64,18 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
   credentials must not be used for this report. The report at
   `/sites` reads Cloudflare Web Analytics page-load groups for
   `ninochavez.co`. It groups the profile, writing, demos, and photography paths, as a separate traffic source. The opt-in first-party tracker measures actions and linked views across public sections. Gallery actions remain in
-  the separate gallery report. Missing or invalid access shows an explicit unavailable state.
+  the album pages and the photo explorer. Missing or invalid access shows an explicit unavailable state.
 
 ## Domains
 - ninochavez.co/photography (apex router to Pages)
 - analytics.ninochavez.co/ (same Pages project). The proxied
   `analytics` CNAME points to `nino-chavez-photography.pages.dev`, and the hostname is attached
   as a Pages custom domain. The bare root `/` is served by the app as Home. SvelteKit
-  reroutes `/`, `/albums`, `/albums/<key>`, `/albums/export.csv`, `/sites`, `/data`, `/settings`,
-  `/gallery`, and `/gallery/export.csv` internally while keeping clean public URLs. The gallery build base
-  remains `/photography`.
+  reroutes `/`, `/albums`, `/albums/<key>`, `/albums/export.csv`, `/photos`, `/photos/export.csv`,
+  `/sites`, `/data`, and `/settings` internally while keeping clean public URLs. The gallery build base
+  remains `/photography`. `/gallery` and `/gallery/export.csv` (the retired gallery report) are rerouted
+  too, but only so that the old-address redirect runs: SvelteKit answers 404 to any path outside
+  `/photography` before `handle`, so without that reroute the redirect would never fire.
 - One Cloudflare Page Rule acts on this host: `49cd0626a9c5fe0e70031b988f948c2c` matches
   `analytics.ninochavez.co/?*` (the root with a query string) and forwards it with a 301 to the
   site report, so old links that carried site-report filters on the root keep working. Page
@@ -82,6 +84,9 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
   report) was deleted on 2026-10-06 so the root reaches Home. Browsers that followed its 301
   may have cached it; a private window shows the current behaviour.
 - Old analytics GET/HEAD URLs redirect to this hostname. Old-host analytics writes return 404.
+  The retired gallery report's addresses (`/gallery`, `/gallery/export.csv`, `/photography/analytics`
+  and `/photography/analytics/operator[/export.csv]`) redirect once, with a 308, to the page that took
+  over (`src/lib/analytics/old-addresses.ts`); a POST to one is a 404.
   The report remains public; the hostname is an access-control boundary for a future
   Cloudflare Access policy, not authentication by itself.
 
@@ -93,7 +98,22 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
 - `curl -fsSL https://ninochavez.co/photography` returns 200
 - `curl -s https://analytics.ninochavez.co/` returns 200 and a page titled "Home · Photography
   reports", and `curl -I 'https://analytics.ninochavez.co/?period=30'` redirects to the site
-  report. The old gallery analytics URL redirects to the new host.
+  report (that is Page Rule `49cd0626`, so the response has no `x-frame-options`).
+- The retired gallery report redirects once. Each of these must answer `308` with this `Location`,
+  and the response must carry `x-frame-options: DENY` (it comes from the app, not from a Page Rule):
+
+  | Request (`curl -sI`) | Location |
+  | --- | --- |
+  | `https://analytics.ninochavez.co/gallery` | `https://analytics.ninochavez.co/` |
+  | `https://analytics.ninochavez.co/gallery?section=photos&period=7` | `https://analytics.ninochavez.co/photos?period=7` |
+  | `https://analytics.ninochavez.co/gallery?section=measurement&period=7` | `https://analytics.ninochavez.co/data?period=7` |
+  | `https://analytics.ninochavez.co/gallery/export.csv?period=7` | `https://analytics.ninochavez.co/photos/export.csv?period=7` |
+  | `https://analytics.ninochavez.co/photography/analytics/operator` | `https://analytics.ninochavez.co/` |
+
+  Following any of them once must not redirect again. A POST to `/gallery` answers 404.
+- `/photos` on the analytics subdomain returns 200 with a page titled "Photos · Photography
+  reports", and `/photos/export.csv?period=7` returns 200 with `content-type: text/csv`. Before this
+  release both returned a bare 404 with no `x-frame-options` (checked 2026-10-07).
 - `/data` and `/settings` on the analytics subdomain return 200. Page Rule `49cd0626` matches only
   `analytics.ninochavez.co/?*`, so neither path is caught (checked 2026-10-06 through the API; both
   returned the app's own 404 before this release, not a 301).

@@ -1,0 +1,86 @@
+NC
+Nino Chavez / Photography reports
+Home
+Albums
+Site
+Data
+Settings
+
+ALBUM INDEX
+
+Albums
+
+254 public albums. 7 have a launch date, the day they were first published. The other 247 do not.
+
+Counts are browser actions, not people, and download requests are requests, not saved files. Counted over complete days in Chicago time. Albums that are not public are not listed.
+
+Find an album
+Export CSV
+Photos across all albums
+
+Launches, newest first
+
+Each launch is counted from its first publication and compared with the other launches at the same age. First 3 days and week 1 are photo opens in complete days. Rank at day 7 is among the launches with a complete first week. A launch younger than that shows its figure so far and is not ranked.
+
+Launches, newest first, with photo opens in the first 3 days and first week, rank at day 7, and download requests in the first week
+Compare	Album	First published	Status	First 3 days	Week 1	Rank at day 7	Download requests, week 1
+
+Compare College Women's VB - Millikin at North Central - 09-23-2026
+	College Women's VB - Millikin at North Central - 09-23-2026	Sep 26 (inferred)	Finished	207	266	4th of 7	26
+
+Compare HS Girls VB - JCA at ACC - 09-22-2026
+	HS Girls VB - JCA at ACC - 09-22-2026	Sep 25 (inferred)	Finished	804	931	2nd of 7	61
+
+Compare HS Girls VB - JCA vs PNHS - 08-25-2026
+	HS Girls VB - JCA vs PNHS - 08-25-2026	Aug 28 (inferred)	Finished	1,117	1,258	1st of 7	109
+
+Compare Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026
+	Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026	Aug 23 (inferred)	Finished	124	125	5th of 7	15
+
+Compare Diggin' for Drakes - 08-09-2026
+	Diggin' for Drakes - 08-09-2026	Aug 12 (inferred)	Finished	25	25	7th of 7	0
+
+Compare Chicago Big Dig 2026 - North Avenue Beach
+	Chicago Big Dig 2026 - North Avenue Beach	Jul 26 (inferred)	Finished	549	636	3rd of 7	64
+
+Compare Jalapeño Open - July 2026
+	Jalapeño Open - July 2026	Jul 19 (inferred)	Finished	10	37	6th of 7	5
+Compare launches
+
+Tick up to 4 launches to draw their photo opens, added up by day since publication, on one chart. 0 of 4 chosen.
+
+Choose at least two launches to compare.
+
+Albums without a launch date
+
+These cannot be compared with launches. They are ordered by photo opens in the last 30 complete days, Sep 6 to Oct 5.
+
+Albums without a launch date, with photo opens in the last 30 complete days and the reason they have no launch date
+Album	Photos	Photo opens, last 30 days	Last activity	Why no launch date
+Bell Pepper Open – Official Gallery	100	30	Oct 5	Its first publication was never observed
+KRUSH Volleyball – Suburban Slam Series #1 - Jun 14	211	29	Oct 4	Its first publication was never observed
+VLA - Spring 2026	116	29	Oct 4	Already public before records began
+630 Breeze 2025 Tryouts	77	24	Oct 2	Already public before records began
+Downers Grove North vs Plainfield	100	23	Oct 5	Already public before records began
+Saturday Triples — The Raiders Open	363	22	Oct 5	Its first publication was never observed
+630 Breeze - Women's Tryouts	27	21	Oct 4	Already public before records began
+DU Women's Bowling 08-Nov - Nov 9	100	20	Oct 3	Already public before records began
+VLA BREEZE - Fall - Oct 26	213	19	Oct 5	Already public before records began
+Chicago AVP - San Diego Smash	100	19	Sep 27	Already public before records began
+Krush Power RevCo - March	81	17	Sep 27	Already public before records began
+MSOE vs Aurora - Mar 21	59	16	Oct 4	Already public before records began
+WVB - North Central vs Carthage	59	16	Oct 1	Already public before records began
+Bell Pepper Open - June 2026	119	16	Sep 28	Its first publication was never observed
+Benedictine vs Concordia - Feb 21	62	15	Oct 2	Already public before records began
+ACC Boys Golf - Sep 13	100	14	Oct 5	Already public before records began
+Lewis vs Pepperdine - Winter 2026	245	14	Oct 4	Already public before records began
+Surf City Collegiate Challenge - Nov 1	100	14	Oct 4	Already public before records began
+GCU vs UCLA	100	14	Sep 27	Already public before records began
+Windy City Roundup – Boys Volleyball	100	14	Sep 26	Already public before records began
+ACC Football Homecoming - Sep 23	98	13	Oct 5	Already public before records began
+HS Boys VB - PNHS vs WWSHS - 04-18-2026	57	12	Oct 3	Already public before records began
+Lewis vs Ohio State - Mar 22	100	12	Sep 26	Already public before records began
+USC Men's vs Emmanuel	100	12	Sep 26	Already public before records began
+WMVB - North Central College vs Aurora Uni	99	11	Oct 2	Already public before records began
+Show 25 more (104 left)
+Show 118 albums with no activity in the last 30 days
