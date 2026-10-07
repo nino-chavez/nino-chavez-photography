@@ -81,6 +81,10 @@ npm test                         # Playwright E2E tests
 - `CF_IMAGES_API_TOKEN` → `op://Developer Secrets/Cloudflare photography/images_api_token`
 - If an item read fails, inspect field labels first. Do not assume every item uses `credential`.
 
+### Serving a build under wrangler
+- Start `wrangler pages dev` with `node scripts/wrangler-pages-dev.mjs <cwd> [pages dev args]`. It writes `.env.local` to a 0600 `.dev.vars` in `<cwd>` (found from a linked worktree too) and removes it on exit.
+- Never pass a secret as `--binding KEY=value`: argv is printed by `ps` and `pgrep -fl`, and two sessions leaked this project's credentials into transcripts that way on 2026-10-07. The launcher refuses that form.
+
 ## Database
 - Primary table: `photo_metadata` (~20K rows)
 - Key columns: photo_id, sport_type, quality_score, cf_image_id
