@@ -56,6 +56,8 @@ export type StatusState = 'current' | 'limited' | 'partial' | 'attention';
 
 export interface StatusView {
 	state: StatusState;
+	/** Whether the reader is the signed-in owner. Delivery and collection health are the owner's only, so a visitor's page cannot speak for them. */
+	owner: boolean;
 	headline: string;
 	/** When the gallery counts were last refreshed and what they cover, or why that is not known, then what the numbers do not reach back to. */
 	detail: string;
@@ -67,15 +69,20 @@ export interface StatusView {
 	limits: string[];
 }
 
-/** A page with a part missing cannot say nothing is wrong. It says what could not be read, and that nothing was found in the rest. */
-const partialHeadline = (parts: number) => `${plural(parts, 'part')} of this page could not be read. No problem was found in the rest.`;
+/**
+ * A page with a part missing cannot say nothing is wrong. It says what could not be read. The owner sees every check, so for the
+ * owner it can add that nothing was found in the rest; a visitor is not shown delivery and collection health, so a visitor's
+ * page says that instead of an all-clear it cannot vouch for.
+ */
+const partialHeadline = (parts: number, owner: boolean) => `${plural(parts, 'part')} of this page could not be read. ${owner ? 'No problem was found in the rest.' : 'Collection health is shown to the owner only.'}`;
 
 export function statusView(input: {
 	problems: HomeProblem[]; notRead: NotRead[]; limits?: string[]; refreshedAt: string | null; lastCompleteDay: string; today: string;
 	/** A problem that has its own headline: said in full, instead of "One thing needs attention.", when it is the only problem. */
 	lead?: { id: string; headline: string } | null;
+	owner: boolean;
 }): StatusView {
-	const { problems, notRead, refreshedAt, lastCompleteDay, today } = input;
+	const { problems, notRead, refreshedAt, lastCompleteDay, today, owner } = input;
 	const limits = input.limits ?? [];
 	const state: StatusState = problems.length ? 'attention' : notRead.length ? 'partial' : limits.length ? 'limited' : 'current';
 	const headline = state === 'current'
@@ -83,7 +90,7 @@ export function statusView(input: {
 		: state === 'limited'
 			? `The gallery counts are current. ${limits[0]}`
 			: state === 'partial'
-				? partialHeadline(notRead.length)
+				? partialHeadline(notRead.length, owner)
 				: problems.length === 1 ? (input.lead && problems[0].id === input.lead.id ? input.lead.headline : 'One thing needs attention.') : `${problems.length} things need attention.`;
 	// A headline that is the problem's own first sentence is not said again beside it: the list carries only what the headline leaves out.
 	const lead = input.lead && state === 'attention' && problems.length === 1 && problems[0].id === input.lead.id ? input.lead : null;
@@ -93,7 +100,7 @@ export function statusView(input: {
 		: `The gallery counts were last refreshed at ${chicagoTime(refreshedAt, today)} Chicago time and cover every complete day through ${formatDay(lastCompleteDay)}. They normally refresh every 30 minutes.`;
 	// The headline of a limited page already says the first limit; the detail says the others, and every one when something worse leads.
 	const rest = state === 'limited' ? limits.slice(1) : state === 'partial' || state === 'attention' ? limits : [];
-	return { state, headline, detail: [refreshed, ...rest].join(' '), refreshed, problems: listed, notRead, limits };
+	return { state, owner, headline, detail: [refreshed, ...rest].join(' '), refreshed, problems: listed, notRead, limits };
 }
 
 /**
@@ -105,7 +112,7 @@ export function withNotRead(status: StatusView, extra: NotRead): StatusView {
 	if (status.notRead.some((item) => item.id === extra.id)) return status;
 	const notRead = [...status.notRead, extra];
 	if (status.problems.length) return { ...status, notRead };
-	return { ...status, notRead, state: 'partial', headline: partialHeadline(notRead.length), detail: [status.refreshed, ...status.limits].join(' ') };
+	return { ...status, notRead, state: 'partial', headline: partialHeadline(notRead.length, status.owner), detail: [status.refreshed, ...status.limits].join(' ') };
 }
 
 /** The detailed event counts, which arrive after the rest of the page. */
@@ -580,7 +587,7 @@ export function buildDataView(input: DataInput): DataView {
 		: null;
 	return {
 		days, window: { start, end: lastCompleteDay, label: `${formatDay(start)} – ${formatDay(lastCompleteDay)}` }, today, lastCompleteDay, owner: input.owner,
-		status: statusView({ problems, notRead, limits, refreshedAt: input.refreshedAt, lastCompleteDay, today, lead: rejections && rejections.kind === 'unusual' ? { id: 'rejections-unusual', headline: rejections.headline } : null }),
+		status: statusView({ problems, notRead, limits, refreshedAt: input.refreshedAt, lastCompleteDay, today, lead: rejections && rejections.kind === 'unusual' ? { id: 'rejections-unusual', headline: rejections.headline } : null, owner: input.owner }),
 		coverage: report ? coverageView({ report, days, refreshedAt: input.refreshedAt, lastCompleteDay, now: input.asOf, today }) : null,
 		traffic: report ? trafficView({ report, names: input.names }) : null,
 		counting: report ? countingView({ report }) : null,

@@ -170,7 +170,9 @@ test('the headline is the worst state on the page: a limit leads a quiet page, a
 	assert.match(worse.status.detail, /Search and download evidence starts on Sep 29/);
 	const partial = buildDataView(input({ posthogConfigured: false }));
 	assert.equal(partial.status.state, 'partial');
-	assert.equal(partial.status.headline, '1 part of this page could not be read. No problem was found in the rest.');
+	// A visitor is not shown delivery and collection health, so a visitor's page never gives an all-clear for the rest.
+	assert.equal(partial.status.headline, '1 part of this page could not be read. Collection health is shown to the owner only.');
+	assert.equal(buildDataView(input({ posthogConfigured: false, owner: true })).status.headline, '1 part of this page could not be read. No problem was found in the rest.');
 	// Evidence that could not be read at all is a part not read, never "none recorded".
 	const broken = buildDataView(input({ report: report({ diagnosticsCoverage: { availableFrom: null, label: 'x', error: 'diagnostics unavailable' } }) }));
 	assert.deepEqual(broken.status.notRead.map((item) => item.id), ['evidence']);
@@ -243,7 +245,7 @@ test('the status window is the last seven complete days, as on Home, however man
 	const freshness: Freshness = { incompleteDays: ['2026-09-20', '2026-10-03'], refreshedAt: REFRESHED, checked: true };
 	assert.deepEqual(freshnessForStatus(freshness, LAST, 7).incompleteDays, ['2026-10-03']);
 	assert.deepEqual(freshnessForStatus(freshness, LAST, 30).incompleteDays, ['2026-09-20', '2026-10-03']);
-	assert.equal(statusView({ problems: [], notRead: [], refreshedAt: null, lastCompleteDay: LAST, today: TODAY }).detail, 'When the gallery counts were last refreshed could not be read, so whether they are current is unknown. They cover complete days through Oct 5.');
+	assert.equal(statusView({ problems: [], notRead: [], refreshedAt: null, lastCompleteDay: LAST, today: TODAY, owner: true }).detail, 'When the gallery counts were last refreshed could not be read, so whether they are current is unknown. They cover complete days through Oct 5.');
 });
 
 test('site measures: two counts that are not expected to match, with the days each covers', () => {
@@ -296,7 +298,8 @@ test('counting rules and event counts say what a number stands for', () => {
 	assert.ok(!status.notRead.some((item) => item.id === 'events'));
 	const failed = withNotRead(status, EVENTS_NOT_READ);
 	assert.equal(failed.state, 'partial');
-	assert.equal(failed.headline, '1 part of this page could not be read. No problem was found in the rest.');
+	assert.equal(failed.headline, '1 part of this page could not be read. Collection health is shown to the owner only.');
+	assert.equal(withNotRead(buildDataView(input({ owner: true })).status, EVENTS_NOT_READ).headline, '1 part of this page could not be read. No problem was found in the rest.');
 	assert.match(failed.detail, /Search and download evidence starts on Sep 29/, 'what the numbers do not reach back to is still said');
 	assert.equal(withNotRead(failed, EVENTS_NOT_READ), failed, 'the same part is not added twice');
 	// Something that needs attention stays the headline.
