@@ -1,0 +1,33 @@
+NC
+Nino Chavez / Photography reports
+Home
+Albums
+Site
+Data
+Settings
+Gallery report
+
+SETTINGS
+
+Your analytics choices, private reports and saved views.
+This browser
+
+Whether this browser is counted when you look at your own site. Visitors set the same choices for themselves on the public analytics preferences page
+(opens in a new tab)
+, which this page does not change.
+
+YOUR CHOICE
+
+Analytics preferences
+
+Linked analytics is optional. It uses random browser and visit IDs. Turning it off stops new linked collection and cancels queued exports. Records already being sent or stored by the provider are not automatically deleted.
+
+Allow linked analytics
+Exclude this browser from audience analytics
+Private reports and saved views
+
+Signing in adds how long private records are kept, the launch recap settings, optional email delivery, and your saved views. Nothing private is read or shown until you sign in.
+
+Sign in with a magic link
+
+These choices belong to this page. They do not change what visitors see or what the public site counts.

@@ -260,7 +260,7 @@ Launch findings never enter the incident table. Every finding there becomes an o
 - Scopes: `{kind:'launch', albumKey}` for one album and `{kind:'launch', albumKey: null}` for Home, stored in the existing snapshot, pointer and job tables. The key holds no date, so it is the same every day. **No migration.**
 - Refresh: Home's scope and each launch up to day 16 (the 14-day window plus 2 days, so the last refresh writes the empty snapshot that retires its findings). Older albums are not refreshed and have no launch pointer. This is a bounded choice, not one scope per album ever published. A failed launch read retries; it never writes an empty snapshot over a good one.
 - A refresh writes a snapshot only when the evidence or findings change, apart from the run time, the summary cutoff and the read instant. Otherwise it touches the current pointer. Measured on the last 24 hours of production snapshots (rule version 3, so gallery evidence still held `albumMomentum`): **2,073 written; 64 with the fingerprint.** Launch scopes add about one or two a day each, roughly 70 a day in all.
-- Step 7 note: launch scopes travel in `p_standard_scopes`, so they would also join daily and weekly brief jobs if an owner enabled a schedule. None has. Step 7 replaces those briefs.
+- Step 7 note: launch scopes travel in `p_standard_scopes`. Step 7 (below) replaced the daily and weekly briefs, so they no longer join any brief.
 
 ### Replay on real history
 
@@ -278,6 +278,51 @@ Launch findings never enter the incident table. Every finding there becomes an o
 Every count was checked against the series and an independent SQL count. Across all seven launches at day 3, 7, 10 and 14, two rules never fired. **Seen but rarely opened**: no photo has reached 20 times on screen (the most is 19, JCA at ACC), and the earlier launches predate exposure recording. **Collection gap**: no launch window has a day that is not completely recorded.
 
 Screens: [`analytics-launch-rules-29828aa`](../../evidence/screen-reviews/analytics-launch-rules-29828aa/), each at 1440×900 and 375×812. The `*-findings-*` and `*-owner-*` captures render the real pages with the Oct 6 replayed findings through a throwaway harness: Home checked 12 minutes before (fresh) and 3 hours before (late), and the owner's dismiss and snooze forms open. The `*-live-*` captures show production today, where no launch snapshot exists yet, so nothing shows.
+
+## Launch recaps (build step 7)
+
+Built on branch `feat/analytics-launch-recaps`, code commits `270ec69` and `2c249ce`. Rules and constants live in `src/lib/analytics/launch-recap-schedule.ts`; the words in `launch-recap-text.ts`; the reads, generation and storage in `launch-recap.server.ts`.
+
+### What a recap is and when it is written
+
+- Due at 08:00 America/Chicago on the first publication's Chicago date plus 3 (and plus 7). Day 0 is the publication day, so the recap covers exactly days 0-2 (or 0-6), never the morning itself. The date is added in calendar days, so a DST change moves nothing.
+- It is read as of the due instant (`analytics_read_launch` with `p_as_of` = 08:00), so a late run reports the same days and says it is late. Late means more than 15 minutes (`RECAP_LATE_AFTER_MINUTES`).
+- Idempotent by key: `launch:<albumKey>:day<N>` in `incident_key`, behind a unique index per owner. The key holds no date.
+- Catch-up is bounded: a checkpoint more than 3 days past due is never written (`RECAP_CATCH_UP_DAYS`). Without that, the first run would have written 14 "late" recaps for the 7 launches already in the gallery.
+- If the launch's records for the covered days are not all complete, the scheduler waits up to 6 hours (`RECAP_SETTLE_HOURS`), then stores the recap saying what is missing. A launch read that keeps failing is stored as an "unavailable" recap that states no figure. Email is queued only for a complete recap.
+- At most 2 recaps per wake-up (`MAX_RECAPS_PER_RUN`), oldest first, run before the refresh jobs.
+- An album that is unlisted now is skipped before any launch number is read.
+
+### Storage, and the gate that decides whether anything is written today
+
+A recap is a row in `analytics_intelligence_briefs`, kind `launch_recap`. A brief belongs to an owner, so a recap is written for each owner who has chosen how long private records are kept and has the dashboard on, the same gate the incident briefs use. **Production has 0 preference rows, so 0 recaps will be written until the owner saves a retention choice in Settings.** Home's Next and Settings say so. This conflicts with "a recap for every launch": the brief's `owner_id` is `NOT NULL`. Making it nullable for this kind would remove the gate and is a one-line decision for Nino.
+
+The migration (`20261007120000_analytics_launch_recap_kind.sql`) widens the kind constraint, and adds a key `CHECK` and a partial unique index, because without the key idempotency cannot be enforced. Apply it before deploying the code. Until then the scheduler stores nothing, logs the `23514` and keeps refreshing.
+
+### What was removed
+
+`intelligence-schedule.ts` and its test (the daily and weekly due periods); the `daily` and `weekly` fields and toggles in preferences, the preferences route and the settings form; the daily and weekly job kinds in `intelligence-jobs.server.ts`. The SQL that wrote daily and weekly briefs stays installed and dormant: the scheduler passes no period, so it queues none. A schedule or preference row that appears is inert; saving settings writes the schedule row switched off. A daily or weekly job left in the queue is handed back, never run; after 20 hand-backs the database's own finish path marks its period unavailable and writes a brief that names it. There are none today.
+
+### Left out on purpose
+
+Due follow-ups (the plan's recap row lists them) are owner-private records, and the stored text is readable by anyone who can open the album report, so they are not in it. Zero actions are recorded today, so nothing is lost yet.
+
+### Articles and demos: not built
+
+No reliable first-public time exists that this app can read safely.
+
+- Blog `publishedAt` is author-declared: 253 of 262 posts carry a time, 9 are midnight UTC, and the three posts compared sit minutes to 1.5 hours from their first commit. It lives in a sibling repo that a Pages build does not check out, so a build-time import repeats the 2026-08-23 outage. `/blog/rss.xml` carries the same declared dates for 260 posts, over public HTTP.
+- Demos: `meta.json` dates are months ("2026-08"). The demos have no feed.
+- Site actions are bucketed by UTC day, collection began Sep 29, and `analytics_site_actions` returns the top 8 pages for a 7, 30 or 90 day window with no per-page daily series. The first observed view of a page is a lower bound at best.
+- So "reach so far against earlier launches at the same age" has no earlier launch with a complete first week for any article.
+
+Options for Nino: (A) have the blog's deploy record each new page's first appearance here (a new cross-repo credential and a table); (B) read the declared dates from the RSS feed at job time and add a per-page daily read, labelled "declared date", for blog posts only; (C) wait for a month of site-action history first. Recommendation: C, then B.
+
+### Replay
+
+`scripts/replay-launch-recaps.ts` (read-only) builds each recap for the 7 real launches as if run one minute after 08:00. All 14 had complete records; today all 14 are past the catch-up window, so the first deploy writes none of them. The text is in [`replay-launch-recaps.txt`](../../evidence/screen-reviews/analytics-launch-recaps-2c249ce/replay-launch-recaps.txt). Two inputs differ from production: findings are the launch rules evaluated as of the due instant (stored snapshots hold only today's), and the photo counts use today's photo rows.
+
+Screens: [`analytics-launch-recaps-2c249ce`](../../evidence/screen-reviews/analytics-launch-recaps-2c249ce/), 1440 and 375 wide, with the walk notes in `walk.txt`. Stored recaps in those captures are the replayed ones, presented by a preload; nothing was written.
 
 ## Sources
 

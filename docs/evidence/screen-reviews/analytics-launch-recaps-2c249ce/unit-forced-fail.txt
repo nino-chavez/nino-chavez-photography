@@ -1,0 +1,7 @@
+not ok 1 - the named constants are the decision: day 3 and day 7, 08:00 Chicago, a 15 minute late line, a bounded catch-up
+not ok 8 - late: past 15 minutes it is marked late and keeps its intended date
+not ok 10 - launches due at different times come back oldest first, so a backlog drains in order
+not ok 16 - a due recap is built as of its due slot and stored once for the owner; the next run finds it and does nothing
+not ok 27 - storing a recap writes the brief with its key and a dashboard record; with no verified destination there is no email record
+# pass 33
+# fail 5

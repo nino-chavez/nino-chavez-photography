@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "negativeControl": false,
+  "passed": false,
+  "migrations": [
+    "supabase/migrations/20260930084000_analytics_intelligence_refresh_health.sql"
+  ],
+  "assertions": [
+    "supabase/rehearsal/launch-recap-assertions.sql"
+  ],
+  "output": "",
+  "diagnostics": "ERROR:  new row for relation \"analytics_intelligence_briefs\" violates check constraint \"analytics_intelligence_briefs_kind_check\"\nDETAIL:  Failing row contains (16f068fc-5a6b-444d-ae78-e5ee235f5731, 71000000-0000-4000-8000-000000000001, null, null, 2026-09-28, launch_recap, f, 2026-10-07 01:39:33.120731+00, Synthetic recap, [], [], [{\"recap\": {\"albumKey\": \"Re7kho\", \"checkpoint\": 3}}], [], launch:Re7kho:day3).\nCONTEXT:  SQL statement \"INSERT INTO public.analytics_intelligence_briefs(owner_id,period_key,kind,incident_key,body,source_windows,late)\n  VALUES(v_owner,'2026-09-28','launch_recap','launch:Re7kho:day3','Synthetic recap',v_meta,false) RETURNING id\"\nPL/pgSQL function inline_code_block line 15 at SQL statement\n"
+}
