@@ -512,7 +512,7 @@ export function surgeWords(reading: RejectionReading): string {
 	const parts = [`The gallery’s counter rejected ${plural(reading.count, 'event')} on ${day}, ${times}.`];
 	if (reading.crawler === reading.count) parts.push('All came from known crawlers, which it rejects on purpose. No visitor events were lost.');
 	else if (reading.crawler > 0) parts.push(`${fmt(reading.crawler)} came from known crawlers, which it rejects on purpose.`);
-	if (reading.notRecorded > 0) parts.push(reading.notRecorded === reading.count ? 'Why was not recorded: they were counted before reasons were kept.' : `Why ${fmt(reading.notRecorded)} were rejected was not recorded: they were counted before reasons were kept.`);
+	if (reading.notRecorded > 0) parts.push(reading.notRecorded === reading.count ? 'Their reasons were not recorded, because they were counted before reasons were kept.' : `The reasons for ${fmt(reading.notRecorded)} of them were not recorded, because they were counted before reasons were kept.`);
 	if (reading.other > 0) parts.push(`${fmt(reading.other)} were not valid or named an album or photo that does not exist.`);
 	return parts.join(' ');
 }
