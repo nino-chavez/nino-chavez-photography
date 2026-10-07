@@ -66,6 +66,23 @@ async function readFailureCounts(client: SupabaseClient, albumKey: string, start
 	return { photoLoads, photoLoadFailures, downloadRequests, downloadFailures };
 }
 
+/**
+ * Photo loads with a recorded result, over the whole gallery, for the days a launch's failure note covers. Two head-only counts: the
+ * database returns numbers, never rows. The same labels as `readFailureCounts`: audience traffic, results as the collector wrote them.
+ */
+export async function readGalleryPhotoLoads(client: SupabaseClient, window: { start: string; end: string }): Promise<{ loads: number; failures: number }> {
+	const from = chicagoWallTimeToUtc(window.start, 0, 0);
+	const to = chicagoWallTimeToUtc(addDays(window.end, 1), 0, 0);
+	const count = async (names: readonly string[]) => {
+		const { count: n, error } = await client.from('analytics_events_v2').select('event_name', { count: 'exact', head: true })
+			.in('event_name', [...names]).eq('traffic_context', 'audience').gte('occurred_at', from).lt('occurred_at', to);
+		if (error || typeof n !== 'number') throw new Error('gallery photo loads unavailable');
+		return n;
+	};
+	const [loads, failures] = await Promise.all([count(['photo_rendered', 'photo_load_failed']), count(['photo_load_failed'])]);
+	return { loads, failures };
+}
+
 async function readListedPhotos(client: SupabaseClient, albumKey: string): Promise<Set<string>> {
 	const ids = new Set<string>();
 	for (let from = 0; from < 5000; from += 1000) {

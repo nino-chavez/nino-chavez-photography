@@ -136,12 +136,13 @@
 				<p class="lead">What is counted in the gallery numbers, what is left out, and which album places change because of it?</p>
 				{#if view.traffic}
 					<p>{view.traffic.summary}</p>
+					{#if view.traffic.meaning}<p class="detail">{view.traffic.meaning}</p>{/if}
 					<dl class="facts classes">{#each view.traffic.classes as item (item.id)}<div><dt>{item.label}<span class="tag">{item.counted ? 'counted' : 'left out'}</span></dt><dd>{item.count.toLocaleString()}</dd></div>{/each}</dl>
 					<h3>Which album places change</h3>
 					<p>{view.traffic.impact.scope}</p>
 					{#if view.traffic.impact.changes}<p>{view.traffic.impact.changes}</p>{/if}
 					{#if view.traffic.impact.changed.length}
-						<ul class="moves" aria-label="Albums whose place changes">{#each view.traffic.impact.changed as row (row.albumKey)}<li><strong>{row.name}</strong><span>Place {row.rankChange}. {row.all.toLocaleString()} with all traffic, {row.counted.toLocaleString()} counted.</span></li>{/each}</ul>
+						<ul class="moves" aria-label="Albums whose place changes">{#each view.traffic.impact.changed as row (row.albumKey)}<li><strong>{row.name}</strong><span>{row.movement}</span></li>{/each}</ul>
 					{/if}
 					{#if view.traffic.impact.rows.length}
 						<details>
@@ -163,7 +164,7 @@
 					{#if view.arrivals.tagged.length}
 						<dl class="facts">{#each view.arrivals.tagged as item (item.source)}<div><dt>{item.source}</dt><dd>{item.count.toLocaleString()}</dd></div>{/each}</dl>
 					{:else}<p>No tagged arrival was recorded in these dates.</p>{/if}
-					<p class="detail">A tag shows how a link was shared. It does not prove that a later action was caused by that channel.</p>
+					<p class="detail">A tag is the label on a shared link, the part after src= in its address. It shows how a link was shared. It does not prove that a later action was caused by that channel.</p>
 					<h3>Open locations</h3>
 					<p>{view.arrivals.open.sentence}</p>
 					{#if view.arrivals.openLocations.length}

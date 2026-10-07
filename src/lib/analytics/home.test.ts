@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { Launch, LaunchAgeTotals, LaunchDay } from './launch-read-model.server';
 import {
 	buildHome, changeWords, lastOpenedNote, chicagoTime, COMPLETED_DAYS_CHECKED, HOME_LAUNCH_CARDS, incidentWords, JUST_FINISHED_DAYS, launchCard, launchPhase, nextRecaps,
-	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, staleness, statusLabel, trailingGap, weekLine,
+	openingSentence, openProblems, QUIET_AFTER_DAYS, REFRESH_STALE_MS, sentenceText, siteFigures, sparkBars, sparkCaption, staleness, statusLabel, trailingGap, weekLine,
 	type Freshness, type HomeInput, type ProblemInput, type SiteReading, type WeekInput
 } from './home';
 import { minimumSample } from './intelligence-rules';
@@ -526,4 +526,12 @@ test('the page says once what a marked date means, and only when a launch it sho
 	const build = (launches: Launch[]) => buildHome(baseInput('2026-10-06', ALL, { launches }));
 	assert.equal(build(world('2026-10-06', ALL)).datesRecovered, true);
 	assert.equal(build(world('2026-10-06', ALL, {}, [])).datesRecovered, false);
+});
+
+test('the caption under the small bars says what a thin mark and a dashed line are, only when they are drawn', () => {
+	const bar = (state: 'value' | 'gap' | 'future', opens: number | null) => ({ day: 1, state, opens, height: 0 });
+	assert.equal(sparkCaption([bar('value', 103), bar('value', 575)]), 'Opens by day, week 1.');
+	assert.equal(sparkCaption([bar('value', 103), bar('value', 0)]), 'Opens by day, week 1. A thin mark is a day with no opens.');
+	assert.equal(sparkCaption([bar('value', 103), bar('gap', null), bar('future', null)]), 'Opens by day, week 1. A dashed line is a day not counted.');
+	assert.equal(sparkCaption([bar('value', 0), bar('gap', null)]), 'Opens by day, week 1. A thin mark is a day with no opens. A dashed line is a day not counted.');
 });

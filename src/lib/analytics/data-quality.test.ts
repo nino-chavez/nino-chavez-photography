@@ -121,7 +121,9 @@ test('traffic classes count audience and unclassified, leave the rest out, and n
 	assert.equal(trafficClassWords('unclassified'), 'Unclassified (counted, not called human)');
 	const changed = trafficView({ report: report({ trafficImpact: [{ albumKey: 'a0', inclusive: 10, conservative: 8, excluded: 2, inclusiveRank: 1, conservativeRank: 2 }, { albumKey: 'a1', inclusive: 9, conservative: 9, excluded: 0, inclusiveRank: 2, conservativeRank: 1 }] }), names: new Map() })!;
 	assert.equal(changed.impact.changes, 'Leaving the excluded traffic out changes the place of 2 albums.');
-	assert.equal(changed.impact.rows[0].rankChange, '1 to 2');
+	assert.equal(changed.impact.rows[0].rankChange, '1st to 2nd');
+	assert.equal(changed.impact.rows[0].movement, 'Goes from 1st to 2nd when the left-out traffic is removed: 10 with all traffic, 8 counted.');
+	assert.equal(trafficView({ report: report({ trafficImpact: [{ albumKey: 'a0', inclusive: 5, conservative: 5, excluded: 0, inclusiveRank: 3, conservativeRank: 3 }] }), names: new Map() })!.impact.rows[0].rankChange, '3rd, no change');
 	assert.deepEqual(changed.impact.changed.map((row) => row.albumKey), ['a0', 'a1']);
 	assert.deepEqual(view.impact.changed, []);
 });
@@ -214,7 +216,7 @@ test('delivery detail waits for the owner; everyone else is told why and where t
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Collection, last 30 days')!.value, '500 accepted · 1 rejected · 3 duplicate');
 	// Every word in those rows is defined where the rows are, and a signed-out reader has no rows and so no terms.
 	const terms = owner.delivery.terms.map((item) => item.term);
-	assert.deepEqual(terms, ['Accepted', 'Rejected', 'Duplicate', 'Pending', 'Submitted', 'Confirmed', 'Failed', 'Traffic corrections waiting']);
+	assert.deepEqual(terms, ['Accepted', 'Rejected', 'Duplicate', 'Pending', 'Submitted', 'Confirmed', 'Failed', 'Classification changes waiting']);
 	assert.match(owner.delivery.terms.find((item) => item.term === 'Rejected')!.means, /^the collector refused the event: it was not valid, named an album or photo that does not exist, came from a known crawler, or could not be stored\. This page does not split rejected events by reason\.$/);
 	assert.deepEqual(signedOut.delivery.terms, []);
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Oldest event waiting')!.value, 'None waiting');
@@ -402,4 +404,22 @@ test('S11: a visitor is told that a part is not available, and never handed the 
 	// The whole page, built for a visitor, carries none of it.
 	const page = buildDataView(input({ owner: false, traffic: unset, posthogConfigured: false, report: null }));
 	assert.doesNotMatch(JSON.stringify(page), /server settings|database is the thing to check|delivery job/);
+});
+
+test('S13: the traffic classes say what they mean for the numbers, in the share they come to', () => {
+	// Production, 2026-10-07: 454 audience and 1,893 unclassified, so 81% of the counted actions could not be sorted.
+	const heavy = trafficView({ report: report({ traffic: [{ classification: 'audience', count: 454 }, { classification: 'unclassified', count: 1893 }, { classification: 'operator', count: 1 }] }), names: new Map() })!;
+	assert.equal(heavy.meaning, '81% of the counted actions came from browsers the collector could not sort as audience, operator, test or automated. They are counted, and they are not called human, so read these totals as an upper limit on what real visitors did.');
+	// A small share is said without the warning.
+	const light = trafficView({ report: report({ traffic: [{ classification: 'audience', count: 2000 }, { classification: 'unclassified', count: 290 }] }), names: new Map() })!;
+	assert.equal(light.meaning, '13% of the counted actions came from browsers the collector could not sort as audience, operator, test or automated. They are counted, and they are not called human.');
+	// Nothing unclassified, nothing to explain.
+	assert.equal(trafficView({ report: report({ traffic: [{ classification: 'audience', count: 100 }] }), names: new Map() })!.meaning, null);
+});
+
+test('S13: the owner\'s delivery rows and the parts that could not be read use words a tired reader can follow', () => {
+	const owner = buildDataView(input({ owner: true, health }));
+	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Event format and your classification changes')!.value, 'Event format 2 · 0 classification changes waiting to reach PostHog');
+	assert.deepEqual(buildDataView(input({ posthogConfigured: false })).status.notRead.map((item) => item.name), ['what visitors did after arriving (PostHog)']);
+	assert.doesNotMatch(JSON.stringify(buildDataView(input({ owner: true, health, posthogConfigured: false }))), /linked journeys \(PostHog\)|Traffic corrections|Place \d/);
 });

@@ -1,6 +1,6 @@
 import type { DataAnchor } from './data-anchors';
 import { chicagoTime, openProblems, staleness, type Freshness, type HomeProblem, type ProblemInput } from './home';
-import { formatDay, plural } from './launch-recap';
+import { formatDay, ordinal, plural } from './launch-recap';
 import type { RejectionReading } from './collection-rejections';
 import type { MeasurementHealth } from './measurement-health';
 import type { OperatorReport } from './operator-report.server';
@@ -175,13 +175,22 @@ const CLASS_WORDS: Record<string, string> = {
 };
 export const trafficClassWords = (classification: string) => CLASS_WORDS[classification] ?? classification.replaceAll('_', ' ');
 
-export interface ImpactRow { albumKey: string; name: string; all: number; counted: number; left: number; rankChange: string; changed: boolean }
+export interface ImpactRow {
+	albumKey: string; name: string; all: number; counted: number; left: number;
+	/** "18th to 20th" or "18th, no change": the place with all traffic, then with only the counted traffic. */
+	rankChange: string;
+	changed: boolean;
+	/** For a row whose place changes: the move in words, with the counts behind it. */
+	movement: string;
+}
 
 export interface TrafficView {
 	classes: Array<{ id: string; label: string; count: number; counted: boolean }>;
 	countedTotal: number;
 	leftOutTotal: number;
 	summary: string;
+	/** What the classes mean for the numbers on the other pages, in two sentences; null when nothing is unclassified. */
+	meaning: string | null;
 	impact: { rows: ImpactRow[]; changed: ImpactRow[]; scope: string; changes: string | null };
 }
 
@@ -202,11 +211,15 @@ export function trafficView(input: { report: OperatorReport; names: ReadonlyMap<
 	const leftOutTotal = classes.filter((item) => !item.counted).reduce((sum, item) => sum + item.count, 0);
 	const rows = report.trafficImpact.map((item): ImpactRow => ({
 		albumKey: item.albumKey, name: names.get(item.albumKey) ?? 'An album with no name on record', all: item.inclusive, counted: item.conservative, left: item.excluded,
-		rankChange: item.inclusiveRank === item.conservativeRank ? `${item.inclusiveRank}, no change` : `${item.inclusiveRank} to ${item.conservativeRank}`, changed: item.inclusiveRank !== item.conservativeRank
-	}));
+			rankChange: item.inclusiveRank === item.conservativeRank ? `${ordinal(item.inclusiveRank)}, no change` : `${ordinal(item.inclusiveRank)} to ${ordinal(item.conservativeRank)}`, changed: item.inclusiveRank !== item.conservativeRank,
+			movement: item.inclusiveRank === item.conservativeRank ? '' : `Goes from ${ordinal(item.inclusiveRank)} to ${ordinal(item.conservativeRank)} when the left-out traffic is removed: ${fmt(item.inclusive)} with all traffic, ${fmt(item.conservative)} counted.`
+		}));
+		const unclassified = classes.find((item) => item.id === 'unclassified')?.count ?? 0;
+		const share = countedTotal > 0 ? Math.round((unclassified / countedTotal) * 100) : 0;
 	const changed = rows.filter((row) => row.changed).length;
 	return {
 		classes, countedTotal, leftOutTotal,
+			meaning: unclassified === 0 ? null : `${share}% of the counted actions came from browsers the collector could not sort as audience, operator, test or automated. They are counted, and they are not called human${share >= 50 ? ', so read these totals as an upper limit on what real visitors did' : ''}.`,
 		summary: `Reports count ${fmt(countedTotal)} of these ${MEASURE_NOUN[report.query.measure] ?? 'action'}s and leave out ${fmt(leftOutTotal)}. Operator, test, known crawler and suspected automated activity is left out. Unclassified activity is counted and is not called human.`,
 		impact: {
 			rows,
@@ -363,7 +376,7 @@ export const DELIVERY_TERMS: DeliveryView['terms'] = [
 	{ term: 'Submitted', means: 'sent to PostHog, and waiting for PostHog to confirm it.' },
 	{ term: 'Confirmed', means: 'PostHog confirmed it received the event.' },
 	{ term: 'Failed', means: 'sending to PostHog did not work.' },
-	{ term: 'Traffic corrections waiting', means: 'changes you made to how an action is classed that have not reached PostHog yet.' }
+	{ term: 'Classification changes waiting', means: 'changes you made to how an action is classed that have not reached PostHog yet.' }
 ];
 
 export const PROVIDER_NOTE = 'Linked-journey results show when PostHog was last asked a question. That is not confirmation that events were delivered; the counts above are.';
@@ -382,7 +395,7 @@ export function deliveryView(health: MeasurementHealth | null, today: string, re
 			{ label: 'Collection, last 30 days', value: `${n(health.accepted)} accepted · ${n(health.rejected)} rejected · ${n(health.duplicate)} duplicate` },
 			rejectionRow(rejections),
 			{ label: 'Waiting to be sent', value: `${n(health.pending)} pending · ${n(health.submitted)} submitted · ${n(health.confirmed)} confirmed · ${n(health.failed)} failed` },
-			{ label: 'Event format and corrections', value: `Format ${health.schemaVersion ?? 'not read'} · ${n(health.controlPending)} traffic corrections waiting` },
+			{ label: 'Event format and your classification changes', value: `Event format ${health.schemaVersion ?? 'not read'} · ${n(health.controlPending)} classification changes waiting to reach PostHog` },
 			{ label: 'Oldest event waiting', value: health.pending === 0 && health.failed === 0 ? 'None waiting' : instant(health.oldestPendingAt, today) },
 			{ label: 'Oldest event awaiting confirmation', value: health.submitted === 0 ? 'None' : instant(health.oldestSubmittedAt, today) },
 			{ label: 'Most recent confirmed event', value: instant(health.confirmedWatermark, today) }
@@ -554,7 +567,7 @@ export function buildDataView(input: DataInput): DataView {
 	const notRead: NotRead[] = [];
 	if (!input.traffic || !input.traffic.available) notRead.push({ id: 'cloudflare', section: 'site-measures', name: 'Cloudflare page loads' });
 	if (!input.actions || !input.actions.available) notRead.push({ id: 'site-actions', section: 'site-measures', name: 'the site\'s own page views' });
-	if (!input.posthogConfigured) notRead.push({ id: 'posthog', section: 'journeys', name: 'linked journeys (PostHog)' });
+	if (!input.posthogConfigured) notRead.push({ id: 'posthog', section: 'journeys', name: 'what visitors did after arriving (PostHog)' });
 	if (report && report.available && report.diagnosticsCoverage.error) notRead.push({ id: 'evidence', section: 'delivery', name: 'search and download evidence' });
 	const limits = reachLimits(report, start);
 

@@ -3,7 +3,7 @@
 	import { albumIndexPath, albumReportPath, dataPath, sitePath } from '$lib/analytics/report-paths';
 	import { cfImageUrl } from '$lib/utils/cloudflare-images';
 	import { plural, RECOVERED_NOTE } from '$lib/analytics/launch-recap';
-	import type { HomeProblem } from '$lib/analytics/home';
+	import { sparkCaption, type HomeProblem } from '$lib/analytics/home';
 	import ReportHeader from '$lib/components/analytics/ReportHeader.svelte';
 	import LaunchFindings from '$lib/components/analytics/LaunchFindings.svelte';
 	import { GALLERY_LAUNCH_SCOPE } from '$lib/analytics/intelligence-contract';
@@ -77,6 +77,8 @@
 				{:else}
 					<ul class="cards">
 						{#each view.cards as card (card.albumKey)}
+							{@const scale = card.failureScale}
+							{@const alarms = scale?.routine ? card.findings.filter((finding) => finding.id !== scale.findingId) : card.findings}
 							<li class="launch">
 								<div class="card">
 									<div class="cover">{#if card.cover}<img src={cfImageUrl(card.cover, 'thumbnail')} alt="" width="150" height="150" loading="lazy" decoding="async" />{:else}<span class="no-image" aria-hidden="true">No cover</span>{/if}</div>
@@ -100,12 +102,13 @@
 												{/if}
 											{/each}
 										</svg>
-										<figcaption>Opens by day, week 1</figcaption>
+										<figcaption>{sparkCaption(card.bars)}</figcaption>
 									</figure>
 								</div>
-								{#if card.findings.length}
+								{#if alarms.length || scale}
 									<div class="card-findings" aria-label={`Notes about ${card.name}`} role="group">
-										<LaunchFindings findings={card.findings} checked={card.findingsCheck} compact level={4} owner={data.owner} scope={GALLERY_LAUNCH_SCOPE} />
+										{#if alarms.length}<LaunchFindings findings={alarms} checked={card.findingsCheck} compact level={4} owner={data.owner} scope={GALLERY_LAUNCH_SCOPE} />{/if}
+										{#if scale}<p class="scale" class:routine={scale.routine}>{scale.sentence}</p>{/if}
 									</div>
 								{/if}
 							</li>
@@ -183,6 +186,9 @@
 	.launch { container-type: inline-size; display: grid; gap: .35rem; min-width: 0; }
 	/* Beside the launch it concerns: indented under its card, outside the card's single link. */
 	.card-findings { margin-left: .9rem; min-width: 0; }
+	/* The scale of a photo-load failure note. When it is within the usual range it is this one muted line and nothing amber. */
+	.scale { color: var(--muted); font-size: .85rem; line-height: 1.45; margin: .3rem 0 0; max-width: 46rem; }
+	.scale:not(.routine) { color: var(--ink); }
 	@media (min-width: 640px) { .card-findings { margin-left: 2rem; } }
 	.card { background: #fff; border: 1px solid var(--line); border-radius: .8rem; display: grid; gap: .4rem .8rem; grid-template-columns: minmax(0, 1fr); padding: .65rem; position: relative; }
 	.card:hover { border-color: #9db8e6; }

@@ -122,8 +122,8 @@
 					</form>
 				{:else}
 					<div class="buttons owner">
-						<button type="button" onclick={() => void open(finding, 'dismiss')}>Dismiss<span class="sr-only">: {finding.title}</span></button>
-						<button type="button" onclick={() => void open(finding, 'snooze')}>Snooze 7 days<span class="sr-only">: {finding.title}</span></button>
+						<button type="button" onclick={() => void open(finding, 'dismiss')}>Dismiss this note<span class="sr-only">: {finding.title}</span></button>
+						<button type="button" onclick={() => void open(finding, 'snooze')}>Snooze this note for 7 days<span class="sr-only">: {finding.title}</span></button>
 					</div>
 				{/if}
 			{/if}

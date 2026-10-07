@@ -98,8 +98,10 @@
 		scrollToId('photos');
 		document.getElementById('photos')?.focus({ preventScroll: true });
 	}
-	function recordChange() {
+	async function recordChange() {
 		recordRequest += 1;
+		// The record form's panel is drawn when it is asked for, so it is waited for before the page scrolls to it.
+		await tick();
 		scrollToId('assistant');
 	}
 	// Below the desktop breakpoint there is no side panel, so a photo's details open in a modal dialog.
@@ -211,7 +213,7 @@
 				<a class="primary" href="#photos" onclick={(event) => { event.preventDefault(); void seeAll(); }}>See all {photos.length.toLocaleString()} photos</a>
 				{#if signedIn}
 					{#if mostRequested.length}<button type="button" class="secondary" onclick={shortlistTopSix} disabled={!hydrated || topSixShortlisted}>{topSixShortlisted ? `Shortlisted ${topSix.length}` : `Shortlist these ${topSix.length}`}</button>{/if}
-					<button type="button" class="secondary" onclick={recordChange} disabled={!hydrated}>Record what you did</button>
+					<button type="button" class="secondary" onclick={() => void recordChange()} disabled={!hydrated}>Record what you did</button>
 				{/if}
 				<a class="secondary" href={csvHref}>Export CSV</a>
 				<a class="secondary" href={explorerHref}>Filter these photos</a>
@@ -282,8 +284,8 @@
 			</div>
 		</div>
 
-		{#if data.intelligence !== 'none'}
-		<section id="assistant" class="assistant panel" aria-label="Ask about this album and record changes">
+		{#if data.intelligence === 'report' || (data.intelligence === 'record' && recordRequest > 0)}
+			<section id="assistant" class="assistant panel" aria-label="Ask about this album and record changes">
 			<IntelligenceWorkspace recordOnly={data.intelligence === 'record'} kind="gallery" {scope} owner={data.intelligenceOwner} contextTarget={{ kind: 'album', albumKey: data.album.key }} signInNext={`/analytics/albums/${data.album.key}`} {recordRequest} />
 		</section>
 		{/if}
