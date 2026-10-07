@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	basisWords, buildDataView, coverageView, deliveryView, rejectionSplit, rejectedOnDay, diagnosticsLabel, EVENTS_NOT_READ, eventsLabel, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
+	basisWords, buildDataView, coverageView, deliveryView, rejectionSplit, rejectedOnDay, diagnosticsLabel, EVENTS_NOT_READ, eventsLabel, galleryDay, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
 	siteJourneyNote, siteMeasuresView, statusView, trafficClassWords, trafficView, withNotRead, type DataInput, type NotRead
 } from './data-quality';
 import { DATA_ANCHORS } from './data-anchors';
@@ -436,4 +436,18 @@ test('every start date on this page is in one format: the event counts say "Sep 
 	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30T14:00:00.000Z', label: 'First recorded diagnostic evidence: 2026-09-30. Earlier coverage is unknown.', error: null }), 'First recorded diagnostic evidence: Sep 30. Earlier coverage is unknown.');
 	assert.equal(diagnosticsLabel({ availableFrom: null, label: 'Diagnostic evidence was not loaded for this section.', error: null }), 'Diagnostic evidence was not loaded for this section.');
 	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30', label: 'Diagnostic evidence could not be read.', error: 'x' }), 'Diagnostic evidence could not be read.');
+});
+
+test('a coverage bound is the gallery\'s Chicago day: an instant after midnight UTC but before midnight in Chicago is the day before', () => {
+	// 04:00 UTC on Sep 30 is 11:00 PM on Sep 29 in Chicago.
+	assert.equal(galleryDay('2026-09-30T04:00:00Z'), '2026-09-29');
+	assert.equal(galleryDay('2026-09-30T05:00:00Z'), '2026-09-30');
+	// A bound that is already a date is kept as it is.
+	assert.equal(galleryDay('2026-09-30'), '2026-09-30');
+	const bounds = { start: '2026-09-06', end: '2026-10-05', firstRecordedAt: '2026-09-30T04:00:00Z', rawRetainedFrom: '2026-09-30T04:30:00Z', archivedFrom: '2026-09-01', archivedThrough: '2026-09-14', label: 'x' };
+	assert.equal(eventsLabel(bounds), 'Detailed event counts begin Sep 29. Raw retained observations begin Sep 29. Archived aggregate snapshots cover Sep 1 through Sep 14. Counts are observations, not people or a conversion funnel.');
+	assert.equal(diagnosticsLabel({ availableFrom: '2026-09-30T04:00:00Z', label: 'x', error: null }), 'First recorded diagnostic evidence: Sep 29. Earlier coverage is unknown.');
+	// The status line's limit names the same day as the evidence line.
+	const view = buildDataView(input({ report: report({ diagnosticsCoverage: { availableFrom: '2026-09-30T04:00:00Z', label: 'x', error: null } }) }));
+	assert.ok(view.status.limits.includes('Search and download evidence starts on Sep 29; earlier days have no record.'), view.status.limits.join(' | '));
 });

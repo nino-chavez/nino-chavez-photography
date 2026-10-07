@@ -1,6 +1,6 @@
 import type { DataAnchor } from './data-anchors';
 import { chicagoTime, openProblems, staleness, type Freshness, type HomeProblem, type ProblemInput } from './home';
-import { formatDay, ordinal, plural } from './launch-recap';
+import { chicagoDate, formatDay, ordinal, plural } from './launch-recap';
 import type { MeasurementHealth, RejectionDay, RejectionReading } from './measurement-health';
 import { UNSTORED_REJECTION_REASONS } from './rejection-reasons';
 import type { OperatorReport } from './operator-report.server';
@@ -285,9 +285,17 @@ export interface EventsView {
  * Where the detailed event counts start, in the date format the rest of this page uses ("Sep 29", never "2026-09-29"). The projection's own label
  * carries ISO dates for the public report; this page reads the same bounds in its own words. With no bound recorded the projection's sentence stands.
  */
+/**
+ * The gallery's day for a coverage bound. Gallery records are counted in Chicago days, so an instant is converted to its
+ * Chicago date (an event at 2026-09-30T04:00Z belongs to Sep 29); a bound that is already a date is kept as it is.
+ */
+export function galleryDay(value: string): string {
+	return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : chicagoDate(value);
+}
+
 export function eventsLabel(coverage: V2ReportProjection['coverage']): string {
 	if (!coverage.firstRecordedAt) return coverage.label;
-	const day = (iso: string) => formatDay(iso.slice(0, 10));
+	const day = (value: string) => formatDay(galleryDay(value));
 	const raw = coverage.rawRetainedFrom ? ` Raw retained observations begin ${day(coverage.rawRetainedFrom)}.` : '';
 	const archive = coverage.archivedFrom && coverage.archivedThrough ? ` Archived aggregate snapshots cover ${day(coverage.archivedFrom)} through ${day(coverage.archivedThrough)}.` : '';
 	return `Detailed event counts begin ${day(coverage.firstRecordedAt)}.${raw}${archive} Counts are observations, not people or a conversion funnel.`;
@@ -360,6 +368,7 @@ export function siteMeasuresView(input: { traffic: SiteTrafficResult | null; act
 	else if (!actions.available) first = { value: null, detail: `${actions.reason} This is not zero. Reload in a few minutes.` };
 	else if (!actions.firstRecordedAt) first = { value: null, detail: 'The site\'s own counter has not recorded a page view yet. This is not zero.' };
 	else {
+		// The site's own page views are counted in UTC days (unlike the gallery's Chicago days), so its first day is the UTC date.
 		const since = actions.firstRecordedAt.slice(0, 10);
 		const covered = Math.min(days, daysThrough(since > actions.start ? since : actions.start, actions.end));
 		first = { value: fmt(actions.totals.page_views ?? 0), detail: `${formatDay(since > actions.start ? since : actions.start)} – ${formatDay(actions.end)}. The site's own counter began ${formatDay(since)}, so it covers ${covered} of the last ${days} days.` };
@@ -464,7 +473,7 @@ export interface EvidenceView {
  */
 export function diagnosticsLabel(coverage: OperatorReport['diagnosticsCoverage']): string {
 	if (coverage.error || !coverage.availableFrom) return coverage.label;
-	return `First recorded diagnostic evidence: ${formatDay(coverage.availableFrom.slice(0, 10))}. Earlier coverage is unknown.`;
+	return `First recorded diagnostic evidence: ${formatDay(galleryDay(coverage.availableFrom))}. Earlier coverage is unknown.`;
 }
 
 /** Search and download evidence: what was recorded when a search or download was attempted. Downloads record requests and failures, never completed transfers. */
@@ -594,8 +603,8 @@ export function reachLimits(report: OperatorReport | null, start: string): strin
 	if (!error) {
 		if (availableFrom === null) limits.push('No search or download attempt has been recorded yet.');
 		else {
-			// The same day the evidence line below the table names: the date part of the first recorded instant.
-			const from = new Date(availableFrom).toISOString().slice(0, 10);
+			// The same day the evidence line below the table names: the Chicago day of the first recorded instant.
+			const from = galleryDay(availableFrom);
 			if (from > start) limits.push(`Search and download evidence starts on ${formatDay(from)}; earlier days have no record.`);
 		}
 	}
