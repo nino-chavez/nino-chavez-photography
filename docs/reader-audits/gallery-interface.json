@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T18:28:35.229Z",
-  "reviewedBy": "Claude Sonnet 5.5 (fix-pass worker, self-review; not a cold reviewer)",
-  "method": "The worker opened its own captures of the changed screens (docs/evidence/screen-reviews/analytics-acceptance-fixes2-f851062/ and the full set it was chosen from): Home on a phone, at 312% text and on a desktop, the album report on a phone and a desktop, the second album on a phone, the day 3 recap on a phone, the Data page as owner on a phone, Albums at 312% in WebKit and the Site page as a visitor on a phone, and fixed what it saw. It did not open every capture of every surface, setting and engine. It opened Home on an iOS simulator at the default text size only; the accessibility sizes did not take effect there. It did not walk with a screen reader, did not click through the owner forms, and is not a cold review: a third cold review of the captures is still to come",
-  "sourceDigest": "sha256:12cb9b2f125c3954b95ddcbd032ea6c27518bca35d50b2e9530cdd40964a332b",
+  "reviewedAt": "2026-10-07T18:45:48.019Z",
+  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer) over the second fix pass's walk and the third cold review",
+  "method": "The second fix pass's walk (docs/evidence/screen-reviews/analytics-acceptance-fixes2-f851062/mechanical.md) and the third blind cold review (cold-review-3.md, same folder) stand for every changed screen. After both, the coordinator changed only the Data page's partial-state headline for visitors: 'N parts of this page could not be read. Collection health is shown to the owner only.' instead of an all-clear. It was checked by fetching /data as a visitor from a local dev server reading production read-only. The owner keeps 'No problem was found in the rest.' Not covered: a rendered capture of the new headline, a real device, a real sign-in, and screen readers.",
+  "sourceDigest": "sha256:9adcf7bc70c0b691a6b2207c6f5c57846950755f8d57505cdf0e5d085fcf3143",
   "sourceFiles": 204,
   "scope": [
     "Data headline compares rejected events with their usual rate (owner only)",
