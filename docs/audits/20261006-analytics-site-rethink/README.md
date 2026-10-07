@@ -215,6 +215,70 @@ One release, built in dependency order. Each step is its own PR with its own che
 8. **Old addresses.** `/gallery?section=…` links redirect to their new homes, then the old tabs are removed. Two things still live only on the old tabs after step 5 and must move before they go: the signed-in classification corrections (Measurement tab, linked from `/data`) and the signed-in sharing notes (Sources tab). Saved-view updates from the gallery filter bar also stay there; `/settings` saves, renames and deletes. Step 5 also keeps two things from the old site report: the report-intelligence panel returns on `/sites` the way it does on the album report (findings when a saved calculation exists for the site scope, the owner's record form when none does, nothing for visitors), and a single "Today so far" line for link clicks, kept apart from every total.
 9. **Acceptance.** A cold review of device captures for every surface, including largest text and increased contrast. Performance is compared with `scripts/measure-analytics-performance.mjs`.
 
+## Launch rules (build step 6)
+
+Built on branch `feat/analytics-launch-rules`, commit `29828aa`. The rules live in `src/lib/analytics/launch-rules.ts`; the evidence they read is `src/lib/analytics/launch-evidence.server.ts`. Every threshold is a named constant there. A rule that stays silent records why.
+
+### The catalogue
+
+| Rule | Fires when | Evidence it shows | Silent, with its reason, when |
+| --- | --- | --- | --- |
+| Launch reach (`launch_reach`) | A launch reaches day 3, then day 7 (complete Chicago days from first publication) | Its photo opens; how many of the launches **before it** had more; their median and range | Under 20 photo opens (`minimumSample`); fewer than 3 earlier launches with a complete total (`MIN_EARLIER_LAUNCHES`); a day in the window not completely recorded; replaced by the recap once the launch is over |
+| Launch finished (`launch_finished`) | Day 7 has passed and the last 3 complete days hold at most 3 photo opens (`FINISHED_QUIET_DAYS`, `FINISHED_MAX_OPENS`) | First-week photo opens and download requests, the day-7 comparison, a link to the downloaded photos | Still active; any of those days not completely recorded; under 20 photo opens in week 1 |
+| Seen but rarely opened (`seen_rarely_opened`), album report only | A photo seen at least 20 times in the grid was opened at most a quarter as often as the album's typical photo predicts, and that prediction is at least 5 opens | Times on screen, opens on those days, the album's typical photo; at most 3 photos per album | Exposure not recorded during the launch's first week (version 2 began Sep 29); fewer than 5 photos seen 20 times; no photo far below typical |
+| Failures during a launch (`launch_failures`) | At least 2 photo-load failures, or at least 2 download failures, in the first 7 complete days | Failures out of loads with a recorded result, or out of download requests; the days counted | Results not recorded during the first week; the failure records could not be read (said as unknown, not zero); fewer than 2 of each kind |
+| Collection gap (`collection_health`, launch scopes) | Any day in the launch window is partial or missing in the daily record | The dates | Every day so far completely recorded |
+
+Rank and median, never a percentage or a ratio. A later launch is never in the comparison, even when it has reached the same age by now. A launch is spoken about for its first 14 days (`LAUNCH_FINDING_DAYS`, the album report's window); after that it has no findings. Nothing claims a cause or a verdict on a photo.
+
+### Every old rule, mapped
+
+| Old rule | Now | Why |
+| --- | --- | --- |
+| `momentum`, gallery | **Retired.** Replaced by launch reach and launch finished | Two complete calendar periods of 20 or more actions never existed for an event album. Oct 6 suppressions: "A complete comparable period is not available" (23,755 in a day), "Both periods need at least 20 recorded actions" (23,188) |
+| `momentum`, site | Kept | Site page views have no launch, and the comparison becomes available as first-party history grows (it began Sep 29) |
+| `strong_photo_response` | Kept on the gallery scopes | Not a period comparison. Silent today: "Per-photo eligible exposures with the named favorite-or-download-item response union are not available." Launch finished now points to the downloaded photos |
+| `discovery_friction` | Kept on the gallery scopes; seen but rarely opened is its first-party, per-photo counterpart | Silent today: "Per-album eligible exposure and later-open cohorts are not available." |
+| `rendering_download_reliability` | Kept on the gallery scopes; failures during a launch adds the per-launch view | Silent today: "Fewer than 20 eligible download requests are available." |
+| `search_usefulness` | Kept | Silent today: "The separately observed search cohorts do not cross a review threshold." (searches: 0) |
+| `distribution` | Kept | Silent today: "Fewer than 20 tagged arrivals are available." |
+| `profile_response`, `writing_demo_response` | Kept on the site scopes | Silent today because the site window is still partial |
+| `collection_health` | Kept: still the incident path on the gallery and site scopes. Launch scopes add the collection gap | |
+| `follow_up` | Kept | Needs a recorded action; none exists |
+
+### Showing, checking and dismissing
+
+- Home shows up to 3 findings under the launch card they concern; the album report shows its own above the photo grid. Both read through `intelligence-panel.server.ts` and `intelligence-public.server.ts`, so a snapshot with no findings, an album unlisted since the snapshot was written, or a photo moved out of its album shows nothing, for anyone.
+- Each group says when it was last checked. Past one hour (`FINDINGS_LATE_AFTER_MS`, four times the 15-minute refresh cadence) it says "These may be out of date", and so does an unknown check time. A normal check is late by the queue (about 25 scopes at 4 a minute) and a failed refresh's retries (1, 2, 4 and 8 minutes), well under an hour, so a later check means the worker has stalled.
+- The signed-in owner can dismiss a launch finding with a private reason, or snooze it for 7 days, on Home or on the album report. This uses the existing actions endpoint and tables: the lifecycle row in `analytics_intelligence_finding_lifecycle` holds the state, and the dismiss or snooze row in `analytics_intelligence_actions` holds the reason and, in `target_context`, the version of the finding dismissed. **No migration.** A dismissed or snoozed launch finding is hidden for everyone, wherever it was dismissed, until it is undone, the snooze ends, or its substance changes (its own total, comparison, failure counts or days). A recap's sliding quiet window and its wording are not changes.
+- This is stricter than the older report panel, which keeps a dismissed finding on screen with a "dismissed" label for the owner and shows it unchanged to visitors. That panel is not changed.
+
+Launch findings never enter the incident table. Every finding there becomes an open incident that Home lists, and the recovery check knows only the old rules, so a launch reach would stay "open" forever. Collection outages keep their incident path on the gallery and site scopes.
+
+### Scopes, scheduling and volume
+
+- Scopes: `{kind:'launch', albumKey}` for one album and `{kind:'launch', albumKey: null}` for Home, stored in the existing snapshot, pointer and job tables. The key holds no date, so it is the same every day. **No migration.**
+- Refresh: Home's scope and each launch up to day 16 (the 14-day window plus 2 days, so the last refresh writes the empty snapshot that retires its findings). Older albums are not refreshed and have no launch pointer. This is a bounded choice, not one scope per album ever published. A failed launch read retries; it never writes an empty snapshot over a good one.
+- A refresh writes a snapshot only when the evidence or findings change, apart from the run time, the summary cutoff and the read instant. Otherwise it touches the current pointer. Measured on the last 24 hours of production snapshots (rule version 3, so gallery evidence still held `albumMomentum`): **2,073 written; 64 with the fingerprint.** Launch scopes add about one or two a day each, roughly 70 a day in all.
+- Step 7 note: launch scopes travel in `p_standard_scopes`, so they would also join daily and weekly brief jobs if an owner enabled a schedule. None has. Step 7 replaces those briefs.
+
+### Replay on real history
+
+`scripts/replay-launch-rules.ts` runs the scheduler's own loader and rules, read-only, with an earlier `p_as_of`. It shows today's stored data cut off at each date, not what the system saw then: the start of failure and exposure recording comes from today's earliest rows, and failure counts use the label each event arrived with.
+
+| As of (noon Chicago) | Findings |
+| --- | --- |
+| Sep 28, JCA at ACC | "804 photo opens in its first 3 days. 1 of the 5 launches before it had more photo opens by day 3. Their median was 124, so this launch is above it." |
+| Oct 2, JCA at ACC | "931 photo opens in its first 7 days. 1 of the 5 launches before it had more photo opens by day 7. Their median was 125, so this launch is above it." Not finished: 104 photo opens in its last 3 days |
+| Sep 4, JCA vs PNHS | "The launch is over. Photo opens fell to 1 over Sep 1–3. In its first 7 days it had 1,258 photo opens and 109 download requests. None of the 4 launches before it had more photo opens by day 7; their median was 81." |
+| Oct 3, Millikin at North Central | "2 photo loads failed during the launch. 2 of the 64 photo loads with a recorded result failed, on Sep 29 – Oct 2." and "266 photo opens in its first 7 days. 3 of the 6 launches before it had more photo opens by day 7. Their median was about 381, so this launch is below it." |
+| Sep 20, quiet | None. "No album was first published in the last 14 days." |
+| Oct 6, Home | The Millikin failures, and "The launch is over" for Millikin and for JCA at ACC |
+
+Every count was checked against the series and an independent SQL count. Across all seven launches at day 3, 7, 10 and 14, two rules never fired. **Seen but rarely opened**: no photo has reached 20 times on screen (the most is 19, JCA at ACC), and the earlier launches predate exposure recording. **Collection gap**: no launch window has a day that is not completely recorded.
+
+Screens: [`analytics-launch-rules-29828aa`](../../evidence/screen-reviews/analytics-launch-rules-29828aa/), each at 1440×900 and 375×812. The `*-findings-*` and `*-owner-*` captures render the real pages with the Oct 6 replayed findings through a throwaway harness: Home checked 12 minutes before (fresh) and 3 hours before (late), and the owner's dismiss and snooze forms open. The `*-live-*` captures show production today, where no launch snapshot exists yet, so nothing shows.
+
 ## Sources
 
 - Live pages walked signed out on 2026-10-06 with browse-tool: `/sites` (Reach and Actions), `/gallery` (all six sections, all albums, last 30 days), and the album-scoped views for `Re7kho`.

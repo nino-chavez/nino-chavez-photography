@@ -1,12 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-06T23:44:53.213Z",
-  "reviewedBy": "Claude Code orchestrator session (reviewed the implementing agent's step 5 captures; wrote this one gating change; not a cold reviewer, not a human)",
-  "method": "Branch feat/analytics-site-data-settings, 2026-10-06. Production already holds 18 site-scope intelligence snapshots, all with zero findings (read-only PostgREST probe of analytics_intelligence_snapshot_current embedded with analytics_intelligence_snapshots.findings: 32 current rows, 0 with findings). The page rule 'show the findings panel when a snapshot exists' would therefore have shown 'No actionable findings' to every visitor of /sites. Moved the decision into src/lib/analytics/intelligence-panel.server.ts: report only when the current snapshot holds at least one finding; otherwise the owner gets the record form and visitors see nothing. Used by /sites and the album report. Verified with unit tests and a local dev server reading production: /sites (7 days), /sites?period=30&section=profile and /albums/Re7kho render no findings panel and no owner form signed out. Everything else is covered by the implementing agent's walk at bd99964. Not covered: owner view with a real snapshot holding findings (none exists), signed-in pages, real host, Safari or device, cold reviewer.",
-  "sourceDigest": "sha256:ecfeda175a958c60a0bc607168a138a3dd5f2888cf98ca2d675afbb5cb25c23f",
-  "sourceFiles": 187,
+  "reviewedAt": "2026-10-07T00:59:12.376Z",
+  "reviewedBy": "Claude Opus 5.5 (implementing agent, self-review; not a cold reviewer)",
+  "method": "Self-review by the agent that wrote the change, on a local dev server reading production (read-only). Home and the Millikin album report were captured at 1440x900 and 375x812: live (production has no launch snapshot yet, so nothing shows), and with findings replayed from production history as of Oct 6, mounted on the real page components through a throwaway harness route deleted before this receipt. Home was captured with a fresh check (12 minutes) and a late one (3 hours); the owner view was captured with the dismiss form open on Home and the snooze form open on the album report. The harness forces the owner flag; it proves how the real components render, not that the scheduler writes these snapshots or that a signed-in dismiss round-trips through the endpoint. Checked: no sideways scroll and no content cut off at the right edge (gate forced to fail once earlier), Tab reaches every finding control and the owner's Dismiss with a 3px focus ring, Enter opens the evidence disclosure and the dismiss form with focus in the reason box, every finding control is at least 44px tall, no collection or non-GET request during the walk. Not covered: a real signed-in session (sign-in, submit, undo against the database), largest text and increased contrast, and a cold review.",
+  "sourceDigest": "sha256:8805f94dc3b7dc43cf59f19b0480b49f0467e2a85aade1faf0e6a3ee5ea18e09",
+  "sourceFiles": 189,
   "scope": [
-    "findings panel shown only when a snapshot has findings (site report, album report)"
+    "Home launch findings under launch cards with last-checked line",
+    "Album report findings above the photo grid",
+    "Owner dismiss and snooze forms",
+    "Zero-findings state on both pages",
+    "IntelligenceWorkspace launch scope labels"
   ]
 }
