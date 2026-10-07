@@ -147,10 +147,18 @@ test('launch finished: three quiet complete days after the first week recap the 
 	const result = run(evidence([re], PEERS));
 	const done = result.findings.find((f) => f.rule === 'launch_finished');
 	assert.equal(done?.title, 'The launch is over');
-	assert.match(done?.explanation ?? '', /^No one has opened a photo since Oct 2, counting complete days through Oct 5\. In its first 7 days it had 931 photo opens and \d+ download requests\. 1 of the 5 launches before it had more photo opens by day 7; their median was 125\.$/);
+	assert.match(done?.explanation ?? '', /^No one has opened a photo since Oct 2, counting complete days through Oct 5\. In its first 7 days it had 931 photo opens and \d+ download requests\.$/);
+	assert.equal(done?.evidence.comparison?.median, 125, 'the comparison stays in the evidence');
 	assert.ok(done?.evidenceLinks?.some((link) => link.endsWith('#downloads-title')));
 	assert.equal(result.findings.some((f) => f.rule === 'launch_reach'), false, 'the recap replaces the reach comparison');
 	assert.match(result.suppressions.find((s) => s.rule === 'launch_reach')?.reason ?? '', /recap replaces/);
+});
+
+test('launch finished: the evidence names every quiet day after the last open one, so no day between them is skipped', () => {
+	const long = focus('DWdCET', 'Millikin at North Central', '2026-09-26T18:50:36Z', '2026-09-26', [...DWDCET, 0]);
+	const done = run(evidence([long], PEERS)).findings.find((f) => f.rule === 'launch_finished');
+	assert.match(done?.explanation ?? '', /^No one has opened a photo since Oct 2, counting complete days through Oct 6\./);
+	assert.match(done?.evidenceText ?? '', /; 0 photo opens on Oct 3–6\. Complete Chicago days only\.$/);
 });
 
 test('quietSince is read from every complete day: the last open day, and only when every later day is complete and zero', () => {

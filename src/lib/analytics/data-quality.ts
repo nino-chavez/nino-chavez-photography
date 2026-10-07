@@ -266,7 +266,7 @@ export function countingView(input: { report: OperatorReport }): CountingView | 
 		totals: [
 			{ label: 'Photo opens', value: word(measureTotal(report, 'photo_opens')) },
 			{ label: 'Album opens', value: word(measureTotal(report, 'album_opens')) },
-			{ label: 'Downloads, favorites and shares together', value: word(engagement.some((value) => value === null) ? null : engagement.reduce<number>((sum, value) => sum + (value ?? 0), 0)) }
+			{ label: 'Download requests, favorites and shares together', value: word(engagement.some((value) => value === null) ? null : engagement.reduce<number>((sum, value) => sum + (value ?? 0), 0)) }
 		],
 		browsers: { value: report.visitorEstimate.value === null ? null : fmt(report.visitorEstimate.value), limit: report.visitorEstimate.limit }
 	};

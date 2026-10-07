@@ -1,5 +1,5 @@
 import type { Launch, LaunchDay } from './launch-read-model.server';
-import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, recoveredDates, recoveredTag, sumComplete, type RecapPart, type RecapSentence } from './launch-recap';
+import { chicagoDate, cumulativeOpens, formatDay, median, ordinal, plural, recoveredDates, recoveredTag, sumComplete, unsortedSentence, type RecapPart, type RecapSentence } from './launch-recap';
 import { nameWithoutDate } from './launch-report-view';
 import { NO_RECAP_DUE, nextRecapItems } from './launch-recap-list';
 import type { HomeProblemTarget } from './data-anchors';
@@ -555,22 +555,9 @@ export function openProblems(input: ProblemInput): HomeProblem[] {
 	return problems.filter((problem, i) => problems.findIndex((other) => other.id === problem.id) === i);
 }
 
-/**
- * What share of the counted photo opens came from browsers the counter could not sort as visitors, test traffic or bots. They are counted and
- * not called human, so every total on the page includes them. Said once, with its dates and the real share; "most" only when it is over half.
- * Null when nothing is unsorted, or the classes were not read.
- */
+/** The newest launch's share of unsorted photo opens, over the days Home's headline counts; see `unsortedSentence`. */
 export function unsortedLine(traffic: HomeInput['traffic'], today: string): string | null {
-	if (!traffic) return null;
-	const count = (id: string) => traffic.classes.find((item) => item.classification === id)?.count ?? 0;
-	const unsorted = count('unclassified');
-	const counted = count('audience') + unsorted;
-	if (unsorted <= 0 || counted <= 0) return null;
-	const share = Math.round((unsorted / counted) * 100);
-	const dates = range({ start: traffic.start, end: traffic.end }, today);
-	const most = unsorted * 2 > counted;
-	const lead = most ? `Most of the gallery’s counted photo opens, ${dates} (${share}%),` : `${share}% of the gallery’s counted photo opens, ${dates},`;
-	return `${lead} came from browsers the gallery’s counter could not sort. They are counted, and they are not called human${most ? ', so read these totals as an upper limit on what visitors did' : ''}.`;
+	return traffic ? unsortedSentence(traffic.classes, 'the newest launch’s', range({ start: traffic.start, end: traffic.end }, today)) : null;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -598,7 +585,7 @@ export interface HomeInput {
 	findingsCheckedAt: string | null;
 	/** The scale of each photo-load failure note against the rest of the gallery, by finding id. Absent: the notes show without one. */
 	failureScales?: ReadonlyMap<string, FailureScale>;
-	/** The gallery's counted photo opens in the week's window, by the class the counter gave each browser; null when they could not be read. */
+	/** The newest launch's counted photo opens over the days its headline counts, by the class the counter gave each browser; null when they could not be read. */
 	traffic?: { start: string; end: string; classes: ReadonlyArray<{ classification: string; count: number }> } | null;
 }
 

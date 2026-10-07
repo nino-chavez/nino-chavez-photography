@@ -33,7 +33,7 @@
 	{:else if section === 'other'}
 		<p class="note">Other pages are measured only as page loads. Page actions cover the profile, writing, demo and photography landing pages.</p>
 	{:else if section === 'photography'}
-		<p class="note">Only the photography landing and coverage pages are covered here. Album and photo opens, favorites, shares and downloads are in each album's report and in <a href={photosPath(page.url.hostname)}>the photo explorer</a>, and launches are on Home and Albums.</p>
+		<p class="note">Only the photography landing and coverage pages are covered here. Album and photo opens, favorites, shares and download requests are in each album's report and in <a href={photosPath(page.url.hostname)}>the photo explorer</a>, and launches are on Home and Albums.</p>
 	{:else}
 		<p class="note">Operator, test, bot and excluded-browser activity is left out. These are counts of actions, not people. {#if since}Counting began {since}; earlier days have no action history.{:else}Nothing has been counted yet, and earlier traffic cannot fill that in.{/if}</p>
 		{#if !hasHistory}

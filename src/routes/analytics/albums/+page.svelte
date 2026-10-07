@@ -254,7 +254,7 @@
 </div>
 
 <style>
-	.album-index { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
+	.album-index { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .album-index { padding: 1.25rem 1.5rem 3.5rem; } }
 	@media (min-width: 1024px) { .album-index { padding-inline: 2rem; } }
 

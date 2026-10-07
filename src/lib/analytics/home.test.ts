@@ -572,19 +572,19 @@ test('the verdict word is the plain comparison of the week with the usual: above
 test('one sentence says what share of the counted photo opens came from browsers the counter could not sort, with the real share and its dates', () => {
 	const classes = (audience: number, unclassified: number) => ({ start: '2026-09-30', end: '2026-10-06', classes: [{ classification: 'audience', count: audience }, { classification: 'unclassified', count: unclassified }, { classification: 'known_crawler', count: 900 }] });
 	// Most: the real share, computed over the counted classes only (a crawler is left out of the counting), with the upper-limit clause.
-	assert.equal(unsortedLine(classes(190, 810), '2026-10-07'), 'Most of the gallery’s counted photo opens, Sep 30 – Oct 6 (81%), came from browsers the gallery’s counter could not sort. They are counted, and they are not called human, so read these totals as an upper limit on what visitors did.');
+	assert.equal(unsortedLine(classes(190, 810), '2026-10-07'), 'Most of the newest launch’s counted photo opens, Sep 30 – Oct 6 (81%), came from browsers the gallery’s counter could not sort. They are counted, and they are not called human, so read these totals as an upper limit on what visitors did.');
 	// Not most: the share, and no upper-limit clause.
-	assert.equal(unsortedLine(classes(880, 120), '2026-10-07'), '12% of the gallery’s counted photo opens, Sep 30 – Oct 6, came from browsers the gallery’s counter could not sort. They are counted, and they are not called human.');
+	assert.equal(unsortedLine(classes(880, 120), '2026-10-07'), '12% of the newest launch’s counted photo opens, Sep 30 – Oct 6, came from browsers the gallery’s counter could not sort. They are counted, and they are not called human.');
 	// Exactly half is not most.
-	assert.match(unsortedLine(classes(500, 500), '2026-10-07')!, /^50% of the gallery/);
+	assert.match(unsortedLine(classes(500, 500), '2026-10-07')!, /^50% of the newest launch/);
 	// 50.4% rounds to 50 and is still most.
-	assert.match(unsortedLine(classes(496, 504), '2026-10-07')!, /^Most of the gallery’s counted photo opens, Sep 30 – Oct 6 \(50%\)/);
+	assert.match(unsortedLine(classes(496, 504), '2026-10-07')!, /^Most of the newest launch’s counted photo opens, Sep 30 – Oct 6 \(50%\)/);
 	// Nothing unsorted, nothing counted, or nothing read: nothing to say.
 	assert.equal(unsortedLine(classes(100, 0), '2026-10-07'), null);
 	assert.equal(unsortedLine({ start: '2026-09-30', end: '2026-10-06', classes: [] }, '2026-10-07'), null);
 	assert.equal(unsortedLine(null, '2026-10-07'), null);
 	// It reaches the page.
-	assert.match(buildHome(baseInput('2026-10-06', ALL, { traffic: classes(190, 810) })).unsorted ?? '', /^Most of the gallery’s counted photo opens/);
+	assert.match(buildHome(baseInput('2026-10-06', ALL, { traffic: classes(190, 810) })).unsorted ?? '', /^Most of the newest launch’s counted photo opens/);
 	assert.equal(buildHome(baseInput('2026-10-06', ALL)).unsorted, null);
 });
 

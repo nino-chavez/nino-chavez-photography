@@ -161,7 +161,7 @@
 						<div><dt>Favorites</dt><dd>{selected.favorites.toLocaleString()}</dd></div>
 					</dl>
 					{#if selected.exposureRecorded && selected.exposures !== null && selected.opensInExposureWindow !== null}
-						<p class="note">Shown in a gallery grid {plural(selected.exposures, 'time')} and opened {plural(selected.opensInExposureWindow, 'time')}, {daysWords(data.album.exposure.since && data.album.exposure.since > data.album.window.start ? data.album.exposure.since : data.album.window.start, data.album.window.end)}.{#if data.album.exposure.since && data.album.exposure.since > data.album.window.start}{' '}Grid showings are recorded only from {formatDay(data.album.exposure.since)}.{/if}{#if selected.opensInExposureWindow > selected.exposures}{' '}An open can also come from a direct link, without the tile ever appearing in a grid.{/if}</p>
+						<p class="note">Shown in a gallery grid {plural(selected.exposures, 'time')} and opened {plural(selected.opensInExposureWindow, 'time')}, {daysWords(data.album.exposure.since && data.album.exposure.since > data.album.window.start ? data.album.exposure.since : data.album.window.start, data.album.window.end)}.{#if data.album.exposure.since && data.album.exposure.since > data.album.window.start}{' '}The gallery only began counting how often a photo appears in a grid on {formatDay(data.album.exposure.since)}.{/if}{#if selected.opensInExposureWindow > selected.exposures}{' '}An open can also come from a direct link, without the tile ever appearing in a grid.{/if}</p>
 					{/if}
 					<div class="selected-actions">
 						{#if selected.cfImageId}<a class="secondary" href={`https://ninochavez.co${base}/photo/${encodeURIComponent(selected.cfImageId)}`}>Open photo to share or download</a>{/if}
@@ -185,6 +185,7 @@
 				{/each}
 				{#if reach}<p class="sentence next-step"><strong>Next step:</strong> {reach.action}</p>{/if}
 				<p class="window">{@render words(recap.window)}</p>
+				{#if data.unsorted}<p class="window">{data.unsorted}</p>{/if}
 			</div>
 			{#if worth.length}
 				<section class="worth" aria-labelledby="worth-title">
@@ -305,7 +306,7 @@
 </div>
 
 <style>
-	.launch-report { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
+	.launch-report { --ink: #172033; --muted: #526176; --line: #d8e0ea; --blue: #1458c4; --blue-ink: #174ea6; background: #edf2f7; color: var(--ink); margin-inline: auto; min-height: 100dvh; max-width: 96rem; min-width: 0; overflow-x: clip; padding: .5rem min(1rem, 4vw) 3rem; }
 	@media (min-width: 640px) { .launch-report { padding: 1.25rem 1.5rem 3.5rem; } }
 	@media (min-width: 1024px) { .launch-report { padding-inline: 2rem; } }
 

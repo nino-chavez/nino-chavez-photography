@@ -174,7 +174,7 @@ function rankSentence(model: LaunchReadModel, album: DatedLaunchAlbum, age: 'day
 		? (rank.tied ? 'tied for first' : 'first')
 		: `${rank.tied ? 'tied for ' : ''}${ordinal(rank.rank)}`;
 	const ahead = rank.rank > 1 ? launchAhead(model, album, age) : null;
-	return sentence(...lead, b(place), ' of the ', b(rank.compared), ' launches with ', label, tail, ahead ? `, behind ${ahead.name} (${fmt(ahead.total)}).` : '.');
+	return sentence(...lead, b(place), ' of the ', b(rank.compared), ' launches with ', label, tail, ahead ? `, and the next one up is ${ahead.name} (${fmt(ahead.total)}).` : '.');
 }
 
 function peakSentence(series: LaunchDay[], total: number, launchDated: boolean, ofWhat = 'the total'): RecapSentence | null {
@@ -300,7 +300,7 @@ function windowLine(series: LaunchDay[], currentDay: LaunchDay | null, today: st
 	const week = series[6]?.date;
 	const counted = first && last
 		? weekFigures && week && week !== last
-			? sentence('Week-1 figures use ', b('7 full days'), ', ', formatDay(first), ' to ', formatDay(week), '. The chart, downloads and photo counts use all ', b(plural(series.length, 'full day')), ', to ', formatDay(last), '. ')
+			? sentence('Week-1 figures use ', b('7 full days'), ', ', formatDay(first), ' to ', formatDay(week), '. The chart, download requests and photo counts use all ', b(plural(series.length, 'full day')), ', to ', formatDay(last), '. ')
 			: sentence('Counts cover ', b(plural(series.length, 'full day')), ', ', first === last ? formatDay(first) : `${formatDay(first)} to ${formatDay(last)}`, '. ')
 		: sentence('No full day is counted yet. ');
 	if (omitToday) return counted.map((part, i) => (i === counted.length - 1 ? { ...part, text: part.text.trimEnd() } : part));
@@ -350,6 +350,23 @@ export function recoveredDates(recovered: readonly boolean[]): { mark: boolean; 
 export const recoveredTag = (basis: 'recorded' | 'inferred' | boolean, inText = false): string => (basis === 'inferred' || basis === true ? (inText ? ` (${RECOVERED_DATE_WORDS})` : '*') : '');
 function publishedPhrase(album: Pick<Launch, 'firstPublishedAt' | 'basis'>, inText: boolean, mark: boolean): string {
 	return `${formatDay(chicagoDate(album.firstPublishedAt))}${inText || mark ? recoveredTag(album.basis, inText) : ''}`;
+}
+
+/**
+ * What share of the counted photo opens came from browsers the gallery's counter could not sort as visitors, test traffic or bots. They are counted and not
+ * called human, so every total next to this sentence includes them. `whose` names the totals ("the gallery’s", "this album’s") and `dates` the days they cover.
+ * "Most" only when more than half; the real share is always said. Null when nothing is unsorted, or the classes were not read.
+ */
+export function unsortedSentence(classes: ReadonlyArray<{ classification: string; count: number }> | null, whose: string, dates: string): string | null {
+	if (!classes) return null;
+	const count = (id: string) => classes.find((item) => item.classification === id)?.count ?? 0;
+	const unsorted = count('unclassified');
+	const counted = count('audience') + unsorted;
+	if (unsorted <= 0 || counted <= 0) return null;
+	const share = Math.round((unsorted / counted) * 100);
+	const most = unsorted * 2 > counted;
+	const lead = most ? `Most of ${whose} counted photo opens, ${dates} (${share}%),` : `${share}% of ${whose} counted photo opens, ${dates},`;
+	return `${lead} came from browsers the gallery’s counter could not sort. They are counted, and they are not called human${most ? ', so read these totals as an upper limit on what visitors did' : ''}.`;
 }
 
 export function undatedReason(code: 'unobserved' | 'not_published' | 'no_record'): string {

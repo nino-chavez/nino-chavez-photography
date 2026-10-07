@@ -5,7 +5,7 @@ import { loadIntelligencePanelMode, loadVisibleFindings } from '$lib/analytics/i
 import { createSupabaseAdminClient, createSupabaseServerClient } from '$lib/supabase/server-ssr';
 import { isAllowedAdmin } from '$lib/server/admin-auth';
 import { fetchLaunchReadModel, type LaunchReadModel } from '$lib/analytics/launch-read-model.server';
-import { buildRecap, recoveredDates } from '$lib/analytics/launch-recap';
+import { buildRecap, daysWords, recoveredDates, unsortedSentence } from '$lib/analytics/launch-recap';
 import { albumQuery, LAUNCH_DAYS, readArrivals, readPhotoRows, readStoredRecap, readStoredRecaps } from '$lib/analytics/launch-recap.server';
 import { recapRows } from '$lib/analytics/launch-recap-list';
 import { buildRecapView } from '$lib/analytics/launch-recap-view';
@@ -74,7 +74,7 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 
 	const query = albumQuery(model);
 	// Tagged arrivals are not part of the launch read model. They come from the scheduled gallery report.
-	const { arrivals } = await readArrivals(admin, model);
+	const { arrivals, traffic } = await readArrivals(admin, model);
 
 	const album = model.album;
 	// Launch findings for this album sit above the photo grid. Same rule as the panel: none, or none still public,
@@ -118,6 +118,8 @@ export const load: PageServerLoad = async ({ params, cookies, setHeaders, url })
 			today: model.today
 		},
 		recap,
+		// How much of this album's counted photo opens came from browsers the counter could not sort, said once beside its totals.
+		unsorted: unsortedSentence(traffic, 'this album’s', daysWords(album.window.start, album.window.end)),
 		recovered,
 		// Nothing to list (an album with no launch date, or a visitor and no recap yet) means no section at all.
 		recaps: recapRowList && recapRowList.length ? { rows: recapRowList } : null,

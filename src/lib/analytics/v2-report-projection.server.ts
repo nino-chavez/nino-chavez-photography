@@ -60,7 +60,7 @@ const labels: Record<PostHogEventName, string> = {
 	gallery_page_viewed: 'Gallery pages viewed', album_exposed: 'Albums exposed', album_opened: 'Albums opened',
 	photo_exposed: 'Photos exposed', photo_opened: 'Photos opened', photo_rendered: 'Photos rendered', photo_load_failed: 'Photo loads failed',
 	favorite_added: 'Favorites added', favorite_removed: 'Favorites removed', share_action: 'Share actions (all outcomes)',
-	download_requested: 'Downloads requested', download_item_requested: 'Download items requested', download_item_prepared: 'Download items prepared',
+	download_requested: 'Download requests', download_item_requested: 'Download items requested', download_item_prepared: 'Download items prepared',
 	download_prepared: 'Downloads prepared', download_handed_off: 'Downloads handed off', download_failed: 'Downloads failed', download_cancelled: 'Downloads cancelled',
 	search_submitted: 'Searches submitted', search_results_shown: 'Search results shown', search_failed: 'Searches failed',
 	search_result_selected: 'Search results selected', filters_applied: 'Filters applied', experiment_exposed: 'Experiment exposures'

@@ -282,7 +282,7 @@ function collectionGap(input: LaunchRuleInput, focus: LaunchFocus, result: Launc
 	result.findings.push(finding(input, {
 		rule: 'collection_health', id: `collection-gap-${focus.albumKey}`, severity: 'high', target: { kind: 'album', albumKey: focus.albumKey },
 		title: `${plural(gaps.length, 'day')} of this launch ${gaps.length === 1 ? 'is' : 'are'} not completely recorded`,
-		explanation: `${listDates(dates)} ${gaps.length === 1 ? 'has' : 'have'} no complete record of opens and downloads for ${nameOf(focus)}.`,
+		explanation: `${listDates(dates)} ${gaps.length === 1 ? 'has' : 'have'} no complete record of opens and download requests for ${nameOf(focus)}.`,
 		why: 'Those days are left out of every total and rank, and a quiet day cannot be told apart from a missing one.',
 		evidenceText: `${plural(gaps.length, 'day')} of the ${plural(focus.series.length, 'complete day')} since first publication ${gaps.length === 1 ? 'is' : 'are'} partial or missing in the daily record.`,
 		limits: ['This says the record is incomplete. It does not say how much activity is missing.'],
@@ -313,12 +313,15 @@ function launchFinished(input: LaunchRuleInput, focus: LaunchFocus, peers: reado
 	const quiet = since
 		? `No one has opened a photo since ${formatDay(since)}, counting complete days through ${formatDay(through)}.`
 		: `${plural(recent, 'photo open')} on ${dayRange(last[0].date, last.at(-1)!.date)}, the last ${FINISHED_QUIET_DAYS} complete days.`;
+	// The quiet stretch is every complete day after the last open one, so no day between that open and the last three is skipped.
+	const quietTail = since ? `0 photo opens on ${dayRange(addDays(since, 1), through)}` : `${plural(recent, 'photo open')} on ${dayRange(last[0].date, last.at(-1)!.date)}`;
 	result.findings.push(finding(input, {
 		rule: 'launch_finished', id: `launch-finished-${focus.albumKey}`, severity: 'low', target: { kind: 'album', albumKey: focus.albumKey },
 		title: 'The launch is over',
-		explanation: `${quiet} In its first 7 days it had ${plural(week.photoOpens, 'photo open')} and ${plural(downloads, 'download request')}.${c.ok ? ` ${aheadWords(c, 7)}; their median was ${medianWords(c.median)}.` : ''}`,
+		explanation: `${quiet} In its first 7 days it had ${plural(week.photoOpens, 'photo open')} and ${plural(downloads, 'download request')}.`,
+		// The place among earlier launches and their median are in the report's headline and in this finding's evidence (`comparison`); said here too they were said twice.
 		why: 'Most of an album’s attention arrives in its first days. The photos people asked to download are the clearest sign of which ones mattered to them.',
-		evidenceText: `${plural(week.photoOpens, 'photo open')} and ${plural(downloads, 'download request')} on ${dayRange(first, addDays(first, 6))}; ${plural(recent, 'photo open')} on ${dayRange(last[0].date, last.at(-1)!.date)}. Complete Chicago days only.`,
+		evidenceText: `${plural(week.photoOpens, 'photo open')} and ${plural(downloads, 'download request')} on ${dayRange(first, addDays(first, 6))}; ${quietTail}. Complete Chicago days only.`,
 		limits: [recordedOnly, 'A download request is a request, not a confirmed saved file.', 'Quiet means nearly no photo opens. A later share can bring an album back.', c.ok ? excludedLimit(c) : null, inferredLimit(focus)],
 		action: 'Look at the photos people asked to download before choosing what to feature or share again.',
 		evidence: { windows: { current: { start: first, end: addDays(first, 6) }, previous: { start: last[0].date, end: last.at(-1)!.date } }, units: 'photo opens', current: week.photoOpens, previous: recent, strength: 'limited', ...(c.ok ? { comparison: comparisonEvidence(c) } : {}) },

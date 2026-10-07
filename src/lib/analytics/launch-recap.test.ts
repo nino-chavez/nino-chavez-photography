@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { DatedLaunchAlbum, Launch, LaunchDay, LaunchPhoto, LaunchReadModel, UndatedLaunchAlbum } from './launch-read-model.server';
 import { addDays, ALL, D, day, model, NAMES, photos, shape, START, sum, type Shape } from './launch-recap.fixture';
-import { buildRecap, cumulativeOpens, launchAhead, median, ordinal, RECOVERED_ALL_NOTE, RECOVERED_NOTE, recapToPlain, recoveredDates, type ArrivalRow } from './launch-recap';
+import { buildRecap, cumulativeOpens, launchAhead, median, ordinal, RECOVERED_ALL_NOTE, RECOVERED_NOTE, recapToPlain, recoveredDates, unsortedSentence, type ArrivalRow } from './launch-recap';
 import { cumulativeCurves, dailyChart, gridPhotos, launchTable, mergeLimits, nameWithoutDate } from './launch-report-view';
 
 const ids = (n: number) => new Set(Array.from({ length: n }, (_, i) => `p${i + 1}`));
@@ -20,7 +20,7 @@ test('finished launch: week-1 total, rank, the launch ahead, peak day and every 
 	assert.equal(recapToPlain(r.headline), '931 photo opens in its first week.');
 	const lines = r.sentences.map((s) => recapToPlain(s));
 	assert.match(lines[0], /^At the same age, the 5 earlier launches had a median of 125 photo opens\.$/);
-	assert.match(lines[1], /^As of Oct 6, over its first 7 days \(Sep 25 to Oct 1\) it is 2nd of the 7 launches with a week-1 total, behind HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)\.$/);
+	assert.match(lines[1], /^As of Oct 6, over its first 7 days \(Sep 25 to Oct 1\) it is 2nd of the 7 launches with a week-1 total, and the next one up is HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)\.$/);
 	assert.match(lines[2], /^Most of it came at once: 575 opens on Sep 26, the day after it was published \(62% of the week\)\.$/);
 	assert.equal(lines[3], 'Every one of the 4 photos was opened at least once.');
 	assert.equal(r.sentences.length, 4);
@@ -147,7 +147,7 @@ test('today is partial: reported apart and never added to a total', () => {
 
 test('week-1 figures and the longer window are told apart when more than seven days are counted', () => {
 	const w = recapToPlain(recap(model(shape('Re7kho'), ALL)).window);
-	assert.match(w, /^Week-1 figures use 7 full days, Sep 25 to Oct 1\. The chart, downloads and photo counts use all 11 full days, to Oct 5\./);
+	assert.match(w, /^Week-1 figures use 7 full days, Sep 25 to Oct 1\. The chart, download requests and photo counts use all 11 full days, to Oct 5\./);
 });
 
 test('no exposure recorded during the launch says so, and partial and complete are worded differently', () => {
@@ -324,6 +324,14 @@ test('a recovered launch date carries the mark on a page unless the page says on
 	assert.deepEqual(recoveredDates([true]), { mark: false, note: RECOVERED_ALL_NOTE });
 });
 
+test('an album says what share of its counted photo opens came from browsers the counter could not sort, with its own dates and the real share', () => {
+	const classes = (audience: number, unclassified: number) => [{ classification: 'audience', count: audience }, { classification: 'unclassified', count: unclassified }, { classification: 'known_crawler', count: 900 }];
+	assert.equal(unsortedSentence(classes(44, 232), 'this album’s', 'Sep 25 to Oct 6'), 'Most of this album’s counted photo opens, Sep 25 to Oct 6 (84%), came from browsers the gallery’s counter could not sort. They are counted, and they are not called human, so read these totals as an upper limit on what visitors did.');
+	assert.equal(unsortedSentence(classes(240, 36), 'this album’s', 'Sep 25 to Oct 6'), '13% of this album’s counted photo opens, Sep 25 to Oct 6, came from browsers the gallery’s counter could not sort. They are counted, and they are not called human.');
+	assert.equal(unsortedSentence(classes(10, 0), 'this album’s', 'Sep 25 to Oct 6'), null);
+	assert.equal(unsortedSentence(null, 'this album’s', 'Sep 25 to Oct 6'), null);
+});
+
 test('words that must not appear: people as a count, saved, guessed causes', () => {
 	for (const m of [model(shape('Re7kho'), ALL), model(shape('jq1Rp7'), ALL)]) {
 		const t = text(m, [{ source: 'profile', count: 4 }]);
@@ -392,7 +400,7 @@ test('one window in the comparison: the chart\'s highest line ends at the table\
 	assert.equal(leader.points.at(-1)!.day, 6);
 	assert.equal(leader.points.at(-1)!.total, 1258);
 	assert.equal(leader.points.at(-1)!.total, launchTable(m)[0].day7);
-	assert.match(text(m), /behind HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)/);
+	assert.match(text(m), /and the next one up is HS Girls VB - JCA vs PNHS - 08-25-2026 \(1,258\)/);
 	// This album's own line ends at its week-1 total, the headline's number, not at the 1,035 it had by day 11.
 	const mine = curves.find((c) => c.current)!;
 	assert.equal(mine.points.at(-1)!.total, 931);

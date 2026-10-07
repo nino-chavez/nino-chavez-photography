@@ -23,7 +23,7 @@
 			record: '?/correctClassification', reverse: '?/undoClassification', recordLabel: 'Record correction', reverseLabel: 'Reverse latest',
 			error: form?.correctionError, done: form?.corrected ? 'Correction recorded.' : form?.correctionUndone ? 'Reversal recorded.' : null,
 			unavailable: 'The actions could not be read just now.', none: 'No actions were recorded in these days.',
-			intro: 'These are the opens, favorites, downloads and shares behind the photo and album counts above. A correction changes that day’s counts when it is saved.', reasonLabel: 'Reason'
+			intro: 'These are the opens, favorites, download requests and shares behind the photo and album counts above. A correction changes that day’s counts when it is saved.', reasonLabel: 'Reason'
 		},
 		{
 			key: 'v2', title: 'Detailed events', fieldId: 'v2-event', classes: V2_CLASSES, set: corrections.v2,

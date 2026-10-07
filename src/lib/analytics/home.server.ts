@@ -4,7 +4,7 @@ import type { Finding } from './intelligence-contract';
 import { diagnosticsFromHealth, readDeliveryHealth } from './intelligence-source.server';
 import { rejectionsFromHealth } from './measurement-health';
 import type { VisibleFindings } from './intelligence-panel.server';
-import { fetchLaunches, type LaunchList } from './launch-read-model.server';
+import { fetchLaunches, type Launch, type LaunchList } from './launch-read-model.server';
 import { buildOperatorReport, type OperatorReport } from './operator-report.server';
 import { chicagoDate } from './launch-recap';
 import { parseReportQuery } from './report-contract';
@@ -111,6 +111,23 @@ async function readFailureScales(admin: SupabaseClient, findings: readonly Findi
 	return scales;
 }
 
+/**
+ * How the newest launch's counted photo opens were sorted over the days the headline counts (its first week, or so far). One read, for the one launch the
+ * headline is about; a read that fails leaves the sentence out rather than guessing a share.
+ */
+async function readHeadlineTraffic(admin: SupabaseClient, launch: Launch | undefined, asOf: Date): Promise<HomeInput['traffic']> {
+	if (!launch || launch.series.length === 0) return null;
+	const week = launch.series.slice(0, 7);
+	const params = new URLSearchParams({ period: 'custom', scope: 'album', albums: launch.albumKey, measure: 'photo_opens', traffic: 'conservative', compare: 'none', start: week[0].date, end: week[week.length - 1].date });
+	try {
+		const report = await buildOperatorReport(admin, parseReportQuery(params, asOf), { publicOnly: true, photoWindow: { page: 0, pageSize: 0, rank: 'popular' }, includeDiagnostics: false, includeVisitorEstimate: false, includeToday: false, cacheRole: 'service_role' });
+		return report.available ? { start: week[0].date, end: week[week.length - 1].date, classes: report.traffic } : null;
+	} catch (cause) {
+		console.error('[home] launch traffic classes unavailable:', cause instanceof Error ? cause.message : cause);
+		return null;
+	}
+}
+
 export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const { admin } = deps;
 	const asOf = deps.now ?? new Date();
@@ -153,7 +170,7 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 	const covers = await readCovers(admin, newest.map((launch) => launch.albumKey));
 
 	const findings = ok(findingsRead)?.findings ?? [];
-	const failureScales = await readFailureScales(admin, findings);
+	const [failureScales, headlineTraffic] = await Promise.all([readFailureScales(admin, findings), readHeadlineTraffic(admin, newest[0], asOf)]);
 
 	const input: HomeInput = {
 		asOf: asOfIso, today, lastCompleteDay, launches: list ? list.launches : null, covers, failureScales,
@@ -163,7 +180,7 @@ export async function loadHome(deps: HomeDeps): Promise<HomeView> {
 		incidents: incidentIds,
 		diagnostics: health ? diagnosticsFromHealth(health, asOf) : null,
 		rejections: health && !health.error ? rejectionsFromHealth(health.data, lastCompleteDay) : null,
-		traffic: report && report.available ? { start: report.query.start, end: report.query.end, classes: report.traffic } : null,
+		traffic: headlineTraffic,
 		findings,
 		findingsCheckedAt: ok(findingsRead)?.checkedAt ?? null
 	};
