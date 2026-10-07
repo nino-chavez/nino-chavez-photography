@@ -169,7 +169,7 @@
 	textarea { border: 1px solid #8fa1b8; border-radius: .45rem; color: #172033; font: inherit; font-size: .88rem; max-width: 100%; min-height: 2.75rem; padding: .45rem .6rem; resize: vertical; }
 	.status { color: #195b33; font-size: .84rem; margin: .4rem 0 0; }
 	.status:empty { display: none; }
-	.status a { color: #174ea6; font-weight: 700; }
+	.status a { color: #174ea6; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 	.compact .finding { padding: .55rem .75rem; }
 	.compact .title { font-size: .95rem; }
 	.compact .what, .compact .next { font-size: .87rem; }

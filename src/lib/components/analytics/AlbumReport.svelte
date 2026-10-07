@@ -304,7 +304,7 @@
 	.window { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .8rem 0 0; max-width: 42rem; }
 	.window :global(strong) { font-weight: 650; }
 	.note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .35rem 0 .6rem; max-width: 46rem; }
-	.note a { color: var(--blue-ink); font-weight: 650; }
+	.note a { color: var(--blue-ink); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
 
 	.downloads { display: grid; gap: .25rem 2rem; }
 	.downloads-main { min-width: 0; }

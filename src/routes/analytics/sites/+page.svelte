@@ -187,7 +187,7 @@
 	.value { font-size: 1.7rem; font-variant-numeric: tabular-nums; font-weight: 750; line-height: 1.1; }
 	.detail { color: var(--muted); font-size: .85rem; line-height: 1.4; }
 	.note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .4rem 0 0; max-width: 62rem; }
-	.note a { color: var(--blue-ink); text-underline-offset: 3px; }
+	.note a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 3px; }
 	.sub { color: var(--muted); font-size: .8rem; margin: .1rem 0 .3rem; }
 
 	.trend svg { color: var(--blue); display: block; height: 3.25rem; margin: .5rem 0; width: 100%; }

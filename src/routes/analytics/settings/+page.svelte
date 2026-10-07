@@ -136,7 +136,7 @@
 	.block { background: #fff; border: 1px solid var(--line); border-radius: .8rem; min-width: 0; padding: .8rem .9rem; }
 	.block :global(.analytics-preferences) { margin-top: .6rem; }
 	.note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .35rem 0 0; max-width: 62rem; }
-	.note a { color: var(--blue-ink); text-underline-offset: 3px; }
+	.note a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 3px; }
 	.action { margin: .6rem 0 0; }
 	.button, button { align-items: center; background: var(--blue-ink); border: 1px solid var(--blue-ink); border-radius: .5rem; color: #fff; cursor: pointer; display: inline-flex; font: inherit; font-size: .85rem; font-weight: 650; min-height: 2.75rem; padding: 0 .9rem; text-decoration: none; }
 	button.danger { background: #fff; color: #8f1d1d; border-color: #8f1d1d; }

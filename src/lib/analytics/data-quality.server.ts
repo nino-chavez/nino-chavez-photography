@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildDataView, journeysView, notReadNote, type DataView, type JourneysView } from './data-quality';
+import { buildDataView, eventsView, journeysView, notReadNote, type DataView, type EventsView, type JourneysView } from './data-quality';
 import { refreshTimeFrom } from './home.server';
 import { collectionDiagnostics } from './intelligence-source.server';
 import { chicagoDate } from './launch-recap';
@@ -12,7 +12,7 @@ import { parseReportQuery } from './report-contract';
 import { loadSiteActions } from './site-actions.server';
 import { loadSiteJourneys, type SiteJourneys } from './site-journeys.server';
 import { loadSiteTraffic, siteTrafficCache } from './site-traffic.server';
-import { fetchV2ReportProjection, type V2ReportProjection } from './v2-report-projection.server';
+import { fetchV2ReportProjection } from './v2-report-projection.server';
 
 /**
  * The reads behind the data quality page. One parallel round, and each part fails alone: a part that
@@ -23,6 +23,7 @@ import { fetchV2ReportProjection, type V2ReportProjection } from './v2-report-pr
  *   freshness         the newest `reconciled_at`, the incidents, and delivery diagnostics: the same reads Home makes
  *   site              Cloudflare page loads and the site's own action summary
  *   delivery health   the outbox counts; only for the signed-in owner
+ *   event counts      the recorded events, the slowest read here; streamed after the page like the journeys
  *   journeys          PostHog; streamed after the page, so a slow provider never holds the page back
  */
 
@@ -43,6 +44,8 @@ export interface DataDeps {
 
 export interface DataPage {
 	view: DataView;
+	/** Never rejects: a failure is an `EventsView` that says so. Read after the page is drawn. */
+	events: Promise<EventsView>;
 	/** Never rejects: a failure is a `JourneysView` that says so. */
 	journeys: Promise<JourneysView>;
 	siteJourneys: Promise<SiteJourneys>;
@@ -87,9 +90,10 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 
 	const report: OperatorReport | null = ok(reportRead);
 	const transport = createPostHogQueryTransport(deps.env);
-	const v2: Promise<V2ReportProjection | null> = report && names.size
-		? fetchV2ReportProjection(admin, query, { publicAlbumKeys }).catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; })
-		: Promise.resolve(null);
+	// The event counts read thousands of rows, so they start now and stream: the page is drawn without them.
+	const events: Promise<EventsView> = report && names.size
+		? fetchV2ReportProjection(admin, query, { publicAlbumKeys }).catch((cause) => { console.error('[data quality] event counts unavailable:', cause instanceof Error ? cause.message : cause); return null; }).then(eventsView)
+		: Promise.resolve(eventsView(null));
 
 	// Provider journeys start now and stream: the page does not wait for them.
 	const journeys: Promise<JourneysView> = names.size
@@ -104,12 +108,12 @@ export async function loadDataQuality(deps: DataDeps): Promise<DataPage> {
 	const parsedHealth: MeasurementHealth | null = deps.owner && health && !health.error ? parseMeasurementHealth(health.data) : null;
 	const view = buildDataView({
 		asOf: asOfIso, today, lastCompleteDay, days, owner: deps.owner,
-		report, names, v2: await v2, health: parsedHealth,
+		report, names, health: parsedHealth,
 		refreshedAt: refreshTimeFrom(ok(refreshRead)),
 		incidents: incidents && !incidents.error ? (incidents.data ?? []).map((row) => String(row.finding_id)) : null,
 		diagnostics: ok(diagnosticRead) ?? null,
 		traffic: ok(trafficRead), actions: ok(actionsRead),
 		posthogConfigured: transport !== null
 	});
-	return { view, journeys, siteJourneys };
+	return { view, events, journeys, siteJourneys };
 }

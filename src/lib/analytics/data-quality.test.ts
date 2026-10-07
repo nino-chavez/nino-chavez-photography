@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	basisWords, buildDataView, coverageView, deliveryView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
-	siteJourneyNote, siteMeasuresView, statusView, trafficClassWords, trafficView, type DataInput, type NotRead
+	basisWords, buildDataView, coverageView, deliveryView, EVENTS_NOT_READ, eventsView, evidenceView, freshnessForStatus, impactScope, journeysView, notReadNote, openLocationsView,
+	siteJourneyNote, siteMeasuresView, statusView, trafficClassWords, trafficView, withNotRead, type DataInput, type NotRead
 } from './data-quality';
 import { DATA_ANCHORS } from './data-anchors';
 import type { Freshness } from './home';
@@ -11,7 +11,7 @@ import type { OperatorReport } from './operator-report.server';
 import type { JourneyAggregate } from './posthog.types';
 import type { SiteActionReport } from './site-actions';
 import { summarizeSiteTraffic } from './site-traffic.server';
-import type { V2ReportProjection } from './v2-report-projection.server';
+import { unavailableV2ReportProjection, type V2ReportProjection } from './v2-report-projection.server';
 
 /*
  * Fixtures follow production on 2026-10-06, the last 30 complete days (Sep 6 to Oct 5): 254 public albums,
@@ -74,7 +74,7 @@ const health = parseMeasurementHealth({ schema_version: 2, pending: 0, submitted
 
 function input(over: Partial<DataInput> = {}): DataInput {
 	return {
-		asOf: NOW, today: TODAY, lastCompleteDay: LAST, days: 30, owner: false, report: report(), names: new Map(), v2, health: null, refreshedAt: REFRESHED,
+		asOf: NOW, today: TODAY, lastCompleteDay: LAST, days: 30, owner: false, report: report(), names: new Map(), health: null, refreshedAt: REFRESHED,
 		incidents: [], diagnostics: [], traffic, actions: actions(), posthogConfigured: true, ...over
 	};
 }
@@ -125,9 +125,11 @@ test('traffic classes count audience and unclassified, leave the rest out, and n
 });
 
 test('the status uses Home\'s own rule: current, partial, or attention, with the same problems', () => {
-	const current = buildDataView(input());
+	// Every part reaches back to the first day asked for: nothing limited, nothing wrong.
+	const FULL = { diagnosticsCoverage: { availableFrom: '2026-09-01', label: 'x', error: null } };
+	const current = buildDataView(input({ report: report(FULL) }));
 	assert.equal(current.status.state, 'current');
-	assert.equal(current.status.headline, 'Everything is current.');
+	assert.equal(current.status.headline, 'The gallery counts are current.');
 	assert.match(current.status.detail, /^The gallery counts were last refreshed at 9:40 AM Chicago time and cover every complete day through Oct 5\. They normally refresh every 30 minutes\.$/);
 	// A late refresh is the same problem Home shows.
 	const late = buildDataView(input({ refreshedAt: '2026-10-06T12:00:00Z' }));
@@ -141,6 +143,34 @@ test('the status uses Home\'s own rule: current, partial, or attention, with the
 	assert.equal(gap.status.headline, 'One thing needs attention.');
 	// Two causes at once.
 	assert.equal(buildDataView(input({ refreshedAt: '2026-10-06T12:00:00Z', incidents: ['search-failures'] })).status.headline, '2 things need attention.');
+});
+
+test('the headline is the worst state on the page: a limit leads a quiet page, and anything worse leads over a limit', () => {
+	// Production's shape: search and download evidence began on Sep 29, after the first day of the 30 asked for.
+	const limited = buildDataView(input());
+	assert.equal(limited.status.state, 'limited');
+	assert.equal(limited.status.headline, 'The gallery counts are current. Search and download evidence starts on Sep 29; earlier days have no record.');
+	assert.deepEqual(limited.status.limits, ['Search and download evidence starts on Sep 29; earlier days have no record.']);
+	// A 7-day page that sits wholly inside the evidence has nothing to limit.
+	const week = buildDataView(input({ days: 7, report: report({ query: { start: '2026-09-29', end: LAST } as never }) }));
+	assert.equal(week.status.state, 'current');
+	// Evidence never recorded at all is said, not left as a quiet page.
+	assert.equal(buildDataView(input({ report: report({ diagnosticsCoverage: { availableFrom: null, label: 'x', error: null } }) })).status.headline, 'The gallery counts are current. No search or download attempt has been recorded yet.');
+	// Daily records that begin after the first day asked for are a limit too, and both are said: one in the headline, the rest in the detail.
+	const both = buildDataView(input({ report: report({ preservedSince: '2026-09-15' }) }));
+	assert.equal(both.status.limits.length, 2);
+	assert.match(both.status.detail, /History is kept since Sep 15; earlier days have no record\.$/);
+	// Something worse than a limit leads, and the limit is still said.
+	const worse = buildDataView(input({ refreshedAt: '2026-10-06T12:00:00Z' }));
+	assert.equal(worse.status.headline, 'One thing needs attention.');
+	assert.match(worse.status.detail, /Search and download evidence starts on Sep 29/);
+	const partial = buildDataView(input({ posthogConfigured: false }));
+	assert.equal(partial.status.state, 'partial');
+	assert.equal(partial.status.headline, 'Nothing is wrong, but 1 part of this page could not be read.');
+	// Evidence that could not be read at all is a part not read, never "none recorded".
+	const broken = buildDataView(input({ report: report({ diagnosticsCoverage: { availableFrom: null, label: 'x', error: 'diagnostics unavailable' } }) }));
+	assert.deepEqual(broken.status.notRead.map((item) => item.id), ['evidence']);
+	assert.equal(broken.status.limits.length, 0);
 });
 
 test('a part that could not be read is partial, not healthy, and it names where its own note is', () => {
@@ -163,12 +193,12 @@ test('a part that could not be read is partial, not healthy, and it names where 
 
 test('every place the status can point at exists on the page, and so does every place Home points at', () => {
 	const known = new Set<string>(DATA_ANCHORS);
-	const view = buildDataView(input({ report: report({ daily: days('2026-09-06', 30, 'complete', { '2026-10-04': 'partial' }) }), refreshedAt: '2026-10-06T12:00:00Z', incidents: ['a'], traffic: null, actions: null, posthogConfigured: false, v2: null }));
+	const view = buildDataView(input({ report: report({ daily: days('2026-09-06', 30, 'complete', { '2026-10-04': 'partial' }) }), refreshedAt: '2026-10-06T12:00:00Z', incidents: ['a'], traffic: null, actions: null, posthogConfigured: false }));
 	assert.ok(view.status.problems.length >= 3);
 	for (const problem of view.status.problems) assert.ok(known.has(problem.href), problem.id);
 	const notRead: NotRead[] = view.status.notRead;
-	assert.ok(notRead.length >= 4);
-	for (const item of notRead) assert.ok(known.has(item.section), item.id);
+	assert.ok(notRead.length >= 3);
+	for (const item of [...notRead, EVENTS_NOT_READ]) assert.ok(known.has(item.section), item.id);
 });
 
 test('delivery detail waits for the owner; everyone else is told why and where the failures already show', () => {
@@ -180,6 +210,11 @@ test('delivery detail waits for the owner; everyone else is told why and where t
 	assert.equal(owner.deliveryState, 'shown');
 	assert.equal(owner.deliveryNote, null);
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Collection, last 30 days')!.value, '500 accepted · 1 rejected · 3 duplicate');
+	// Every word in those rows is defined where the rows are, and a signed-out reader has no rows and so no terms.
+	const terms = owner.delivery.terms.map((item) => item.term);
+	assert.deepEqual(terms, ['Accepted', 'Rejected', 'Duplicate', 'Pending', 'Submitted', 'Confirmed', 'Failed', 'Traffic corrections waiting']);
+	assert.match(owner.delivery.terms.find((item) => item.term === 'Rejected')!.means, /^the collector refused the event: it was not valid, named an album or photo that does not exist, came from a known crawler, or could not be stored\. This page does not split rejected events by reason\.$/);
+	assert.deepEqual(signedOut.delivery.terms, []);
 	assert.equal(owner.delivery.rows!.find((row) => row.label === 'Oldest event waiting')!.value, 'None waiting');
 	assert.match(owner.delivery.volume!, /^About 300 eligible observations in a future 30-day period/);
 	assert.match(owner.delivery.volumeLimit, /not people, provider quota, cost or spend approval\.$/);
@@ -242,11 +277,28 @@ test('counting rules and event counts say what a number stands for', () => {
 	const view = buildDataView(input());
 	assert.match(view.counting!.rule, /counted once per day.*not people\.$/);
 	assert.deepEqual(view.counting!.totals.map((item) => item.value), ['2,290', '169', '0']);
-	assert.equal(view.counting!.events.counts![0].count, 259);
-	const without = buildDataView(input({ v2: null }));
-	assert.equal(without.counting!.events.counts, null);
-	assert.match(without.eventsDown!.what, /not zero\.$/);
-	assert.ok(without.status.notRead.some((item) => item.id === 'events'));
+	// The event counts arrive after the page, from their own view.
+	const events = eventsView(v2);
+	assert.equal(events.available, true);
+	assert.equal(events.counts![0].count, 259);
+	assert.equal(events.down, null);
+	const without = eventsView(null);
+	assert.deepEqual([without.available, without.counts], [false, null]);
+	assert.match(without.down!.what, /not zero\.$/);
+	assert.equal(without.label, 'Detailed event counts were not read.');
+	assert.match(eventsView(unavailableV2ReportProjection({} as never)).label, /^Detailed event counts could not be read\. This is not a zero-result or complete-coverage report\.$/);
+	// Until they arrive the page says nothing about them; if they cannot be read the headline changes with them.
+	const status = buildDataView(input()).status;
+	assert.ok(!status.notRead.some((item) => item.id === 'events'));
+	const failed = withNotRead(status, EVENTS_NOT_READ);
+	assert.equal(failed.state, 'partial');
+	assert.equal(failed.headline, 'Nothing is wrong, but 1 part of this page could not be read.');
+	assert.match(failed.detail, /Search and download evidence starts on Sep 29/, 'what the numbers do not reach back to is still said');
+	assert.equal(withNotRead(failed, EVENTS_NOT_READ), failed, 'the same part is not added twice');
+	// Something that needs attention stays the headline.
+	const worse = buildDataView(input({ refreshedAt: '2026-10-06T12:00:00Z' })).status;
+	assert.equal(withNotRead(worse, EVENTS_NOT_READ).headline, 'One thing needs attention.');
+	assert.deepEqual(withNotRead(worse, EVENTS_NOT_READ).notRead.map((item) => item.id), ['events']);
 	// A partial period says "recorded", never a bare total.
 	const partial = buildDataView(input({ report: report({ coverage: 'partial' }) }));
 	assert.equal(partial.counting!.totals[0].value, '2,290 recorded');
@@ -263,8 +315,11 @@ test('the browser estimate is a figure with its limit, or says it is not shown, 
 
 test('search and download evidence: nothing is silent, and nothing is called a completed transfer', () => {
 	const view = evidenceView(report(), TODAY)!;
-	assert.deepEqual(view.rows[0], { path: 'download failed', status: 'failed', recorded: '2', results: 'not recorded', errors: 'E1', latest: 'Oct 3, 7:00 AM' });
+	assert.deepEqual(view.rows[0], { path: 'download failed', status: 'failed', recorded: '2', results: 'none counted', errors: 'E1', latest: 'Oct 3, 7:00 AM' });
 	assert.match(view.note, /requests and failures, not completed transfers/);
+	// "none counted" is explained where it appears: a requested row has no results yet, a download never has any.
+	assert.match(view.note, /A "requested" row is written before any result exists, so it reads "none counted"/);
+	assert.match(view.note, /A download has no result count\./);
 	assert.equal(evidenceView({ ...report(), available: false } as OperatorReport, TODAY), null);
 });
 

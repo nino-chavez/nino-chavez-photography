@@ -376,7 +376,7 @@
 	h2 { font-size: 1.05rem; font-weight: 700; margin: 0; }
 	.lead, .note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: .35rem 0 0; max-width: 56rem; }
 	.lead { font-size: .92rem; }
-	.lead a, .note a, .callout a { color: var(--blue-ink); text-underline-offset: 3px; }
+	.lead a, .note a, .callout a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 3px; }
 	.callout { background: #eef4fc; border-radius: .5rem; font-size: .85rem; line-height: 1.5; margin: .6rem 0 0; padding: .55rem .7rem; }
 	.alert { background: #fdf0ef; border-radius: .5rem; color: var(--warn); font-size: .85rem; line-height: 1.45; margin: .6rem 0 0; padding: .55rem .7rem; }
 	.ok { color: #195b33; font-size: .85rem; margin: .5rem 0 0; }
