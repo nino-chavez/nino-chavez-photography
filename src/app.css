@@ -16,7 +16,10 @@
  */
 @theme {
   /* Typography - Core Gallery Scale (Chrome Budget Protected) */
-  --font-family-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  /* The system UI face. Inter Variable was named here from the start but never shipped (no @font-face, no
+     package, no file), so every visitor without it installed has seen this stack since launch. Shipping Inter
+     is a judged visual change: add its woff2 beside Montserrat's and a cold review, then name it again. */
+  --font-family-sans: system-ui, -apple-system, sans-serif;
 
   /* Extended Typography - Display Scale (Marketing/Content Pages Only)
    * ⚠️ DO NOT USE on gallery pages (explore, albums, collections)
