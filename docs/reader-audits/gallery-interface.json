@@ -1,19 +1,12 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-07T22:40:09.284Z",
-  "reviewedBy": "Claude Opus 5.5 (coordinating session, self-review; not a cold reviewer)",
-  "method": "Review fix on top of the third fix pass (walk: docs/evidence/screen-reviews/analytics-acceptance-fixes3-423551e/mechanical.md; fourth cold review in the same folder). Only data-quality.ts changed: the Data page's gallery coverage dates (event counts start, raw observations start, diagnostic evidence start, and the status limit naming it) now convert an instant to its Chicago day instead of cutting the UTC date. An instant at 04:00 UTC on Sep 30 now reads Sep 29. Date-only bounds and the site's own UTC-day page views are unchanged. Checked by unit tests, with a forced failure that restores the UTC cut. Not covered: a rendered capture, a real device, a real sign-in, screen readers.",
-  "sourceDigest": "sha256:1ca4605138f09368440530210e0cf61bedd7fa24c9c4a1a7da8c5fe934682dd5",
+  "reviewedAt": "2026-10-09T19:14:41.433Z",
+  "reviewedBy": "Claude Opus 5.5 (implementing session, self-review; not a cold reviewer)",
+  "method": "Data-only change: the /collections loader selects cf_image_id alone instead of also sending the dead SmugMug ImageUrl/ThumbnailUrl. No copy or layout changed. Walked the branch on local vite dev against production Supabase (read-only, desktop 1280): /photography/collections shows 4 collections · 8350 photos, same as live photography.ninochavez.co; all 4 covers load from imagedelivery.net (jT82Kh6, RfXncv8, HvPh5Fq, kCR8tCG); page data carries only cf_image_id and no photos.smugmug.com URL. PostgREST A/B of the old and new select for portfolio-excellence: same count (725) and cover (jT82Kh6). Not covered: phone width and keyboard (nothing visual changed); local wrangler pages dev showed 0 collections for both the old and new loader, a local-runtime issue unrelated to this change.",
+  "sourceDigest": "sha256:cbd9e3ee69db8f39ea618b01794b4e9dab11a420ac6aa1d78f57bc1c85998c23",
   "sourceFiles": 203,
   "scope": [
-    "Album report order and merged findings",
-    "Navigation at large text",
-    "Comparison table as cards",
-    "Recap lead and list",
-    "Home verdict, notes inside cards, unsorted share",
-    "Albums cards",
-    "Data wording and dates",
-    "Plain-word rewrites"
+    "Collections index covers"
   ]
 }
