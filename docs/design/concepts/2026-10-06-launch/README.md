@@ -6,7 +6,7 @@ Open `index.html` through any local static server; `?concept=A|B|C&case=…` sel
 
 ## Data
 
-Every count is a production value read on October 6, 2026 from `analytics_daily_actions`. It includes audience and unclassified traffic. The live report's conservative rule can differ by a few: JCA at ACC's day 1 reads 577 here and 575 in the report. All seven publication dates are inferred from logs. "About 42 browsers" comes from the live album report for Sep 5 – Oct 4. Photos are the albums' real images from Cloudflare Images. The data-failure case is **simulated**. The refresh failure is invented and the frame says so; its counts are real through Oct 4.
+Every count is a production value read on October 6, 2026 from `analytics_daily_actions`. It includes audience and unclassified traffic, which the live report's conservative rule does not: the report reads 931 for JCA at ACC's first week where this file sums to 945, and its day 1 reads 575 where this file has 577. Quote this file's day values only with that rule named. The arrays run to day 13, but a day on or after October 6 had not been observed when the values were read, so its 0 is a placeholder, not a count: JCA at ACC's days 11–13 and Millikin's days 10–13. A 14-day total or share taken from this file counts those days as zero. All seven publication dates are inferred from logs. "About 42 browsers" comes from the live album report for Sep 5 – Oct 4. Photos are the albums' real images from Cloudflare Images. The data-failure case is **simulated**. The refresh failure is invented and the frame says so; its counts are real through Oct 4.
 
 ## Cases
 

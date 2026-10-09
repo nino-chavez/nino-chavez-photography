@@ -24,10 +24,13 @@ colors:
       "50":  "#fefce8"
       "100": "#fef9c3"
       "200": "#fef08a"
-      "300": "#fde047"
-      "400": "#facc15"
-      "500": "#eab308"
-      "600": "#ca8a04"
+      # 300-600 are the metallic "old gold" the site ships (src/app.css, the <meta theme-color>),
+      # not the Tailwind yellow scale the other steps come from. This file said #eab308 for 500
+      # until 2026-10-08 while every visitor saw #D4AF37; the runtime value is the brand.
+      "300": "#ecd47a"
+      "400": "#e3c358"
+      "500": "#D4AF37"
+      "600": "#b8962e"
       "700": "#a16207"
       "800": "#854d0e"
       "900": "#713f12"
@@ -82,15 +85,16 @@ typography:
   # check vacuous. These two role entries are the shape it reads. Keep them in step with
   # `fonts:` below, which stays because it carries the weights and self-hosting notes.
   body:
-    fontFamily: '"Inter Variable", system-ui, -apple-system, sans-serif'
+    fontFamily: 'system-ui, -apple-system, sans-serif'
   display:
     fontFamily: 'Montserrat, system-ui, sans-serif'
 
   fonts:
     body:
-      family: "Inter Variable"
-      fallbacks: [system-ui, "-apple-system", sans-serif]
-      selfHosted: true
+      family: system-ui
+      fallbacks: ["-apple-system", sans-serif]
+      selfHosted: false
+      note: "Inter Variable was named here and in src/app.css from the start but never shipped (no @font-face, no package, no file); visitors have seen the system face since launch. Shipping Inter is a judged visual change: add its woff2 beside Montserrat's, name it again here and in app.css, and run the cold review."
     display:
       family: Montserrat
       fallbacks: [system-ui, sans-serif]
