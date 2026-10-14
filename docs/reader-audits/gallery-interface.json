@@ -1,12 +1,15 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-09T19:14:41.433Z",
-  "reviewedBy": "Claude Opus 5.5 (implementing session, self-review; not a cold reviewer)",
-  "method": "Data-only change: the /collections loader selects cf_image_id alone instead of also sending the dead SmugMug ImageUrl/ThumbnailUrl. No copy or layout changed. Walked the branch on local vite dev against production Supabase (read-only, desktop 1280): /photography/collections shows 4 collections · 8350 photos, same as live photography.ninochavez.co; all 4 covers load from imagedelivery.net (jT82Kh6, RfXncv8, HvPh5Fq, kCR8tCG); page data carries only cf_image_id and no photos.smugmug.com URL. PostgREST A/B of the old and new select for portfolio-excellence: same count (725) and cover (jT82Kh6). Not covered: phone width and keyboard (nothing visual changed); local wrangler pages dev showed 0 collections for both the old and new loader, a local-runtime issue unrelated to this change.",
-  "sourceDigest": "sha256:cbd9e3ee69db8f39ea618b01794b4e9dab11a420ac6aa1d78f57bc1c85998c23",
+  "reviewedAt": "2026-10-14T21:51:49.731Z",
+  "reviewedBy": "Codex browser walk and independent Codex workers",
+  "method": "Walked the Skin Abrasions album and photo page and an existing JCA at ACC volleyball photo with production data at measured 390 and 1280 CSS widths. Verified the source-preserved album title, no invented sport or sport-category labels on art, sports labels retained on volleyball, copy-link success, and a missing local HDR binding falling back to the standard image. Independently reviewed rendered captures in dispatches 4e404b7c-72a2-46f1-97b0-935ec41b902f and caf41a1e-9fd7-44a0-8e85-12cbe57104a6. Fixed the first review findings. The second reviewer treated the user-provided album title as a literal description of every photo; preserved the title under the reader contract and verified the controls separately in the browser. Not covered: physical devices, ZIP downloads, all other gallery screens.",
+  "sourceDigest": "sha256:7bfab3f66ef50e081528c94fa9344880dab07a95523375e403c8beb1c52205dd",
   "sourceFiles": 203,
   "scope": [
-    "Collections index covers"
+    "Skin Abrasions album and photo",
+    "Known volleyball photo",
+    "Missing HDR fallback",
+    "Photo share control"
   ]
 }
