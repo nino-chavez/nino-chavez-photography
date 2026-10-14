@@ -53,7 +53,7 @@
 		const capture = { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' };
 		const next = observeMediaOutcome(mediaView, capture, 'load_failed', document.visibilityState === 'visible', () => performance.now());
 		if (next.view !== mediaView) mediaView = next.view;
-		if (next.view?.photoId === capture.photoId && hdrUrl && data.photo.id === capture.photoId) hdr.markFailed(data.photo);
+		if (hdrUrl && data.photo.id === capture.photoId) hdr.markFailed(data.photo);
 		recordMediaEvent(next.event);
 	}
 
@@ -162,7 +162,7 @@
 		url: data.seo.canonical,
 		dateCreated: data.photo.created_at,
 		datePublished: data.photo.created_at,
-		keywords: data.photo.keywords.join(', ') || `${data.photo.metadata.sport_type}, ${data.photo.metadata.photo_category}`,
+		keywords: data.photo.keywords.join(', ') || (data.photo.metadata.sport_type ? [data.photo.metadata.sport_type, data.photo.metadata.photo_category].filter(Boolean).join(', ') : undefined),
 		// Enhanced ImageObject with detailed properties
 		image: {
 			'@type': 'ImageObject',
@@ -176,11 +176,11 @@
 		},
 		// Enhanced Person (photographer) with complete profile
 		creator: personSchema({
-			knowsAbout: ['Action Photography', data.photo.metadata.sport_type]
+			knowsAbout: ['Action Photography', data.photo.metadata.sport_type].filter(Boolean)
 		}),
 		// Additional metadata
-		sport: data.photo.metadata.sport_type,
-		category: data.photo.metadata.photo_category,
+		sport: data.photo.metadata.sport_type || undefined,
+		category: data.photo.metadata.sport_type ? data.photo.metadata.photo_category : undefined,
 		// Enhanced aggregateRating with more details
 		aggregateRating: {
 			'@type': 'AggregateRating',
@@ -202,7 +202,9 @@
 			availability: 'https://schema.org/InStock',
 			priceCurrency: 'USD',
 			url: `${baseUrl}/photo/${data.photo.image_key}`,
-			description: 'Professional sports photography licensing available. Contact for pricing.'
+			description: data.photo.metadata.sport_type
+				? 'Professional sports photography licensing available. Contact for pricing.'
+				: 'Professional photography licensing available. Contact for pricing.'
 		}
 	};
 	});
@@ -263,7 +265,7 @@
 					{#if data.photo.metadata.sport_type}
 						<span>Sport: {formatSport(data.photo.metadata.sport_type)}</span>
 					{/if}
-					{#if data.photo.metadata.photo_category}
+					{#if data.photo.metadata.sport_type && data.photo.metadata.photo_category}
 						<span>Category: {formatCategory(data.photo.metadata.photo_category)}</span>
 					{/if}
 				</div>
@@ -326,7 +328,7 @@
 					<div class="mb-8">
 						<RelatedPhotosCarousel
 							photos={data.relatedPhotos}
-							title="More from this Album & Sport"
+							title={data.photo.metadata.sport_type ? 'More from this Album & Sport' : 'More from this Album'}
 							onPhotoClick={handleRelatedPhotoClick}
 						/>
 					</div>

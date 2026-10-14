@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-14",
+  "sourceCommit": "413e227a35b4ad1ce6eaf298301f959fa2e3fbe3",
+  "captures": [
+    "art-controls-desktop.png",
+    "art-desktop.png",
+    "art-phone.png",
+    "gallery-desktop.png",
+    "volleyball-desktop.png",
+    "volleyball-phone.png"
+  ],
+  "reviews": [
+    {
+      "dispatchId": "4e404b7c-72a2-46f1-97b0-935ec41b902f",
+      "requestedRoute": {
+        "model": "gpt-5.6-terra",
+        "reasoning_effort": "high",
+        "tier": "implementation"
+      },
+      "observedRuntime": {
+        "child_thread_id": "01a13c59-2a14-73c2-8134-cee075ee4c0b",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "review": "Verdict: volleyball passes. Art has two material capture-grounded problems.\n\n- `volleyball-desktop.png` and `volleyball-phone.png`: the visible photo clearly matches \u201cHS Girls VB,\u201d \u201cSport: Volleyball,\u201d and \u201cCategory: Action.\u201d Download and Copy link are distinct and legible at both widths.\n- `art-desktop.png`: \u201cCategory: Portrait\u201d does not fit the visible photograph, which shows an object/artwork rather than a person.\n- `art-phone.png`: the image area is a blank gray panel while the same page\u2019s desktop capture shows the photo. This is a material phone rendering failure; the visible Download and Copy link controls remain legible, but the content they refer to is absent."
+    },
+    {
+      "dispatchId": "caf41a1e-9fd7-44a0-8e85-12cbe57104a6",
+      "requestedRoute": {
+        "model": "gpt-5.6-terra",
+        "reasoning_effort": "medium",
+        "tier": "balanced"
+      },
+      "observedRuntime": {
+        "child_thread_id": "01a13c62-ed05-7332-8f59-afe081f63dd3",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "review": "Fail.\n\n- `art-desktop.png` and `art-phone.png`: **\u201cSkin Abrasions\u201d** does not fit the visible graffiti-covered model train. No view/download controls are visible in either capture, so their usefulness cannot be confirmed.\n- `volleyball-desktop.png` and `volleyball-phone.png`: labels fit the photo: volleyball action is clear. The photograph is useful at both sizes, and visible **Download** / **Copy link** controls are legible and usable-looking. Still captures do not prove those controls work.\n\nThe label mismatch in both art captures is material."
+    },
+    {
+      "dispatchId": "c49eda95-25e4-480e-96d3-c01ad9151082",
+      "requestedRoute": {
+        "model": "gpt-5.6-terra",
+        "reasoning_effort": "medium",
+        "tier": "balanced"
+      },
+      "observedRuntime": {
+        "child_thread_id": "01a13c68-801a-7653-a543-79d076ea09cd",
+        "executable": "/opt/homebrew/bin/codex",
+        "reported_model": null,
+        "reported_reasoning_effort": null,
+        "status": "completed"
+      },
+      "review": "One actionable issue:\n\n- [gallery-interface.json](/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/gallery-skin-abrasions-20261014/docs/reader-audits/gallery-interface.json:6) records production-data, measured-width, HDR-fallback, and \u201cindependent\u201d dispatch review claims without any checked-in capture, command output, or dispatch receipt to support them. The referenced dispatch IDs do not establish those assertions in the repository. This makes the updated reader-review receipt self-attesting evidence for a required build gate; replace the unsupported assertions with evidence-backed scope/method details or attach the receipts/captures.\n\nNo other actionable regressions found in the commit\u2019s metadata preservation, sport-scoped category labels, or HDR fallback/media-view handling."
+    }
+  ],
+  "observations": {
+    "art": {
+      "sportLabel": false,
+      "categoryLabel": false,
+      "description": "A miniature train car with graffiti art is displayed on a golden track.",
+      "missingLocalHdrResponse": "404 Not found",
+      "fallbackImageSrc": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/LCh87H-DSC09604/large",
+      "copyLinkResult": "Link copied to clipboard."
+    },
+    "volleyball": {
+      "sportLabel": "Sport: Volleyball",
+      "categoryLabel": "Category: Action"
+    },
+    "album": {
+      "photos": 62,
+      "portraitBadge": false,
+      "candidBadge": false
+    },
+    "measuredBrowserCssWidths": [
+      390,
+      1280
+    ]
+  },
+  "reviewResolution": {
+    "initialVisualFindings": "Removed sport-category badges for non-sport photos and decoupled HDR fallback from analytics view state. The later art captures show the photo.",
+    "secondVisualFinding": "The gallery title comes from the operator-provided skin-abrasions folder and is an album identity, not a literal description of every frame. Preserve it under reader-contract.json precisionLocks. The controls were separately observed in the browser, with a successful copy-link action.",
+    "postCommitFinding": "Attach the actual captures and review outputs in this directory so the reader receipt is reviewable from a fresh checkout."
+  },
+  "notCovered": [
+    "physical devices",
+    "ZIP downloads",
+    "all other gallery screens"
+  ]
+}

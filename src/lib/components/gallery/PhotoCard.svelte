@@ -140,7 +140,7 @@
 			{/if}
 
 			<!-- Category -->
-			{#if photo.metadata?.photo_category}
+			{#if photo.metadata?.sport_type && photo.metadata?.photo_category}
 				<span class="text-xs px-2 py-1 rounded-md bg-charcoal-700 text-white shadow-sm">
 					{formatCategory(photo.metadata.photo_category)}
 				</span>

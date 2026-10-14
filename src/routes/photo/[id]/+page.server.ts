@@ -80,7 +80,7 @@ export const load: PageServerLoad = async ({
 		metadata: {
 			// BUCKET 1: Concrete & Filterable
 			play_type: (photoData.play_type || null) as Photo['metadata']['play_type'],
-			sport_type: photoData.sport_type || 'volleyball',
+			sport_type: photoData.sport_type || '',
 			photo_category: photoData.photo_category || 'action',
 
 			// BUCKET 2: Abstract & Internal (numeric quality sub-scores)
@@ -226,6 +226,8 @@ export const load: PageServerLoad = async ({
  * now prefers the durable AI caption and concrete sport/category context.
  */
 function generatePhotoDescription(photo: Photo): string {
+	if (!photo.metadata.sport_type) return photo.caption || `${photo.title}. Photography by Nino Chavez.`;
+
 	const sport = photo.metadata.sport_type || 'sports';
 	const category = photo.metadata.photo_category || 'photo';
 
