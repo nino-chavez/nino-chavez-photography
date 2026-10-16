@@ -3,6 +3,18 @@ import test from 'node:test';
 import { isAlbumKey } from './album-key';
 import { albumIndexPath, dataPath, homePath, hostAddress, photosPath, settingsPath, sitePath, albumReportPath, cleanReportPath, internalReportPath, intelligenceEvidenceHref, isAnalyticsWorkspace } from './report-paths';
 
+test('question answers link to owned Data, Sites and album-list reports on either host', () => {
+	for (const [source, clean, local] of [
+		['/analytics/data?period=7#site-measures', '/data?period=7#site-measures', '/photography/analytics/data?period=7#site-measures'],
+		['/analytics/sites?period=7', '/sites?period=7', '/photography/analytics/sites?period=7'],
+		['/analytics/albums', '/albums', '/photography/analytics/albums']
+	]) {
+		assert.equal(intelligenceEvidenceHref('analytics.ninochavez.co', source), clean);
+		assert.equal(intelligenceEvidenceHref('127.0.0.1', source), local);
+	}
+	assert.equal(intelligenceEvidenceHref('analytics.ninochavez.co', '/analytics/data/secret'), null);
+});
+
 const HOST = 'analytics.ninochavez.co';
 
 test('an album key is letters, digits, underscore and hyphen only', () => {

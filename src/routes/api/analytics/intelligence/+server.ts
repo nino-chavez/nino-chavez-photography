@@ -1,9 +1,11 @@
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import { json, error } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { answerIntelligenceQuestion, recognizeIntelligenceOperation } from '$lib/analytics/intelligence-assistant';
 import { parseIntelligenceScope, type IntelligenceReport } from '$lib/analytics/intelligence-contract';
 import { createIntelligenceRequest, intelligenceOwner, loadIntelligence, loadIntelligenceRequest } from '$lib/analytics/intelligence-store.server';
+import { isReportQuestion, loadQuestionReportEvidence } from '$lib/analytics/intelligence-question-report.server';
 import type { RequestHandler } from './$types';
 
 const ANALYTICS_ORIGIN = 'https://analytics.ninochavez.co';
@@ -50,7 +52,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	} catch (failure) { if (dev) console.error('[intelligence local report]', failure instanceof Error ? failure.message : 'unavailable'); return plain(503, 'analytics report unavailable'); }
 };
 
-export const POST: RequestHandler = async ({ request, cookies, url }) => {
+export const POST: RequestHandler = async ({ request, cookies, url, fetch }) => {
 	if (!trustedOrigin(request, url)) plain(403, 'cross-origin analytics request rejected');
 	const body = await bodyObject(request);
 	if (Object.keys(body).some((key) => key !== 'scope' && key !== 'question')) plain(400, 'unknown analytics request field');
@@ -65,10 +67,11 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 	if (!owner.owner && operation !== 'explain_report') plain(403, 'owner authorization required');
 	const admin = createSupabaseAdminClient();
 	try {
-		const report: IntelligenceReport = operation === 'album_comparison' || operation === 'site_retention'
+		const report: IntelligenceReport = isReportQuestion(operation) || operation === 'album_comparison' || operation === 'site_retention'
    ? {scope,generatedAt:new Date().toISOString(),cutoff:null,coverage:'unavailable',findings:[],suppressions:[],actions:[],briefs:[],page:0,pageCount:1,owner:owner.owner}
    : await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page: 0 });
-		const draft = answerIntelligenceQuestion(scope, question, report);
+		const evidence = isReportQuestion(operation) ? await loadQuestionReportEvidence(admin, scope, operation, {env: {CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ANALYTICS_TOKEN: env.CLOUDFLARE_ANALYTICS_TOKEN}, fetch}) : undefined;
+		const draft = answerIntelligenceQuestion(scope, question, report, undefined, evidence);
 		if (draft.status !== 'pending') return json(draft, { headers: { 'cache-control': 'no-store' } });
 		if (!owner.userId) plain(403, 'owner authorization required');
 		const requestId = await createIntelligenceRequest(admin, owner.userId, scope, draft.operation);
