@@ -53,7 +53,7 @@
 		<section class="intro" aria-labelledby="site-title">
 			<p class="eyebrow">Site · ninochavez.co</p>
 			<h1 id="site-title">Is anyone looking at your profile and work, and did anyone reach out?</h1>
-			{#if data.intelligenceOwner}<a class="choice" href={hydrated ? '#assistant' : undefined} aria-disabled={!hydrated}>Ask about this report</a>{/if}
+			{#if data.intelligenceOwner}<a class="choice" href={hydrated ? '#sites-report-questions' : undefined} aria-disabled={!hydrated}>Ask about this report</a>{/if}
 		</section>
 
 		<div class="controls">

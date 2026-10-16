@@ -1,13 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-16T20:23:49.723Z",
+  "reviewedAt": "2026-10-16T20:30:55.232Z",
   "reviewedBy": "Codex",
-  "method": "Parent inspected desktop and mobile touch-flow captures, entry links, answers and source links; 17 browser checks passed. Synthetic local reports; no physical-phone or authenticated-production walk.",
-  "sourceDigest": "sha256:a3fa76205faebde954a1fea793b7926aa7e23a3f1e6a857f50a2c36c12f2e88b",
+  "method": "Parent inspected desktop/mobile entry and answer captures; independent cold review found no readability or overflow defect. Its section-target concern was narrowed against source and fixed with a failing-then-passing landing regression. All 17 browser checks pass. Synthetic local reports; no physical-phone or authenticated-production walk.",
+  "sourceDigest": "sha256:62a28a9ec58050975d615e6bc624f6c579e15f65bd6f038c4110f1811743f74e",
   "sourceFiles": 204,
   "scope": [
     "Contextual report shortcuts",
+    "Direct question-panel entry",
     "Questions without saved findings",
     "Loading and failed saved findings",
     "Frozen scope and explicit reruns",

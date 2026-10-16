@@ -362,7 +362,7 @@
 </script>
 
 {#snippet questionInspector()}
-	<aside class="inspector" aria-live="polite" aria-labelledby={`${kind}-assistant-heading`}>
+	<aside id={`${kind}-report-questions`} class="inspector" aria-live="polite" aria-labelledby={`${kind}-assistant-heading`}>
 		<p class="kicker">Report questions</p><h3 id={`${kind}-assistant-heading`}>{selectedFinding ? selectedFinding.title : 'Ask about this report'}</h3><p class="inspector-copy">Answers keep their captured dates, filters, and traffic policy. Changing the page filters never rewrites an existing answer.</p>
 		{#if owner}
 			<div class="presets" aria-label="Questions for this report">

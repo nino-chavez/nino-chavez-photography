@@ -151,6 +151,7 @@ for (const width of [1280, 390]) test.describe(`report questions at ${width}px`,
 		await page.goto('/photography/analytics/albums/alpha');
 		await captureEntry(page, `album-${width}`);
 		await activate(page.getByRole('link', {name: 'Ask about this report', exact: true}), width);
+		await expect(page.locator(':target').getByRole('heading').first()).toHaveText('Ask about this report');
 		await expect(page.getByRole('heading', {name: 'Worth your attention'})).toHaveCount(0);
 		const downloads = await askFromPage(page, page.getByRole('button', {name: 'What counts as a download?', exact: true}), width);
 		expect(downloads.operation).toBe('download_meaning');
@@ -159,7 +160,7 @@ for (const width of [1280, 390]) test.describe(`report questions at ${width}px`,
 		await expect(page).toHaveURL(/\/analytics\/data$/);
 		await expect(page.getByRole('main')).toContainText(/not completed transfers/);
 		await page.goBack();
-		await expect(page).toHaveURL(/\/analytics\/albums\/alpha(?:#assistant)?$/);
+		await expect(page).toHaveURL(/\/analytics\/albums\/alpha(?:#gallery-report-questions)?$/);
 		await expect(page.getByRole('button', {name: 'Compare its first week', exact: true})).toBeVisible();
 
 		const age = await askFromPage(page, page.getByRole('button', {name: 'Compare its first week', exact: true}), width);
@@ -193,6 +194,7 @@ for (const width of [1280, 390]) test.describe(`report questions at ${width}px`,
 		await page.goto('/photography/analytics/sites');
 		await captureEntry(page, `sites-${width}`);
 		await activate(page.getByRole('link', {name: 'Ask about this report', exact: true}), width);
+		await expect(page.locator(':target').getByRole('heading').first()).toHaveText('Ask about this report');
 		await expect(page.getByRole('button', {name: 'What counts as a download?'})).toHaveCount(0);
 		const counts = await askFromPage(page, page.getByRole('button', {name: 'Why don’t these counts match?', exact: true}), width);
 		expect(counts.operation).toBe('site_counts');

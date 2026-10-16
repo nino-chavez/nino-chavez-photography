@@ -223,7 +223,7 @@
 			<div class="actions">
 				<a class="primary" href="#photos" onclick={(event) => { event.preventDefault(); void seeAll(); }}>See all {photos.length.toLocaleString()} photos</a>
 				{#if signedIn}
-					<a class="secondary" href={hydrated ? '#assistant' : undefined} aria-disabled={!hydrated}>Ask about this report</a>
+					<a class="secondary" href={hydrated ? '#gallery-report-questions' : undefined} aria-disabled={!hydrated}>Ask about this report</a>
 					{#if mostRequested.length}<button type="button" class="secondary" onclick={shortlistTopSix} disabled={!hydrated || topSixShortlisted}>{topSixShortlisted ? `Shortlisted ${topSix.length}` : `Shortlist these ${topSix.length}`}</button>{/if}
 					<button type="button" class="secondary" onclick={() => void recordChange()} disabled={!hydrated}>Record what you did</button>
 				{/if}
