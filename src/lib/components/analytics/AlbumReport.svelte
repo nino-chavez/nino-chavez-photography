@@ -223,6 +223,7 @@
 			<div class="actions">
 				<a class="primary" href="#photos" onclick={(event) => { event.preventDefault(); void seeAll(); }}>See all {photos.length.toLocaleString()} photos</a>
 				{#if signedIn}
+					<a class="secondary" href={hydrated ? '#assistant' : undefined} aria-disabled={!hydrated}>Ask about this report</a>
 					{#if mostRequested.length}<button type="button" class="secondary" onclick={shortlistTopSix} disabled={!hydrated || topSixShortlisted}>{topSixShortlisted ? `Shortlisted ${topSix.length}` : `Shortlist these ${topSix.length}`}</button>{/if}
 					<button type="button" class="secondary" onclick={() => void recordChange()} disabled={!hydrated}>Record what you did</button>
 				{/if}
@@ -288,9 +289,9 @@
 			</div>
 		</div>
 
-		{#if data.intelligence === 'report' || (data.intelligence === 'record' && recordRequest > 0)}
+		{#if data.intelligence !== 'none'}
 			<section id="assistant" class="assistant panel" aria-label="Ask about this album and record changes">
-			<IntelligenceWorkspace recordOnly={data.intelligence === 'record'} kind="gallery" {scope} owner={data.intelligenceOwner} contextTarget={{ kind: 'album', albumKey: data.album.key }} signInNext={`/analytics/albums/${data.album.key}`} {recordRequest} />
+			<IntelligenceWorkspace withoutFindings={data.intelligence === 'record'} kind="gallery" {scope} owner={data.intelligenceOwner} contextTarget={{ kind: 'album', albumKey: data.album.key }} signInNext={`/analytics/albums/${data.album.key}`} {recordRequest} />
 		</section>
 		{/if}
 	</div>

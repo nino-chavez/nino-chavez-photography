@@ -1,16 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-16T19:23:34.614Z",
+  "reviewedAt": "2026-10-16T20:23:49.723Z",
   "reviewedBy": "Codex",
-  "method": "Rendered desktop and phone answer review; five authenticated HTTP and browser checks; unlisted false-zero regression",
-  "sourceDigest": "sha256:29cf7dcb17693cddfa08dac80c9531d1c04006cc0032f27a39436ef32d22f12e",
+  "method": "Parent inspected desktop and mobile touch-flow captures, entry links, answers and source links; 17 browser checks passed. Synthetic local reports; no physical-phone or authenticated-production walk.",
+  "sourceDigest": "sha256:a3fa76205faebde954a1fea793b7926aa7e23a3f1e6a857f50a2c36c12f2e88b",
   "sourceFiles": 204,
   "scope": [
-    "Report question answers",
-    "Source links",
-    "Public versus unlisted album totals",
-    "Incomplete and stale evidence",
-    "Desktop and phone captures"
+    "Contextual report shortcuts",
+    "Questions without saved findings",
+    "Loading and failed saved findings",
+    "Frozen scope and explicit reruns",
+    "Source navigation and browser Back",
+    "Owner controls"
   ]
 }

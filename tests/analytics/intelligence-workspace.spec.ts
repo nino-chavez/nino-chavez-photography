@@ -25,7 +25,7 @@ test.afterEach(async ({ page }, info) => {
 		label.style.cssText = 'padding:12px;background:#fff5cf;color:#232323;font:14px sans-serif';
 		element.prepend(label);
 	});
-	const folder = 'docs/implementation/analytics-intelligence-20260930/evidence';
+	const folder = '.temp/question-review/saved-findings';
 	mkdirSync(folder, { recursive: true });
 	await panel.screenshot({ path: `${folder}/state-${info.title.replace(/[^a-z0-9]+/gi, '-').slice(0, 70)}.png` });
 });
@@ -84,18 +84,20 @@ test('shows the target and complete stored evidence without flattening windows',
 test('keeps a pending poll pending and renders a completed result only from answer', async ({ page }) => {
 	await addOwnerFixture(page);
 	let polls = 0;
+	let requestedScope: Record<string, unknown> | null = null;
 	await page.route('**/api/analytics/intelligence**', async (route) => {
 		const request = route.request();
 		const url = new URL(request.url());
-		if (request.method() === 'POST') return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ scope: report.scope, question: 'Compare this album', operation: 'album_comparison', status: 'pending', summary: 'This calculation is pending against the fixed report scope.', findings: [], evidenceLinks: [], limitations: [], generatedAt: '2026-09-08T12:00:00.000Z', requestId: '11111111-1111-4111-8111-111111111111' }) });
+		if (request.method() === 'POST') { requestedScope = request.postDataJSON().scope; return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ scope: requestedScope, question: 'Compare this album', operation: 'album_comparison', status: 'pending', summary: 'This calculation is pending against the fixed report scope.', findings: [], evidenceLinks: [], limitations: [], generatedAt: '2026-09-08T12:00:00.000Z', requestId: '11111111-1111-4111-8111-111111111111' }) }); }
 		if (url.searchParams.has('requestId')) {
 			polls += 1;
-			return route.fulfill({ contentType: 'application/json', body: JSON.stringify(polls === 1 ? { status: 'pending', answer: null } : { status: 'complete', answer: { scope: report.scope, question: 'Compare this album', operation: 'album_comparison', status: 'complete', summary: 'The stored evidence supports the findings below.', findings: report.findings, evidenceLinks: ['/photography/analytics/operator?scope=album'], limitations: ['Comparable albums require known catalogue facts.'], generatedAt: '2026-09-08T12:01:00.000Z', requestId: '11111111-1111-4111-8111-111111111111' } }) });
+			return route.fulfill({ contentType: 'application/json', body: JSON.stringify(polls === 1 ? { status: 'pending', answer: null } : { status: 'complete', answer: { scope: requestedScope, question: 'Compare this album', operation: 'album_comparison', status: 'complete', summary: 'The stored evidence supports the findings below.', findings: report.findings, evidenceLinks: ['/photography/analytics/operator?scope=album'], limitations: ['Comparable albums require known catalogue facts.'], generatedAt: '2026-09-08T12:01:00.000Z', requestId: '11111111-1111-4111-8111-111111111111' } }) });
 		}
 		return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...report, owner: true }) });
 	});
 	await openPanel(page);
-	await page.getByRole('button', { name: 'Compare this album' }).click();
+	await page.getByRole('textbox', {name: 'Ask about this report', exact: true}).fill('How is this album doing compared with similar albums?');
+	await page.getByRole('button', { name: 'Ask owner question' }).click();
 	await expect(page.getByText('This calculation is still running against the captured report scope.')).toBeVisible();
 	await expect.poll(() => polls, { timeout: 15000 }).toBeGreaterThan(1);
 	await expect(page.getByText('The stored evidence supports the findings below.')).toBeVisible();
@@ -114,7 +116,7 @@ test('keeps private controls out of the anonymous report', async ({ page }) => {
 	await mockReport(page);
 	await openPanel(page);
 	await expect(page.getByRole('heading', { name: 'Private records and launch recaps' })).toHaveCount(0);
-	await expect(page.getByLabel('Ask about this report')).toHaveCount(0);
+	await expect(page.getByRole('textbox', {name: 'Ask about this report', exact: true})).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Public explanation' })).toBeVisible();
 });
 
@@ -157,7 +159,8 @@ test('renders stored private brief content and freezes an album question scope',
 	await openPanel(page);
 	await expect(page.getByText('Morning review')).toBeVisible();
 	await expect(page.getByText('Inspect the album before choosing a promotion.')).toBeVisible();
-	await page.getByRole('button', { name: 'Compare this album' }).click();
+	await page.getByRole('textbox', {name: 'Ask about this report', exact: true}).fill('How is this album doing compared with similar albums?');
+	await page.getByRole('button', { name: 'Ask owner question' }).click();
 	await expect.poll(() => questionScope).not.toBeNull();
 	expect(questionScope).toMatchObject({ kind: 'gallery', query: { scope: 'album', albumKeys: ['alpha'] } });
 });
@@ -213,7 +216,34 @@ test('owner can ask a supported question when no recommendation exists', async (
  });
  await openPanel(page);
  await expect(page.getByText('No actionable findings for this scope')).toBeVisible();
- await page.getByRole('button',{name:'What does this support?',exact:true}).click();
+ await page.getByRole('textbox', {name: 'Ask about this report', exact: true}).fill('What does this evidence support?');
+ await page.getByRole('button', {name:'Ask owner question'}).click();
  await expect(page.getByText('History is still incomplete.')).toBeVisible();
  expect(posted).toBe(true);
+});
+
+// Failure injection only: saved-findings GET is delayed, then failed. Both owner
+// questions below still use the actual endpoint and synthetic local database.
+test('owner questions work while saved findings load and after they fail', async ({page}) => {
+	await addOwnerFixture(page);
+	let release!: () => void;
+	const gate = new Promise<void>(resolve => { release = resolve; });
+	await page.route('**/api/analytics/intelligence**', async route => {
+		if (route.request().method() === 'GET' && new URL(route.request().url()).pathname.endsWith('/intelligence')) {
+			await gate;
+			return route.fulfill({status: 503, json: {error: 'synthetic saved-findings failure'}});
+		}
+		return route.continue();
+	});
+	try {
+		await openPanel(page);
+		await expect(page.getByText('Loading saved findings. The report above remains usable.')).toBeVisible();
+		await page.getByRole('button', {name: 'What counts as a download?', exact: true}).click();
+		await expect(page.locator('.answer')).toContainText('requests, not completed transfers');
+		release();
+		await expect(page.getByText('Intelligence is unavailable', {exact: true})).toBeVisible();
+		await page.getByRole('button', {name: 'Is this zero or missing data?', exact: true}).click();
+		await expect(page.locator('.answer')).toContainText('photo opens');
+		await expect(page.locator('.inspector')).toHaveCount(1);
+	} finally { release(); }
 });

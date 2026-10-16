@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import ReportingSettings from './ReportingSettings.svelte';
 	import PrivateIntelligenceControls from './PrivateIntelligenceControls.svelte';
 	import { base } from '$app/paths';
@@ -28,10 +28,10 @@
 		signInNext?: string;
 		/** A page button that wants the record-an-actual-change form open: raise this number to ask for it. */
 		recordRequest?: number;
-		/** Show only the owner's private record form and settings. For a scope that has no saved calculation to read. */
-		recordOnly?: boolean;
+		/** Show owner questions and the private record form without loading saved findings. */
+		withoutFindings?: boolean;
 	}
-	let { scope, owner, kind, contextTarget = null, class: className = '', signInNext, recordRequest = 0, recordOnly = false }: Props = $props();
+	let { scope, owner, kind, contextTarget = null, class: className = '', signInNext, recordRequest = 0, withoutFindings = false }: Props = $props();
 	const ownerSignInHref = $derived(`${base}/login?next=${encodeURIComponent(signInNext ?? (kind === 'sites' ? '/analytics/sites' : '/analytics/home'))}`);
 
 	type ActionMode = 'record' | 'dismiss' | 'snooze' | null;
@@ -71,6 +71,8 @@
 	let expandedFindings = $state(false);
 	let selectedFinding = $state<Finding | null>(null);
 	let question = $state('');
+	let hydrated = $state(false);
+	onMount(() => { hydrated = true; });
 	let answer = $state<AssistantAnswer | null>(null);
 	let previousAnswer = $state<AssistantAnswer | null>(null);
 	let answerLoading = $state(false);
@@ -247,7 +249,7 @@
 		pollTimer = setTimeout(() => void pollAnswer(), Math.min(maximumPollDelayMs, initialPollMs * 2 ** poll.attempt));
 	}
 	async function loadReport(page = 0, actionsPage = report?.actionsPage ?? 0, briefsPage = report?.briefsPage ?? 0) {
-		if (recordOnly) { loading = false; return; }
+		if (withoutFindings) { reportAbort?.abort(); reportRequestVersion += 1; report = null; reportError = null; loading = false; return; }
 		if (!validatedScope) { reportError = 'This report has an invalid scope.'; loading = false; return; }
 		reportAbort?.abort(); const controller = new AbortController(); reportAbort = controller; const version = ++reportRequestVersion;
 		loading = true; reportError = null;
@@ -354,13 +356,51 @@
 	});
 
 	$effect(() => {
-		scopeKey; requestedSnapshot; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; expandedBriefs = false; untrack(() => { stopPolling(); answerAbort?.abort(); void loadReport(0, 0, 0); });
+		scopeKey; requestedSnapshot; withoutFindings; selectedFinding = null; actionFinding = null; actionMode = null; expandedFindings = false; expandedHistory = false; expandedBriefs = false; untrack(() => { stopPolling(); answerAbort?.abort(); answerRequestVersion += 1; answerLoading = false; answerError = null; void loadReport(0, 0, 0); });
 		return () => { reportAbort?.abort(); answerAbort?.abort(); stopPolling(); };
 	});
 </script>
 
-<section class={`intelligence ${className}`} aria-labelledby={recordOnly ? undefined : `${kind}-intelligence-heading`} aria-label={recordOnly ? 'Record what you did' : undefined}>
-	{#if !recordOnly}
+{#snippet questionInspector()}
+	<aside class="inspector" aria-live="polite" aria-labelledby={`${kind}-assistant-heading`}>
+		<p class="kicker">Report questions</p><h3 id={`${kind}-assistant-heading`}>{selectedFinding ? selectedFinding.title : 'Ask about this report'}</h3><p class="inspector-copy">Answers keep their captured dates, filters, and traffic policy. Changing the page filters never rewrites an existing answer.</p>
+		{#if owner}
+			<div class="presets" aria-label="Questions for this report">
+				{#if kind === 'gallery'}
+					{#if contextTarget?.kind === 'album'}
+						<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('Compare this album with earlier albums over their first 7 days after publication.', null)}>Compare its first week</button>
+					{/if}
+					<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('What does this download number mean: requests or completed transfers?', null)}>What counts as a download?</button>
+				{:else if validatedScope?.kind === 'sites' && validatedScope.section === 'all'}
+					<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('Why do Cloudflare and the site counts differ?', null)}>Why don’t these counts match?</button>
+				{/if}
+				<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('Is this zero activity, missing history, or unavailable evidence?', null)}>Is this zero or missing data?</button>
+			</div>
+			{#if validatedScope?.kind === 'sites' && validatedScope.section !== 'all'}
+				<p class="inspector-copy">To compare Cloudflare and site counts, <a href={evidenceHref(`/analytics/sites?period=${validatedScope.period}`)}>open All sections</a>.</p>
+			{/if}
+		{/if}
+		{#if selectedFinding}
+			<div class="presets" aria-label="Questions about the selected finding">
+				<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('What does this evidence support, and what remains uncertain?', selectedFinding)}>What does this support?</button>
+				<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('What should I inspect before acting?', selectedFinding)}>What should I inspect?</button>
+				{#if kind === 'sites'}
+					<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('Where are readers or demo visitors losing interest?', selectedFinding)}>Inspect this section</button>
+				{:else if contextTarget?.kind !== 'album'}
+					<button type="button" disabled={!hydrated || answerLoading} onclick={() => void ask('Which photos should I consider promoting?', selectedFinding)}>Consider promotion</button>
+				{/if}
+			</div>
+		{/if}
+		{#if owner}<form class="question-form" onsubmit={(event) => { event.preventDefault(); void ask(question, selectedFinding); }}><label for={`${kind}-question`}>Ask about this report</label><textarea id={`${kind}-question`} bind:value={question} maxlength="500" placeholder="Ask about this report evidence. Raw visitor records are not available." disabled={!hydrated || answerLoading}></textarea><button type="submit" disabled={!hydrated || !question.trim() || answerLoading}>Ask owner question</button></form>{:else}<p class="auth-note">Public readers can explain visible findings. <a href={ownerSignInHref}>Sign in with a magic link</a> to ask questions and keep private action history.</p>{/if}
+		{#if answerLoading || pendingPoll}<p class="state">Reading the report evidence. <button type="button" onclick={cancelAnswer}>Cancel question</button></p>{/if}{#if pollingPaused}<p class="state">The request remains queued. <button type="button" onclick={() => { if (answer?.requestId) { pendingPoll = { requestId: answer.requestId, scopeKey: JSON.stringify(answer.scope), startedAt: Date.now(), attempt: 0 }; pollingPaused = false; void pollAnswer(); } }}>Check status</button></p>{/if}
+		{#if answerError}<p class="answer-error" role="alert">{answerError}</p>{/if}
+		{#if answer}<div class="answer"><p class="answer-status">{answer.status}</p><p class="answered-question"><strong>{answer.question}</strong></p><p>{answer.summary}</p><p class="scope"><strong>Frozen answer scope:</strong> {scopeLabel(answer.scope)}</p>{#if scopeChanged}<button type="button" onclick={() => void ask(answer?.question ?? '', selectedFinding)}>Rerun for the current scope</button>{/if}<p class="evidence">Calculated: {formatTime(answer.generatedAt)}</p>{#if answer.findings.length}<div class="answer-findings"><strong>Evidence returned</strong>{#each answer.findings as finding (finding.id)}<a href={evidenceHref(finding.reportHref)}>{finding.title}</a>{/each}</div>{/if}{#if answer.comparison}<div class="comparison"><h4>Album comparison</h4><p class="evidence">{answer.comparison.units?.replaceAll('_', ' ')} · {answer.comparison.sampleSize ?? 0} public peers · {answer.comparison.windows?.current.start} to {answer.comparison.windows?.current.end}</p><p class="evidence">Known matching facts: {answer.comparison.criteria.join('; ')}</p>{#if answer.comparison.target}<table><caption>Recorded actions in the selected calendar window</caption><thead><tr><th>Album</th><th>Current</th><th>Previous</th></tr></thead><tbody><tr><th><a href={evidenceHref(answer.comparison.target.href)}>Selected album</a></th><td>{answer.comparison.target.current ?? 'Unavailable'}</td><td>{answer.comparison.target.previous ?? 'Unavailable'}</td></tr>{#each answer.comparison.peers ?? [] as peer (peer.albumKey)}<tr><th><a href={evidenceHref(peer.href)}>{peer.albumKey}</a></th><td>{peer.current ?? 'Unavailable'}</td><td>{peer.previous ?? 'Unavailable'}</td></tr>{/each}</tbody></table><p class="evidence">Peer median: {answer.comparison.median ?? 'Unavailable'}. {answer.comparison.reason ?? ''}</p>{/if}{#if answer.comparison.publicationAge}<p class="evidence"><strong>Same age after publication:</strong> {answer.comparison.publicationAge.days} days. {answer.comparison.publicationAge.available ? `Selected album ${answer.comparison.publicationAge.target}; peer median ${answer.comparison.publicationAge.median} across ${answer.comparison.publicationAge.sampleSize} complete peers.` : answer.comparison.publicationAge.reason ?? 'Insufficient complete peers.'}</p>{/if}</div>{/if}{#if answer.evidenceLinks.length}<p class="links">{#each answer.evidenceLinks as href (href)}<a href={evidenceHref(href)}>{href.includes('/data') ? 'Open data notes' : 'Open source report'}</a>{/each}</p>{/if}{#if answer.limitations.length}<p class="evidence"><strong>What remains uncertain</strong></p><ul>{#each answer.limitations as limitation, index (index)}<li>{limitation}</li>{/each}</ul>{/if}</div>{/if}
+		{#if previousAnswer}<details class="previous-answer"><summary>Previous answer scope</summary><p>{scopeLabel(previousAnswer.scope)}</p><p>{previousAnswer.summary}</p></details>{/if}
+	</aside>
+{/snippet}
+
+<section class={`intelligence ${className}`} aria-labelledby={withoutFindings ? undefined : `${kind}-intelligence-heading`} aria-label={withoutFindings ? 'Report questions and recorded changes' : undefined}>
+	{#if !withoutFindings}
 	<div class="heading">
 		<div><p class="kicker">Report intelligence</p><h2 id={`${kind}-intelligence-heading`}>Worth your attention</h2>{#if requestedSnapshot}<p class="context-note">You are reading saved evidence. The cutoff below belongs to that saved calculation.</p>{/if}<p>Short evidence-led observations for this report. They do not rate photographic quality or prove a business result.</p></div>
 		{#if report && !requestedSnapshot && Date.now()-Date.parse(report.checkedAt ?? report.generatedAt)>30*60_000}<p class="context-note">This saved calculation is more than 30 minutes old. Check its cutoff and refresh before acting on a new change.</p>{/if}
@@ -368,15 +408,15 @@
 	</div>
 	{/if}
 
-	{#if owner && (!recordOnly || actionMode)}
-		<details class="reporting-settings" open={recordOnly || undefined}><summary>Reporting settings</summary><ReportingSettings {owner} bind:preferences bind:this={settings} id={kind} /></details>
+	{#if owner && (!withoutFindings || actionMode)}
+		<details class="reporting-settings" open={withoutFindings || undefined}><summary>Reporting settings</summary><ReportingSettings {owner} bind:preferences bind:this={settings} id={kind} /></details>
 	{:else if owner}
 		<!-- not shown, but the saved retention is still read: saving a private action needs it -->
 		<ReportingSettings {owner} bind:preferences bind:this={settings} visible={false} id={kind} />
 	{/if}
 
-	{#if recordOnly}
-		<!-- no saved calculation exists for this scope: nothing to read, only the owner's record form below -->
+	{#if withoutFindings}
+		<!-- No saved findings: report questions and the owner's record form remain available below. -->
 	{:else if loading}
 		<p class="state" role="status">Loading saved findings. The report above remains usable.</p>
 	{:else if reportError}
@@ -401,15 +441,7 @@
 					{#if expandedFindings && report.pageCount > 1}<nav class="pager" aria-label="All findings pages"><span>Page {report.page + 1} of {report.pageCount}</span><div>{#if report.page > 0}<button type="button" onclick={() => void loadReport((report?.page ?? 1) - 1)}>Previous</button>{/if}{#if report.page + 1 < report.pageCount}<button type="button" onclick={() => void loadReport((report?.page ?? 0) + 1)}>Next</button>{/if}</div></nav>{/if}
 					{:else}<div class="state"><strong>No actionable findings for this scope</strong><p>The saved evidence does not support a recommendation yet. You can still inspect the report or ask a supported question.</p></div>{/if}
 				</div>
-				<aside class="inspector" aria-live="polite" aria-labelledby={`${kind}-assistant-heading`}>
-					<p class="kicker">Contextual inspector</p><h3 id={`${kind}-assistant-heading`}>{selectedFinding ? selectedFinding.title : 'Inspect this report'}</h3><p class="inspector-copy">Answers keep their captured dates, filters, and traffic policy. Changing the page filters never rewrites an existing answer.</p>
-					<div class="presets"><button type="button" disabled={!owner && !selectedFinding} onclick={() => void ask('What does this evidence support, and what remains uncertain?', selectedFinding)}>What does this support?</button><button type="button" disabled={!owner && !selectedFinding} onclick={() => void ask('What should I inspect before acting?', selectedFinding)}>What should I inspect?</button>{#if kind === 'gallery'}<button type="button" disabled={!owner && !selectedFinding} onclick={() => void ask(contextTarget?.kind === 'album' ? 'How is this album doing compared with similar albums?' : 'Which photos should I consider promoting?', selectedFinding)}>{contextTarget?.kind === 'album' ? 'Compare this album' : 'Consider promotion'}</button>{:else}<button type="button" disabled={!owner && !selectedFinding} onclick={() => void ask('Where are readers or demo visitors losing interest?', selectedFinding)}>Inspect this section</button>{/if}</div>
-					{#if owner}<form class="question-form" onsubmit={(event) => { event.preventDefault(); void ask(question, selectedFinding); }}><label for={`${kind}-question`}>Ask about this report</label><textarea id={`${kind}-question`} bind:value={question} maxlength="500" placeholder="Ask about this report evidence. Raw visitor records are not available." disabled={answerLoading}></textarea><button type="submit" disabled={!question.trim() || answerLoading}>Ask owner question</button></form>{:else}<p class="auth-note">Public readers can explain visible findings. <a href={ownerSignInHref}>Sign in with a magic link</a> to ask questions and keep private action history.</p>{/if}
-					{#if answerLoading || pendingPoll}<p class="state">Checking the bounded report operation. <button type="button" onclick={cancelAnswer}>Cancel client check</button></p>{/if}{#if pollingPaused}<p class="state">The request remains queued. <button type="button" onclick={() => { if (answer?.requestId) { pendingPoll = { requestId: answer.requestId, scopeKey: JSON.stringify(answer.scope), startedAt: Date.now(), attempt: 0 }; pollingPaused = false; void pollAnswer(); } }}>Check status</button></p>{/if}
-					{#if answerError}<p class="answer-error" role="alert">{answerError}</p>{/if}
-					{#if answer}<div class="answer"><p class="answer-status">{answer.status}</p><p>{answer.summary}</p><p class="scope"><strong>Frozen answer scope:</strong> {scopeLabel(answer.scope)}</p>{#if scopeChanged}<button type="button" onclick={() => void ask(answer?.question ?? '', selectedFinding)}>Rerun for the current scope</button>{/if}<p class="evidence">Calculated: {formatTime(answer.generatedAt)}</p>{#if answer.findings.length}<div class="answer-findings"><strong>Evidence returned</strong>{#each answer.findings as finding}<a href={evidenceHref(finding.reportHref)}>{finding.title}</a>{/each}</div>{/if}{#if answer.comparison}<div class="comparison"><h4>Album comparison</h4><p class="evidence">{answer.comparison.units?.replaceAll('_', ' ')} · {answer.comparison.sampleSize ?? 0} public peers · {answer.comparison.windows?.current.start} to {answer.comparison.windows?.current.end}</p><p class="evidence">Known matching facts: {answer.comparison.criteria.join('; ')}</p>{#if answer.comparison.target}<table><caption>Recorded actions in the selected calendar window</caption><thead><tr><th>Album</th><th>Current</th><th>Previous</th></tr></thead><tbody><tr><th><a href={evidenceHref(answer.comparison.target.href)}>Selected album</a></th><td>{answer.comparison.target.current ?? 'Unavailable'}</td><td>{answer.comparison.target.previous ?? 'Unavailable'}</td></tr>{#each answer.comparison.peers ?? [] as peer}<tr><th><a href={evidenceHref(peer.href)}>{peer.albumKey}</a></th><td>{peer.current ?? 'Unavailable'}</td><td>{peer.previous ?? 'Unavailable'}</td></tr>{/each}</tbody></table><p class="evidence">Peer median: {answer.comparison.median ?? 'Unavailable'}. {answer.comparison.reason ?? ''}</p>{/if}{#if answer.comparison.publicationAge}<p class="evidence"><strong>Same age after publication:</strong> {answer.comparison.publicationAge.days} days. {answer.comparison.publicationAge.available ? `Selected album ${answer.comparison.publicationAge.target}; peer median ${answer.comparison.publicationAge.median} across ${answer.comparison.publicationAge.sampleSize} complete peers.` : answer.comparison.publicationAge.reason ?? 'Insufficient complete peers.'}</p>{/if}</div>{/if}{#if answer.evidenceLinks.length}<p class="links">{#each answer.evidenceLinks as href (href)}<a href={evidenceHref(href)}>{href.includes('/data') ? 'Open data notes' : 'Open source report'}</a>{/each}</p>{/if}{#if answer.limitations.length}<p class="evidence"><strong>What remains uncertain</strong></p><ul>{#each answer.limitations as limitation}<li>{limitation}</li>{/each}</ul>{/if}</div>{/if}
-					{#if previousAnswer}<details class="previous-answer"><summary>Previous answer scope</summary><p>{scopeLabel(previousAnswer.scope)}</p><p>{previousAnswer.summary}</p></details>{/if}
-				</aside>
+				{@render questionInspector()}
 			</div>
 
 		{#if owner}
@@ -443,6 +475,10 @@
 		{#if owner && actions.length}<section class="action-history" aria-labelledby={`${kind}-actions-heading`}><div><p class="kicker">Private history</p><h3 id={`${kind}-actions-heading`}>Recorded actions and follow-up</h3><p>Recent records are shown first. Use the history pages to review earlier changes.</p></div><ul>{#each visibleActions as item}<li><div><strong>{item.kind === 'record' ? 'Recorded change' : item.kind}</strong><span>{targetLabel(actionTarget(item))} · {formatTime(item.createdAt)}</span>{#if item.changeType}<p><strong>Change:</strong> {item.changeType.replaceAll('_', ' ')}</p>{/if}{#if item.hypothesis}<p><strong>Hypothesis:</strong> {item.hypothesis}</p>{/if}{#if item.primaryMeasure}<p><strong>Primary outcome:</strong> {item.primaryMeasure.replaceAll('_', ' ')}</p>{/if}{#if item.observationDays}<p><strong>Observation window:</strong> {item.observationDays} days</p>{/if}{#if item.followUpAt}<p><strong>Follow-up:</strong> {followUpState(item)}</p>{/if}{#if item.coarseOutcome ?? item.outcome}<p><strong>Recorded outcome:</strong> {item.coarseOutcome ?? item.outcome}</p>{/if}</div>{#if item.outcomeCount !== null && item.outcomeCount !== undefined}<p><strong>Recorded outcome count:</strong> {item.outcomeCount}</p>{/if}{#if item.kind === 'dismiss' || item.kind === 'snooze'}<button type="button" onclick={() => void reverseAction(item)}>Reverse this row</button>{/if}</li>{/each}</ul>{#if actions.length > visibleActions.length}<button type="button" onclick={() => expandedHistory = true}>Show all returned history</button>{:else if expandedHistory && actions.length > 5}<button type="button" onclick={() => expandedHistory = false}>Show recent history</button>{/if}{#if (report?.actionsPageCount ?? 1) > 1}<nav class="pager" aria-label="Private history pages"><span>History page {(report?.actionsPage ?? 0) + 1} of {report?.actionsPageCount}</span><div><button type="button" disabled={loading || !report?.actionsPage} onclick={() => void loadReport(report?.page ?? 0, (report?.actionsPage ?? 0) - 1)}>Previous history</button><button type="button" disabled={loading || (report?.actionsPage ?? 0) + 1 >= (report?.actionsPageCount ?? 1)} onclick={() => void loadReport(report?.page ?? 0, (report?.actionsPage ?? 0) + 1)}>Next history</button></div></nav>{/if}</section>{/if}
 	{/if}
 
+	{#if owner && (withoutFindings || loading || reportError || !report)}
+		{@render questionInspector()}
+	{/if}
+
 	{#if actionMode}
 		<section class="action-sheet" aria-labelledby="action-sheet-title"><div class="action-sheet-heading"><div><p class="kicker">Private action record</p><h3 id="action-sheet-title">{actionMode === 'record' ? 'Record what changed' : actionMode === 'dismiss' ? (isOperational(actionFinding) ? 'Acknowledge this incident' : 'Dismiss this suggestion') : 'Snooze this suggestion'}</h3><p>{actionFinding ? `${actionFinding.title} · ${targetLabel(actionFinding.target)}` : `Use ${contextLabel} or choose a public album, photo, or page.`}</p></div><button type="button" onclick={() => { actionMode = null; actionError = null; }}>Close</button></div>
 			{#if isOperational(actionFinding) && actionMode !== 'record'}<p class="context-note">Acknowledgement pauses this incident for 30 days; snooze pauses it for 7 days. It stays visible and is not marked repaired. Undo reopens it.</p>{/if}
@@ -450,11 +486,11 @@
 			{#if actionError}<p class="answer-error" role="alert">{actionError}</p>{/if}{#if actionMessage}<p class="action-message" role="status">{actionMessage}</p>{/if}
 		</section>
 	{/if}
-	{#if !recordOnly}<PrivateIntelligenceControls {owner} {actions} onchanged={() => { void loadReport(currentPage); void settings?.reload(); }} />{/if}
+	{#if !withoutFindings}<PrivateIntelligenceControls {owner} {actions} onchanged={() => { void loadReport(currentPage); void settings?.reload(); }} />{/if}
 </section>
 
 <style>
-.actions-review a,.auth-note a{color:#174ea6;font-weight:700;text-decoration:underline;text-underline-offset:.15em}
+.actions-review a,.auth-note a,.inspector-copy a{color:#174ea6;font-weight:700;text-decoration:underline;text-underline-offset:.15em}
 
 	.intelligence{margin-top:1.25rem;border-top:1px solid #d8e0ea;padding-top:1.25rem;color:#172033}.heading,.finding-topline,.finding-actions,.pager,.action-sheet-heading,.action-history li{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.heading{align-items:end}.kicker{color:#174ea6;font-size:.68rem;font-weight:800;letter-spacing:.07em;margin:0 0 .35rem;text-transform:uppercase}h2,h3,p{margin-top:0}h2{font-size:1.2rem;letter-spacing:-.02em;margin-bottom:.3rem}h3{font-size:1rem;line-height:1.3;margin-bottom:.45rem}.heading>div>p:last-child,.inspector-copy,.scope,.freshness,.evidence,.auth-note,.context-note,.delivery-note{color:#526176;font-size:.78rem;line-height:1.5}.freshness{margin:0;text-align:right}.scope,.context-note{margin:.8rem 0}.context-note{background:#eef5ff;border-left:3px solid #6195df;padding:.55rem .7rem}.content-grid{display:grid;gap:1rem;grid-template-columns:minmax(0,1.35fr) minmax(17rem,.8fr);align-items:start}.finding-list{display:grid;gap:.65rem}.finding,.inspector,.briefs,.state,.action-sheet,.action-history{background:#fff;border:1px solid #d8e0ea;border-radius:.75rem;padding:1rem}.reporting-settings{margin:.9rem 0}.reporting-settings>summary{align-items:center;cursor:pointer;color:#174ea6;display:flex;font-weight:700;min-height:2.75rem}.finding.selected{border-color:#1769e0;box-shadow:inset 3px 0 #1769e0}.finding-topline{color:#64758a;font-size:.7rem;text-transform:capitalize}.finding p{color:#384b66;font-size:.84rem;line-height:1.5}.proposal{color:#172033!important}.follow-up{border-left:2px solid #91b7ee;margin:.65rem 0;padding-left:.7rem}.follow-up p{font-size:.78rem;margin:.25rem 0}.finding-actions{justify-content:start;flex-wrap:wrap;margin-top:.85rem}.inspector{position:sticky;top:1rem;background:#f4f7fb}.presets{display:flex;flex-wrap:wrap;gap:.45rem;margin:.8rem 0}.question-form,.action-sheet form{display:grid;gap:.6rem;margin-top:.9rem}.question-form label,.action-sheet label{display:grid;color:#33445c;font-size:.78rem;font-weight:700;gap:.35rem}button,.finding-actions a{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#174ea6;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;min-height:2.75rem;padding:.5rem .65rem;text-decoration:none}button:hover,button:focus-visible,.finding-actions a:hover,.finding-actions a:focus-visible{border-color:#1769e0;background:#edf5ff}button:disabled{cursor:not-allowed;opacity:.55}button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible,input:focus-within,select:focus-visible{outline:3px solid #1769e0;outline-offset:2px}textarea,input,select{border:1px solid #b8c8dc;border-radius:.45rem;background:#fff;color:#172033;font:inherit;max-width:100%;min-height:2.75rem;min-width:0;padding:.55rem .65rem}textarea{min-height:5rem;resize:vertical}.question-form button,.action-sheet form button{background:#1769e0;border-color:#1769e0;color:#fff}.form-grid{display:grid;gap:.6rem;grid-template-columns:repeat(2,minmax(0,1fr))}.answer,.previous-answer{border-top:1px solid #d8e0ea;margin-top:.9rem;padding-top:.9rem}.answer-status{color:#174ea6;font-size:.72rem;font-weight:800;text-transform:capitalize}.answer ul,.finding details ul{color:#526176;font-size:.77rem;line-height:1.45;margin:.65rem 0 0;padding-left:1.1rem}.comparison{overflow-x:auto}.comparison table{width:100%;border-collapse:collapse;font-size:.78rem}.comparison caption{text-align:left;color:#526176;margin:.5rem 0}.comparison th,.comparison td{text-align:left;border-bottom:1px solid #d8e0ea;padding:.5rem}.comparison a{color:#174ea6}.answer-findings{display:grid;gap:.35rem;margin-top:.75rem}.answer-findings a,.links a{color:#174ea6;font-size:.78rem;font-weight:700}.links{display:grid;gap:.35rem;margin:.65rem 0 0}.state{color:#526176;font-size:.84rem;line-height:1.5}.state p{margin:.3rem 0 0}.unavailable{border-color:#dba6a6}.answer-error{color:#a42424;font-size:.8rem;line-height:1.45}.pager{border-top:1px solid #d8e0ea;color:#526176;font-size:.78rem;padding-top:.8rem}.pager div{display:flex;gap:.4rem}.actions-review{align-items:start;background:#eef5ff;border-left:3px solid #6195df;color:#384b66;display:flex;font-size:.78rem;gap:1rem;justify-content:space-between;line-height:1.5;margin:.9rem 0;padding:.75rem .85rem}.actions-review p{margin:0}.briefs{display:grid;gap:.8rem;grid-template-columns:minmax(12rem,.45fr) minmax(0,1fr);margin-top:1rem}.brief-list{display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}.brief-list article{border-left:2px solid #91b7ee;padding-left:.7rem}.brief-list strong,.brief-list span{display:block}.brief-list span,.brief-empty,.brief-windows{color:#64758a;font-size:.72rem;margin-top:.15rem}.brief-list p{color:#526176;font-size:.78rem;line-height:1.45;margin:.4rem 0 0}.action-history{margin-top:1rem}.action-history li > div > span { display: block; margin-top: .2rem; }
 	.action-history ul{display:grid;gap:.65rem;list-style:none;margin:.8rem 0;padding:0}.action-history li{align-items:start;border-top:1px solid #e3e9f1;padding-top:.7rem}.action-history span,.action-history p{color:#526176;font-size:.78rem;line-height:1.45}.action-history p{margin:.25rem 0 0}.action-sheet{border-color:#9ebce8;margin-top:1rem;max-width:52rem}.action-sheet-heading{align-items:start}.action-sheet-heading p{color:#526176;font-size:.82rem;margin-bottom:0}.action-message{color:#195b33;font-size:.82rem;margin:.75rem 0 0}.evidence summary{cursor:pointer;color:#174ea6;font-weight:700}.evidence dl{display:grid;gap:.35rem;margin:.7rem 0}.evidence dl div{display:grid;gap:.6rem;grid-template-columns:7rem minmax(0,1fr)}.evidence dt{color:#64758a}.evidence dd{margin:0;overflow-wrap:anywhere}.evidence>p{margin:.7rem 0 0}@media(max-width:900px){.content-grid,.briefs{grid-template-columns:1fr}.inspector{position:static}}@media(max-width:600px){.heading,.actions-review,.action-history li{align-items:start;flex-direction:column}.freshness{text-align:left}.finding-actions button,.finding-actions a{flex:1 1 auto;text-align:center}.evidence dl div,.form-grid{grid-template-columns:minmax(0,1fr)}}

@@ -3,12 +3,12 @@ import type { Finding, IntelligenceScope } from './intelligence-contract';
 import { loadPublicFindings } from './intelligence-public.server';
 
 /**
- * Whether a report page shows the findings panel, the owner's private record form, or nothing.
+ * Whether a report page shows the findings panel, the owner's questions and private record form, or nothing.
  *
  * The panel earns its place only when the saved calculation for exactly this scope holds at least one
  * finding. A snapshot with no findings would render "No actionable findings" on every visit, which is
  * the always-empty panel the launch rethink removed (docs/design/experience-brief.md, anti-goals). The
- * owner keeps the private record form either way; visitors see nothing until there is something to say.
+ * owner keeps report questions and the private record form either way; visitors see nothing until there is something to say.
  */
 export type IntelligencePanelMode = 'report' | 'record' | 'none';
 

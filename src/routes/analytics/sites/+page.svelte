@@ -53,6 +53,7 @@
 		<section class="intro" aria-labelledby="site-title">
 			<p class="eyebrow">Site · ninochavez.co</p>
 			<h1 id="site-title">Is anyone looking at your profile and work, and did anyone reach out?</h1>
+			{#if data.intelligenceOwner}<a class="choice" href={hydrated ? '#assistant' : undefined} aria-disabled={!hydrated}>Ask about this report</a>{/if}
 		</section>
 
 		<div class="controls">
@@ -155,7 +156,7 @@
 					<p class="note">Note a change you made, such as a new post or a changed link, so that later you can check whether it moved anything. Nothing is published or sent.</p>
 					<p class="action"><button type="button" class="record" onclick={() => { recordRequest += 1; }} disabled={!hydrated}>Record what you did</button></p>
 				{/if}
-				<IntelligenceWorkspace recordOnly={data.intelligence === 'record'} kind="sites" scope={{ kind: 'sites', period: data.period, section: data.section }} owner={data.intelligenceOwner} signInNext="/analytics/sites" {recordRequest} />
+				<IntelligenceWorkspace withoutFindings={data.intelligence === 'record'} kind="sites" scope={{ kind: 'sites', period: data.period, section: data.section }} owner={data.intelligenceOwner} signInNext="/analytics/sites" {recordRequest} />
 			</section>
 		{/if}
 	</div>
