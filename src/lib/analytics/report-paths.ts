@@ -90,7 +90,9 @@ export function intelligenceEvidenceHref(hostname: string, value: string): strin
  // Stored findings and briefs keep the links they were written with, so the old gallery report's addresses still resolve: to where that report went.
  const moved = oldAddressTarget(url.pathname === '/analytics/operator' ? '/photography/analytics/operator' : url.pathname, url.search);
  if (moved) return hostAddress(hostname, { ...moved, hash: moved.hash || url.hash });
- if (['/photography/analytics/sites', '/sites'].includes(url.pathname)) return sitePath(hostname, url.search + url.hash);
+ if (['/photography/analytics/sites', '/analytics/sites', '/sites'].includes(url.pathname)) return sitePath(hostname, url.search + url.hash);
+ if (['/photography/analytics/data', '/analytics/data', '/data'].includes(url.pathname)) return dataPath(hostname, url.search + url.hash);
+ if (['/photography/analytics/albums', '/analytics/albums'].includes(url.pathname)) return albumIndexPath(hostname, url.search + url.hash);
  if (['/photography/analytics/photos', '/analytics/photos', '/photos'].includes(url.pathname)) return photosPath(hostname, url.search + url.hash);
  // `/albums/<key>` is the public gallery's own album page, so it is not read as a report address here.
  const album = albumKeyFrom(INTERNAL_ALBUM, url.pathname) ?? albumKeyFrom(/^\/analytics\/albums\/([^/]+)$/, url.pathname);

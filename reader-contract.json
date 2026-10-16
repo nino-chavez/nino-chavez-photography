@@ -26,6 +26,7 @@
         "src/lib/analytics/launch-recap-list.ts",
         "src/lib/analytics/launch-recap-view.ts",
         "src/lib/analytics/intelligence-preferences.ts",
+        "src/lib/analytics/intelligence-assistant.ts",
         "src/lib/analytics/launch-rules.ts",
         "src/lib/analytics/album-index.ts",
         "src/lib/analytics/home.ts",
