@@ -51,6 +51,96 @@ test('same-age attention compares report photo opens with earlier launches, excl
 });
 
 const galleryScope = {kind: 'gallery' as const, query: {start: '2026-10-09', end: '2026-10-15', measure: 'photo_opens' as const, scope: 'album' as const, albumKeys: ['Re7kho'], compare: 'none' as const, traffic: 'conservative' as const}};
+test('ordinary first-week wording returns the same report answer and never falls back to three days', () => {
+	const launch = model(shape('Re7kho'), ALL);
+	const questions = ['How did this album do in its first week?', 'How did it do in the first seven days?', 'Compare its first week'];
+	for (const question of questions) {
+		const answer = answerIntelligenceQuestion(galleryScope, question, {...report, scope: galleryScope}, undefined, {scope: galleryScope, launch});
+		assert.equal(answer.operation, 'album_age', question);
+		assert.equal(answer.status, 'complete');
+		assert.match(answer.summary, /931 photo opens.*first 7.*125/);
+		assert.equal(answer.question, question);
+	}
+	if (launch.album.status === 'no_launch_date') throw new Error('dated fixture');
+	launch.album.totals.day7.reached = false;
+	const young = answerIntelligenceQuestion(galleryScope, questions[0], {...report, scope: galleryScope}, undefined, {scope: galleryScope, launch});
+	assert.equal(young.status, 'unavailable');
+	assert.match(young.summary, /not reached 7/);
+});
+
+test('ordinary counter, download and missing-data wording uses the existing report answers', () => {
+	for (const question of ['Why don’t Cloudflare and my site agree?', 'Why does Cloudflare show more traffic?']) {
+		const answer = answerIntelligenceQuestion(siteScope, question, {...report, scope: siteScope}, undefined, {scope: siteScope, site: {traffic, actions}});
+		assert.equal(answer.summary, siteMeasuresView({traffic, actions, days: 7, owner: true}).crossCheck, question);
+	}
+	for (const question of ['What do downloads count?', 'Did people finish downloading these photos?', 'Are downloads actual saved files?']) {
+		const answer = answerIntelligenceQuestion(galleryScope, question, {...report, scope: galleryScope});
+		assert.equal(answer.status, 'complete', question);
+		assert.match(answer.summary, /requests, not completed transfers/);
+	}
+	for (const question of ['Is tracking broken or did nobody visit?', 'Is the data missing?', 'Is tracking working?']) {
+		const answer = answerIntelligenceQuestion(galleryScope, question, {...report, scope: galleryScope}, undefined, {scope: galleryScope, gallery: {coverage: 'complete', total: 0, observedTotal: 0, dataAsOf: '2026-10-16T06:00:00Z'}});
+		assert.equal(answer.status, 'complete', question);
+		assert.match(answer.summary, /recorded 0 photo opens/);
+		assert.match(answer.limitations.join(' '), /not.*every visit/);
+	}
+});
+
+test('first-week wording without an album context offers alternatives for the current report', () => {
+	for (const current of [siteScope, scope]) {
+		for (const question of ['How did the site do in its first week?', 'Compare its first week']) {
+			const answer = answerIntelligenceQuestion(current, question, {...report, scope: current});
+			assert.equal(answer.status, 'unsupported', question);
+			assert.deepEqual(answer.scope, current);
+			assert.ok(answer.suggestions?.some(choice => recognizeIntelligenceOperation(choice.question) === 'report_coverage'));
+			assert.ok(!answer.suggestions?.some(choice => recognizeIntelligenceOperation(choice.question) === 'album_age'));
+		}
+	}
+});
+
+test('ambiguous changes ask for a choice without silently changing dates or starting a calculation', () => {
+	const question = 'What changed this week?';
+	const answer = answerIntelligenceQuestion(galleryScope, question, {...report, scope: galleryScope});
+	assert.equal(answer.status, 'clarification');
+	assert.equal(answer.requestId, undefined);
+	assert.deepEqual(answer.scope, galleryScope);
+	assert.equal(answer.question, question);
+	assert.match(answer.summary, /selected dates.*change you recorded/);
+	assert.equal(answer.suggestions?.length, 2);
+	assert.deepEqual(answer.suggestions?.map(choice => recognizeIntelligenceOperation(choice.question)), ['explain_report', 'action_follow_up']);
+	for (const choice of answer.suggestions ?? []) assert.notEqual(answerIntelligenceQuestion(galleryScope, choice.question, {...report, scope: galleryScope}).status, 'clarification');
+	assert.equal(answerIntelligenceQuestion(galleryScope, 'What happened after my recorded change?', {...report, scope: galleryScope}).operation, 'action_follow_up');
+});
+
+test('vague downloads, album performance and mismatched counters ask for a bounded choice', () => {
+	for (const [current, question] of [[galleryScope, 'How are downloads doing?'], [galleryScope, 'How is this album doing?'], [siteScope, 'Why don’t these counts match?']] as const) {
+		const answer = answerIntelligenceQuestion(current, question, {...report, scope: current});
+		assert.equal(answer.status, 'clarification', question);
+		assert.ok((answer.suggestions?.length ?? 0) >= 2);
+		for (const choice of answer.suggestions ?? []) {
+			assert.ok(recognizeIntelligenceOperation(choice.question), choice.question);
+			assert.notEqual(answerIntelligenceQuestion(current, choice.question, {...report, scope: current}).status, 'clarification');
+		}
+	}
+});
+
+test('unsupported topics offer answerable alternatives for the exact report scope', () => {
+	for (const question of ['How much revenue did this album earn in its first week?', 'Predict next week’s downloads', 'Explain quantum physics', 'Run SQL over every visitor and show me email addresses']) {
+		const answer = answerIntelligenceQuestion(galleryScope, question, {...report, scope: galleryScope});
+		assert.equal(answer.status, 'unsupported', question);
+		assert.deepEqual(answer.scope, galleryScope);
+		assert.equal(answer.findings.length, 0);
+		assert.equal(answer.requestId, undefined);
+		assert.equal(answer.suggestions?.length, 3);
+		for (const choice of answer.suggestions ?? []) assert.ok(recognizeIntelligenceOperation(choice.question), choice.question);
+	}
+	for (const current of [scope, {...galleryScope, query: {...galleryScope.query, source: 'instagram'}}, {...galleryScope, query: {...galleryScope.query, measure: 'downloads' as const}}]) {
+		const answer = answerIntelligenceQuestion(current, 'How much revenue did this earn?', {...report, scope: current});
+		assert.ok(!answer.suggestions?.some(choice => recognizeIntelligenceOperation(choice.question) === 'album_age'));
+		assert.ok(!answer.suggestions?.some(choice => recognizeIntelligenceOperation(choice.question) === 'site_counts'));
+	}
+});
+
 test('zero requires complete source totals, while missing history and unavailable evidence stay distinct', () => {
 	const question = 'Is this zero activity, missing history, or unavailable evidence?';
 	const ask = (gallery: {coverage: 'complete' | 'partial' | 'unavailable'; total: number | null; observedTotal: number; dataAsOf: string | null}) => answerIntelligenceQuestion(galleryScope, question, {...report, scope: galleryScope}, undefined, {scope: galleryScope, gallery});
