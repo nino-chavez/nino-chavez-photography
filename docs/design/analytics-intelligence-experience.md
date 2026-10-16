@@ -107,3 +107,40 @@ confirmed that Sites landed on “Record what you did”; expanded settings can 
 precede questions when an action form is open. The ordinary no-findings state
 does not itself expand settings. A failing browser regression confirmed the Sites
 landing before the links were changed to target the question panels directly.
+
+### Typed questions and recovery, October 16
+
+Ordinary wording maps to the same bounded report operations as the shortcuts.
+“First week” means seven complete days after publication, including when the
+album is too young to answer. It never falls back to three days. Revenue and
+prediction questions remain unsupported even when they mention a supported measure.
+
+“What changed?” asks whether the owner means findings for the selected dates or
+follow-up on a recorded change. Vague download, album-performance, and counter
+questions also offer a choice. The original question and scope stay visible.
+Choosing an option submits that explicit question; changing filters disables the
+old options until the question is rerun.
+
+Unsupported questions return a normal response with context-specific alternatives.
+Clarification uses `status: clarification`; both states can include optional
+`suggestions` with a label and question. Malformed requests still fail validation,
+and owner and origin checks still apply. A missing saved calculation returns an
+unavailable answer with questions that can read the report directly. Neither
+guidance state writes question text or queues work.
+
+This extends the existing phrase matcher and answer contract. A growing list of
+silent keyword guesses would preserve the ambiguity; an unrestricted language
+model would add a new interpretation and execution boundary. Explicit choices
+keep the decision with the owner while retaining the existing report readers.
+
+The real local browser checks cover desktop and mobile touch input, choosing an
+option, unsupported recovery, and preserving filters across a rerun. Existing
+saved-finding and pending-job tests cover older answers without `suggestions`.
+The data is synthetic. Physical-phone and signed-in production acceptance remain
+separate from these checks.
+
+Reviewed captures: [desktop clarification](../implementation/analytics-intelligence-20260930/evidence/question-guidance-clarification-album-1280-screen.png),
+[mobile clarification](../implementation/analytics-intelligence-20260930/evidence/question-guidance-clarification-album-390-screen.png),
+[desktop alternatives](../implementation/analytics-intelligence-20260930/evidence/question-guidance-unsupported-sites-1280-screen.png),
+and [mobile alternatives](../implementation/analytics-intelligence-20260930/evidence/question-guidance-unsupported-sites-390-screen.png).
+Every number in these captures is synthetic; do not quote it as live activity.

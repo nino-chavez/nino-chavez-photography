@@ -1,18 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-16T20:30:55.232Z",
+  "reviewedAt": "2026-10-16T23:10:58.860Z",
   "reviewedBy": "Codex",
-  "method": "Parent inspected desktop/mobile entry and answer captures; independent cold review found no readability or overflow defect. Its section-target concern was narrowed against source and fixed with a failing-then-passing landing regression. All 17 browser checks pass. Synthetic local reports; no physical-phone or authenticated-production walk.",
-  "sourceDigest": "sha256:62a28a9ec58050975d615e6bc624f6c579e15f65bd6f038c4110f1811743f74e",
+  "method": "Parent inspected rendered desktop and mobile clarification and unsupported-question captures. All 21 browser checks passed, plus four repeated guidance flows after final label and capture changes. Real local requests and report readers with synthetic data; independent review pending. No physical-phone or signed-in production acceptance.",
+  "sourceDigest": "sha256:d029dc6a3d09642f91f2edcdd5b22617c912cfea5d1efff8efb58bc94c9fe671",
   "sourceFiles": 204,
   "scope": [
-    "Contextual report shortcuts",
-    "Direct question-panel entry",
-    "Questions without saved findings",
-    "Loading and failed saved findings",
-    "Frozen scope and explicit reruns",
-    "Source navigation and browser Back",
+    "Ordinary report questions",
+    "Clarification choices",
+    "Unsupported recovery",
+    "No saved findings",
+    "Filter changes and explicit reruns",
     "Owner controls"
   ]
 }

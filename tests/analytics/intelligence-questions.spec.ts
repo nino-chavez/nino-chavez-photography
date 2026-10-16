@@ -23,7 +23,7 @@ test.beforeAll(async () => {
 
 test('report questions preserve origin and owner gates', async ({request, baseURL}) => {
 	const origin = new URL(baseURL!).origin;
-	for (const text of [question, 'Why do Cloudflare and the site counts differ?', 'Did this album receive more attention at the same age after publication?', 'Does this download number mean requests or completed transfers?']) {
+	for (const text of [question, 'Why do Cloudflare and the site counts differ?', 'Did this album receive more attention at the same age after publication?', 'Does this download number mean requests or completed transfers?', 'What changed this week?', 'How much revenue did this album earn?']) {
 		const response = await request.post(endpoint, {headers: {origin}, data: {scope, question: text}});
 		expect(response.status()).toBe(403);
 	}
@@ -59,6 +59,15 @@ test('owner answers match the underlying gallery report and do not queue jobs', 
 	const countsAnswer = await counts.json();
 	expect(countsAnswer.status).toBe('unavailable'); // The local fixture has no Cloudflare credential.
 	expect(countsAnswer.summary).toContain('not compared');
+	for (const [question, status] of [['What changed this week?', 'clarification'], ['How much revenue did this album earn?', 'unsupported']]) {
+		const response = await request.post(endpoint, {headers, data: {scope, question}});
+		expect(response.status()).toBe(200);
+		expect(response.headers()['cache-control']).toBe('no-store');
+		const answer = await response.json();
+		expect(answer.status).toBe(status);
+		expect(answer.requestId).toBeUndefined();
+		expect(answer.suggestions.length).toBeGreaterThan(0);
+	}
 	const after = await client.from('analytics_intelligence_requests').select('id', {count: 'exact', head: true});
 	expect(before.error).toBeNull();
 	expect(after.error).toBeNull();
@@ -132,17 +141,81 @@ async function capture(page: Page, name: string) {
 	const panel = page.locator('.inspector');
 	await panel.evaluate(element => {
 		const label = document.createElement('p');
+		label.id = 'synthetic-question-label';
 		label.textContent = 'Synthetic local report — every number here is invented; do not quote it.';
 		element.prepend(label);
 	});
 	await panel.screenshot({path: `.temp/question-review/${name}-panel.png`});
 	await panel.scrollIntoViewIfNeeded();
 	await page.screenshot({path: `.temp/question-review/${name}-screen.png`});
+	await page.locator('#synthetic-question-label').evaluate(element => element.remove());
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 }
 
 for (const width of [1280, 390]) test.describe(`report questions at ${width}px`, () => {
 	test.use({viewport: {width, height: 900}, isMobile: width === 390, hasTouch: width === 390});
+
+	test('typed questions clarify meaning and recover from unsupported requests', async ({page}) => {
+		await signIn(page);
+		await page.goto('/photography/analytics/albums/alpha');
+		const input = page.getByRole('textbox', {name: 'Ask about this report', exact: true});
+		const submit = page.getByRole('button', {name: 'Ask owner question', exact: true});
+		await input.fill('What changed this week?');
+		const clarify = await askFromPage(page, submit, width);
+		expect(clarify.status).toBe('clarification');
+		await expect(page.locator('.answer')).toContainText('selected dates');
+		await expect(page.getByRole('group', {name: 'Choose what you mean'}).getByRole('button')).toHaveCount(2);
+		await capture(page, `clarification-album-${width}`);
+		const chosen = await askFromPage(page, page.getByRole('button', {name: 'Explain findings for the selected dates', exact: true}), width);
+		expect(chosen.operation).toBe('explain_report');
+		expect(chosen.status).toBe('unavailable'); // The real local scope has no saved calculation.
+		await expect(page.locator('.answer')).toContainText('reads the report directly');
+		expect(chosen.scope).toEqual(clarify.scope);
+		await input.fill('How much revenue did this album earn?');
+		const unsupported = await askFromPage(page, submit, width);
+		expect(unsupported.status).toBe('unsupported');
+		await expect(page.locator('.answer')).toContainText('not supported by this report');
+		await expect(page.getByText('The assistant could not complete that request.', {exact: false})).toHaveCount(0);
+		await capture(page, `unsupported-album-${width}`);
+		const recovered = await askFromPage(page, page.getByRole('button', {name: 'Compare the album’s first week', exact: true}), width);
+		expect(recovered.operation).toBe('album_age');
+		expect(recovered.scope).toEqual(unsupported.scope);
+		await input.fill('How did this album do in its first week?');
+		const typed = await askFromPage(page, submit, width);
+		expect(typed.operation).toBe('album_age');
+		expect(typed.summary).toBe(recovered.summary);
+		expect(typed.evidenceLinks).toEqual(recovered.evidenceLinks);
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+	});
+
+	test('site clarification choices wait for a rerun after filters change', async ({page}) => {
+		await signIn(page);
+		await page.goto('/photography/analytics/sites');
+		const input = page.getByRole('textbox', {name: 'Ask about this report', exact: true});
+		const submit = page.getByRole('button', {name: 'Ask owner question', exact: true});
+		await input.fill('Why don’t these counts match?');
+		const clarification = await askFromPage(page, submit, width);
+		expect(clarification.status).toBe('clarification');
+		await capture(page, `clarification-sites-${width}`);
+		await activate(page.getByRole('navigation', {name: 'Period', exact: true}).getByRole('link', {name: '30 days', exact: true}), width);
+		const choice = page.getByRole('button', {name: 'Explain the two site counters', exact: true});
+		await expect(choice).toBeDisabled();
+		await expect(page.locator('.answer')).toContainText('Rerun your question before choosing an option');
+		await askFromPage(page, page.getByRole('button', {name: 'Rerun for the current scope'}), width);
+		const counts = await askFromPage(page, choice, width);
+		expect(counts.operation).toBe('site_counts');
+		expect(counts.scope).toEqual({kind: 'sites', period: 30, section: 'all'});
+		await activate(page.getByRole('navigation', {name: 'Section', exact: true}).getByRole('link', {name: 'Writing', exact: true}), width);
+		await input.fill('Predict next month’s revenue');
+		const unsupported = await askFromPage(page, submit, width);
+		expect(unsupported.status).toBe('unsupported');
+		await expect(page.getByRole('group', {name: 'Supported questions'}).getByRole('button')).toHaveCount(1);
+		await capture(page, `unsupported-sites-${width}`);
+		const coverage = await askFromPage(page, page.getByRole('button', {name: 'Check for missing report data', exact: true}), width);
+		expect(coverage.operation).toBe('report_coverage');
+		expect(coverage.scope).toEqual({kind: 'sites', period: 30, section: 'writing'});
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+	});
 
 	test('album shortcuts work without saved findings and link to actual reports', async ({page}) => {
 		page.on('pageerror', error => console.error('Browser error:', error.message));

@@ -2,7 +2,7 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { json, error } from '@sveltejs/kit';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
-import { answerIntelligenceQuestion, recognizeIntelligenceOperation } from '$lib/analytics/intelligence-assistant';
+import { answerIntelligenceQuestion, guideIntelligenceQuestion, recognizeIntelligenceOperation, supportedReportQuestions } from '$lib/analytics/intelligence-assistant';
 import { parseIntelligenceScope, type IntelligenceReport } from '$lib/analytics/intelligence-contract';
 import { createIntelligenceRequest, intelligenceOwner, loadIntelligence, loadIntelligenceRequest } from '$lib/analytics/intelligence-store.server';
 import { isReportQuestion, loadQuestionReportEvidence } from '$lib/analytics/intelligence-question-report.server';
@@ -60,16 +60,22 @@ export const POST: RequestHandler = async ({ request, cookies, url, fetch }) => 
 	const question = typeof body.question === 'string' ? body.question.trim() : '';
 	if (!scope || !question || question.length > 500) plain(400, 'invalid analytics question');
 	const operation = recognizeIntelligenceOperation(question);
-	if (!operation) plain(400, 'unsupported analytics question');
 	const owner = await intelligenceOwner(cookies);
 	// Public callers may receive only a deterministic explanation of already
 	// visible stored evidence. Any new calculation or free text remains private.
 	if (!owner.owner && operation !== 'explain_report') plain(403, 'owner authorization required');
+	const guidance = guideIntelligenceQuestion(scope, question);
+	if (guidance) return json(guidance, { headers: { 'cache-control': 'no-store' } });
+	if (!operation) plain(400, 'unsupported analytics question');
 	const admin = createSupabaseAdminClient();
 	try {
-		const report: IntelligenceReport = isReportQuestion(operation) || operation === 'album_comparison' || operation === 'site_retention'
-   ? {scope,generatedAt:new Date().toISOString(),cutoff:null,coverage:'unavailable',findings:[],suppressions:[],actions:[],briefs:[],page:0,pageCount:1,owner:owner.owner}
-   : await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page: 0 });
+		let report: IntelligenceReport = {scope,generatedAt:new Date().toISOString(),cutoff:null,coverage:'unavailable',findings:[],suppressions:[],actions:[],briefs:[],page:0,pageCount:1,owner:owner.owner};
+		if (!isReportQuestion(operation) && operation !== 'album_comparison' && operation !== 'site_retention') {
+			try { report = await loadIntelligence(admin, scope, { ownerId: owner.owner ? owner.userId ?? undefined : undefined, page: 0 }); }
+			catch {
+				return json({...answerIntelligenceQuestion(scope, question, report), summary: 'Saved findings for these dates are unavailable. Try a question that reads the report directly.', suggestions: owner.owner ? supportedReportQuestions(scope) : undefined}, {headers: {'cache-control': 'no-store'}});
+			}
+		}
 		const evidence = isReportQuestion(operation) ? await loadQuestionReportEvidence(admin, scope, operation, {env: {CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ANALYTICS_TOKEN: env.CLOUDFLARE_ANALYTICS_TOKEN}, fetch}) : undefined;
 		const draft = answerIntelligenceQuestion(scope, question, report, undefined, evidence);
 		if (draft.status !== 'pending') return json(draft, { headers: { 'cache-control': 'no-store' } });

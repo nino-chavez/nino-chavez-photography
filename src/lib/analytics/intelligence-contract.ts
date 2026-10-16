@@ -183,7 +183,7 @@ export interface AssistantAnswer {
 	scope: IntelligenceScope;
 	question: string;
 	operation: string;
-	status: 'complete' | 'pending' | 'unavailable' | 'unsupported';
+	status: 'complete' | 'pending' | 'unavailable' | 'unsupported' | 'clarification';
 	summary: string;
 	findings: Finding[];
 	evidenceLinks: string[];
@@ -191,6 +191,7 @@ export interface AssistantAnswer {
 	generatedAt: string;
 	requestId?: string;
 	comparison?: AlbumComparison;
+	suggestions?: Array<{label: string; question: string}>;
 }
 
 export const INTELLIGENCE_RULE_VERSION = 4;
