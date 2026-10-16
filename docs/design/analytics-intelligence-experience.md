@@ -144,3 +144,8 @@ Reviewed captures: [desktop clarification](../implementation/analytics-intellige
 [desktop alternatives](../implementation/analytics-intelligence-20260930/evidence/question-guidance-unsupported-sites-1280-screen.png),
 and [mobile alternatives](../implementation/analytics-intelligence-20260930/evidence/question-guidance-unsupported-sites-390-screen.png).
 Every number in these captures is synthetic; do not quote it as live activity.
+
+PR review caught implicit first-week wording being treated as an album question
+on Sites. A failing unit test reproduced the wrong “Open one album” answer.
+Implicit album wording now requires an album context; Sites offers its own
+supported questions. Desktop and mobile regressions exercise that recovery.

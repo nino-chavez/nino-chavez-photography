@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-16T23:10:58.860Z",
+  "reviewedAt": "2026-10-16T23:16:45.900Z",
   "reviewedBy": "Codex",
-  "method": "Parent inspected rendered desktop and mobile clarification and unsupported-question captures. All 21 browser checks passed, plus four repeated guidance flows after final label and capture changes. Real local requests and report readers with synthetic data; independent review pending. No physical-phone or signed-in production acceptance.",
-  "sourceDigest": "sha256:d029dc6a3d09642f91f2edcdd5b22617c912cfea5d1efff8efb58bc94c9fe671",
+  "method": "Parent inspected rendered desktop and mobile clarification and unsupported-question captures. All 21 browser checks passed before review; four guidance flows repeated after the source-backed Sites first-week routing fix. Real local requests and report readers with synthetic data. Independent cold review pending. No physical-phone or signed-in production acceptance.",
+  "sourceDigest": "sha256:27064247b3416e16921f9bc6933145febf0813fa2af6742a258ea19f136e270b",
   "sourceFiles": 204,
   "scope": [
     "Ordinary report questions",

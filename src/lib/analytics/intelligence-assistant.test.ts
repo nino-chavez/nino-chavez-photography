@@ -86,6 +86,18 @@ test('ordinary counter, download and missing-data wording uses the existing repo
 	}
 });
 
+test('first-week wording without an album context offers alternatives for the current report', () => {
+	for (const current of [siteScope, scope]) {
+		for (const question of ['How did the site do in its first week?', 'Compare its first week']) {
+			const answer = answerIntelligenceQuestion(current, question, {...report, scope: current});
+			assert.equal(answer.status, 'unsupported', question);
+			assert.deepEqual(answer.scope, current);
+			assert.ok(answer.suggestions?.some(choice => recognizeIntelligenceOperation(choice.question) === 'report_coverage'));
+			assert.ok(!answer.suggestions?.some(choice => recognizeIntelligenceOperation(choice.question) === 'album_age'));
+		}
+	}
+});
+
 test('ambiguous changes ask for a choice without silently changing dates or starting a calculation', () => {
 	const question = 'What changed this week?';
 	const answer = answerIntelligenceQuestion(galleryScope, question, {...report, scope: galleryScope});

@@ -205,6 +205,12 @@ for (const width of [1280, 390]) test.describe(`report questions at ${width}px`,
 		const counts = await askFromPage(page, choice, width);
 		expect(counts.operation).toBe('site_counts');
 		expect(counts.scope).toEqual({kind: 'sites', period: 30, section: 'all'});
+		await input.fill('How did the site do in its first week?');
+		const firstWeek = await askFromPage(page, submit, width);
+		expect(firstWeek.status).toBe('unsupported');
+		expect(firstWeek.scope).toEqual(counts.scope);
+		await expect(page.getByRole('button', {name: 'Explain the two site counters', exact: true})).toBeVisible();
+		await expect(page.locator('.answer')).not.toContainText('Open one album');
 		await activate(page.getByRole('navigation', {name: 'Section', exact: true}).getByRole('link', {name: 'Writing', exact: true}), width);
 		await input.fill('Predict next month’s revenue');
 		const unsupported = await askFromPage(page, submit, width);

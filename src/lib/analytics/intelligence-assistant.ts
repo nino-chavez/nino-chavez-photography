@@ -60,7 +60,10 @@ export function guideIntelligenceQuestion(scope: IntelligenceScope, question: st
 		{label: 'Check download failures', question: 'Are download requests failing?'}
 	]};
 	if (ambiguity) return {...base, operation: 'clarify', status: 'clarification', summary: ambiguity === 'album' ? 'Which part of the album report do you want to check?' : 'Which counts do you want to understand?', suggestions: supportedReportQuestions(scope)};
-	if (recognizeIntelligenceOperation(question)) return null;
+	const operation = recognizeIntelligenceOperation(question);
+	// Pronouns such as “its first week” inherit an album only from an album report.
+	const missingAlbumContext = operation === 'album_age' && !questionAlbumKey(scope) && !has(value, 'album', 'publication');
+	if (operation && !missingAlbumContext) return null;
 	return {...base, status: 'unsupported', summary: 'This question is not supported by this report. Try one of the questions below.', suggestions: supportedReportQuestions(scope)};
 }
 
