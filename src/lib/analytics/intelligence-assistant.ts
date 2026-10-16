@@ -9,6 +9,7 @@ import { filterParams } from './photo-view';
 /** Read models from the linked reports, never counts inferred from missing findings. */
 export type QuestionReportEvidence = {
 	scope: IntelligenceScope;
+	unavailableReason?: string;
 	site?: { traffic: SiteTrafficResult | null; actions: SiteActionReport | null };
 	launch?: LaunchReadModel;
 	gallery?: {coverage: 'complete' | 'partial' | 'unavailable'; total: number | null; observedTotal: number; dataAsOf: string | null};
@@ -76,6 +77,10 @@ export function answerIntelligenceQuestion(scope: IntelligenceScope, question: s
 		const base = {scope, question, operation, findings: [], generatedAt, evidenceLinks: [href, '/analytics/data'], limitations: [config.limit]};
 		const unavailable = (summary: string): AssistantAnswer => ({...base, status: 'unavailable', summary});
 		if (!evidence || intelligenceScopeKey(evidence.scope) !== intelligenceScopeKey(scope)) return unavailable('The report totals are unavailable. Missing evidence is not zero.');
+		if (evidence.unavailableReason) {
+			if (scope.kind === 'gallery') base.evidenceLinks = [...scope.query.albumKeys.map(key => `/analytics/albums/${encodeURIComponent(key)}`), '/analytics/data'];
+			return unavailable(evidence.unavailableReason);
+		}
 		if (scope.kind === 'sites') {
 			const actions = evidence.site?.actions;
 			if (!actions?.available) return unavailable('The site’s own page-view evidence is unavailable, not zero.');
@@ -88,7 +93,7 @@ export function answerIntelligenceQuestion(scope: IntelligenceScope, question: s
 		if (scope.kind === 'gallery') {
 			const gallery = evidence.gallery;
 			if (!gallery || gallery.coverage === 'unavailable') return unavailable('The selected gallery evidence is unavailable, not zero.');
-			if (gallery.dataAsOf) base.limitations.push(`Report data as of ${gallery.dataAsOf}; ${scope.query.traffic} traffic, Chicago days.`);
+			if (gallery.dataAsOf) base.limitations.push(`Report data as of ${gallery.dataAsOf}; public albums, ${scope.query.traffic} traffic, Chicago days.`);
 			if (gallery.coverage === 'partial') return unavailable('This window has missing history. Its full total is unknown, not zero.');
 			if (gallery.total === null || !gallery.dataAsOf || chicagoDate(gallery.dataAsOf) <= scope.query.end) return unavailable('The report has not confirmed a complete total through the end of this window. This is not zero.');
 			const units = scope.query.measure === 'downloads' ? 'download requests' : scope.query.measure.replaceAll('_', ' ');

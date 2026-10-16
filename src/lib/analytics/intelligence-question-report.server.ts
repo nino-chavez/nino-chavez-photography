@@ -26,6 +26,14 @@ export async function loadQuestionReportEvidence(
 			const albumKey = questionAlbumKey(scope);
 			if (albumKey) evidence.launch = await fetchLaunchReadModel(client, {albumKey, days: LAUNCH_DAYS, traffic: 'conservative', publicOnly: true, photoLimit: 1});
 		} else if (operation === 'report_coverage' && scope.kind === 'gallery') {
+			if (scope.query.scope !== 'all' && scope.query.albumKeys.length) {
+				const {data: settings, error} = await client.from('album_settings').select('album_key, visibility').in('album_key', scope.query.albumKeys);
+				if (error) return evidence;
+				if (settings?.some(row => row.visibility === 'unlisted')) {
+					evidence.unavailableReason = 'This selection includes an unlisted album. Coverage answers currently use public-album totals, so this answer is unavailable; exclusion is not zero activity. Read the owner-visible album report for its activity.';
+					return evidence;
+				}
+			}
 			const report = await fetchScheduledGalleryReport(client, scope.query, {publicOnly: true, includeToday: false, photoWindow: {page: 0, pageSize: 1, rank: 'popular'}});
 			evidence.gallery = {coverage: report.coverage, total: report.total, observedTotal: report.observedTotal, dataAsOf: report.dataAsOf};
 		}

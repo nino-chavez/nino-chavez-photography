@@ -1,16 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-16T19:14:27.846Z",
+  "reviewedAt": "2026-10-16T19:23:34.614Z",
   "reviewedBy": "Codex",
-  "method": "Rendered Playwright desktop and phone review with real local question POSTs; public production report replay",
-  "sourceDigest": "sha256:27718dc6a7e094ac2e7f2546386a788fdb79c11e2a175062e762c182bd67cd3b",
+  "method": "Rendered desktop and phone answer review; five authenticated HTTP and browser checks; unlisted false-zero regression",
+  "sourceDigest": "sha256:29cf7dcb17693cddfa08dac80c9531d1c04006cc0032f27a39436ef32d22f12e",
   "sourceFiles": 204,
   "scope": [
     "Report question answers",
-    "Data and source links",
-    "Zero and missing-history wording",
-    "Same-age limits",
+    "Source links",
+    "Public versus unlisted album totals",
+    "Incomplete and stale evidence",
     "Desktop and phone captures"
   ]
 }

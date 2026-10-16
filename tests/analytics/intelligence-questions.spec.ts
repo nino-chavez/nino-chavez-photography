@@ -53,6 +53,32 @@ test('owner answers match the underlying gallery report and do not queue jobs', 
 	expect(after.count).toBe(before.count);
 });
 
+test('excluding an unlisted album never becomes a public-only false zero', async ({request, baseURL}) => {
+	test.skip(!existsSync(cookiePath) || !existsSync(runtimePath), 'requires the local synthetic owner');
+	const runtime = JSON.parse(readFileSync(runtimePath, 'utf8'));
+	expect(new URL(runtime.API_URL).hostname).toBe('127.0.0.1');
+	const client = createClient(runtime.API_URL, runtime.SERVICE_ROLE_KEY, {auth: {persistSession: false, autoRefreshToken: false}});
+	const privateScope = {...scope, query: {...scope.query, albumKeys: ['beta'], measure: 'album_opens'}};
+	const args = {p_start: scope.query.start, p_end: scope.query.end, p_measure: 'album_opens', p_scope: 'album', p_album_keys: ['beta'], p_traffic: 'conservative', p_compare: 'none', p_include_today: false, p_photo_page: 0, p_photo_page_size: 1, p_photo_rank: 'popular', p_export: false};
+	const publicReport = await client.rpc('analytics_read_scheduled_gallery_report', {...args, p_public_only: true});
+	const ownerReport = await client.rpc('analytics_read_scheduled_gallery_report', {...args, p_public_only: false});
+	expect(publicReport.error).toBeNull();
+	expect(ownerReport.error).toBeNull();
+	expect(publicReport.data.total).toBe(0);
+	expect(ownerReport.data.coverage).toBe('complete');
+	expect(ownerReport.data.total).toBeGreaterThan(0);
+	const jar = JSON.parse(readFileSync(cookiePath, 'utf8')) as Array<{name: string; value: string}>;
+	const response = await request.post(endpoint, {headers: {origin: new URL(baseURL!).origin, cookie: jar.map(c => `${c.name}=${c.value}`).join('; ')}, data: {scope: privateScope, question}});
+	expect(response.status()).toBe(200);
+	const answer = await response.json();
+	expect(answer.status).toBe('unavailable');
+	expect(answer.summary).toContain('unlisted');
+	expect(answer.summary).not.toContain('recorded 0');
+	expect(answer.evidenceLinks).toContain('/analytics/albums/beta');
+	const anonymous = await request.post(endpoint, {headers: {origin: new URL(baseURL!).origin}, data: {scope: privateScope, question}});
+	expect(anonymous.status()).toBe(403);
+});
+
 for (const width of [1280, 390]) test(`real answer and source links render at ${width}px`, async ({page}) => {
 	test.skip(!existsSync(cookiePath), 'requires the local synthetic owner');
 	await page.setViewportSize({width, height: 900});
