@@ -1,6 +1,7 @@
-import {expect, test} from '@playwright/test';
-import {existsSync, readFileSync, mkdirSync} from 'node:fs';
+import {expect, test, type Page, type Locator} from '@playwright/test';
+import {existsSync, readFileSync, mkdirSync, writeFileSync} from 'node:fs';
 import {createClient} from '@supabase/supabase-js';
+import {createServerClient} from '@supabase/ssr';
 
 // Synthetic local stack only. Questions use the real endpoint; no POST is mocked.
 const endpoint = '/photography/api/analytics/intelligence';
@@ -8,6 +9,17 @@ const scope = {kind: 'gallery', query: {start: '2026-09-27', end: '2026-09-27', 
 const question = 'Is this zero activity, missing history, or unavailable evidence?';
 const cookiePath = '.temp/analytics-parent-local-cookies.json';
 const runtimePath = '.temp/analytics-local-rehearsal/runtime.json';
+
+test.beforeAll(async () => {
+	if (!existsSync(runtimePath)) return;
+	const runtime = JSON.parse(readFileSync(runtimePath, 'utf8'));
+	expect(new URL(runtime.API_URL).hostname).toBe('127.0.0.1');
+	let jar: Array<{name: string; value: string}> = [];
+	const client = createServerClient(runtime.API_URL, runtime.ANON_KEY, {cookies: {getAll: () => jar, setAll: cookies => { jar = cookies; }}});
+	const {error} = await client.auth.signInWithPassword({email: 'analytics-operator@example.test', password: 'synthetic-only-password'});
+	expect(error).toBeNull();
+	writeFileSync(cookiePath, JSON.stringify(jar), {mode: 0o600});
+});
 
 test('report questions preserve origin and owner gates', async ({request, baseURL}) => {
 	const origin = new URL(baseURL!).origin;
@@ -79,36 +91,140 @@ test('excluding an unlisted album never becomes a public-only false zero', async
 	expect(anonymous.status()).toBe(403);
 });
 
-for (const width of [1280, 390]) test(`real answer and source links render at ${width}px`, async ({page}) => {
+async function signIn(page: Page) {
 	test.skip(!existsSync(cookiePath), 'requires the local synthetic owner');
-	await page.setViewportSize({width, height: 900});
 	const jar = JSON.parse(readFileSync(cookiePath, 'utf8')) as Array<{name: string; value: string}>;
 	await page.context().addCookies(jar.map(c => ({...c, domain: '127.0.0.1', path: '/', httpOnly: false, secure: false, sameSite: 'Lax' as const})));
-	// The fixture has no saved findings. Expose the existing panel, and supply only
-	// its GET snapshot; every question still goes through the authenticated server.
-	await page.route(/\/analytics\/albums\/alpha(\?|$)/, async route => {
-		if (route.request().resourceType() !== 'document') return route.continue();
-		const response = await route.fetch();
-		return route.fulfill({response, body: (await response.text()).replace(/intelligence:"(none|record)"/, 'intelligence:"report"')});
-	});
-	await page.route('**/api/analytics/intelligence**', async route => {
-		if (route.request().method() !== 'GET' || new URL(route.request().url()).pathname !== endpoint) return route.continue();
-		const requestedScope = JSON.parse(new URL(route.request().url()).searchParams.get('scope')!);
-		return route.fulfill({json: {scope: requestedScope, generatedAt: new Date().toISOString(), cutoff: null, coverage: 'complete', findings: [], suppressions: [], actions: [], briefs: [], page: 0, pageCount: 1, owner: true}});
-	});
-	await page.goto('/photography/analytics/albums/alpha');
-	await page.getByLabel('Ask about this report').fill('Does this download number mean requests or completed transfers?');
-	await page.getByRole('button', {name: 'Ask owner question'}).click();
-	await expect(page.locator('.answer')).toContainText('requests, not completed transfers');
-	await expect(page.locator('.answer').getByRole('link', {name: 'Open data notes'})).toHaveAttribute('href', /\/analytics\/data/);
-	await page.getByLabel('Ask about this report').fill(question);
-	await page.getByRole('button', {name: 'Ask owner question'}).click();
-	await expect(page.locator('.answer')).toContainText('photo opens');
-	await expect(page.locator('.answer').getByRole('link', {name: 'Open source report'})).toHaveAttribute('href', /albums=alpha/);
-	expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-	const panel = page.locator('.answer');
-	await panel.evaluate(element => {const label = document.createElement('p'); label.textContent = 'Synthetic local report — every number here is invented; do not quote it.'; element.prepend(label);});
+}
+
+async function activate(control: Locator, width: number) {
+	if (width === 390) await control.tap();
+	else await control.click();
+}
+
+async function askFromPage(page: Page, control: Locator, width: number) {
+	const response = page.waitForResponse(r => new URL(r.url()).pathname === endpoint && r.request().method() === 'POST');
+	await activate(control, width);
+	const result = await response;
+	expect(result.status()).toBe(200);
+	const answer = await result.json();
+	expect(answer.requestId).toBeUndefined();
+	await expect(page.locator('.answer')).toContainText(answer.summary);
+	return answer;
+}
+
+async function captureEntry(page: Page, name: string) {
 	mkdirSync('.temp/question-review', {recursive: true});
-	await page.locator('.answer').screenshot({path: `.temp/question-review/answer-${width}.png`});
-	await page.screenshot({path: `.temp/question-review/screen-${width}.png`});
+	const link = page.getByRole('link', {name: 'Ask about this report', exact: true});
+	await link.scrollIntoViewIfNeeded();
+	await link.evaluate(element => {
+		const label = document.createElement('p');
+		label.id = 'synthetic-review-label';
+		label.textContent = 'Synthetic local report — every number here is invented; do not quote it.';
+		element.parentElement!.prepend(label);
+	});
+	await page.screenshot({path: `.temp/question-review/${name}-entry.png`});
+	await page.locator('#synthetic-review-label').evaluate(element => element.remove());
+}
+
+async function capture(page: Page, name: string) {
+	mkdirSync('.temp/question-review', {recursive: true});
+	const panel = page.locator('.inspector');
+	await panel.evaluate(element => {
+		const label = document.createElement('p');
+		label.textContent = 'Synthetic local report — every number here is invented; do not quote it.';
+		element.prepend(label);
+	});
+	await panel.screenshot({path: `.temp/question-review/${name}-panel.png`});
+	await panel.scrollIntoViewIfNeeded();
+	await page.screenshot({path: `.temp/question-review/${name}-screen.png`});
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+}
+
+for (const width of [1280, 390]) test.describe(`report questions at ${width}px`, () => {
+	test.use({viewport: {width, height: 900}, isMobile: width === 390, hasTouch: width === 390});
+
+	test('album shortcuts work without saved findings and link to actual reports', async ({page}) => {
+		page.on('pageerror', error => console.error('Browser error:', error.message));
+		await signIn(page);
+		// No page, saved findings, or question response is replaced.
+		await page.goto('/photography/analytics/albums/alpha');
+		await captureEntry(page, `album-${width}`);
+		await activate(page.getByRole('link', {name: 'Ask about this report', exact: true}), width);
+		await expect(page.locator(':target').getByRole('heading').first()).toHaveText('Ask about this report');
+		await expect(page.getByRole('heading', {name: 'Worth your attention'})).toHaveCount(0);
+		const downloads = await askFromPage(page, page.getByRole('button', {name: 'What counts as a download?', exact: true}), width);
+		expect(downloads.operation).toBe('download_meaning');
+		expect(downloads.summary).toContain('requests, not completed transfers');
+		await activate(page.locator('.answer').getByRole('link', {name: 'Open data notes'}), width);
+		await expect(page).toHaveURL(/\/analytics\/data$/);
+		await expect(page.getByRole('main')).toContainText(/not completed transfers/);
+		await page.goBack();
+		await expect(page).toHaveURL(/\/analytics\/albums\/alpha(?:#gallery-report-questions)?$/);
+		await expect(page.getByRole('button', {name: 'Compare its first week', exact: true})).toBeVisible();
+
+		const age = await askFromPage(page, page.getByRole('button', {name: 'Compare its first week', exact: true}), width);
+		expect(age.operation).toBe('album_age');
+		expect(age.question).toContain('first 7 days');
+		expect(age.scope.query.albumKeys).toEqual(['alpha']);
+		expect(['complete', 'unavailable']).toContain(age.status);
+		expect(age.evidenceLinks).toContain('/analytics/albums/alpha');
+
+		const coverage = await askFromPage(page, page.getByRole('button', {name: 'Is this zero or missing data?', exact: true}), width);
+		expect(coverage.operation).toBe('report_coverage');
+		const runtime = JSON.parse(readFileSync(runtimePath, 'utf8'));
+		const client = createClient(runtime.API_URL, runtime.SERVICE_ROLE_KEY, {auth: {persistSession: false, autoRefreshToken: false}});
+		const q = coverage.scope.query;
+		const {data, error} = await client.rpc('analytics_read_scheduled_gallery_report', {p_start: q.start, p_end: q.end, p_measure: q.measure, p_scope: q.scope, p_album_keys: q.albumKeys, p_traffic: q.traffic, p_compare: q.compare, p_public_only: true, p_include_today: false, p_photo_page: 0, p_photo_page_size: 1, p_photo_rank: 'popular', p_export: false});
+		expect(error).toBeNull();
+		expect(data.coverage).toBe('complete');
+		expect(coverage.summary).toContain(`recorded ${data.total} photo opens`);
+		await capture(page, `album-${width}`);
+		await activate(page.locator('.answer').getByRole('link', {name: 'Open source report'}), width);
+		await expect(page).toHaveURL(/\/analytics\/photos\?/);
+		const linked = new URL(page.url());
+		expect(linked.searchParams.get('albums')).toBe('alpha');
+		expect(linked.searchParams.get('start')).toBe(q.start);
+		expect(linked.searchParams.get('end')).toBe(q.end);
+		await expect(page.getByRole('main')).toContainText('Photo opens');
+	});
+
+	test('site shortcuts retain the answered period until explicitly rerun', async ({page}) => {
+		await signIn(page);
+		await page.goto('/photography/analytics/sites');
+		await captureEntry(page, `sites-${width}`);
+		await activate(page.getByRole('link', {name: 'Ask about this report', exact: true}), width);
+		await expect(page.locator(':target').getByRole('heading').first()).toHaveText('Ask about this report');
+		await expect(page.getByRole('button', {name: 'What counts as a download?'})).toHaveCount(0);
+		const counts = await askFromPage(page, page.getByRole('button', {name: 'Why don’t these counts match?', exact: true}), width);
+		expect(counts.operation).toBe('site_counts');
+		expect(counts.scope).toEqual({kind: 'sites', period: 7, section: 'all'});
+		expect(counts.status).toBe('unavailable'); // Local stack has no Cloudflare credential.
+		expect(counts.summary).toContain('not compared');
+		await capture(page, `sites-${width}`);
+		await activate(page.getByRole('navigation', {name: 'Period', exact: true}).getByRole('link', {name: '30 days', exact: true}), width);
+		await expect(page.locator('.answer')).toContainText('Sites · 7 days · all');
+		const rerun = await askFromPage(page, page.getByRole('button', {name: 'Rerun for the current scope'}), width);
+		expect(rerun.scope.period).toBe(30);
+		await expect(page.locator('.previous-answer')).toContainText('7 days');
+		await activate(page.getByRole('navigation', {name: 'Section', exact: true}).getByRole('link', {name: 'Writing', exact: true}), width);
+		await expect(page.getByRole('button', {name: 'Why don’t these counts match?', exact: true})).toHaveCount(0);
+		await expect(page.getByRole('link', {name: 'open All sections', exact: true})).toHaveAttribute('href', /sites\?period=30$/);
+		const coverage = await askFromPage(page, page.getByRole('button', {name: 'Is this zero or missing data?', exact: true}), width);
+		expect(coverage.operation).toBe('report_coverage');
+		expect(coverage.scope).toEqual({kind: 'sites', period: 30, section: 'writing'});
+		await page.getByRole('textbox', {name: 'Ask about this report', exact: true}).fill('Why do Cloudflare and the site counts differ?');
+		const typed = await askFromPage(page, page.getByRole('button', {name: 'Ask owner question'}), width);
+		expect(typed.status).toBe('unavailable');
+		await expect(page.locator('.answer')).toContainText('All sections');
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+	});
+});
+
+test('anonymous readers do not receive owner questions without findings', async ({page}) => {
+	for (const path of ['/photography/analytics/albums/alpha', '/photography/analytics/sites']) {
+		await page.goto(path);
+		await expect(page.getByRole('textbox', {name: 'Ask about this report', exact: true})).toHaveCount(0);
+		await expect(page.getByRole('button', {name: 'Is this zero or missing data?'})).toHaveCount(0);
+	}
 });

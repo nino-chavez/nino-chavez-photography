@@ -85,3 +85,25 @@ references. A new scope can be queued explicitly; a pending assistant calculatio
 polls with backoff for up to two minutes. Its answer stays tied to the captured
 scope until the owner asks to rerun it. External delivery stays off until a
 verified destination and explicit activation exist.
+
+## Owner report questions, October 16
+
+Report questions remain available when saved findings are absent, loading, or
+unavailable. A link beside the report controls targets the question panel itself, after any
+record controls or reporting settings.
+The link and question buttons wait until their handlers are ready, so an early
+click cannot leave an incomplete browser-history entry.
+
+An album offers first-week comparison, download definitions, and coverage. Sites
+offers coverage for every section and counter comparison for All sections only.
+A section-specific report links to All sections without silently changing the
+question's scope. Finding explanations stay with an actual selected finding.
+An answer keeps its question, dates, filters, source links, and limitations when
+filters change; rerunning is explicit. Visitors retain public finding explanations
+and never receive the owner question controls.
+
+Independent review flagged the original section-level jump target. The parent
+confirmed that Sites landed on “Record what you did”; expanded settings can also
+precede questions when an action form is open. The ordinary no-findings state
+does not itself expand settings. A failing browser regression confirmed the Sites
+landing before the links were changed to target the question panels directly.
