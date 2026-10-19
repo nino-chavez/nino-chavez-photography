@@ -9,6 +9,16 @@
 
 > **Note:** `vercel.json` and `.vercel/` are stale leftovers from the pre-migration period (see commit `39485b2`). Cloudflare Pages is the live deploy. Do not re-introduce Vercel-specific config.
 
+## Brand artwork
+
+Create and revise Nino Chavez logos, watermarks, apparel and reusable brand graphics
+in the private `nino-chavez/brand-assets` repository (`tools/brand-assets` under the
+workspace root). Read its `AGENTS.md` before creating assets; it owns naming,
+versioning and cleanup. If the checkout is missing, obtain it before design work.
+This repo owns gallery code and deployed copies of selected exports. Record the
+library's export path/version when updating a copy. Photo ingest and original media
+stay in their existing workflow.
+
 ## Data-model invariants — read before touching the data model or AI pipeline
 The data model and AI ingest were rebuilt to the north-star contract in
 `.agent-os/specs/vision-extraction-identity-vnext/NORTH-STAR-REDESIGN.md` (the #10 ingest
