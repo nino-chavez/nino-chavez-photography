@@ -16,6 +16,7 @@
 <script lang="ts">
 	import { ImageOff } from 'lucide-svelte';
 	import PhotoCard from './PhotoCard.svelte';
+	import FittedPhotoGrid from './FittedPhotoGrid.svelte';
 	import Loading from '$lib/components/ui/Loading.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import type { Photo } from '$types/photo';
@@ -73,13 +74,13 @@
 {:else}
 	<!-- Photo Grid -->
 	<div
-		class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 {className}"
-		role="list"
-		aria-label="Photo gallery"
+		class={className}
 	>
-		{#each displayPhotos as photo, i (photo.id)}
-			<!-- PERFORMANCE: Prioritize first 8 images (above-fold) to improve LCP -->
-			<PhotoCard {photo} index={i} {favoriteSurface} {onclick} priority={i < 8} />
-		{/each}
+		<FittedPhotoGrid photos={displayPhotos} mobileColumns={1} gap={16} mobileGap={16}>
+			{#snippet children(photo, i, sizes)}
+				<!-- PERFORMANCE: Prioritize first 8 images (above-fold) to improve LCP -->
+				<PhotoCard {sizes} preserveAspectRatio {photo} index={i} {favoriteSurface} {onclick} priority={i < 8} />
+			{/snippet}
+		</FittedPhotoGrid>
 	</div>
 {/if}

@@ -9,6 +9,7 @@
 		thumbnailSrc?: string;
 		class?: string;
 		aspectRatio?: string; // e.g., "4/3", "16/9"
+		fit?: 'cover' | 'contain';
 		width?: number; // Explicit width for CLS prevention
 		height?: number; // Explicit height for CLS prevention
 		sizes?: string; // Responsive sizes attribute (e.g., "(max-width: 640px) 100vw, 25vw")
@@ -25,6 +26,7 @@
 		thumbnailSrc,
 		class: className = '',
 		aspectRatio = '4/3',
+		fit = 'cover',
 		width,
 		height,
 		sizes,
@@ -124,7 +126,7 @@
 
 <div
 	bind:this={container}
-	class="relative overflow-hidden bg-charcoal-900 {className}"
+	class="relative overflow-hidden {fit === 'contain' ? 'bg-charcoal-950' : 'bg-charcoal-900'} {className}"
 	style="aspect-ratio: {aspectRatio}"
 >
 	<!-- Blur Placeholder (thumbnail or gradient) -->
@@ -135,7 +137,10 @@
 				<img
 					src={proxiedThumbnailSrc}
 					alt=""
-					class="absolute inset-0 w-full h-full object-cover blur-lg scale-110"
+					class="absolute inset-0 w-full h-full blur-lg"
+					class:object-cover={fit === 'cover'}
+					class:scale-110={fit === 'cover'}
+					class:object-contain={fit === 'contain'}
 					aria-hidden="true"
 				/>
 			{:else}
@@ -177,7 +182,9 @@
 			loading={priority ? 'eager' : 'lazy'}
 			decoding="async"
 			fetchpriority={priority ? 'high' : 'auto'}
-			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-out"
+			class="absolute inset-0 w-full h-full transition-opacity duration-300 ease-out"
+			class:object-cover={fit === 'cover'}
+			class:object-contain={fit === 'contain'}
 			class:opacity-0={!imageLoaded && !priority}
 			class:opacity-100={imageLoaded || priority}
 			onload={handleLoad}

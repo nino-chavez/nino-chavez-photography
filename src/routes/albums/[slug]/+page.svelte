@@ -5,6 +5,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
+	import FittedPhotoGrid from '$lib/components/gallery/FittedPhotoGrid.svelte';
 	import PopularityRail from '$lib/components/gallery/PopularityRail.svelte';
 	import VideoCard from '$lib/components/gallery/VideoCard.svelte';
 	import VideoPlayer from '$lib/components/gallery/VideoPlayer.svelte';
@@ -345,9 +346,11 @@
 				</Typography>
 			{/if}
 			<div class="album-photo-grid">
-				{#each displayPhotos as photo, index (photo.image_key)}
-					<PhotoCard {photo} {index} favoriteSurface="album" onclick={handlePhotoClick} priority={index < 4} />
-				{/each}
+				<FittedPhotoGrid photos={displayPhotos}>
+					{#snippet children(photo, index, sizes)}
+						<PhotoCard {sizes} preserveAspectRatio {photo} {index} favoriteSurface="album" onclick={handlePhotoClick} priority={index < 4} />
+					{/snippet}
+				</FittedPhotoGrid>
 			</div>
 
 			<!-- Load more — appends in place; videos above never re-render. Hidden
@@ -433,12 +436,8 @@
 	.album-search input { display: block; width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--color-charcoal-700); background: var(--color-charcoal-950); color: var(--color-charcoal-50); border-radius: 0; font-size: 16px; }
 	.album-search input::placeholder { color: var(--color-charcoal-300); }
 	.search-status { margin-bottom: 18px; color: var(--color-charcoal-300); font-size: 14px; }
-	.album-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 	.album-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
 	.album-collection :global(.photo-card:focus-visible), .album-page :global(a:focus-visible), .album-page :global(button:focus-visible), .album-search input:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 4px; }
-	@media (max-width: 900px) {
-		.album-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-	}
 	@media (max-width: 640px) {
 		.album-opening, .album-collection { width: calc(100% - 40px); }
 		.album-back { font-size: 13px; }
@@ -447,6 +446,5 @@
 		.album-search { flex: 1 1 120px; }
 		.collection-tools { gap: 8px; }
 		.collection-tools :global(.bulk-download-menu) { left: 0; right: auto; max-width: calc(100vw - 40px); }
-		.album-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 	}
 </style>

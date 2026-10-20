@@ -9,7 +9,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import PaginationHybrid from '$lib/components/ui/PaginationHybrid.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
-	import PhotoGridSkeleton from '$lib/components/ui/PhotoGridSkeleton.svelte';
+	import FittedPhotoGrid from '$lib/components/gallery/FittedPhotoGrid.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import VisualDataLegend from '$lib/components/ui/VisualDataLegend.svelte';
 	import FilterChip from '$lib/components/filters/FilterChip.svelte';
@@ -136,8 +136,8 @@
 
 	// Lightbox handlers
 	function handlePhotoClick(photo: Photo) {
-		// Use image_key for matching (more reliable than id)
-		const index = displayPhotos.findIndex((p) => p.image_key === photo.image_key);
+		// Camera filenames repeat across albums; the clicked photo's ID is globally unique.
+		const index = displayPhotos.findIndex((p) => p.id === photo.id);
 		if (index !== -1) {
 			selectedPhotoIndex = index;
 			lightboxOpen = true;
@@ -562,7 +562,7 @@
 </div>
 
 <!-- Main Content with Sidebar (Desktop) / Full Width (Mobile) -->
-<div class="explore-results">
+<div class="explore-results" aria-busy={isLoading}>
 	<div class="flex gap-6">
 		<!-- Filter Sidebar (Desktop only) - Lazy Loaded -->
 		<div class="hidden lg:block">
@@ -662,11 +662,8 @@
 		</div>
 	{/if}
 
-	<!-- Photo Grid with Loading State -->
-	{#if isLoading}
-		<!-- Show skeleton while navigating -->
-		<PhotoGridSkeleton count={data.pageSize} />
-	{:else if data.searchError}
+	<!-- Keep the current rows in place while navigation loads the next result set. -->
+	{#if data.searchError}
 		<div class="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto" role="alert">
 			<Camera class="w-16 h-16 text-charcoal-600 mb-4" aria-hidden="true" />
 			<Typography variant="h3" class="mb-2">Search is temporarily unavailable</Typography>
@@ -674,9 +671,11 @@
 		</div>
 	{:else if displayPhotos.length > 0}
 		<div class="explore-photo-grid">
-			{#each displayPhotos as photo, index (photo.image_key)}
-				<PhotoCard {photo} {index} {resultSetId} searchId={data.searchId ?? undefined} favoriteSurface="explore" onclick={handlePhotoClick} priority={index < 4} />
-			{/each}
+			<FittedPhotoGrid photos={displayPhotos}>
+				{#snippet children(photo, index, sizes)}
+					<PhotoCard {sizes} preserveAspectRatio {photo} {index} {resultSetId} searchId={data.searchId ?? undefined} favoriteSurface="explore" onclick={handlePhotoClick} priority={index < 4} />
+				{/snippet}
+			</FittedPhotoGrid>
 		</div>
 	{:else}
 		<!-- Enhanced Empty State with Filter Context -->
@@ -758,15 +757,12 @@
 	.explore-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); border-block: 1px solid var(--color-charcoal-800); }
 	.explore-tools__inner { padding-block: 16px; }
 	.explore-results { padding-block: 24px 72px; }
-	.explore-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 	.explore-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
-	@media (max-width: 980px) { .explore-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 	@media (max-width: 640px) {
 		.explore-opening, .explore-tools__inner, .explore-results { width: calc(100% - 40px); }
 		.explore-opening { padding-block: 24px 22px; }
 		.explore-title-row { align-items: start; flex-direction: column; gap: 12px; }
 		.explore-count { white-space: normal; }
-		.explore-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 	}
 
 	/* Loading progress bar animation */

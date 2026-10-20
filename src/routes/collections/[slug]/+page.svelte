@@ -5,6 +5,7 @@
 	import { page } from '$app/stores';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
+	import FittedPhotoGrid from '$lib/components/gallery/FittedPhotoGrid.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import type { PageData } from './$types';
@@ -138,11 +139,13 @@
 	</div>
 	{#if data.photos.length > 0}
 		<div class="collection-photo-grid">
-			{#each data.photos as photo, index}
-				<div class="collection-card-animate" style="animation-delay: {index * 50}ms">
-					<PhotoCard {photo} {index} favoriteSurface="collection" onclick={handlePhotoClick} />
-				</div>
-			{/each}
+			<FittedPhotoGrid photos={data.photos}>
+				{#snippet children(photo, index, sizes)}
+					<div class="collection-card-animate" style="animation-delay: {index * 50}ms">
+						<PhotoCard {sizes} preserveAspectRatio {photo} {index} favoriteSurface="collection" onclick={handlePhotoClick} />
+					</div>
+				{/snippet}
+			</FittedPhotoGrid>
 		</div>
 	{:else}
 		<!-- Empty State -->
@@ -231,16 +234,13 @@
 	.collection-results-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 20px; margin-bottom: 22px; }
 	.collection-results-heading h2 { font-family: Montserrat, sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -.025em; }
 	.collection-results-heading p { color: var(--color-charcoal-300); font-size: 14px; }
-	.collection-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 	.collection-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
 	.collection-empty { padding-block: 64px; text-align: center; }
-	@media (max-width: 900px) { .collection-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 	@media (max-width: 640px) {
 		.collection-opening, .collection-results { width: calc(100% - 40px); }
 		.collection-opening { padding-block: 8px 28px; }
 		.collection-copy :global(.collection-title) { font-size: 32px; }
 		.collection-results-heading h2 { font-size: 22px; }
-		.collection-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 	}
 
 	/* Reduce motion for accessibility */

@@ -6,6 +6,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
+	import FittedPhotoGrid from '$lib/components/gallery/FittedPhotoGrid.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import FavoritesDownloadButton from '$lib/components/favorites/FavoritesDownloadButton.svelte';
 	import type { PageData } from './$types';
@@ -177,9 +178,11 @@
 			<!-- Photo Grid -->
 			{#if favoriteCount > 0}
 				<div class="saved-grid">
-					{#each favoritePhotos as photo, index}
-						<PhotoCard {photo} {index} favoriteSurface="favorites" onclick={handlePhotoClick} />
-					{/each}
+					<FittedPhotoGrid photos={favoritePhotos}>
+						{#snippet children(photo, index, sizes)}
+							<PhotoCard {sizes} preserveAspectRatio {photo} {index} favoriteSurface="favorites" onclick={handlePhotoClick} />
+						{/snippet}
+					</FittedPhotoGrid>
 				</div>
 			{:else}
 				<!-- Empty State -->
@@ -217,13 +220,10 @@
 	.saved-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
 	.saved-import, .saved-browse { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-charcoal-700); border-radius: 0; color: var(--color-charcoal-50); font-weight: 650; cursor: pointer; }
 	.saved-import:hover, .saved-browse:hover { border-color: var(--color-gold-500); }
-	.saved-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 	.saved-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
 	.saved-empty { padding-block: 72px; border-block: 1px solid var(--color-charcoal-800); text-align: center; }
-	@media (max-width: 900px) { .saved-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 	@media (max-width: 640px) {
 		.saved-inner { width: calc(100% - 40px); padding-block: 24px 56px; }
 		.saved-title-row { align-items: start; flex-direction: column; }
-		.saved-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 	}
 </style>

@@ -25,6 +25,7 @@
   import { base } from '$app/paths';
   import Typography from '$lib/components/ui/Typography.svelte';
   import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
+  import FittedPhotoGrid from '$lib/components/gallery/FittedPhotoGrid.svelte';
   import Lightbox from '$lib/components/gallery/Lightbox.svelte';
   import { Calendar, ChevronDown } from 'lucide-svelte';
   import type { Photo } from '$types/photo';
@@ -632,14 +633,18 @@
             {#if getFeaturedPhotos(entry.featuredPhotos).length > 0}
               {@const featuredPhotos = getFeaturedPhotos(entry.featuredPhotos)}
               <div class="timeline-photo-grid">
-                {#each featuredPhotos as photo, photoIndex (photo.id)}
-                  <PhotoCard
-                    {photo}
-                    index={photoIndex}
-							favoriteSurface="timeline"
-                    onclick={handlePhotoClick}
-                  />
-                {/each}
+                <FittedPhotoGrid photos={featuredPhotos}>
+                  {#snippet children(photo, photoIndex, sizes)}
+                    <PhotoCard
+                      {sizes}
+                      preserveAspectRatio
+                      {photo}
+                      index={photoIndex}
+                      favoriteSurface="timeline"
+                      onclick={handlePhotoClick}
+                    />
+                  {/snippet}
+                </FittedPhotoGrid>
               </div>
             {:else}
               <!-- Empty State for periods with no featured photos -->
@@ -721,14 +726,12 @@
   .month-section { margin-bottom: 48px; }
   .month-heading { margin-bottom: 18px; }
   .month-heading :global(h3) { font-family: Montserrat, sans-serif; font-size: 20px; }
-  .timeline-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 18px; }
+  .timeline-photo-grid { margin-bottom: 18px; }
   .timeline-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
   .timeline-empty { margin-bottom: 18px; padding: 28px; border-block: 1px solid var(--color-charcoal-800); text-align: center; }
-  @media (max-width: 900px) { .timeline-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @media (max-width: 640px) {
     .timeline-shell { width: calc(100% - 40px); }
     .timeline-shell [data-timeline-nav] > div { padding-inline: 26px; }
     .timeline-shell [data-timeline-nav] button[aria-label^="Jump to "] { left: var(--phone-position) !important; }
-    .timeline-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
   }
 </style>
