@@ -26,6 +26,7 @@
 	import type { Photo } from '$types/photo';
 	import { exposure } from '$lib/analytics/exposure';
 	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { getPhotoAspectRatio } from '$lib/gallery/photo-row-layout';
 
 	interface Props {
 		photo: Photo;
@@ -36,17 +37,17 @@
 		onclick?: (photo: Photo) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images
 		showMetadata?: boolean; // Controls the sport and photo-specific category overlay.
+		preserveAspectRatio?: boolean; // Fitted rows reserve each original frame's shape.
+		sizes?: string;
 	}
 
-	let { photo, index = 0, resultSetId = crypto.randomUUID(), searchId, favoriteSurface = 'gallery', onclick, priority = false, showMetadata = true }: Props = $props();
+	let { photo, index = 0, resultSetId = crypto.randomUUID(), searchId, favoriteSurface = 'gallery', onclick, priority = false, showMetadata = true, preserveAspectRatio = false, sizes = SIZES_PRESETS.galleryCard }: Props = $props();
+	let cardAspectRatio = $derived(preserveAspectRatio ? `${getPhotoAspectRatio(photo)}/1` : '4/3');
 
 	// Use image_url for display, thumbnail as blur placeholder
 	// All images now served via Cloudflare proxy with WebP/AVIF conversion
 	let imageSrc = $derived(photo.image_url);
 	let thumbnailSrc = $derived(photo.thumbnail_url);
-
-	// Responsive sizes for gallery grid layout
-	const galleryCardSizes = SIZES_PRESETS.galleryCard;
 
 	// Individual photo URL. image_key is NOT unique (camera DSC numbers reset per card), so carry the
 	// album as `?a=` to disambiguate /photo/[id] to the exact photo the user clicked.
@@ -81,14 +82,15 @@
 
 <a
 	href={photoUrl}
-	class="photo-card group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 transition-all cursor-pointer outline-none block"
+	class="photo-card group relative bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 transition-all cursor-pointer outline-none block"
+	style:aspect-ratio={cardAspectRatio}
 	aria-label={accessibleAltText}
 	data-sveltekit-preload-data="false"
 	onclick={handleClick}
 	use:exposure={{ loaded, onExpose: recordExposure, identity: exposureIdentity }}
 >
 	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
-	<!-- quality="low" = S/M sizes (400-600px) - appropriate for grid cards at max 25vw -->
+	<!-- Grid is the fallback; srcset and the fitted row's sizes select larger variants as needed. -->
 	<!--
 		alt prefers alt_text (a purpose-built screen-reader sentence with no jersey numbers, ADR
 		alt-text-pipeline 2026-09-26), falling back to caption, not `photo.title` — that field is
@@ -100,10 +102,12 @@
 	{#key imageIdentity}
 	<OptimizedImage
 		src={imageSrc}
+		cfImageId={photo.cf_image_id}
 		alt={photo.alt_text?.trim() || photo.caption?.trim() || `Photo ${index + 1}`}
 		thumbnailSrc={thumbnailSrc}
-		aspectRatio="4/3"
-		sizes={galleryCardSizes}
+		aspectRatio={cardAspectRatio}
+		fit="contain"
+		{sizes}
 		quality="low"
 		{priority}
 		class="absolute inset-0"

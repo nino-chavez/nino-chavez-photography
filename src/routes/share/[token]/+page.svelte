@@ -6,6 +6,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
+	import FittedPhotoGrid from '$lib/components/gallery/FittedPhotoGrid.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import BulkDownloadButton from '$lib/components/album/BulkDownloadButton.svelte';
@@ -114,9 +115,11 @@
 	<div class="shared-results">
 		{#if data.photos.length > 0}
 			<div class="shared-grid">
-				{#each data.photos as photo, index}
-					<PhotoCard {photo} {index} favoriteSurface="shared_link" onclick={handlePhotoClick} />
-				{/each}
+				<FittedPhotoGrid photos={data.photos}>
+					{#snippet children(photo, index, sizes)}
+						<PhotoCard {sizes} preserveAspectRatio {photo} {index} favoriteSurface="shared_link" onclick={handlePhotoClick} />
+					{/snippet}
+				</FittedPhotoGrid>
 			</div>
 
 			<div class="mt-8">
@@ -176,13 +179,10 @@
 	.shared-copy :global(.shared-title) { color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; overflow-wrap: anywhere; }
 	.shared-copy :global(.shared-count) { display: block; margin-top: 12px; color: var(--color-charcoal-300); font-size: 14px; }
 	.shared-results { padding-block: 24px 72px; }
-	.shared-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 	.shared-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
-	@media (max-width: 900px) { .shared-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 	@media (max-width: 640px) {
 		.shared-opening, .shared-tools, .shared-results { width: calc(100% - 40px); }
 		.shared-opening { padding-block: 24px 22px; }
 		.shared-title-row { align-items: stretch; flex-direction: column; }
-		.shared-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 	}
 </style>
