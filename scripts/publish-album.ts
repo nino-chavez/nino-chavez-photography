@@ -20,9 +20,10 @@
  * ANNOUNCE: when an album goes from hidden to public, this starts the standing "gallery-announce"
  * campaign (Nino, 2026-09-25/26): it runs the Let's Pepper social publisher's builder, which picks
  * the photos, writes the caption and alt text, queues the carousel HELD for 2 hours and sends the
- * phone alert with the veto command, then seeds the item into the posting Worker's queue. The
- * series (which account posts) comes from this album's own gallery_scope: 'lpo' posts from
- * letspepper.open, anything else from nino.chavez.photo, with flickday.media as a Collab.
+ * phone alert with the veto command, then seeds the item into the posting Worker's queue. Every
+ * announcement posts from flickday.media with a linked Story, and waits for Nino's Collab choice
+ * as well as the hold (Nino, 2026-09-27). The series comes from this album's own gallery_scope
+ * ('lpo' or 'other') and changes only the caption and gallery link, not the account.
  * Re-publishing an already-public album does not announce it again, and neither does publishing an
  * album with no album_settings row: a missing row already reads as public, so it is not a new
  * gallery (a legacy album given a --scope would otherwise post a "new gallery" carousel for an
@@ -193,7 +194,7 @@ function announce(series: 'lpo' | 'other'): void {
 		[builder, '--album-key', ALBUM_KEY!, '--series', series],
 		[join(SOCIAL_DIR, 'seed-kv.mjs'), '--event', 'gallery-announce', '--append', '--put'],
 	];
-	console.log(`\nannounce: ${series === 'lpo' ? 'letspepper.open' : 'nino.chavez.photo'} + flickday.media Collab, held 2h`);
+	console.log(`\nannounce: flickday.media carousel + Story (${series} caption), held 2h and until Nino picks the Collab`);
 	for (const step of steps) {
 		try {
 			execFileSync(process.execPath, step, { cwd: SOCIAL_DIR, stdio: 'inherit' });
