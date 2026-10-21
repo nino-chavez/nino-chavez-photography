@@ -1,6 +1,8 @@
 # Album Ingest Workflow
 
-New-album processing is a **single command** that writes directly to the database — no EXIF round-trip, no 3-script chain.
+Adding an album to the site takes two commands: `ingest:album` writes the photos directly to the database (no EXIF round-trip, no 3-script chain), and `publish:album` makes the album public.
+
+**A request to process or add an album for the site includes publishing it.** Ingest with `--unlisted`, check the album through its share link, then run `npm run publish:album` (see **Publish**) in the same session without stopping to ask. Publishing queues the gallery announcement, and its hold is the veto: the post waits at least 2 hours and for Nino's Collab choice, and he can cancel it from the phone alert until it posts. Leave the album hidden only when the request says so, such as a preview, a client review or an embargo. Why: on 2026-10-19 a session ingested the 630 Breeze tryouts album hidden, reported it as hidden and stopped, so the album was missing from Events for a day and no announcement was queued.
 
 > **History:** the legacy `enrich-local-photos.ts → sync-local-to-supabase.ts → run-pipeline.ts` chain (which wrote AI metadata into each file's EXIF, then shelled out to `exiftool` to read it back) was removed in the **#10 ingest cutover** (2026-06). See `blueprint/prescription.yml` and `blueprint/decisions/0002` / `0004`. The backfill/re-enrich tooling (`backfill-vnext.ts`, `enrichment-prompts.ts`) is unrelated and stays.
 
@@ -68,8 +70,10 @@ npm run ingest:album -- \
   --album-name "FUTURE — Fall 2025" \
   --sport volleyball \
   --upload-date 2025-11-03 \
-  --unlisted          # hide on the live gallery until you publish
+  --unlisted          # hidden until the publish step below
 # add --dry-run to preview, --overwrite to force re-extraction
+
+npm run publish:album -- --album-key xSqPJB   # same session; see Publish
 ```
 
 Flags: `--dir` (required) · `--album-key` (defaults to the folder-name slug) · `--album-name` · `--sport` (detected from `--album-name` when omitted) · `--upload-date YYYY-MM-DD` · `--concurrency 4` · `--limit N` · `--unlisted` · `--dry-run` · `--overwrite` · `--prune` (delete DB rows whose file is gone from `--dir`; report-only without this flag) · `--replace` (see **Replace** below) · `--skip-hdr` (see **HDR serving** below).
@@ -277,15 +281,17 @@ failure unless you pass `--force "<reason>"`, which prints the reason and publis
 `--unpublish` is never gated — hiding a bad album is always safe.
 
 **Announce.** When an album goes from hidden to public, publishing also starts the standing
-gallery-announce campaign (Nino, 2026-09-25/26): the Let's Pepper social publisher picks up to 10
-photos, writes a facts-only caption and alt text, queues an Instagram + Facebook carousel **held for
-2 hours**, and sends a phone alert (ntfy) you can cancel it from. It then posts at the next noon or 5pm Central slot. The account comes from
-`gallery_scope`: `lpo` posts from letspepper.open, anything else from nino.chavez.photo, with
-flickday.media as a Collab that must be accepted in the Instagram app for each post. Re-publishing an
-already-public album does not announce again, and neither does publishing an album with no
-`album_settings` row (it was already public); `--announce` announces one anyway, `--no-announce`
-publishes without it. The builder and posting Worker live in the letspepper repo
-(`scripts/social-publish/`, see its SETUP.md "Arming gallery-announce").
+gallery-announce campaign (Nino, 2026-09-25/26). The Let's Pepper social publisher picks up to 10
+photos, writes a facts-only caption and alt text, and queues an Instagram + Facebook carousel from
+flickday.media, with a linked Story 15 minutes after it. The carousel waits for two things: a
+**2-hour hold**, and Nino's Collab choice (none, nino.chavez.photo, or up to three handles), which
+he records on the review page linked from the phone alert (ntfy). It then posts at the next noon or
+5pm Central slot, and the alert can cancel it until it starts posting. Every announcement posts
+from flickday.media (Nino, 2026-09-27); `--scope lpo` changes only the caption and gallery link,
+not the account. Re-publishing an already-public album does not announce again, and neither does
+publishing an album with no `album_settings` row (it was already public); `--announce` announces
+one anyway, `--no-announce` publishes without it. The builder and posting Worker live in the
+letspepper repo (`scripts/social-publish/`, see its SETUP.md "Arming gallery-announce").
 
 **Publication time.** The database stamps `album_settings.published_at` and
 `published_at_basis = 'recorded'` on every `unlisted -> public` update, whoever makes it: this
