@@ -1,16 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-26T20:28:03.849Z",
-  "reviewedBy": "Codex",
-  "method": "Codex reviewed desktop and phone captures of the native homepage and viewer, then reopened the corrected mobile navigation, wrapping event filters, and date metadata. Keyboard/focus and search-return journeys were exercised. Browser emulation; no physical-device, screen-reader or download acceptance.",
-  "sourceDigest": "sha256:6784a9bf74eccf9c2274bc0ad5571e00b228e9b4947d5f86033b8cf752bf33e5",
+  "reviewedAt": "2026-10-26T22:11:19.220Z",
+  "reviewedBy": "Codex parent, rendered browser inspection",
+  "method": "Opened native desktop/mobile, narrow and short captures, viewer and immediate next-frame captures after the image decoding correction. Exercised paging, keyboard return, event search and empty/unavailable client-data fixtures. Includes independent cold review with source-checked findings. Browser viewport review only; not physical-device or full-site acceptance.",
+  "sourceDigest": "sha256:c6ce0b2bd0fa1349e8bbe7809ac1644e66e46dca4391a616ee24225f619e87a5",
   "sourceFiles": 204,
   "scope": [
-    "photography home",
-    "primary navigation",
-    "gallery canvas",
-    "footer photograph link",
-    "mobile event filters"
+    "photography homepage",
+    "photo-strip paging",
+    "portfolio viewer",
+    "event finder",
+    "recent gallery links"
   ]
 }
