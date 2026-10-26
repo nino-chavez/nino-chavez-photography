@@ -212,7 +212,7 @@
 
 			<!-- Pagination Controls (server-side; works with active filters) -->
 			{#if data.totalPages > 1}
-				<div class="mt-8 flex items-center justify-center gap-2">
+				<div class="events-pagination mt-8 flex items-center justify-center gap-2">
 					<!-- Previous Button -->
 					<button
 						onclick={() => goToPage(data.currentPage - 1)}
@@ -327,6 +327,12 @@
 		.events-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 	}
 	@media (max-width: 480px) { .events-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
+
+	@media (max-width: 360px) {
+		.events-pagination { display: grid; grid-template-columns: 1fr 1fr; }
+		.events-pagination > div { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
+		.events-pagination > button { justify-content: center; }
+	}
 
 	/* Reduce motion for accessibility */
 	@media (prefers-reduced-motion: reduce) {
