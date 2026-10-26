@@ -322,7 +322,7 @@
 		.events-opening { padding-block: 24px 22px; }
 		.events-title-row { align-items: start; flex-direction: column; gap: 12px; }
 		.events-tools { grid-template-columns: 1fr; gap: 8px; padding-block: 8px; }
-		.events-filters { display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 3px; }
+		.events-filters { display: flex; flex-wrap: wrap; padding: 3px; }
 		.events-filters select, .events-filters button { flex: 0 0 auto; width: auto; min-width: 0; }
 		.events-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 	}

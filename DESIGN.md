@@ -19,7 +19,7 @@ colors:
       "700": "#525463"
       "800": "#454654"
       "900": "#3b3c48"
-      "950": "#18181b"
+      "950": "#181818"
     gold:
       "50":  "#fefce8"
       "100": "#fef9c3"
@@ -88,6 +88,8 @@ typography:
     fontFamily: 'system-ui, -apple-system, sans-serif'
   display:
     fontFamily: 'Montserrat, system-ui, sans-serif'
+  homepage:
+    fontFamily: 'Arial, Helvetica, sans-serif'
 
   fonts:
     body:
@@ -219,3 +221,11 @@ View Transitions API (CSS) drives navigation — 300ms root, 200ms for main cont
 ---
 
 *Derived from `src/app.css` (v2 token system). Treat DESIGN.md as canonical; treat `src/app.css` as the runtime artifact. Keep in sync.*
+
+## Homepage A — selected October 26, 2026
+
+Nino selected the Photograph + event finder home and neutral charcoal `#181818` after comparing three structures and three canvases. The home introduces the work with one still photograph, offers full-archive event search beside it, and continues into a finite twelve-photo portfolio and compact recent galleries. On phones the lead image comes first, with the event finder visible in the opening screen. System sans-serif type, plain links, uncropped photographs, and no autoplay or hover motion define this home. Header and body use the same neutral canvas.
+
+Photographs replaces Collections in primary navigation. The original collection URLs and footer link remain available. Album viewing, downloads, Saved, By date, and global photo search keep their native behavior. The image-only portfolio viewer has no fabricated database IDs or download/save controls. Existing exported images are recorded in `src/lib/portfolio.ts`; order and filenames match the selected study, with alt descriptions checked against the visible images.
+
+The comparison and human selection live in the `public-site-rethink` initiative under `sites/nino-separated/docs/design/concepts/photo-homepage/` and `docs/design/experience-brief.md`. B and C are preserved there. Native capture and interaction evidence lives under `sites/nino-separated/docs/evidence/screen-reviews/photo-rethink-2026-10-26/`.

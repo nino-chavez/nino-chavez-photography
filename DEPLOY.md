@@ -13,6 +13,28 @@
 - **Manual fallback**: `npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography`
 - **Build time**: TODO — confirm in the CF Pages dashboard
 
+## Photographic homepage ownership and release order
+
+The gallery now owns the public homepage at `https://ninochavez.co/photography`.
+The profile application continues to own `/photography/coverage`. Profile and blog
+applications do not need a source change for this handoff; the edge router chooses
+which existing application answers each public path.
+
+This release is paired with [ninochavez-router PR 7](https://github.com/nino-chavez/ninochavez-router/pull/7)
+(commit `5f1ea028da01ad298ab28db12314c1821bc188a0`). Its `src/routing.ts`
+forwards both `/photography` and `/photography/`, plus the photography-host root,
+to this app's `/photography/`. The router's 108 passing tests include those
+entrances, query preservation, the profile-owned coverage route and existing
+album paths. The router lives at `platform/ninochavez-router` in this workspace.
+
+Deploy this gallery first. Request the exact Pages origin
+`https://nino-chavez-photography.pages.dev/photography/` without following redirects;
+it must return HTTP 200 and the new homepage. Only then deploy the companion router.
+The trailing slash is an internal origin requirement, not a canonical URL change.
+After both releases, check the bare and trailing-slash public entrances, the
+photography hostname, canonical tag, event search and an album link. Local browser
+tests prove the native app's behavior; they do not prove this public routing handoff.
+
 ## Database
 - **Provider**: Supabase — project `skywzpcekhntecegyjoj`, **already linked** (`supabase/.temp/`).
 - **Migrations live in**: `supabase/migrations/` (timestamped `<ts>_name.sql` files).

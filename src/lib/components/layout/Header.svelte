@@ -1,210 +1,62 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { base } from '$app/paths';
-	import { Grid, Folder, Heart, Calendar } from 'lucide-svelte';
 	import GlobalSearch from '$lib/components/ui/GlobalSearch.svelte';
-	import { cn } from '$lib/utils';
 	import { favorites } from '$lib/stores/favorites.svelte';
 
-	interface NavItem {
-		label: string;
-		path: string;
-		icon: typeof Folder;
-		badge?: () => number;
-	}
-
-	const navItems: NavItem[] = [
-		{ label: 'Events', path: `${base}/albums`, icon: Folder },
-		{ label: 'By date', path: `${base}/timeline`, icon: Calendar },
-		{ label: 'Collections', path: `${base}/collections`, icon: Grid },
-		{ label: 'Saved', path: `${base}/favorites`, icon: Heart, badge: () => favorites.count }
+	const navItems = [
+		{ label: 'Photographs', path: `${base}/#photographs` },
+		{ label: 'Find an event', path: `${base}/albums` },
+		{ label: 'Saved', path: `${base}/favorites` },
+		{ label: 'Contact', path: 'mailto:nino@ninochavez.co' }
 	];
 
-	let currentPath = $derived(page.url.pathname);
-
 	function isActive(path: string): boolean {
-		if (path === base || path === `${base}/`) {
-			return currentPath === base || currentPath === `${base}/`;
-		}
-		return currentPath.startsWith(path);
+		const pathname = path.split('#')[0];
+		if (pathname === `${base}/`) return page.url.pathname === base || page.url.pathname === `${base}/`;
+		return page.url.pathname.startsWith(pathname);
 	}
 </script>
 
-<header class="gallery-subnav sticky z-50 w-full">
-	<div class="gallery-subnav__inner">
-		<a
-			class="gallery-subnav__section"
-			href={`${base}/albums`}
-			data-sveltekit-preload="tap"
-			aria-label="Nino Chavez Photography events"
-		>
-			<span aria-hidden="true"></span>
-			<strong>Nino Chavez Photography</strong>
+<header class="photography-header sticky top-0 z-50">
+	<div class="photography-header__inner">
+		<a class="photography-name" href={`${base}/`} aria-label="Nino Chavez Photography home" data-sveltekit-preload-data="tap">
+			<span>Nino Chavez</span><small>Photography</small>
 		</a>
-
-		<nav class="gallery-subnav__routes" aria-label="Photography navigation">
+		<nav aria-label="Photography navigation">
 			{#each navItems as item (item.path)}
-				{@const active = isActive(item.path)}
-				{@const badgeCount = item.badge?.() || 0}
-				<a
-					href={item.path}
-					data-sveltekit-preload="tap"
-					class={{ active }}
-					aria-current={active ? 'page' : undefined}
-				>
+				<a href={item.path} class:active={isActive(item.path)} aria-current={isActive(item.path) ? 'page' : undefined} data-sveltekit-preload-data="tap">
 					{item.label}
-					{#if badgeCount > 0}
-						<span class="gallery-subnav__badge" aria-label="{badgeCount} saved photos">
-							{badgeCount > 99 ? '99+' : badgeCount}
-						</span>
+					{#if item.label === 'Saved' && favorites.count > 0}
+						<span class="saved-count" aria-label="{favorites.count} saved photos">{favorites.count > 99 ? '99+' : favorites.count}</span>
 					{/if}
 				</a>
 			{/each}
 		</nav>
-
-		<div class="gallery-subnav__search">
-			<GlobalSearch />
-		</div>
+		<div class="photography-search"><GlobalSearch /></div>
 	</div>
 </header>
 
-<nav
-	class="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-charcoal-950/95 backdrop-blur-lg border-t border-charcoal-800"
-	style="padding-bottom: env(safe-area-inset-bottom, 0);"
-	aria-label="Mobile photography navigation"
->
-	<div class="flex justify-around py-2">
-		{#each navItems as item (item.path)}
-			{@const active = isActive(item.path)}
-			{@const Icon = item.icon}
-			{@const badgeCount = item.badge?.() || 0}
-			<a
-				href={item.path}
-				class={cn(
-					'flex flex-col items-center gap-1 px-3 py-2 min-w-[64px] min-h-[44px] rounded-lg transition-colors',
-					active ? 'text-gold-500' : 'text-charcoal-400 hover:text-white'
-				)}
-				aria-current={active ? 'page' : undefined}
-			>
-				<div class="relative">
-					<Icon class="w-5 h-5" aria-hidden="true" />
-					{#if badgeCount > 0}
-						<span
-							class="absolute -top-1 -right-2 min-w-4 h-4 px-1 text-[10px] font-bold rounded-full bg-red-500 text-white flex items-center justify-center"
-							aria-label="{badgeCount} saved photos"
-						>
-							{badgeCount > 99 ? '99+' : badgeCount}
-						</span>
-					{/if}
-				</div>
-				<span class="text-[10px] font-medium">{item.label}</span>
-			</a>
-		{/each}
-	</div>
-</nav>
-
 <style>
-	:global(:root) { --gallery-header-height: 50px; }
-	@media (max-width: 639px) { :global(:root) { --gallery-header-height: 48px; } }
-
-	.gallery-subnav {
-		top: 0;
-		height: 50px;
-		border-bottom: 1px solid rgb(255 255 255 / 0.08);
-		background: rgb(17 17 20 / 0.96);
-		backdrop-filter: blur(16px);
-	}
-
-	.gallery-subnav__inner {
-		display: grid;
-		width: min(1280px, calc(100% - 48px));
-		height: 100%;
-		margin: 0 auto;
-		grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr);
-		align-items: center;
-		gap: 16px;
-	}
-
-	.gallery-subnav__section {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		justify-self: start;
-		gap: 10px;
-		color: #f5f2ec;
-		font-size: 0.85rem;
-		letter-spacing: 0.01em;
-		text-decoration: none;
-	}
-
-	.gallery-subnav__section > span {
-		display: block;
-		width: 2px;
-		height: 18px;
-		background: #d4af37;
-	}
-
-	.gallery-subnav__routes {
-		display: flex;
-		height: 100%;
-		align-items: stretch;
-		gap: 22px;
-	}
-
-	.gallery-subnav__routes > a {
-		position: relative;
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		border-bottom: 2px solid transparent;
-		color: rgb(255 255 255 / 0.58);
-		font-size: 0.8rem;
-		font-weight: 620;
-		text-decoration: none;
-	}
-
-	.gallery-subnav__routes > a:hover,
-	.gallery-subnav__routes > a:focus-visible {
-		color: #fff;
-	}
-
-	.gallery-subnav__routes > a.active {
-		border-bottom-color: #d4af37;
-		color: #d4af37;
-	}
-
-	.gallery-subnav__badge {
-		display: inline-flex;
-		min-width: 17px;
-		height: 17px;
-		margin-left: 5px;
-		padding: 0 4px;
-		align-items: center;
-		justify-content: center;
-		border-radius: 999px;
-		background: #b91c1c;
-		color: #fff;
-		font-size: 0.62rem;
-		font-weight: 750;
-	}
-
-	.gallery-subnav__search {
-		justify-self: end;
-	}
-
-	@media (max-width: 639px) {
-		.gallery-subnav {
-			height: 48px;
-		}
-
-		.gallery-subnav__inner {
-			width: calc(100% - 32px);
-			grid-template-columns: 1fr auto;
-			gap: 16px;
-		}
-
-		.gallery-subnav__routes {
-			display: none;
-		}
+	:global(:root) { --gallery-header-height: 88px; }
+	.photography-header { background: var(--color-charcoal-950); border-bottom: 1px solid rgb(255 255 255 / 0.08); }
+	.photography-header__inner { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 34px; max-width: 1440px; min-height: 88px; padding: 16px 48px; margin: auto; }
+	.photography-name { display: flex; flex-direction: column; justify-self: start; color: var(--color-charcoal-50); font-family: Arial, Helvetica, sans-serif; text-decoration: none; line-height: 1.5; font-size: 17px; letter-spacing: -.03em; }
+	.photography-name small { font-size: 11px; color: var(--color-charcoal-300); letter-spacing: .02em; }
+	nav { display: flex; align-items: center; gap: 26px; }
+	nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-charcoal-300); font-size: 13px; text-decoration: none; text-underline-offset: 5px; white-space: nowrap; }
+	nav a:hover, nav a.active { color: var(--color-charcoal-50); text-decoration: underline; }
+	a:focus-visible { outline: 2px solid var(--color-gold-400); outline-offset: 5px; }
+	.saved-count { font-size: 10px; margin-left: 5px; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; }
+	.photography-search { justify-self: end; }
+	@media (max-width: 900px) { .photography-header__inner { padding-inline: 24px; gap: 20px; } nav { gap: 18px; } }
+	@media (max-width: 700px) {
+		:global(:root) { --gallery-header-height: 108px; }
+		.photography-header__inner { grid-template-columns: 1fr auto; min-height: 108px; gap: 0 14px; padding: 10px 20px 4px; }
+		.photography-name { flex-direction: row; align-items: baseline; gap: 8px; }
+		.photography-name small { font-size: 11px; }
+		nav { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; gap: 10px; }
+		nav a { font-size: 12px; }
+		.photography-search { grid-column: 2; grid-row: 1; }
 	}
 </style>
