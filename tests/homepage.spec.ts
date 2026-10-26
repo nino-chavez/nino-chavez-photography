@@ -31,6 +31,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
 			await expectStripAtHeader();
 			await page.getByRole('navigation', { name: 'Footer navigation', exact: true }).getByRole('link', { name: 'Photographs', exact: true }).click();
 			await expectStripAtHeader();
+			await expect(page.locator('#photographs')).toBeFocused();
 			await expect(page.getByRole('navigation', { name: 'Photography navigation', exact: true }).getByRole('link', { name: 'Saved', exact: true })).toBeVisible();
 		});
 		test('strip paging preserves whole frames and supports keyboard return', async ({ page }) => {

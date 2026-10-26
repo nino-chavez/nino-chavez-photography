@@ -79,7 +79,7 @@
 
 <div class="photo-home">
 	<h1 class="sr-only">Nino Chavez Photography</h1>
-	<div id="photographs" class="photo-opening">
+	<div id="photographs" class="photo-opening" tabindex="-1">
 		{@render opening(photoStrip, 'desktop')}
 		{@render opening(portfolio, 'mobile')}
 	</div>
