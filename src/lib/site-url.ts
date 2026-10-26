@@ -1,22 +1,13 @@
 /**
- * The gallery's public address.
+ * Public canonical addresses for the gallery. Keep canonical, share, sitemap
+ * and JSON-LD URLs on the same apex base path.
  *
- * WHY THIS IS A CONSTANT AND NOT A STRING IN NINE FILES
- *
- * The gallery moved from the `photography.ninochavez.co` subdomain to a base
- * path on the apex domain, and `apps/router` 301-redirects the old host. The
- * move was never propagated to the nine places that had the old origin typed
- * out, so every page in the gallery kept declaring a `<link rel="canonical">`
- * and an `og:url` pointing at a URL that redirects — while the sitemap listed
- * the new one. Search engines got two different answers to "where does this
- * page live", from the same page.
- *
- * Share links had the same bug with a more visible cost: `photoShareUrl` built
- * every "copy link" and social share on the old host, so a link pasted into
- * Slack or a text message spent a redirect before it resolved.
- *
- * One constant means the next move is one edit. Prefer `SITE_URL` for anything
- * a visitor or a crawler will see.
+ * The independent gallery owns the photographic home as well as its archives.
+ * The companion ninochavez-router change (PR 7) sends both apex entrance forms
+ * to this app's /photography/ root internally. The slash is required by
+ * SvelteKit at the origin; the public canonical remains /photography.
+ * photography.ninochavez.co stays accessible through the same router, with
+ * canonical links pointing to the apex. See DEPLOY.md for release ordering.
  */
 
 /** Scheme and host, no path. Rarely what you want on its own — see SITE_URL. */
