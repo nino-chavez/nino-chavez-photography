@@ -1,43 +1,31 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { GLOBAL_NAVIGATION, MENU_NAVIGATION } from './navigation-contract';
-
 const root = new URL('../../', import.meta.url);
 
 async function source(path: string) {
 	return readFile(new URL(path, root), 'utf8');
 }
 
-test('global navigation uses the shared labels and destinations', () => {
-	assert.deepEqual(GLOBAL_NAVIGATION, [
-								{ href: '/blog', label: 'Writing' },
-	{ href: '/work', label: 'Building' },
-		{ href: '/photography', label: 'Photography' },
-		{ href: '/about', label: 'About' }
+test('gallery shell uses independent photography navigation', async () => {
+	const [header, footer] = await Promise.all([
+		source('src/lib/components/layout/Header.svelte'),
+		source('src/lib/components/layout/Footer.svelte')
 	]);
-	assert.deepEqual(MENU_NAVIGATION, [
-		{ href: '/search', label: 'Search site' },
-		...GLOBAL_NAVIGATION,
-		{ href: '/now', label: 'Now' },
-		{ href: '/links', label: 'Links' }
-	]);
-});
 
-test('gallery shell uses an accessible global-menu dialog without replacing gallery navigation', async () => {
-	const header = await source('src/lib/components/layout/Header.svelte');
-	assert.match(header, /GLOBAL_NAVIGATION/);
-	assert.match(header, /MENU_NAVIGATION/);
-	assert.match(header, /<dialog[\s\S]*id="site-menu-dialog"[\s\S]*aria-labelledby="site-menu-title"/);
-	assert.match(header, /menuDialog\.showModal\(\)/);
-	assert.match(header, /<svelte:window onpopstate=\{handleMenuPopState\}/);
-	assert.match(header, /oncancel=\{handleDialogCancel\}/);
-	assert.match(header, /aria-expanded=\{siteMenuOpen\}/);
-	assert.match(header, /data-sveltekit-reload/);
+	assert.match(header, /Nino Chavez Photography/);
+	assert.match(header, /href=\{`\$\{base\}\/albums`\}/);
+	assert.match(header, /label: 'Events'/);
+	assert.match(header, /label: 'By date'/);
+	assert.match(header, /label: 'Collections'/);
 	assert.match(header, /label: 'Saved'/);
 	assert.match(header, /aria-label="Mobile photography navigation"/);
-	assert.doesNotMatch(header, /<details class="open-practice-shell__mobile"/);
-	assert.doesNotMatch(header, /How I work/);
+	assert.match(header, /--gallery-header-height: 50px/);
+	assert.match(header, /--gallery-header-height: 48px/);
+	assert.doesNotMatch(header, /open-practice-shell|site-menu-dialog|GLOBAL_NAVIGATION|MENU_NAVIGATION/);
+	assert.match(footer, /https:\/\/ninochavez\.co\/privacy/);
+	assert.match(footer, /Nino Chavez profile/);
+	assert.doesNotMatch(footer, /open-practice-footer|GLOBAL_NAVIGATION/);
 });
 
 test('retired About and Privacy routes point to their canonical owners', async () => {
@@ -50,9 +38,7 @@ test('retired About and Privacy routes point to their canonical owners', async (
 
 	assert.match(about, /redirect\(308, '\/photography#story'\)/);
 	assert.match(privacy, /redirect\(308, '\/privacy'\)/);
-	assert.match(footer, /href="\/photography#story"[\s\S]*Story/);
-	assert.match(footer, /href="\/photography#story"[\s\S]*data-sveltekit-reload[\s\S]*Story/);
-	assert.match(footer, /href="\/privacy"[\s\S]*Privacy/);
+	assert.match(footer, /href="https:\/\/ninochavez\.co\/privacy"[\s\S]*Privacy/);
 	assert.doesNotMatch(sitemap, /`\$\{baseUrl\}\/about`/);
 	assert.doesNotMatch(sitemap, /`\$\{baseUrl\}\/privacy`/);
 });

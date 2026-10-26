@@ -1,17 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-20T01:13:52.259Z",
-  "reviewedBy": "Codex primary reviewer and independent Codex cold reviewer",
-  "method": "Codex primary opened the user screenshot, live private gallery, and real-data Cloudflare production-build captures at desktop 1440px and phone 390px. Walked shared/public albums, Explore, saved and empty saved states, collections, timeline, month archive and related/popular rails. Independent Codex cold review inspected whole screens; primary checked each finding against source and settled captures and refined rail margins. Twelve focused built-runtime browser checks include a controlled camera-filename collision and delayed navigation. Did not cover physical-device acceptance, admin/report flows, every catalog image, or a full portfolio copy audit.",
-  "sourceDigest": "sha256:f4d4090965fd90239ef439576bd0e27ae216833ed8ec365ef7dc8b952ccecaa7",
+  "reviewedAt": "2026-10-26T16:11:25.407Z",
+  "reviewedBy": "Codex parent and independent model reviewer",
+  "method": "Parent inspected real Events desktop and phone renders, standalone header/footer at 1280, 800, 640, 390 and 320px, and the 320px pagination repair. Existing published-content journey tests passed for keyboard viewer, Saved and download. Cold model review confirmed shell positioning; its sort-clipping claim was checked with native horizontal scrolling and the complete sort control became visible at 390 and 320px. Card truncation and horizontal filter behavior are preserved by user request. This walk does not certify every gallery route, private/admin flows, physical devices or assistive technology.",
+  "sourceDigest": "sha256:7dcaa80b7e2706ef2b2f27a3ed84c0e29bff43c00f4709a1059b597b3d72f013",
   "sourceFiles": 204,
   "scope": [
-    "Full-frame portrait and mixed-orientation thumbnails",
-    "Fitted row order and incomplete rows",
-    "Responsive image quality and loading geometry",
-    "Save controls and keyboard lightbox navigation",
-    "Filter navigation stability",
-    "Private album access preserved"
+    "Events",
+    "photography header",
+    "photography footer",
+    "phone navigation",
+    "Events pagination"
   ]
 }
