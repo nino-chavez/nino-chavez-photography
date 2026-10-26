@@ -13,7 +13,7 @@
 	let trigger: HTMLElement | null = null;
 	let previousOverflow = '';
 
-	function openPhoto(event: MouseEvent, index: number, photos: readonly PortfolioPhoto[] = portfolio) {
+	function openPhoto(event: MouseEvent, index: number, photos: readonly PortfolioPhoto[]) {
 		event.preventDefault();
 		trigger = event.currentTarget as HTMLElement;
 		viewerPhotos = photos;
@@ -79,8 +79,10 @@
 
 <div class="photo-home">
 	<h1 class="sr-only">Nino Chavez Photography</h1>
-	{@render opening(photoStrip, 'desktop')}
-	{@render opening(portfolio, 'mobile')}
+	<div id="photographs" class="photo-opening">
+		{@render opening(photoStrip, 'desktop')}
+		{@render opening(portfolio, 'mobile')}
+	</div>
 	<section class="finder content-width" id="find-event" aria-labelledby="finder-heading">
 		<div><h2 id="finder-heading">Find your event</h2><p>Event, team, or date.</p></div>
 		<form method="GET" action={`${base}/albums`}>
@@ -94,10 +96,6 @@
 		{#if data.unavailable}<p>Recent galleries are temporarily unavailable. <a href={`${base}/albums`}>Try the event archive.</a></p>
 		{:else if galleries.length}<div class="event-grid">{#each galleries as album (album.album_key)}{@render galleryLink(album)}{/each}</div>
 		{:else}<p>New event galleries will appear here when they’re published.</p>{/if}
-	</section>
-	<section id="photographs" class="selected content-width" aria-labelledby="photos-heading">
-		<div class="section-heading"><h2 id="photos-heading">Selected photographs</h2><span class="small muted">Open any photograph</span></div>
-		<div class="photo-grid">{#each portfolio.slice(0, 6) as photo, i (photo.src)}<a class="photograph" href={`${base}${photo.src}`} onclick={(event) => openPhoto(event, i)} aria-label={`Open photograph: ${photo.alt}`} aria-haspopup="dialog"><img src={`${base}${photo.src}`} alt={photo.alt} width={photo.width} height={photo.height} loading="lazy" decoding="async" /></a>{/each}</div>
 	</section>
 	<div class="contact-line content-width"><a href="https://ninochavez.co/photography/coverage" data-sveltekit-reload>Event coverage</a><a href="mailto:nino@ninochavez.co">Get in touch</a></div>
 </div>
@@ -118,8 +116,6 @@
 	.photo-home :is(button,input) { font: inherit; color: inherit; }
 	.photo-home button { cursor: pointer; }
 	.photo-home :focus-visible, .portfolio-viewer :focus-visible { outline: 2px solid var(--color-gold-400); outline-offset: 5px; }
-	.photo-home .small { font-size: 13px; line-height: 1.5; }
-	.photo-home .muted { color: var(--home-muted); }
 	.content-width { width: min(1440px,100%); padding-inline: 48px; margin-inline: auto; }
 	.opening.mobile { display: none; }
 	.photograph { display: block; padding: 0; width: 100%; background: transparent; line-height: 0; }
@@ -132,7 +128,8 @@
 	.photo-toolbar > span { color: var(--home-muted); }
 	.photo-toolbar > div { display: flex; gap: 16px; align-items: center; }
 	.photo-toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: transparent; border: 0; min-height: 44px; min-width: 44px; padding: 8px 0; font-size: 13px; }
-	.finder, .selected { scroll-margin-top: calc(var(--gallery-header-height) + 24px); }
+	.photo-opening { scroll-margin-top: var(--gallery-header-height); }
+	.finder { scroll-margin-top: calc(var(--gallery-header-height) + 24px); }
 	.finder { display: grid; grid-template-columns: 220px 1fr auto; align-items: center; gap: 40px; padding-block: 36px; border-bottom: 1px solid var(--home-line); }
 	.finder p { font-size: 13px; color: var(--home-muted); margin-top: 8px; }
 	.search-line { display: flex; border-bottom: 1px solid var(--home-ink); background: #222; }
@@ -142,7 +139,7 @@
 	.archive-links { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; font-size: 13px; }
 	.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
 	.section-heading a { font-size: 13px; }
-	.recent-events, .selected { margin-top: 60px; }
+	.recent-events { margin-top: 60px; }
 	.event-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 28px; }
 	.event { display: flex; flex-direction: column; gap: 18px; text-decoration: none; min-width: 0; }
 	.event img { display: block; width: 100%; height: 240px; object-fit: cover; object-position: 50% 35%; }
@@ -153,7 +150,6 @@
 	.event-title { display: block; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
 	.event-action { display: block; font-size: 12px; margin-top: 10px; color: var(--home-muted); }
 	.no-cover { min-height: 240px; display: grid; place-items: center; font-size: 12px; background: #222; }
-	.photo-grid { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 20px; align-items: start; }
 	.contact-line { display: flex; gap: 28px; padding-block: 30px; margin-top: 60px; font-size: 13px; border-top: 1px solid var(--home-line); }
 	.portfolio-viewer { width: min(1060px,100%); max-width: 100%; height: 100dvh; max-height: 100dvh; padding: 20px 28px; border: 0; margin: auto; background: var(--color-charcoal-950); color: #f3f1eb; font-family: Arial, Helvetica, sans-serif; }
 	.portfolio-viewer::backdrop { background: #000d; }
@@ -169,7 +165,6 @@
 		.archive-links { grid-column: 2; flex-direction: row; gap: 24px; margin-top: -12px; }
 		.event-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 		.event img { height: 300px; }
-		.photo-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
 	}
 	@media (max-width: 700px) {
 		.content-width { padding-inline: 20px; }
@@ -186,15 +181,14 @@
 		.archive-links { grid-column: auto; gap: 26px; margin-top: 0; }
 		.search-line input { padding: 14px 12px; }
 		.search-line button { padding: 0 12px; gap: 8px; }
-		.recent-events, .selected { margin-top: 40px; }
+		.recent-events { margin-top: 40px; }
 		.section-heading { margin-bottom: 22px; }
-		.section-heading a, .section-heading .small { font-size: 11px; }
+		.section-heading a { font-size: 11px; }
 		.event-grid { grid-template-columns: 1fr; gap: 28px; }
 		.event { display: grid; grid-template-columns: 98px minmax(0,1fr); gap: 18px; }
 		.event img { width: 98px; height: 147px; }
 		.event-title { font-size: 14px; }
 		.no-cover { min-height: 147px; }
-		.photo-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 		.contact-line { margin-top: 40px; }
 		.portfolio-viewer { padding: 16px; gap: 12px; }
 	}

@@ -2,7 +2,7 @@
 
 Nino selected C — Photo strip: “go with photo strip.” The selected structure and rejected alternatives are preserved in [the initiative comparison](https://github.com/nino-chavez/public-site-rethink/pull/11). This change replaces the single-photo split opening with an uncropped horizontal strip, visible previous/next controls, a substantial phone portrait and an event finder directly below. It retains neutral charcoal, independent navigation, native photo viewing, public gallery ranking, archive search, dates, Saved and collection routes.
 
-The production sequence is stable and uses the exact original files from the comparison. Desktop includes two landscapes; narrow screens use twelve portraits. Six portraits repeat below recent galleries as ordinary entry points to the viewer. No inferred album membership, new identity metadata, or gallery-data writes are introduced. The existing album loader is unchanged.
+The production sequence is stable and uses the exact original files from the comparison. Desktop includes two landscapes; narrow screens use twelve portraits. The initial release repeated six portraits below recent galleries; the approved follow-up below removes that duplication. No inferred album membership, new identity metadata, or gallery-data writes are introduced. The existing album loader is unchanged.
 
 ## Rendered checks
 
@@ -40,3 +40,11 @@ Opened exactly: `desktop-next.png`, `mobile-next.png`, `mobile-unavailable.png`,
 The unavailable and empty captures are treated as injected fixture states, not production-outage evidence. This is static capture review only; it does not establish actual-device or interaction acceptance.
 
 The parent reopened the cited images rather than accepting the mobile no-gap claim. The final decoding fix was verified in fresh desktop and mobile frames; no further broad review was requested. Empty/unavailable fixtures keep the event finder and recovery copy clear. Physical touch, VoiceOver and a full-site regression audit remain outside this review.
+
+## Follow-up: one photo presentation and direct navigation
+
+Nino explicitly requested removal of the repeated grid and a Photographs link to the strip. The homepage now has one visible photographic presentation, followed by the event finder and recent galleries. The `photographs` fragment belongs to the strip wrapper on both desktop and mobile; the removed grid's unused styles and default viewer argument are gone.
+
+Header and footer Photographs links use native fragment navigation. The first cross-route test reproduced SvelteKit's focus-reset behavior overriding the fragment's scroll margin: the strip landed at viewport zero beneath the sticky header. Native fragment navigation preserves the margin. The focused homepage suite now checks returning from Events through the header link and returning from the footer, along with the existing viewer, paging, search and no-JavaScript paths. The negative run failed on the header offset before the correction.
+
+Fresh whole-page and anchor-landing captures are `desktop-no-grid.png`, `mobile-no-grid.png`, `desktop-photographs-link.png` and `mobile-photographs-link.png`. The parent opened the captures. A bounded independent cold review (Operator dispatch `6ee2c8f3-cd02-4bb3-ac64-37e278bf9e24`, confirmed runtime `gpt-5.6-terra`, medium) found no material visible issue. Its visual verdict does not establish interaction behavior; the browser tests cover the changed navigation. Physical-device and VoiceOver acceptance remain untested.
