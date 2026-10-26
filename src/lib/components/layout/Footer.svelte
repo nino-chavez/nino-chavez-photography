@@ -62,7 +62,7 @@
 			<div class="flex items-center justify-between md:justify-end gap-6">
 				<!-- Essential Links -->
 				<nav aria-label="Footer navigation" class="flex flex-wrap gap-x-4 gap-y-2">
-					<a href="{base}/#photographs" class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm">Photographs</a>
+					<a href="{base}/#photographs" data-sveltekit-reload class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm">Photographs</a>
 					<a
 						href="{base}/albums"
 						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"

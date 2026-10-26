@@ -25,7 +25,7 @@
 		</a>
 		<nav aria-label="Photography navigation">
 			{#each navItems as item (item.path)}
-				<a href={item.path} class:active={isActive(item.path)} aria-current={isActive(item.path) ? 'page' : undefined} data-sveltekit-preload-data="tap">
+				<a href={item.path} data-sveltekit-reload={item.label === 'Photographs'} class:active={isActive(item.path)} aria-current={isActive(item.path) ? 'page' : undefined} data-sveltekit-preload-data="tap">
 					{item.label}
 					{#if item.label === 'Saved' && favorites.count > 0}
 						<span class="saved-count" aria-label="{favorites.count} saved photos">{favorites.count > 99 ? '99+' : favorites.count}</span>

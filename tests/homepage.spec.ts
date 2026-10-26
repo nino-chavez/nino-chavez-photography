@@ -7,7 +7,8 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
 		test('photo introduction, event discovery and return stay reachable', async ({ page }) => {
 			await page.goto(HOME, { waitUntil: 'networkidle' });
 			await expect(page.getByRole('heading', { name: 'Nino Chavez Photography', exact: true })).toBeAttached();
-			await expect(page.locator('.opening:visible .photograph')).toHaveCount(viewport.width > 700 ? 14 : 12);
+			await expect(page.locator('.photo-home .photograph:visible')).toHaveCount(viewport.width > 700 ? 14 : 12);
+			await expect(page.getByRole('heading', { name: 'Selected photographs', exact: true })).toHaveCount(0);
 			const search = page.getByRole('searchbox', { name: 'Event, team, or date' });
 			const bounds = await search.boundingBox();
 			if (viewport.height >= 800) expect(bounds!.y + bounds!.height).toBeLessThan(viewport.height);
@@ -20,8 +21,16 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
 			const filters = page.locator('.events-filters');
 			expect(await filters.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
 			for (const select of await filters.locator('select').all()) await expect(select).toBeInViewport();
-			await page.getByRole('link', { name: 'Nino Chavez Photography home', exact: true }).click();
+			await page.getByRole('navigation', { name: 'Photography navigation', exact: true }).getByRole('link', { name: 'Photographs', exact: true }).click();
+			await expect(page).toHaveURL(/\/photography\/#photographs$/);
 			await expect(page.locator('.photo-home')).toBeVisible();
+			const strip = page.locator('.opening:visible .filmstrip');
+			const expectStripAtHeader = async () => {
+				await expect.poll(() => strip.evaluate(el => Math.abs(el.getBoundingClientRect().top - document.querySelector('header')!.getBoundingClientRect().bottom))).toBeLessThan(2);
+			};
+			await expectStripAtHeader();
+			await page.getByRole('navigation', { name: 'Footer navigation', exact: true }).getByRole('link', { name: 'Photographs', exact: true }).click();
+			await expectStripAtHeader();
 			await expect(page.getByRole('navigation', { name: 'Photography navigation', exact: true }).getByRole('link', { name: 'Saved', exact: true })).toBeVisible();
 		});
 		test('strip paging preserves whole frames and supports keyboard return', async ({ page }) => {
