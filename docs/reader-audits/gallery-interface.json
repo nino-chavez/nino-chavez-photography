@@ -1,13 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-26T22:30:48.605Z",
-  "reviewedBy": "Codex parent; independent cold capture review",
-  "method": "Opened whole-page desktop/mobile captures after duplicate-grid removal and header/footer Photographs landing captures. Tested return from Events and from the footer after native-fragment correction; viewer, paging and search retained. Browser viewports only; not physical-device, VoiceOver or full-site acceptance.",
-  "sourceDigest": "sha256:e76d53f96894b921bd2b09fb6e2a1a597d74c9d14c42c628e6e12ccc9f040add",
+  "reviewedAt": "2026-10-26T22:46:32.961Z",
+  "reviewedBy": "Codex parent; prior independent cold capture review",
+  "method": "Parent reopened the final navigation capture and observed unchanged desktop/mobile captures. Tested header and footer landing plus destination focus; ten focused browser checks pass. Earlier cold review covers the unchanged composition. Browser viewports only; not physical-device, VoiceOver or full-site acceptance.",
+  "sourceDigest": "sha256:a88a366d344d5dc294c4bad2261ed0a1bc15a4d58c22770aac0dc28c3177c982",
   "sourceFiles": 204,
   "scope": [
     "photography homepage",
-    "Photographs links in header and footer"
+    "Photographs destination focus"
   ]
 }
