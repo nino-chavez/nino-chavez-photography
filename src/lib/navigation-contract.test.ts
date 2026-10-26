@@ -14,14 +14,12 @@ test('gallery shell uses independent photography navigation', async () => {
 	]);
 
 	assert.match(header, /Nino Chavez Photography/);
-	assert.match(header, /href=\{`\$\{base\}\/albums`\}/);
-	assert.match(header, /label: 'Events'/);
-	assert.match(header, /label: 'By date'/);
-	assert.match(header, /label: 'Collections'/);
+	assert.match(header, /href=\{`\$\{base\}\/`\}/);
+	assert.match(header, /label: 'Find an event'/);
+	assert.match(header, /label: 'Photographs'/);
+	assert.doesNotMatch(header, /label: 'Collections'/);
 	assert.match(header, /label: 'Saved'/);
-	assert.match(header, /aria-label="Mobile photography navigation"/);
-	assert.match(header, /--gallery-header-height: 50px/);
-	assert.match(header, /--gallery-header-height: 48px/);
+	assert.match(header, /aria-label="Photography navigation"/);
 	assert.doesNotMatch(header, /open-practice-shell|site-menu-dialog|GLOBAL_NAVIGATION|MENU_NAVIGATION/);
 	assert.match(footer, /https:\/\/ninochavez\.co\/privacy/);
 	assert.match(footer, /Nino Chavez profile/);
@@ -43,14 +41,16 @@ test('retired About and Privacy routes point to their canonical owners', async (
 	assert.doesNotMatch(sitemap, /`\$\{baseUrl\}\/privacy`/);
 });
 
-test('the gallery root hands full-page navigation to the canonical landing', async () => {
+test('the gallery owns its home and submits event search to the native archive', async () => {
 	const [rootPage, rootLoad] = await Promise.all([
 		source('src/routes/+page.svelte'),
 		source('src/routes/+page.server.ts')
 	]);
-	assert.match(rootLoad, /redirect\(308, destination\.toString\(\)\)/);
-	assert.match(rootLoad, /new URL\(SITE_URL\)/);
-	assert.doesNotMatch(rootPage, /Recent events|Selected work|Book a shoot/);
+	assert.match(rootLoad, /getRankedPublicAlbums\(\)/);
+	assert.doesNotMatch(rootLoad, /redirect\(/);
+	assert.match(rootPage, /method="GET" action=\{`\$\{base\}\/albums`\}/);
+	assert.match(rootPage, /name="q"/);
+	assert.match(rootPage, /Selected photographs/);
 });
 
 test('the reachable style guide remains out of the search index', async () => {

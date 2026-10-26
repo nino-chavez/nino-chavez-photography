@@ -200,7 +200,7 @@
 	<div class={isAnalyticsWorkspace ? 'min-h-screen flex flex-col bg-[#f4f7fb]' : 'min-h-screen flex flex-col bg-charcoal-950 text-white'}>
 		{#if !isAnalyticsWorkspace}<Header />{/if}
 
-		<main class={isAnalyticsWorkspace ? 'flex-1' : 'flex-1 pb-20 sm:pb-0'}>
+		<main class="flex-1">
 			{@render children?.()}
 		</main>
 
