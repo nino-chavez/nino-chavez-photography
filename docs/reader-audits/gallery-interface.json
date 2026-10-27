@@ -1,13 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-26T22:46:32.961Z",
-  "reviewedBy": "Codex parent; prior independent cold capture review",
-  "method": "Parent reopened the final navigation capture and observed unchanged desktop/mobile captures. Tested header and footer landing plus destination focus; ten focused browser checks pass. Earlier cold review covers the unchanged composition. Browser viewports only; not physical-device, VoiceOver or full-site acceptance.",
-  "sourceDigest": "sha256:a88a366d344d5dc294c4bad2261ed0a1bc15a4d58c22770aac0dc28c3177c982",
+  "reviewedAt": "2026-10-27T13:39:20.914Z",
+  "reviewedBy": "Codex parent",
+  "method": "Parent opened full-page desktop/mobile captures from distinct real homepage visits. Eleven browser checks cover differing initial server-rendered openings, hydration consistency, complete photo sets, same-visit order, viewer order, navigation and no-JavaScript use. Browser viewports only; not physical-device, VoiceOver or full-site acceptance.",
+  "sourceDigest": "sha256:bca0aee0703a4312a1644949a683afa70f98a4a5efe0970c10acd4b2a14c9ae9",
   "sourceFiles": 204,
   "scope": [
     "photography homepage",
-    "Photographs destination focus"
+    "random starting photograph"
   ]
 }

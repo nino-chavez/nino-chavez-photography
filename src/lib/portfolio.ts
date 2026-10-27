@@ -96,7 +96,12 @@ const landscapes: readonly PortfolioPhoto[] = [
   }
 ];
 
-// A stable edit: whole frames, with the first portrait leading on narrow screens.
+// Base sequence: whole frames, with landscapes included on wider screens.
 export const photoStrip: readonly PortfolioPhoto[] = [
   landscapes[0], ...portfolio.slice(0, 3), landscapes[1], ...portfolio.slice(3)
 ];
+
+export function rotatePortfolio(photos: readonly PortfolioPhoto[], start: number): readonly PortfolioPhoto[] {
+  const index = Math.floor(start * photos.length);
+  return [...photos.slice(index), ...photos.slice(0, index)];
+}
