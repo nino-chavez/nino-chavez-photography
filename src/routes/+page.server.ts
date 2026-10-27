@@ -5,24 +5,23 @@ import type { PageServerLoad } from './$types';
 
 // Cache only the shared public gallery data, never a visitor's opening photograph.
 // Match the previous homepage's 60-second freshness window within a warm worker.
-let albumsCache: { expiresAt: number; result: Promise<RankedAlbumsResult> } | undefined;
+let albumsCache: { expiresAt: number; result: Extract<RankedAlbumsResult, { ok: true }> } | undefined;
 
 export const load: PageServerLoad = async ({ setHeaders }) => {
 	setHeaders({ 'cache-control': 'private, no-store' });
 	const photoStart = Math.random();
 	// Same public/unlisted gate, publication ranking, covers and failure contract as /links.
-	if (!albumsCache || albumsCache.expiresAt <= Date.now()) {
-		albumsCache = {
-			expiresAt: Date.now() + 60_000,
-			result: getRankedPublicAlbums().catch(() => {
-				console.error('[photography home] Recent gallery lookup failed');
-				return { ok: false } as const;
-			})
-		};
+	let result: RankedAlbumsResult;
+	if (albumsCache && albumsCache.expiresAt > Date.now()) {
+		result = albumsCache.result;
+	} else {
+		result = await getRankedPublicAlbums().catch(() => {
+			console.error('[photography home] Recent gallery lookup failed');
+			return { ok: false } as const;
+		});
+		// Keep pending I/O within its request; only completed data can be shared by workers.
+		if (result.ok) albumsCache = { expiresAt: Date.now() + 60_000, result };
 	}
-	const pendingAlbums = albumsCache;
-	const result = await pendingAlbums.result;
-	if (!result.ok && albumsCache === pendingAlbums) albumsCache = undefined;
 	const seo = {
 		title: 'Nino Chavez Photography',
 		description: 'Selected photographs by Nino Chavez. Find volleyball and event galleries, view photos, and download your favorites.'
