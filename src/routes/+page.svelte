@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { onDestroy } from 'svelte';
-	import { portfolio, photoStrip, type PortfolioPhoto } from '$lib/portfolio';
+	import { portfolio, photoStrip, rotatePortfolio, type PortfolioPhoto } from '$lib/portfolio';
 	import type { LatestApiAlbum } from '$lib/albums/latest';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	let desktopPhotos = $derived(rotatePortfolio(photoStrip, data.photoStart));
+	let mobilePhotos = $derived(rotatePortfolio(portfolio, data.photoStart));
 	let viewer = $state<HTMLDialogElement>();
 	let selected = $state(0);
 	let viewerPhotos = $state<readonly PortfolioPhoto[]>(portfolio);
@@ -80,8 +82,8 @@
 <div class="photo-home">
 	<h1 class="sr-only">Nino Chavez Photography</h1>
 	<div id="photographs" class="photo-opening" tabindex="-1">
-		{@render opening(photoStrip, 'desktop')}
-		{@render opening(portfolio, 'mobile')}
+		{@render opening(desktopPhotos, 'desktop')}
+		{@render opening(mobilePhotos, 'mobile')}
 	</div>
 	<section class="finder content-width" id="find-event" aria-labelledby="finder-heading">
 		<div><h2 id="finder-heading">Find your event</h2><p>Event, team, or date.</p></div>

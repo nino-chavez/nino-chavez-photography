@@ -1,0 +1,26 @@
+[
+  {
+    "device": "desktop",
+    "first": "/photography/images/hero/flickday/triptych/t-27.webp",
+    "cacheControl": "private, no-store",
+    "path": "docs/reader-audits/photo-strip-2026-10-26/random-desktop-1.png"
+  },
+  {
+    "device": "desktop",
+    "first": "/photography/images/hero/flickday/triptych/t-25.webp",
+    "cacheControl": "private, no-store",
+    "path": "docs/reader-audits/photo-strip-2026-10-26/random-desktop-2.png"
+  },
+  {
+    "device": "mobile",
+    "first": "/photography/images/hero/flickday/triptych/t-16.webp",
+    "cacheControl": "private, no-store",
+    "path": "docs/reader-audits/photo-strip-2026-10-26/random-mobile-1.png"
+  },
+  {
+    "device": "mobile",
+    "first": "/photography/images/hero/flickday/triptych/t-19.webp",
+    "cacheControl": "private, no-store",
+    "path": "docs/reader-audits/photo-strip-2026-10-26/random-mobile-2.png"
+  }
+]
