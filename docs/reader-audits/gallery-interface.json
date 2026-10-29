@@ -1,13 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-27T14:24:34.887Z",
-  "reviewedBy": "Codex parent",
-  "method": "Parent opened desktop and mobile captures from real homepage visits again after the server cache repair; identity, navigation, strip controls, event finder and recent galleries remain visible. Earlier eleven browser checks cover differing server-rendered openings, hydration, photo inventory, viewer order, navigation and no-JavaScript use. Browser viewports only; not physical-device, VoiceOver or full-site acceptance.",
-  "sourceDigest": "sha256:44794f189770d028a930f880bb5d51ee2bef35dc8bd6d1aa00340a57f29ec4e9",
+  "reviewedAt": "2026-10-29T22:59:30.209Z",
+  "reviewedBy": "Codex parent, live preview and rendered screenshots",
+  "method": "Inspected the live local Links page and full-page Chromium captures at 390 and 1280 pixels. Confirmed complete portrait, separate readable title/date, recent covers and full-page layout. Focused browser tests also exercised portrait and landscape dimensions, hover, keyboard activation and horizontal overflow. Other routes and physical devices were not reviewed.",
+  "sourceDigest": "sha256:e2dbaa7937d1914763910d45658fcb4f3cb8a4a3dc8c714d102b5aa40c5e5f6e",
   "sourceFiles": 204,
   "scope": [
-    "photography homepage",
-    "random starting photograph"
+    "/photography/links at 390px",
+    "/photography/links at 1280px",
+    "portrait and landscape cover framing",
+    "recent gallery thumbnails",
+    "keyboard gallery navigation"
   ]
 }

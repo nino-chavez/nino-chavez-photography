@@ -2,10 +2,8 @@
   /links — mobile-first "link in bio" page for the nino.chavez.photo Instagram bio.
 
   Every tap target is a plain <a href>: nothing here depends on client JS to work. Design
-  follows DESIGN.md (dark charcoal + gold accent, chrome recedes) and the
-  `contained-cover-scale` hover device DIRECTION.md authorizes for gallery cards — the frame
-  holds still, only the photo itself scales, never the whole tile (that's `lifting-tile`,
-  removed).
+  follows DESIGN.md (dark charcoal + gold accent, chrome recedes). Covers show their
+  complete frame without hover scaling so portrait heads and feet stay visible.
 -->
 <script lang="ts">
 	import { Images, ExternalLink, ChevronRight } from 'lucide-svelte';
@@ -70,22 +68,20 @@
 			data-sveltekit-preload="hover"
 			class="lead-gallery group"
 		>
-			{#if data.lead.cover_url}
-				<img
-					src={data.lead.cover_url}
-					alt={`${data.lead.album_name} cover`}
-					width="800"
-					height="600"
-					loading="eager"
-					fetchpriority="high"
-					class="absolute inset-0 h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
-				/>
-			{:else}
-				<div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-charcoal-800 to-charcoal-900">
+			<div class="lead-gallery-media">
+				{#if data.lead.cover_url}
+					<img
+						src={data.lead.cover_url}
+						alt={`${data.lead.album_name} cover`}
+						loading="eager"
+						fetchpriority="high"
+						class="absolute inset-0 h-full w-full object-contain"
+					/>
+				{:else}
 					<Images class="h-16 w-16 text-charcoal-600" aria-hidden="true" />
-				</div>
-			{/if}
-			<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-between p-4">
+				{/if}
+			</div>
+			<div class="lead-gallery-details">
 				<span class="self-start rounded-full bg-gold-500 px-3 py-1 text-xs font-semibold text-charcoal-950">
 					Latest gallery
 				</span>
@@ -128,7 +124,7 @@
 						<a
 							href={album.url}
 							data-sveltekit-preload="hover"
-				class="recent-gallery group"
+							class="recent-gallery group"
 						>
 							<span class="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-charcoal-800">
 								{#if album.cover_url}
@@ -138,7 +134,7 @@
 										width="112"
 										height="112"
 										loading="lazy"
-										class="absolute inset-0 h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
+										class="absolute inset-0 h-full w-full object-contain"
 									/>
 								{:else}
 									<Images class="absolute inset-0 m-auto h-6 w-6 text-charcoal-600" aria-hidden="true" />
@@ -198,7 +194,9 @@
 	.links-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 	.links-opening h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(30px, 7vw, 42px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
 	.links-deck { margin-top: 12px; color: var(--color-charcoal-300); font-size: 15px; line-height: 1.55; }
-	.lead-gallery { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--color-charcoal-800); border-radius: 0; background: var(--color-charcoal-900); outline: none; }
+	.lead-gallery { display: block; overflow: hidden; border: 1px solid var(--color-charcoal-800); border-radius: 0; background: var(--color-charcoal-900); outline: none; }
+	.lead-gallery-media { position: relative; display: grid; aspect-ratio: 4 / 5; max-height: 720px; place-items: center; overflow: hidden; background: linear-gradient(to bottom right, var(--color-charcoal-800), var(--color-charcoal-900)); }
+	.lead-gallery-details { display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--color-charcoal-900); }
 	.recent-gallery, .outbound-link { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px; border: 1px solid var(--color-charcoal-800); border-radius: 0; background: transparent; outline: none; }
 	.outbound-link { min-height: 52px; justify-content: space-between; padding-inline: 14px; color: white; font-size: 16px; font-weight: 650; }
 	.lead-gallery:hover, .recent-gallery:hover, .outbound-link:hover { border-color: var(--color-gold-500); }

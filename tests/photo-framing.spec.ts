@@ -1,5 +1,53 @@
 import { expect, test, type Page } from '@playwright/test';
 
+for (const width of [390, 1280]) {
+	test(`links covers keep the full portrait and landscape frame at ${width}px`, async ({ page }, testInfo) => {
+		await page.setViewportSize({ width, height: 1000 });
+		await page.goto('/photography/links');
+		const lead = page.locator('.lead-gallery');
+		await expect(lead).toBeVisible();
+		await expect.poll(() => lead.locator('img').evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+		await page.evaluate(() => document.fonts.ready);
+		await page.screenshot({ path: testInfo.outputPath(`links-${width}.png`), fullPage: true });
+
+		// Substitute known dimensions only in the browser; never change the gallery's cover.
+		for (const [imageWidth, imageHeight] of [[800, 1200], [1200, 800]]) {
+			await page.route('**/imagedelivery.net/**', (route) => route.fulfill({
+				contentType: 'image/svg+xml',
+				body: `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}"><rect width="100%" height="100%" fill="#888"/></svg>`
+			}));
+			await page.reload();
+			await expect.poll(() => lead.locator('img').evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(imageWidth);
+			await lead.hover();
+			const frames = await page.locator('.lead-gallery img, .recent-gallery img').evaluateAll((images) => images.map((element) => {
+				const image = element as HTMLImageElement;
+				const box = image.getBoundingClientRect();
+				const clip = image.parentElement!.getBoundingClientRect();
+				const style = getComputedStyle(image);
+				const ratio = style.objectFit === 'cover'
+					? Math.max(box.width / image.naturalWidth, box.height / image.naturalHeight)
+					: Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight);
+				return { paintedWidth: image.naturalWidth * ratio, paintedHeight: image.naturalHeight * ratio, availableWidth: clip.width, availableHeight: clip.height };
+			}));
+			for (const frame of frames) {
+				expect(frame.paintedWidth).toBeLessThanOrEqual(frame.availableWidth + 1);
+				expect(frame.paintedHeight).toBeLessThanOrEqual(frame.availableHeight + 1);
+			}
+			expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+			const media = await page.locator('.lead-gallery-media').boundingBox();
+			const title = await lead.getByRole('heading').boundingBox();
+			expect(title!.y).toBeGreaterThanOrEqual(media!.y + media!.height - 1);
+			await page.unroute('**/imagedelivery.net/**');
+		}
+		await lead.focus();
+		await expect(lead).toBeFocused();
+		await expect(lead).toHaveCSS('outline-style', 'solid');
+		const destination = await lead.getAttribute('href');
+		await lead.press('Enter');
+		await expect(page).toHaveURL(destination!);
+	});
+}
+
 async function checkRows(page: Page, columns: number) {
 	const grid = page.locator('.fitted-photo-grid').first();
 	await expect(grid.locator('.photo-card').first()).toBeVisible();
