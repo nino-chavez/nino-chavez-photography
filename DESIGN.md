@@ -19,15 +19,18 @@ colors:
       "700": "#525463"
       "800": "#454654"
       "900": "#3b3c48"
-      "950": "#18181b"
+      "950": "#181818"
     gold:
       "50":  "#fefce8"
       "100": "#fef9c3"
       "200": "#fef08a"
-      "300": "#fde047"
-      "400": "#facc15"
-      "500": "#eab308"
-      "600": "#ca8a04"
+      # 300-600 are the metallic "old gold" the site ships (src/app.css, the <meta theme-color>),
+      # not the Tailwind yellow scale the other steps come from. This file said #eab308 for 500
+      # until 2026-10-08 while every visitor saw #D4AF37; the runtime value is the brand.
+      "300": "#ecd47a"
+      "400": "#e3c358"
+      "500": "#D4AF37"
+      "600": "#b8962e"
       "700": "#a16207"
       "800": "#854d0e"
       "900": "#713f12"
@@ -82,15 +85,18 @@ typography:
   # check vacuous. These two role entries are the shape it reads. Keep them in step with
   # `fonts:` below, which stays because it carries the weights and self-hosting notes.
   body:
-    fontFamily: '"Inter Variable", system-ui, -apple-system, sans-serif'
+    fontFamily: 'system-ui, -apple-system, sans-serif'
   display:
     fontFamily: 'Montserrat, system-ui, sans-serif'
+  homepage:
+    fontFamily: 'Arial, Helvetica, sans-serif'
 
   fonts:
     body:
-      family: "Inter Variable"
-      fallbacks: [system-ui, "-apple-system", sans-serif]
-      selfHosted: true
+      family: system-ui
+      fallbacks: ["-apple-system", sans-serif]
+      selfHosted: false
+      note: "Inter Variable was named here and in src/app.css from the start but never shipped (no @font-face, no package, no file); visitors have seen the system face since launch. Shipping Inter is a judged visual change: add its woff2 beside Montserrat's, name it again here and in app.css, and run the cold review."
     display:
       family: Montserrat
       fallbacks: [system-ui, sans-serif]
@@ -215,3 +221,11 @@ View Transitions API (CSS) drives navigation — 300ms root, 200ms for main cont
 ---
 
 *Derived from `src/app.css` (v2 token system). Treat DESIGN.md as canonical; treat `src/app.css` as the runtime artifact. Keep in sync.*
+
+## Homepage A — selected October 26, 2026
+
+Nino selected the Photograph + event finder home and neutral charcoal `#181818` after comparing three structures and three canvases. The home introduces the work with one still photograph, offers full-archive event search beside it, and continues into a finite twelve-photo portfolio and compact recent galleries. On phones the lead image comes first, with the event finder visible in the opening screen. System sans-serif type, plain links, uncropped photographs, and no autoplay or hover motion define this home. Header and body use the same neutral canvas.
+
+Photographs replaces Collections in primary navigation. The original collection URLs and footer link remain available. Album viewing, downloads, Saved, By date, and global photo search keep their native behavior. The image-only portfolio viewer has no fabricated database IDs or download/save controls. Existing exported images are recorded in `src/lib/portfolio.ts`; order and filenames match the selected study, with alt descriptions checked against the visible images.
+
+The comparison and human selection live in the `public-site-rethink` initiative under `sites/nino-separated/docs/design/concepts/photo-homepage/` and `docs/design/experience-brief.md`. B and C are preserved there. Native capture and interaction evidence lives under `sites/nino-separated/docs/evidence/screen-reviews/photo-rethink-2026-10-26/`.

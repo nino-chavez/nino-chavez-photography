@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-09-29T14:57:58.204Z",
+  "synthetic": true,
+  "productionWrites": 0,
+  "method": "Transpiled actual TypeScript client and handlers; mocked only browser flag, DB/auth, HTTP responses and framework environment.",
+  "diagnostics": {
+    "normalRequestHasNullError": true,
+    "normalRequest": {
+      "status": 400,
+      "body": {
+        "message": "invalid diagnostic target"
+      }
+    },
+    "omittedError": {
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    },
+    "explicitFailure": {
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    }
+  },
+  "anonymousChrome": {
+    "context": "audience",
+    "recognizedBot": false
+  },
+  "favoritesZip": {
+    "upstreamStatus": 503,
+    "rejected": false,
+    "entryFilename": "synthetic-photo.jpg",
+    "blobText": "Synthetic upstream failure"
+  },
+  "limits": [
+    "No live database or delivered browser event tested",
+    "Anonymous context applies to any unmarked signed-out browser; the owner or automation identity cannot be inferred",
+    "Favorites ZIP test evaluates its actual fetchPhoto function; archive creation and operating-system save were not executed"
+  ]
+}

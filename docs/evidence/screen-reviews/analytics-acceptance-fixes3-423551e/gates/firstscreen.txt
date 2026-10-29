@@ -1,0 +1,56 @@
+# first-screen and navigation-reach gate 2026-10-07T22:08:37.869Z
+chromium 100% /home: row, h1 top 136px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 100% /albums: row, h1 top 139px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 100% /albums/Re7kho: row, h1 top 139px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 100% /albums/Re7kho?recap=7: row, h1 top 152px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 100% /photos: row, h1 top 135px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 100% /sites: row, h1 top 134px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 100% /data: row, h1 top 134px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 100% /settings: row, h1 top 134px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+chromium 200% /home: wrap, h1 top 302px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 200% /albums: wrap, h1 top 273px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 200% /albums/Re7kho: wrap, h1 top 273px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 200% /albums/Re7kho?recap=7: wrap, h1 top 298px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 200% /photos: wrap, h1 top 265px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 200% /sites: wrap, h1 top 263px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 200% /data: wrap, h1 top 299px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 200% /settings: wrap, h1 top 263px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+chromium 312% /home: strip, h1 top 337px of 844, nav rows 1, header 99px, arrow after true before false, unreachable [] => PASS
+chromium 312% /albums: strip, h1 top 235px of 844, nav rows 1, header 99px, arrow after true before true, unreachable [] => PASS
+chromium 312% /albums/Re7kho: strip, h1 top 235px of 844, nav rows 1, header 99px, arrow after true before false, unreachable [] => PASS
+chromium 312% /albums/Re7kho?recap=7: strip, h1 top 273px of 844, nav rows 1, header 99px, arrow after true before false, unreachable [] => PASS
+chromium 312% /photos: strip, h1 top 278px of 844, nav rows 1, header 99px, arrow after true before false, unreachable [] => PASS
+chromium 312% /sites: strip, h1 top 276px of 844, nav rows 1, header 99px, arrow after true before true, unreachable [] => PASS
+chromium 312% /data: strip, h1 top 276px of 844, nav rows 1, header 99px, arrow after true before false, unreachable [] => PASS
+chromium 312% /settings: strip, h1 top 220px of 844, nav rows 1, header 99px, arrow after false before true, unreachable [] => PASS
+chromium FORCED a header that fills the first screen: before PASS; after FAIL (h1 at 1138px of 844) => gate fired
+chromium FORCED an arrow that is not drawn: before PASS; after FAIL (a scrolling row with no arrow) => gate fired
+chromium FORCED a row whose tabbed-to link ends up under the fade: before PASS; after FAIL (not reachable in view: Albums, Data) => gate fired
+webkit 100% /home: row, h1 top 136px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 100% /albums: row, h1 top 139px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 100% /albums/Re7kho: row, h1 top 139px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 100% /albums/Re7kho?recap=7: row, h1 top 152px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 100% /photos: row, h1 top 135px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 100% /sites: row, h1 top 134px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 100% /data: row, h1 top 134px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 100% /settings: row, h1 top 134px of 844, nav rows 1, header 95px, arrow after false before false, unreachable [] => not judged (default size)
+webkit 200% /home: wrap, h1 top 302px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 200% /albums: wrap, h1 top 273px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 200% /albums/Re7kho: wrap, h1 top 273px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 200% /albums/Re7kho?recap=7: wrap, h1 top 298px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 200% /photos: wrap, h1 top 265px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 200% /sites: wrap, h1 top 263px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 200% /data: wrap, h1 top 299px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 200% /settings: wrap, h1 top 263px of 844, nav rows 2, header 186px, arrow after false before false, unreachable [] => PASS
+webkit 312% /home: strip, h1 top 336px of 844, nav rows 1, header 98px, arrow after true before false, unreachable [] => PASS
+webkit 312% /albums: strip, h1 top 234px of 844, nav rows 1, header 98px, arrow after true before true, unreachable [] => PASS
+webkit 312% /albums/Re7kho: strip, h1 top 234px of 844, nav rows 1, header 98px, arrow after true before false, unreachable [] => PASS
+webkit 312% /albums/Re7kho?recap=7: strip, h1 top 272px of 844, nav rows 1, header 98px, arrow after true before false, unreachable [] => PASS
+webkit 312% /photos: strip, h1 top 277px of 844, nav rows 1, header 98px, arrow after true before false, unreachable [] => PASS
+webkit 312% /sites: strip, h1 top 275px of 844, nav rows 1, header 98px, arrow after true before true, unreachable [] => PASS
+webkit 312% /data: strip, h1 top 275px of 844, nav rows 1, header 98px, arrow after true before false, unreachable [] => PASS
+webkit 312% /settings: strip, h1 top 219px of 844, nav rows 1, header 98px, arrow after false before true, unreachable [] => PASS
+webkit FORCED a header that fills the first screen: before PASS; after FAIL (h1 at 1138px of 844) => gate fired
+webkit FORCED an arrow that is not drawn: before PASS; after FAIL (a scrolling row with no arrow) => gate fired
+webkit FORCED a row whose tabbed-to link ends up under the fade: before PASS; after FAIL (not reachable in view: Albums, Site, Data) => gate fired
+# forced failures fired: 6 of 6

@@ -1,0 +1,209 @@
+-- Synthetic acceptance, access-control, crash recovery and retention tests.
+BEGIN;
+SET LOCAL ROLE service_role;
+DO $$
+DECLARE e jsonb; result jsonb; n integer;
+BEGIN
+ e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000001','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id','30000000-0000-4000-8000-000000000001','visit_id','40000000-0000-4000-8000-000000000001','traffic_context','audience','export_eligible',true,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ result:=public.analytics_accept_event_v2(e);
+ IF result->>'accepted'<>'true' THEN RAISE EXCEPTION 'acceptance failed'; END IF;
+ result:=public.analytics_accept_event_v2(e);
+ IF result->>'duplicate'<>'true' OR (SELECT count(*) FROM public.analytics_events_v2)<>1 OR (SELECT count(*) FROM public.analytics_posthog_outbox)<>1 THEN RAISE EXCEPTION 'retry double counted'; END IF;
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000002','anonymous_browser_id',NULL,'visit_id',NULL,'export_eligible',false);
+ PERFORM public.analytics_accept_event_v2(e);
+ IF (SELECT count(*) FROM public.analytics_posthog_outbox)<>1 THEN RAISE EXCEPTION 'unlinked event exported'; END IF;
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>1 THEN RAISE EXCEPTION 'claim failed'; END IF;
+ IF public.analytics_recheck_posthog_event_eligibility('20000000-0000-4000-8000-000000000001')->>'export_eligible'<>'true' THEN RAISE EXCEPTION 'eligible lease lost'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE status='submitted') THEN RAISE EXCEPTION 'claim falsely reported submission'; END IF;
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>0 THEN RAISE EXCEPTION 'live lease reclaimed'; END IF;
+ UPDATE public.analytics_posthog_outbox SET locked_until=now()-interval '1 second';
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>1 THEN RAISE EXCEPTION 'dead worker event stranded'; END IF;
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000001','failed','provider_unavailable');
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>0 THEN RAISE EXCEPTION 'backoff ignored'; END IF;
+ UPDATE public.analytics_posthog_outbox SET next_attempt_at=now()-interval '1 second';
+ SELECT count(*) INTO n FROM public.analytics_claim_posthog_events(20,30);
+ IF n<>1 THEN RAISE EXCEPTION 'retry did not recover'; END IF;
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000001','submitted',NULL);
+ IF (SELECT status FROM public.analytics_posthog_outbox LIMIT 1)<>'submitted' THEN RAISE EXCEPTION 'ack missing'; END IF;
+ UPDATE public.analytics_posthog_outbox SET submitted_at=now()-interval '6 minutes' WHERE event_id='20000000-0000-4000-8000-000000000001';
+ IF (SELECT count(*) FROM public.analytics_list_submitted_posthog_event_ids(100))<>1 THEN RAISE EXCEPTION 'submitted backlog disappeared'; END IF;
+ PERFORM public.analytics_confirm_posthog_events(ARRAY['20000000-0000-4000-8000-000000000001'::uuid]);
+ IF (SELECT status FROM public.analytics_posthog_outbox LIMIT 1)<>'confirmed' THEN RAISE EXCEPTION 'confirmation missing'; END IF;
+ UPDATE public.analytics_events_v2 SET received_at=now()-interval '91 days';
+ PERFORM analytics_private.prune_events_v2_at(now());
+ IF (SELECT count(*) FROM public.analytics_events_v2)<>0 OR (SELECT count(*) FROM public.analytics_posthog_outbox)<>0 THEN RAISE EXCEPTION '90-day identity/outbox expiry failed'; END IF;
+ IF (SELECT sum(event_count) FROM public.analytics_v2_archived_totals)<>2 THEN RAISE EXCEPTION 'retention lost action totals'; END IF;
+ PERFORM analytics_private.prune_events_v2_at(now());
+ IF (SELECT sum(event_count) FROM public.analytics_v2_archived_totals)<>2 THEN RAISE EXCEPTION 'prune retry double counted'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_v2_archived_totals WHERE dimensions::text~'(browser_id|visit_id|search_id|view_id|request_id)') THEN RAISE EXCEPTION 'retention kept identifiers'; END IF;
+END $$;
+RESET ROLE;
+SET LOCAL ROLE service_role;
+DO $$
+DECLARE queued jsonb; submitted jsonb; later jsonb;
+BEGIN
+ queued:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000003','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id','30000000-0000-4000-8000-000000000003','visit_id','40000000-0000-4000-8000-000000000003','traffic_context','audience','export_eligible',true,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ PERFORM public.analytics_accept_event_v2(queued);
+ PERFORM public.analytics_revoke_browser_exports_v2('30000000-0000-4000-8000-000000000003');
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000003') OR EXISTS(SELECT 1 FROM public.analytics_events_v2 WHERE event_id='20000000-0000-4000-8000-000000000003' AND export_eligible) THEN RAISE EXCEPTION 'withdrawal left a queued export eligible'; END IF;
+ later:=queued || jsonb_build_object('event_id','20000000-0000-4000-8000-000000000004');
+ PERFORM public.analytics_accept_event_v2(later);
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000004') OR EXISTS(SELECT 1 FROM public.analytics_events_v2 WHERE event_id='20000000-0000-4000-8000-000000000004' AND (anonymous_browser_id IS NOT NULL OR visit_id IS NOT NULL OR export_eligible)) THEN RAISE EXCEPTION 'revoked browser raced back into export'; END IF;
+ submitted:=queued || jsonb_build_object('event_id','20000000-0000-4000-8000-000000000005','anonymous_browser_id','30000000-0000-4000-8000-000000000005','visit_id','40000000-0000-4000-8000-000000000005');
+ PERFORM public.analytics_accept_event_v2(submitted);
+ PERFORM public.analytics_claim_posthog_events(1,30);
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000005','submitted',NULL);
+ PERFORM public.analytics_revoke_browser_exports_v2('30000000-0000-4000-8000-000000000005');
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000005' AND status='submitted') OR EXISTS(SELECT 1 FROM public.analytics_events_v2 WHERE event_id='20000000-0000-4000-8000-000000000005' AND export_eligible) THEN RAISE EXCEPTION 'withdrawal rewrote submitted provider history'; END IF;
+END $$;
+RESET ROLE;
+SET LOCAL ROLE service_role;
+DO $$
+DECLARE e jsonb; control_payload jsonb; n integer; control_id uuid; checked_at timestamptz; archive_total bigint;
+BEGIN
+ BEGIN
+  INSERT INTO public.analytics_posthog_outbox(event_id,payload,origin,target_event_id)
+  VALUES ('20000000-0000-4000-8000-000000000099','{}','classification_control','20000000-0000-4000-8000-000000000006');
+  RAISE EXCEPTION 'service role forged a control row';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000006','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id','30000000-0000-4000-8000-000000000006','visit_id','40000000-0000-4000-8000-000000000006','traffic_context','audience','export_eligible',true,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000006','known_crawler','synthetic crawler evidence','50000000-0000-4000-8000-000000000006',false);
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000006') THEN RAISE EXCEPTION 'classification did not suppress pending export'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE origin='classification_control' AND target_event_id='20000000-0000-4000-8000-000000000006') THEN RAISE EXCEPTION 'queued never-claimed correction emitted a control'; END IF;
+ IF (SELECT classification FROM public.analytics_event_v2_classifications WHERE event_id='20000000-0000-4000-8000-000000000006' ORDER BY classification_version DESC LIMIT 1)<>'known_crawler' THEN RAISE EXCEPTION 'classification revision missing'; END IF;
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000006','unclassified','synthetic reversal','50000000-0000-4000-8000-000000000006',true);
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000006' AND origin='event' AND status='pending') THEN RAISE EXCEPTION 'classification reversal did not restore retained pending event'; END IF;
+
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000007','anonymous_browser_id','30000000-0000-4000-8000-000000000007','visit_id','40000000-0000-4000-8000-000000000007');
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000007','submitted',NULL);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000007','suspected_automation','synthetic submitted correction','50000000-0000-4000-8000-000000000007',false);
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000007' AND origin='event' AND status='submitted') THEN RAISE EXCEPTION 'submitted provider receipt was rewritten'; END IF;
+ SELECT payload INTO control_payload FROM public.analytics_posthog_outbox WHERE origin='classification_control' AND target_event_id='20000000-0000-4000-8000-000000000007';
+ IF control_payload IS NULL OR control_payload->>'event_name'<>'analytics_classification_changed' OR control_payload->>'target_event_id'<>'20000000-0000-4000-8000-000000000007' OR control_payload ? 'anonymous_browser_id' OR control_payload ? 'visit_id' OR control_payload ? 'note' THEN RAISE EXCEPTION 'submitted correction control is not private and minimal'; END IF;
+ IF public.analytics_recheck_posthog_event_eligibility((SELECT event_id FROM public.analytics_posthog_outbox WHERE origin='classification_control' AND target_event_id='20000000-0000-4000-8000-000000000007'))->>'event_name'<>'analytics_classification_changed' THEN RAISE EXCEPTION 'ordinary eligibility suppressed server control'; END IF;
+ SELECT event_id INTO control_id FROM public.analytics_posthog_outbox WHERE origin='classification_control' AND target_event_id='20000000-0000-4000-8000-000000000007';
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id=control_id AND locked_until>now()) THEN RAISE EXCEPTION 'control claim was blocked by origin guard'; END IF;
+ PERFORM public.analytics_finish_posthog_delivery(control_id,'submitted',NULL);
+ PERFORM public.analytics_confirm_posthog_events(ARRAY[control_id]);
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id=control_id AND status='confirmed') THEN RAISE EXCEPTION 'control finish or confirm was blocked by origin guard'; END IF;
+ BEGIN
+  INSERT INTO public.analytics_posthog_outbox(event_id,payload,origin,target_event_id)
+  VALUES ('20000000-0000-4000-8000-000000000098','{}','classification_control','20000000-0000-4000-8000-000000000007');
+  RAISE EXCEPTION 'control guard leaked its correction RPC write flag';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000008','anonymous_browser_id','30000000-0000-4000-8000-000000000008','visit_id','40000000-0000-4000-8000-000000000008');
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000008','submitted',NULL);
+ IF EXISTS(SELECT 1 FROM public.analytics_requeue_missing_posthog_events(ARRAY['20000000-0000-4000-8000-000000000008'::uuid])) THEN RAISE EXCEPTION 'ingestion grace ignored'; END IF;
+ UPDATE public.analytics_posthog_outbox SET submitted_at=now()-interval '6 minutes' WHERE event_id='20000000-0000-4000-8000-000000000008';
+ SELECT count(*) INTO n FROM public.analytics_requeue_missing_posthog_events(ARRAY['20000000-0000-4000-8000-000000000008'::uuid]);
+ IF n<>1 OR (SELECT status FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000008')<>'pending' THEN RAISE EXCEPTION 'missing submitted event was not requeued'; END IF;
+ UPDATE public.analytics_posthog_outbox SET status='submitted',attempts=12 WHERE event_id='20000000-0000-4000-8000-000000000008';
+ IF EXISTS(SELECT 1 FROM public.analytics_requeue_missing_posthog_events(ARRAY['20000000-0000-4000-8000-000000000008'::uuid])) THEN RAISE EXCEPTION 'attempt limit requeued forever'; END IF;
+ SELECT last_checked_at INTO checked_at FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000008';
+ IF checked_at IS NULL OR public.analytics_posthog_delivery_health()->>'terminal_reconciliation_gap'<>'1' THEN RAISE EXCEPTION 'terminal reconciliation gap was not recorded'; END IF;
+
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000015','anonymous_browser_id','30000000-0000-4000-8000-000000000015','visit_id','40000000-0000-4000-8000-000000000015');
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000015','submitted',NULL);
+ UPDATE public.analytics_posthog_outbox SET submitted_at=now()-interval '6 minutes' WHERE event_id='20000000-0000-4000-8000-000000000015';
+ IF (SELECT event_id FROM public.analytics_list_submitted_posthog_event_ids(1))<>'20000000-0000-4000-8000-000000000015'::uuid THEN RAISE EXCEPTION 'previously checked terminal gap starved a newer reconciliation'; END IF;
+
+	UPDATE public.analytics_posthog_outbox SET attempts=1 WHERE event_id='20000000-0000-4000-8000-000000000008';
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000008','operator','synthetic withdrawal','50000000-0000-4000-8000-000000000008',false);
+ IF EXISTS(SELECT 1 FROM public.analytics_requeue_missing_posthog_events(ARRAY['20000000-0000-4000-8000-000000000008'::uuid])) THEN RAISE EXCEPTION 'reclassified event requeued'; END IF;
+ SELECT event_id INTO control_id FROM public.analytics_posthog_outbox WHERE origin='classification_control' AND target_event_id='20000000-0000-4000-8000-000000000008';
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_finish_posthog_delivery(control_id,'submitted',NULL);
+ UPDATE public.analytics_posthog_outbox SET submitted_at=now()-interval '6 minutes' WHERE event_id=control_id;
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_list_submitted_posthog_event_ids(100) WHERE event_id=control_id) THEN RAISE EXCEPTION 'submitted control receipt was excluded from reconciliation'; END IF;
+ SELECT count(*) INTO n FROM public.analytics_requeue_missing_posthog_events(ARRAY[control_id]);
+ IF n<>1 OR NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id=control_id AND status='pending' AND last_checked_at IS NOT NULL) THEN RAISE EXCEPTION 'missing control was not requeued and stamped'; END IF;
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_finish_posthog_delivery(control_id,'submitted',NULL);
+ IF EXISTS(SELECT 1 FROM public.analytics_list_submitted_posthog_event_ids(100) WHERE event_id=control_id) THEN RAISE EXCEPTION 'reconciliation grace used an original rather than latest submitted timestamp'; END IF;
+
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000011','anonymous_browser_id','30000000-0000-4000-8000-000000000011','visit_id','40000000-0000-4000-8000-000000000011');
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000011','operator','synthetic in-flight correction','50000000-0000-4000-8000-000000000011',false);
+ SELECT event_id INTO control_id FROM public.analytics_posthog_outbox WHERE origin='classification_control' AND target_event_id='20000000-0000-4000-8000-000000000011';
+ IF control_id IS NULL THEN RAISE EXCEPTION 'leased in-flight correction did not create a control'; END IF;
+ IF public.analytics_recheck_posthog_event_eligibility('20000000-0000-4000-8000-000000000011') IS NOT NULL OR EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000011') THEN RAISE EXCEPTION 'late leased original remained eligible after correction'; END IF;
+
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000012','anonymous_browser_id','30000000-0000-4000-8000-000000000012','visit_id','40000000-0000-4000-8000-000000000012');
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000012','unclassified','synthetic eligible correction','50000000-0000-4000-8000-000000000012',false);
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000012' AND origin='event' AND status='pending') THEN RAISE EXCEPTION 'eligible correction removed queued event'; END IF;
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000012','audience','synthetic eligible correction','50000000-0000-4000-8000-000000000012',false);
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_claim_posthog_events(100,30) WHERE event_id='20000000-0000-4000-8000-000000000012') THEN RAISE EXCEPTION 'audience correction did not remain claimable'; END IF;
+
+ e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000013','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id',NULL,'visit_id',NULL,'traffic_context','audience','export_eligible',false,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000013','known_crawler','synthetic unconsented correction','50000000-0000-4000-8000-000000000013',false);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000013','audience','synthetic unconsented reversal','50000000-0000-4000-8000-000000000013',true);
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000013') THEN RAISE EXCEPTION 'reversal created an export for originally unconsented event'; END IF;
+
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000014','anonymous_browser_id','30000000-0000-4000-8000-000000000014','visit_id','40000000-0000-4000-8000-000000000014','export_eligible',true);
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_finish_posthog_delivery('20000000-0000-4000-8000-000000000014','submitted',NULL);
+ PERFORM public.analytics_confirm_posthog_events(ARRAY['20000000-0000-4000-8000-000000000014'::uuid]);
+ UPDATE public.analytics_posthog_outbox SET confirmed_at=now()-interval '8 days' WHERE event_id='20000000-0000-4000-8000-000000000014';
+ PERFORM analytics_private.prune_events_v2_at(now());
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000014' AND origin='event' AND status='confirmed') THEN RAISE EXCEPTION 'ordinary confirmed receipt expired before raw retention'; END IF;
+
+ -- An excluded leased event loses its ordinary row, but reversal must still mirror.
+ e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000025','schema_version',2,'event_name','photo_opened','occurred_at',now(),'anonymous_browser_id','30000000-0000-4000-8000-000000000025','visit_id','40000000-0000-4000-8000-000000000025','traffic_context','audience','export_eligible',true,'properties',jsonb_build_object('photo_id','alpha-1','album_key','alpha'));
+ PERFORM public.analytics_accept_event_v2(e);
+ PERFORM public.analytics_claim_posthog_events(100,30);
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000025','known_crawler','leased exclusion','50000000-0000-4000-8000-000000000025',false);
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000025') THEN RAISE EXCEPTION 'leased exclusion was not suppressed'; END IF;
+ PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000025','audience','leased reversal','50000000-0000-4000-8000-000000000025',true);
+ IF (SELECT count(*) FROM public.analytics_posthog_outbox WHERE target_event_id='20000000-0000-4000-8000-000000000025')<>2 THEN RAISE EXCEPTION 'leased reversal lost provider mirror'; END IF;
+ e:=jsonb_build_object('event_id','20000000-0000-4000-8000-000000000009','schema_version',2,'event_name','search_results_shown','occurred_at',now()-interval '91 days','anonymous_browser_id',NULL,'visit_id',NULL,'traffic_context','audience','export_eligible',false,'properties',jsonb_build_object('search_id','60000000-0000-4000-8000-000000000009','result_set_id','70000000-0000-4000-8000-000000000009','result_count',0));
+ PERFORM public.analytics_accept_event_v2(e);
+ e:=e||jsonb_build_object('event_id','20000000-0000-4000-8000-000000000010','event_name','search_failed','properties',jsonb_build_object('search_id','60000000-0000-4000-8000-000000000010','error_code','timeout'));
+ PERFORM public.analytics_accept_event_v2(e);
+	UPDATE public.analytics_events_v2 SET received_at=now()-interval '91 days'
+  WHERE event_id IN ('20000000-0000-4000-8000-000000000007','20000000-0000-4000-8000-000000000008','20000000-0000-4000-8000-000000000009','20000000-0000-4000-8000-000000000010','20000000-0000-4000-8000-000000000014');
+ PERFORM analytics_private.prune_events_v2_at(now());
+ IF NOT EXISTS(SELECT 1 FROM public.analytics_v2_archived_totals WHERE event_name='search_results_shown' AND dimensions->>'result_count'='0') OR NOT EXISTS(SELECT 1 FROM public.analytics_v2_archived_totals WHERE event_name='search_failed' AND dimensions->>'error_code'='timeout') THEN RAISE EXCEPTION 'archive lost bounded diagnostics'; END IF;
+	IF NOT EXISTS(SELECT 1 FROM public.analytics_v2_archived_totals WHERE event_name='photo_opened' AND traffic_context='suspected_automation') THEN RAISE EXCEPTION 'archive did not retain current classification'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_v2_archived_totals WHERE event_name='analytics_classification_changed') THEN RAISE EXCEPTION 'control payload leaked into raw-event totals'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE target_event_id IN ('20000000-0000-4000-8000-000000000007'::uuid,'20000000-0000-4000-8000-000000000008'::uuid)) THEN RAISE EXCEPTION 'control receipt outlived its expired target raw event'; END IF;
+ IF EXISTS(SELECT 1 FROM public.analytics_posthog_outbox WHERE event_id='20000000-0000-4000-8000-000000000014') THEN RAISE EXCEPTION 'ordinary receipt outlived its expired raw event'; END IF;
+ SELECT coalesce(sum(event_count),0) INTO archive_total FROM public.analytics_v2_archived_totals;
+ PERFORM analytics_private.prune_events_v2_at(now());
+ IF (SELECT coalesce(sum(event_count),0) FROM public.analytics_v2_archived_totals)<>archive_total THEN RAISE EXCEPTION 'daily diagnostic aggregate double counted on prune retry'; END IF;
+ PERFORM public.analytics_record_collection_delivery(2::smallint,'accepted');
+ PERFORM public.analytics_record_collection_delivery(2::smallint,'rejected');
+ PERFORM public.analytics_record_collection_delivery(2::smallint,'duplicate');
+ IF public.analytics_posthog_delivery_health()->'collection'->>'accepted' IS NULL THEN RAISE EXCEPTION 'collection counters missing from health'; END IF;
+END $$;
+RESET ROLE;
+SET LOCAL ROLE anon;
+DO $$ BEGIN
+ BEGIN PERFORM public.analytics_recheck_posthog_event_eligibility('20000000-0000-4000-8000-000000000001'); RAISE EXCEPTION 'anon recheck allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM public.analytics_list_submitted_posthog_event_ids(100); RAISE EXCEPTION 'anon backlog allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM public.analytics_claim_posthog_events(1,30); RAISE EXCEPTION 'anon claim allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+	BEGIN PERFORM public.analytics_record_event_v2_classification('20000000-0000-4000-8000-000000000006','audience','injected','50000000-0000-4000-8000-000000000006',false); RAISE EXCEPTION 'anon correction allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+	BEGIN INSERT INTO public.analytics_posthog_outbox(event_id,payload,origin,target_event_id) VALUES ('20000000-0000-4000-8000-000000000099','{}','classification_control','20000000-0000-4000-8000-000000000006'); RAISE EXCEPTION 'anon control injection allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM * FROM public.analytics_events_v2; RAISE EXCEPTION 'anon raw read allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM * FROM public.analytics_v2_archived_totals; RAISE EXCEPTION 'anon aggregate table bypass allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+RESET ROLE;
+ROLLBACK;

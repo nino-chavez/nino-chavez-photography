@@ -20,7 +20,29 @@
       "renderedRoots": [],
       "sourceRoots": [
         "src/routes",
-        "src/lib/components"
+        "src/lib/components",
+        "src/lib/analytics/launch-recap.ts",
+        "src/lib/analytics/launch-recap-text.ts",
+        "src/lib/analytics/launch-recap-list.ts",
+        "src/lib/analytics/launch-recap-view.ts",
+        "src/lib/analytics/intelligence-preferences.ts",
+        "src/lib/analytics/intelligence-assistant.ts",
+        "src/lib/analytics/launch-rules.ts",
+        "src/lib/analytics/album-index.ts",
+        "src/lib/analytics/home.ts",
+        "src/lib/analytics/home.server.ts",
+        "src/lib/analytics/site-report.ts",
+        "src/lib/analytics/site-readings.ts",
+        "src/lib/analytics/data-quality.ts",
+        "src/lib/analytics/failure-scale.ts",
+        "src/lib/analytics/measurement-health.ts",
+        "src/lib/analytics/saved-views.ts",
+        "src/lib/analytics/photo-view.ts",
+        "src/lib/analytics/corrections.ts",
+        "src/lib/analytics/corrections.server.ts",
+        "src/lib/analytics/sharing-notes.ts",
+        "src/lib/analytics/sharing-notes.server.ts",
+        "src/lib/analytics/shortlist.ts"
       ],
       "manualReview": {
         "evidencePath": "docs/reader-audits/gallery-interface.json"

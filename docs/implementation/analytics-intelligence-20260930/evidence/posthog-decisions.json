@@ -1,0 +1,18 @@
+{
+  "project": 635867,
+  "observedAt": "2026-09-30T06:05:39.396Z",
+  "scope": "existing synthetic test cohort",
+  "capturePerformed": true,
+  "passed": true,
+  "checks": [
+    "provider accepts fixed decision query",
+    "favorites and download response overlap counted once",
+    "per-photo denominator",
+    "per-album discovery",
+    "successful retry and failed view overlap counted once",
+    "duplicate event delivery counted once",
+    "events missing view IDs excluded",
+    "sliced searches withheld"
+  ],
+  "limits": "Dedicated test-project synthetic capture and query acceptance; does not prove live audience behavior or collection on deployed sites."
+}

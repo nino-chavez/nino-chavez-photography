@@ -1,0 +1,36 @@
+{
+  "observedAt": "2026-09-30T09:17:49Z",
+  "pages": {
+    "project": "nino-chavez-photography",
+    "deploymentId": "4338009b-770a-4508-a333-a0228264a4cf",
+    "sourceSha": "5944647b4e567337d73f677bc6ad9cd7e8b02d15",
+    "status": "success",
+    "endedAt": "2026-09-30T09:13:23.806006Z"
+  },
+  "migrationsApplied": [
+    "20260930040614",
+    "20260930062000",
+    "20260930084000"
+  ],
+  "publicSavedReport": {
+    "status": 200,
+    "owner": false,
+    "privateActions": 0,
+    "privateBriefs": 0,
+    "coverage": "partial",
+    "generatedAt": "2026-09-30T09:16:07.597+00:00",
+    "cutoff": "2026-09-30T09:07:00.051518+00:00"
+  },
+  "privateWorkflow": "Synthetic API and browser checks pass. Production owner sign-in is unverified: active Chrome Supabase account cannot access this project.",
+  "posthog": "Authorized relay and query access work. No consent-eligible events were queued at the live check, so production receipt parity is not established. Dedicated project 635867 proves controlled linked-query semantics.",
+  "email": "Off; no sender configured, no external brief sent. Owner recipient activation and private-record retention remain undecided.",
+  "ownerAccounts": {
+    "existingConfirmedAccounts": 2,
+    "productionCallbackVerified": false,
+    "providerTemplateInspection": "Current Chrome Supabase account lacks access to photography project."
+  },
+  "scheduledWorkers": {
+    "intelligence": "Observed successful one-minute cron run",
+    "relay": "Observed successful five-minute cron run at 2026-09-30T09:30:07Z"
+  }
+}

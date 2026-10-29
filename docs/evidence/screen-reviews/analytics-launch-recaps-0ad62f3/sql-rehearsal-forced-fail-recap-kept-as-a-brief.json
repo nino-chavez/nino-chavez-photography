@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "negativeControl": false,
+  "passed": false,
+  "migrations": [
+    "supabase/migrations/20261007120000_analytics_launch_recaps.sql",
+    "supabase/rehearsal/_sabotage.tmp.sql"
+  ],
+  "assertions": [
+    "supabase/rehearsal/launch-recap-assertions.sql"
+  ],
+  "output": "",
+  "diagnostics": "ERROR:  retention cleanup removed a public recap (the 400 day old one included)\nCONTEXT:  PL/pgSQL function inline_code_block line 98 at RAISE\n"
+}

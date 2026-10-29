@@ -23,3 +23,7 @@ The current candidate is example retrieval plus a compact local correction model
 This record uses the decision log established by [ADR 0005](0005-co-located-initiative-root.md). It replaces the uncommitted duplicate-number draft under `docs/adr`; ADR 0002 in this log continues to mean the KNOW-vs-INFER domain model.
 
 This decision authorizes the design direction. It does not assert that a model has been trained, a catalog integration works, cloud synchronization works, or a gallery has been edited.
+
+## Workflow amendment — 2026-10-06
+
+Nino uses Lightroom cloud desktop by default and explicitly directed: "skip the classic to cloud helper. i don't use classic by default". This supersedes the proposed Classic bridge as the default route. Use cloud desktop computer use for authorized review and edits, with the shared `lightroom-cloud-review` skill. Do not require Classic, enable Classic sync, or schedule its bridge experiment as the next step. Retain the existing helper and results as historical work. A direct cloud API adapter is optional and requires a separate request and capability check; excluding Classic does not authorize an API investigation. The owned-solution and human-acceptance principles above remain in force.

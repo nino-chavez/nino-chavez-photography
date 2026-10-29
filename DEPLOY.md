@@ -3,15 +3,14 @@
 ## Host
 - **Platform**: Cloudflare Pages
 - **Project name**: `nino-chavez-photography`
-- **Production URL**: https://photography.ninochavez.co
-- **Preview URL pattern**: TODO
+- **Production URL**: https://ninochavez.co/photography
+- **Preview builds**: disabled in the Pages project configuration.
 
 ## Deploy trigger
-- **Canonical**: Cloudflare Pages is Git-integrated on this repo. A merge (or push) to
-  `main` starts a Pages build and, on success, deploys production. There is no GitHub
-  Actions deploy workflow for the site.
-- **Local preflight** (does not deploy): `npm run check && npm run build`
-- **Build time**: confirm in the CF Pages dashboard for a given deployment
+- **Canonical**: Cloudflare Pages git integration builds `main` with `npm run build` and
+  publishes `.svelte-kit/cloudflare`. Verified through the Pages API on September 28, 2026:
+  production deployments enabled; preview branches disabled. A push to `main` deploys.
+- **Build time**: TODO — confirm in the CF Pages dashboard
 
 ## When a merge is not live yet
 Do **not** assume the Git integration is broken and jump to a manual Wrangler deploy.
@@ -34,6 +33,28 @@ with explicit operator intent) — never as the default response to “merge isn
 npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography
 ```
 
+## Photographic homepage ownership and release order
+
+The gallery now owns the public homepage at `https://ninochavez.co/photography`.
+The profile application continues to own `/photography/coverage`. Profile and blog
+applications do not need a source change for this handoff; the edge router chooses
+which existing application answers each public path.
+
+This release is paired with [ninochavez-router PR 7](https://github.com/nino-chavez/ninochavez-router/pull/7)
+(commit `5f1ea028da01ad298ab28db12314c1821bc188a0`). Its `src/routing.ts`
+forwards both `/photography` and `/photography/`, plus the photography-host root,
+to this app's `/photography/`. The router's 108 passing tests include those
+entrances, query preservation, the profile-owned coverage route and existing
+album paths. The router lives at `platform/ninochavez-router` in this workspace.
+
+Deploy this gallery first. Request the exact Pages origin
+`https://nino-chavez-photography.pages.dev/photography/` without following redirects;
+it must return HTTP 200 and the new homepage. Only then deploy the companion router.
+The trailing slash is an internal origin requirement, not a canonical URL change.
+After both releases, check the bare and trailing-slash public entrances, the
+photography hostname, canonical tag, event search and an album link. Local browser
+tests prove the native app's behavior; they do not prove this public routing handoff.
+
 ## Database
 - **Provider**: Supabase — project `skywzpcekhntecegyjoj`, **already linked** (`supabase/.temp/`).
 - **Migrations live in**: `supabase/migrations/` (timestamped `<ts>_name.sql` files).
@@ -52,6 +73,19 @@ npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nin
 - **Tip**: run from an isolated `git worktree` (copy `supabase/.temp` into it) when another
   session holds the main checkout, so the push doesn't depend on the working branch.
 
+### Launch recaps: apply order
+
+Migration `20261007120000_analytics_launch_recaps.sql` creates the public recap table (`analytics_launch_recaps`, no owner) and widens the brief
+kind for queued recap emails. **Apply it before the deploy that contains the recap code.** Until it is applied the scheduler stores no recap and
+logs the missing table, and keeps refreshing everything else, so deploying first is harmless but silent. Rehearsal: `npm run analytics:recap:rehearse`
+(synthetic database, rolled back).
+
+Recaps are written for every launch whether or not an owner exists. Email needs an owner with email on, a verified destination and a retention choice,
+and the existing `ANALYTICS_INTELLIGENCE_DELIVERY_*` settings; none of them changes with this release.
+
+The 7 launches that predate recaps have no recap to show. After the migration is applied, run `scripts/backfill-launch-recaps.ts --dry-run` and read it,
+then with Nino's approval `--write` (see the header of the script). It is idempotent and never sends anything.
+
 ## Companion Worker
 - `cloudflare-worker/album-zip/` — separate Worker for ZIP downloads. Deploy with `npm run worker:deploy`.
 
@@ -61,9 +95,48 @@ npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nin
   `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only, bypasses RLS), and
   `OPENROUTER_API_KEY` (runtime embeddings for semantic search). Ingest/upload tooling also
   needs `CF_ACCOUNT_ID` + `CF_IMAGES_API_TOKEN`.
+- **Analytics test markers**: `ANALYTICS_TEST_TOKEN` signs short-lived test requests.
+  Missing or invalid signatures are rejected. Operator exclusion separately uses the verified
+  Supabase identity and `ADMIN_EMAILS`; no client-supplied traffic classification is trusted.
+- **Cross-site traffic report**: `CLOUDFLARE_ACCOUNT_ID` is a non-secret Pages variable in
+  `wrangler.toml`. The report requires the server-only `CLOUDFLARE_ANALYTICS_TOKEN`.
+  Use the account token `nino-site-analytics-read`, with only Account Analytics Read permission.
+  Its vault reference is `op://Developer Secrets/Cloudflare photography/analytics_api_token`.
+  Set it as a Pages secret; new deployments receive the updated value. Images and account-ops
+  credentials must not be used for this report. The report at
+  `/sites` reads Cloudflare Web Analytics page-load groups for
+  `ninochavez.co`. It groups the profile, writing, demos, and photography paths, as a separate traffic source. The opt-in first-party tracker measures actions and linked views across public sections. Gallery actions remain in
+  the album pages and the photo explorer. Missing or invalid access shows an explicit unavailable state.
 
 ## Domains
-- photography.ninochavez.co
+- ninochavez.co/photography (apex router to Pages)
+- analytics.ninochavez.co/ (same Pages project). The proxied
+  `analytics` CNAME points to `nino-chavez-photography.pages.dev`, and the hostname is attached
+  as a Pages custom domain. The bare root `/` is served by the app as Home. SvelteKit
+  reroutes `/`, `/albums`, `/albums/<key>`, `/albums/export.csv`, `/photos`, `/photos/export.csv`,
+  `/sites`, `/data`, and `/settings` internally while keeping clean public URLs. The gallery build base
+  remains `/photography`. `/gallery` and `/gallery/export.csv` (the retired gallery report) are rerouted
+  too, but only so that the old-address redirect runs: SvelteKit answers 404 to any path outside
+  `/photography` before `handle`, so without that reroute the redirect would never fire.
+- No Cloudflare Page Rule acts on this host. Page Rules run at the edge before the app, so a rule on
+  a path the app serves hides that page; check the zone's Page Rules before adding a path here.
+  The root with a query is handled by the app: `src/lib/analytics/old-addresses.ts` (`oldRootTarget`)
+  sends a root address whose query carries something the old site report read (`period`, `section`,
+  `page`, `actionsPage`, `view`) to `/sites` with just those parameters, in one 308; a bare root or
+  any other root query stays on Home.
+  Two rules that used to act here were deleted with Nino's approval. `49cd0626a9c5fe0e70031b988f948c2c`
+  (`analytics.ninochavez.co/?*` → 301 to `https://analytics.ninochavez.co/photography/analytics/sites?$1`,
+  priority 1) was deleted on 2026-10-07, after the app redirect above deployed (#207); it took two hops
+  and hid the app's redirect.
+  The bare-root rule `4abee86fac06ab509ec6e74a93c4019e` (`analytics.ninochavez.co/` → the site
+  report) was deleted on 2026-10-06 so the root reaches Home. Browsers that followed its 301
+  may have cached it; a private window shows the current behaviour.
+- Old analytics GET/HEAD URLs redirect to this hostname. Old-host analytics writes return 404.
+  The retired gallery report's addresses (`/gallery`, `/gallery/export.csv`, `/photography/analytics`
+  and `/photography/analytics/operator[/export.csv]`) redirect once, with a 308, to the page that took
+  over (`src/lib/analytics/old-addresses.ts`); a POST to one is a 404.
+  The report remains public; the hostname is an access-control boundary for a future
+  Cloudflare Access policy, not authentication by itself.
 
 ## Preflight checks
 - `git status` clean
@@ -71,7 +144,32 @@ npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nin
 
 ## Verify after deploy
 - GitHub check `Cloudflare Pages` on the merge commit is **success**
-- `curl -fsSL https://photography.ninochavez.co` returns 200
+- `curl -fsSL https://ninochavez.co/photography` returns 200
+- `curl -s https://analytics.ninochavez.co/` returns 200 and a page titled "Home · Photography
+  reports".
+- The retired gallery report redirects once. Each of these must answer `308` with this `Location`,
+  and the response must carry `x-frame-options: DENY` (it comes from the app, not from a Page Rule):
+
+  | Request (`curl -sI`) | Location |
+  | --- | --- |
+  | `https://analytics.ninochavez.co/gallery` | `https://analytics.ninochavez.co/` |
+  | `https://analytics.ninochavez.co/gallery?section=photos&period=7` | `https://analytics.ninochavez.co/photos?period=7` |
+  | `https://analytics.ninochavez.co/gallery?section=measurement&period=7` | `https://analytics.ninochavez.co/data?period=7` |
+  | `https://analytics.ninochavez.co/gallery/export.csv?period=7` | `https://analytics.ninochavez.co/photos/export.csv?period=7` |
+  | `https://analytics.ninochavez.co/photography/analytics/operator` | `https://analytics.ninochavez.co/` |
+  | `https://analytics.ninochavez.co/gallery?section=albums&albums=Re7kho` | `https://analytics.ninochavez.co/albums/Re7kho` |
+
+  Following any of them once must not redirect again. A POST to `/gallery` answers 404.
+- Root addresses, from the app (with `x-frame-options: DENY`): `/?period=30` answers `308` to `/sites?period=30`; `/?period=7&section=writing` to
+  `/sites?period=7&section=writing`; `/` and `/?x=1` answer 200 (Home) with no redirect.
+- `/photos` on the analytics subdomain returns 200 with a page titled "Photos · Photography
+  reports", and `/photos/export.csv?period=7` returns 200 with `content-type: text/csv`. Before this
+  release both returned a bare 404 with no `x-frame-options` (checked 2026-10-07).
+- `/data` and `/settings` on the analytics subdomain return 200.
+- `/albums` and `/albums/<key>` on the analytics subdomain return 200; an unlisted or unknown
+  album key returns 404.
+- Check `/sites` on the analytics subdomain for nonzero page loads,
+  a section-specific trend, and a paginated page list. Private share paths must not appear.
 - Spot-check an album page loads
 
 ## Authority limits

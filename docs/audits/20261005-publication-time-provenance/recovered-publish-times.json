@@ -1,0 +1,91 @@
+{
+  "purpose": "Hidden-to-public writes recovered from agent session logs on Nino's personal Mac. Each entry is a direct observation of the write: the command and its before/after output. The database stamped none of them. Backfilling any of them needs Nino's approval, and each must carry the label 'inferred'.",
+  "observed_at": "2026-10-05",
+  "searched": [
+    "~/.claude/projects/**/*.jsonl",
+    "~/.codex/sessions/**/*.jsonl",
+    "~/.codex/archived_sessions/*.jsonl",
+    "apps/film-room/data/jobs/*.log"
+  ],
+  "not_searched": "Session logs on any other machine. Logs are machine-local.",
+  "timestamp_meaning": "The time the agent recorded the write's response or output. The write completed no more than a few seconds earlier.",
+  "albums": [
+    {
+      "album_key": "jq1Rp7",
+      "published_at": "2026-07-19T21:11:43.955Z",
+      "chicago_local": "2026-07-19 16:11 CDT",
+      "write": "Hand-typed REST PATCH visibility unlisted -> public, gallery_scope lpo. The PATCH response returned the row.",
+      "before": "unlisted",
+      "after": "public",
+      "log": "~/.claude/projects/-Users-nino-Workspace-dev-apps-photography/7562b1fd-96a5-4dc3-a7b2-dc6b7ca72c8d.jsonl",
+      "corroboration": "First engagement event 2026-07-19T21:40Z. The film-room job log 2-album_publish.log shows the album already public at 21:52 CDT."
+    },
+    {
+      "album_key": "1BlKk4",
+      "published_at": "2026-07-26T21:38:06.440Z",
+      "chicago_local": "2026-07-26 16:38 CDT",
+      "write": "npx tsx scripts/publish-album.ts --album-key 1BlKk4",
+      "before": "unlisted",
+      "after": "public",
+      "log": "~/.claude/projects/-Users-nino-Workspace-dev-apps-photography/6dfacee4-cd65-4f97-b6f9-b65a8125ff86.jsonl",
+      "corroboration": "First engagement event 2026-07-26T22:40Z."
+    },
+    {
+      "album_key": "dKe567",
+      "published_at": "2026-08-13T00:22:59Z",
+      "chicago_local": "2026-08-12 19:22 CDT",
+      "write": "npx tsx scripts/publish-album.ts --album-key dKe567",
+      "before": "unlisted",
+      "after": "public",
+      "log": "~/.codex/sessions/2026/08/12/rollout-2026-08-12T18-02-17-019ff836-50a3-7862-ab53-79d8485efec3.jsonl",
+      "corroboration": "First engagement event 2026-08-13T00:34Z."
+    },
+    {
+      "album_key": "eqYF0h",
+      "published_at": "2026-08-24T03:46:25.490Z",
+      "chicago_local": "2026-08-23 22:46 CDT",
+      "write": "npx tsx scripts/publish-album.ts --album-key eqYF0h",
+      "before": "unlisted",
+      "after": "public",
+      "log": "~/.codex/archived_sessions/rollout-2026-08-23T22-25-05-01a031cc-e0ef-7101-ba6b-d0b5d1c27e81.jsonl",
+      "corroboration": "First engagement event 2026-08-24T03:48Z."
+    },
+    {
+      "album_key": "fJKdsB",
+      "published_at": "2026-08-29T02:39:40.894Z",
+      "chicago_local": "2026-08-28 21:39 CDT",
+      "write": "npx tsx scripts/publish-album.ts --album-key fJKdsB",
+      "before": "unlisted",
+      "after": "public",
+      "log": "~/.codex/archived_sessions/rollout-2026-08-28T21-07-11-01a04b0e-6a4b-7da0-8309-0b3772c1cb4b.jsonl",
+      "corroboration": "First engagement event 2026-08-29T02:43Z."
+    }
+  ],
+  "corrections_to_existing_values": [
+    {
+      "album_key": "DWdCET",
+      "current_value": "2026-09-26T19:00:00Z",
+      "current_source": "Time given by Nino, entered by hand in supabase/migrations/20260926140000_album_settings_published_at.sql",
+      "logged_publish": "2026-09-26T18:50:36.552Z",
+      "chicago_local": "2026-09-26 13:50 CDT",
+      "write": "npm run publish:album -- --album-key DWdCET --no-announce",
+      "before": "unlisted",
+      "after": "public",
+      "log": "~/.claude/projects/-Users-nino/61499efe-2d2c-4996-a34b-ac2e62574760/subagents/agent-a33d0d3b378852787.jsonl",
+      "effect": "The stored value is 9 minutes late. It falls on the same Chicago day, so no report output changes."
+    },
+    {
+      "album_key": "Re7kho",
+      "current_value": "2026-09-26T16:00:00Z",
+      "current_source": "Time given by Nino, entered by hand in supabase/migrations/20260926140000_album_settings_published_at.sql",
+      "logged_publish": "2026-09-26T01:10:52.556Z",
+      "chicago_local": "2026-09-25 20:10 CDT",
+      "write": "npx tsx scripts/publish-album.ts --album-key Re7kho",
+      "before": "unlisted",
+      "after": "public",
+      "log": "~/.claude/projects/-Users-nino/505ff78b-c656-41b1-bf4f-b76b4e80212a.jsonl",
+      "effect": "The logged publish is 14h49m earlier than the stored time and falls on the previous Chicago day (2026-09-25 rather than 2026-09-26). No log on this Mac shows an unpublish between 01:10Z and 15:01Z, and a subagent listed Re7kho as live at 02:30Z. The stored 16:00Z sits near a 15:06Z --announce run, which did not change visibility. Nino has to confirm which moment he meant before the value is replaced."
+    }
+  ],
+  "corrections_status": "Approved by Nino 2026-10-05: replace both with the logged times (migration 20261005230100)."
+}

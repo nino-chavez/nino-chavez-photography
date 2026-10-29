@@ -1,0 +1,102 @@
+(node:2363) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ old analytics links and CSV exports move to the analytics hostname (33.069417ms)
+✔ analytics writes cannot run on the gallery hostname (1.557292ms)
+✔ gallery collection and local analytics preview remain available (0.574333ms)
+✔ clean reports keep their public URL and old subdomain links redirect once (0.521ms)
+(node:2364) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a successful write is accepted, not just ok (4.205917ms)
+✔ v2 rejects raw search text, incomplete visit context, and invalid target pairs (5.643792ms)
+✔ v2 requires a stable request correlation for download events (0.181875ms)
+✔ v2 rejects arbitrary safe-looking fields and incomplete required context (0.420875ms)
+✔ v2 rejects filter labels outside the gallery vocabulary (0.203666ms)
+✔ a deduplicated replay is an acknowledged duplicate (0.104625ms)
+✔ a database failure never reports a false success (0.138708ms)
+✔ database target and shape violations are client errors (0.159ms)
+✔ public request shapes reject malformed and server-only arrivals (0.248541ms)
+✔ photo, album, and album-only action shapes are accepted (0.214542ms)
+✔ photo-only requests derive the authoritative album and mismatches fail (0.260209ms)
+✔ album-only actions verify that the album exists (0.164542ms)
+✔ controlled marker is signed, expiring, origin-bound, and route-scoped (26.197375ms)
+✔ controlled markers bind to the configured public origin behind the apex router (0.48975ms)
+✔ v2 accepts the actual photo and mixed ZIP payloads and derives album facts server-side (6.640958ms)
+[analytics operator report] unavailable: { message: 'visibility unavailable' }
+(node:2365) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ full photo export preserves more than the PostgREST default page (22.228125ms)
+✔ album-open export emits album grain even when there are no photo rows (0.403ms)
+✔ spreadsheet formulas are neutralized in every exported string field (0.244375ms)
+✔ CSV includes every legacy measure and identifier-free v2 labels with their coverage (0.389166ms)
+✔ mixed download export preserves both photo and album-only actions without double counting (0.269041ms)
+✔ diagnostics retain result aggregates and bounded error categories (14.70625ms)
+✔ public reports exclude unlisted albums from every aggregate and export (18.629958ms)
+✔ public reports fail closed when album visibility cannot be read (1.160375ms)
+(node:2366) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ classification controls use one system identity and carry no visitor identity or private evidence (7.362333ms)
+✔ the public event shape cannot impersonate a classification control (0.233208ms)
+✔ reconciliation only sends bounded UUIDs to the requeue RPC (0.894625ms)
+(node:2367) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ scrubs payloads before they reach PostHog and suppresses person profiles (1.542667ms)
+✔ delivery preserves UUID/time, reports duplicate leases, and does not let an SDK retry alter local state (1.546666ms)
+✔ delivery records provider failure instead of claiming an event was confirmed (0.304792ms)
+✔ delivery suppresses an event withdrawn or reclassified after it was leased (0.145708ms)
+✔ scheduled delivery authorization fails closed for missing and wrong tokens (13.668625ms)
+✔ outbox RPC adapter rejects malformed leases instead of delivering an invented event (0.399417ms)
+✔ runtime configuration and experiment evaluation fail closed without a valid provider response (0.329584ms)
+✔ album-use semantics require a visible album and an ordered open, render, then action (16.693917ms)
+✔ discovery keeps site-wide visits and photo response requires the same visible photo after exposure (1.07ms)
+✔ search semantics count exact search IDs once and hide selections from non-visible albums (0.63075ms)
+✔ download semantics scope request IDs by visit, derive item totals by mode, and make cancellation terminal (1.052042ms)
+✔ experiment semantics join ordinary outcomes to an earlier exposure in the same visit (0.4865ms)
+✔ return semantics separate prior-window browsers from repeat visits and cap lookback at browser retention (0.967541ms)
+✔ slice filters retain only the matching target and tagged-arrival source visit (0.728167ms)
+✔ search displays use the matched visit/search/result set while selections remain visible-target only (0.348ms)
+✔ latest provider correction version controls source-query inclusion regardless of delivery order (0.581334ms)
+✔ source return reports tagged arrivals and only subsequent relevant actions (0.988375ms)
+✔ journey results retain their real denominators and remain unavailable on provider failure (0.353375ms)
+✔ source-return provider rows expose only bounded source aggregates (0.251875ms)
+✔ reconciliation only confirms returned provider UUIDs (0.175542ms)
+✔ scheduler reconciliation checks the durable submitted backlog and leaves provider gaps unconfirmed (0.141375ms)
+✔ reconciliation requeues only provider-missing IDs after a successful query (0.117042ms)
+✔ content-sliced search cannot claim zero-result coverage or an unbiased denominator (0.111791ms)
+✔ source overall totals do not depend on UNION response order (0.218542ms)
+(node:2368) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ uses Chicago calendar dates and only complete days by default (46.428125ms)
+✔ custom intervals normalize inversion and preserve exact filters (1.374167ms)
+✔ invalid dates cannot expand a report beyond its bounded fallback (0.391458ms)
+✔ previous comparison window is equal-sized and immediately preceding (0.163375ms)
+✔ custom comparison uses its own normalized date window (0.531167ms)
+✔ conservative reports exclude known operator and crawler activity but retain unknown (0.455542ms)
+✔ coverage and rising labels never turn a gap or zero baseline into a false zero (0.480542ms)
+✔ rising never falls back to popularity and normalizes unequal complete windows (0.891666ms)
+✔ tagged arrivals are not counted as photo opens (0.315667ms)
+✔ Chicago raw event bounds follow both daylight saving transitions (1.390042ms)
+(node:2369) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ public-site measurement boundary
+  ✔ accepts public content and refuses private and query-bearing paths (2.922416ms)
+  ✔ rejects wrong section, fabricated progress, contact values and target leakage (0.290416ms)
+  ✔ exports only linked audience observations and bounded approved properties (0.753708ms)
+✔ public-site measurement boundary (5.121542ms)
+(node:2370) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ site journeys validate scope and distinguish unavailable from empty (5.75225ms)
+(node:2371) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ v2 projection adds disjoint raw and archive observation counts using recorded dimensions (33.005167ms)
+✔ album-null gallery and search observations remain visible in an all-album report (0.798416ms)
+✔ v2 projection exposes no identifiers, raw read counts, or funnel claims (0.45175ms)
+✔ a missing coverage bound is never presented as complete or observed zero (0.138166ms)
+✔ a current raw classification changes aggregation while archived classifications stay identifier-free (0.525458ms)
+ℹ tests 73
+ℹ suites 1
+ℹ pass 73
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 888.707167

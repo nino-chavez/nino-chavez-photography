@@ -2,8 +2,7 @@
 /**
  * Ingest LOCAL video files into Cloudflare Stream + video_metadata.
  *
- * Companion to migrate-smugmug-videos.ts, for videos that originate locally
- * (e.g. exported reels) rather than from SmugMug. Direct-uploads each file to
+ * For videos that originate locally (e.g. exported reels). Direct-uploads each file to
  * Cloudflare Stream, polls until ready, enables an MP4 download (so the file is
  * fetchable by external services like the Instagram publishing API), records
  * the row in video_metadata, and writes a filename → {stream id, download URL,
@@ -150,9 +149,9 @@ async function main() {
 	// follows at the end of scripts/ingest-album.ts for albums_summary.
 	//
 	// This call was missing from the day this script was written. The only caller of
-	// refresh_videos_summary was scripts/migrate-smugmug-videos.ts, the one-off SmugMug
-	// import — so `videos_summary` was last refreshed on 2026-06-15 and three albums
-	// ingested since (291 of 481 videos) had no row in it at all.
+	// refresh_videos_summary was the one-off SmugMug video import — so `videos_summary`
+	// was last refreshed on 2026-06-15 and three albums ingested since (291 of 481 videos)
+	// had no row in it at all.
 	//
 	// That went unnoticed because the matview's only consumer is VIDEO-ONLY album
 	// discovery on /albums, and both video-only albums predate the drift. The next

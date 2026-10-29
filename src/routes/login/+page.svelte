@@ -10,7 +10,7 @@
 
 	let { form }: Props = $props();
 
-	let mode = $state<'password' | 'magicLink' | 'forgotPassword'>('password');
+	let mode = $state<'password' | 'magicLink' | 'forgotPassword'>('magicLink');
 
 	let callbackError = $derived($page.url.searchParams.get('error'));
 

@@ -1,0 +1,90 @@
+{
+  "measuredAt": "2026-10-07T02:28:53.302Z",
+  "limit": {
+    "free": 50,
+    "paid": 10000,
+    "source": "https://developers.cloudflare.com/workers/platform/limits/"
+  },
+  "perJob": {
+    "gallery": 20,
+    "sites": 12,
+    "launchHome": 18,
+    "launchAlbum": 16,
+    "detail": {
+      "gallery": {
+        "supabaseReads": 3,
+        "detail": {
+          "POST rpc/analytics_posthog_delivery_health": 1,
+          "POST rpc/analytics_read_scheduled_gallery_report": 1,
+          "GET photo_metadata": 1
+        }
+      },
+      "sites": {
+        "supabaseReads": 2,
+        "detail": {
+          "POST rpc/analytics_posthog_delivery_health": 1,
+          "POST rpc/analytics_site_actions": 1
+        }
+      },
+      "launchHome": {
+        "supabaseReads": 10,
+        "detail": {
+          "POST rpc/analytics_read_launches": 1,
+          "GET analytics_events_v2": 1,
+          "HEAD analytics_events_v2": 8
+        }
+      },
+      "launchAlbum": {
+        "supabaseReads": 8,
+        "detail": {
+          "POST rpc/analytics_read_launches": 1,
+          "GET analytics_events_v2": 1,
+          "HEAD analytics_events_v2": 4,
+          "GET photo_metadata": 1,
+          "POST rpc/analytics_read_launch": 1
+        }
+      }
+    }
+  },
+  "fixedPerRequest": {
+    "cleanupRpc": 1,
+    "launchList": 1,
+    "prepareRpc": 1,
+    "claimRpc": 1,
+    "deliveryAmbiguousList": 1,
+    "deliveryClaim": 1,
+    "total": 6
+  },
+  "jobsWakeUp": {
+    "claimedAtMost": 4,
+    "worstFour": "2 gallery + 2 site = 20 + 20 + 12 + 12",
+    "worstTotal": 70,
+    "typicalOneJob": 22
+  },
+  "recapWakeUp": {
+    "build": 9,
+    "detail": {
+      "GET album_settings": 2,
+      "POST rpc/analytics_read_launch": 1,
+      "GET photo_metadata": 1,
+      "GET analytics_intelligence_snapshot_current": 1,
+      "POST rpc/analytics_read_scheduled_gallery_report": 1,
+      "GET albums": 1,
+      "GET analytics_intelligence_actions": 1,
+      "GET analytics_intelligence_finding_lifecycle": 1
+    },
+    "fixed": {
+      "cleanupRpc": 1,
+      "launchList": 1,
+      "existingCheck": 1,
+      "recapInsert": 1,
+      "emailOwnersRead": 1,
+      "deliveryAmbiguousList": 1,
+      "deliveryClaim": 1,
+      "total": 7
+    },
+    "perEmailOwner": 2,
+    "total": 16,
+    "totalWithOneEmailOwner": 18
+  }
+}

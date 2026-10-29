@@ -1,0 +1,40 @@
+{
+  "observedAt": "2026-09-30T09:06:28Z",
+  "scope": {
+    "kind": "sites",
+    "period": 30,
+    "section": "all"
+  },
+  "results": [
+    {
+      "status": 200,
+      "elapsedMs": 356,
+      "coverage": "partial",
+      "generatedAt": "2026-09-30T08:53:58.458+00:00",
+      "cutoff": "2026-09-30T08:37:00.089739+00:00",
+      "findings": 0,
+      "suppressions": 10,
+      "privateProjectionEmpty": true
+    },
+    {
+      "status": 200,
+      "elapsedMs": 434,
+      "coverage": "partial",
+      "generatedAt": "2026-09-30T08:53:58.458+00:00",
+      "cutoff": "2026-09-30T08:37:00.089739+00:00",
+      "findings": 0,
+      "suppressions": 10,
+      "privateProjectionEmpty": true
+    },
+    {
+      "status": 200,
+      "elapsedMs": 135,
+      "coverage": "partial",
+      "generatedAt": "2026-09-30T08:53:58.458+00:00",
+      "cutoff": "2026-09-30T08:37:00.089739+00:00",
+      "findings": 0,
+      "suppressions": 10,
+      "privateProjectionEmpty": true
+    }
+  ]
+}

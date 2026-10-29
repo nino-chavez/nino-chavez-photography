@@ -88,11 +88,10 @@ export const actions = {
 
 		const adminClient = createSupabaseAdminClient();
 
-		// The same writer scripts/publish-album.ts uses — UPSERTs, never DELETEs, and stamps
-		// `published_at` on exactly a hidden -> public transition. This action used to publish an
-		// album by DELETING its settings row outright, which meant an album published here never
-		// got a `published_at` and stayed invisible to the "latest gallery" ranking (/latest,
-		// /api/latest, /api/galleries/recent, /links) forever afterward — see
+		// The same writer scripts/publish-album.ts uses: it UPSERTs and never DELETEs, so the
+		// unlisted -> public update fires the trigger that stamps `published_at`. This action used
+		// to publish by DELETING the settings row, which left no publication time for the "latest
+		// gallery" ranking or the analytics publication-age comparison. See
 		// src/lib/albums/publish-target.ts's module comment.
 		const result = await applyPublishTransition(adminClient, {
 			albumKey,

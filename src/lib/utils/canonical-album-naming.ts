@@ -132,6 +132,14 @@ const KNOWN_PREFIXES: Set<string> = (() => {
 /** A trailing segment in the standard's date format — the one the date·photo-count line repeats. */
 const TRAILING_DATE_SEGMENT = /^\d{2}-\d{2}-\d{4}( to \d{2}-\d{2}-\d{4})?$/;
 
+/** The date printed in a standard album name; null for names without that segment.
+ * This is a display of the operator's name, not a date inferred from an upload. */
+export function albumNameDateLabel(name: string): string | null {
+	const segments = name.split(/\s+[-–—]\s+/).map((s) => s.trim()).filter(Boolean);
+	const last = segments[segments.length - 1];
+	return segments.length > 1 && TRAILING_DATE_SEGMENT.test(last) ? last : null;
+}
+
 export interface AlbumDisplayParts {
 	/** The event or matchup segment — the card's title. */
 	title: string;
@@ -832,4 +840,3 @@ export function validateCanonicalName(name: string): {
 		errors,
 	};
 }
-

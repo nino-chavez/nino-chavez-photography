@@ -1,0 +1,125 @@
+{
+  "galleryDeployment": {
+    "id": "da9bb3ae-5502-4f50-993f-f926b1b00fc9",
+    "url": "https://da9bb3ae.nino-chavez-photography.pages.dev",
+    "commit": "c9d6779eb31d4fc94c205fe2e8cddbe9c4dccfd5",
+    "state": "success",
+    "createdAt": "2026-09-29T02:48:00.088736Z",
+    "stages": [
+      {
+        "name": "queued",
+        "started_on": "2026-09-29T02:48:00.242928Z",
+        "ended_on": "2026-09-29T02:48:00.249021Z",
+        "status": "success"
+      },
+      {
+        "name": "initialize",
+        "started_on": "2026-09-29T02:48:00.249021Z",
+        "ended_on": "2026-09-29T02:48:04.255507Z",
+        "status": "success"
+      },
+      {
+        "name": "clone_repo",
+        "started_on": "2026-09-29T02:48:04.255507Z",
+        "ended_on": "2026-09-29T02:48:07.835222Z",
+        "status": "success"
+      },
+      {
+        "name": "build",
+        "started_on": "2026-09-29T02:48:07.835222Z",
+        "ended_on": "2026-09-29T02:49:20.874418Z",
+        "status": "success"
+      },
+      {
+        "name": "deploy",
+        "started_on": "2026-09-29T02:49:20.874418Z",
+        "ended_on": "2026-09-29T02:49:30.462725Z",
+        "status": "success"
+      }
+    ]
+  },
+  "privacyCommit": "d264e7d30cede17689faab5127c3bf4b8d20c8d2",
+  "migrations": [
+    "20260928120000",
+    "20260929024500"
+  ],
+  "preservation": {
+    "durable_closed_days": 48496,
+    "raw_closed_days": 48496
+  },
+  "coverage": {
+    "days": 90,
+    "end": "2026-09-27",
+    "start": "2026-06-30",
+    "states": [
+      "complete",
+      "partial"
+    ]
+  },
+  "liveChecks": {
+    "checkedAt": "2026-09-29T02:49:51.262Z",
+    "production": true,
+    "checks": [
+      {
+        "path": "/analytics/operator",
+        "anonymousStatus": 302,
+        "privateNoStore": true
+      },
+      {
+        "path": "/analytics/operator/export.csv",
+        "anonymousStatus": 302,
+        "privateNoStore": true
+      },
+      {
+        "publicSummary": true
+      },
+      {
+        "measure": "photo_opens",
+        "traffic": "conservative",
+        "total": 1396,
+        "browsers": 85,
+        "ms": 1689,
+        "available": true
+      },
+      {
+        "csv": true,
+        "bytes": 254939,
+        "photoRows": 505
+      },
+      {
+        "measure": "photo_opens",
+        "traffic": "inclusive",
+        "total": 1396,
+        "browsers": 85,
+        "ms": 1401,
+        "available": true
+      },
+      {
+        "measure": "album_opens",
+        "traffic": "conservative",
+        "total": 99,
+        "browsers": 85,
+        "ms": 1391,
+        "available": true
+      },
+      {
+        "operatorControlAccepted": true,
+        "invalidTestMarkerRejected": true
+      }
+    ]
+  },
+  "operatorExclusion": [
+    {
+      "actions": 1,
+      "effective_classification": "operator",
+      "traffic_context": "operator"
+    }
+  ],
+  "hostedBrowserChecks": {
+    "desktop": true,
+    "phone": true,
+    "savedViewCreateDelete": true
+  },
+  "signedTestSecret": "pending_1password_authorization",
+  "externalProviderParity": "unresolved"
+}

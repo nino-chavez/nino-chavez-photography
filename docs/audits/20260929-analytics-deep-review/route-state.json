@@ -1,0 +1,26 @@
+[
+  {
+    "url": "https://analytics.ninochavez.co/sites",
+    "status": 403
+  },
+  {
+    "url": "https://analytics.ninochavez.co/gallery",
+    "status": 403
+  },
+  {
+    "url": "https://ninochavez.co/photography/analytics-preferences",
+    "status": 403
+  },
+  {
+    "url": "https://ninochavez.co/photography/site-activity.js",
+    "status": 403
+  },
+  {
+    "url": "https://ninochavez.co/photography/api/analytics/preferences",
+    "status": 403
+  },
+  {
+    "url": "https://analytics.ninochavez.co/photography/api/analytics/preferences",
+    "status": 403
+  }
+]

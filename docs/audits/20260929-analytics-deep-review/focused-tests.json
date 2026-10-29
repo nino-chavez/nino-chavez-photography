@@ -1,0 +1,24 @@
+{
+  "files": [
+    "src/hooks.server.test.ts",
+    "src/lib/analytics/report-contract.test.ts",
+    "src/lib/analytics/operator-report.test.ts",
+    "src/lib/analytics/collection-contract.test.ts",
+    "src/lib/analytics/v2-report-projection.test.ts",
+    "src/lib/analytics/site-actions.test.ts",
+    "src/lib/analytics/site-journeys.test.ts",
+    "src/lib/analytics/posthog.test.ts",
+    "src/lib/analytics/posthog-control.test.ts"
+  ],
+  "exitCode": 0,
+  "summary": [
+    "\u2139 tests 73",
+    "\u2139 suites 1",
+    "\u2139 pass 73",
+    "\u2139 fail 0",
+    "\u2139 cancelled 0",
+    "\u2139 skipped 0",
+    "\u2139 todo 0",
+    "\u2139 duration_ms 888.707167"
+  ]
+}

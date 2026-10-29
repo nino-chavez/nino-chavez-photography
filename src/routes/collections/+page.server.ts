@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 		const query = applyCollectionFilter(
 			supabaseServer
 				.from(PHOTOS_READ)
-				.select('photo_id, image_key, ImageUrl, ThumbnailUrl, cf_image_id', { count: 'exact' }),
+				.select('cf_image_id', { count: 'exact' }),
 			collection.slug
 		);
 

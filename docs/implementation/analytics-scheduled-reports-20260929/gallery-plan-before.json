@@ -1,0 +1,2552 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Nested Loop",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Join Type": "Inner",
+      "Startup Cost": 311.19,
+      "Total Cost": 313.8,
+      "Plan Rows": 1,
+      "Plan Width": 32,
+      "Inner Unique": false,
+      "Plans": [
+        {
+          "Node Type": "Hash Join",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE visible_albums",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Right",
+          "Startup Cost": 18.55,
+          "Total Cost": 42.82,
+          "Plan Rows": 806,
+          "Plan Width": 76,
+          "Inner Unique": true,
+          "Hash Cond": "(s.album_key = a.album_key)",
+          "Filter": "(COALESCE(s.visibility, 'public'::text) <> 'unlisted'::text)",
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "album_settings",
+              "Alias": "s",
+              "Startup Cost": 0.0,
+              "Total Cost": 18.1,
+              "Plan Rows": 810,
+              "Plan Width": 72
+            },
+            {
+              "Node Type": "Hash",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 13.8,
+              "Total Cost": 13.8,
+              "Plan Rows": 380,
+              "Plan Width": 40,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "albums",
+                  "Alias": "a",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 13.8,
+                  "Plan Rows": 380,
+                  "Plan Width": 40
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Hash Join",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE coverage",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Left",
+          "Startup Cost": 5.1,
+          "Total Cost": 45.41,
+          "Plan Rows": 1000,
+          "Plan Width": 66,
+          "Inner Unique": true,
+          "Hash Cond": "((g.g)::date = c.bucket_date)",
+          "Plans": [
+            {
+              "Node Type": "Function Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Alias": "g",
+              "Startup Cost": 0.01,
+              "Total Cost": 10.01,
+              "Plan Rows": 1000,
+              "Plan Width": 8
+            },
+            {
+              "Node Type": "Hash",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 3.93,
+              "Total Cost": 3.93,
+              "Plan Rows": 93,
+              "Plan Width": 43,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "analytics_daily_coverage",
+                  "Alias": "c",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 3.93,
+                  "Plan Rows": 93,
+                  "Plan Width": 43
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE cc",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 25.05,
+          "Total Cost": 25.06,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "coverage",
+              "Alias": "coverage",
+              "Startup Cost": 0.0,
+              "Total Cost": 25.0,
+              "Plan Rows": 5,
+              "Plan Width": 32,
+              "Filter": "((bucket_date >= '2026-09-20'::date) AND (bucket_date <= '2026-09-20'::date))"
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE pc",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.01,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Result",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.0,
+              "Total Cost": 0.0,
+              "Plan Rows": 0,
+              "Plan Width": 0,
+              "One-Time Filter": "false"
+            }
+          ]
+        },
+        {
+          "Node Type": "Index Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE base",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Scan Direction": "Forward",
+          "Index Name": "analytics_daily_actions_report_idx",
+          "Relation Name": "analytics_daily_actions",
+          "Alias": "d",
+          "Startup Cost": 0.41,
+          "Total Cost": 24.03,
+          "Plan Rows": 1,
+          "Plan Width": 89,
+          "Index Cond": "((bucket_date >= '2026-09-20'::date) AND (bucket_date <= '2026-09-20'::date) AND (album_key = ANY ('{scheduled-perf}'::text[])))",
+          "Filter": "(EXISTS(SubPlan 5) AND ((photo_id = ''::text) OR EXISTS(SubPlan 7)))",
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "SubPlan",
+              "Subplan Name": "SubPlan 5",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "visible_albums",
+              "Alias": "v",
+              "Startup Cost": 0.0,
+              "Total Cost": 18.13,
+              "Plan Rows": 4,
+              "Plan Width": 0,
+              "Filter": "(album_key = d.album_key)"
+            },
+            {
+              "Node Type": "Nested Loop",
+              "Parent Relationship": "SubPlan",
+              "Subplan Name": "SubPlan 7",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Join Type": "Inner",
+              "Startup Cost": 0.41,
+              "Total Cost": 26.61,
+              "Plan Rows": 4,
+              "Plan Width": 0,
+              "Inner Unique": false,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "photo_metadata_pkey",
+                  "Relation Name": "photo_metadata",
+                  "Alias": "m",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 8.43,
+                  "Plan Rows": 1,
+                  "Plan Width": 6,
+                  "Index Cond": "(photo_id = d.photo_id)",
+                  "Filter": "(album_key = d.album_key)"
+                },
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Inner",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "visible_albums",
+                  "Alias": "v_1",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 18.13,
+                  "Plan Rows": 4,
+                  "Plan Width": 32,
+                  "Filter": "(album_key = d.album_key)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "CTE Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE cur_all",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "CTE Name": "base",
+          "Alias": "base",
+          "Startup Cost": 0.0,
+          "Total Cost": 0.03,
+          "Plan Rows": 1,
+          "Plan Width": 212,
+          "Filter": "((bucket_date >= '2026-09-20'::date) AND (bucket_date <= '2026-09-20'::date))"
+        },
+        {
+          "Node Type": "CTE Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE cur",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "CTE Name": "cur_all",
+          "Alias": "cur_all",
+          "Startup Cost": 0.0,
+          "Total Cost": 0.02,
+          "Plan Rows": 1,
+          "Plan Width": 212,
+          "Filter": "(traffic_classification = ANY ('{audience,unclassified}'::text[]))"
+        },
+        {
+          "Node Type": "CTE Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE cm",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "CTE Name": "cur",
+          "Alias": "cur",
+          "Startup Cost": 0.0,
+          "Total Cost": 0.03,
+          "Plan Rows": 1,
+          "Plan Width": 212,
+          "Filter": "((photo_id <> ''::text) AND (event_type = 'view'::text))"
+        },
+        {
+          "Node Type": "Result",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE pm",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.0,
+          "Plan Rows": 0,
+          "Plan Width": 0,
+          "One-Time Filter": "false"
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Hashed",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE ca",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.03,
+          "Total Cost": 0.04,
+          "Plan Rows": 1,
+          "Plan Width": 48,
+          "Group Key": [
+            "cm.album_key"
+          ],
+          "Planned Partitions": 0,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "cm",
+              "Alias": "cm",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 48
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Hashed",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE pa",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.01,
+          "Total Cost": 0.02,
+          "Plan Rows": 1,
+          "Plan Width": 40,
+          "Group Key": [
+            "pm.album_key"
+          ],
+          "Planned Partitions": 0,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "pm",
+              "Alias": "pm",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.0,
+              "Plan Rows": 1,
+              "Plan Width": 40
+            }
+          ]
+        },
+        {
+          "Node Type": "Unique",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE album_keys",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 55.83,
+          "Total Cost": 55.92,
+          "Plan Rows": 12,
+          "Plan Width": 40,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 55.83,
+              "Total Cost": 55.86,
+              "Plan Rows": 12,
+              "Plan Width": 40,
+              "Sort Key": [
+                "v_2.album_key",
+                "v_2.published_at"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "Append",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.0,
+                  "Total Cost": 55.62,
+                  "Plan Rows": 12,
+                  "Plan Width": 40,
+                  "Subplans Removed": 0,
+                  "Plans": [
+                    {
+                      "Node Type": "CTE Scan",
+                      "Parent Relationship": "Member",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "CTE Name": "visible_albums",
+                      "Alias": "v_2",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 17.13,
+                      "Plan Rows": 4,
+                      "Plan Width": 40,
+                      "Filter": "(album_key = ANY ('{scheduled-perf}'::text[]))"
+                    },
+                    {
+                      "Node Type": "Hash Join",
+                      "Parent Relationship": "Member",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Join Type": "Right",
+                      "Startup Cost": 0.03,
+                      "Total Cost": 19.21,
+                      "Plan Rows": 4,
+                      "Plan Width": 40,
+                      "Inner Unique": false,
+                      "Hash Cond": "(v_3.album_key = ca.album_key)",
+                      "Plans": [
+                        {
+                          "Node Type": "CTE Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "CTE Name": "visible_albums",
+                          "Alias": "v_3",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 16.12,
+                          "Plan Rows": 806,
+                          "Plan Width": 40
+                        },
+                        {
+                          "Node Type": "Hash",
+                          "Parent Relationship": "Inner",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.02,
+                          "Total Cost": 0.02,
+                          "Plan Rows": 1,
+                          "Plan Width": 32,
+                          "Plans": [
+                            {
+                              "Node Type": "CTE Scan",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "CTE Name": "ca",
+                              "Alias": "ca",
+                              "Startup Cost": 0.0,
+                              "Total Cost": 0.02,
+                              "Plan Rows": 1,
+                              "Plan Width": 32
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Node Type": "Hash Join",
+                      "Parent Relationship": "Member",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Join Type": "Right",
+                      "Startup Cost": 0.03,
+                      "Total Cost": 19.21,
+                      "Plan Rows": 4,
+                      "Plan Width": 40,
+                      "Inner Unique": false,
+                      "Hash Cond": "(v_4.album_key = pa.album_key)",
+                      "Plans": [
+                        {
+                          "Node Type": "CTE Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "CTE Name": "visible_albums",
+                          "Alias": "v_4",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 16.12,
+                          "Plan Rows": 806,
+                          "Plan Width": 40
+                        },
+                        {
+                          "Node Type": "Hash",
+                          "Parent Relationship": "Inner",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.02,
+                          "Total Cost": 0.02,
+                          "Plan Rows": 1,
+                          "Plan Width": 32,
+                          "Plans": [
+                            {
+                              "Node Type": "CTE Scan",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "CTE Name": "pa",
+                              "Alias": "pa",
+                              "Startup Cost": 0.0,
+                              "Total Cost": 0.02,
+                              "Plan Rows": 1,
+                              "Plan Width": 32
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Subquery Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE visible_photos",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Alias": "k",
+          "Startup Cost": 0.07,
+          "Total Cost": 14.03,
+          "Plan Rows": 1,
+          "Plan Width": 64,
+          "Filter": "EXISTS(SubPlan 17)",
+          "Plans": [
+            {
+              "Node Type": "Unique",
+              "Parent Relationship": "Subquery",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.07,
+              "Total Cost": 0.09,
+              "Plan Rows": 2,
+              "Plan Width": 64,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.07,
+                  "Total Cost": 0.08,
+                  "Plan Rows": 2,
+                  "Plan Width": 64,
+                  "Sort Key": [
+                    "cm_1.photo_id",
+                    "cm_1.album_key"
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Append",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Startup Cost": 0.03,
+                      "Total Cost": 0.06,
+                      "Plan Rows": 2,
+                      "Plan Width": 64,
+                      "Subplans Removed": 0,
+                      "Plans": [
+                        {
+                          "Node Type": "Aggregate",
+                          "Strategy": "Hashed",
+                          "Partial Mode": "Simple",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.03,
+                          "Total Cost": 0.04,
+                          "Plan Rows": 1,
+                          "Plan Width": 64,
+                          "Group Key": [
+                            "cm_1.photo_id",
+                            "cm_1.album_key"
+                          ],
+                          "Planned Partitions": 0,
+                          "Plans": [
+                            {
+                              "Node Type": "CTE Scan",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "CTE Name": "cm",
+                              "Alias": "cm_1",
+                              "Startup Cost": 0.0,
+                              "Total Cost": 0.02,
+                              "Plan Rows": 1,
+                              "Plan Width": 64,
+                              "Filter": "(photo_id <> ''::text)"
+                            }
+                          ]
+                        },
+                        {
+                          "Node Type": "Aggregate",
+                          "Strategy": "Hashed",
+                          "Partial Mode": "Simple",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.01,
+                          "Total Cost": 0.01,
+                          "Plan Rows": 1,
+                          "Plan Width": 64,
+                          "Group Key": [
+                            "pm_1.photo_id",
+                            "pm_1.album_key"
+                          ],
+                          "Planned Partitions": 0,
+                          "Plans": [
+                            {
+                              "Node Type": "CTE Scan",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "CTE Name": "pm",
+                              "Alias": "pm_1",
+                              "Startup Cost": 0.0,
+                              "Total Cost": 0.0,
+                              "Plan Rows": 1,
+                              "Plan Width": 64,
+                              "Filter": "(photo_id <> ''::text)"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "Nested Loop",
+              "Parent Relationship": "SubPlan",
+              "Subplan Name": "SubPlan 17",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Join Type": "Inner",
+              "Startup Cost": 0.41,
+              "Total Cost": 26.61,
+              "Plan Rows": 4,
+              "Plan Width": 0,
+              "Inner Unique": false,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "photo_metadata_pkey",
+                  "Relation Name": "photo_metadata",
+                  "Alias": "m_1",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 8.43,
+                  "Plan Rows": 1,
+                  "Plan Width": 6,
+                  "Index Cond": "(photo_id = k.photo_id)",
+                  "Filter": "(album_key = k.album_key)"
+                },
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Inner",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "visible_albums",
+                  "Alias": "v_5",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 18.13,
+                  "Plan Rows": 4,
+                  "Plan Width": 32,
+                  "Filter": "(album_key = k.album_key)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "WindowAgg",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE ranked",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.42,
+          "Total Cost": 0.51,
+          "Plan Rows": 1,
+          "Plan Width": 212,
+          "Plans": [
+            {
+              "Node Type": "WindowAgg",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.42,
+              "Total Cost": 0.46,
+              "Plan Rows": 1,
+              "Plan Width": 280,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.42,
+                  "Total Cost": 0.43,
+                  "Plan Rows": 1,
+                  "Plan Width": 272,
+                  "Sort Key": [
+                    "(CASE WHEN (cm_2.photo_id IS NOT NULL) THEN ((sum(cm_2.action_count))::bigint) WHEN (cc_1.state = 'complete'::text) THEN '0'::bigint ELSE NULL::bigint END) DESC NULLS LAST",
+                    "k_1.photo_id",
+                    "k_1.album_key"
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Nested Loop",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Join Type": "Inner",
+                      "Startup Cost": 0.19,
+                      "Total Cost": 0.41,
+                      "Plan Rows": 1,
+                      "Plan Width": 272,
+                      "Inner Unique": false,
+                      "Plans": [
+                        {
+                          "Node Type": "Nested Loop",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Join Type": "Inner",
+                          "Startup Cost": 0.19,
+                          "Total Cost": 0.38,
+                          "Plan Rows": 1,
+                          "Plan Width": 216,
+                          "Inner Unique": false,
+                          "Plans": [
+                            {
+                              "Node Type": "Nested Loop",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "Join Type": "Left",
+                              "Startup Cost": 0.19,
+                              "Total Cost": 0.34,
+                              "Plan Rows": 1,
+                              "Plan Width": 184,
+                              "Inner Unique": true,
+                              "Join Filter": "((k_1.photo_id = cur_1.photo_id) AND (k_1.album_key = cur_1.album_key))",
+                              "Plans": [
+                                {
+                                  "Node Type": "Nested Loop",
+                                  "Parent Relationship": "Outer",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Join Type": "Left",
+                                  "Startup Cost": 0.11,
+                                  "Total Cost": 0.21,
+                                  "Plan Rows": 1,
+                                  "Plan Width": 152,
+                                  "Inner Unique": true,
+                                  "Join Filter": "((k_1.photo_id = pm_2.photo_id) AND (k_1.album_key = pm_2.album_key))",
+                                  "Plans": [
+                                    {
+                                      "Node Type": "Nested Loop",
+                                      "Parent Relationship": "Outer",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "Join Type": "Left",
+                                      "Startup Cost": 0.07,
+                                      "Total Cost": 0.12,
+                                      "Plan Rows": 1,
+                                      "Plan Width": 112,
+                                      "Inner Unique": true,
+                                      "Join Filter": "((k_1.photo_id = cm_2.photo_id) AND (k_1.album_key = cm_2.album_key))",
+                                      "Plans": [
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Outer",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "visible_photos",
+                                          "Alias": "k_1",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.02,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 64
+                                        },
+                                        {
+                                          "Node Type": "Aggregate",
+                                          "Strategy": "Hashed",
+                                          "Partial Mode": "Simple",
+                                          "Parent Relationship": "Inner",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "Startup Cost": 0.07,
+                                          "Total Cost": 0.08,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 80,
+                                          "Group Key": [
+                                            "cm_2.photo_id",
+                                            "cm_2.album_key"
+                                          ],
+                                          "Planned Partitions": 0,
+                                          "Plans": [
+                                            {
+                                              "Node Type": "Nested Loop",
+                                              "Parent Relationship": "Outer",
+                                              "Parallel Aware": false,
+                                              "Async Capable": false,
+                                              "Join Type": "Inner",
+                                              "Startup Cost": 0.0,
+                                              "Total Cost": 0.06,
+                                              "Plan Rows": 1,
+                                              "Plan Width": 80,
+                                              "Inner Unique": false,
+                                              "Join Filter": "((cm_2.photo_id = visible_photos.photo_id) AND (cm_2.album_key = visible_photos.album_key))",
+                                              "Plans": [
+                                                {
+                                                  "Node Type": "CTE Scan",
+                                                  "Parent Relationship": "Outer",
+                                                  "Parallel Aware": false,
+                                                  "Async Capable": false,
+                                                  "CTE Name": "cm",
+                                                  "Alias": "cm_2",
+                                                  "Startup Cost": 0.0,
+                                                  "Total Cost": 0.02,
+                                                  "Plan Rows": 1,
+                                                  "Plan Width": 80
+                                                },
+                                                {
+                                                  "Node Type": "CTE Scan",
+                                                  "Parent Relationship": "Inner",
+                                                  "Parallel Aware": false,
+                                                  "Async Capable": false,
+                                                  "CTE Name": "visible_photos",
+                                                  "Alias": "visible_photos",
+                                                  "Startup Cost": 0.0,
+                                                  "Total Cost": 0.02,
+                                                  "Plan Rows": 1,
+                                                  "Plan Width": 64
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "Node Type": "Aggregate",
+                                      "Strategy": "Hashed",
+                                      "Partial Mode": "Simple",
+                                      "Parent Relationship": "Inner",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "Startup Cost": 0.04,
+                                      "Total Cost": 0.06,
+                                      "Plan Rows": 1,
+                                      "Plan Width": 72,
+                                      "Group Key": [
+                                        "pm_2.photo_id",
+                                        "pm_2.album_key"
+                                      ],
+                                      "Planned Partitions": 0,
+                                      "Plans": [
+                                        {
+                                          "Node Type": "Nested Loop",
+                                          "Parent Relationship": "Outer",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "Join Type": "Inner",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.04,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 72,
+                                          "Inner Unique": false,
+                                          "Join Filter": "((pm_2.photo_id = visible_photos_1.photo_id) AND (pm_2.album_key = visible_photos_1.album_key))",
+                                          "Plans": [
+                                            {
+                                              "Node Type": "CTE Scan",
+                                              "Parent Relationship": "Outer",
+                                              "Parallel Aware": false,
+                                              "Async Capable": false,
+                                              "CTE Name": "pm",
+                                              "Alias": "pm_2",
+                                              "Startup Cost": 0.0,
+                                              "Total Cost": 0.0,
+                                              "Plan Rows": 1,
+                                              "Plan Width": 72
+                                            },
+                                            {
+                                              "Node Type": "CTE Scan",
+                                              "Parent Relationship": "Inner",
+                                              "Parallel Aware": false,
+                                              "Async Capable": false,
+                                              "CTE Name": "visible_photos",
+                                              "Alias": "visible_photos_1",
+                                              "Startup Cost": 0.0,
+                                              "Total Cost": 0.02,
+                                              "Plan Rows": 1,
+                                              "Plan Width": 64
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "Node Type": "Aggregate",
+                                  "Strategy": "Hashed",
+                                  "Partial Mode": "Simple",
+                                  "Parent Relationship": "Inner",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Startup Cost": 0.08,
+                                  "Total Cost": 0.11,
+                                  "Plan Rows": 1,
+                                  "Plan Width": 96,
+                                  "Group Key": [
+                                    "cur_1.photo_id",
+                                    "cur_1.album_key"
+                                  ],
+                                  "Planned Partitions": 0,
+                                  "Plans": [
+                                    {
+                                      "Node Type": "Nested Loop",
+                                      "Parent Relationship": "Outer",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "Join Type": "Inner",
+                                      "Startup Cost": 0.0,
+                                      "Total Cost": 0.06,
+                                      "Plan Rows": 1,
+                                      "Plan Width": 104,
+                                      "Inner Unique": false,
+                                      "Join Filter": "((cur_1.photo_id = visible_photos_2.photo_id) AND (cur_1.album_key = visible_photos_2.album_key))",
+                                      "Plans": [
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Outer",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "cur",
+                                          "Alias": "cur_1",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.02,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 104,
+                                          "Filter": "(photo_id <> ''::text)"
+                                        },
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Inner",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "visible_photos",
+                                          "Alias": "visible_photos_2",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.02,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 64
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Node Type": "CTE Scan",
+                              "Parent Relationship": "Inner",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "CTE Name": "cc",
+                              "Alias": "cc_1",
+                              "Startup Cost": 0.0,
+                              "Total Cost": 0.02,
+                              "Plan Rows": 1,
+                              "Plan Width": 32
+                            }
+                          ]
+                        },
+                        {
+                          "Node Type": "CTE Scan",
+                          "Parent Relationship": "Inner",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "CTE Name": "pc",
+                          "Alias": "pc_1",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 0.02,
+                          "Plan Rows": 1,
+                          "Plan Width": 32
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE page_meta",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.02,
+          "Total Cost": 0.04,
+          "Plan Rows": 1,
+          "Plan Width": 8,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "ranked",
+              "Alias": "ranked",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 4
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Hashed",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE cao",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.03,
+          "Total Cost": 0.05,
+          "Plan Rows": 1,
+          "Plan Width": 48,
+          "Group Key": [
+            "cm_3.album_key"
+          ],
+          "Planned Partitions": 0,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "cm",
+              "Alias": "cm_3",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 48,
+              "Filter": "(photo_id = ''::text)"
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Hashed",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE pao",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.01,
+          "Total Cost": 0.02,
+          "Plan Rows": 1,
+          "Plan Width": 40,
+          "Group Key": [
+            "pm_3.album_key"
+          ],
+          "Planned Partitions": 0,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "pm",
+              "Alias": "pm_3",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.0,
+              "Plan Rows": 1,
+              "Plan Width": 40,
+              "Filter": "(photo_id = ''::text)"
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Hashed",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE sources",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.03,
+          "Total Cost": 0.05,
+          "Plan Rows": 1,
+          "Plan Width": 72,
+          "Group Key": [
+            "cur_2.source_kind",
+            "CASE WHEN (cur_2.source = 'direct'::text) THEN 'Unknown / no tag'::text ELSE cur_2.source END"
+          ],
+          "Planned Partitions": 0,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "cur",
+              "Alias": "cur_2",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 72
+            }
+          ]
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE today_cov",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "analytics_daily_coverage",
+          "Alias": "analytics_daily_coverage",
+          "Startup Cost": 0.0,
+          "Total Cost": 6.49,
+          "Plan Rows": 1,
+          "Plan Width": 8,
+          "Filter": "((coverage_state = ANY ('{complete,partial}'::text[])) AND (bucket_date = ((now() AT TIME ZONE 'America/Chicago'::text))::date) AND (cutoff_at >= ((((now() AT TIME ZONE 'America/Chicago'::text))::date)::timestamp without time zone AT TIME ZONE 'America/Chicago'::text)))"
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Sorted",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE pub_albums",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.42,
+          "Plan Rows": 12,
+          "Plan Width": 40,
+          "Group Key": [
+            "album_keys.album_key"
+          ],
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "album_keys",
+              "Alias": "album_keys",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.24,
+              "Plan Rows": 12,
+              "Plan Width": 40
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Sorted",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "CTE age_albums",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.01,
+          "Total Cost": 0.13,
+          "Plan Rows": 1,
+          "Plan Width": 136,
+          "Group Key": [
+            "album_key",
+            "published_at"
+          ],
+          "Plans": [
+            {
+              "Node Type": "Aggregate",
+              "Strategy": "Sorted",
+              "Partial Mode": "Simple",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.01,
+              "Total Cost": 0.08,
+              "Plan Rows": 1,
+              "Plan Width": 97,
+              "Group Key": [
+                "album_key",
+                "published_at",
+                "g",
+                "((((published_at AT TIME ZONE 'America/Chicago'::text))::date + g))",
+                "coverage_state"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.01,
+                  "Total Cost": 0.02,
+                  "Plan Rows": 0,
+                  "Plan Width": 65,
+                  "Sort Key": [
+                    "album_key",
+                    "published_at",
+                    "g",
+                    "((((published_at AT TIME ZONE 'America/Chicago'::text))::date + g))",
+                    "coverage_state"
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Result",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Startup Cost": 0.0,
+                      "Total Cost": 0.0,
+                      "Plan Rows": 0,
+                      "Plan Width": 65,
+                      "One-Time Filter": "false"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 30",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.02,
+          "Total Cost": 0.03,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "cm",
+              "Alias": "cm_4",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 8
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 31",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.02,
+          "Total Cost": 0.03,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "cm",
+              "Alias": "cm_5",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 8
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 32",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.01,
+          "Total Cost": 0.01,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "pm",
+              "Alias": "pm_4",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.0,
+              "Plan Rows": 1,
+              "Plan Width": 8
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 33",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 25.21,
+          "Total Cost": 25.22,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Merge Join",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Join Type": "Left",
+              "Startup Cost": 25.12,
+              "Total Cost": 25.16,
+              "Plan Rows": 5,
+              "Plan Width": 44,
+              "Inner Unique": true,
+              "Merge Cond": "(c_1.bucket_date = d_1.bucket_date)",
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 25.06,
+                  "Total Cost": 25.07,
+                  "Plan Rows": 5,
+                  "Plan Width": 36,
+                  "Sort Key": [
+                    "c_1.bucket_date"
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "CTE Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "CTE Name": "coverage",
+                      "Alias": "c_1",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 25.0,
+                      "Plan Rows": 5,
+                      "Plan Width": 36,
+                      "Filter": "((bucket_date >= '2026-09-20'::date) AND (bucket_date <= '2026-09-20'::date))"
+                    }
+                  ]
+                },
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Inner",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.06,
+                  "Total Cost": 0.07,
+                  "Plan Rows": 1,
+                  "Plan Width": 12,
+                  "Sort Key": [
+                    "d_1.bucket_date"
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Subquery Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Alias": "d_1",
+                      "Startup Cost": 0.02,
+                      "Total Cost": 0.05,
+                      "Plan Rows": 1,
+                      "Plan Width": 12,
+                      "Plans": [
+                        {
+                          "Node Type": "Aggregate",
+                          "Strategy": "Hashed",
+                          "Partial Mode": "Simple",
+                          "Parent Relationship": "Subquery",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.02,
+                          "Total Cost": 0.04,
+                          "Plan Rows": 1,
+                          "Plan Width": 12,
+                          "Group Key": [
+                            "cm_6.bucket_date"
+                          ],
+                          "Planned Partitions": 0,
+                          "Plans": [
+                            {
+                              "Node Type": "CTE Scan",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "CTE Name": "cm",
+                              "Alias": "cm_6",
+                              "Startup Cost": 0.0,
+                              "Total Cost": 0.02,
+                              "Plan Rows": 1,
+                              "Plan Width": 12
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 37",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.04,
+          "Total Cost": 0.06,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.03,
+              "Total Cost": 0.04,
+              "Plan Rows": 1,
+              "Plan Width": 40,
+              "Sort Key": [
+                "sources.n DESC",
+                "sources.source"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "sources",
+                  "Alias": "sources",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 0.02,
+                  "Plan Rows": 1,
+                  "Plan Width": 40,
+                  "Filter": "(source_kind = 'tagged_arrival'::text)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 38",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.04,
+          "Total Cost": 0.06,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.03,
+              "Total Cost": 0.04,
+              "Plan Rows": 1,
+              "Plan Width": 40,
+              "Sort Key": [
+                "sources_1.n DESC",
+                "sources_1.source"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "sources",
+                  "Alias": "sources_1",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 0.02,
+                  "Plan Rows": 1,
+                  "Plan Width": 40,
+                  "Filter": "(source_kind = 'internal_open_location'::text)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 39",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.03,
+          "Total Cost": 0.04,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "sources",
+              "Alias": "sources_2",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 8,
+              "Filter": "(source_kind = 'unknown'::text)"
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 40",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.07,
+          "Total Cost": 0.08,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.06,
+              "Total Cost": 0.06,
+              "Plan Rows": 1,
+              "Plan Width": 40,
+              "Sort Key": [
+                "((sum(cur_all_1.action_count))::bigint) DESC",
+                "cur_all_1.traffic_classification"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "Aggregate",
+                  "Strategy": "Hashed",
+                  "Partial Mode": "Simple",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.03,
+                  "Total Cost": 0.05,
+                  "Plan Rows": 1,
+                  "Plan Width": 40,
+                  "Group Key": [
+                    "cur_all_1.traffic_classification"
+                  ],
+                  "Planned Partitions": 0,
+                  "Plans": [
+                    {
+                      "Node Type": "CTE Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "CTE Name": "cur_all",
+                      "Alias": "cur_all_1",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 0.03,
+                      "Plan Rows": 1,
+                      "Plan Width": 40,
+                      "Filter": "((photo_id <> ''::text) AND (event_type = 'view'::text))"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 41",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.15,
+          "Total Cost": 0.16,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.14,
+              "Total Cost": 0.14,
+              "Plan Rows": 1,
+              "Plan Width": 56,
+              "Sort Key": [
+                "((row_number() OVER (?))::integer)",
+                "cur_all_2.album_key"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "WindowAgg",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.1,
+                  "Total Cost": 0.13,
+                  "Plan Rows": 1,
+                  "Plan Width": 56,
+                  "Plans": [
+                    {
+                      "Node Type": "Sort",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Startup Cost": 0.1,
+                      "Total Cost": 0.1,
+                      "Plan Rows": 1,
+                      "Plan Width": 56,
+                      "Sort Key": [
+                        "((sum(cur_all_2.action_count))::bigint) DESC",
+                        "cur_all_2.album_key"
+                      ],
+                      "Plans": [
+                        {
+                          "Node Type": "WindowAgg",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.07,
+                          "Total Cost": 0.09,
+                          "Plan Rows": 1,
+                          "Plan Width": 56,
+                          "Plans": [
+                            {
+                              "Node Type": "Sort",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "Startup Cost": 0.07,
+                              "Total Cost": 0.07,
+                              "Plan Rows": 1,
+                              "Plan Width": 48,
+                              "Sort Key": [
+                                "((COALESCE(sum(cur_all_2.action_count) FILTER (WHERE (cur_all_2.traffic_classification = ANY ('{audience,unclassified}'::text[]))), '0'::numeric))::bigint) DESC",
+                                "cur_all_2.album_key"
+                              ],
+                              "Plans": [
+                                {
+                                  "Node Type": "Aggregate",
+                                  "Strategy": "Hashed",
+                                  "Partial Mode": "Simple",
+                                  "Parent Relationship": "Outer",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Startup Cost": 0.04,
+                                  "Total Cost": 0.06,
+                                  "Plan Rows": 1,
+                                  "Plan Width": 48,
+                                  "Group Key": [
+                                    "cur_all_2.album_key"
+                                  ],
+                                  "Planned Partitions": 0,
+                                  "Plans": [
+                                    {
+                                      "Node Type": "CTE Scan",
+                                      "Parent Relationship": "Outer",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "CTE Name": "cur_all",
+                                      "Alias": "cur_all_2",
+                                      "Startup Cost": 0.0,
+                                      "Total Cost": 0.03,
+                                      "Plan Rows": 1,
+                                      "Plan Width": 72,
+                                      "Filter": "((photo_id <> ''::text) AND (event_type = 'view'::text))"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "CTE Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 42",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "CTE Name": "today_cov",
+          "Alias": "today_cov",
+          "Startup Cost": 0.0,
+          "Total Cost": 0.02,
+          "Plan Rows": 1,
+          "Plan Width": 0
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 47",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 19.95,
+          "Total Cost": 19.96,
+          "Plan Rows": 1,
+          "Plan Width": 8,
+          "Plans": [
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "analytics_daily_actions_bucket_unique",
+              "Relation Name": "analytics_daily_actions",
+              "Alias": "d_2",
+              "Startup Cost": 0.42,
+              "Total Cost": 19.95,
+              "Plan Rows": 1,
+              "Plan Width": 8,
+              "Index Cond": "((bucket_date = ((now() AT TIME ZONE 'America/Chicago'::text))::date) AND (album_key = ANY ('{scheduled-perf}'::text[])) AND (event_type = 'view'::text) AND (traffic_classification = ANY ('{audience,unclassified}'::text[])))",
+              "Filter": "((photo_id <> ''::text) AND EXISTS(SubPlan 43) AND ((photo_id = ''::text) OR EXISTS(SubPlan 45)))",
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "SubPlan",
+                  "Subplan Name": "SubPlan 43",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "visible_albums",
+                  "Alias": "v_6",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 18.13,
+                  "Plan Rows": 4,
+                  "Plan Width": 0,
+                  "Filter": "(album_key = d_2.album_key)"
+                },
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "SubPlan",
+                  "Subplan Name": "SubPlan 45",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 26.61,
+                  "Plan Rows": 4,
+                  "Plan Width": 0,
+                  "Inner Unique": false,
+                  "Plans": [
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "photo_metadata_pkey",
+                      "Relation Name": "photo_metadata",
+                      "Alias": "m_2",
+                      "Startup Cost": 0.41,
+                      "Total Cost": 8.43,
+                      "Plan Rows": 1,
+                      "Plan Width": 6,
+                      "Index Cond": "(photo_id = d_2.photo_id)",
+                      "Filter": "(album_key = d_2.album_key)"
+                    },
+                    {
+                      "Node Type": "CTE Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "CTE Name": "visible_albums",
+                      "Alias": "v_7",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 18.13,
+                      "Plan Rows": 4,
+                      "Plan Width": 32,
+                      "Filter": "(album_key = d_2.album_key)"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "CTE Scan",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 48",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "CTE Name": "today_cov",
+          "Alias": "today_cov_1",
+          "Startup Cost": 0.0,
+          "Total Cost": 0.02,
+          "Plan Rows": 1,
+          "Plan Width": 8
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 49",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 25.01,
+          "Total Cost": 25.02,
+          "Plan Rows": 1,
+          "Plan Width": 8,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "coverage",
+              "Alias": "coverage_1",
+              "Startup Cost": 0.0,
+              "Total Cost": 25.0,
+              "Plan Rows": 5,
+              "Plan Width": 8,
+              "Filter": "((bucket_date >= '2026-09-20'::date) AND (bucket_date <= '2026-09-20'::date))"
+            }
+          ]
+        },
+        {
+          "Node Type": "Result",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 51",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.24,
+          "Total Cost": 0.25,
+          "Plan Rows": 1,
+          "Plan Width": 4,
+          "Plans": [
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "InitPlan 50",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.14,
+              "Total Cost": 0.24,
+              "Plan Rows": 1,
+              "Plan Width": 4,
+              "Plans": [
+                {
+                  "Node Type": "Index Only Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "analytics_daily_coverage_pkey",
+                  "Relation Name": "analytics_daily_coverage",
+                  "Alias": "analytics_daily_coverage_1",
+                  "Startup Cost": 0.14,
+                  "Total Cost": 9.54,
+                  "Plan Rows": 93,
+                  "Plan Width": 4
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "InitPlan",
+          "Subplan Name": "InitPlan 52",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 25.09,
+          "Total Cost": 25.1,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 25.06,
+              "Total Cost": 25.07,
+              "Plan Rows": 5,
+              "Plan Width": 32,
+              "Sort Key": [
+                "coverage_2.catalogue_basis"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "coverage",
+                  "Alias": "coverage_2",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 25.0,
+                  "Plan Rows": 5,
+                  "Plan Width": 32,
+                  "Filter": "((bucket_date >= '2026-09-20'::date) AND (bucket_date <= '2026-09-20'::date))"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Nested Loop",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 0.0,
+          "Total Cost": 0.05,
+          "Plan Rows": 1,
+          "Plan Width": 64,
+          "Inner Unique": false,
+          "Plans": [
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "cc",
+              "Alias": "cc",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 32
+            },
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "pc",
+              "Alias": "pc",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.02,
+              "Plan Rows": 1,
+              "Plan Width": 32
+            }
+          ]
+        },
+        {
+          "Node Type": "CTE Scan",
+          "Parent Relationship": "Inner",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "CTE Name": "page_meta",
+          "Alias": "x",
+          "Startup Cost": 0.0,
+          "Total Cost": 0.02,
+          "Plan Rows": 1,
+          "Plan Width": 8
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "SubPlan",
+          "Subplan Name": "SubPlan 34",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 2.16,
+          "Total Cost": 2.17,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 1.76,
+              "Total Cost": 1.79,
+              "Plan Rows": 12,
+              "Plan Width": 96,
+              "Sort Key": [
+                "a_1.n DESC NULLS LAST",
+                "a_1.album_key"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "Subquery Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Alias": "a_1",
+                  "Startup Cost": 1.16,
+                  "Total Cost": 1.55,
+                  "Plan Rows": 12,
+                  "Plan Width": 96,
+                  "Plans": [
+                    {
+                      "Node Type": "Aggregate",
+                      "Strategy": "Hashed",
+                      "Partial Mode": "Simple",
+                      "Parent Relationship": "Subquery",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Startup Cost": 1.16,
+                      "Total Cost": 1.43,
+                      "Plan Rows": 12,
+                      "Plan Width": 280,
+                      "Group Key": [
+                        "k_2.album_key",
+                        "ca_1.album_key",
+                        "ca_1.n",
+                        "ca_1.last_at",
+                        "pa_1.album_key",
+                        "pa_1.n",
+                        "cc_2.state",
+                        "pc_2.state",
+                        "am.po",
+                        "am.ao",
+                        "am.dl",
+                        "am.fa",
+                        "am.sh"
+                      ],
+                      "Planned Partitions": 0,
+                      "Plans": [
+                        {
+                          "Node Type": "Hash Join",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Join Type": "Left",
+                          "Startup Cost": 0.17,
+                          "Total Cost": 0.74,
+                          "Plan Rows": 12,
+                          "Plan Width": 232,
+                          "Inner Unique": true,
+                          "Hash Cond": "(k_2.album_key = am.album_key)",
+                          "Plans": [
+                            {
+                              "Node Type": "Hash Join",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "Join Type": "Left",
+                              "Startup Cost": 0.07,
+                              "Total Cost": 0.59,
+                              "Plan Rows": 12,
+                              "Plan Width": 192,
+                              "Inner Unique": false,
+                              "Hash Cond": "(k_2.album_key = pa_1.album_key)",
+                              "Plans": [
+                                {
+                                  "Node Type": "Hash Join",
+                                  "Parent Relationship": "Outer",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Join Type": "Left",
+                                  "Startup Cost": 0.03,
+                                  "Total Cost": 0.5,
+                                  "Plan Rows": 12,
+                                  "Plan Width": 152,
+                                  "Inner Unique": false,
+                                  "Hash Cond": "(k_2.album_key = ca_1.album_key)",
+                                  "Plans": [
+                                    {
+                                      "Node Type": "Nested Loop",
+                                      "Parent Relationship": "Outer",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "Join Type": "Inner",
+                                      "Startup Cost": 0.0,
+                                      "Total Cost": 0.41,
+                                      "Plan Rows": 12,
+                                      "Plan Width": 104,
+                                      "Inner Unique": false,
+                                      "Plans": [
+                                        {
+                                          "Node Type": "Nested Loop",
+                                          "Parent Relationship": "Outer",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "Join Type": "Inner",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.05,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 64,
+                                          "Inner Unique": false,
+                                          "Plans": [
+                                            {
+                                              "Node Type": "CTE Scan",
+                                              "Parent Relationship": "Outer",
+                                              "Parallel Aware": false,
+                                              "Async Capable": false,
+                                              "CTE Name": "cc",
+                                              "Alias": "cc_2",
+                                              "Startup Cost": 0.0,
+                                              "Total Cost": 0.02,
+                                              "Plan Rows": 1,
+                                              "Plan Width": 32
+                                            },
+                                            {
+                                              "Node Type": "CTE Scan",
+                                              "Parent Relationship": "Inner",
+                                              "Parallel Aware": false,
+                                              "Async Capable": false,
+                                              "CTE Name": "pc",
+                                              "Alias": "pc_2",
+                                              "Startup Cost": 0.0,
+                                              "Total Cost": 0.02,
+                                              "Plan Rows": 1,
+                                              "Plan Width": 32
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Inner",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "album_keys",
+                                          "Alias": "k_2",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.24,
+                                          "Plan Rows": 12,
+                                          "Plan Width": 40
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "Node Type": "Hash",
+                                      "Parent Relationship": "Inner",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "Startup Cost": 0.02,
+                                      "Total Cost": 0.02,
+                                      "Plan Rows": 1,
+                                      "Plan Width": 48,
+                                      "Plans": [
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Outer",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "ca",
+                                          "Alias": "ca_1",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.02,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 48
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "Node Type": "Hash",
+                                  "Parent Relationship": "Inner",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Startup Cost": 0.02,
+                                  "Total Cost": 0.02,
+                                  "Plan Rows": 1,
+                                  "Plan Width": 40,
+                                  "Plans": [
+                                    {
+                                      "Node Type": "CTE Scan",
+                                      "Parent Relationship": "Outer",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "CTE Name": "pa",
+                                      "Alias": "pa_1",
+                                      "Startup Cost": 0.0,
+                                      "Total Cost": 0.02,
+                                      "Plan Rows": 1,
+                                      "Plan Width": 40
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Node Type": "Hash",
+                              "Parent Relationship": "Inner",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "Startup Cost": 0.1,
+                              "Total Cost": 0.1,
+                              "Plan Rows": 1,
+                              "Plan Width": 72,
+                              "Plans": [
+                                {
+                                  "Node Type": "Subquery Scan",
+                                  "Parent Relationship": "Outer",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Alias": "am",
+                                  "Startup Cost": 0.05,
+                                  "Total Cost": 0.1,
+                                  "Plan Rows": 1,
+                                  "Plan Width": 72,
+                                  "Plans": [
+                                    {
+                                      "Node Type": "Aggregate",
+                                      "Strategy": "Hashed",
+                                      "Partial Mode": "Simple",
+                                      "Parent Relationship": "Subquery",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "Startup Cost": 0.05,
+                                      "Total Cost": 0.09,
+                                      "Plan Rows": 1,
+                                      "Plan Width": 72,
+                                      "Group Key": [
+                                        "cur_3.album_key"
+                                      ],
+                                      "Planned Partitions": 0,
+                                      "Plans": [
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Outer",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "cur",
+                                          "Alias": "cur_3",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.02,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 104
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "SubPlan",
+          "Subplan Name": "SubPlan 35",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.09,
+          "Total Cost": 0.1,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.07,
+              "Total Cost": 0.08,
+              "Plan Rows": 1,
+              "Plan Width": 160,
+              "Sort Key": [
+                "r.rn"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 0.06,
+                  "Plan Rows": 1,
+                  "Plan Width": 160,
+                  "Inner Unique": false,
+                  "Join Filter": "((r.rn > (x_1.page * 12)) AND (r.rn <= ((x_1.page + 1) * 12)))",
+                  "Plans": [
+                    {
+                      "Node Type": "CTE Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "CTE Name": "ranked",
+                      "Alias": "r",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 0.02,
+                      "Plan Rows": 1,
+                      "Plan Width": 160
+                    },
+                    {
+                      "Node Type": "CTE Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "CTE Name": "page_meta",
+                      "Alias": "x_1",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 0.02,
+                      "Plan Rows": 1,
+                      "Plan Width": 4
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "SubPlan",
+          "Subplan Name": "SubPlan 36",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.22,
+          "Total Cost": 0.23,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.18,
+              "Total Cost": 0.18,
+              "Plan Rows": 2,
+              "Plan Width": 120,
+              "Sort Key": [
+                "(COALESCE(c_2.n, '0'::bigint)) DESC",
+                "cao.album_key"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "Hash Join",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Left",
+                  "Startup Cost": 0.13,
+                  "Total Cost": 0.17,
+                  "Plan Rows": 2,
+                  "Plan Width": 120,
+                  "Inner Unique": false,
+                  "Hash Cond": "(cao.album_key = p.album_key)",
+                  "Plans": [
+                    {
+                      "Node Type": "Hash Join",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Join Type": "Right",
+                      "Startup Cost": 0.1,
+                      "Total Cost": 0.12,
+                      "Plan Rows": 2,
+                      "Plan Width": 80,
+                      "Inner Unique": true,
+                      "Hash Cond": "(c_2.album_key = cao.album_key)",
+                      "Plans": [
+                        {
+                          "Node Type": "CTE Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "CTE Name": "cao",
+                          "Alias": "c_2",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 0.02,
+                          "Plan Rows": 1,
+                          "Plan Width": 48
+                        },
+                        {
+                          "Node Type": "Hash",
+                          "Parent Relationship": "Inner",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.07,
+                          "Total Cost": 0.07,
+                          "Plan Rows": 2,
+                          "Plan Width": 32,
+                          "Plans": [
+                            {
+                              "Node Type": "Unique",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "Startup Cost": 0.06,
+                              "Total Cost": 0.07,
+                              "Plan Rows": 2,
+                              "Plan Width": 32,
+                              "Plans": [
+                                {
+                                  "Node Type": "Sort",
+                                  "Parent Relationship": "Outer",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Startup Cost": 0.06,
+                                  "Total Cost": 0.07,
+                                  "Plan Rows": 2,
+                                  "Plan Width": 32,
+                                  "Sort Key": [
+                                    "cao.album_key"
+                                  ],
+                                  "Plans": [
+                                    {
+                                      "Node Type": "Append",
+                                      "Parent Relationship": "Outer",
+                                      "Parallel Aware": false,
+                                      "Async Capable": false,
+                                      "Startup Cost": 0.0,
+                                      "Total Cost": 0.05,
+                                      "Plan Rows": 2,
+                                      "Plan Width": 32,
+                                      "Subplans Removed": 0,
+                                      "Plans": [
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Member",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "cao",
+                                          "Alias": "cao",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.02,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 32
+                                        },
+                                        {
+                                          "Node Type": "CTE Scan",
+                                          "Parent Relationship": "Member",
+                                          "Parallel Aware": false,
+                                          "Async Capable": false,
+                                          "CTE Name": "pao",
+                                          "Alias": "pao",
+                                          "Startup Cost": 0.0,
+                                          "Total Cost": 0.02,
+                                          "Plan Rows": 1,
+                                          "Plan Width": 32
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Node Type": "Hash",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Startup Cost": 0.02,
+                      "Total Cost": 0.02,
+                      "Plan Rows": 1,
+                      "Plan Width": 40,
+                      "Plans": [
+                        {
+                          "Node Type": "CTE Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "CTE Name": "pao",
+                          "Alias": "p",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 0.02,
+                          "Plan Rows": 1,
+                          "Plan Width": 40
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

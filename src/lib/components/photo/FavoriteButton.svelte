@@ -7,10 +7,11 @@
 	interface Props {
 		photo: Photo;
 		variant?: 'default' | 'compact' | 'icon-only';
+		surface?: string;
 		class?: string;
 	}
 
-	let { photo, variant = 'default', class: className = '' }: Props = $props();
+	let { photo, variant = 'default', surface = 'direct', class: className = '' }: Props = $props();
 
 	// Reactive favorite status
 	const isFavorited = $derived(favorites.isFavorite(photo.image_key));
@@ -20,7 +21,7 @@
 		event.stopPropagation();
 
 		try {
-			favorites.toggleFavorite(photo);
+			favorites.toggleFavorite(photo, surface);
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error(error.message); // Show limit error to user

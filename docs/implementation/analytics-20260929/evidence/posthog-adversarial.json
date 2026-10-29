@@ -1,0 +1,53 @@
+{
+  "project": 635867,
+  "run": "fbf764ad-306d-433b-a38a-c727b643d919",
+  "observedAt": "2026-09-29T17:26:44.599Z",
+  "passed": true,
+  "checks": {
+    "wrong photo, wrong category, hidden album do not convert": {
+      "passed": true,
+      "expected": [
+        3,
+        1
+      ],
+      "observed": [
+        3,
+        1
+      ]
+    },
+    "tag on action is not a tagged arrival": {
+      "passed": true,
+      "expected": [
+        2,
+        1
+      ],
+      "observed": [
+        2,
+        1
+      ]
+    },
+    "highest version beats later delivery": {
+      "passed": true,
+      "expected": [
+        3,
+        0
+      ],
+      "observed": [
+        3,
+        0
+      ]
+    },
+    "reversal restores the retained eligible action": {
+      "passed": true,
+      "expected": [
+        3,
+        1
+      ],
+      "observed": [
+        3,
+        1
+      ]
+    }
+  },
+  "limits": "Synthetic provider observations. Does not prove hosted collection, every report, or causal photography advice."
+}

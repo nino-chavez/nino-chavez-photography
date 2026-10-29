@@ -16,6 +16,7 @@
  */
 
 import { resolveBaseFacets, type BaseFacets } from '$lib/supabase/server';
+import { isAnalyticsWorkspace } from '$lib/analytics/report-paths';
 import type { LayoutServerLoad } from './$types';
 
 // Trailing slash behavior: never use trailing slashes (prevents redirect loops with proxy)
@@ -26,7 +27,11 @@ const CACHE_DURATION_MS = 30 * 60 * 1000;
 
 let facetsCache: { data: BaseFacets; timestamp: number } | null = null;
 
-export const load: LayoutServerLoad = async () => {
+export const load: LayoutServerLoad = async ({ route, url }) => {
+  // Reports use their own catalogue; gallery navigation facets are never rendered here.
+  if (isAnalyticsWorkspace(route.id, url.hostname, url.pathname)) {
+    return { sports: [], categories: [], baseFilterCounts: { sports: [], categories: [], playTypes: [] } };
+  }
   const now = Date.now();
 
   if (!facetsCache || now - facetsCache.timestamp > CACHE_DURATION_MS) {

@@ -1,7 +1,7 @@
 /**
  * SvelteKit Server Hooks
  *
- * Security headers for every server-rendered response.
+ * Security headers and the analytics hostname boundary for server-rendered responses.
  *
  * WHY HERE AND NOT IN `_headers`. Cloudflare Pages applies `_headers` to STATIC
  * ASSET responses only. Everything this app serves as HTML is rendered by the
@@ -32,6 +32,8 @@
  */
 
 import type { Handle } from '@sveltejs/kit';
+import { oldAddressTarget, oldRootTarget } from '$lib/analytics/old-addresses';
+import { ANALYTICS_HOST, cleanReportPath, hostAddress, isReportHost } from '$lib/analytics/report-paths';
 
 const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
@@ -39,10 +41,31 @@ const SECURITY_HEADERS: Record<string, string> = {
 	'Referrer-Policy': 'strict-origin-when-cross-origin'
 };
 
+const analyticsRedirect = (location: string) => new Response(null, { status: 308, headers: { location } });
+
 export const handle: Handle = async ({ event, resolve }) => {
 	// @supabase/ssr handles all cookie-based session management automatically
 	// No manual session handling needed
-	const response = await resolve(event);
+	const { hostname, pathname, search } = event.url;
+	const analyticsPath = '/photography/analytics';
+	const isAnalyticsRoute = pathname === analyticsPath || pathname.startsWith(`${analyticsPath}/`);
+	const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost');
+	let response: Response;
+	const cleanPath = cleanReportPath(pathname);
+	// The old gallery report moved in pieces. One permanent redirect straight to the page that took over, never a chain.
+	// Only reads are redirected: a 308 would replay a form post against a page that has no such action.
+	const isRead = event.request.method === 'GET' || event.request.method === 'HEAD';
+	const moved = !isRead ? null : isReportHost(hostname) ? oldAddressTarget(pathname, search) ?? oldRootTarget(pathname, search) : isAnalyticsRoute ? oldAddressTarget(pathname, search) : null;
+	if (moved) {
+		response = analyticsRedirect(isLocal ? `${event.url.origin}${hostAddress(hostname, moved)}` : `https://${ANALYTICS_HOST}${moved.pathname}${moved.search}${moved.hash}`);
+	} else if (isAnalyticsRoute && ((!isLocal && hostname !== ANALYTICS_HOST) || (isReportHost(hostname) && cleanPath))) {
+		const destination = cleanPath ?? pathname;
+		response = isRead
+			? analyticsRedirect(`${isLocal ? event.url.origin : `https://${ANALYTICS_HOST}`}${destination}${search}`)
+			: new Response('Analytics actions must use analytics.ninochavez.co.', { status: 404 });
+	} else {
+		response = await resolve(event);
+	}
 
 	// `set` rather than `append`: a route that has already made a deliberate choice
 	// (a future embeddable surface relaxing X-Frame-Options, say) would be overwritten

@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-09-30T09:30:07Z",
+  "worker": "photography-analytics-relay",
+  "scheduledRuns": [
+    {
+      "outcome": "ok",
+      "timestamp": 1790760607556,
+      "scheduled": "*/5 * * * *",
+      "exceptions": [],
+      "logs": [
+        {
+          "message": [
+            "{\"state\":\"ran\",\"batches\":1}"
+          ],
+          "level": "log",
+          "timestamp": 1790760607712
+        }
+      ]
+    }
+  ]
+}

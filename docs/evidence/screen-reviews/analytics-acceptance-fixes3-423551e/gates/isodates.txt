@@ -1,0 +1,6 @@
+# iso-date check 2026-10-07T22:08:17.657Z
+visitor: none
+visitor (planted): FOUND 2026-09-29 in "oto opens. Detailed event counts begin 2026-09-29."
+owner: none
+owner (planted): FOUND 2026-09-29 in "oto opens. Detailed event counts begin 2026-09-29."
+# unplanted hits: 0

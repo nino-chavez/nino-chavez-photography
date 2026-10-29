@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-09-29T14:57:58.367Z",
+  "synthetic": true,
+  "note": "Every example count, identifier and publication time in these reproduction cases is invented; not production data.",
+  "unequalRising": {
+    "current": 30,
+    "currentDays": 30,
+    "prior": 14,
+    "priorDays": 7,
+    "display": "+16 actions",
+    "currentPerDay": 1,
+    "priorPerDay": 2
+  },
+  "noComparator": {
+    "risingOrder": "synthetic-high,synthetic-low",
+    "popularOrder": "synthetic-high,synthetic-low",
+    "equal": true
+  },
+  "publicationDay": {
+    "earlyPublication": "2026-09-20T05:01:00Z",
+    "latePublication": "2026-09-21T04:59:00Z",
+    "bothChicagoDay": "2026-09-20",
+    "eligibleMinutesDayOne": [
+      1439,
+      1
+    ]
+  },
+  "dedupBoundary": [
+    {
+      "utcDay": "2026-09-28",
+      "reportDay": "2026-09-28"
+    },
+    {
+      "utcDay": "2026-09-29",
+      "reportDay": "2026-09-28"
+    }
+  ],
+  "mixedDownloads": {
+    "photoRequests": 1,
+    "albumZipRequests": 1,
+    "combinedTotal": 2
+  },
+  "limits": [
+    "No live SQL execution",
+    "Calendar-boundary examples establish the difference between declared keys and reporting dates, not production loss volume",
+    "Rank sort expression is from actual Svelte source, evaluated without rendering the UI"
+  ]
+}

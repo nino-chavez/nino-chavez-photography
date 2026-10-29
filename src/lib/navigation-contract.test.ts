@@ -1,39 +1,29 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-
 const root = new URL('../../', import.meta.url);
 
 async function source(path: string) {
 	return readFile(new URL(path, root), 'utf8');
 }
 
-test('global navigation names Photography as the current top-level section', async () => {
-	const header = await source('src/lib/components/layout/Header.svelte');
-	assert.match(
-		header,
-		/Work'[\s\S]*How I work'[\s\S]*Learn'[\s\S]*Writing'[\s\S]*Photography'[\s\S]*About'/
-	);
-	assert.doesNotMatch(header, /label: 'Demos'/);
-	assert.match(header, /open-practice-shell__identity[\s\S]*data-sveltekit-reload/);
-	assert.match(header, /item\.href === '\/photography' \? 'location'/);
-	assert.match(
-		header,
-		/href="\{base\}\/"[\s\S]*data-sveltekit-reload[\s\S]*aria-label="Photography home"/
-	);
+test('gallery shell uses independent photography navigation', async () => {
+	const [header, footer] = await Promise.all([
+		source('src/lib/components/layout/Header.svelte'),
+		source('src/lib/components/layout/Footer.svelte')
+	]);
+
+	assert.match(header, /Nino Chavez Photography/);
+	assert.match(header, /href=\{`\$\{base\}\/`\}/);
+	assert.match(header, /label: 'Find an event'/);
+	assert.match(header, /label: 'Photographs'/);
+	assert.doesNotMatch(header, /label: 'Collections'/);
 	assert.match(header, /label: 'Saved'/);
-	assert.match(header, /<summary>Menu<\/summary>/);
-	assert.doesNotMatch(header, />Site menu<\/summary>/);
-	// Mobile bottom nav must sit outside .header-animate: that wrapper keeps a
-	// transform from the slide-in animation, which would trap position:fixed.
-	assert.match(
-		header,
-		/<\/div>\s*\n\s*<!-- Mobile Bottom Navigation[\s\S]*aria-label="Mobile navigation"/
-	);
-	assert.doesNotMatch(
-		header,
-		/header-animate[\s\S]*aria-label="Mobile navigation"[\s\S]*<\/div>\s*\n\s*<style>/
-	);
+	assert.match(header, /aria-label="Photography navigation"/);
+	assert.doesNotMatch(header, /open-practice-shell|site-menu-dialog|GLOBAL_NAVIGATION|MENU_NAVIGATION/);
+	assert.match(footer, /https:\/\/ninochavez\.co\/privacy/);
+	assert.match(footer, /Nino Chavez profile/);
+	assert.doesNotMatch(footer, /open-practice-footer|GLOBAL_NAVIGATION/);
 });
 
 test('retired About and Privacy routes point to their canonical owners', async () => {
@@ -46,21 +36,21 @@ test('retired About and Privacy routes point to their canonical owners', async (
 
 	assert.match(about, /redirect\(308, '\/photography#story'\)/);
 	assert.match(privacy, /redirect\(308, '\/privacy'\)/);
-	assert.match(footer, /href="\/photography#story"[\s\S]*Story/);
-	assert.match(footer, /href="\/photography#story"[\s\S]*data-sveltekit-reload[\s\S]*Story/);
-	assert.match(footer, /href="\/privacy"[\s\S]*Privacy/);
+	assert.match(footer, /href="https:\/\/ninochavez\.co\/privacy"[\s\S]*Privacy/);
 	assert.doesNotMatch(sitemap, /`\$\{baseUrl\}\/about`/);
 	assert.doesNotMatch(sitemap, /`\$\{baseUrl\}\/privacy`/);
 });
 
-test('the gallery root hands full-page navigation to the canonical landing', async () => {
+test('the gallery owns its home and submits event search to the native archive', async () => {
 	const [rootPage, rootLoad] = await Promise.all([
 		source('src/routes/+page.svelte'),
 		source('src/routes/+page.server.ts')
 	]);
-	assert.match(rootLoad, /redirect\(308, destination\.toString\(\)\)/);
-	assert.match(rootLoad, /new URL\(SITE_URL\)/);
-	assert.doesNotMatch(rootPage, /Recent events|Selected work|Book a shoot/);
+	assert.match(rootLoad, /getRankedPublicAlbums\(\)/);
+	assert.doesNotMatch(rootLoad, /redirect\(/);
+	assert.match(rootPage, /method="GET" action=\{`\$\{base\}\/albums`\}/);
+	assert.match(rootPage, /name="q"/);
+	assert.match(rootPage, /Selected photographs/);
 });
 
 test('the reachable style guide remains out of the search index', async () => {

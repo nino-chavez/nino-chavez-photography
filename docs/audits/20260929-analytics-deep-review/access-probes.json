@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-09-29T23:10:42.864616+00:00",
+  "probes": {
+    "analytics_events_v2?select=event_id&limit=0": {
+      "status": 401,
+      "code": "42501",
+      "message": "permission denied for table analytics_events_v2"
+    },
+    "engagement_events?select=id&limit=0": {
+      "status": 200,
+      "bodyBytes": 2
+    },
+    "analytics_event_v2_classifications?select=event_id&limit=0": {
+      "status": 401,
+      "code": "42501",
+      "message": "permission denied for table analytics_event_v2_classifications"
+    },
+    "analytics_posthog_outbox?select=event_id&limit=0": {
+      "status": 401,
+      "code": "42501",
+      "message": "permission denied for table analytics_posthog_outbox"
+    },
+    "analytics_v2_archived_totals?select=bucket_date&limit=0": {
+      "status": 401,
+      "code": "42501",
+      "message": "permission denied for table analytics_v2_archived_totals"
+    },
+    "rpc/analytics_read_report_evidence?p_start=2026-09-28&p_end=2026-09-28": {
+      "status": 401,
+      "code": "42501",
+      "message": "permission denied for function analytics_read_report_evidence"
+    },
+    "rpc/analytics_count_distinct_visitors?p_start=2026-09-28&p_end=2026-09-28": {
+      "status": 404,
+      "code": "PGRST202",
+      "message": "Could not find the function public.analytics_count_distinct_visitors(p_end, p_start) in the schema cache"
+    },
+    "posthog_production": {
+      "status": 200,
+      "counts": [
+        [
+          0
+        ]
+      ]
+    },
+    "posthog_wrong_project": {
+      "status": 403
+    },
+    "posthog_wrong_key": {
+      "status": 403
+    }
+  }
+}

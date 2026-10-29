@@ -1,0 +1,24 @@
+Overflow gate for the album launch report, run on a local dev server reading production, source commit 55cf710.
+
+What it checks: every element's bounding box against document.documentElement.clientWidth (not innerWidth, which
+mobile emulation enlarges when something overflows). An element past the viewport edge counts as a failure unless
+it sits inside a scroll container (overflow-x auto or scroll) that itself fits the viewport. Content hidden by
+overflow: hidden or clip is NOT exempt: the report root uses overflow-x: clip, which keeps scrollWidth equal to
+clientWidth even when something inside is cut off, so scrollWidth alone cannot see that defect.
+
+Clean runs, 1440x900 and 375x812, albums Re7kho, DWdCET, fJKdsB, jq1Rp7, eEUGfA, 5M7kNx:
+  every run: 0 elements past the viewport, and no console error (the assistant panel that used to log a 503 is gone).
+Also clean at 375 wide with the root font size at 200%, with forced colors, and with prefers-contrast: more.
+
+Forced failure: a 420 px wide element planted at the top of the report's own text column (.recap-text), Re7kho at 375x812:
+  {"key":"Re7kho","name":"phone","vw":375,"docScroll":375,"bad":["div.planted 16..436 of 375"],"count":1}
+scrollWidth stayed 375 because of the clip, so only the box check caught it. The same plant at 1440 wide passes
+(it fits). The gate can fail inside the report's content.
+
+Other mechanical checks on the same run: one <main> landmark and one <h1> at both widths (the layout provides
+the <main>); no interactive element under 44 px at either width; a 3 px outline on every Tab stop checked.
+
+Capture note: full-page captures are JPEG, 1440 and 375 wide. The tallest is 5,160 CSS px, under the 8,192 px
+(16,384 device px) height where Chrome starts repeating the top of the page; deviceScaleFactor is 1.
+Re7kho-phone-dialog-open.png is the phone photo dialog open (viewport capture). dialog-keyboard-walk.txt is the
+scripted walk of that dialog.

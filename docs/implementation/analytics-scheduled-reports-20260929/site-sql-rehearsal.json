@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "negativeControl": false,
+  "passed": true,
+  "migrations": [
+    "supabase/migrations/20260930005003_analytics_scheduled_site_reports.sql"
+  ],
+  "assertions": [
+    "supabase/rehearsal/scheduled-site-assertions.sql"
+  ],
+  "output": "122",
+  "diagnostics": "NOTICE:  trigger \"analytics_v2_archived_totals_touch\" for relation \"public.analytics_v2_archived_totals\" does not exist, skipping\n"
+}

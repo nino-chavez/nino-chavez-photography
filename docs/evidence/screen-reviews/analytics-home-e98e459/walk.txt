@@ -1,0 +1,139 @@
+Home walk, branch feat/analytics-home at e98e459, local dev server (vite, Node 22.22.0) reading production Supabase with the project's .env.local exported into the process, 2026-10-06.
+Captures: desktop 1440x900 (first screen), phone 375x812 at 2x in 812px parts. Playwright driving headless Chromium; no public gallery page was opened.
+Labels in file names: "shifted" = the as-of day was moved by a temporary edit (since reverted) so launches in progress show. "simulated" = a temporary edit forced that state. "synthetic-cloudflare" = the site reach value 730 / 658 is invented for layout only; CLOUDFLARE_* variables are not in .env.local, so a real run shows the provider unavailable message.
+Shifted captures: only the launch list and the week line move with the as-of day. The site line and the refresh time follow the real clock, so those captures mix a past launch state with today's site figures.
+Overflow gate: every element's box against document.documentElement.clientWidth, hidden or clipped ancestors not excused. Forced to fail once per width by planting an element wider than the viewport. Targets: links, buttons and inputs under 44px; a card whose name link is stretched over the card by ::after is measured as the card.
+scrollHeight in the lines below is the bottom of the page content (.home), not the layout's minimum height. "headline (N lines)" is the h1's height over its line height.
+Density at 390x844 (two screens = 1688px), measured separately: today 1511px, shifted Sep 27 1649px, shifted Oct 2 1585px, simulated stale 1732px (over), simulated gap 1707px (over).
+
+== results (raw output of the walk script follows)
+== home-today desktop (production; Cloudflare not configured locally) scrollHeight 713
+   headline (1 lines): No new album since Sep 26 (inferred), 10 days ago.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":104,"bottom":136},"week":{"top":143,"bottom":187},"firstCard":{"top":252,"bottom":367},"problems":null,"side":{"top":203,"bottom":565},"note":{"top":633,"bottom":673},"cards":3}
+   one 1440x900 screen: yes
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets under 44px: none
+   FORCED FAILURE, a planted element (1600px on desktop, 420px on phone) in .home .body: offenders 16: div#planted-420. spans 32..1632 of 1440 | section.intro spans 32..1632 of 1440 | p.eyebrow spans 32..1632 of 1440 | ... 13 more; scrollWidth 1440 vs viewport 1440 
+   after removing it: offenders none
+   tab 1: <a> Home | outline solid 3px
+   tab 2: <a> Albums | outline solid 3px
+   tab 3: <a> Site | outline solid 3px
+   tab 4: <a> Gallery report | outline solid 3px
+   tab 5: <a> The other 4 launches | outline solid 3px
+   tab 6: <a> College Women's VB - Millikin at North Central - | outline none 3px | card outline solid 3px
+   tab 7: <a> HS Girls VB - JCA at ACC - 09-22-2026 | outline none 3px | card outline solid 3px
+   tab 8: <a> HS Girls VB - JCA vs PNHS - 08-25-2026 | outline none 3px | card outline solid 3px
+   tab 9: <a> Open the site report | outline solid 3px
+   tab 10: leaves the page
+   text 200%: offenders none
+== home-today phone (production; Cloudflare not configured locally) scrollHeight 1532
+   headline (2 lines): No new album since Sep 26 (inferred), 10 days ago.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":136,"bottom":185},"week":{"top":191,"bottom":301},"firstCard":{"top":367,"bottom":582},"problems":null,"side":{"top":1005,"bottom":1367},"note":{"top":1385,"bottom":1484},"cards":3}
+   first phone screen holds sentence and first card: yes; phone height 1532 = 1.89 screens
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets under 44px: none
+   FORCED FAILURE, a planted element (1600px on desktop, 420px on phone) in .home .body: offenders 47: div#planted-420. spans 16..436 of 375 | section.intro spans 16..436 of 375 | p.eyebrow spans 16..436 of 375 | ... 44 more; scrollWidth 375 vs viewport 375 
+   after removing it: offenders none
+   tab 1: <a> Home | outline solid 3px
+   tab 2: <a> Albums | outline solid 3px
+   tab 3: <a> Site | outline solid 3px
+   tab 4: <a> Gallery report | outline solid 3px
+   tab 5: <a> The other 4 launches | outline solid 3px
+   tab 6: <a> College Women's VB - Millikin at North Central - | outline none 3px | card outline solid 3px
+   tab 7: <a> HS Girls VB - JCA at ACC - 09-22-2026 | outline none 3px | card outline solid 3px
+   tab 8: <a> HS Girls VB - JCA vs PNHS - 08-25-2026 | outline none 3px | card outline solid 3px
+   tab 9: <a> Open the site report | outline solid 3px
+   tab 10: leaves the page
+   text 200%: offenders none
+== home-today-synthetic-cloudflare desktop (production data, site reach is a synthetic value) scrollHeight 713
+   headline (1 lines): No new album since Sep 26 (inferred), 10 days ago.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":104,"bottom":136},"week":{"top":143,"bottom":187},"firstCard":{"top":252,"bottom":367},"problems":null,"side":{"top":203,"bottom":577},"note":{"top":633,"bottom":673},"cards":3}
+   one 1440x900 screen: yes
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets under 44px: none
+== home-today-synthetic-cloudflare phone (production data, site reach is a synthetic value) scrollHeight 1563
+   headline (2 lines): No new album since Sep 26 (inferred), 10 days ago.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":136,"bottom":185},"week":{"top":191,"bottom":301},"firstCard":{"top":367,"bottom":582},"problems":null,"side":{"top":1005,"bottom":1399},"note":{"top":1416,"bottom":1515},"cards":3}
+   first phone screen holds sentence and first card: yes; phone height 1563 = 1.92 screens
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets under 44px: none
+== home-shifted-asof-2026-09-27 desktop (as-of shifted) scrollHeight 777
+   headline (2 lines): Two launches are in play: College Women's VB - Millikin at North Central is on day 1 of 7, and HS Girls VB - JCA at ACC is on day 2 of 7.
+   week line: Gallery photo opens, Sep 20 – 26: 1,162, during the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC. The 7 days before (Sep 13 – 19) had 317.
+   layout {"h1":{"top":104,"bottom":169},"week":{"top":175,"bottom":220},"firstCard":{"top":285,"bottom":400},"problems":null,"side":{"top":236,"bottom":680},"note":{"top":697,"bottom":736},"cards":3}
+   one 1440x900 screen: yes
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets under 44px: none
+== home-shifted-asof-2026-09-27 phone (as-of shifted) scrollHeight 1743
+   headline (4 lines): Two launches are in play: College Women's VB - Millikin at North Central is on day 1 of 7, and HS Girls VB - JCA at ACC is on day 2 of 7.
+   week line: Gallery photo opens, Sep 20 – 26: 1,162, during the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC. The 7 days before (Sep 13 – 19) had 317.
+   layout {"h1":{"top":136,"bottom":234},"week":{"top":240,"bottom":328},"firstCard":{"top":394,"bottom":630},"problems":null,"side":{"top":1073,"bottom":1558},"note":{"top":1576,"bottom":1694},"cards":3}
+   first phone screen holds sentence and first card: yes; phone height 1743 = 2.15 screens
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets under 44px: none
+== home-shifted-asof-2026-10-02 desktop (as-of shifted) scrollHeight 746
+   headline (2 lines): Two launches are in play: College Women's VB - Millikin at North Central is on day 6 of 7, and HS Girls VB - JCA at ACC finished its first week in 2nd place of 6 launches.
+   week line: Gallery photo opens, Sep 25 – Oct 1: 1,583, during the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC. The 7 days before (Sep 18 – 24) had 201.
+   layout {"h1":{"top":104,"bottom":169},"week":{"top":175,"bottom":220},"firstCard":{"top":285,"bottom":400},"problems":null,"side":{"top":236,"bottom":632},"note":{"top":666,"bottom":705},"cards":3}
+   one 1440x900 screen: yes
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets under 44px: none
+== home-shifted-asof-2026-10-02 phone (as-of shifted) scrollHeight 1637
+   headline (5 lines): Two launches are in play: College Women's VB - Millikin at North Central is on day 6 of 7, and HS Girls VB - JCA at ACC finished its first week in 2nd place of 6 launches.
+   week line: Gallery photo opens, Sep 25 – Oct 1: 1,583, during the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC. The 7 days before (Sep 18 – 24) had 201.
+   layout {"h1":{"top":136,"bottom":258},"week":{"top":265,"bottom":353},"firstCard":{"top":419,"bottom":634},"problems":null,"side":{"top":1057,"bottom":1473},"note":{"top":1490,"bottom":1589},"cards":3}
+   first phone screen holds sentence and first card: yes; phone height 1637 = 2.02 screens
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets under 44px: none
+== home-simulated-site-provider-unavailable desktop (simulated) scrollHeight 713
+   headline (1 lines): No new album since Sep 26 (inferred), 10 days ago.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":104,"bottom":136},"week":{"top":143,"bottom":187},"firstCard":{"top":252,"bottom":367},"problems":null,"side":{"top":203,"bottom":565},"note":{"top":633,"bottom":673},"cards":3}
+   one 1440x900 screen: yes
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets under 44px: none
+== home-simulated-site-provider-unavailable phone (simulated) scrollHeight 1532
+   headline (2 lines): No new album since Sep 26 (inferred), 10 days ago.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":136,"bottom":185},"week":{"top":191,"bottom":301},"firstCard":{"top":367,"bottom":582},"problems":null,"side":{"top":1005,"bottom":1367},"note":{"top":1385,"bottom":1484},"cards":3}
+   first phone screen holds sentence and first card: yes; phone height 1532 = 1.89 screens
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets under 44px: none
+== home-simulated-stale-refresh desktop (simulated) scrollHeight 857
+   headline (2 lines): The gallery counts were last refreshed at 2:11 PM Chicago time, so recent activity may be missing; this is not a quiet day.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":104,"bottom":169},"week":{"top":175,"bottom":220},"firstCard":{"top":396,"bottom":511},"problems":{"top":236,"bottom":332},"side":{"top":347,"bottom":721},"note":{"top":777,"bottom":817},"cards":3}
+   one 1440x900 screen: yes
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets under 44px: none
+== home-simulated-stale-refresh phone (simulated) scrollHeight 1784
+   headline (4 lines): The gallery counts were last refreshed at 2:11 PM Chicago time, so recent activity may be missing; this is not a quiet day.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":136,"bottom":234},"week":{"top":240,"bottom":350},"firstCard":{"top":588,"bottom":803},"problems":{"top":366,"bottom":524},"side":{"top":1226,"bottom":1620},"note":{"top":1637,"bottom":1736},"cards":3}
+   first phone screen holds sentence and first card: yes; phone height 1784 = 2.20 screens
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets under 44px: none
+== home-simulated-gap desktop (simulated) scrollHeight 857
+   headline (2 lines): Counts stop at Oct 3: the days since are incomplete, so this is a gap in the records, not a quiet gallery.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":104,"bottom":169},"week":{"top":175,"bottom":220},"firstCard":{"top":396,"bottom":511},"problems":{"top":236,"bottom":332},"side":{"top":347,"bottom":721},"note":{"top":777,"bottom":817},"cards":3}
+   one 1440x900 screen: yes
+   overflow gate: viewport 1440, scrollWidth 1440, offenders none
+   targets under 44px: none
+== home-simulated-gap phone (simulated) scrollHeight 1759
+   headline (3 lines): Counts stop at Oct 3: the days since are incomplete, so this is a gap in the records, not a quiet gallery.
+   week line: Gallery photo opens, Sep 29 – Oct 5: 384. The 7 days before (Sep 22 – 28) had 1,451. Both include the first week of College Women's VB - Millikin at North Central and HS Girls VB - JCA at ACC, so this is not a fair comparison.
+   layout {"h1":{"top":136,"bottom":209},"week":{"top":216,"bottom":326},"firstCard":{"top":563,"bottom":779},"problems":{"top":342,"bottom":499},"side":{"top":1202,"bottom":1595},"note":{"top":1613,"bottom":1711},"cards":3}
+   first phone screen holds sentence and first card: yes; phone height 1759 = 2.17 screens
+   overflow gate: viewport 375, scrollWidth 375, offenders none
+   targets under 44px: none
+
+== header on the other pages
+albums index: Home, Albums [aria-current=page], Site, Gallery report.
+album report: Albums [aria-current=true], the others none. 27 elements sit outside the 375px viewport, all inside the existing keyboard-focusable sideways-scrolling launch table (not changed here).
+site page: its own nav gained Home and Albums; Site [aria-current=page].
+forced colors and increased contrast (phone, today): 0 elements outside the viewport.

@@ -1937,17 +1937,17 @@ export async function getAlbumByShareToken(shareToken: string): Promise<AlbumSet
 }
 
 /**
- * Fetch minimal photo data for bulk download (cf_image_id + image_key only)
+ * Fetch minimal photo data for bulk download and its request-scoped measurement.
  */
 export async function fetchAlbumPhotosForDownload(
   albumKey: string,
   // Pass a service_role client to include UNLISTED albums (shared client downloads); photo_metadata
   // RLS gates unlisted rows from the anon default.
   client: SupabaseClient = supabaseServer
-): Promise<Array<{ cf_image_id: string; image_key: string }>> {
+): Promise<Array<{ photo_id: string; cf_image_id: string; image_key: string }>> {
   const { data, error } = await client
     .from(PHOTOS_READ)
-    .select('cf_image_id, image_key')
+    .select('photo_id, cf_image_id, image_key')
     .eq('album_key', albumKey)
     .not('sharpness', 'is', null)
     .not('cf_image_id', 'is', null)
@@ -1962,7 +1962,7 @@ export async function fetchAlbumPhotosForDownload(
     return [];
   }
 
-  return (data || []) as Array<{ cf_image_id: string; image_key: string }>;
+  return (data || []) as Array<{ photo_id: string; cf_image_id: string; image_key: string }>;
 }
 
 /**

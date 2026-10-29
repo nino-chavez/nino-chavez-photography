@@ -35,7 +35,8 @@ export default defineConfig({
 	// Shared settings for all projects
 	use: {
 		// Base URL for tests
-		baseURL: 'http://localhost:5173',
+		baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
+		channel: process.env.PLAYWRIGHT_CHANNEL,
 
 		// Collect trace when retrying the failed test
 		trace: 'on-first-retry',
@@ -76,7 +77,7 @@ export default defineConfig({
 	],
 
 	// Run local dev server before starting the tests
-	webServer: {
+	webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
 		command: 'pnpm run dev',
 		url: 'http://localhost:5173',
 		reuseExistingServer: !process.env.CI,

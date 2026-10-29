@@ -34,28 +34,26 @@
 	<meta name="robots" content="noindex, follow" />
 </svelte:head>
 
-<!-- Page Header -->
-<header class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
-	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-		<div class="flex items-center justify-between gap-4">
+<header class="accessibility-opening">
+		<div class="accessibility-title-row">
 			<div>
-				<h1 class="text-xl lg:text-2xl font-bold text-white">Accessibility Settings</h1>
-				<p class="text-xs text-charcoal-400 mt-1">
-					Customize visual effects to match your needs
+				<p class="accessibility-eyebrow">Display preferences</p>
+				<h1>Accessibility settings</h1>
+				<p class="accessibility-deck">
+					Adjust how gallery effects appear in this browser.
 				</p>
 			</div>
-			<a href="{base}/" class="text-xs text-gold-500 hover:text-gold-400 transition-colors">
+			<a href="{base}/" class="accessibility-back">
 				← Back to Gallery
 			</a>
 		</div>
-	</div>
 </header>
 
 <!-- Main Content -->
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+<main class="accessibility-content">
 
 	<!-- Introduction -->
-	<Card class="p-6 bg-charcoal-900 border-gold-500/30">
+	<Card class="setting-section setting-intro">
 		<h2 class="text-lg font-semibold mb-3 text-gold-400">About These Settings</h2>
 		<p class="text-sm text-charcoal-300 leading-relaxed">
 			The gallery uses visual effects like colored halos, shimmer animations, and photo dimming
@@ -65,7 +63,7 @@
 	</Card>
 
 	<!-- Quality Dimming -->
-	<Card class="p-6">
+	<Card class="setting-section">
 		<div class="flex items-start gap-4">
 			<div class="mt-1 text-gold-400">
 				{#if accessibility.disableQualityDimming}
@@ -102,7 +100,7 @@
 	</Card>
 
 	<!-- Emotion Labels -->
-	<Card class="p-6">
+	<Card class="setting-section">
 		<div class="flex items-start gap-4">
 			<div class="mt-1 text-gold-400">
 				<Tag class="w-5 h-5" />
@@ -136,7 +134,7 @@
 	</Card>
 
 	<!-- High Contrast Mode -->
-	<Card class="p-6">
+	<Card class="setting-section">
 		<div class="flex items-start gap-4">
 			<div class="mt-1 text-gold-400">
 				<Contrast class="w-5 h-5" />
@@ -169,7 +167,7 @@
 	</Card>
 
 	<!-- Quality Scores -->
-	<Card class="p-6">
+	<Card class="setting-section">
 		<div class="flex items-start gap-4">
 			<div class="mt-1 text-gold-400">
 				<BarChart3 class="w-5 h-5" />
@@ -201,7 +199,7 @@
 	</Card>
 
 	<!-- System Preferences Detection -->
-	<Card class="p-6 bg-charcoal-900/50">
+	<Card class="setting-section">
 		<h3 class="text-base font-semibold mb-3">System Preferences</h3>
 		<p class="text-sm text-charcoal-400 mb-4 leading-relaxed">
 			The gallery automatically respects your OS accessibility settings:
@@ -246,12 +244,33 @@
 	</div>
 
 	<!-- Footer Info -->
-	<Card class="p-6 bg-charcoal-900 border-charcoal-700">
+	<Card class="setting-section setting-help">
 		<h3 class="text-sm font-semibold mb-2 text-charcoal-300">Need More Help?</h3>
 		<p class="text-xs text-charcoal-400 leading-relaxed">
 			These settings are designed to provide flexible options for users with different
 			accessibility needs. If you encounter any issues or have suggestions for additional
-			accessibility features, please reach out via the <a href="{base}/contact" class="text-gold-500 hover:text-gold-400 transition-colors">contact page</a>.
+			accessibility features, please <a href="mailto:nino@ninochavez.co" class="text-gold-500 hover:text-gold-400 transition-colors">email Nino</a>.
 		</p>
 	</Card>
-</div>
+</main>
+
+<style>
+	.accessibility-opening, .accessibility-content { width: min(920px, calc(100% - 64px)); margin-inline: auto; }
+	.accessibility-opening { padding-block: 40px 28px; border-bottom: 1px solid var(--color-charcoal-800); }
+	.accessibility-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+	.accessibility-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.accessibility-opening h1 { margin: 0; color: white; font-family: Montserrat, sans-serif; font-size: clamp(32px, 4vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+	.accessibility-deck { margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; }
+	.accessibility-back { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
+	.accessibility-back:hover { color: var(--color-gold-400); }
+	.accessibility-content { display: grid; gap: 0; padding-block: 10px 72px; }
+	.accessibility-content :global(.setting-section) { padding: 26px 0; border: 0; border-bottom: 1px solid var(--color-charcoal-800); border-radius: 0; background: transparent; box-shadow: none; }
+	.accessibility-content :global(.setting-intro) { border-top: 0; }
+	.accessibility-content :global(.setting-help) { margin-top: 14px; }
+	@media (max-width: 640px) {
+		.accessibility-opening, .accessibility-content { width: calc(100% - 40px); }
+		.accessibility-opening { padding-block: 24px 22px; }
+		.accessibility-title-row { align-items: start; flex-direction: column; gap: 10px; }
+		.accessibility-back { white-space: normal; }
+	}
+</style>

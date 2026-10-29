@@ -10,7 +10,6 @@
 
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { page } from '$app/stores';
 
 	interface Props {
 		data: PageData;
@@ -54,80 +53,59 @@
 </script>
 
 
-<div class="container mx-auto px-4 py-16 max-w-4xl">
-	<header class="mb-12 text-center">
-		<h1 class="text-4xl font-bold mb-4">Frequently Asked Questions</h1>
-		<p class="text-lg text-gray-600">
-			Find answers to common questions about the gallery, photos, and features.
-		</p>
+<div class="faq-page">
+	<header class="faq-opening">
+		<p class="faq-eyebrow">Gallery help</p>
+		<h1>Frequently asked questions</h1>
+		<p>Find practical answers about browsing, saving, sharing, and downloading photographs.</p>
 	</header>
 
 	<!-- Search and Filter -->
-	<div class="mb-8 space-y-4">
+	<section class="faq-tools" aria-label="Find an answer">
 		<!-- Search Bar -->
-		<div class="relative">
+		<div class="faq-search">
+			<label for="faq-search">Search questions</label>
 			<input
-				type="text"
+				id="faq-search"
+				type="search"
 				bind:value={searchQuery}
-				placeholder="Search FAQs..."
-				class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+				placeholder="Try downloads, saved photos, or sharing"
 			/>
-			<svg
-				class="absolute left-3 top-3.5 w-5 h-5 text-gray-400"
-				fill="none"
-				stroke="currentColor"
-				viewBox="0 0 24 24"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-				/>
-			</svg>
 		</div>
 
 		<!-- Category Filter -->
-		<div class="flex flex-wrap gap-2">
+		<div class="faq-categories" aria-label="Question categories">
 			<button
 				onclick={() => (selectedCategory = null)}
-				class="px-4 py-2 rounded-lg border transition-colors {selectedCategory === null
-					? 'bg-blue-500 text-white border-blue-500'
-					: 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'}"
+				class:active={selectedCategory === null}
 			>
 				All
 			</button>
 			{#each categories as category}
 				<button
 					onclick={() => (selectedCategory = category)}
-					class="px-4 py-2 rounded-lg border transition-colors {selectedCategory === category
-						? 'bg-blue-500 text-white border-blue-500'
-						: 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'}"
+					class:active={selectedCategory === category}
 				>
 					{category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
 				</button>
 			{/each}
 		</div>
-	</div>
+	</section>
 
 	<!-- FAQ List -->
-	<div class="space-y-6">
+	<div class="faq-list">
 		{#if filteredFAQs.length === 0}
-			<div class="text-center py-12 text-gray-500">
+			<div class="faq-empty">
 				<p>No FAQs match your search criteria.</p>
 			</div>
 		{:else}
 			{#each filteredFAQs as faq (faq.question)}
-				<article class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-					<h2 class="text-xl font-semibold mb-3 text-gray-900">{faq.question}</h2>
-					<p class="text-gray-700 leading-relaxed">{faq.answer}</p>
-					<div class="mt-3">
-						<span
-							class="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600"
-						>
+				<article>
+					<p class="faq-category">
 							{faq.category.replace('-', ' ')}
-						</span>
-					</div>
+					</p>
+					<h2>{faq.question}</h2>
+					<p class="faq-answer">{faq.answer}</p>
 				</article>
 			{/each}
 		{/if}
@@ -135,13 +113,30 @@
 
 	<!-- Results Count -->
 	{#if searchQuery || selectedCategory}
-		<div class="mt-8 text-center text-sm text-gray-500">
+		<div class="faq-results-count" aria-live="polite">
 			Showing {filteredFAQs.length} of {faqs.length} FAQs
 		</div>
 	{/if}
 </div>
 
 <style>
-	/* Additional styles if needed */
+	.faq-page { width: min(920px, calc(100% - 64px)); margin-inline: auto; padding-block: 40px 72px; color: var(--color-charcoal-50); }
+	.faq-opening { max-width: 720px; padding-bottom: 28px; }
+	.faq-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.faq-opening h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 4vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+	.faq-opening > p:last-child { margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; line-height: 1.55; }
+	.faq-tools { padding-block: 18px; border-block: 1px solid var(--color-charcoal-800); }
+	.faq-search label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 650; }
+	.faq-search input { width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--color-charcoal-700); border-radius: 0; background: var(--color-charcoal-950); color: var(--color-charcoal-50); font-size: 16px; }
+	.faq-categories { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+	.faq-categories button { min-height: 44px; padding: 9px 13px; border: 1px solid var(--color-charcoal-700); border-radius: 0; color: var(--color-charcoal-300); text-transform: capitalize; }
+	.faq-categories button.active { border-color: var(--color-gold-500); color: var(--color-gold-400); }
+	.faq-search input:focus-visible, .faq-categories button:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
+	.faq-list article { padding-block: 26px; border-bottom: 1px solid var(--color-charcoal-800); }
+	.faq-category { margin-bottom: 9px; color: var(--color-gold-400); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+	.faq-list h2 { font-family: Montserrat, sans-serif; font-size: 20px; font-weight: 700; line-height: 1.3; }
+	.faq-answer { margin-top: 10px; color: var(--color-charcoal-300); line-height: 1.7; }
+	.faq-empty { padding-block: 56px; color: var(--color-charcoal-400); text-align: center; }
+	.faq-results-count { margin-top: 18px; color: var(--color-charcoal-400); font-size: 13px; }
+	@media (max-width: 640px) { .faq-page { width: calc(100% - 40px); padding-block: 24px 56px; } }
 </style>
-

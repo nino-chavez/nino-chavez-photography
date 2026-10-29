@@ -1,0 +1,78 @@
+{
+  "measuredAt": "2026-09-29T22:57:03.395522+00:00",
+  "measure": "Complete HTML response, not rendered readiness or interaction paint",
+  "results": [
+    {
+      "path": "/photography/analytics/sites?period=7&section=writing",
+      "trial": 1,
+      "status": 200,
+      "ttfbSeconds": 0.058259,
+      "htmlSeconds": 3.968143,
+      "compressedBytes": 5420
+    },
+    {
+      "path": "/photography/analytics/sites?period=7&section=writing",
+      "trial": 2,
+      "status": 200,
+      "ttfbSeconds": 0.076658,
+      "htmlSeconds": 0.164726,
+      "compressedBytes": 5419
+    },
+    {
+      "path": "/photography/analytics/sites?period=7&section=writing",
+      "trial": 3,
+      "status": 200,
+      "ttfbSeconds": 0.114867,
+      "htmlSeconds": 0.260612,
+      "compressedBytes": 5421
+    },
+    {
+      "path": "/photography/analytics/operator?period=7&measure=downloads",
+      "trial": 1,
+      "status": 200,
+      "ttfbSeconds": 0.062375,
+      "htmlSeconds": 1.882068,
+      "compressedBytes": 23124
+    },
+    {
+      "path": "/photography/analytics/operator?period=7&measure=downloads",
+      "trial": 2,
+      "status": 200,
+      "ttfbSeconds": 0.058443,
+      "htmlSeconds": 2.073737,
+      "compressedBytes": 23126
+    },
+    {
+      "path": "/photography/analytics/operator?period=7&measure=downloads",
+      "trial": 3,
+      "status": 200,
+      "ttfbSeconds": 0.064014,
+      "htmlSeconds": 2.493863,
+      "compressedBytes": 23125
+    },
+    {
+      "path": "/photography/analytics/operator?period=90&measure=photo_opens",
+      "trial": 1,
+      "status": 200,
+      "ttfbSeconds": 0.078017,
+      "htmlSeconds": 14.479989,
+      "compressedBytes": 15665
+    },
+    {
+      "path": "/photography/analytics/operator?period=90&measure=photo_opens",
+      "trial": 2,
+      "status": 200,
+      "ttfbSeconds": 0.051566,
+      "htmlSeconds": 15.440285,
+      "compressedBytes": 128355
+    },
+    {
+      "path": "/photography/analytics/operator?period=90&measure=photo_opens",
+      "trial": 3,
+      "status": 200,
+      "ttfbSeconds": 0.057879,
+      "htmlSeconds": 18.353741,
+      "compressedBytes": 128351
+    }
+  ]
+}

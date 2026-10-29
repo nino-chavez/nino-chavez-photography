@@ -43,3 +43,6 @@ playwright/.cache/
 # Python helper bytecode
 __pycache__/
 *.py[cod]
+
+# Local wrangler secrets (written by scripts/wrangler-pages-dev.mjs)
+.dev.vars*

@@ -1,0 +1,88 @@
+{
+  "measuredAt": "2026-09-29T22:48:29.748Z",
+  "kind": "Lab measurements; mobile simulates 150ms RTT, 1.6Mbps down, 4x CPU. Not real-user INP or field Core Web Vitals.",
+  "results": [
+    {
+      "device": "desktop",
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 368,
+      "cls": 0,
+      "longTasks": [
+        414
+      ],
+      "responseStartMs": 156,
+      "responseEndMs": 210.69999992847443,
+      "domContentLoadedMs": 368.5,
+      "loadMs": 368.5,
+      "documentBytes": 6753,
+      "resourceBytes": 113090,
+      "resourceCount": 24,
+      "scriptBytes": 91248,
+      "errors": [],
+      "elapsedMs": 1924
+    },
+    {
+      "device": "desktop",
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 3780,
+      "cls": 0,
+      "longTasks": [],
+      "responseStartMs": 71.10000002384186,
+      "responseEndMs": 3600.5,
+      "domContentLoadedMs": 3762.2999999523163,
+      "loadMs": 3762.399999976158,
+      "documentBytes": 75098,
+      "resourceBytes": 139189,
+      "resourceCount": 28,
+      "scriptBytes": 114196,
+      "errors": [],
+      "elapsedMs": 5313
+    },
+    {
+      "device": "mobile",
+      "url": "https://analytics.ninochavez.co/photography/analytics/sites",
+      "status": 200,
+      "lcp": 1184,
+      "cls": 0,
+      "longTasks": [
+        84,
+        58,
+        104
+      ],
+      "responseStartMs": 159,
+      "responseEndMs": 318.39999997615814,
+      "domContentLoadedMs": 1204.2999999523163,
+      "loadMs": 1205.1999999284744,
+      "documentBytes": 6741,
+      "resourceBytes": 113090,
+      "resourceCount": 24,
+      "scriptBytes": 91248,
+      "errors": [],
+      "elapsedMs": 2852
+    },
+    {
+      "device": "mobile",
+      "url": "https://analytics.ninochavez.co/photography/analytics/operator",
+      "status": 200,
+      "lcp": 3936,
+      "cls": 0,
+      "longTasks": [
+        79,
+        104,
+        83
+      ],
+      "responseStartMs": 53.299999952316284,
+      "responseEndMs": 4099.200000047684,
+      "domContentLoadedMs": 4403.899999976158,
+      "loadMs": 4404.399999976158,
+      "documentBytes": 75198,
+      "resourceBytes": 138589,
+      "resourceCount": 26,
+      "scriptBytes": 114196,
+      "errors": [],
+      "elapsedMs": 5963
+    }
+  ]
+}

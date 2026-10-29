@@ -1,0 +1,147 @@
+# Analytics build record
+
+Status: the full workspace is deployed at `https://analytics.ninochavez.co`. (It first shipped as a single report at `/photography/analytics/operator`, later `/gallery`. That report was retired in build step 8: every old address redirects, and the [old-addresses section of the audit README](audits/20261006-analytics-site-rethink/README.md#old-addresses-build-step-8) says where each of its capabilities went. The history below is dated and keeps the old names.) Production migrations, retained totals, authenticated reports, exports, operator exclusion, saved views, and desktop/phone checks are verified. Signed agent-test requests still require a dedicated secret; its 1Password write is waiting for operator authorization. Operator-account exclusion is already active.
+
+The activity summary remains available. At the operator's September 28 request, `/photography/analytics/operator` and its CSV export now open without sign-in and remain unlisted from search engines. Public reports exclude unlisted albums. Private notes, saved views, retained event details, and all write actions still require the verified operator identity. This access decision supersedes the private-report boundary in `ANALYTICS_PLAN.md`.
+
+## What the operator can do
+
+- Choose one album, several albums, or the whole gallery. Find albums by name, including albums with no recorded activity.
+- Select a measure and activity dates. Filter by sport, photo category, source, event date, season, event type, and traffic.
+- Compare a previous equal period, a custom period, or the same number of days after an album's recorded first publication date.
+- Inspect popular, rising, and recently active photos in image or table views. See current and previous counts, change, and latest activity. Shortlist photos and export the complete filtered result.
+- Save, reopen, update, and delete private report views. Add, edit, and delete sharing notes; see those notes beside daily activity in the table.
+- Separate arrival tags from locations inside the gallery. Inspect how traffic exclusions change album counts and rankings.
+- Review retained events by album and date. Correct their classification and reverse the latest correction while raw evidence survives.
+- See missing history, data freshness, today's partial activity, collection diagnostics, and the unresolved external comparison.
+
+Activity dates use America/Chicago. The existing event deduplication uses UTC days. These are separate rules, and the export names both. Estimated browsers count distinct accepted fingerprints across the whole scope and interval, for any recorded action. They are not summed across days or albums and are not verified people.
+
+## What makes the counts defensible
+
+One read-only database statement returns daily rows and coverage from the same committed snapshot. It also calculates today's partial activity from retained events. A concurrent reconciliation cannot make the reader skip or repeat an offset page. The scalar response is not limited to PostgREST's ordinary 1,000-row page.
+
+Daily summaries preserve photo-level and album-only actions separately. Full download exports retain both photo download actions and album ZIP actions. An empty shortlist returns no photo rows. It does not fall back to every album.
+
+New events capture authoritative catalogue facts. Legacy events receive their first backfill snapshot once. Explicit nulls stay null. Coverage identifies event snapshots, first-backfill facts, or a mixture. A metadata edit does not silently regroup recorded history. Zero-activity catalogue rows use current facts, which the interface states.
+
+The final preservation pass aggregates every physically present event before deletion. It keeps the known raw-evidence boundary separate from the rows that happen to remain. It freezes the durable result, then keeps the existing 90-day deletion policy. A failure never extends raw retention or turns missing evidence into zero.
+
+The latest classification correction feeds private reports, exact retained visitor counts, public summaries, popularity, top-photo selection, and search ranking. The existing high-volume heuristic remains labeled suspected automation. A correction cannot reconstruct evidence already deleted.
+
+The collector validates photo and album identity before insertion. The database enforces the same relationship. Accepted writes, accepted duplicates, invalid targets, and failed writes have different responses. Operator identity and signed, short-lived test markers establish controlled traffic. A bad or expired marker is rejected; it does not silently become audience traffic.
+
+## Local evidence and its limits
+
+The rehearsal uses only the dedicated synthetic Supabase project at API port 55491 and database port 55492. It verifies both loopback hosts, fixed ports, and a project sentinel before resetting anything. The parent owns the runtime. No worker may stop other Docker stacks.
+
+The migration rehearsal runs a guarded reset and apply twice. It checks immutable snapshots, partial and frozen coverage, expiry, interrupted reconciliation, corrections and reversals across consumers, service-only access, more than 1,000 report rows, and concurrent reads during reconciliation. It also checks live partial counts and durable diagnostic start metadata.
+
+Authenticated HTTP checks cover anonymous, ordinary signed-in, and operator access to both page and CSV. They verify private no-store responses and reject raw hash fields. Numerical cases cover audience versus inclusive traffic, category, historical event date, unknown season, a supported zero, tagged arrivals, full photo export, and album-only export.
+
+A bounded local collection burst sent 100 requests at concurrency 20. It produced 20 accepted actions and 80 duplicates, with no write failures. The dated latency values are in `audits/analytics-20260928/verification.json`. Five operator actions stayed classified as operator, and one ordinary control counted as audience. This is loopback evidence, not a production capacity guarantee. A queue is not added without evidence that synchronous collection cannot meet the actual load.
+
+Rendered acceptance uses synthetic records and representative owned photographs. Every capture is marked as synthetic. It does not establish that production history is correct. The browser checks include desktop and phone overflow, the first phone answer, album drilldown, saved views, keyboard photo inspection and focus restoration, shortlist export, sharing-note editing, saved-view updates, Back navigation, and classification/reversal. The parent fixed a startup race that could overwrite an immediate note edit. Inputs now become editable after startup completes.
+
+## External comparison did not establish parity
+
+The read-only Cloudflare audit covered September 21–27, 2026 in Chicago time. The first-party source had 99 deduplicated album opens. The matching hostname and album-path RUM query returned no groups. A broader property query returned traffic, including photography routes, but did not establish compatible album-route coverage. Therefore the result is **unresolved**, not a successful reconciliation and not proof that either number is wrong.
+
+The live shell exposed both an explicit beacon and automatic installation with the same token. That observation alone does not prove double counting. No Cloudflare configuration changed. Source inspection found no PostHog or GA4 instrumentation; it does not rule out an external injection.
+
+The full build retains first-party events because they describe gallery actions and support the required album/photo dimensions. Switching to PostHog would still require definitions, controlled-traffic exclusion, identity limits, retention rules, and reconciliation. An additional provider remains a product decision if it supplies a capability this workspace cannot maintain reliably.
+
+## Privacy and identifier decisions
+
+The IP/browser-derived hash is a pseudonymous identifier. It is not anonymous data. It stays out of page responses, exports, URLs, logs, and durable action summaries. Raw engagement retains the published 90-day limit.
+
+A keyed identifier would reduce offline guessing, but changing its key or construction breaks continuity of distinct counts. This build preserves the existing identifier contract rather than silently mixing identities. Any change needs a version, a 1Password-owned key, an explicit rotation boundary, and a disclosure that people cannot be deduplicated across that boundary.
+
+Long-period unique visitors remain unavailable when the raw evidence needed for exact deduplication has expired. Daily distinct counts are never added. HLL was not selected: arbitrary content and traffic filters, reversible classification, and changing identity versions require a separate precision and privacy contract. Durable action totals remain available over successfully preserved history.
+
+The photography privacy policy lives on the parent website. The pre-release requirement was to add wording explaining that daily action totals may remain after individual engagement records expire. Suggested factual substance: “Individual engagement records, including the derived browser/network identifier, are deleted after 90 days. We may retain daily totals by album, photo, action, and broad traffic classification to understand gallery activity. Those totals do not contain the visitor identifier.” That requirement is now completed; the release record below identifies the live privacy deployment.
+
+## Production application remains a separate, concrete step
+
+The initial read-only live audit observed 48,597 engagement records, with earliest retained event June 30, 2026. It did not verify the applied migration history, active prune job, or execution history. An attempted read-only management query rejected the available credential. No production SQL ran during that initial audit. The repository migration date is not proof of when deletion began.
+
+The release preflight required:
+
+1. Confirm the actual production schema, grants, materialized views, prune job, and recent executions against the migration's prerequisites.
+2. Publish the reviewed aggregate-retention wording in the owning privacy page.
+3. Review and apply the migration as one transaction. Run the initial backfill immediately; the scheduled reconciler is a retry path.
+4. Verify coverage, first scheduled reconciliation, and prune receipts. Do not claim to recover missing history.
+5. Deploy the application and verify hosted access, collection, reports, and cache behavior with controlled traffic.
+
+These steps are prepared for review. The full-build instruction did not authorize production migration, a retention pause, deployment, or an external service configuration change.
+
+## Review artifacts
+
+- `audits/analytics-20260928/verification.json` — final checks, runtime review provenance, source and capture hashes.
+- `audits/analytics-20260928/cold-review-final.md` — independent visual recheck.
+- `ANALYTICS_PLAN.md` — full release contract and acceptance cases.
+- `ANALYTICS_DESIGN_CONCEPTS.md` — the three alternatives, selected structure, and borrowed elements.
+- `audits/analytics-20260928/concepts.html` — interactive alternatives using invented data.
+- `supabase/rehearsal/analytics-assertions.sql` — numerical, security, retention, and correction assertions.
+- `scripts/rehearse-analytics-local.mjs` — guarded, reproducible local database rehearsal.
+
+The independent cold review initially rejected clipped phone navigation, unmarked table overflow, ambiguous photo export, and missing ranking-state evidence. Those findings were fixed and rechecked in `audits/analytics-20260928/cold-review-final.md`. The parent also caught an offscreen native dialog and verified its viewport position after correction. The reviewer accepted the revised visible experience; screenshots do not prove production data or runtime behavior.
+
+The export includes every matching row, not just the displayed page. The HTTP rehearsal exports 1,105 synthetic photo rows. The independent review's phrase “visible result set” describes its screenshot limit, not the export contract.
+
+## Reproduce the local acceptance
+
+Prerequisites: Docker, the installed Supabase CLI (verified 2.102.0), PostgreSQL 17 `psql` at `/opt/homebrew/opt/postgresql@17/bin/psql`, and this repository's installed dependencies. No production token is needed.
+
+1. Run `npm run analytics:setup:local`. It starts only the named synthetic project, saves generated local keys in an ignored file with owner-only permissions, then runs the guarded reset/reapply rehearsal. The template is `supabase/rehearsal/config.toml`.
+2. Keep `npm run analytics:dev:local` running in a second terminal. It serves port 5187 against that local project and permits only `analytics-operator@example.test` as operator. The synthetic password is `synthetic-only-password`.
+3. Run `npm run analytics:verify:local` for permissions, numerical/CSV, collection burst, and forced-failure checks. It creates the ignored test cookie file used by the browser suite.
+4. Run `npm run analytics:ui:local` for the desktop/phone and keyboard journeys. The suite's photograph is a representative owned image substituted only during testing.
+5. Run `npm run check`, `npm run analytics:contract:test`, and `npm run build`. Rendered review evidence must match the changed sources for the build to pass.
+
+`analytics:rehearse` resets only the dedicated local fixture schema. The ordinary application and other Docker projects are outside its scope. Re-running it resets synthetic notes and corrections, so run it before HTTP/browser acceptance. Generated keys, session cookies, raw audit snapshots, and runtime settings stay outside version control. The owned preview and dedicated local stack were stopped after final verification; local database volumes were preserved. Other running projects were untouched.
+
+`npm run analytics:gallery:rehearse` checks the gallery report function, including Popular, Rising and Recent order and photo paging, against the same local project. It applies every migration that defines `analytics_read_scheduled_gallery_report`, oldest first, then `supabase/rehearsal/scheduled-gallery-assertions.sql`, all in one transaction that rolls back. Its record goes to `.temp/analytics-local-rehearsal/gallery-rehearsal.json`. It needs step 1's local keys. Arguments added after `--` are appended to the script's own, so pass a different assertion file to `scripts/rehearse-analytics-scheduled.py` directly instead.
+
+## Remaining release evidence
+
+The complete implementation is ready for production review. Hosted migration, access/cache checks, and a cold review using real production report data remain required after authorized application. Synthetic acceptance is not a substitute for that live evidence. No business effect or improvement in photography decisions has been measured yet.
+
+## September 28 production release
+
+The production preflight confirmed the applied schema, active cron jobs and recent successful runs. The existing prune runs daily at 03:17 UTC. The linked CLI can query and migrate this project; the earlier management-token rejection does not establish a deployment block.
+
+Production compatibility found `albums.event_type` was deliberately removed by the June 9 migration. Reporting now keeps that dimension unknown and queries only existing catalogue columns. The synthetic base matches production and asserts that the removed column stays absent. No event type is inferred from titles or photos.
+
+The reviewer also proposed a cutoff-tail loss. Source inspection and the two-pass boundary assertion reject that finding: preservation receives the current run time and summarizes the whole expiring Chicago day, including raw rows that have not reached the rolling cutoff. Later pruning preserves the frozen total. The corrected rehearsal, contract tests, application check, and production build passed.
+
+The parent site's privacy disclosure was committed as `d264e7d30cede17689faab5127c3bf4b8d20c8d2`, deployed through its documented Worker fallback, and verified at `https://ninochavez.co/privacy`. It now names pseudonymous identifiers and durable daily totals without visitor identifiers.
+
+The live post-migration count comparison found a multiplicity defect in the suspected-automation join: the same fingerprint appeared once for each flagged day. A new regression failed with 1,002 raw events versus 2,004 joined events. Follow-up migration `20260929024500` makes that relation distinct by fingerprint. Both migrations and the expanded rehearsal passed, and retained summaries were rebuilt after the correction. The applied migration remains intact; the correction is a separate migration.
+
+The signed-test marker also uses the configured public origin behind the apex router. Its regression accepts the canonical origin and rejects a different origin. The collection and report suite now has 23 passing tests. The seven browser journeys passed after the catalogue fix. The dedicated 1Password secret write is pending operator authorization after a timeout; operator-account exclusion works independently.
+
+### Hosted verification
+
+PR #160 merged as `c9d6779eb31d4fc94c205fe2e8cddbe9c4dccfd5`. Cloudflare Pages deployment `da9bb3ae-5502-4f50-993f-f926b1b00fc9` completed successfully. The final closed-day preservation check matched 48,496 raw actions to 48,496 daily-summary actions.
+
+The live September 21–27 report matched an independent raw-event query: 1,396 photo opens, 99 album opens, and 85 distinct fingerprints with any activity. These are estimated browsers, not verified people. CSV export succeeded. Anonymous page and CSV requests redirect to sign-in with private/no-store headers. No fingerprint fields appeared in the responses. The private database RPC denies anonymous and ordinary authenticated roles.
+
+A controlled photo open under the verified operator account was accepted and classified `operator`; invalid signed-test markers were rejected. Desktop and phone browser checks passed with no horizontal overflow, real images, and working rising-photo selection. Creating and deleting a private saved view also passed. Production captures remain in ignored local release evidence because the operator workspace can include private albums.
+
+Release verification also found an empty-shortlist route edge case: the CSV helper handled an empty set correctly, but the route converted it to an unrestricted export. The authenticated regression failed before the fix and passed afterward. The route now distinguishes an absent shortlist from an explicitly empty one.
+
+External Cloudflare reconciliation remains unresolved. The live match above is between the gallery report and its raw database evidence; it does not establish parity with another analytics provider.
+
+
+## Report questions, October 16, 2026
+
+Typed questions now accept ordinary wording such as “How did this album do in its first week?” and “Is tracking broken or did nobody visit?” The answer still comes from the existing report. Ambiguous questions ask for a choice; unsupported questions offer alternatives for the current report. Choosing an alternative is explicit, and old choices are disabled after filters change until the question is rerun. Missing saved findings also offer questions that read the report directly. Guidance does not store question text or queue a calculation. Desktop and mobile touch flows exercise these states through the real local endpoint with synthetic data.
+
+The owner question field explains the difference between Cloudflare page loads and the site's own page views, compares photo opens at the same age after publication, explains download requests, and distinguishes zero from missing history or unavailable evidence. The four operations read existing reports without queuing jobs or storing question text. Album shortcuts ask about the first seven days, download requests, and coverage. Sites offers the counter comparison only for All sections, plus coverage for any section. An owner can reach questions from the report header even without a saved calculation. Questions remain available during a saved-findings read or after it fails. Changing filters preserves the old answer until an explicit rerun. New questions require owner access; public readers can still use the existing explanations of visible findings.
+
+Count comparisons use the Data page's definitions and require All sections. Same-age answers use the album report's first three or seven complete Chicago days and the median of earlier public launches. They exclude incomplete peers and identify recovered publication dates. They do not infer similar event types, unique people, completed transfers, or causes. Coverage answers use source totals and cutoffs; an empty findings list never establishes zero. A selected unlisted album makes the public-total coverage answer unavailable and links to its owner-visible album report, rather than treating exclusion as zero. Answer links preserve the requested filters and open the source report or Data notes.
+
+Verification: the assistant and report-link regression tests run in `analytics:contract:test`. `tests/analytics/intelligence-questions.spec.ts` exercises real local pages and question POSTs at desktop (1280px) and mobile (390px, touch input) sizes. It follows source links and browser Back, compares a returned total with the report RPC, checks filter changes and reruns, and preserves owner, origin, and unlisted-album protections. These flows do not replace page HTML, saved-findings responses, or answers. The separate workspace suite injects delayed and failed saved-findings reads while its new questions still reach the real endpoint; older saved-finding and job-poll fixtures remain explicitly synthetic. The existing synthetic stack is used without resetting it. These checks do not establish physical-phone or authenticated-production acceptance. Rendered examples: [desktop album](implementation/analytics-intelligence-20260930/evidence/question-ui-album-1280-panel.png), [mobile album](implementation/analytics-intelligence-20260930/evidence/question-ui-album-390-panel.png), [desktop Sites](implementation/analytics-intelligence-20260930/evidence/question-ui-sites-1280-panel.png), and [mobile Sites](implementation/analytics-intelligence-20260930/evidence/question-ui-sites-390-panel.png). Every number in these local examples is synthetic; do not quote it.
+
+A read-only production replay at 2026-10-16 19:13 UTC matched Re7kho's live album table: 931 first-week photo opens, above a median of 125 across five earlier public launches. The selected October 9–15 gallery report returned 27 photo opens with complete coverage. The site's own Data report showed 124 page views. Cloudflare was unavailable in the live Data report, and its read timed out in the replay, so the count answer correctly stayed unavailable and did not invent a zero or reuse the earlier 223-page-load observation. These checks used the local handler over production report readers; they do not claim an authenticated production question was submitted.

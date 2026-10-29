@@ -18,7 +18,8 @@
 	import { generatePhotoTitle, generateMetadataSummary } from '$lib/photo-utils';
 	import { cfImageUrl, cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { createHdrSource } from '$lib/utils/hdr-photo-url';
-	import { trackEngagement } from '$lib/analytics/client';
+	import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { flushMediaOutcome, observeMediaOutcome, reconcileMediaView, type MediaView, type MediaViewEvent } from '$lib/analytics/media-view';
 	import { photoShareUrl } from '$lib/utils/share-url';
 	import type { Photo } from '$types/photo';
 
@@ -69,6 +70,7 @@
 
 	// Image transition state
 	let imageLoading = $state(false);
+	let mediaView = $state<MediaView | null>(null);
 	let navDirection = $state<'left' | 'right' | null>(null);
 
 	// Track viewport size for responsive image loading
@@ -446,40 +448,88 @@
 		isDragging = false;
 	}
 
-	// Lock body scroll when lightbox is open
-	$effect(() => {
-		if (open) {
-			document.body.style.overflow = 'hidden';
-			return () => {
-				document.body.style.overflow = '';
-			};
-		}
-	});
+	// Keep keyboard users in the viewer and return them to the photo they opened.
+	// Read the controls on each Tab so download/share menus can change while open.
+	function manageDialogFocus(node: HTMLElement) {
+		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		node.querySelector<HTMLButtonElement>('[aria-label="Close lightbox"]')?.focus({ preventScroll: true });
 
-	// Reset loading state when photo changes
+		function trapTab(event: KeyboardEvent) {
+			if (event.key !== 'Tab' || event.defaultPrevented) return;
+			const controls = Array.from(node.querySelectorAll<HTMLElement>(
+				'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]'
+			)).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
+			const first = controls[0];
+			const last = controls[controls.length - 1];
+			if (!first || !last) {
+				event.preventDefault();
+				node.focus();
+			} else if (event.shiftKey && (document.activeElement === first || !node.contains(document.activeElement))) {
+				event.preventDefault();
+				last.focus();
+			} else if (!event.shiftKey && (document.activeElement === last || !node.contains(document.activeElement))) {
+				event.preventDefault();
+				first.focus();
+			}
+		}
+
+		node.addEventListener('keydown', trapTab);
+		return {
+			destroy() {
+				node.removeEventListener('keydown', trapTab);
+				document.body.style.overflow = previousOverflow;
+				if (opener?.isConnected) opener.focus({ preventScroll: true });
+			}
+		};
+	}
+
+	function recordMediaEvent(event: MediaViewEvent | null) {
+		if (!event) return;
+		if (event.name === 'photo_rendered') trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, load_duration_ms: event.loadDurationMs! } });
+		else trackAnalyticsEventV2({ eventName: event.name, properties: { photo_id: event.photoId, album_key: event.albumKey, view_id: event.viewId, error_code: event.errorCode! } });
+	}
+
+	// A real open/photo transition starts exactly one view. Closing clears the identity so reopening
+	// the same image becomes a new view rather than reviving a stale timer.
 	$effect(() => {
-		if (!photo) return;
-		// Reading image_key to track photo changes
-		const _key = photo.image_key;
+		const next = reconcileMediaView(mediaView, open, photo ? { id: photo.id, albumKey: photo.album_key } : null, () => crypto.randomUUID(), () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (!next.opened || !next.view || !photo) return;
 		imageLoading = true;
 		loadMoreFailed = false;
-	});
-
-	// Record a view for whatever photo is on screen while the lightbox is open.
-	// This is the only "the visitor actually looked at this photo" signal for
-	// every route that opens photos in-place instead of navigating to
-	// /photo/[id] (album grids, explore, timeline, favorites, collections,
-	// share links) — without it, downloading/favoriting/sharing a photo here
-	// could happen with zero recorded views, which is exactly what fed the
-	// "0 views · 1 dl" readout on the analytics dashboard.
-	$effect(() => {
-		if (!open || !photo) return;
 		trackEngagement('view', { photoId: photo.id, albumKey: photo.album_key, source: viewSource });
+		trackAnalyticsEventV2({ eventName: 'photo_opened', properties: { photo_id: photo.id, album_key: photo.album_key, view_id: next.view.viewId, entry_surface: viewSource } });
 	});
 
-	function handleImageLoad() {
-		imageLoading = false;
+	function handleImageLoad(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const capture = { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' };
+		const next = observeMediaOutcome(mediaView, capture, 'rendered', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (next.view?.photoId === capture.photoId) imageLoading = false;
+		recordMediaEvent(next.event);
 	}
+
+	function handleImageError(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const capture = { photoId: image.dataset.analyticsPhotoId ?? '', viewId: image.dataset.analyticsViewId ?? '' };
+		const next = observeMediaOutcome(mediaView, capture, 'load_failed', document.visibilityState === 'visible', () => performance.now());
+		if (next.view !== mediaView) mediaView = next.view;
+		if (next.view?.photoId === capture.photoId && hdrUrl && photo?.id === capture.photoId) hdr.markFailed(photo);
+		recordMediaEvent(next.event);
+	}
+
+	$effect(() => {
+		const onVisibilityChange = () => {
+			const next = flushMediaOutcome(mediaView, document.visibilityState === 'visible', () => performance.now());
+			if (next.view !== mediaView) mediaView = next.view;
+			recordMediaEvent(next.event);
+		};
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+	});
 
 	// Preload adjacent images
 	$effect(() => {
@@ -508,6 +558,7 @@
 {#if open && photo}
 	<!-- Backdrop -->
 	<div
+		use:manageDialogFocus
 		class="fixed inset-0 bg-black/95 flex items-center justify-center animate-lightbox-open"
 		style="z-index: 9999;"
 		onclick={handleBackdropClick}
@@ -515,7 +566,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label="Photo lightbox"
-		tabindex="0"
+		tabindex="-1"
 	>
 				<!-- Top Controls -->
 				<div class="absolute top-0 left-0 right-0 z-10 p-3 md:p-4 bg-gradient-to-b from-black/50 to-transparent">
@@ -613,6 +664,8 @@
 						</div>
 					{/if}
 					<img
+						data-analytics-photo-id={photo.id}
+						data-analytics-view-id={mediaView?.viewId ?? ''}
 						src={optimizedImageUrl || photo.image_url}
 						srcset={imageSrcSet}
 						sizes={imageSizes}
@@ -623,9 +676,7 @@
 						loading="eager"
 						decoding="async"
 						onload={handleImageLoad}
-						onerror={() => {
-							if (hdrUrl) hdr.markFailed(photo);
-						}}
+						onerror={handleImageError}
 					/>
 				</div>
 

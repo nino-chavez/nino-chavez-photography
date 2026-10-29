@@ -1,0 +1,44 @@
+== desktop 1440x900
+overflow gate, default: viewport 1440, scrollWidth 1440, offenders none
+overflow gate, quiet list open + 3 compared: offenders none
+FORCED FAILURE, 1600px element planted in .album-index .body (a 420px element is narrower than the 1440 desktop viewport, so it is only a defect on the phone; 1600px is used here): offenders div#planted-420 spans 32..1632 of 1440 | section.intro.s-66saXdvFmuxB spans 32..1632 of 1440 | p.eyebrow.s-66saXdvFmuxB spans 32..1632 of 1440 | h1#index-title.s-66saXdvFmuxB spans 32..1632 of 1440 | div.tools.s-66saXdvFmuxB spans 32..1632 of 1440 | p.results.s-66saXdvFmuxB spans 32..1632 of 1440 | ... 23 more; documentElement.scrollWidth 1440 vs viewport 1440
+after removing it: offenders none
+targets under 44px: none
+== phone 375x812
+overflow gate, default: viewport 375, scrollWidth 375, offenders none
+overflow gate, quiet list open + 3 compared: offenders none
+FORCED FAILURE, 420px element planted in .album-index .body: offenders div#planted-420 spans 16..436 of 375 | section.intro.s-66saXdvFmuxB spans 16..436 of 375 | p.eyebrow.s-66saXdvFmuxB spans 16..436 of 375 | h1#index-title.s-66saXdvFmuxB spans 16..436 of 375 | p.headline.s-66saXdvFmuxB spans 16..436 of 375 | p.note.s-66saXdvFmuxB spans 16..436 of 375 | ... 36 more; documentElement.scrollWidth 375 vs viewport 375
+after removing it: offenders none
+targets under 44px: none
+== keyboard walk, desktop
+tab 1: <a> All albums | outline solid 3px
+tab 2: <a> Gallery report | outline solid 3px
+tab 3: <a> All sites | outline solid 3px
+tab 4: <input search> find-album | outline solid 3px
+tab 5: <a> Export CSV | outline solid 3px
+tab 6: <div> Launches, newest first | outline solid 3px
+tab 7: <input checkbox> Compare College Women's VB - Millikin at North Central - 09-23-2026 | outline solid 3px
+tab 8: <a> College Women's VB - Millikin at North Central - | outline solid 3px
+tab 9: <input checkbox> Compare HS Girls VB - JCA at ACC - 09-22-2026 | outline solid 3px
+tab 10: <a> HS Girls VB - JCA at ACC - 09-22-2026 | outline solid 3px
+tab 11: <input checkbox> Compare HS Girls VB - JCA vs PNHS - 08-25-2026 | outline solid 3px
+tab 12: <a> HS Girls VB - JCA vs PNHS - 08-25-2026 | outline solid 3px
+tab 13: <input checkbox> Compare Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026 | outline solid 3px
+tab 14: <a> Bump Bash #5 - Charity Volleyball Tournament - 0 | outline solid 3px
+tab 15: <input checkbox> Compare Diggin' for Drakes - 08-09-2026 | outline solid 3px
+tab 16: <a> Diggin' for Drakes - 08-09-2026 | outline solid 3px
+tab 17: <input checkbox> Compare Chicago Big Dig 2026 - North Avenue Beach | outline solid 3px
+tab 18: <a> Chicago Big Dig 2026 - North Avenue Beach | outline solid 3px
+tab 19: <input checkbox> Compare Jalapeño Open - July 2026 | outline solid 3px
+tab 20: <a> Jalapeño Open - July 2026 | outline solid 3px
+tab 21: <div> Albums without a launch date | outline solid 3px
+tab 22: <a> Bell Pepper Open – Official Gallery | outline solid 3px
+tab 23: <a> KRUSH Volleyball – Suburban Slam Series #1 - Jun | outline solid 3px
+tab 24: <a> VLA - Spring 2026 | outline solid 3px
+after 4 ticks by keyboard: checked 4, fifth disabled true, address ?compare=DWdCET%2CRe7kho%2CfJKdsB%2CeqYF0h
+after unticking one: fifth disabled false, address ?compare=Re7kho%2CfJKdsB%2CeqYF0h
+reload with ?compare=Re7kho,fJKdsB,nonsense,..: checked 2, chart drawn 1
+search "drakes": 1 launch and 0 albums without a launch date match "drakes".
+search "zzzzzz": 0 launches and 0 albums without a launch date match "zzzzzz".
+quiet list by Enter: aria-expanded true, rows 118
+searching the first quiet album "2022 ACC vs ICCP": rows in the no-launch-date list 12; 0 launches and 12 albums without a launch date match "2022 ACC vs".

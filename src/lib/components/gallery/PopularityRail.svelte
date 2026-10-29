@@ -135,6 +135,7 @@
 						</div>
 					{/if}
 					<PhotoCard
+						favoriteSurface="popularity"
 						{photo}
 						{index}
 						onclick={onPhotoClick ? (p) => onPhotoClick(p, photos) : undefined}

@@ -1,0 +1,70 @@
+# forced failures 2026-10-07T14:08:09.424Z
+== chromium phone-390
+   overflow, a planted 420px box: FIRED (offenders 0 -> 2: div#planted spans 0..420 of 390 | the document scrolls sideways by 31px); after removing it: 0
+   overflow, a box that escapes its scroller: FIRED (the document scrolls sideways by 511px)
+   overflow, a wide box inside a closed <details>: not counted, as intended (content in a closed details is not rendered); after opening the details: FIRED (offenders 0 -> closed 0 -> open 2)
+   44px targets, a planted 20px button: FIRED (button#planted-btn "x" 20x20)
+   text at 200%, a planted 14rem box: FIRED (offenders at 100% 0, at 200% 2: the document scrolls sideways by 58px)
+   text at 200%, planted 14px text that does not grow: FIRED (listed: p#planted-px 14px)
+   keyboard, a planted button with no focus ring: FIRED (33 stops, listed: button[type=submit]#planted-ring "ringless")
+   axe, a planted image with no alt text and a planted low-contrast pair: image-alt FIRED; color-contrast FIRED
+   contrast gate, default colours, planted pair #8a8a8a on #999: FIRED (p#planted-low "planted low contrast text" 1.21:1 (needs 4.5) fg rgb(138, 138, 138) bg rgb(153, 153, 153))
+   contrast gate, prefers-contrast: more, same planted pair: FIRED
+   contrast gate, forced-colors: active, planted pair kept out of the forced palette (forced-color-adjust: none): FIRED; axe color-contrast on the same page FIRED
+   console errors, a planted console.error: FIRED
+   non-GET requests, a planted POST: FIRED (POST /photography/analytics/photos; aborted in the browser, never sent)
+== chromium desktop-1440
+   overflow, a planted 1470px box: FIRED (offenders 0 -> 2: div#planted spans 0..1470 of 1440 | the document scrolls sideways by 30px); after removing it: 0
+   overflow, a box that escapes its scroller: FIRED (the document scrolls sideways by 261px)
+   overflow, a wide box inside a closed <details>: not counted, as intended (content in a closed details is not rendered); after opening the details: FIRED (offenders 0 -> closed 0 -> open 2)
+   44px targets, a planted 20px button: FIRED (button#planted-btn "x" 20x20)
+   text at 200%, a planted 46rem box: FIRED (offenders at 100% 0, at 200% 2: the document scrolls sideways by 32px)
+   text at 200%, planted 14px text that does not grow: FIRED (listed: p#planted-px 14px)
+   keyboard, a planted button with no focus ring: FIRED (33 stops, listed: button[type=submit]#planted-ring "ringless")
+   axe, a planted image with no alt text and a planted low-contrast pair: image-alt FIRED; color-contrast FIRED
+   contrast gate, default colours, planted pair #8a8a8a on #999: FIRED (p#planted-low "planted low contrast text" 1.21:1 (needs 4.5) fg rgb(138, 138, 138) bg rgb(153, 153, 153))
+   contrast gate, prefers-contrast: more, same planted pair: FIRED
+   contrast gate, forced-colors: active, planted pair kept out of the forced palette (forced-color-adjust: none): FIRED; axe color-contrast on the same page FIRED
+   console errors, a planted console.error: FIRED
+   non-GET requests, a planted POST: FIRED (POST /photography/analytics/photos; aborted in the browser, never sent)
+== chromium capture method on a 20,000 CSS px page at 2x (40000 device px, over the 16,384 limit)
+   old method (fullPage + clip at y=9000) against the top of the page: pixels over 12 = 1264776 (differs from the top); against the true render at y=9000 (viewport screenshot after scrolling): pixels over 12 = 0
+   new method (scroll, viewport screenshot) at y=9000 against the top: pixels over 12 = 1264776 (differs from the top, as it should)
+   whole-page screenshot (no clip), image 780x40000 device px: top region vs true top: pixels over 12 = 0; region at y=9000 vs true render: 0; bottom region vs true bottom: 0
+   last part equals the first part (planted: part 1 stored as the last part): FIRED (pixels over 12 = 0)
+   last-part check, stopping one part short (part 23 of 24): bottom 19412 vs height 20000: FIRED; at the real last part: bottom 20000 vs 20000: passes
+== webkit phone-390
+   overflow, a planted 420px box: FIRED (offenders 0 -> 2: div#planted spans 0..420 of 390 | the document scrolls sideways by 30px); after removing it: 0
+   overflow, a box that escapes its scroller: FIRED (the document scrolls sideways by 511px)
+   overflow, a wide box inside a closed <details>: not counted, as intended (content in a closed details is not rendered); after opening the details: FIRED (offenders 0 -> closed 0 -> open 2)
+   44px targets, a planted 20px button: FIRED (button#planted-btn "x" 20x20)
+   text at 200%, a planted 14rem box: FIRED (offenders at 100% 0, at 200% 2: the document scrolls sideways by 58px)
+   text at 200%, planted 14px text that does not grow: FIRED (listed: p#planted-px 14px)
+   keyboard, a planted button with no focus ring: FIRED (33 stops, listed: button[type=submit]#planted-ring "ringless")
+   axe, a planted image with no alt text and a planted low-contrast pair: image-alt FIRED; color-contrast FIRED
+   contrast gate, default colours, planted pair #8a8a8a on #999: FIRED (p#planted-low "planted low contrast text" 1.21:1 (needs 4.5) fg rgb(138, 138, 138) bg rgb(153, 153, 153))
+   contrast gate, prefers-contrast: more, same planted pair: FIRED
+   contrast gate, forced-colors: not run in WebKit (the media query matches but WebKit does not apply a forced palette)
+   console errors, a planted console.error: FIRED
+   non-GET requests, a planted POST: FIRED (POST /photography/analytics/photos; aborted in the browser, never sent)
+== webkit desktop-1440
+   overflow, a planted 1470px box: FIRED (offenders 0 -> 2: div#planted spans 0..1470 of 1440 | the document scrolls sideways by 30px); after removing it: 0
+   overflow, a box that escapes its scroller: FIRED (the document scrolls sideways by 261px)
+   overflow, a wide box inside a closed <details>: not counted, as intended (content in a closed details is not rendered); after opening the details: FIRED (offenders 0 -> closed 0 -> open 2)
+   44px targets, a planted 20px button: FIRED (button#planted-btn "x" 20x20)
+   text at 200%, a planted 46rem box: FIRED (offenders at 100% 0, at 200% 2: the document scrolls sideways by 32px)
+   text at 200%, planted 14px text that does not grow: FIRED (listed: p#planted-px 14px)
+   keyboard, a planted button with no focus ring: FIRED (33 stops, listed: button[type=submit]#planted-ring "ringless")
+   axe, a planted image with no alt text and a planted low-contrast pair: image-alt FIRED; color-contrast FIRED
+   contrast gate, default colours, planted pair #8a8a8a on #999: FIRED (p#planted-low "planted low contrast text" 1.21:1 (needs 4.5) fg rgb(138, 138, 138) bg rgb(153, 153, 153))
+   contrast gate, prefers-contrast: more, same planted pair: FIRED
+   contrast gate, forced-colors: not run in WebKit (the media query matches but WebKit does not apply a forced palette)
+   console errors, a planted console.error: FIRED
+   non-GET requests, a planted POST: FIRED (POST /photography/analytics/photos; aborted in the browser, never sent)
+== webkit capture method on a 20,000 CSS px page at 2x (40000 device px, over the 16,384 limit)
+   old method (fullPage + clip at y=9000) against the top of the page: pixels over 12 = 1263190 (differs from the top); against the true render at y=9000 (viewport screenshot after scrolling): pixels over 12 = 0
+   new method (scroll, viewport screenshot) at y=9000 against the top: pixels over 12 = 1263190 (differs from the top, as it should)
+   whole-page screenshot (no clip), image 780x40000 device px: top region vs true top: pixels over 12 = 0; region at y=9000 vs true render: 0; bottom region vs true bottom: 0
+   last part equals the first part (planted: part 1 stored as the last part): FIRED (pixels over 12 = 0)
+   last-part check, stopping one part short (part 23 of 24): bottom 19412 vs height 20000: FIRED; at the real last part: bottom 20000 vs 20000: passes
+# done

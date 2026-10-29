@@ -1015,6 +1015,26 @@ async function main() {
 	await captureAlbumContext();
 	const album = { ...resolvedAlbum, teamNames: await resolveAltTextTeamNames() };
 
+	// A NEW album ingested public (no --unlisted) needs its album_settings row BEFORE any photo is
+	// written: the album_settings_stamp_published_at trigger stamps published_at and
+	// first_published_at ('recorded') when it inserts a public row for an album with no photos, and
+	// reads "already has photos" as "was public before anything recorded it" (basis 'unobserved').
+	// Without this row a public ingest never gets a first publication, so launch recaps would never
+	// fire for it. A re-ingest never stamps: an existing row is left alone, and an album that already
+	// has photos gets no row here. The ingest default (public unless --unlisted) is unchanged.
+	if (!UNLISTED && !DRY) {
+		const { data: ex } = await sb.from('album_settings').select('album_key').eq('album_key', ALBUM_KEY!).maybeSingle();
+		if (!ex) {
+			const { count, error: countErr } = await sb.from('photo_metadata').select('photo_id', { count: 'exact', head: true }).eq('album_key', ALBUM_KEY!);
+			if (countErr) console.warn(`   ⚠️  could not check for existing photos, no album_settings row written (non-fatal): ${countErr.message}`);
+			else if (count === 0) {
+				const { error: insErr } = await sb.from('album_settings').insert({ album_key: ALBUM_KEY, visibility: 'public' });
+				if (insErr) console.warn(`   ⚠️  could not record the first publication (non-fatal): ${insErr.message}`);
+				else console.log(`   🗓  album_settings row written: public from ingest, first publication recorded by the database\n`);
+			}
+		}
+	}
+
 	// Keep a freshly-ingested album OFF the live gallery until the operator reviews + publishes.
 	if (UNLISTED && !DRY) {
 		const { data: ex } = await sb.from('album_settings').select('album_key').eq('album_key', ALBUM_KEY!).maybeSingle();

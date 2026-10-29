@@ -1,0 +1,12 @@
+[
+  "src/lib/analytics/provider-cache.server.test.ts",
+  "src/lib/analytics/provider-cache.server.ts",
+  "src/lib/analytics/site-journeys.server.ts",
+  "src/lib/analytics/site-journeys.test.ts",
+  ".env.example",
+  "src/lib/analytics/posthog-queries.server.ts",
+  "src/lib/analytics/posthog.test.ts",
+  "src/lib/analytics/posthog.types.ts",
+  "src/lib/analytics/site-traffic.server.test.ts",
+  "src/lib/analytics/site-traffic.server.ts"
+]

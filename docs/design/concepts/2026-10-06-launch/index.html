@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analytics launch concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;650;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#eef2f6; --surface:#ffffff; --ink:#172033; --muted:#556275; --faint:#7a8698;
+  --line:#d8e0ea; --accent:#174ea6; --accent-strong:#1769e0; --accent-soft:#dce9fa;
+  --good:#1f7a4d; --warn:#9a5b00; --warn-soft:#fff4e0; --bad:#a3262a; --bad-soft:#fde8e8;
+  --grey-line:#b8c3d1;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,sans-serif}
+button{font:inherit}
+.harness{max-width:1480px;margin:0 auto;padding:16px}
+.harness-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between;margin-bottom:12px}
+.harness-head h1{font-size:20px;font-weight:650;margin:0}
+.harness-head p{margin:2px 0 0;color:var(--muted);font-size:13px;max-width:70ch}
+.switch{display:flex;flex-wrap:wrap;gap:6px}
+.switch button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}
+.switch button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.switch-label{font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+.frame{background:var(--page);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.mock-note{background:var(--warn-soft);color:var(--warn);font-size:12px;padding:6px 16px;border-bottom:1px solid var(--line)}
+
+/* app shell shared by all concepts */
+.app{padding:20px 24px 32px}
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:650;font-size:14px}
+.brand i{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;background:var(--accent);color:#fff;font-style:normal;font-size:12px}
+.nav{display:flex;flex-wrap:wrap;gap:2px}
+.nav span{font-size:13px;padding:5px 10px;border-radius:6px;color:var(--muted)}
+.nav span.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.eyebrow{font-size:11px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+h2{font-size:22px;line-height:1.25;font-weight:650;margin:0 0 6px}
+h3{font-size:16px;font-weight:650;margin:0 0 8px}
+.lede{font-size:17px;max-width:64ch;margin:0 0 4px}
+.muted{color:var(--muted)} .small{font-size:13px} .tiny{font-size:12px;color:var(--faint)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12.8px;padding:16px}
+.grid{display:grid;gap:16px}
+.chip{display:inline-block;font-size:12px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.chip.done{background:#e8edf3;color:var(--muted)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.bad{background:var(--bad-soft);color:var(--bad)}
+.btn{display:inline-block;border-radius:8.8px;padding:7px 12px;font-size:14px;font-weight:650;background:var(--accent-strong);color:#fff;border:0}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--grey-line)}
+.num{font-size:28px;font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums}
+.nums{display:flex;flex-wrap:wrap;gap:12px 28px}
+.nums div span{display:block;font-size:12px;color:var(--muted)}
+.cover{width:72px;height:54px;object-fit:cover;border-radius:6px;background:#dfe5ec;flex:none}
+.incident{border:1px solid #e9b6b8;background:var(--bad-soft);color:var(--bad);border-radius:10px;padding:10px 14px;font-size:14px;margin-bottom:14px}
+.incident b{color:var(--bad)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:650;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+td.r,th.r{text-align:right}
+tr.me td{background:var(--accent-soft);font-weight:650}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.photos figure{margin:0}
+.photos img{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:6px;display:block;background:#dfe5ec}
+.photos figcaption{font-size:12px;color:var(--muted);margin-top:3px}
+svg text{font-family:Inter,system-ui,sans-serif}
+
+/* concept A: launch log */
+.a-feed{display:grid;gap:12px}
+.a-card{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.a-card .meta{min-width:0}
+.a-card .meta b.t{display:block;font-weight:650;overflow-wrap:anywhere}
+.a-card .spark{width:180px}
+.a-two{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+
+/* concept B: cohort board */
+.b-board{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:16px}
+.b-row{cursor:default}
+.b-side{position:relative}
+
+/* concept C: recaps */
+.c-wrap{max-width:760px}
+.c-note{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.c-note:last-child{border-bottom:0}
+.c-recap p{font-size:17px;line-height:1.6;margin:0 0 14px;max-width:62ch}
+.c-recap strong{font-variant-numeric:tabular-nums}
+.c-recap p.tiny{font-size:12px;line-height:1.5;margin:4px 0 0}
+.c-actions{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 18px}
+
+@media (max-width:860px){
+  .app{padding:16px}
+  .a-two,.b-board{grid-template-columns:1fr}
+  .a-card{grid-template-columns:auto 1fr}
+  .a-card .spark{grid-column:1/-1;width:100%}
+  h2{font-size:20px}
+}
+@media (prefers-reduced-motion:no-preference){.switch button{transition:background .15s}}
+</style>
+</head>
+<body>
+<div class="harness">
+  <div class="harness-head">
+    <div>
+      <h1>Analytics launch concepts</h1>
+      <p>Three different structures for Home and the album report, each shown on the same five cases. Numbers are production values read on Oct 6, 2026 from the daily action table (audience and unclassified traffic); the live report's conservative rule can differ by a few. Publication dates are inferred from logs. The data-failure case is simulated and says so in the frame.</p>
+    </div>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-bottom:12px">
+    <div><p class="switch-label">Concept</p><div class="switch" id="concepts"></div></div>
+    <div><p class="switch-label">Case</p><div class="switch" id="states"></div></div>
+  </div>
+  <div class="frame"><div id="note"></div><div class="app" id="app"></div></div>
+</div>
+<script>
+const IMG = (id, v = 'thumbnail') => `https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/${id}/${v}`;
+// Daily recorded photo opens by day since first publication (day 0 = publication day, Chicago).
+const LAUNCHES = [
+  { key:'jq1Rp7', doy:200, name:'Jalapeño Open - July 2026', pub:'Jul 19', photos:73, cover:'jq1Rp7-DSC06897', curve:[1,4,5,1,12,5,9,0,0,0,4,0,0,0], dl7:5 },
+  { key:'1BlKk4', doy:207, name:'Chicago Big Dig 2026 - North Avenue Beach', pub:'Jul 26', photos:267, cover:'1BlKk4-DSC06966', curve:[310,180,59,15,6,0,67,0,2,1,1,0,1,3], dl7:64 },
+  { key:'dKe567', doy:224, name:"Diggin' for Drakes - 08-09-2026", pub:'Aug 12', photos:109, cover:'dKe567-DSC07536', curve:[28,1,0,0,0,0,0,3,2,2,5,22,2,0], dl7:0 },
+  { key:'eqYF0h', doy:235, name:'Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026', pub:'Aug 23', photos:162, cover:'eqYF0h-DSC08446', curve:[67,63,6,0,3,2,0,1,2,2,1,0,0,1], dl7:15 },
+  { key:'fJKdsB', doy:240, name:'HS Girls VB - JCA vs PNHS - 08-25-2026', pub:'Aug 28', photos:241, cover:'fJKdsB-DSC08692', curve:[749,353,16,142,2,1,0,1,1,0,1,0,1,2], dl7:109 },
+  { key:'Re7kho', doy:268, name:'HS Girls VB - JCA at ACC - 09-22-2026', pub:'Sep 25', photos:120, cover:'Re7kho-acc-v-jca-091', curve:[105,577,126,25,100,5,7,82,2,0,1,0,0,0], dl7:61 },
+  { key:'DWdCET', doy:269, name:"College Women's VB - Millikin at North Central - 09-23-2026", pub:'Sep 26', photos:43, cover:'DWdCET-DSC09463-sdr-8fa44e4d51', curve:[88,111,22,4,14,2,52,2,0,1,0,0,0,0], dl7:26 }
+];
+const JCA_PHOTOS = [['23',11,3],['28',10,3],['070',12,2],['077',11,2],['05',11,2],['21',10,2],['43',9,2],['108',9,2],['25',8,2],['45',7,2],['54',6,2],['50',5,2]];
+const VLA = { name:'VLA - Spring 2026', photos:116, cover:'DSC00851', since:'Jul 1', total:125, last30:29,
+  bursts:[['Jul 11–12',51],['Aug 23',24],['Sep 14',12]] };
+const byKey = Object.fromEntries(LAUNCHES.map(l => [l.key, l]));
+// Complete days are those before the viewing day (Chicago). Oct 2 = day 275, Oct 6 = day 279.
+let AS_OF = 279;
+const done = l => Math.max(0, Math.min(14, AS_OF - l.doy));
+const upto = (l, n) => sum(l.curve, Math.min(n, done(l)));
+const sum = (a, n) => a.slice(0, n).reduce((x, y) => x + y, 0);
+const fmt = n => n.toLocaleString('en-US');
+const ord = n => n + (['th','st','nd','rd'][((n % 100) - 20) % 10] || ['th','st','nd','rd'][n % 100] || 'th');
+function rankAt(key, days) {
+  const s = LAUNCHES.map(l => [l.key, upto(l, days)]).sort((a, b) => b[1] - a[1]);
+  return s.findIndex(x => x[0] === key) + 1;
+}
+const short = s => s.replace(/ - \d\d-\d\d-\d{4}$/, '');
+
+// Small charts -----------------------------------------------------------
+function spark(curve, days, w = 180, h = 40, color = 'var(--accent)') {
+  const c = curve.slice(0, days), max = Math.max(...c, 1), bw = w / 14;
+  const bars = c.map((v, i) => `<rect x="${i * bw + 1}" y="${h - (v / max) * (h - 4)}" width="${bw - 2}" height="${(v / max) * (h - 4)}" fill="${color}" rx="1.5"/>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Daily photo opens for the first ${days} days">${bars}<line x1="0" x2="${w}" y1="${h - .5}" y2="${h - .5}" stroke="var(--line)"/></svg>`;
+}
+function cumulative(focusKey, days = 14, w = 640, h = 260, through = 14) {
+  const pad = { l: 44, r: 44, t: 12, b: 28 }, iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const series = LAUNCHES.map(l => { let t = 0; return { l, pts: l.curve.slice(0, Math.min(days, done(l))).map(v => (t += v)) }; });
+  const max = Math.max(...series.map(s => s.pts[s.pts.length - 1] || 0));
+  const x = i => pad.l + (i / (days - 1)) * iw, y = v => pad.t + ih - (v / max) * ih;
+  const grid = [0, .5, 1].map(f => `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="var(--line)"/><text x="${pad.l - 6}" y="${y(max * f) + 4}" font-size="11" text-anchor="end" fill="var(--faint)">${fmt(Math.round(max * f))}</text>`).join('');
+  const ticks = [0, 3, 7, 13].map(i => `<text x="${x(i)}" y="${h - 8}" font-size="11" text-anchor="middle" fill="var(--faint)">day ${i}</text>`).join('');
+  const lines = series.sort((a, b) => (a.l.key === focusKey) - (b.l.key === focusKey)).map(s => {
+    const n = s.pts.length;
+    const d = s.pts.slice(0, n).map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    const on = s.l.key === focusKey;
+    return `<path d="${d}" fill="none" stroke="${on ? 'var(--accent-strong)' : 'var(--grey-line)'}" stroke-width="${on ? 3 : 1.5}"/>` +
+      (on ? `<text x="${x(n - 1) + 6}" y="${y(s.pts[n - 1]) + 4}" font-size="12" font-weight="650" fill="var(--accent)">${fmt(s.pts[n - 1])}</text>` : '');
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Photo opens added up by day since publication; the highlighted line is ${byKey[focusKey]?.name ?? 'none'}, grey lines are the other ${LAUNCHES.length - 1} launches">${grid}${ticks}<line x1="${pad.l}" x2="${w - pad.r}" y1="${pad.t + ih}" y2="${pad.t + ih}" stroke="var(--grey-line)"/>${lines}</svg>`;
+}
+function dailyBars(curve, days, w = 640, h = 200, label = 'Daily photo opens since first publication') {
+  const pad = { l: 40, r: 8, t: 10, b: 26 }, iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const c = curve.slice(0, days), max = Math.max(...c, 1), bw = iw / days;
+  const med = Array.from({ length: days }, (_, i) => { const v = LAUNCHES.filter(l => done(l) > i).map(l => l.curve[i]).sort((a, b) => a - b); return v[Math.floor(v.length / 2)] ?? 0; });
+  const bars = c.map((v, i) => `<rect x="${pad.l + i * bw + 2}" y="${pad.t + ih - (v / max) * ih}" width="${bw - 4}" height="${(v / max) * ih}" fill="var(--accent-strong)" rx="2"/><text x="${pad.l + i * bw + bw / 2}" y="${h - 8}" font-size="10" text-anchor="middle" fill="var(--faint)">${i}</text>`).join('');
+  const m = med.map((v, i) => `${i ? 'L' : 'M'}${(pad.l + i * bw + bw / 2).toFixed(1)},${(pad.t + ih - (Math.min(v, max) / max) * ih).toFixed(1)}`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;max-width:720px" role="img" aria-label="${label}">
+    <line x1="${pad.l}" x2="${w - pad.r}" y1="${pad.t + ih}" y2="${pad.t + ih}" stroke="var(--grey-line)"/>
+    <text x="${pad.l - 6}" y="${pad.t + 8}" font-size="11" text-anchor="end" fill="var(--faint)">${fmt(max)}</text>${bars}
+    <path d="${m}" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 3"/></svg>
+    <p class="tiny" style="margin:4px 0 0">Bars: this album, day 0 to ${days - 1}. Dashed line: the middle value among earlier launches on the same day.</p>`;
+}
+const topbar = on => `<div class="topbar"><div class="brand"><i>NC</i>Reports</div><div class="nav">${['Home','Albums','Site','Data','Settings'].map(n => `<span class="${n === on ? 'on' : ''}">${n}</span>`).join('')}</div></div>`;
+
+// Shared facts per case ---------------------------------------------------
+const CASES = {
+  homeActive: { label:'Home · launch in progress (Oct 2)', note:'', asOf:275 },
+  reportLaunch: { label:'Album report · JCA at ACC (Oct 6)', note:'' },
+  reportTrickle: { label:'Album report · VLA, no launch date (Oct 6)', note:'' },
+  homeQuiet: { label:'Home · quiet week (Oct 6)', note:'' },
+  homeFailure: { label:'Home · data unavailable (simulated)', note:'Simulated state: the refresh failure is invented to show the failure layout. Every count shown is real, through Oct 4.' }
+};
+const JCA = byKey.Re7kho, MIL = byKey.DWdCET;
+const siteLine = `<p class="small" style="margin:0">Last 30 days: <b>730</b> page loads on ninochavez.co (Cloudflare estimate, +11%). Since Sep 29: <b>0</b> contact clicks, <b>3</b> outbound clicks.</p>`;
+
+// Concept A: launch log ---------------------------------------------------
+function aLaunchCard(l, asOf) {
+  const days = done(l), n = Math.min(days, 7), r = rankAt(l.key, n);
+  const status = days < 3 ? `<span class="chip">Day ${days} of 7</span>` : days < 7 ? `<span class="chip">Day ${days} · day-3 recap ready</span>` : days === 7 ? `<span class="chip">Day 7 · recap ready</span>` : `<span class="chip done">Finished</span>`;
+  return `<div class="panel a-card"><img class="cover" src="${IMG(l.cover)}" alt="">
+    <div class="meta">${status}<b class="t">${l.name}</b><span class="small muted">First published ${l.pub} (inferred) · ${l.photos} photos</span><br>
+    <span class="small"><b>${fmt(upto(l, n))}</b> photo opens in ${n} days · <b>${ord(r)}</b> of ${LAUNCHES.length} launches at day ${n}</span></div>
+    <div class="spark">${spark(l.curve, Math.min(days, 14))}<span class="tiny">daily opens since publication</span></div></div>`;
+}
+function conceptA(c) {
+  if (c === 'homeActive') return topbar('Home') + `<p class="eyebrow">Thursday, Oct 2</p>
+    <h2>JCA at ACC finished its first week in 2nd place.</h2><p class="lede muted">Millikin at North Central is on day 6. Nothing else is moving.</p>
+    <div class="a-two" style="margin-top:16px"><div class="a-feed">${aLaunchCard(JCA, 7)}${aLaunchCard(MIL, 6)}
+      <p class="small muted" style="margin:6px 0 0">Earlier launches</p>${['fJKdsB','eqYF0h','dKe567'].map(k => aLaunchCard(byKey[k], 99)).join('')}</div>
+      <div class="grid" style="align-content:start"><div class="panel"><h3>Site</h3>${siteLine}</div>
+      <div class="panel"><h3>Launch day pulls people into older albums</h3><p class="small" style="margin:0">On Sep 26, <b>102</b> albums were opened. <b>268</b> of that day's 933 photo opens were outside the two new albums.</p></div></div></div>`;
+  if (c === 'homeQuiet' || c === 'homeFailure') return topbar('Home') + (c === 'homeFailure' ? `<div class="incident"><b>Numbers stop at Oct 4.</b> The Oct 5 refresh did not finish. Collection itself may be fine; this is not a zero. <u>Open data check</u></div>` : '') +
+    `<p class="eyebrow">Monday, Oct 6</p><h2>No new album since Sep 26.</h2><p class="lede muted">Both September launches have finished. The gallery had ${c === 'homeFailure' ? '<b>396</b> photo opens Sep 29 – Oct 4' : '<b>435</b> photo opens in the last 7 days, against 1,503 in launch week'}.</p>
+    <div class="a-two" style="margin-top:16px"><div class="a-feed">${aLaunchCard(MIL, 99)}${aLaunchCard(JCA, 99)}${aLaunchCard(byKey.fJKdsB, 99)}</div>
+    <div class="grid" style="align-content:start"><div class="panel"><h3>Next</h3><p class="small" style="margin:0">Nothing is due. The next recap starts when you publish an album.</p></div><div class="panel"><h3>Site</h3>${siteLine}</div></div></div>`;
+  if (c === 'reportLaunch') return topbar('Albums') + `<p class="small"><u>← Home</u></p><div style="display:flex;gap:14px;align-items:center"><img class="cover" src="${IMG(JCA.cover)}" alt=""><div><p class="eyebrow">Album launch · finished</p><h2 style="margin:0">${JCA.name}</h2><p class="small muted" style="margin:0">First published Sep 25 (inferred) · 120 photos</p></div></div>
+    <p class="lede" style="margin-top:14px"><b>945</b> photo opens in its first week, <b>2nd</b> of 7 launches. Most came on day 1. Every one of its 120 photos was opened at least once.</p>
+    <div class="panel" style="margin-top:12px">${dailyBars(JCA.curve, done(JCA))}</div>
+    <div class="nums panel" style="margin-top:12px"><div><span>Browsers</span><b class="num">≈42</b></div><div><span>Downloads, first week</span><b class="num">61</b></div><div><span>Shares</span><b class="num">0</b></div><div><span>Arrived from your profile link</span><b class="num">19</b> <span>opens; the rest came by untagged links</span></div></div>
+    <h3 style="margin-top:20px">Photos people downloaded</h3><div class="photos">${JCA_PHOTOS.map(p => `<figure><img src="${IMG('Re7kho-acc-v-jca-' + p[0])}" alt="JCA at ACC photo ${p[0]}"><figcaption>${p[2]} downloads · ${p[1]} opens</figcaption></figure>`).join('')}</div>
+    <p class="small muted">No photo had more than 3 downloads, so this order is weak. Photos shown on screen were not recorded until Sep 29, after this launch.</p>
+    <div class="panel"><h3>Recaps</h3><p class="small" style="margin:0">Day 3 (Sep 28): 808 opens, 2nd of 7. Day 7 (Oct 2): 945 opens, 2nd of 7.</p></div>`;
+  if (c === 'reportTrickle') return topbar('Albums') + `<p class="small"><u>← Albums</u></p><div style="display:flex;gap:14px;align-items:center"><img class="cover" src="${IMG(VLA.cover)}" alt=""><div><p class="eyebrow">Album · no launch date</p><h2 style="margin:0">${VLA.name}</h2><p class="small muted" style="margin:0">Public before records began (Jun 30) · 116 photos</p></div></div>
+    <p class="lede" style="margin-top:14px">A few people find it now and then: <b>${VLA.total}</b> photo opens since Jul 1, <b>${VLA.last30}</b> in the last 30 days.</p>
+    <div class="panel" style="margin-top:12px"><h3>Busiest days</h3><table><tbody>${VLA.bursts.map(b => `<tr><td>${b[0]}</td><td class="r">${b[1]} opens</td></tr>`).join('')}</tbody></table><p class="tiny" style="margin:6px 0 0">Aug 23 is also the day Bump Bash #5 launched. That is a coincidence in the dates, not a measured cause.</p></div>
+    <p class="small muted" style="margin-top:12px">This album has no launch comparison because its first publication was never recorded.</p>`;
+}
+
+// Concept B: cohort board --------------------------------------------------
+function bTable(days, focus, extra = '') {
+  const rows = LAUNCHES.map(l => ({ l, v: upto(l, days) })).sort((a, b) => b.v - a.v);
+  return `<table><thead><tr><th>Launch</th><th class="r">Opens by day ${days}</th><th class="r">Downloads, wk 1</th></tr></thead><tbody>${rows.map(({ l, v }) => `<tr class="${l.key === focus ? 'me' : ''}"><td>${short(l.name)}<br><span class="tiny">${l.pub}${done(l) < days ? ` · day ${done(l)} so far` : ''}</span></td><td class="r">${fmt(v)}</td><td class="r">${l.dl7}</td></tr>`).join('')}</tbody></table>`;
+}
+function bSide(l, finished) {
+  return `<div class="panel b-side"><p class="eyebrow">Selected launch</p><div style="display:flex;gap:10px;align-items:center"><img class="cover" src="${IMG(l.cover)}" alt=""><b style="font-size:15px">${short(l.name)}</b></div>
+    <p class="small" style="margin:10px 0">${finished ? 'Finished. ' : ''}<b>${fmt(upto(l, 7))}</b> opens in week 1, <b>${ord(rankAt(l.key, 7))}</b> of ${LAUNCHES.length}. <b>${l.dl7}</b> downloads.</p>
+    ${spark(l.curve, done(l), 260, 50)}<p style="margin:12px 0 0"><span class="btn">View photos</span></p></div>`;
+}
+function conceptB(c) {
+  if (c === 'homeActive' || c === 'homeQuiet' || c === 'homeFailure') {
+    const active = c === 'homeActive';
+    return topbar('Home') + (c === 'homeFailure' ? `<div class="incident"><b>Numbers stop at Oct 4.</b> The Oct 5 refresh did not finish. This is not a zero. <u>Open data check</u></div>` : '') +
+      `<div class="nums" style="margin-bottom:14px"><div><span>${active ? 'Latest launch' : 'Last launch'}</span><b>${active ? 'JCA at ACC, day 7' : 'Millikin, Sep 26 · 10 days ago'}</b></div><div><span>Gallery photo opens, last 7 days</span><b class="num">${active ? '1,651' : c === 'homeFailure' ? '396*' : '435'}</b></div><div><span>Site page loads, 30 days</span><b class="num">730</b></div></div>
+      <div class="b-board"><div class="panel"><h3>How each launch built up, by day since publication</h3>${cumulative(active ? 'Re7kho' : 'DWdCET', 14, 640, 260)}
+      <p class="tiny" style="margin:4px 0 0">Blue: ${active ? 'JCA at ACC through day 6' : 'Millikin at North Central'}. Grey: the other launches. ${active ? '' : 'No launch is in progress.'}</p>
+      <div style="margin-top:12px">${bTable(7, active ? 'Re7kho' : 'DWdCET', active ? 'x' : '')}</div></div>
+      ${bSide(active ? JCA : MIL, !active)}</div>${c === 'homeFailure' ? '<p class="tiny">* Sep 29 – Oct 4 only.</p>' : ''}`;
+  }
+  if (c === 'reportLaunch') return topbar('Albums') + `<p class="small"><u>← Home</u> · ${JCA.name}</p>
+    <div class="b-board"><div><div class="nums" style="margin-bottom:12px"><div><span>Opens, week 1</span><b class="num">945</b></div><div><span>Rank at day 7</span><b class="num">2 of 7</b></div><div><span>Downloads</span><b class="num">61</b></div><div><span>Photos opened</span><b class="num">120/120</b></div></div>
+      <h3>Photos, by downloads</h3><div class="photos" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${JCA_PHOTOS.map(p => `<figure><img src="${IMG('Re7kho-acc-v-jca-' + p[0], 'grid')}" alt="JCA at ACC photo ${p[0]}"><figcaption>${p[2]} downloads · ${p[1]} opens</figcaption></figure>`).join('')}</div>
+      <p class="small muted">Top count is 3 downloads; treat the order as weak. Exposure was not recorded during this launch.</p></div>
+      <div class="grid" style="align-content:start"><div class="panel"><h3>Against earlier launches</h3>${cumulative('Re7kho', 14, 360, 200)}</div>
+      <div class="panel"><h3>Selected photo</h3><img src="${IMG('Re7kho-acc-v-jca-23', 'medium')}" alt="JCA at ACC photo 23" style="width:100%;border-radius:8px"><p class="small" style="margin:8px 0">3 downloads · 11 opens · 0 favorites</p><span class="btn ghost">Add to shortlist</span></div></div></div>`;
+  if (c === 'reportTrickle') return topbar('Albums') + `<p class="small"><u>← Albums</u> · ${VLA.name}</p>
+    <div class="b-board"><div><div class="nums" style="margin-bottom:12px"><div><span>Opens since Jul 1</span><b class="num">${VLA.total}</b></div><div><span>Last 30 days</span><b class="num">${VLA.last30}</b></div><div><span>Launch rank</span><b>Not available</b></div></div>
+      <h3>Photos</h3><div class="photos"><figure><img src="${IMG(VLA.cover, 'grid')}" alt="VLA cover"><figcaption>cover</figcaption></figure></div>
+      <p class="small muted">Photo counts are too small to rank (most photos have 0 or 1 open).</p></div>
+      <div class="panel" style="align-self:start"><h3>Against earlier launches</h3><p class="small" style="margin:0">Not shown. This album went public before records began on Jun 30, so it has no day 0.</p></div></div>`;
+}
+
+// Concept C: recaps ---------------------------------------------------------
+function cNote(chip, title, body, img) {
+  return `<div class="c-note">${img ? `<img class="cover" src="${IMG(img)}" alt="">` : '<span style="width:72px"></span>'}<div>${chip}<h3 style="margin:4px 0">${title}</h3><p class="small" style="margin:0">${body}</p></div></div>`;
+}
+function conceptC(c) {
+  if (c === 'homeActive') return topbar('Home') + `<div class="c-wrap"><p class="eyebrow">Thursday, Oct 2</p><h2>Two notes</h2>
+    <div class="panel">${cNote('<span class="chip">Day 7 recap · ready</span>', 'JCA at ACC had its second-best first week', '945 photo opens in 7 days, 2nd of 7 launches. 61 downloads. Read the recap →', JCA.cover)}
+    ${cNote('<span class="chip">Day 3 recap</span>', 'Millikin at North Central is on day 6', '221 opens by day 3, 4th of 7. Its day 7 recap arrives Oct 3.', MIL.cover)}</div>
+    <p class="small muted" style="margin-top:14px">Site, last 30 days: 730 page loads, 0 contact clicks since Sep 29. <u>Site report</u></p></div>`;
+  if (c === 'homeQuiet' || c === 'homeFailure') return topbar('Home') + `<div class="c-wrap">${c === 'homeFailure' ? `<div class="incident"><b>The Oct 5 refresh did not finish.</b> Recaps and numbers stop at Oct 4. This is not a zero. <u>Open data check</u></div>` : ''}<p class="eyebrow">Monday, Oct 6</p><h2>Nothing new to read</h2>
+    <div class="panel">${cNote('<span class="chip done">Quiet</span>', 'No album published since Sep 26', `The gallery had ${c === 'homeFailure' ? '396 photo opens Sep 29 – Oct 4' : '435 photo opens in the last 7 days'}, mostly in albums that already finished their launch. The next recap starts when you publish.`, null)}
+    ${cNote('<span class="chip done">Finished</span>', 'Millikin at North Central', '293 opens in week 1, 4th of 7. 26 downloads.', MIL.cover)}
+    ${cNote('<span class="chip done">Finished</span>', 'JCA at ACC', '945 opens in week 1, 2nd of 7. 61 downloads.', JCA.cover)}</div></div>`;
+  if (c === 'reportLaunch') return topbar('Albums') + `<div class="c-wrap c-recap"><p class="small"><u>← Home</u></p><p class="eyebrow">Day 7 recap · Oct 2</p><h2>${JCA.name}</h2>
+    <p>Your album got <strong>945</strong> photo opens in its first week. That is <strong>2nd</strong> of the 7 launches with a recorded date, behind JCA vs PNHS (1,263).</p>
+    <p>Most of it came at once: <strong>577</strong> opens on day 1, the day after you published. About <strong>42</strong> browsers took part, and every one of the 120 photos was opened at least once.</p>
+    <div class="panel" style="margin-bottom:14px">${dailyBars(JCA.curve, 7, 640, 160)}</div>
+    <p>People requested <strong>61</strong> downloads. No single photo got more than 3, so there is no clear favourite. These were downloaded most:</p>
+    <div class="photos" style="margin-bottom:14px;grid-template-columns:repeat(auto-fill,minmax(100px,1fr))">${JCA_PHOTOS.slice(0, 6).map(p => `<figure><img src="${IMG('Re7kho-acc-v-jca-' + p[0])}" alt="JCA at ACC photo ${p[0]}"><figcaption>${p[2]} downloads</figcaption></figure>`).join('')}</div>
+    <p>Most people came by a link with no tag. <strong>19</strong> opens followed the tagged link on your profile.</p>
+    <div class="c-actions"><span class="btn">See all 120 photos</span><span class="btn ghost">Shortlist these 6</span><span class="btn ghost">Record what you did</span></div>
+    <p class="tiny">What this cannot tell you: which photos were seen and skipped (not recorded until Sep 29), or who the browsers were.</p></div>`;
+  if (c === 'reportTrickle') return topbar('Albums') + `<div class="c-wrap c-recap"><p class="small"><u>← Albums</u></p><p class="eyebrow">Album · no recap</p><h2>${VLA.name}</h2>
+    <p>This album has no launch recap. It went public before records began on Jun 30.</p>
+    <p>Since Jul 1 it has had <strong>${VLA.total}</strong> photo opens, <strong>${VLA.last30}</strong> in the last 30 days. Its busiest days were Jul 11–12 (51), Aug 23 (24) and Sep 14 (12).</p>
+    <div class="c-actions"><span class="btn">See all 116 photos</span></div></div>`;
+}
+
+// Harness -------------------------------------------------------------------
+const CONCEPTS = { A: ['A · Launch log', conceptA], B: ['B · Cohort board', conceptB], C: ['C · Recaps', conceptC] };
+const params = new URLSearchParams(location.search);
+let concept = params.get('concept') in CONCEPTS ? params.get('concept') : 'A';
+let state = params.get('case') in CASES ? params.get('case') : 'homeActive';
+function render() {
+  document.getElementById('concepts').innerHTML = Object.entries(CONCEPTS).map(([k, v]) => `<button type="button" aria-pressed="${k === concept}" data-c="${k}">${v[0]}</button>`).join('');
+  document.getElementById('states').innerHTML = Object.entries(CASES).map(([k, v]) => `<button type="button" aria-pressed="${k === state}" data-s="${k}">${v.label}</button>`).join('');
+  document.getElementById('note').innerHTML = CASES[state].note ? `<div class="mock-note">${CASES[state].note}</div>` : '';
+  AS_OF = CASES[state].asOf ?? 279;
+  document.getElementById('app').innerHTML = CONCEPTS[concept][1](state);
+  history.replaceState(null, '', `?concept=${concept}&case=${state}`);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.c) concept = b.dataset.c; if (b.dataset.s) state = b.dataset.s; render();
+});
+render();
+</script>
+</body>
+</html>

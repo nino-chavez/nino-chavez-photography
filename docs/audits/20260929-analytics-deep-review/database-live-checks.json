@@ -1,0 +1,14 @@
+{
+  "rawRowsUnderServiceRole": {
+    "status": 206,
+    "contentRange": "0-999/48706"
+  },
+  "distinctVisitorsAnon": {
+    "status": 401,
+    "code": "42501",
+    "message": "permission denied for function analytics_count_distinct_visitors"
+  },
+  "advisors": {
+    "status": "Unavailable through current vault item; no management API credential established"
+  }
+}

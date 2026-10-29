@@ -18,13 +18,15 @@ import { photoPageTitle, photoAltText } from '$lib/seo/photo-title';
 import { isValidSrcParam } from '$lib/analytics/share';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { computeSessionHash } from '$lib/analytics/session';
+import { resolveAnalyticsContext } from '$lib/analytics/context.server';
 
 export const load: PageServerLoad = async ({
 	params,
 	url,
 	request,
 	getClientAddress,
-	platform
+	platform,
+	cookies
 }) => {
 	// Stringified nulls are not image keys — they are a caller that interpolated a missing value
 	// into a URL template. The share-URL builders that produced them are fixed (see
@@ -78,7 +80,7 @@ export const load: PageServerLoad = async ({
 		metadata: {
 			// BUCKET 1: Concrete & Filterable
 			play_type: (photoData.play_type || null) as Photo['metadata']['play_type'],
-			sport_type: photoData.sport_type || 'volleyball',
+			sport_type: photoData.sport_type || '',
 			photo_category: photoData.photo_category || 'action',
 
 			// BUCKET 2: Abstract & Internal (numeric quality sub-scores)
@@ -148,10 +150,11 @@ export const load: PageServerLoad = async ({
 	const src = url.searchParams.get('src');
 	if (isValidSrcParam(src)) {
 		const userAgent = request.headers.get('user-agent') ?? '';
+		const trafficContext = await resolveAnalyticsContext(request, cookies);
 		keepTrackingAlive(
 			platform,
 			computeSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
-				trackArrival({ albumKey: photo.album_key, src, sessionHash, userAgent })
+				trackArrival({ albumKey: photo.album_key, src, sessionHash, userAgent, trafficContext })
 			)
 		);
 	}
@@ -223,6 +226,8 @@ export const load: PageServerLoad = async ({
  * now prefers the durable AI caption and concrete sport/category context.
  */
 function generatePhotoDescription(photo: Photo): string {
+	if (!photo.metadata.sport_type) return photo.caption || `${photo.title}. Photography by Nino Chavez.`;
+
 	const sport = photo.metadata.sport_type || 'sports';
 	const category = photo.metadata.photo_category || 'photo';
 
@@ -320,4 +325,3 @@ async function fetchRelatedPhotos(
 
 	return [...collected.values()];
 }
-

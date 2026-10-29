@@ -1,0 +1,112 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { evaluateIntelligenceRules } from './intelligence-rules';
+import type { IntelligenceRuleInput } from './intelligence-rules';
+
+const scope = { kind: 'gallery' as const, query: { start: '2026-09-01', end: '2026-09-30', measure: 'photo_opens' as const, scope: 'all' as const, albumKeys: [], compare: 'previous' as const, traffic: 'conservative' as const } };
+const input = (extra: Partial<IntelligenceRuleInput> = {}): IntelligenceRuleInput => ({ scope, generatedAt: '2026-10-01T00:00:00.000Z', cutoff: '2026-10-01T02:00:00.000Z', coverage: 'complete', previousCoverage: 'complete', current: 50, previous: 30, ...extra });
+
+test('missing linked cohorts suppresses behavior rules instead of manufacturing a zero', () => {
+	const result = evaluateIntelligenceRules(input());
+	assert.equal(result.findings.some((item) => item.rule === 'strong_photo_response'), false);
+	assert.match(result.suppressions.find((item) => item.rule === 'strong_photo_response')?.reason ?? '', /exposures/i);
+});
+
+test('partial coverage suppresses behavior without inventing an outage', () => {
+	const result = evaluateIntelligenceRules(input({ coverage: 'partial' }));
+	assert.deepEqual(result.findings, []);
+	assert.ok(result.suppressions.some((item) => item.rule === 'strong_photo_response'));
+	assert.ok(!result.suppressions.some((item) => item.rule === 'momentum'), 'gallery momentum is retired, not suppressed');
+});
+
+test('photo response uses only the named favorite-or-download-item union and visible photo route', () => {
+	const result = evaluateIntelligenceRules(input({ linkedPhotoResponse: [{ photoId: 'photo-1', albumKey: 'album-1', exposures: 50, responses: 6, evidenceLinks: ['/photo/photo-1'] }] }));
+	const finding = result.findings.find((item) => item.rule === 'strong_photo_response');
+	assert.equal(finding?.evidence.numerator, 6);
+	assert.deepEqual(finding?.evidenceLinks, ['/photo/photo-1']);
+	assert.match(finding?.explanation ?? '', /quality/i);
+});
+
+test('per-album discovery keeps its target and calendar counts, and its evidence is that album\'s report', () => {
+	const result = evaluateIntelligenceRules(input({
+		albumDiscovery: [{ albumKey: 'album-1', exposures: 100, opens: 4, directEntries: 0, evidenceLinks: ['/analytics/albums/album-1'] }]
+	}));
+	const discovery = result.findings.find((item) => item.rule === 'discovery_friction');
+	assert.equal(discovery?.target.albumKey, 'album-1');
+	assert.deepEqual(discovery?.evidence, { ...discovery?.evidence, numerator: 4, denominator: 100 });
+	assert.equal(discovery?.reportHref, '/analytics/albums/album-1');
+});
+
+test('gallery momentum is retired: two calendar periods never produce a gallery finding or suppression', () => {
+	// A burst like JCA at ACC's (1,011 photo opens against 0 the month before) and a steady album both stay silent:
+	// the launch rules compare albums at the same age instead.
+	const result = evaluateIntelligenceRules(input({ current: 1011, previous: 0 }));
+	assert.equal(result.findings.some((item) => item.rule === 'momentum'), false);
+	assert.equal(result.suppressions.some((item) => item.rule === 'momentum'), false);
+	const steady = evaluateIntelligenceRules(input({ current: 400, previous: 200 }));
+	assert.equal(steady.findings.some((item) => item.rule === 'momentum'), false);
+});
+
+test('site momentum still compares two complete periods of page views', () => {
+	const sites = { kind: 'sites' as const, period: 7 as const, section: 'all' as const };
+	const result = evaluateIntelligenceRules(input({ scope: sites, current: 40, previous: 20 }));
+	const momentum = result.findings.find((item) => item.rule === 'momentum');
+	assert.equal(momentum?.target.kind, 'site');
+	assert.match(momentum?.explanation ?? '', /40 page views versus 20/);
+	assert.equal(momentum?.severity, 'low');
+	assert.equal(momentum?.evidence.strength, 'exploratory');
+	const small = evaluateIntelligenceRules(input({ scope: sites, current: 19, previous: 30 }));
+	assert.match(small.suppressions.find((item) => item.rule === 'momentum')?.reason ?? '', /at least 20 page views/);
+});
+
+test('search and distribution retain distinct cohorts without adding overlapping source actions', () => {
+	const result = evaluateIntelligenceRules(input({
+		search: { submitted: 40, failures: 1, resultsShown: 40, emptyResults: 14, selections: 4 },
+		distribution: { taggedArrivals: 100, laterNamedAction: 2, actionName: 'favorite-added' }
+	}));
+	const search = result.findings.filter((item) => item.rule === 'search_usefulness');
+	assert.deepEqual(search.map((item) => item.evidence.units).sort(), ['results-shown searches', 'submitted searches']);
+	assert.equal(search.some((item) => item.evidence.numerator === 15), false);
+	assert.equal(result.findings.find((item) => item.rule === 'distribution')?.evidence.numerator, 2);
+});
+
+test('render observations without a deduplicated terminal union do not become a failure rate', () => {
+	const result = evaluateIntelligenceRules(input({ rendering: { rendered: 80, failed: 2, observedTerminal: null } }));
+	assert.match(result.suppressions.find((item) => item.rule === 'rendering_download_reliability')?.reason ?? '', /deduplicated observed-terminal denominator/i);
+});
+
+test('all site families receive native journey rows without calling clicks inquiries or progression comprehension', () => {
+	const siteScope = { kind: 'sites' as const, period: 30 as const, section: 'all' as const };
+	const result = evaluateIntelligenceRules({ ...input({ scope: siteScope, siteWindows: { current: { start: '2026-09-01', end: '2026-09-30' }, previous: { start: '2026-08-02', end: '2026-08-31' } } }), siteJourneys: [
+		{ kind: 'profile', views: 100, actions: 1, completed: 0, evidenceLinks: ['/photography/analytics/sites?period=30&section=profile'] },
+		{ kind: 'writing', views: 100, actions: 0, completed: 1, evidenceLinks: ['/photography/analytics/sites?period=30&section=writing'] },
+		{ kind: 'demos', views: 100, actions: 0, completed: 1, evidenceLinks: ['/photography/analytics/sites?period=30&section=demos'] }
+	] });
+	assert.deepEqual(result.findings.filter((item) => ['profile_response', 'writing_demo_response'].includes(item.rule)).map((item) => item.id).sort(), ['content-progress-demos', 'content-progress-writing', 'profile-response']);
+	assert.match(result.findings.find((item) => item.rule === 'profile_response')?.explanation ?? '', /not an inquiry/i);
+	assert.match(result.findings.find((item) => item.id === 'content-progress-writing')?.explanation ?? '', /does not prove comprehension/i);
+});
+
+test('small or missing history cannot become an outage or a follow-up result', () => {
+	const result = evaluateIntelligenceRules(input({ current: 4, previous: 2, followUp: { actionId: 'action-1', before: 2, after: 4, coverage: 'complete', previousCoverage: 'complete', concurrentChanges: 0, measure: 'photo_opens', window: { before: { start: '2026-08-01', end: '2026-08-30' }, after: { start: '2026-09-01', end: '2026-09-30' } } } }));
+	assert.equal(result.findings.some((item) => item.rule === 'follow_up'), false);
+	assert.match(result.suppressions.find((item) => item.rule === 'follow_up')?.reason ?? '', /little volume/i);
+});
+
+test('real delivery diagnostic is visible even when the selected history is partial', () => {
+ const result=evaluateIntelligenceRules(input({coverage:'partial',diagnostics:[{type:'provider_delivery_failures',status:'failed',count:2}]}));
+ assert.deepEqual(result.findings.map(row=>row.id), ['collection-health-provider_delivery_failures']);
+ assert.equal(result.findings[0].evidence.numerator,2);
+});
+test('render union measures failed views without summing retry successes and failures',()=>{
+ const result=evaluateIntelligenceRules(input({rendering:{rendered:98,failed:4,observedTerminal:100}}));
+ const finding=result.findings.find(row=>row.id==='render-failures');assert.equal(finding?.evidence.denominator,100);assert.equal(finding?.evidence.numerator,4);
+});
+
+
+test('observed failures rank before promotion without changing evidence strength', () => {
+ const result=evaluateIntelligenceRules(input({download:{requests:30,failed:3,unknownTerminal:0,handedOff:27}, diagnostics:[{type:'relay',status:'failed',count:2}]}));
+ assert.equal(result.findings[0].severity,'high');
+ const sites=evaluateIntelligenceRules(input({scope:{kind:'sites',period:7,section:'all'},current:40,previous:20,diagnostics:[{type:'relay',status:'failed',count:2}]}));
+ assert.ok(sites.findings.findIndex(f=>f.rule==='collection_health')<sites.findings.findIndex(f=>f.rule==='momentum'));
+});

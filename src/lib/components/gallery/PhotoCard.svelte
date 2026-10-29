@@ -24,23 +24,30 @@
 	import FavoriteButton from '$lib/components/photo/FavoriteButton.svelte';
 	import { formatCategory, formatSport } from '$lib/utils/format-metadata';
 	import type { Photo } from '$types/photo';
+	import { exposure } from '$lib/analytics/exposure';
+	import { trackAnalyticsEventV2 } from '$lib/analytics/client';
+	import { getPhotoAspectRatio } from '$lib/gallery/photo-row-layout';
 
 	interface Props {
 		photo: Photo;
 		index?: number;
+		resultSetId?: string;
+		searchId?: string;
+		favoriteSurface?: string;
 		onclick?: (photo: Photo) => void; // Deprecated: Use href navigation instead
 		priority?: boolean; // For above-fold images
+		showMetadata?: boolean; // Controls the sport and photo-specific category overlay.
+		preserveAspectRatio?: boolean; // Fitted rows reserve each original frame's shape.
+		sizes?: string;
 	}
 
-	let { photo, index = 0, onclick, priority = false }: Props = $props();
+	let { photo, index = 0, resultSetId = crypto.randomUUID(), searchId, favoriteSurface = 'gallery', onclick, priority = false, showMetadata = true, preserveAspectRatio = false, sizes = SIZES_PRESETS.galleryCard }: Props = $props();
+	let cardAspectRatio = $derived(preserveAspectRatio ? `${getPhotoAspectRatio(photo)}/1` : '4/3');
 
 	// Use image_url for display, thumbnail as blur placeholder
 	// All images now served via Cloudflare proxy with WebP/AVIF conversion
 	let imageSrc = $derived(photo.image_url);
 	let thumbnailSrc = $derived(photo.thumbnail_url);
-
-	// Responsive sizes for gallery grid layout
-	const galleryCardSizes = SIZES_PRESETS.galleryCard;
 
 	// Individual photo URL. image_key is NOT unique (camera DSC numbers reset per card), so carry the
 	// album as `?a=` to disambiguate /photo/[id] to the exact photo the user clicked.
@@ -50,8 +57,19 @@
 
 	// Generate comprehensive alt text for screen readers
 	let accessibleAltText = $derived(generatePhotoAltText(photo));
+	let loaded = $state(false);
+	let previousImageIdentity = $state('');
+	let imageIdentity = $derived(`${photo.id}:${imageSrc}`);
+	let exposureIdentity = $derived(`${resultSetId}:${photo.id}`);
+	$effect(() => {
+		if (previousImageIdentity === imageIdentity) return;
+		previousImageIdentity = imageIdentity;
+		loaded = false;
+	});
+	function recordExposure() { trackAnalyticsEventV2({ eventName: 'photo_exposed', properties: { photo_id: photo.id, album_key: photo.metadata?.album_key, position: index, result_set_id: resultSetId } }); }
 
 	function handleClick(event: MouseEvent) {
+		if (searchId) trackAnalyticsEventV2({ eventName: 'search_result_selected', properties: { search_id: searchId, result_set_id: resultSetId, photo_id: photo.id, album_key: photo.metadata?.album_key, position: index } });
 		// If onclick callback provided, prevent default navigation and use callback instead
 		if (onclick) {
 			event.preventDefault();
@@ -64,13 +82,15 @@
 
 <a
 	href={photoUrl}
-	class="photo-card group relative aspect-[4/3] bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 transition-all cursor-pointer outline-none block"
+	class="photo-card group relative bg-charcoal-900 rounded-lg overflow-hidden border border-charcoal-800 transition-all cursor-pointer outline-none block"
+	style:aspect-ratio={cardAspectRatio}
 	aria-label={accessibleAltText}
 	data-sveltekit-preload-data="false"
 	onclick={handleClick}
+	use:exposure={{ loaded, onExpose: recordExposure, identity: exposureIdentity }}
 >
 	<!-- Optimized Image with Lazy Loading, Blur Placeholder & Responsive srcset -->
-	<!-- quality="low" = S/M sizes (400-600px) - appropriate for grid cards at max 25vw -->
+	<!-- Grid is the fallback; srcset and the fitted row's sizes select larger variants as needed. -->
 	<!--
 		alt prefers alt_text (a purpose-built screen-reader sentence with no jersey numbers, ADR
 		alt-text-pipeline 2026-09-26), falling back to caption, not `photo.title` — that field is
@@ -79,25 +99,31 @@
 		clip with no reader text is labelled (clipLabel in $lib/video/video-label). The anchor's
 		aria-label above supplies the link's accessible name and now leads with the same text too.
 	-->
+	{#key imageIdentity}
 	<OptimizedImage
 		src={imageSrc}
+		cfImageId={photo.cf_image_id}
 		alt={photo.alt_text?.trim() || photo.caption?.trim() || `Photo ${index + 1}`}
 		thumbnailSrc={thumbnailSrc}
-		aspectRatio="4/3"
-		sizes={galleryCardSizes}
+		aspectRatio={cardAspectRatio}
+		fit="contain"
+		{sizes}
 		quality="low"
 		{priority}
 		class="absolute inset-0"
+		onLoad={() => (loaded = true)}
 	/>
+	{/key}
 
 	<!-- Favorite Button - Top Right (Always visible on mobile, hover on desktop) -->
 	<div
 		class="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity"
 	>
-		<FavoriteButton {photo} variant="icon-only" />
+		<FavoriteButton {photo} surface={favoriteSurface} variant="icon-only" />
 	</div>
 
 	<!-- Metadata Overlay - Bottom (Hover Only) -->
+	{#if showMetadata}
 	<div
 		class="absolute bottom-0 left-0 right-0 p-3
 		       opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
@@ -118,13 +144,14 @@
 			{/if}
 
 			<!-- Category -->
-			{#if photo.metadata?.photo_category}
+			{#if photo.metadata?.sport_type && photo.metadata?.photo_category}
 				<span class="text-xs px-2 py-1 rounded-md bg-charcoal-700 text-white shadow-sm">
 					{formatCategory(photo.metadata.photo_category)}
 				</span>
 			{/if}
 		</div>
 	</div>
+	{/if}
 </a>
 
 <style>

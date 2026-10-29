@@ -9,7 +9,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import PaginationHybrid from '$lib/components/ui/PaginationHybrid.svelte';
 	import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
-	import PhotoGridSkeleton from '$lib/components/ui/PhotoGridSkeleton.svelte';
+	import FittedPhotoGrid from '$lib/components/gallery/FittedPhotoGrid.svelte';
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import VisualDataLegend from '$lib/components/ui/VisualDataLegend.svelte';
 	import FilterChip from '$lib/components/filters/FilterChip.svelte';
@@ -25,6 +25,7 @@
 	import type { Photo } from '$types/photo';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
+	import { trackAnalyticsEventV2, recordSearchSubmission, searchDuration } from '$lib/analytics/client';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -78,12 +79,30 @@
 
 	// Search - sync with server data on navigation
 	let searchQuery = $state('');
-	$effect(() => {
+	let resultSetId = $state(crypto.randomUUID());
+		$effect(() => {
 		searchQuery = data.searchQuery || '';
+		resultSetId = crypto.randomUUID();
 	});
 
 	// Photos come directly from server (search filtering is server-side)
 	let displayPhotos = $derived(data.photos);
+	let reportedSearchFailureId = $state<string | null>(null);
+	function reportVisibleSearchFailure() {
+		if (!data.searchError?.searchId || reportedSearchFailureId === data.searchError.searchId || document.visibilityState !== 'visible') return;
+		reportedSearchFailureId = data.searchError.searchId;
+		trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: data.searchError.searchId, error_code: data.searchError.errorCode } });
+	}
+	$effect(() => {
+		if (!data.searchError && data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, duration_ms: searchDuration(data.searchId) } });
+		reportVisibleSearchFailure();
+		if (activeFilterCount > 0) trackAnalyticsEventV2({ eventName: 'filters_applied', properties: { result_set_id: resultSetId, result_count: data.totalCount, sport: data.selectedSport ?? undefined, category: data.selectedCategory ?? undefined, play_type: data.selectedPlayType ?? undefined, division: data.selectedDivision ?? undefined, level: data.selectedLevel ?? undefined, sort: data.sortBy } });
+	});
+	$effect(() => {
+		const onVisibilityChange = () => reportVisibleSearchFailure();
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+	});
 
 	// Active filters count
 	let activeFilterCount = $derived.by(() => {
@@ -117,8 +136,8 @@
 
 	// Lightbox handlers
 	function handlePhotoClick(photo: Photo) {
-		// Use image_key for matching (more reliable than id)
-		const index = displayPhotos.findIndex((p) => p.image_key === photo.image_key);
+		// Camera filenames repeat across albums; the clicked photo's ID is globally unique.
+		const index = displayPhotos.findIndex((p) => p.id === photo.id);
 		if (index !== -1) {
 			selectedPhotoIndex = index;
 			lightboxOpen = true;
@@ -165,7 +184,9 @@
 		}
 		url.searchParams.delete('page');
 		url.searchParams.delete('similar_to');
-		goto(url.toString());
+		const searchId = recordSearchSubmission();
+		url.searchParams.set('search_id', searchId);
+		void goto(url.toString()).catch(() => trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: searchId, error_code: 'navigation_failed' } }));
 	}
 
 	function handleClearSearch() {
@@ -410,22 +431,25 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!--
-	The page had no h1 at all — it renders straight into the filter bar, so there is no visual
-	heading slot. sr-only is the established pattern here (Header, Loading, several routes) and
-	the text matches the <title>. /explore is priority 0.9 in the sitemap; a page this central
-	should announce what it is.
--->
-<h1 class="sr-only">Explore Gallery</h1>
+<header class="explore-opening">
+	<p class="explore-eyebrow">Photography archive</p>
+	<div class="explore-title-row">
+		<div>
+			<h1>Find your photograph</h1>
+			<p>Search what is visible, narrow by event details, then open the image to save, share, or download.</p>
+		</div>
+		<p class="explore-count">{data.totalCount.toLocaleString()} {data.totalCount === 1 ? 'photograph' : 'photographs'}</p>
+	</div>
+</header>
 
-<!-- Minimal Sticky Header -->
-<div class="sticky top-0 z-20 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50">
+<!-- Finding tools -->
+<div class="explore-tools">
 	<!-- Loading progress bar -->
 	{#if isLoading}
 		<div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-gold-500 via-gold-400 to-gold-500 animate-shimmer-fast"></div>
 	{/if}
 
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+	<div class="explore-tools__inner">
 		<!-- Filters Header with Actions -->
 		<div class="flex items-center justify-between gap-2 mb-2">
 			<div class="flex items-center gap-2">
@@ -538,7 +562,7 @@
 </div>
 
 <!-- Main Content with Sidebar (Desktop) / Full Width (Mobile) -->
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+<div class="explore-results" aria-busy={isLoading}>
 	<div class="flex gap-6">
 		<!-- Filter Sidebar (Desktop only) - Lazy Loaded -->
 		<div class="hidden lg:block">
@@ -638,15 +662,20 @@
 		</div>
 	{/if}
 
-	<!-- Photo Grid with Loading State -->
-	{#if isLoading}
-		<!-- Show skeleton while navigating -->
-		<PhotoGridSkeleton count={data.pageSize} />
+	<!-- Keep the current rows in place while navigation loads the next result set. -->
+	{#if data.searchError}
+		<div class="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto" role="alert">
+			<Camera class="w-16 h-16 text-charcoal-600 mb-4" aria-hidden="true" />
+			<Typography variant="h3" class="mb-2">Search is temporarily unavailable</Typography>
+			<Typography variant="body" class="text-charcoal-400">No results were recorded. Please try your search again.</Typography>
+		</div>
 	{:else if displayPhotos.length > 0}
-		<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-4 lg:gap-6">
-			{#each displayPhotos as photo, index (photo.image_key)}
-				<PhotoCard {photo} {index} onclick={handlePhotoClick} priority={index < 4} />
-			{/each}
+		<div class="explore-photo-grid">
+			<FittedPhotoGrid photos={displayPhotos}>
+				{#snippet children(photo, index, sizes)}
+					<PhotoCard {sizes} preserveAspectRatio {photo} {index} {resultSetId} searchId={data.searchId ?? undefined} favoriteSurface="explore" onclick={handlePhotoClick} priority={index < 4} />
+				{/snippet}
+			</FittedPhotoGrid>
 		</div>
 	{:else}
 		<!-- Enhanced Empty State with Filter Context -->
@@ -718,13 +747,22 @@
 </div>
 
 <style>
-	/* Performance: Use CSS transitions instead of JS animations */
-	:global(.photo-card-link) {
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
-	}
-
-	:global(.photo-card-link:hover) {
-		transform: translateY(-4px) scale(1.02);
+	.explore-opening, .explore-tools__inner, .explore-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.explore-opening { padding-block: 40px 28px; }
+	.explore-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+	.explore-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+	.explore-title-row h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+	.explore-title-row > div > p { max-width: 680px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; line-height: 1.55; }
+	.explore-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
+	.explore-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); border-block: 1px solid var(--color-charcoal-800); }
+	.explore-tools__inner { padding-block: 16px; }
+	.explore-results { padding-block: 24px 72px; }
+	.explore-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
+	@media (max-width: 640px) {
+		.explore-opening, .explore-tools__inner, .explore-results { width: calc(100% - 40px); }
+		.explore-opening { padding-block: 24px 22px; }
+		.explore-title-row { align-items: start; flex-direction: column; gap: 12px; }
+		.explore-count { white-space: normal; }
 	}
 
 	/* Loading progress bar animation */

@@ -1,0 +1,28 @@
+{
+  "project": 635867,
+  "observedAt": "2026-09-29T17:27:17.081Z",
+  "source": "actual local gallery API -> durable outbox -> official SDK -> live provider query -> confirmed database rows",
+  "collectorDuplicateRejected": true,
+  "journeyEvents": 3,
+  "fixtureRowsClaimed": 3,
+  "failed": 0,
+  "skipped": 0,
+  "states": [
+    {
+      "status": "confirmed",
+      "last_error_code": null
+    },
+    {
+      "status": "confirmed",
+      "last_error_code": null
+    },
+    {
+      "status": "confirmed",
+      "last_error_code": null
+    }
+  ],
+  "available": true,
+  "confirmed": 3,
+  "passed": true,
+  "limits": "Local server and synthetic database. Does not prove hosted Cloudflare runtime delivery or production visitor accuracy."
+}

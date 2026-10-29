@@ -8,6 +8,7 @@
  */
 
 import type { RequestHandler } from './$types';
+import { isDownloadableImageResponse } from '$lib/analytics/download-response';
 
 /** Allowed image source hosts (exact hostname match — NOT substring) */
 const ALLOWED_HOSTS = ['imagedelivery.net'];
@@ -39,15 +40,16 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       return new Response('Invalid URL - must be from Cloudflare Images', { status: 400 });
     }
 
-    // Fetch the image
+    // Downloads are named .jpg by the single-photo and ZIP callers. Do not
+    // advertise WebP/AVIF here or automatic variants return mismatched bytes.
     const response = await fetch(imageUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+        'Accept': 'image/jpeg',
       },
     });
 
-    if (!response.ok) {
+    if (!isDownloadableImageResponse(response)) {
       console.error('[Download Proxy] Upstream responded with:', response.status, response.statusText);
       return new Response(`Failed to fetch image: ${response.status} ${response.statusText}`, { status: response.status });
     }

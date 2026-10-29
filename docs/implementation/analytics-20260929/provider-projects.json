@@ -1,0 +1,33 @@
+{
+  "host": "https://us.posthog.com",
+  "organization": "019baf19-08da-0000-7bd3-d1b9a7fbab20",
+  "organization_name": "Signal x Studio",
+  "billing_plan_observed": "free",
+  "billing_changed": false,
+  "projects": [
+    {
+      "id": 635866,
+      "name": "Nino Chavez Photography",
+      "created": true,
+      "timezone": "America/Chicago",
+      "anonymize_ips": true,
+      "autocapture_opt_out": true,
+      "session_recording_opt_in": false,
+      "retention_fields": {
+        "session_recording_retention_period": "30d"
+      }
+    },
+    {
+      "id": 635867,
+      "name": "Nino Chavez Photography - Test",
+      "created": true,
+      "timezone": "America/Chicago",
+      "anonymize_ips": true,
+      "autocapture_opt_out": true,
+      "session_recording_opt_in": false,
+      "retention_fields": {
+        "session_recording_retention_period": "30d"
+      }
+    }
+  ]
+}

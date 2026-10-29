@@ -10,8 +10,17 @@
 	import { SITE_ORIGIN, SITE_URL } from '$lib/site-url';
 	import { canonicalUrl as buildCanonical } from '$lib/seo/canonical';
 	import { canPublishRouteUrl, chatEnabledForRoute } from '$lib/routes';
+	import { trackVisibleGalleryPage } from '$lib/analytics/client';
+	import { isAnalyticsWorkspace as usesAnalyticsWorkspace } from '$lib/analytics/report-paths';
 
 	let { children } = $props();
+
+	// Client navigation is the only reliable page-view boundary: SSR and hover prefetch are not views.
+	$effect(() => {
+		const routeId = $page.route.id;
+		if (!routeId || usesAnalyticsWorkspace(routeId, $page.url.hostname, $page.url.pathname) || /^\/(analytics|analytics-preferences|admin|login|auth)(\/|$)/.test(routeId)) return;
+		trackVisibleGalleryPage(routeId.replace(/[^a-z0-9_]/gi, '_').replace(/^_+|_+$/g, '') || 'gallery', $page.url.pathname, $page.url.searchParams.get('src'));
+	});
 
 	// Create QueryClient instance for TanStack Query
 	const queryClient = new QueryClient({
@@ -25,6 +34,7 @@
 
 	// Navigation loading state
 	let isNavigating = $derived($navigating !== null);
+	let isAnalyticsWorkspace = $derived(usesAnalyticsWorkspace($page.route.id, $page.url.hostname, $page.url.pathname));
 
 	// Kill switch: chat is OFF unless VITE_CHAT_ENABLED === 'true' (disabled in prod for now,
 	// pending the v5 stream-contract fix + a verifiable output guardrail). Re-enable by setting
@@ -84,7 +94,7 @@
 	// are correct, because they append a bare route like `/photo/${key}`.
 	//
 	// The trailing-slash strip is load-bearing on exactly one route — see canonical.ts.
-	const pageCanonical = $derived(buildCanonical(SITE_ORIGIN, $page.url.pathname));
+	const pageCanonical = $derived(buildCanonical(isAnalyticsWorkspace ? 'https://analytics.ninochavez.co' : SITE_ORIGIN, $page.url.pathname));
 
 	// Resolved SEO values: page override (data.seo) → site default.
 	const resolvedTitle = $derived(seo?.title ?? pageTitle);
@@ -173,7 +183,7 @@
 		`index, follow` to every crawler, so the tag asserted nothing its absence
 		does not. A page that wants out says so on its own, once.
 	-->
-	<meta name="theme-color" content="#D4AF37" />
+	<meta name="theme-color" content={isAnalyticsWorkspace ? '#edf2f7' : '#D4AF37'} />
 
 	<!-- Google Search Console Verification -->
 	<meta name="google-site-verification" content="m_DGu93JLdDvx0_KNbZhjwVB75OdnQEURDhinyriJKQ" />
@@ -187,14 +197,14 @@
 		</div>
 	{/if}
 
-	<div class="min-h-screen bg-charcoal-950 text-white flex flex-col">
-		<Header />
+	<div class={isAnalyticsWorkspace ? 'min-h-screen flex flex-col bg-[#f4f7fb]' : 'min-h-screen flex flex-col bg-charcoal-950 text-white'}>
+		{#if !isAnalyticsWorkspace}<Header />{/if}
 
-		<main class="flex-1 pb-20 sm:pb-0">
+		<main class="flex-1">
 			{@render children?.()}
 		</main>
 
-		<Footer />
+		{#if !isAnalyticsWorkspace}<Footer />{/if}
 	</div>
 
 	<!-- Global Toast Notifications -->

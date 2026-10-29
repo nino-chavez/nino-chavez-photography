@@ -1,9 +1,9 @@
 /**
  * Analytics Tracking Utilities
  *
- * Lightweight, privacy-focused analytics
- * - No cookies, no PII
- * - Tracks aggregate data only
+ * First-party activity collection. Raw engagement uses a pseudonymous
+ * browser/network fingerprint and expires after 90 days. Durable reports
+ * contain action totals without that identifier; search text stays private.
  */
 
 import { matviewClient } from '$lib/supabase/server';
@@ -15,6 +15,7 @@ export interface SearchQueryEvent {
 	filters_used?: Record<string, any>;
 	results_count: number;
 	userAgent: string;
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 export interface ArrivalEvent {
@@ -22,6 +23,19 @@ export interface ArrivalEvent {
 	src: string; // channel value carried on the incoming ?src= param (see $lib/utils/share-url)
 	sessionHash?: string;
 	userAgent: string;
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
+}
+
+export interface CollectionDiagnosticEvent {
+ userAgent?: string | null;
+	type: 'search' | 'download';
+	status: 'requested' | 'accepted' | 'failed' | 'completed';
+	albumKey?: string;
+	photoId?: string;
+	source?: string;
+	resultCount?: number;
+	errorCode?: string;
+	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
 
 /**
@@ -64,6 +78,7 @@ export async function recordBotFiltered(): Promise<void> {
  * site-wide (homepage) arrivals.
  */
 export async function trackArrival(event: ArrivalEvent): Promise<void> {
+	if (event.trafficContext === 'self_excluded') return;
 	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		const { error: dbError } = await createSupabaseAdminClient()
@@ -71,9 +86,11 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
 			.insert({
 				event_type: 'view',
 				photo_id: null,
-				album_key: event.albumKey ?? null,
+			album_key: event.albumKey ?? null,
 				source: event.src,
 				session_hash: event.sessionHash ?? null,
+				traffic_context: event.trafficContext ?? 'audience',
+				source_kind: 'tagged_arrival',
 			});
 		if (dbError && dbError.code !== '23505') {
 			console.error('[Analytics] Failed to track arrival:', dbError.message);
@@ -88,6 +105,7 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
  * Track a search query (server-side only)
  */
 export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
+	if (event.trafficContext === 'self_excluded') return;
 	if (isBotUserAgent(event.userAgent)) return recordBotFiltered();
 	try {
 		// The error must be read off the result, not caught: supabase-js resolves
@@ -99,6 +117,7 @@ export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 			query_text: event.query_text,
 			filters_used: event.filters_used || null,
 			results_count: event.results_count,
+			traffic_context: event.trafficContext ?? 'audience',
 		});
 		if (dbError) {
 			console.error('[Analytics] Failed to track search query:', dbError.message);
@@ -106,6 +125,26 @@ export async function trackSearchQuery(event: SearchQueryEvent): Promise<void> {
 	} catch (error) {
 		// Fail silently - analytics should never break the app
 		console.error('[Analytics] Failed to track search query:', error);
+	}
+}
+
+/** Records report-safe collection evidence. Search text and browser identifiers never enter this table. */
+export async function trackCollectionDiagnostic(event: CollectionDiagnosticEvent): Promise<void> {
+	if (event.trafficContext === 'self_excluded' || isBotUserAgent(event.userAgent)) return;
+	try {
+		const { error: dbError } = await createSupabaseAdminClient().from('analytics_collection_diagnostics').insert({
+			diagnostic_type: event.type,
+			status: event.status,
+			album_key: event.albumKey ?? null,
+			photo_id: event.photoId ?? null,
+			source: event.source ?? 'direct',
+			result_count: event.resultCount ?? null,
+			error_code: event.errorCode?.slice(0, 120) ?? null,
+			traffic_context: event.trafficContext ?? 'audience'
+		});
+		if (dbError) console.error('[Analytics] Failed to record collection diagnostic:', dbError.message);
+	} catch (error) {
+		console.error('[Analytics] Failed to record collection diagnostic:', error);
 	}
 }
 
@@ -128,7 +167,7 @@ export async function getPopularPhotos(limit: number = 10) {
 		return data || [];
 	} catch (error) {
 		console.error('[Analytics] Failed to get popular photos:', error);
-		return [];
+		throw error;
 	}
 }
 
@@ -169,7 +208,7 @@ export async function getBotFilteredCount(days: number = 30): Promise<number> {
 		return (data || []).reduce((sum, row) => sum + Number(row.count), 0);
 	} catch (error) {
 		console.error('[Analytics] Failed to get bot-filtered count:', error);
-		return 0;
+		throw error;
 	}
 }
 

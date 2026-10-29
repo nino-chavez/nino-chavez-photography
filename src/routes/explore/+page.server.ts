@@ -11,28 +11,50 @@
  */
 
 import { fetchPhotos, getPhotoCount, getFilterCounts, findSimilarPhotos, searchPhotos, getAlbumKeysByFacet, searchByJersey } from '$lib/supabase/server';
-import { trackSearchQuery, keepTrackingAlive } from '$lib/analytics/tracker';
+import { trackCollectionDiagnostic, keepTrackingAlive } from '$lib/analytics/tracker';
+import { resolveAnalyticsContext } from '$lib/analytics/context.server';
+import { EXPLORE_FILTER_VALUES, optionalKnownFilter, validSearchCorrelationId } from '$lib/analytics/search-contract';
+import { error as httpError } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, request }) => {
+function diagnosticErrorCode(cause: unknown): string {
+	if (cause && typeof cause === 'object' && 'code' in cause && typeof cause.code === 'string') return cause.code.slice(0, 120);
+	return 'search_failed';
+}
+
+export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, request, cookies }) => {
   setHeaders({ 'cache-control': 's-maxage=60, stale-while-revalidate=120' });
   const userAgent = request.headers.get('user-agent') ?? '';
+	const trafficContext = await resolveAnalyticsContext(request, cookies);
 
   // Get cached data from parent layout
   const { sports, categories, baseFilterCounts } = await parent();
 
   // User-facing filter params from URL
-  let sportFilter = url.searchParams.get('sport') || undefined;
-  let categoryFilter = url.searchParams.get('category') || undefined;
-  let playTypeFilter = url.searchParams.get('play_type') || undefined;
+  const rawSportFilter = url.searchParams.get('sport');
+  const rawCategoryFilter = url.searchParams.get('category');
+  const rawPlayTypeFilter = url.searchParams.get('play_type');
+  const rawDivisionFilter = url.searchParams.get('division');
+  const rawLevelFilter = url.searchParams.get('level');
+  const rawSort = url.searchParams.get('sort');
+  if ((rawSportFilter && !optionalKnownFilter(rawSportFilter, EXPLORE_FILTER_VALUES.sport)) ||
+    (rawCategoryFilter && !optionalKnownFilter(rawCategoryFilter, EXPLORE_FILTER_VALUES.category)) ||
+    (rawPlayTypeFilter && !optionalKnownFilter(rawPlayTypeFilter, EXPLORE_FILTER_VALUES.play_type)) ||
+    (rawDivisionFilter && !optionalKnownFilter(rawDivisionFilter, EXPLORE_FILTER_VALUES.division)) ||
+    (rawLevelFilter && !optionalKnownFilter(rawLevelFilter, EXPLORE_FILTER_VALUES.level)) ||
+    (rawSort && !optionalKnownFilter(rawSort, EXPLORE_FILTER_VALUES.sort))) throw httpError(400, 'invalid gallery filter');
+  let sportFilter = optionalKnownFilter(rawSportFilter, EXPLORE_FILTER_VALUES.sport);
+  let categoryFilter = optionalKnownFilter(rawCategoryFilter, EXPLORE_FILTER_VALUES.category);
+  let playTypeFilter = optionalKnownFilter(rawPlayTypeFilter, EXPLORE_FILTER_VALUES.play_type);
   let searchQuery = url.searchParams.get('q') || undefined;
+	const searchId = validSearchCorrelationId(url.searchParams.get('search_id'));
   let similarToImageKey = url.searchParams.get('similar_to') || undefined;
   let jerseyFilter = url.searchParams.get('jersey') ? parseInt(url.searchParams.get('jersey')!) : undefined;
-  const divisionFilter = url.searchParams.get('division') || undefined;
-  const levelFilter = url.searchParams.get('level') || undefined;
+  const divisionFilter = optionalKnownFilter(rawDivisionFilter, EXPLORE_FILTER_VALUES.division);
+  const levelFilter = optionalKnownFilter(rawLevelFilter, EXPLORE_FILTER_VALUES.level);
 
   // Sort mode (default to quality)
-  const sortBy = (url.searchParams.get('sort') || 'quality') as 'quality' | 'newest' | 'oldest';
+  const sortBy = (optionalKnownFilter(rawSort, EXPLORE_FILTER_VALUES.sort) || 'quality') as 'quality' | 'newest' | 'oldest';
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1')); // Ensure minimum page 1
   const pageSize = 24; // Fixed page size for consistent pagination
   const offset = (page - 1) * pageSize;
@@ -54,30 +76,6 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
 
   // Check if any filters are active
   const hasActiveFilters = !!(sportFilter || categoryFilter || playTypeFilter || jerseyFilter || divisionFilter || levelFilter);
-
-  /**
-   * What the VISITOR selected, for `search_queries.filters_used`.
-   *
-   * Not `filterOptions` — that is the internal argument to searchPhotos, and its `albumKeys`
-   * is the resolved facet expansion. Logging it stored a dump of every album matching the
-   * division/level facet: 11 rows averaging 611 bytes, one at 1,035, each a list of ~100
-   * album keys. It also LOST the thing worth recording, because `division` and `level` are
-   * consumed into that list and never appear — so the one column meant to answer "what was
-   * this person filtering by" could not answer it for the two filters that need resolving.
-   *
-   * Undefined keys are dropped so a row carries only what was actually chosen. The jersey
-   * branch above already logged this shape; this makes the two agree.
-   */
-  const visitorFilters = Object.fromEntries(
-    Object.entries({
-      sport: sportFilter,
-      category: categoryFilter,
-      playType: playTypeFilter,
-      jersey: jerseyFilter,
-      division: divisionFilter,
-      level: levelFilter
-    }).filter(([, value]) => value !== undefined && value !== null && value !== '')
-  );
 
   // PERFORMANCE: Stream filter counts — don't block FCP on expensive aggregation query
   // When filters are active, getFilterCounts can take 2-4s. By not awaiting,
@@ -123,40 +121,37 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
   } else if (useJersey) {
     // Jersey filter → comprehensive sightings (RPC), not the sparse jersey_number column.
     // Jersey-primary: scoped by sport only (the RPC join can't compose with category/play_type).
-    const r = await searchByJersey(String(jerseyFilter), { sport: sportFilter, limit: pageSize, offset });
+		if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'requested', source: 'jersey', trafficContext }));
+		let r;
+		try {
+			r = await searchByJersey(String(jerseyFilter), { sport: sportFilter, limit: pageSize, offset });
+		} catch (cause) {
+			if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'failed', source: 'jersey', errorCode: diagnosticErrorCode(cause), trafficContext }));
+		return searchFailureResponse();
+		}
     photos = r.photos;
     totalCount = r.totalCount;
     parsedDescription = `Jersey #${jerseyFilter}${sportFilter ? ` · ${sportFilter}` : ''}`;
     searchMode = 'structured';
-    // Jersey lookups are the find-my-photos demand signal — a zero-result one is
-    // a person asking "did you get that?" and leaving empty-handed. First page
-    // only, so pagination doesn't multiply rows. Fire-and-forget, never awaited.
     if (offset === 0) {
-      keepTrackingAlive(platform, trackSearchQuery({
-        query_text: `jersey #${jerseyFilter}`,
-        filters_used: sportFilter ? { sport: sportFilter } : undefined,
-        results_count: totalCount,
-        userAgent,
-      }));
+			keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'accepted', resultCount: totalCount, source: 'jersey', trafficContext }));
     }
   } else if (searchQuery) {
     // Smart search: structured parse + vector fallback
-    const result = await searchPhotos(searchQuery, filterOptions, {
-      limit: pageSize,
-      offset,
-      sortBy,
-    });
+		if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'requested', source: 'search', trafficContext }));
+		let result;
+		try {
+			result = await searchPhotos(searchQuery, filterOptions, { limit: pageSize, offset, sortBy });
+		} catch (cause) {
+			if (offset === 0) keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'failed', source: 'search', errorCode: diagnosticErrorCode(cause), trafficContext }));
+		return searchFailureResponse();
+		}
     photos = result.photos;
     totalCount = result.totalCount;
     searchMode = result.searchMode;
     parsedDescription = result.parsedDescription;
     if (offset === 0) {
-      keepTrackingAlive(platform, trackSearchQuery({
-        query_text: searchQuery,
-        filters_used: hasActiveFilters ? visitorFilters : undefined,
-        results_count: totalCount,
-        userAgent,
-      }));
+			keepTrackingAlive(platform, trackCollectionDiagnostic({ userAgent, type: 'search', status: 'accepted', resultCount: totalCount, source: searchMode ?? 'search', trafficContext }));
     }
   } else {
     // No search — standard filter + paginate
@@ -191,8 +186,23 @@ export const load: PageServerLoad = async ({ url, parent, setHeaders, platform, 
     filterCounts,
     clearedFilters,
     searchQuery,
+		searchId,
     searchMode,
-    parsedDescription,
+		parsedDescription,
+		searchError: null,
     similarToImageKey,
   };
+
+  function searchFailureResponse() {
+		return {
+			seo: { title: 'Search unavailable | Nino Chavez Photography', description: 'The gallery search is temporarily unavailable.' },
+			photos: [], totalCount: 0, currentPage: page, pageSize, sortBy, sports,
+			selectedSport: sportFilter || null, categories, selectedCategory: categoryFilter || null,
+			selectedPlayType: playTypeFilter || null, selectedJerseyNumber: jerseyFilter || null,
+			selectedDivision: divisionFilter || null, selectedLevel: levelFilter || null,
+			filterCounts: Promise.resolve(baseFilterCounts), clearedFilters, searchQuery, searchId,
+			searchMode: null, parsedDescription: '', similarToImageKey,
+			searchError: { searchId, errorCode: 'search_unavailable' }
+		};
+	}
 };

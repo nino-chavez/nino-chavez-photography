@@ -86,7 +86,7 @@
 		>
 			{#each photos as photo, index}
 				<div class="flex-none w-[280px]">
-					<PhotoCard {photo} {index} onclick={onPhotoClick} />
+					<PhotoCard {photo} {index} favoriteSurface="related" onclick={onPhotoClick} />
 				</div>
 			{/each}
 		</div>

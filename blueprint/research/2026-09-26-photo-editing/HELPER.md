@@ -135,6 +135,80 @@ The real five-package inventory is under `learning-pairs/` in the private pilot 
 
 Operator dispatch `be5adfc5-1a91-4224-b9cb-bec971360e9b` produced the two new Python files. The parent reviewed, corrected, tested, and ran them on the real inventory. The first launch failed at Jev classification with a deadline error; the required dispatcher retry completed. It requested Terra/high, but runtime model and effort were not reported. Inherited files and all photo-editing branch tips stayed unchanged. Another branch moved during concurrent work; none of the worker's 38 recorded commands mutated branch refs. The worker worktree remains because Codex reports it protected by a pinned task or workspace.
 
-## Next boundary
+## Earlier learning-example boundary
 
 Create controlled pre-edit previews on detached copies and obtain approval for the chosen learning galleries. Then collect enough separate galleries for development and held-out evaluation. Adaptive Color cloud return, Smart Preview operation, a larger sample, crash recovery, and the human-review workflow remain separate checks. No model training, stochastic editing, or automated taste decision is implemented here. The [experiment plan](REPORT.md) keeps held-out targets hidden until scoring and treats Jev as an optional decision component.
+
+## Cloud workflow plan — 2026-10-06
+
+**Current direction:** use Lightroom cloud desktop directly through computer use. Nino corrected the workflow on October 6: he does not use Classic by default and asked to skip the Classic-to-cloud helper. The bridge experiment is canceled. The shared cloud-review skill is the working route, with no Classic dependency.
+
+This is a plan for preserving the cloud workflow, not a new photo-editing run. Keep the earlier Classic implementation and experiment results as historical work. They do not dictate the next step. Carry over the voice guide's evidence, scope, and plain-language rules; its blog cadence and corpus thresholds do not govern this implementation plan.
+
+### The existing helper is separate from the default workflow
+
+`Runtime.lua` imports Classic's `LrApplication`, `LrExportSession`, and other `Lr*` modules. It reads `photo:getDevelopSettings()`, writes `photo:applyDevelopSettings()`, and uses Classic catalog write access. Those dependencies require Classic. Adobe documents a [Lua SDK for Classic](https://developer.adobe.com/lightroom-classic/) and [REST endpoints for cloud Lightroom](https://developer.adobe.com/lightroom/). Moving the plugin folder to cloud Lightroom does not replace those dependencies.
+
+Adobe documents [Develop settings sync](https://helpx.adobe.com/lightroom-classic/desktop/technical-support/workflow-issues/sync-issues/sync-faq.html), but technical feasibility does not make the bridge part of Nino's chosen workflow. Do not open Classic, enable its sync, or require its catalog or private evidence to review and edit cloud albums.
+
+The [current public cloud API specification](https://raw.githubusercontent.com/AdobeDocs/lightroom-public-apis/main/static/swagger.json) provides GET and PUT at `/v2/catalogs/{catalog_id}/assets/{asset_id}/xmp/develop`. It describes external XMP retrieval and creation, including copying external XMP from another asset. This does not establish access to the latest internal edit recipe or safe replacement of an existing photo's edits. API access also requires a subscribed client ID and an authenticated customer's token; current entitlement has not been tested here.
+
+| Route | What can be reused | Decision |
+|---|---|---|
+| Cloud desktop computer use | The workflow used for the WIP album; visual and numeric verification | Default and active route |
+| Classic helper plus Adobe sync | Historical recipe capture and round-trip experiments | Excluded from the current plan |
+| Direct cloud REST adapter | Validation concepts, identities, receipts, and comparison tools | Optional; investigate only when requested |
+
+The consequence: preserve the working cloud workflow without extending the Classic helper.
+
+### First preserve the workflow and this album's edit record
+
+Maintain `lightroom-cloud-review` in the tracked shared source, `~/.dotfiles/files/home/.claude/skills/`. It must operate independently of the Classic helper and this document. Keep project-specific results here. The skill should cover:
+
+- Confirm the application, album, photo identity, count, and current sync state.
+- Reopen or refresh panels after changing photos; do not trust values left from the previous selection.
+- Enter numeric values and read them back after the field commits.
+- Group by lighting before copying edits. Select only intended settings; preserve crop, geometry, and local masks unless explicitly included.
+- Reset selection before each batch; check selected count and representative recipients afterward.
+- Review skin, neutral objects, highlights, saturated colors, and mask edges in both HDR and SDR. UI screenshots establish visible appearance, not HDR export or display acceptance by themselves.
+- Record unresolved photos and the final sync observation. Album-wide edits do not imply every photo received individual visual review.
+
+Keep the WIP edit receipt private. Record the court and equipment groups, file membership, adjustments, individual masks, and the actual verification scope from this session. Label it an agent-applied edit record awaiting human taste acceptance. It is not a universal preset or a ready training example. A retrospective receipt cannot recreate a missing complete pre-edit recipe. Before future edits, capture the baseline available in cloud Lightroom and state its restoration limits honestly.
+
+### Continue inside cloud Lightroom
+
+The private WIP edit receipt was preserved at closeout below. Subsequent photo work uses the installed skill directly: confirm the album and existing authorization, inspect the actual photos, apply only approved fields, and verify settings, appearance, exceptions, and automatic cloud sync separately. Do not repeat this album's edits merely to rehearse the skill. No disposable-copy bridge test or Classic helper extension remains scheduled.
+
+### A direct cloud API adapter is optional future work
+
+Do not launch an API investigation merely because Classic was excluded. If Nino separately requests a cloud API adapter, first test one disposable cloud asset using existing authorized API access. Prove that the API can read its current edits, update those edits on the same asset, preserve profile/masks/unknown fields, expose the result in cloud Lightroom, and restore the baseline. Record revision/concurrency behavior as well. An external XMP upload or a newly rendered image alone does not pass.
+
+If that future test fails or entitlement is unavailable, stop the API investigation and continue with cloud desktop computer use. If it passes, reuse the existing validation and receipt concepts behind a cloud adapter. No new plugin is needed merely to wrap those endpoints.
+
+### Cost accounting already has an owner
+
+The current toolbox routes task-scoped usage to `ai-usage --task-record`, and the installed command exposes that option for explicit Claude/Codex transcripts. Use that command before proposing another counter. Any missing model, pricing, service-tier, or cutoff support belongs in its tracked owner, not the Lightroom plugin. Preserve the distinction between an API-equivalent estimate and a Codex subscription charge.
+
+### Evidence checked and what would change the recommendation
+
+Checked on October 6: actual `Runtime.lua` and `CloudCore.lua`, ADR 0007, this helper document, Adobe's developer pages and sync FAQ, the live public API schema, the toolbox routing, the dotfiles shared-skill location, and installed `ai-usage --help`/source. No catalog writes, sync changes, photo edits, authenticated API requests, or helper tests were performed for this plan.
+
+The September document records successful SDR Adobe Color and HDR Adaptive B&W exposure round trips. Its private evidence path, `~/Pictures/Photo Editing Pilot/2026-09-26`, does not exist on this Mac. Those remain recorded prior results rather than independently reverified results from this session. They are historical helper evidence, not a prerequisite for cloud desktop work.
+
+A separately requested and successful current-edit API round trip could justify a cloud adapter. Resuming the Classic bridge would require Nino to explicitly change the current direction. Neither possibility changes the requirement for observed cloud verification or Nino's acceptance before treating an edit as a taste example.
+
+### First implementation slice — 2026-10-06
+
+`lightroom-cloud-review` was added at `~/.dotfiles/files/home/.claude/skills/lightroom-cloud-review/SKILL.md`, with a routing row in `ways-of-working/toolbox-routing.md`. A bounded write worker used the required dispatcher in `~/.dotfiles/.worktrees/codex/lightroom-cloud-review-20261006`; a separate read-only worker reviewed the actual files. The review identified redundant sync permission and overly narrow wording for prior recommended edits. Both were corrected; read-only HDR inspection was also clarified so it cannot silently enable HDR editing. The parent checked the changed text, frontmatter, 45-line length, helper reference, whitespace, and unchanged branch tips. These are instruction checks, not a live Lightroom rehearsal.
+
+The source was copied to the main dotfiles checkout without overwriting existing work. Claude, Codex, `.agents`, and Cursor skill paths resolve to that same source, and the toolbox was regenerated. This is local installation; host discovery in a new session and installation on the other Mac are not verified. All source edits remain uncommitted/unpublished. The worker worktree retains its draft pending publication; the photography plan remains local as well.
+
+Private dispatcher receipts are `8d4c3e43-0013-4e61-969c-cf7c2e12ad28` and `bfc18427-15a4-4498-bbc5-2e2989ceb1ca` under `~/.local/state/nino-operator/dispatch/`. Both executions exited successfully. Their requested route was Terra/medium; runtime model and effort were not reported. The review receipt returned observation-only `would-stop` advice because no task record was supplied; no further worker was launched. The bounded slice is complete. No photos, catalogs, or sync settings changed during this slice.
+
+After Nino's workflow correction, the installed skill and toolbox row were updated to remove the Classic prerequisite, and `correction-log` recorded the owning rule. The retained worker draft predates this correction and must not overwrite the current source. The three-copy Classic/cloud experiment is canceled. These updates remain local and unpublished.
+
+### Closeout preservation — 2026-10-06
+
+The private edit record is `~/Pictures/Lightroom Review Receipts/2026-10-06-wip-01a11168-9fd6-79c3-8d69-78a0c3879416.json`. It preserves the reported groups, adjustments, masks, and verification limits without putting private filenames in the shared skill. Its provenance distinguishes inspected session action calls and earlier completion messages from details reconstructed from the handoff. The live album was not rechecked at closeout. It is not a complete file manifest, full undo recipe, exported-output verification, or human-approved training example.
+
+Recall recipe `f9e87562` points to the owned cloud skill and project direction. Source edits remain uncommitted/unpublished; local installation does not establish installation on the other Mac. Further photo work and the optional API investigation are not scheduled. The source files and private record preserve the handoff without requiring the full chat to resume.

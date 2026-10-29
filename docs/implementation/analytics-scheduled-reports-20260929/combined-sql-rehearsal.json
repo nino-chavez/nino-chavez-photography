@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "rolledBack": true,
+  "negativeControl": false,
+  "passed": true,
+  "migrations": [
+    "supabase/migrations/20260930004554_analytics_scheduled_gallery_reports.sql"
+  ],
+  "assertions": [
+    "supabase/rehearsal/scheduled-gallery-assertions.sql",
+    "supabase/rehearsal/scheduled-site-assertions.sql"
+  ],
+  "output": "t\n317",
+  "diagnostics": ""
+}

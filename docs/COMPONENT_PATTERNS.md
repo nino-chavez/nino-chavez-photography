@@ -441,6 +441,33 @@ Standard component structure:
 
 ---
 
+## Gallery thumbnail framing
+
+Show the complete photograph in browsing thumbnails. Nino selected fitted rows
+on October 19, 2026, after comparing the private portrait album and mixed gallery
+on desktop and phone viewports.
+
+Use `FittedPhotoGrid` with `PhotoCard preserveAspectRatio` for photo grids. Each
+row keeps the incoming order and shares a height; photo widths follow their
+source aspect ratios. The layout reserves space from the existing photo metadata
+before images load. An incomplete last row leaves the missing positions empty.
+
+`getPhotoAspectRatio` reads `Photo.aspect_ratio`, then EXIF ratio or dimensions,
+then falls back to 4:3. `PhotoCard` uses contained image fitting, so missing
+dimensions leave space around the image rather than cropping it. Horizontal
+rails retain their fixed cells with the same contained fitting and the page's
+dark background behind the image. Album covers
+and other `OptimizedImage` consumers retain their own framing.
+
+Pass `photo.cf_image_id` to `OptimizedImage` so its existing Cloudflare responsive
+variants can supply larger images for larger or denser screens. Keep navigation,
+save controls, lightbox order, and exposure tracking attached to the original
+photo and index.
+
+Explore keeps the current rows visible and marks the results busy while filter
+navigation loads. Open a result by its unique `photo.id`; camera filenames can
+repeat across albums.
+
 ## Related Documentation
 
 - [CODING_STANDARDS.md](./CODING_STANDARDS.md) - TypeScript and Svelte conventions

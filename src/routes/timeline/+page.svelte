@@ -57,7 +57,7 @@
       monthName: period.monthName,
       photoCount: period.photoCount,
       featuredPhotos: period.featuredPhotos || [],
-      description: getPeriodDescription(period.year, period.month)
+      description: undefined
     }));
   }
 
@@ -98,20 +98,6 @@
     hasMore = result.hasMore;
   }
 
-  // Generate descriptions for periods
-  function getPeriodDescription(year: number, month?: number): string {
-    const descriptions: Record<number, string> = {
-      2024: "High school and college championships, pushing technical boundaries in challenging lighting conditions.",
-      2023: "Building momentum with local tournaments and expanding into multi-sport coverage.",
-      2022: "Finding my voice in sports photography, focusing on emotional storytelling.",
-      2021: "Starting with youth sports, learning to anticipate the decisive moment.",
-      2020: "Adapting to new challenges during unprecedented times, focusing on indoor sports.",
-    };
-
-    return descriptions[year] ||
-           `Capturing the intensity and emotion of ${month ? 'monthly' : 'yearly'} sports action.`;
-  }
-
   // Initialize
   onMount(() => {
     loadTimelineData();
@@ -137,11 +123,11 @@
 </svelte:head>
 
 <div class="min-h-screen bg-charcoal-950">
-  <!--
-    No h1 existed: the page renders straight into TimelineV2, which starts at h2. sr-only
-    because there is no visual heading in the design, and the text matches the <title>.
-  -->
-  <h1 class="sr-only">Photo Timeline</h1>
+  <header class="timeline-opening">
+    <p class="timeline-eyebrow">Browse by date</p>
+    <h1>Photo timeline</h1>
+    <p>Choose a year or month, then open any photograph without losing your place.</p>
+  </header>
 
   <TimelineV2
     timelineData={timelineData}
@@ -162,3 +148,11 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .timeline-opening { width: min(1320px, calc(100% - 64px)); margin-inline: auto; padding-block: 40px 30px; border-bottom: 1px solid var(--color-charcoal-800); }
+  .timeline-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .timeline-opening h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
+  .timeline-opening > p:last-child { max-width: 650px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; }
+  @media (max-width: 640px) { .timeline-opening { width: calc(100% - 40px); padding-block: 24px 22px; } }
+</style>

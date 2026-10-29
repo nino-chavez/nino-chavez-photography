@@ -1,0 +1,374 @@
+NC
+Nino Chavez / Photography reports
+Home
+Albums
+Site
+Data
+Settings
+
+DATA QUALITY · SEP 6 – OCT 5
+
+Nothing is wrong, but 2 parts of this page could not be read.
+
+The gallery counts were last refreshed at 11:00 PM Chicago time and cover every complete day through Oct 5. They normally refresh every 30 minutes.
+
+Could not be read: Cloudflare page loads.
+What this means
+for Cloudflare page loads
+Could not be read: linked journeys (PostHog).
+What this means
+for linked journeys (PostHog)
+Days covered
+7 days
+30 days
+90 days
+Coverage and freshness
+
+Are the gallery counts current, and is every day in them complete?
+
+Records are complete for all 30 days (Sep 6 – Oct 5).
+
+Last refreshed at 11:00 PM Chicago time. The counts normally refresh every 30 minutes.
+
+History is kept since Jun 30; earlier days have no record. Album facts in these counts come from a backfill from the current catalogue, event snapshots and a mix of both. An event snapshot keeps the facts that were true when the event was recorded; a backfilled row keeps the facts known at the first backfill.
+
+How counting works
+
+What one number in the gallery reports stands for.
+
+A browser's repeated action on the same photo or album is counted once per day. These totals cannot say which steps someone followed, and a count is browser actions, not people.
+
+Photo opens
+2,290
+Album opens
+169
+Downloads, favorites and shares together
+102
+Browsers with any activity
+125
+
+Estimated browsers with recorded activity, counted once across the report. This is not a verified people count.
+
+Recorded event counts
+
+Recorded version-2 collection begins 2026-09-29. Raw retained observations begin 2026-09-29. Counts are observations, not people or a conversion funnel.
+
+Inspect every event count
+Delivery and volume
+
+Is collection reaching the analytics provider, and how much is being sent?
+
+Collection, last 30 days
+3,461 accepted · 110,407 rejected · 69 duplicate
+Waiting to be sent
+0 pending · 0 submitted · 0 confirmed · 0 failed
+Event version and corrections
+Version 2 · 0 traffic corrections waiting
+Oldest event waiting
+None waiting
+Oldest event awaiting confirmation
+None
+Most recent confirmed event
+none recorded
+
+No volume estimate is available yet. This does not mean no traffic.
+
+No forecast is available until eligible observations cover at least one measured day. This does not imply zero traffic. It is an event-volume estimate, not people, provider quota, cost or spend approval.
+
+Linked-journey results show when PostHog was last asked a question. That is not confirmation that events were delivered; the counts above are. Quota and billing state: unknown. This page does not infer a quota, spend or approval from delivery counts.
+
+Search and download evidence
+What was attempted	Status	Recorded	Results	Errors	Latest, Chicago time
+download	requested	10	not recorded	none	Oct 4, 1:30 PM
+search	requested	5	not recorded	none	Sep 30, 11:40 PM
+search	accepted	5	1,464	none	Sep 30, 11:40 PM
+
+First recorded diagnostic evidence: 2026-09-30. Earlier coverage is unknown. Search text and visitor identifiers are never shown. Browser downloads record requests and failures, not completed transfers. A missing row is not evidence that nothing happened.
+
+Traffic classes and traffic impact
+
+What is counted in the gallery numbers, what is left out, and which album places change because of it?
+
+Reports count 2,290 of these photo opens and leave out 1. Operator, test, known crawler and suspected automated activity is left out. Unclassified activity is counted and is not called human.
+
+Unclassified (counted, not called human)counted
+1,906
+Audiencecounted
+384
+Operatorleft out
+1
+Which album places change
+
+Lists the 136 of 254 public albums that had at least one recorded photo open in these dates. The other 118 had none in any traffic class, so leaving traffic out cannot change their place.
+
+Leaving the excluded traffic out changes the place of 4 albums.
+
+Chicago Big Dig 2026 - North Avenue Beach
+Place 18 to 21. 16 with all traffic, 15 counted.
+WVB - North Central vs Carthage
+Place 19 to 18. 16 with all traffic, 16 counted.
+MSOE vs Aurora - Mar 21
+Place 20 to 19. 16 with all traffic, 16 counted.
+Bell Pepper Open - June 2026
+Place 21 to 20. 16 with all traffic, 16 counted.
+Show all 136 albums with their counts
+Tagged arrivals and open locations
+
+How visitors reached the gallery, and where in it they opened things.
+
+Tagged arrivals
+profile
+126
+links
+15
+coverage
+11
+share-x
+1
+
+A tag shows how a link was shared. It does not prove that a later action was caused by that channel.
+
+Open locations
+
+These 2,459 opens are album opens and photo opens together: 2,290 photo opens and 169 album opens. Home and Albums count only the 2,290 photo opens.
+
+album
+1,238
+Unknown / no tag
+911
+timeline
+162
+explore
+132
+collection
+16
+After a tagged arrival
+
+Not shown. This comes from the linked-journey reports, which could not be read. What that means and what to do.
+
+Site measures
+
+Two counts of the same site that are not expected to match, and what each can and cannot say.
+
+Page loads on ninochavez.co (Cloudflare)
+
+Cloudflare Web Analytics access is not configured for this report. This report has no Cloudflare access set up here, so there is nothing to retry. Add the Cloudflare analytics settings to the site's server settings.
+
+Pages viewed, the site's own count
+
+92
+
+Sep 30 – Oct 6. The site's own counter began Sep 30, so it covers 7 of the last 30 days.
+
+Cloudflare's page loads and the site's own page views are two different measures with different days, so they are not expected to match. At least one could not be read here, so they are not compared.
+
+A dated check on September 28, 2026 could not establish that Cloudflare's page loads cover the gallery's album routes the same way for September 21–27. It is not a live connection to Cloudflare. Cloudflare adapts how much it samples to the size of the question, so page loads can be estimates, and the same page can be rounded differently in two questions. Treat small differences as noise.
+
+Linked journeys on the site
+
+Not shown. PostHog is not connected here, so no linked-journey figure is shown for the site. This is not zero.
+See the linked journeys section below for what to add.
+
+Linked journeys in the gallery
+
+What visitors did in sequence, for the browsers that allowed linked analytics.
+
+These reports connect actions only for browsers that allowed linked analytics. Each report uses its own denominator, so its totals can differ from the counts above. They describe that group, not every visitor.
+
+Not shown. All linked-journey reports need PostHog, which is not connected here (Discovery, Album use, Search usefulness, Download reliability, Photo response, Tagged arrivals and return visits, Experiments). No figure is shown, and that is not zero.
+Add the PostHog query settings to the site's server settings. Nothing needs fixing on the public site.
+
+Correct how an action is classed
+
+Every counted action has a class: audience, operator, test, known crawler, suspected automation or unclassified. Only audience and unclassified actions are in the counts above. If one has the wrong class, give it the right one, with a reason. Only you can see or change this. The action itself is kept, and the latest correction can be reversed.
+
+Page 1 of the actions in these days
+Older actions
+Photo and album actions
+
+These are the opens, favorites, downloads and shares behind the photo and album counts above. A correction changes that day’s counts when it is saved.
+
+Action to correct
+Choose an action
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 9:39 PM CDT
+Photo opened · Bell Pepper Open – Official Gallery · Oct 5, 7:49 PM CDT
+Photo opened · College Women's VB - Millikin at North Central - 09-23-2026 · Oct 5, 7:27 PM CDT · via profile
+Photo opened · Bell Pepper Open – Official Gallery · Oct 5, 7:20 PM CDT
+Photo opened · HS Girls VB - JCA vs PNHS - 08-25-2026 · Oct 5, 7:11 PM CDT · via profile
+Photo opened · HS Girls VB - JCA at ACC - 09-22-2026 · Oct 5, 7:09 PM CDT · via profile
+Photo opened · Bump Bash #5 - Charity Volleyball Tournament - 08-22-2026 · Oct 5, 7:02 PM CDT · via profile
+Photo opened · Bell Pepper Open – Official Gallery · Oct 5, 6:21 PM CDT
+Photo opened · Bell Pepper Open – Official Gallery · Oct 5, 5:51 PM CDT
+Photo opened · Bell Pepper Open – Official Gallery · Oct 5, 4:53 PM CDT
+Photo opened · Bell Pepper Open – Official Gallery · Oct 5, 4:23 PM CDT
+Photo opened · ACC Football Homecoming - Sep 23 · Oct 5, 4:20 PM CDT
+Photo opened · Northwestern vs Nebraska · Oct 5, 3:52 PM CDT
+Photo opened · AVP Chicago - Miami Mayhem - Sep 1 · Oct 5, 3:51 PM CDT
+Photo opened · Saturday Triples — The Raiders Open · Oct 5, 3:24 PM CDT
+Photo opened · Saturday Triples — The Raiders Open · Oct 5, 2:55 PM CDT
+Photo opened · Saturday Triples — The Raiders Open · Oct 5, 1:56 PM CDT
+Photo opened · Saturday Triples — The Raiders Open · Oct 5, 1:27 PM CDT
+Photo opened · Saturday Triples — The Raiders Open · Oct 5, 12:57 PM CDT
+Photo opened · Saturday Triples — The Raiders Open · Oct 5, 12:28 PM CDT
+Photo opened · DU Cross Country at NCCXC Invite - Sep 10 · Oct 5, 11:29 AM CDT
+Photo opened · VLA BREEZE - Fall - Oct 26 · Oct 5, 8:57 AM CDT
+Photo opened · / 2023 ACC Fall Sports - Sep 2 - S · Oct 5, 7:37 AM CDT
+Photo opened · ACC Football Homecoming - Sep 23 · Oct 5, 6:57 AM CDT
+Photo opened · West Chicago Volleyball 17-Oct - Oct 18 · Oct 5, 6:33 AM CDT
+Photo opened · VLA BREEZE - Fall - Oct 26 · Oct 5, 6:25 AM CDT
+Photo opened · ACC Girls Track & Field - May 5 · Oct 5, 6:12 AM CDT
+Photo opened · VLA BREEZE - Fall - Oct 26 · Oct 5, 6:09 AM CDT
+Photo opened · VLA BREEZE - Fall - Oct 26 · Oct 5, 5:15 AM CDT
+Photo opened · VLA BREEZE - Fall - Oct 26 · Oct 5, 5:05 AM CDT
+Photo opened · Downers Grove North vs Plainfield · Oct 5, 4:50 AM CDT
+Photo opened · VLA BREEZE - Fall - Oct 26 · Oct 5, 4:49 AM CDT
+Photo opened · Downers Grove North vs Plainfield · Oct 5, 4:09 AM CDT
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 3:05 AM CDT
+Photo opened · Downers Grove North vs Plainfield · Oct 5, 2:46 AM CDT
+Photo opened · Downers Grove North vs Plainfield · Oct 5, 2:05 AM CDT
+Photo opened · Downers Grove North vs Plainfield · Oct 5, 1:24 AM CDT
+Photo opened · Downers Grove North vs Plainfield · Oct 5, 12:02 AM CDT
+Photo opened · 630 Breeze - Women's Tryouts · Oct 4, 11:21 PM CDT
+Photo opened · 630 Breeze - Women's Tryouts · Oct 4, 10:39 PM CDT
+Album opened · HS Girls VB - JCA at ACC - 09-22-2026 · Oct 4, 10:35 PM CDT
+Photo opened · 630 Breeze - Women's Tryouts · Oct 4, 9:58 PM CDT
+Photo opened · 630 Breeze - Women's Tryouts · Oct 4, 9:17 PM CDT
+Photo opened · VLA BREEZE - Fall - Oct 26 · Oct 4, 8:57 PM CDT
+Photo opened · 630 Breeze - Women's Tryouts · Oct 4, 8:37 PM CDT
+Album opened · HS Girls VB - JCA vs PNHS - 08-25-2026 · Oct 4, 8:23 PM CDT
+Photo opened · Lewis vs Pepperdine - Winter 2026 · Oct 4, 7:58 PM CDT
+Photo opened · 630 Breeze - Women's Tryouts · Oct 4, 7:55 PM CDT
+Photo opened · KRUSH Volleyball – Suburban Slam Series #1 - Jun 14 · Oct 4, 6:53 PM CDT
+New class
+Audience
+Operator
+Test
+Known crawler
+Suspected automation
+Unclassified
+Reason
+Record correction
+Corrections made so far, newest first
+
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+
+Corrected Oct 5, 8:00 PM CDT · Record 65295
+
+Now classed as Test · correction 2
+
+(invented) My own phone, testing the album page.
+
+Reverse latest
+for Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+
+Corrected Oct 5, 7:30 PM CDT · Record 65295
+
+Now classed as Operator · correction 1
+
+(invented) First pass.
+
+Replaced by a later correction
+
+This action's record is no longer kept, so its details cannot be shown.
+
+Corrected Sep 30, 7:30 PM CDT · Record 11
+
+Now classed as Known crawler · correction 1
+
+(invented) A crawler seen in the logs.
+
+Reverse latest
+for This action's record is no longer kept, so its details cannot be shown.
+Detailed events
+
+These are the detailed records behind the recorded event counts above. A correction changes those counts at once, and a record that has not yet gone to PostHog is held back. For a record PostHog already has, only its identifier, the new class and the version number are sent.
+
+Action to correct
+Choose an action
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+Photo loaded · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+Gallery page viewed · /photography/photo/w36L9W3 · Oct 5, 10:35 PM CDT
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 9:39 PM CDT
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 9:39 PM CDT
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 9:39 PM CDT
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 9:39 PM CDT
+Photo loaded · ACC Boys Golf - Sep 13 · Oct 5, 9:39 PM CDT
+Gallery page viewed · /photography/photo/tMhSwMq · Oct 5, 9:39 PM CDT
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 9:39 PM CDT
+Gallery page viewed · /photography/albums/hs-girls-vb-jca-at-acc-09-22-2026-Re7kho · Oct 5, 5:34 PM CDT
+Album opened · HS Girls VB - JCA at ACC - 09-22-2026 · Oct 5, 5:34 PM CDT
+Photo shown on screen · ACC Football Homecoming - Sep 23 · Oct 5, 4:20 PM CDT
+Photo shown on screen · ACC Football Homecoming - Sep 23 · Oct 5, 4:20 PM CDT
+Photo shown on screen · ACC Football Homecoming - Sep 23 · Oct 5, 4:20 PM CDT
+Photo shown on screen · ACC Football Homecoming - Sep 23 · Oct 5, 4:20 PM CDT
+Photo loaded · ACC Football Homecoming - Sep 23 · Oct 5, 4:20 PM CDT
+Gallery page viewed · /photography/photo/wHMTMP8 · Oct 5, 4:20 PM CDT
+Photo opened · ACC Football Homecoming - Sep 23 · Oct 5, 4:20 PM CDT
+Photo shown on screen · Northwestern vs Nebraska · Oct 5, 3:52 PM CDT
+Photo shown on screen · Northwestern vs Nebraska · Oct 5, 3:52 PM CDT
+Photo shown on screen · Northwestern vs Nebraska · Oct 5, 3:52 PM CDT
+Photo shown on screen · Northwestern vs Nebraska · Oct 5, 3:52 PM CDT
+Photo loaded · Northwestern vs Nebraska · Oct 5, 3:52 PM CDT
+Gallery page viewed · /photography/photo/4Q9fdcn · Oct 5, 3:52 PM CDT
+Photo opened · Northwestern vs Nebraska · Oct 5, 3:52 PM CDT
+Site page viewed · /work · Oct 5, 1:14 PM CDT
+Site link clicked · / · Oct 5, 1:14 PM CDT
+Site page viewed · / · Oct 5, 1:14 PM CDT
+Site page viewed · /about · Oct 5, 11:38 AM CDT
+Site link clicked · / · Oct 5, 11:38 AM CDT
+Site page viewed · / · Oct 5, 11:38 AM CDT
+Photo shown on screen · DU Cross Country at NCCXC Invite - Sep 10 · Oct 5, 11:29 AM CDT
+Photo shown on screen · DU Cross Country at NCCXC Invite - Sep 10 · Oct 5, 11:29 AM CDT
+Photo shown on screen · DU Cross Country at NCCXC Invite - Sep 10 · Oct 5, 11:29 AM CDT
+Photo shown on screen · DU Cross Country at NCCXC Invite - Sep 10 · Oct 5, 11:29 AM CDT
+Photo loaded · DU Cross Country at NCCXC Invite - Sep 10 · Oct 5, 11:29 AM CDT
+Gallery page viewed · /photography/photo/c5G5DD9 · Oct 5, 11:29 AM CDT
+Photo opened · DU Cross Country at NCCXC Invite - Sep 10 · Oct 5, 11:29 AM CDT
+Site page viewed · /demos · Oct 5, 11:13 AM CDT
+Site page viewed · /demos · Oct 5, 10:32 AM CDT
+Photo shown on screen · VLA BREEZE - Fall - Oct 26 · Oct 5, 8:57 AM CDT
+Photo shown on screen · VLA BREEZE - Fall - Oct 26 · Oct 5, 8:57 AM CDT
+Photo shown on screen · VLA BREEZE - Fall - Oct 26 · Oct 5, 8:57 AM CDT
+Photo shown on screen · VLA BREEZE - Fall - Oct 26 · Oct 5, 8:57 AM CDT
+Photo loaded · VLA BREEZE - Fall - Oct 26 · Oct 5, 8:57 AM CDT
+New class
+Audience
+Operator
+Test
+Known crawler
+Suspected automation
+Unclassified
+My own browser, left out
+Reason, kept private
+Record correction
+Corrections made so far, newest first
+
+Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+
+Corrected Oct 5, 9:00 PM CDT · f0e17ba2-6263-4da2-b2e8-2e7b1ba5e58d
+
+Now classed as My own browser, left out · correction 1
+
+(invented) My browser, before I set the exclusion.
+
+Reverse latest
+for Photo shown on screen · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+
+Photo opened · ACC Boys Golf - Sep 13 · Oct 5, 10:35 PM CDT
+
+Corrected Oct 4, 9:00 PM CDT · 81486af2-6afb-4d46-af08-6844e9396059
+
+Now classed as Unclassified · correction 2
+
+Reversal requested by the operator.
+
+Reversed
+
+Counts are browser actions, not people. Gallery numbers cover complete days in Chicago time through Oct 5. Page loads are Cloudflare's count of UTC days, a different measure from photo opens.

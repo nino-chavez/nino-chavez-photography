@@ -1,0 +1,54 @@
+[
+  {
+    "url": "https://analytics.ninochavez.co/sites",
+    "status": 404,
+    "seconds": 0.886596,
+    "headers": {}
+  },
+  {
+    "url": "https://analytics.ninochavez.co/gallery",
+    "status": 404,
+    "seconds": 0.565974,
+    "headers": {}
+  },
+  {
+    "url": "https://ninochavez.co/photography/analytics-preferences",
+    "status": 404,
+    "seconds": 0.802503,
+    "headers": {}
+  },
+  {
+    "url": "https://ninochavez.co/photography/site-activity.js",
+    "status": 404,
+    "seconds": 0.362558,
+    "headers": {}
+  },
+  {
+    "url": "https://ninochavez.co/photography/api/analytics/preferences",
+    "status": 405,
+    "seconds": 0.459729,
+    "headers": {}
+  },
+  {
+    "url": "https://analytics.ninochavez.co/photography/api/analytics/preferences",
+    "status": 405,
+    "seconds": 0.352907,
+    "headers": {}
+  },
+  {
+    "url": "https://ninochavez.co/photography/analytics/operator",
+    "status": 308,
+    "seconds": 0.615897,
+    "headers": {
+      "location": "https://analytics.ninochavez.co/photography/analytics/operator"
+    }
+  },
+  {
+    "url": "https://analytics.ninochavez.co/",
+    "status": 301,
+    "seconds": 0.136331,
+    "headers": {
+      "location": "https://analytics.ninochavez.co/photography/analytics/sites"
+    }
+  }
+]
