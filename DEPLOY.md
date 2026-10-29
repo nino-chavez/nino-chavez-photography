@@ -10,8 +10,31 @@
 - **Canonical**: Cloudflare Pages git integration builds `main` with `npm run build` and
   publishes `.svelte-kit/cloudflare`. Verified through the Pages API on September 28, 2026:
   production deployments enabled; preview branches disabled. A push to `main` deploys.
-- **Manual fallback**: `npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography`
 - **Build time**: TODO — confirm in the CF Pages dashboard
+
+## When a merge is not live yet
+Do **not** assume the Git integration is broken and jump to a manual Wrangler deploy.
+
+1. **Check the Cloudflare Pages build first** — on the merge commit, look for the
+   GitHub check named `Cloudflare Pages`, or open the matching deployment in the
+   Pages dashboard (`nino-chavez-photography`).
+2. If the check/build **failed**, read those hosted logs and fix the failure (or Retry
+   after a platform flake). A green local `npm run build` does **not** clear a failed
+   Pages build; production stays on the last successful deployment until Pages succeeds.
+3. If the check/build is still **running**, wait for it.
+4. If the check/build **succeeded** but production still looks old, then investigate
+   caching / which deployment is marked Production — not a parallel deploy path.
+
+## Manual Wrangler (operator escape hatch only)
+Use only when Git-integrated Pages cannot run (broken integration, emergency hotfix
+with explicit operator intent) — never as the default response to “merge isn’t live”:
+
+```bash
+npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography --branch=main
+```
+
+`--branch=main` is required: without it Wrangler deploys to the current git branch, so a run
+from a feature branch or worktree publishes a preview, not production.
 
 ## Photographic homepage ownership and release order
 
@@ -120,9 +143,10 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
 
 ## Preflight checks
 - `git status` clean
-- `npm run check` passes
+- `npm run check && npm run build`
 
 ## Verify after deploy
+- GitHub check `Cloudflare Pages` on the merge commit is **success**
 - `curl -fsSL https://ninochavez.co/photography` returns 200
 - `curl -s https://analytics.ninochavez.co/` returns 200 and a page titled "Home · Photography
   reports".
