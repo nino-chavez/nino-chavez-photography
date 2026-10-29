@@ -30,8 +30,11 @@ Use only when Git-integrated Pages cannot run (broken integration, emergency hot
 with explicit operator intent) — never as the default response to “merge isn’t live”:
 
 ```bash
-npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography
+npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=nino-chavez-photography --branch=main
 ```
+
+`--branch=main` is required: without it Wrangler deploys to the current git branch, so a run
+from a feature branch or worktree publishes a preview, not production.
 
 ## Photographic homepage ownership and release order
 
