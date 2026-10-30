@@ -1,6 +1,12 @@
 # Photography refit, October 30, 2026
 
-The current preview restores an owned full-bleed photograph and puts useful actions over its edges: event search, the two latest galleries and photographer Info. The image remains the first impression. Recent-event covers follow below. Gallery links still open the complete event; photo links open their chosen photograph with Save, Share and Download.
+The current preview restores an owned full-bleed photograph and puts useful actions over its edges: event search, the two latest galleries and About & contact. The image remains the first impression. Recent-event covers follow below. Gallery links still open the complete event; photo links open their chosen photograph with Save, Share and Download.
+
+Nino approved a further clarity pass while preserving the dominant photograph. Search now has a visible label and solid button. Recent galleries names the event shortcuts, each with an underlined View gallery action. About & contact replaces Info and has a visible outline. The image, crop, scrim and hero height remain unchanged; the navigation wraps on narrow phones so its labels stay complete.
+
+The [action-clarity capture packet](../../../evidence/screen-reviews/photography-actions-20261030/manifest.json) records the current source and four browser frames. The parent opened all four before a cold reviewer assessed only those frames and the visitor's jobs. All four passed: desktop home, phone home, short-phone home and phone gallery. The review found the photograph still leads, the finder remains legible, and the actions are recognizable and coherently grouped. No material visible issue was found. Operator dispatch `3d9b385d-7fc9-47c7-a35f-c1aa19ed4780` completed successfully; its runtime receipt reports `gpt-5.6-terra`, medium reasoning. This is visual review, not real-visitor testing.
+
+All twelve focused Chromium journeys pass with the new labels. An initial parallel run had one blank-app failure alongside a local static-server broken pipe; the complete serial rerun passed without source changes. The new packet includes 1440×1000, 390×844 and 320×568 viewports. This pass remains confined to the preview; it does not port the design to production Svelte routes.
 
 Open `arrival/?page=home` for the revised homepage. The [experience brief](../../../../prototype/EXPERIENCE-BRIEF.md) records Nino's explicit correction and the refit scope. This is a working design artifact; live Svelte routes, publication and private-gallery access are unchanged. Passing checks do not mean Nino accepted the rendered design.
 

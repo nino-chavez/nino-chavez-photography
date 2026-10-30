@@ -6,6 +6,10 @@ Nino declined the arrival study in PR 237 and clarified why on October 30: the d
 
 This clarification supersedes the utilitarian search-first presentation and any rule below that forbids all text overlays. Use full-bleed photography on the homepage with deliberately placed, legible controls. Preserve complete frames when inspecting or downloading photographs; the full-bleed hero may use an intentional responsive composition. Do not mistake a user job for a visual style, remove the artist from the experience, or treat passing tests/cold review as user acceptance. Recover the original owned design and assets before choosing new visual treatments. No new approval prompt is needed merely to execute this explicit direction.
 
+### Clearer actions, approved October 30
+
+Nino approved a bounded clarity pass on the preview: retain the dominant full-bleed photograph and make the existing actions apparent. The event form now has a visible Search button. “Just added” becomes “Recent galleries”; each event has a written “View gallery” action and an internal-navigation arrow. “Info” becomes “About & contact” with an outlined control. The same photo, crop, scrim, hero size and placement of the action groups remain. Short screens retain the recent-event jump; the header wraps when needed to keep the full labels readable. This is a preserve pass, not another concept or a native-site implementation.
+
 ### Refit implemented in the working preview
 
 Intent: **refit** of the restored full-bleed direction, scoped to the local design preview. The user supplied the direction directly; another three-layout exercise would reopen a settled choice. The live Svelte routes are not changed by this study.

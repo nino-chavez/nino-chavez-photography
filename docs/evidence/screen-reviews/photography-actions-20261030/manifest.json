@@ -1,0 +1,12 @@
+{
+  "capture": "Chromium on macOS; 1440x1000, 390x844 and 320x568 browser viewports. Not physical-device tests.",
+  "files": {
+    "docs/design/concepts/photography-20261030/arrival/app.source.js": "50041d77fcc83c4d18ec27bf593b68f9545e35ba149cf8778924dfa18e5db0ad",
+    "docs/design/concepts/photography-20261030/arrival/app.js": "4c8f920ff168a0c1b148d479836d57b191d8bce007b7ae079d2a4def4da5e99f",
+    "docs/design/concepts/photography-20261030/arrival/style.css": "39334ea1de9711bfe3a067b104d5876e0e4768296afba6021a289abb287fd24d",
+    "docs/evidence/screen-reviews/photography-actions-20261030/home-desktop.png": "8ae5d9c55ab14b52b23770c22e1b5d11135cc119a8ee1b059cbe61e0abfffe2b",
+    "docs/evidence/screen-reviews/photography-actions-20261030/home-phone.png": "71ff1de565d1e874e51923f6dc608462ed65fa93535cb8afbf5275b6acdfe9ef",
+    "docs/evidence/screen-reviews/photography-actions-20261030/home-short-phone.png": "53014a0c474318d0a63f95f42eeba0002bf5316f562d948014528519bdcb4017",
+    "docs/evidence/screen-reviews/photography-actions-20261030/sheet-gallery-phone.png": "fe9e20c2e09e9e37c15c8daa8a74e7e05dbe219592bb3eaf92a92dc40ac35791"
+  }
+}
