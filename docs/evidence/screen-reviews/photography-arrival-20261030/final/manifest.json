@@ -1,0 +1,25 @@
+{
+  "captured_at": "2026-10-30",
+  "browser": "Chromium on macOS",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "physical_phone": false,
+  "files": {
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/sheet-gallery-desktop.png": "2dbd1c3863b4a20b492836c5fefe4d663d40e77db83831f612d089809940e769",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/home-phone.png": "a93de5f1912be134badb072c36e0de79407db8b2dbb94987661f4cbffe40aee3",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/sheet-photo-phone.png": "5867f3c69ba47faa1a173ae6a211063e798e116fdb544548824ef5b0fd0d895f",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/sheet-photo-desktop.png": "7c56518e3119ef4e71af0ead87e861a2a0e23ae8c126c20d6d37298f20528da7",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/sheet-gallery-phone.png": "9bc3261a902222228f40c4566bbefd12106badefd03d7518369083ae6da7499e",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/home-desktop.png": "ba1a6faee081affdd92f83f2c88434b1f770589508b9ae588dad3d2844926270",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/saved-phone.png": "94963e61d35a01bf4c54eec1db77e7bcecb65ed5700715b0850994c908a108d4",
+    "docs/design/concepts/photography-20261030/arrival/index.html": "cccc2e15997c88a75c627ad9e66c69ce32823d2be65b9ee16673739cd5b9d79e",
+    "docs/design/concepts/photography-20261030/arrival/data.js": "8070f79897ee33a1913da942617538ae892d66a3467654e698c787063aec7823",
+    "docs/design/concepts/photography-20261030/arrival/style.css": "fdcf09e9f5bf0633352c37656806b3e8f3fb4cd9c9ceb1970360ebda18d94f54",
+    "docs/design/concepts/photography-20261030/arrival/app.js": "95e7f41cbae9b889cd5b98428b3fe3228eaa906820a4d72ec7cd96e0622db0d9",
+    "docs/design/concepts/photography-20261030/arrival/app.source.js": "de60af52e9554178b27e6ced60c17b19cb61fb8d2a97644fb9d6833aa499adcd",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/final/cold-brief.txt": "7179f0d0221b7865c8ba3674ab93f9770544d8086a9f155ae9a525fe9a591b38",
+    "docs/design/concepts/photography-20261030/arrival/client-zip.LICENSE.txt": "83a2636dca08f6f9449270dadebf88b54ff574198057c8764f019e23fd9dc596"
+  }
+}

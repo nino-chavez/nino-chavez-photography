@@ -1,3 +1,59 @@
+# Rebaseline: design around arrival and the photo task
+
+Nino rejected all three October 30 concepts: “none of htese. think first principles of hte job to be done when landing on the site or coming to the site from a gallery link”. The previous comparison is retained as rejected work, not a production direction.
+
+The next design starts from separate arrival paths and reaches a useful outcome. It must not ask someone with an event-gallery link to rediscover their event or interpret the site structure before seeing their photos. Homepage arrival must explain what is here and provide a direct route to the visitor's purpose. Establish the jobs, context already supplied by the link, uncertainties and supported final actions before drawing another layout. Any role priority remains a product hypothesis unless evidence supports it.
+
+## Arrival jobs
+
+Nino selected **“Find photos from their event”** as the homepage's clearest first path on October 30. This is a product priority, not an observed traffic distribution. Portfolio exploration and requesting coverage remain secondary.
+
+| Arrival | Context already supplied | Next question | Useful outcome |
+|---|---|---|---|
+| Homepage | Photographer/site, possibly an event or team name | Where are the photos from my event? | Identify the correct event by name, date and cover, then open it |
+| Gallery link | Event and access path | Which photographs do I want? | Recognize photos in the full event set, inspect them, download or share; save several for one download |
+| Photo link | A specific photo and its event | Can I keep this, share it, or see the rest? | Open that image immediately, with download/share/save and a clear route into its event |
+| Return to saved photos | A previous browser-local selection | Where are the photos I chose? | Resume or download the selection, with the browser-local limit visible |
+
+The direct gallery must not start with an unrelated portfolio, event search or popularity subset. A gallery recipient should see the complete set before choosing a photograph; a photo recipient has already made that choice. The viewer therefore preserves the event name, date and full-set position. Closing returns to the originating photo. Saving is a step toward collecting/downloading; it is not an account or social feature.
+
+## Surfaces
+
+- Homepage: find an event; recent public galleries; search and recovery.
+- Full gallery: 49-photo Chicago Point and 36-photo Picture Day examples, including all photos, saved selection and optional description search.
+- Direct photo: full-frame image, event identity, Save, Share, Download, Previous/Next and return.
+- Saved photos: browser-local selection grouped by event; remove and download.
+- Download/share: real JPEG and selected ZIP delivery through the existing public service; canonical URL copy with album disambiguation.
+- Secondary selected work and coverage links; profile/writing open new tabs.
+
+## Decisions before presentation
+
+Search by event/team/date belongs on the homepage. Descriptive photo search stays inside the selected gallery and is optional; it does not promise name or face recognition. The source supports visible-number/description matching, not reliable person identity. Download offers preserve the existing full-size and 1600px image variants and the existing personal-use/recruiting notice. A generated ZIP reaching the browser is not proof that the person saved it to their device.
+
+Three complete gallery task models are compared in the [arrival study](../docs/design/concepts/photography-20261030/arrival/index.html): a photo grid followed by a viewer; a selected photo beside the gallery; and one photo at a time with a gallery disclosure. They share the same event, all 49 photos and final actions. The comparison now asks how someone finds and keeps photos, not which front-page arrangement looks best. The homepage priority is fixed by Nino's answer, so it is not reopened in those variants.
+
+Proposed convergence: show the grid for a gallery link, open the viewer for a photo link, and keep event discovery on the homepage. Inspecting one arbitrary photo first makes event recognition slower in principle; the side-by-side layout competes for thumbnail space and becomes sequential on a phone. These are design judgments to check against renders, not measured visitor outcomes. Production selection is still pending.
+
+## State and recovery
+
+| Object | Actions | States | Return or recovery |
+|---|---|---|---|
+| Event | Search, open | Recent, matching, no match | Keep query and focus when returning; link to full archive; private galleries use the received link |
+| Photo | View, navigate, save, share, download | Available, image loading/failure | Full-frame image; meaningful alt; return to original tile; retain event context |
+| Selection | Save/remove, view, download | Empty, populated, storage unavailable | Local browser persistence; visible temporary-save warning if storage fails |
+| Download | Choose size, prepare, cancel | Preparing, browser handoff, failure | No success claim on failed fetch; selection survives; retry stays available |
+| Share | Copy public URL | Ready, copied, clipboard unavailable | Selectable canonical link includes the album key; no outgoing message is sent |
+
+The neutral charcoal canvas, full photo frames and independent-site boundaries survive. Typography and spacing serve recognition and action: readable event titles outside photographs; full-set context in the viewer; visible actions without hover. No new animation, account, payment, taxonomy, metadata inference, image processing or access mechanism.
+
+## Evidence and boundary
+
+The parent opened the live gallery and share menu. Opening the first Popular image in the 49-photo Chicago Point event produced “1 / 12” and an action-based title, with no visible Save. This is an observed context discontinuity, not a measured abandonment rate. Source inspection confirmed the existing individual, all-gallery and saved-selection download paths. The study uses only explicitly public gallery keys and retrieves all 49 and 36 image records from the published API; the retained `arrival/data.js` records those sources. It neither changes production routes nor touches private/unlisted data. Sharing points to the existing live site; saves use a separate preview key. The archive has eight recent examples; the other six open their public live galleries.
+
+The prior brief follows for provenance. Its three layouts are superseded; its factual source, privacy, independent-site and full-photo constraints survive.
+
+---
+
 # Photography: see the work, find your gallery
 
 Intent: **rethink**, requested by Nino on October 30, 2026. This comparison reopens public presentation, not publication, taxonomy, image processing or access control. The existing analytics brief remains separate.
