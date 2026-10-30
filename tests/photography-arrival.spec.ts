@@ -24,14 +24,14 @@ for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'phone',wid
     await capture(page,`home-${viewport.name}`);
     await expect(page.locator('.hero-picture img')).toBeVisible();
     expect((await page.locator('.home-hero').boundingBox())!.width).toEqual(viewport.width);
-    await page.getByRole('button',{name:'Info',exact:true}).click();
+    await page.getByRole('button',{name:'About & contact',exact:true}).click();
     await expect(page.locator('#action')).toContainText('nino@ninochavez.co');
     await capture(page,`info-${viewport.name}`);
     await expect(page.getByRole('link',{name:'About Nino ↗',exact:true})).toHaveAttribute('target','_blank');
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('button',{name:'Info',exact:true})).toBeFocused();
+    await expect(page.getByRole('button',{name:'About & contact',exact:true})).toBeFocused();
     await page.getByLabel('Event, team or date',{exact:true}).fill('Chicago Point');
-    await page.getByRole('button',{name:'Find gallery',exact:true}).click();
+    await page.getByRole('button',{name:'Search',exact:true}).click();
     await expect(page.locator('.event-card')).toHaveCount(1);
     await page.locator('#event-1').click();
     await expect(page.locator('.photo-open')).toHaveCount(49);
@@ -142,14 +142,15 @@ test('narrow screen, search recovery, unavailable storage and download failure',
 test('short phone: hero actions fit, recent events are reachable, and empty search recovers',async({page})=>{
   await page.setViewportSize({width:320,height:568});
   await page.goto(`${base}?page=home`);
-  const search=await page.getByRole('button',{name:'Find gallery',exact:true}).boundingBox();
+  await capture(page,'home-short-phone');
+  const search=await page.getByRole('button',{name:'Search',exact:true}).boundingBox();
   expect(search!.y+search!.height).toBeLessThanOrEqual(568);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('link',{name:'Browse recent events',exact:true}).click();
   await expect(page.locator('#recent-title')).toBeInViewport();
   await capture(page,'recent-phone');
   await page.getByLabel('Event, team or date',{exact:true}).fill('event that does not exist');
-  await page.getByRole('button',{name:'Find gallery',exact:true}).click();
+  await page.getByRole('button',{name:'Search',exact:true}).click();
   await expect(page.getByRole('heading',{name:'No matching galleries in this preview'})).toBeVisible();
   await capture(page,'home-no-results-phone');
   await page.getByRole('link',{name:'Clear search',exact:true}).click();
