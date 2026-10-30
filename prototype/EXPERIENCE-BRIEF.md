@@ -1,5 +1,36 @@
 # Rebaseline: design around arrival and the photo task
 
+## Current direction: artful photography with immediate actions
+
+Nino declined the arrival study in PR 237 and clarified why on October 30: the design had become sterile and resembled basic photography templates. Finding event photos is still the homepage's functional priority, but it must coexist with the site's photographic character. The original full-bleed hero and overlays deliberately joined those needs: the photograph establishes the experience; immediate actions lead to Nino's info, recent events and finding a gallery.
+
+This clarification supersedes the utilitarian search-first presentation and any rule below that forbids all text overlays. Use full-bleed photography on the homepage with deliberately placed, legible controls. Preserve complete frames when inspecting or downloading photographs; the full-bleed hero may use an intentional responsive composition. Do not mistake a user job for a visual style, remove the artist from the experience, or treat passing tests/cold review as user acceptance. Recover the original owned design and assets before choosing new visual treatments. No new approval prompt is needed merely to execute this explicit direction.
+
+### Refit implemented in the working preview
+
+Intent: **refit** of the restored full-bleed direction, scoped to the local design preview. The user supplied the direction directly; another three-layout exercise would reopen a settled choice. The live Svelte routes are not changed by this study.
+
+```text
+Homepage: photograph fills the screen
+  Top edge: identity / Info / Saved
+  Lower edge: find an event / two newest event links
+  Scroll: recent event photographs / full archive
+Gallery link: event context / fitted full-photo rows
+Photo link: chosen image / event context / Save, Share, Download
+```
+
+Fixed: use owned photographs; let them establish the homepage; make event access and Info immediate; preserve source facts, photo/download frames and independent-site links. Guided: readable overlays at the image edges, with faces clear; use the original charcoal and Montserrat identity. Open choices resolved here: one stable lead photo, search at the lower left, two latest events at the lower right, and a compact Info dialog. On short phones, the recent-event jump replaces the two shortcuts so the photo and search remain visible.
+
+Source: `PremiumHero.svelte` and the homepage at commit `7437b0c762b2dd895fd28ee5644dffcd3b706c21` establish the owned full-bleed/scrim approach. `static/images/hero/flickday/fd-12.webp` and its mobile derivative provide the original lead. The preview references existing assets through a relative symlink, not a new asset library. Montserrat comes from the existing local font. No new illustration, synthetic photograph, biography, slogan or claim was created.
+
+Palette: charcoal `#181818`, field charcoal `#222222`, near-white `#f5f5f2`, secondary text `#c1c1bb`; the photograph supplies color. Montserrat is reserved for identity and major headings; existing Arial/Helvetica remains on controls and metadata. The hero alone carries the expressive scale. Recent events use large photographic covers with text below. Info introduces volleyball and action-sports coverage, including club, high school and college matches evidenced by the published galleries, followed by verified contact, coverage, Instagram and profile destinations. No automatic animation or timed slide change was added.
+
+Useful grafts from the rejected study: complete public galleries, the contextual photo viewer, working save/download/share, and returning to the same originating event or photo. Gallery rows now reuse `src/lib/gallery/photo-row-layout.ts`, retaining order and true aspect ratios. Grid Save controls keep accessible names while removing repeated text labels. The generic search-first homepage, portrait letterboxes and review toolbar at the top were removed. The original rejected versions remain recoverable in git and their frozen evidence packets.
+
+Validation: the parent opened whole-screen desktop and phone renders. Twelve focused browser checks pass, including short-phone access to search, Info focus return, latest-event return focus, natural image proportions, complete gallery counts, saved state, canonical links, real JPEG/ZIP delivery, failure recovery and query escaping. Phone captures are browser emulation, not physical-device proof. The revised packet is `docs/evidence/screen-reviews/photography-refit-20261030/`.
+
+The arrival study below remains an unselected functional experiment. Its complete-gallery, contextual photo-link, save, download, share and return behavior can inform the next design; its generic visual presentation must not set the direction.
+
 Nino rejected all three October 30 concepts: “none of htese. think first principles of hte job to be done when landing on the site or coming to the site from a gallery link”. The previous comparison is retained as rejected work, not a production direction.
 
 The next design starts from separate arrival paths and reaches a useful outcome. It must not ask someone with an event-gallery link to rediscover their event or interpret the site structure before seeing their photos. Homepage arrival must explain what is here and provide a direct route to the visitor's purpose. Establish the jobs, context already supplied by the link, uncertainties and supported final actions before drawing another layout. Any role priority remains a product hypothesis unless evidence supports it.

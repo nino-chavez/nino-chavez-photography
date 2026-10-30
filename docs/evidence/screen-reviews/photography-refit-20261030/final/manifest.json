@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-30",
+  "capture": "Chromium on macOS, browser viewports: desktop 1440x1000, phone 390x844, recent and empty search 320x568. No physical-device claim.",
+  "files": {
+    "docs/design/concepts/photography-20261030/arrival/index.html": "de4a40101d8b3eaad0be8ef479a9f41c3e5c9efb7b36b95f86ef635d2a35cd3c",
+    "docs/design/concepts/photography-20261030/arrival/app.source.js": "2708d76f188541bf0b5d09651b575417367c3c85dc9084111999a75b9adaf6e8",
+    "docs/design/concepts/photography-20261030/arrival/app.js": "4903acc5bc60ba3db4ff5ea3af1eb4b027da2b7c7db8912254bf98e76b79ba17",
+    "docs/design/concepts/photography-20261030/arrival/style.css": "cb93a657e5d63b3b834a60caff4e1eb83e79b3e5bc9d89b0af796a44c99d20fd",
+    "docs/design/concepts/photography-20261030/arrival/data.js": "8070f79897ee33a1913da942617538ae892d66a3467654e698c787063aec7823",
+    "src/lib/gallery/photo-row-layout.ts": "23a1b5097d9414dd615ad9f961086c6e423f930fc7d8cfef7b04ebd14d083864",
+    "static/images/hero/flickday/fd-12.webp": "94183b18df7488dc74e3cc6d7118536f7cc14003c5660575ad7add5fcbd859c2",
+    "static/images/hero/flickday/fd-12-mobile.webp": "d4de763776986bdef924168a06de91b4777a8efb21dd7ba01615cae3d7080bd2",
+    "static/fonts/montserrat-latin.woff2": "6438d7b8ea9c7c3992d5e2fd2afdb1ff948570a3ef0bedae76247b51632960ba",
+    "docs/evidence/screen-reviews/photography-refit-20261030/home-desktop.png": "2c19ccdac40869f7f170d64a0cf872cc75c138320a19b77fb884edb7a64b673d",
+    "docs/evidence/screen-reviews/photography-refit-20261030/home-phone.png": "c31d033fd4d1310494759431ab0d1017470c301f13729807d3210b1ade12ce31",
+    "docs/evidence/screen-reviews/photography-refit-20261030/sheet-gallery-desktop.png": "fcaf9b10a702ad2933403f50fe4151f9e79fd3a06de0098681910761ba1c7b0d",
+    "docs/evidence/screen-reviews/photography-refit-20261030/sheet-gallery-phone.png": "2495a6bbcd7371d0279e75a14e79c8004a2a56a2d2b7da99dbecfa48f36f63ed",
+    "docs/evidence/screen-reviews/photography-refit-20261030/sheet-photo-desktop.png": "4f672da83f4018a156b16c1e400b8058785c91022596b699923c1453ebde2ac4",
+    "docs/evidence/screen-reviews/photography-refit-20261030/sheet-photo-phone.png": "57e9d857ba5bec047861d4b137a7aef7767885b00c7c4545f35b35d2e330ed3b",
+    "docs/evidence/screen-reviews/photography-refit-20261030/saved-phone.png": "96ce493e7cc94e19c0bd75e6c7a50e9ee29162e66064b1f9d8e6fc60de537ca6",
+    "docs/evidence/screen-reviews/photography-refit-20261030/recent-phone.png": "9a68d87eb95fcaaea189affddf0d0046a1b6274bd95cd7f824b85cfc1410d8c8",
+    "docs/evidence/screen-reviews/photography-refit-20261030/home-no-results-phone.png": "ff9ba09ddbf836829a67430641ba3be81e5f3acae4c4f24fe132985581cb12d0",
+    "docs/evidence/screen-reviews/photography-refit-20261030/final/info-phone.png": "337d23541c971321918035484d84c460b8bc6cb75c89ced9c9d83906f32d7b44",
+    "docs/evidence/screen-reviews/photography-refit-20261030/final/info-desktop.png": "88808927d02e4568df53a2d13dcad6c81fd6cf234dd7fd3dbb45d41ebbe7640e"
+  }
+}

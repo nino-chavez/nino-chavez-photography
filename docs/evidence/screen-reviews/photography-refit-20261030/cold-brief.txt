@@ -1,0 +1,16 @@
+Read-only cold screen review. Do not read implementation, design briefs, previous reviews, or other context. Do not edit files or launch nested helpers. Budget: six minutes, then return findings.
+
+Audience: a public sports photographer's site. A homepage visitor wants either photographs from their event or information about the photographer. A gallery-link recipient wants to recognize and inspect photos, then save/download/share. A photo link has already identified a particular image. Composition and photographic identity matter alongside useful event access; this is a public creative practice, not an admin tool.
+
+Open these actual whole-screen browser captures with an image tool. Judge what is visible. Give a pass/revise judgment per state and at most three material issues, citing filenames and visible evidence. Describe the photographic character you see, whether the hierarchy helps these jobs, and whether desktop/phone actions are legible. Do not infer working interactions from screenshots or treat familiarity as sufficient design quality. Exclude browser settings and unseen pages from your claims.
+
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/home-desktop.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/home-phone.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/sheet-gallery-desktop.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/sheet-gallery-phone.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/sheet-photo-desktop.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/sheet-photo-phone.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/saved-phone.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/info-phone.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/recent-phone.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/home-no-results-phone.png

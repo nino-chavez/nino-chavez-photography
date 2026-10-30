@@ -1275,6 +1275,32 @@ var selectedWork = [
   }
 ];
 
+// src/lib/gallery/photo-row-layout.ts
+var FALLBACK_ASPECT_RATIO = 4 / 3;
+var COLUMN_COUNTS = [1, 2, 3, 4];
+function getPhotoAspectRatio(photo) {
+  const candidates = [photo.aspect_ratio, photo.exif?.aspect_ratio];
+  if (photo.exif?.width && photo.exif.height) {
+    candidates.push(photo.exif.width / photo.exif.height);
+  }
+  return candidates.find((ratio) => typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0) ?? FALLBACK_ASPECT_RATIO;
+}
+function createFittedPhotoLayout(photos) {
+  const ratios = photos.map(getPhotoAspectRatio);
+  return photos.map((photo, index) => {
+    const shares = {};
+    for (const columns of COLUMN_COUNTS) {
+      const rowStart = Math.floor(index / columns) * columns;
+      const rowRatios = ratios.slice(rowStart, rowStart + columns);
+      const rowTotal = rowRatios.reduce((total, ratio) => total + ratio, 0);
+      const missingCells = columns - rowRatios.length;
+      const paddedTotal = rowTotal + rowTotal / rowRatios.length * missingCells;
+      shares[columns] = ratios[index] / paddedTotal;
+    }
+    return { photo, index, aspectRatio: ratios[index], shares };
+  });
+}
+
 // docs/design/concepts/photography-20261030/arrival/app.source.js
 var app = document.querySelector("#app");
 var viewer = document.querySelector("#viewer");
@@ -1319,28 +1345,36 @@ function image(p2, eager = false) {
 }
 var external = 'target="_blank" rel="noopener"';
 function header() {
-  return `<header class="site-header"><a class="brand" href="?page=home" data-nav><strong>Nino Chavez</strong><span>Photography</span></a><nav aria-label="Photography"><a href="?page=home" data-nav>Find a gallery</a><a href="?page=saved" data-nav>Saved <span data-saved-total>${saved.length || ""}</span></a></nav></header>`;
+  const home2 = params().get("page") === "home" && !params().get("q");
+  return `<header class="site-header"><a class="brand" href="?page=home" data-nav><strong>Nino Chavez</strong><span>Photography</span></a><nav aria-label="Photography"><button class="info-link" data-info>Info</button>${home2 ? '<a class="find-link" href="#find-event">Find your event</a>' : '<a class="find-link" href="?page=home" data-nav>Find your event</a>'}<a href="?page=saved" data-nav>Saved <span data-saved-total>${saved.length || ""}</span></a></nav></header>`;
 }
 function footer() {
   return `<footer><p>Photographs by Nino Chavez</p><nav aria-label="More"><a href="?page=work" data-nav>Selected photographs</a><a href="https://ninochavez.co/photography/coverage" ${external}>Request coverage \u2197</a><a href="https://ninochavez.co" ${external}>Profile \u2197</a><a href="https://ninochavez.co/blog" ${external}>Writing \u2197</a></nav></footer>`;
 }
-function galleryTarget(g2) {
+function galleryTarget(g2, entry = "") {
   const full = galleries.find((a2) => a2.url === g2.url);
-  return full ? `href="${url({ gallery: full.albumKey, from: "home", q: params().get("q") || "" })}" data-nav` : `href="${esc(g2.url)}" ${external}`;
+  return full ? `href="${url({ gallery: full.albumKey, from: "home", entry, q: params().get("q") || "" })}" data-nav` : `href="${esc(g2.url)}" ${external}`;
 }
 function home() {
   const query = params().get("q") || "";
   const normalize = (value) => value.toLowerCase().replace(/october/g, "oct").replace(/september/g, "sep").replace(/august/g, "aug").replace(/[^a-z0-9]+/g, " ");
   const terms = normalize(query).trim().split(/\s+/).filter(Boolean);
   const list = recentGalleries.filter((g2) => terms.every((t2) => normalize(`${g2.title} ${g2.rawTitle} ${g2.date}`).includes(t2)));
-  return `<main id="main" class="page home" tabindex="-1"><section class="home-intro"><p class="eyebrow">Event galleries</p><h1>Find your event photos.</h1><form data-event-search class="event-search"><label for="event-query">Event, team or date</label><div><input id="event-query" name="q" type="search" value="${esc(query)}" placeholder="e.g. Chicago Point" autocomplete="off"><button class="primary">Find gallery</button></div></form></section><section aria-labelledby="recent-title"><div class="section-title"><h2 id="recent-title">${query ? `Results for \u201C${esc(query)}\u201D` : "Recent galleries"}</h2>${query ? '<a href="?page=home" data-nav>Clear search</a>' : '<span class="muted">Newest first</span>'}</div>${list.length ? `<div class="event-list">${list.map((g2, i2) => `<a class="event-card" id="event-${g2.id}" ${galleryTarget(g2)}>${image({ src: g2.cover, alt: g2.alt, ratio: 1.5 }, i2 < 3)}<div><p class="metadata">${esc(g2.date)} \xB7 ${esc(g2.context)}</p><h3>${esc(g2.title)}</h3><p class="event-count">${g2.count} photos <span aria-hidden="true">\u2192</span></p></div></a>`).join("")}</div>` : `<div class="empty"><h3>No matching galleries in this preview</h3><p>Try the event name, team or date. This study includes eight recent public galleries.</p><a class="button primary" href="https://ninochavez.co/photography/albums?q=${encodeURIComponent(query)}" ${external}>Search the full archive \u2197</a><p>For a private gallery, use the link you received.</p></div>`}</section><div class="archive-end"><a class="button" href="https://ninochavez.co/photography/albums" ${external}>Browse the full archive \u2197</a><p class="muted">Have a private gallery link? Open that link to view its photos.</p></div></main>`;
+  const search = `<form data-event-search class="event-search"><label for="event-query">Event, team or date</label><div><input id="event-query" name="q" type="search" value="${esc(query)}" placeholder="e.g. Chicago Point" autocomplete="off"><button aria-label="Find gallery"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></div></form>`;
+  const hero = `<section class="home-hero" aria-label="Nino Chavez Photography"><picture class="hero-picture"><source media="(max-width:700px)" srcset="../assets/images/hero/flickday/fd-12-mobile.webp"><img src="../assets/images/hero/flickday/fd-12.webp" alt="Volleyball players celebrating together near the net" width="1920" height="1280" fetchpriority="high"></picture><div class="hero-shade"></div><div class="hero-bottom"><div class="hero-finder" id="find-event"><h1>Find your event.</h1>${search}<a class="browse-link" href="#recent-events">Browse recent events <span aria-hidden="true">\u2193</span></a></div><section class="hero-recent" aria-label="Latest galleries"><h2>Just added</h2>${recentGalleries.slice(0, 2).map((g2) => `<a id="event-latest-${g2.id}" ${galleryTarget(g2, "latest")}><span><strong>${esc(g2.title)}</strong><span>${esc(g2.date)}</span></span><span aria-hidden="true">\u2197</span></a>`).join("")}</section></div></section>`;
+  return `<main id="main" class="${query ? "page home search-page" : "home"}" tabindex="-1">${query ? `<section class="home-intro"><h1>Find your event</h1>${search}</section>` : hero}<section class="recent-events" id="recent-events" aria-labelledby="recent-title" tabindex="-1"><div class="section-title"><h2 id="recent-title">${query ? `Results for \u201C${esc(query)}\u201D` : "Recent events"}</h2>${query ? '<a href="?page=home" data-nav>Clear search</a>' : `<a href="https://ninochavez.co/photography/albums" ${external}>All events \u2197</a>`}</div>${list.length ? `<div class="event-list">${list.map((g2, i2) => `<a class="event-card" id="event-${g2.id}" ${galleryTarget(g2)}>${image({ src: g2.cover, alt: g2.alt, ratio: 1.5 }, i2 < 2)}<div><p class="metadata">${esc(g2.date)} <span>${esc(g2.context)}</span></p><h3>${esc(g2.title)}</h3><p class="event-count">${g2.count} photos</p></div></a>`).join("")}</div>` : `<div class="empty"><h3>No matching galleries in this preview</h3><p>Try the event name, team or date. This study includes eight recent public galleries.</p><a class="button primary" href="https://ninochavez.co/photography/albums?q=${encodeURIComponent(query)}" ${external}>Search the full archive \u2197</a><p>For a private gallery, use the link you received.</p></div>`}</section><div class="archive-end"><a class="button" href="https://ninochavez.co/photography/albums" ${external}>Browse the full archive \u2197</a><p class="muted">Have a private gallery link? Open that link to view its photos.</p></div></main>`;
 }
 function saveButton(p2) {
   const yes = saved.includes(p2.key);
   return `<button class="save-button ${yes ? "is-saved" : ""}" data-save="${esc(p2.key)}" aria-pressed="${yes}" aria-label="${yes ? "Remove saved" : "Save"} ${esc(p2.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg><span>${yes ? "Saved" : "Save"}</span></button>`;
 }
-function tile(p2, index = 0, compact = false) {
-  return `<article class="photo-tile ${saved.includes(p2.key) ? "is-saved" : ""}"><button class="photo-open" id="photo-${esc(p2.key)}" data-photo="${esc(p2.key)}" aria-label="View ${esc(p2.id)}">${image(p2, index < 8)}</button><div class="tile-label"><span>${esc(p2.id)}</span>${compact ? "" : saveButton(p2)}</div></article>`;
+function tile(p2, index = 0, compact = false, shares = null) {
+  const style = shares ? `style="--share-2:${shares[2]};--share-3:${shares[3]};--share-4:${shares[4]}"` : "";
+  return `<article class="photo-tile ${saved.includes(p2.key) ? "is-saved" : ""}" ${style}><button class="photo-open" id="photo-${esc(p2.key)}" data-photo="${esc(p2.key)}" aria-label="View ${esc(p2.id)}">${image(p2, index < 8)}</button><div class="tile-label"><span>${esc(p2.id)}</span>${compact ? "" : saveButton(p2)}</div></article>`;
+}
+function fittedGrid(list) {
+  const layout = createFittedPhotoLayout(list.map((p2) => ({ ...p2, aspect_ratio: p2.ratio })));
+  return `<div class="photo-grid fitted-grid">${layout.map(({ photo, index, shares }) => tile(photo, index, false, shares)).join("")}</div>`;
 }
 function scopedPhotos() {
   const g2 = currentGallery(), query = (params().get("find") || "").toLowerCase().trim();
@@ -1351,10 +1385,10 @@ function gallery() {
   const g2 = currentGallery(), list = scopedPhotos(), query = params().get("find") || "";
   const selected = g2.photos.filter((p2) => saved.includes(p2.key)).length;
   const isSaved = params().get("saved") === "1";
-  const sourceLink = params().get("from") === "home" ? `<a href="${url({ page: "home", q: params().get("q") || "" })}" data-nav data-return-event="${g2.id}">\u2190 Back to galleries</a>` : "";
+  const sourceLink = params().get("from") === "home" ? `<a href="${url({ page: "home", q: params().get("q") || "" })}" data-nav data-return-event="${params().get("entry") === "latest" ? "latest-" : ""}${g2.id}">\u2190 Back to galleries</a>` : "";
   const active = list.find((p2) => p2.key === inlinePhoto) || list[0];
   if (active) inlinePhoto = active.key;
-  return `<main id="main" class="page gallery model-${model()}" tabindex="-1">${sourceLink ? `<div class="back-link">${sourceLink}</div>` : ""}<section class="gallery-intro"><div><p class="metadata">${esc(g2.date)} \xB7 ${esc(g2.context)}</p><h1>${esc(g2.title)}</h1><p class="byline">${g2.count} photos \xB7 By Nino Chavez</p></div><div class="gallery-actions"><button data-share-gallery>Share gallery</button><button data-download-gallery>Download all</button></div></section><div class="gallery-tools"><nav aria-label="Photos in this gallery"><a class="${!isSaved ? "active" : ""}" href="${url({ saved: null, find: null }, true)}" data-nav ${!isSaved ? 'aria-current="page"' : ""}>All photos <span>${g2.count}</span></a><a class="${isSaved ? "active" : ""}" href="${url({ saved: 1, find: null }, true)}" data-nav ${isSaved ? 'aria-current="page"' : ""}>Saved <span>${selected}</span></a></nav><details class="photo-finder" ${query ? "open" : ""}><summary><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>Search photos</summary><form data-photo-search><label for="photo-query">Photo number or description</label><div><input id="photo-query" name="find" type="search" placeholder="e.g. red jersey 11" value="${esc(query)}"><button>Find</button></div><small>Try a jersey number, color or photo number.</small></form></details></div>${query ? `<div class="search-result" role="status">${list.length} photos matching \u201C${esc(query)}\u201D <a href="${url({ find: null }, true)}" data-nav>Clear search</a></div>` : ""}${list.length ? model() === "sheet" ? `<div class="photo-grid">${list.map((p2, i2) => tile(p2, i2)).join("")}</div>` : `<div class="inspection-layout"><section class="inline-viewer" aria-label="Current photograph">${inspect(active, list, false)}</section><section class="contact-pane" aria-label="Gallery photographs">${model() === "sequence" ? `<details><summary>See all ${list.length} photos</summary><div class="photo-grid mini">${list.map((p2, i2) => tile(p2, i2, true)).join("")}</div></details>` : `<div class="photo-grid mini">${list.map((p2, i2) => tile(p2, i2, true)).join("")}</div>`}</section></div>` : `<section class="empty"><h2>${isSaved ? "No saved photos in this gallery" : "No matching photos"}</h2><p>${isSaved ? "Use Save on any photo to keep it here, then download your selection." : "Try a photo number, jersey color or a different description."}</p><a class="button" href="${url({ saved: null, find: null }, true)}" data-nav>View all ${g2.count} photos</a></section>`}<div class="gallery-end"><p>You\u2019ve reached the end of ${query || isSaved ? "this selection" : "the gallery"}.</p><a href="#main">Back to top \u2191</a></div><div id="selection-bar">${selectionBar()}</div></main>`;
+  return `<main id="main" class="page gallery model-${model()}" tabindex="-1">${sourceLink ? `<div class="back-link">${sourceLink}</div>` : ""}<section class="gallery-intro"><div><p class="metadata">${esc(g2.date)} \xB7 ${esc(g2.context)}</p><h1>${esc(g2.title)}</h1><p class="byline">${g2.count} photos \xB7 By Nino Chavez</p></div><div class="gallery-actions"><button data-share-gallery>Share gallery</button><button data-download-gallery>Download all</button></div></section><div class="gallery-tools"><nav aria-label="Photos in this gallery"><a class="${!isSaved ? "active" : ""}" href="${url({ saved: null, find: null }, true)}" data-nav ${!isSaved ? 'aria-current="page"' : ""}>All photos <span>${g2.count}</span></a><a class="${isSaved ? "active" : ""}" href="${url({ saved: 1, find: null }, true)}" data-nav ${isSaved ? 'aria-current="page"' : ""}>Saved <span>${selected}</span></a></nav><details class="photo-finder" ${query ? "open" : ""}><summary><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>Search photos</summary><form data-photo-search><label for="photo-query">Photo number or description</label><div><input id="photo-query" name="find" type="search" placeholder="e.g. red jersey 11" value="${esc(query)}"><button>Find</button></div><small>Try a jersey number, color or photo number.</small></form></details></div>${query ? `<div class="search-result" role="status">${list.length} photos matching \u201C${esc(query)}\u201D <a href="${url({ find: null }, true)}" data-nav>Clear search</a></div>` : ""}${list.length ? model() === "sheet" ? fittedGrid(list) : `<div class="inspection-layout"><section class="inline-viewer" aria-label="Current photograph">${inspect(active, list, false)}</section><section class="contact-pane" aria-label="Gallery photographs">${model() === "sequence" ? `<details><summary>See all ${list.length} photos</summary><div class="photo-grid mini">${list.map((p2, i2) => tile(p2, i2, true)).join("")}</div></details>` : `<div class="photo-grid mini">${list.map((p2, i2) => tile(p2, i2, true)).join("")}</div>`}</section></div>` : `<section class="empty"><h2>${isSaved ? "No saved photos in this gallery" : "No matching photos"}</h2><p>${isSaved ? "Use Save on any photo to keep it here, then download your selection." : "Try a photo number, jersey color or a different description."}</p><a class="button" href="${url({ saved: null, find: null }, true)}" data-nav>View all ${g2.count} photos</a></section>`}<div class="gallery-end"><p>You\u2019ve reached the end of ${query || isSaved ? "this selection" : "the gallery"}.</p><a href="#main">Back to top \u2191</a></div><div id="selection-bar">${selectionBar()}</div></main>`;
 }
 function selectionBar() {
   if (params().get("page")) return "";
@@ -1363,7 +1397,7 @@ function selectionBar() {
 }
 function savedPage() {
   const list = allPhotos.filter((p2) => saved.includes(p2.key));
-  return `<main id="main" class="page saved-page" tabindex="-1"><div class="saved-intro"><div><p class="eyebrow">Your selection</p><h1>Saved photos</h1><p>${persistent ? "Saved on this browser." : "Browser storage is unavailable. These saves last until this page closes."} No account or sign-in.</p></div>${list.length ? `<button class="primary" data-download-saved="all">Download saved (${list.length})</button>` : ""}</div>${list.length ? galleries.filter((g2) => list.some((p2) => p2.gallery === g2)).map((g2) => `<section class="saved-gallery"><div class="section-title"><h2>${esc(g2.title)}</h2><a href="${url({ gallery: g2.albumKey })}" data-nav>View gallery \u2192</a></div><div class="photo-grid">${list.filter((p2) => p2.gallery === g2).map((p2, i2) => tile(p2, i2)).join("")}</div></section>`).join("") : `<section class="empty"><h2>No saved photos yet</h2><p>Save photos while you browse. Return here to download them together.</p><a class="button primary" href="?page=home" data-nav>Find your gallery</a></section>`}</main>`;
+  return `<main id="main" class="page saved-page" tabindex="-1"><div class="saved-intro"><div><p class="eyebrow">Your selection</p><h1>Saved photos</h1><p>${persistent ? "Saved on this browser." : "Browser storage is unavailable. These saves last until this page closes."} No account or sign-in.</p></div>${list.length ? `<button class="primary" data-download-saved="all">Download saved (${list.length})</button>` : ""}</div>${list.length ? galleries.filter((g2) => list.some((p2) => p2.gallery === g2)).map((g2) => `<section class="saved-gallery"><div class="section-title"><h2>${esc(g2.title)}</h2><a href="${url({ gallery: g2.albumKey })}" data-nav>View gallery \u2192</a></div>${fittedGrid(list.filter((p2) => p2.gallery === g2))}</section>`).join("") : `<section class="empty"><h2>No saved photos yet</h2><p>Save photos while you browse. Return here to download them together.</p><a class="button primary" href="?page=home" data-nav>Find your gallery</a></section>`}</main>`;
 }
 function workPage() {
   return `<main id="main" class="page work-page" tabindex="-1"><div class="section-title"><div><p class="eyebrow">Nino Chavez</p><h1>Selected photographs</h1></div><a href="https://ninochavez.co/photography/coverage" ${external}>Request coverage \u2197</a></div><div class="work-grid">${selectedWork.map((p2, i2) => `<a href="${esc(p2.url)}" ${external}>${image(p2, i2 < 3)}</a>`).join("")}</div><a href="?page=home" class="button" data-nav>Find your event photos</a></main>`;
@@ -1394,6 +1428,7 @@ function closeViewer() {
 function render(options = {}) {
   const p2 = params().get("page");
   document.body.classList.toggle("gallery-shell", !p2);
+  document.body.classList.toggle("home-shell", p2 === "home" && !params().get("q"));
   app.innerHTML = header() + (p2 === "home" ? home() : p2 === "saved" ? savedPage() : p2 === "work" ? workPage() : gallery()) + footer();
   document.title = p2 === "home" ? "Find event photos \u2014 Nino Chavez" : p2 === "saved" ? "Saved photos \u2014 Nino Chavez" : p2 === "work" ? "Selected photographs \u2014 Nino Chavez" : `${currentGallery().title} \u2014 Nino Chavez`;
   const deep = params().get("photo");
@@ -1500,7 +1535,8 @@ document.addEventListener("click", async (e2) => {
     if (e2.metaKey || e2.ctrlKey || e2.shiftKey || e2.altKey) return;
     e2.preventDefault();
     navigate(b2.getAttribute("href"), b2.dataset.returnEvent ? `event-${b2.dataset.returnEvent}` : null);
-  } else if (b2.matches("[data-photo]")) {
+  } else if (b2.matches("[data-info]")) showAction({ title: "Nino Chavez", body: `<p class="info-description">Volleyball and action-sports photography, from club tournaments to high school and college matches.</p><div class="info-actions"><a href="mailto:nino@ninochavez.co">nino@ninochavez.co \u2197</a><a href="https://ninochavez.co/photography/coverage" ${external}>Request event coverage \u2197</a><a href="https://www.instagram.com/nino.chavez.photo" ${external}>Instagram \u2197</a><a href="https://ninochavez.co" ${external}>About Nino \u2197</a></div>` });
+  else if (b2.matches("[data-photo]")) {
     const p2 = photoByKey(b2.dataset.photo);
     if (!p2) return;
     if (!params().get("page") && model() !== "sheet") {

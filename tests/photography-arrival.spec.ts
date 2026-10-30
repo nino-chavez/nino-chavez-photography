@@ -22,11 +22,22 @@ for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'phone',wid
     await page.setViewportSize(viewport);await page.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
     await page.goto(`${base}?page=home`);
     await capture(page,`home-${viewport.name}`);
+    await expect(page.locator('.hero-picture img')).toBeVisible();
+    expect((await page.locator('.home-hero').boundingBox())!.width).toEqual(viewport.width);
+    await page.getByRole('button',{name:'Info',exact:true}).click();
+    await expect(page.locator('#action')).toContainText('nino@ninochavez.co');
+    await capture(page,`info-${viewport.name}`);
+    await expect(page.getByRole('link',{name:'About Nino ↗',exact:true})).toHaveAttribute('target','_blank');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button',{name:'Info',exact:true})).toBeFocused();
     await page.getByLabel('Event, team or date',{exact:true}).fill('Chicago Point');
     await page.getByRole('button',{name:'Find gallery',exact:true}).click();
     await expect(page.locator('.event-card')).toHaveCount(1);
     await page.locator('#event-1').click();
     await expect(page.locator('.photo-open')).toHaveCount(49);
+    await page.waitForFunction(()=>[...document.querySelectorAll<HTMLImageElement>('.fitted-grid .photo-open img')].slice(0,8).every(image=>image.complete&&image.naturalWidth>0));
+    const dimensions=await page.locator('.fitted-grid .photo-open img').evaluateAll(images=>images.slice(0,8).map(image=>{const el=image as HTMLImageElement;return {display:el.clientWidth/el.clientHeight,source:el.naturalWidth/el.naturalHeight};}));
+    for(const size of dimensions)expect(Math.abs(size.display-size.source)).toBeLessThan(.03);
     await page.locator('#photo-aBZN7D-DSC00124').click();
     await expect(page.locator('#viewer')).toContainText('Photo 1 of 49');
     await page.locator('#viewer').getByRole('button',{name:'Save DSC00124',exact:true}).click();
@@ -125,4 +136,33 @@ test('narrow screen, search recovery, unavailable storage and download failure',
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(false);
   await page.evaluate(()=>document.querySelector('#negative-control')?.remove());
   for(const name of ['Profile ↗','Writing ↗'])await expect(page.getByRole('link',{name,exact:true})).toHaveAttribute('target','_blank');
+});
+
+
+test('short phone: hero actions fit, recent events are reachable, and empty search recovers',async({page})=>{
+  await page.setViewportSize({width:320,height:568});
+  await page.goto(`${base}?page=home`);
+  const search=await page.getByRole('button',{name:'Find gallery',exact:true}).boundingBox();
+  expect(search!.y+search!.height).toBeLessThanOrEqual(568);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.getByRole('link',{name:'Browse recent events',exact:true}).click();
+  await expect(page.locator('#recent-title')).toBeInViewport();
+  await capture(page,'recent-phone');
+  await page.getByLabel('Event, team or date',{exact:true}).fill('event that does not exist');
+  await page.getByRole('button',{name:'Find gallery',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'No matching galleries in this preview'})).toBeVisible();
+  await capture(page,'home-no-results-phone');
+  await page.getByRole('link',{name:'Clear search',exact:true}).click();
+  await expect(page.locator('.hero-picture img')).toBeVisible();
+});
+
+
+test('latest-event shortcut returns to the same overlay link',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto(`${base}?page=home`);
+  await page.locator('#event-latest-1').click();
+  await expect(page.locator('.photo-open')).toHaveCount(49);
+  await page.getByRole('link',{name:'← Back to galleries',exact:true}).click();
+  await expect(page.locator('#event-latest-1')).toBeFocused();
+  await expect(page.locator('#event-latest-1')).toBeInViewport();
 });

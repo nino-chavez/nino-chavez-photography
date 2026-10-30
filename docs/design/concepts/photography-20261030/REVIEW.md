@@ -1,4 +1,20 @@
-# Photography arrival study, October 30, 2026
+# Photography refit, October 30, 2026
+
+The current preview restores an owned full-bleed photograph and puts useful actions over its edges: event search, the two latest galleries and photographer Info. The image remains the first impression. Recent-event covers follow below. Gallery links still open the complete event; photo links open their chosen photograph with Save, Share and Download.
+
+Open `arrival/?page=home` for the revised homepage. The [experience brief](../../../../prototype/EXPERIENCE-BRIEF.md) records Nino's explicit correction and the refit scope. This is a working design artifact; live Svelte routes, publication and private-gallery access are unchanged. Passing checks do not mean Nino accepted the rendered design.
+
+The lead and font are original assets already in this repository, exposed to the static server through the relative `assets` symlink. `arrival/app.source.js` imports the native fitted-row helper; the generated bundle keeps photo order and aspect ratios without forcing landscapes into portrait boxes. The prior complete-gallery, contextual viewer, save/download/share and return behavior survives. The design toolbar now follows the page so it cannot define the first impression.
+
+Twelve focused Chromium checks pass on desktop and phone viewports, including a short 320×568 viewport. They exercise event search, the latest-event shortcut and return focus, Info and focus restoration, full-gallery/photo links, natural photo proportions, selection persistence, actual JPEG/ZIP download, failure recovery, query escaping and cross-site new tabs. The parent opened the [revised capture packet](../../../evidence/screen-reviews/photography-refit-20261030/manifest.json); these are browser captures, not physical-phone or visitor-acceptance evidence.
+
+The [cold review and disposition](../../../evidence/screen-reviews/photography-refit-20261030-cold.md) pass the revised home, gallery, viewer, saved, recent-event and no-results states. Info was revised to introduce the actual photographic practice; a fresh review passes its desktop and phone frames. The affected desktop/phone journeys pass again. The final manifest verifies twenty files.
+
+The earlier studies and their reviews follow as rejected history. The current preview's source and image hashes are recorded in the new packet; previous capture packets remain frozen.
+
+---
+
+# Rejected arrival study, October 30, 2026
 
 The homepage helps a visitor find photos from their event. A gallery link skips event discovery. A photo link opens that photo directly, keeping its event and the route to the rest of the gallery visible.
 
