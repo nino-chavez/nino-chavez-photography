@@ -1,0 +1,4 @@
+Read-only cold visual review, maximum three minutes. Do not edit, read source/briefs/earlier reviews, or launch helpers. Open the two whole-screen captures with an image tool. Audience: a visitor to a public sports photographer's site who opened Info to understand the practice and find contact/coverage routes. Judge the visible hierarchy, information and legibility at desktop and phone widths. Return pass/revise for each and any material defect; do not claim that screenshot evidence proves interactions or real-device behavior.
+
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/final/info-desktop.png
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photography-rethink-20261030/docs/evidence/screen-reviews/photography-refit-20261030/final/info-phone.png

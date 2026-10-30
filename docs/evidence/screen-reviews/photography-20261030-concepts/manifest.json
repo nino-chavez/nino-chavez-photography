@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-30",
+  "build": "photography-concepts-v1",
+  "viewports": {
+    "desktop": [
+      1440,
+      1000
+    ],
+    "phone": [
+      390,
+      844
+    ]
+  },
+  "device": "Playwright Chromium on macOS; phone emulation, not physical phone",
+  "theme": "fixed dark",
+  "fontSize": "browser default, 16px body",
+  "reducedMotion": "reduce",
+  "increaseContrast": "browser default; OS state unknown",
+  "boldText": "OS state unknown",
+  "capture": "viewport-only; loaded visible images decoded before capture; overflow check has a visible 2000px negative control",
+  "sources": {
+    "index.html": "56527e801d3ba015d46354dddf4b6c719df5af2902736dee4d7f8dff66eae2db",
+    "data.js": "3b731a46532c8fa7f6f17dd8bd2102b0ca6de7c37500837593f2eb5397ab66d5",
+    "style.css": "6a4bced4d5e7119303a80c4a39d77554b636e30630ce014c069bd437c8c7b954",
+    "app.js": "040862fa018041b2a9ee9acf3d07a71855de3b16053699abf1defa12d8ad67e4"
+  },
+  "reviewFrames": [
+    "A-home-desktop.png",
+    "A-home-phone.png",
+    "B-home-desktop.png",
+    "B-home-phone.png",
+    "C-home-desktop.png",
+    "C-home-phone.png",
+    "A-archive-desktop.png",
+    "C-archive-phone.png",
+    "B-archive-desktop.png",
+    "B-archive-phone.png",
+    "C-gallery-desktop.png",
+    "C-gallery-phone.png",
+    "B-gallery-desktop.png",
+    "C-viewer-desktop.png",
+    "C-viewer-phone.png",
+    "C-empty-phone.png"
+  ],
+  "captures": {
+    "A-gallery-desktop.png": "7856ba502907228fea498b394b52d8ba16476cf1fb9adb1de6d4aee371ff1630",
+    "B-archive-phone.png": "1375fde9bd80b88f8149439ce5952ab93253fe5245d01e0cec427707a37f0162",
+    "A-viewer-phone.png": "c805047cf365140f85eeb273015593cf239d053c4f7b05db10c7ebef2e4ebbc1",
+    "C-gallery-desktop.png": "ad85299f72c5f07db3f54ec428b642e79da3c127672ac15ba65fbc7445645e98",
+    "B-gallery-desktop.png": "477a8f7f558dd48a47e25139ef8b0aeb855919621e45242a6e9732de6a1a8f01",
+    "B-home-desktop.png": "dee615f960101bda56569f53deddaba3faa3cc3430e8a2ac9b1c03832d544fd2",
+    "A-empty-desktop.png": "16a7ddacadc03f781484569f20fd078f820fbf090589e04fec60973d781fd802",
+    "C-archive-phone.png": "d073c5aed5a4fbbc341303ab642c7474b44e65d4bb7e8a86fb85d78df33b6dd1",
+    "C-viewer-desktop.png": "bdec86555f495c469f87333bee37919ea30cdec52b12000565c9b75632e4b013",
+    "B-empty-desktop.png": "a656d69f27460933a748a0f61f58339414e2e51d0f3da72662d96051c31bcbaa",
+    "C-empty-desktop.png": "95e2852bfd5d21ff289fb871789b561f12cdd53b9f95d58955440c9689d70517",
+    "C-home-desktop.png": "deb40f4e29867c5c2c554930a75646c2418983c6e46dab58db966e6cd1052029",
+    "A-archive-phone.png": "94a37e24e9b73fecbea4f075be4c4c5fd00d2c2f35f39cd3e7ba9fc5ebaffd9b",
+    "A-empty-phone.png": "7552f2040f0fcd57efbe098dbaf2f244983f8480b7382a694c48c41a31188e87",
+    "A-gallery-phone.png": "56fef2520a869b64235c651c9f1625bd1fec0b4d69f0b0e6630fa1662a563bcd",
+    "C-viewer-phone.png": "c805047cf365140f85eeb273015593cf239d053c4f7b05db10c7ebef2e4ebbc1",
+    "C-home-phone.png": "87a3aebb1d7fde8e9f42501ff826692e6f0fa801b881d615f44ba9581575efd2",
+    "A-viewer-desktop.png": "bdec86555f495c469f87333bee37919ea30cdec52b12000565c9b75632e4b013",
+    "B-home-phone.png": "f97eb5a45092f834ac9b39dc536d7fed326541461771b9f6014b84f4c5524d04",
+    "B-viewer-desktop.png": "bdec86555f495c469f87333bee37919ea30cdec52b12000565c9b75632e4b013",
+    "C-empty-phone.png": "16dbf29d74fb08c011c073e171988863cef1f5abf025539c81db46134057c136",
+    "B-viewer-phone.png": "c805047cf365140f85eeb273015593cf239d053c4f7b05db10c7ebef2e4ebbc1",
+    "C-gallery-phone.png": "4ace33faf90e450ede5a67547d38046bc11dec030b01a8cdd1e24571a719b65c",
+    "A-archive-desktop.png": "20a40eded182864c9f1a544cc2d7f05fbc78e47478bfce8fab3ac098c002fe28",
+    "B-archive-desktop.png": "d91bbde2b06f270942bf26ece9dfae58ec420cec49a1f500a516184781cd0885",
+    "B-empty-phone.png": "b324295de0163a4460d785c9e329f0d5b54ffebd843ffaf85952c653d0d0281c",
+    "C-archive-desktop.png": "6ce71ce85e7449183e55a77e204f69cf8a78a48ce85c9957c50a3b5ac5608117",
+    "A-home-phone.png": "2181a7c852e4d5590349f9b1307d704cd1ac0cdf589fdcb6e77c3b89edba3a0c",
+    "B-gallery-phone.png": "c95166f84dbfe77098a7418055b9e8b0147a54296f3c3222a2e88cac65b32c6e",
+    "A-home-desktop.png": "9539fde79a6eab5564b9cf0f668f0bdf8eb736c8772ddcfd210412cd936bea1d"
+  }
+}

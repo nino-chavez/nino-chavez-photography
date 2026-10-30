@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-10-30",
+  "browser": "Chromium on macOS",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "physical_phone": false,
+  "files": {
+    "docs/evidence/screen-reviews/photography-arrival-20261030/beside-photo-phone.png": "5867f3c69ba47faa1a173ae6a211063e798e116fdb544548824ef5b0fd0d895f",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sheet-gallery-desktop.png": "fea44db77ef44b3a9328a6ea8f9ac69cdc3077f15b8069507643ad5d2515ab35",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/home-phone.png": "050c377a2a7a42b05ed47060e2e30c225bcf4147e94c8e458d56db69202ef026",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sequence-photo-desktop.png": "7c56518e3119ef4e71af0ead87e861a2a0e23ae8c126c20d6d37298f20528da7",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/beside-photo-desktop.png": "7c56518e3119ef4e71af0ead87e861a2a0e23ae8c126c20d6d37298f20528da7",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sheet-photo-phone.png": "5867f3c69ba47faa1a173ae6a211063e798e116fdb544548824ef5b0fd0d895f",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sheet-photo-desktop.png": "7c56518e3119ef4e71af0ead87e861a2a0e23ae8c126c20d6d37298f20528da7",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/saved-desktop.png": "098bffabb88d52767b5082f718362fb130ccaf526c4a64251540ae1f473a321b",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sequence-photo-phone.png": "5867f3c69ba47faa1a173ae6a211063e798e116fdb544548824ef5b0fd0d895f",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sheet-gallery-phone.png": "62a835ef7617212809d209f15a880a923f8c8a56d4faf75d7eb59d770755c0cb",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/beside-gallery-phone.png": "aba9dc2670da8c762562d5fec061285c8b5963ff79db967a86feadbca572b249",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/beside-gallery-desktop.png": "7fed2887fbe0454117e90752d3cd7297ff9b3314a7cbf3961326ffbedc5ca1fe",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sequence-gallery-phone.png": "aba9dc2670da8c762562d5fec061285c8b5963ff79db967a86feadbca572b249",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/sequence-gallery-desktop.png": "3ad1a301abb6493cea118822bffe56d872393299be3856c2bb62863e4cc7b787",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/home-desktop.png": "ba1a6faee081affdd92f83f2c88434b1f770589508b9ae588dad3d2844926270",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/saved-phone.png": "94963e61d35a01bf4c54eec1db77e7bcecb65ed5700715b0850994c908a108d4",
+    "docs/evidence/screen-reviews/photography-arrival-20261030/cold-brief.txt": "1b3233af86a3e419b456839693d18dcd45fe6dbb52094e8a2b2d1fcf8d30b45d",
+    "docs/design/concepts/photography-20261030/arrival/index.html": "cccc2e15997c88a75c627ad9e66c69ce32823d2be65b9ee16673739cd5b9d79e",
+    "docs/design/concepts/photography-20261030/arrival/data.js": "8070f79897ee33a1913da942617538ae892d66a3467654e698c787063aec7823",
+    "docs/design/concepts/photography-20261030/arrival/style.css": "c36db493f92b6974c0d40854ef61a254cbce7bd263aa3e728e179e02b6ed0b3b",
+    "docs/design/concepts/photography-20261030/arrival/app.js": "0d8115e9714139089c494c248d3310706c17b1e2006e68318495365bdb5e3072",
+    "docs/design/concepts/photography-20261030/arrival/app.source.js": "34d5eb7c55c228088ac413adfd5994e90c135f7460a1bbf6811f5dc555dd9758"
+  }
+}

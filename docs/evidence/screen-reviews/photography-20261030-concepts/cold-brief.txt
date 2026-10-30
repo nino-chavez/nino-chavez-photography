@@ -1,0 +1,20 @@
+Read-only independent cold screen review. Do not read source, experience brief, earlier review, implementation notes, or this conversation. You are not alone; do not edit files. Parent has personally opened every frame listed below. These are three working website alternatives, not a selected direction. Review only these rendered captures under docs/evidence/screen-reviews/photography-20261030-concepts/:
+A-home-desktop.png
+A-home-phone.png
+B-home-desktop.png
+B-home-phone.png
+C-home-desktop.png
+C-home-phone.png
+A-archive-desktop.png
+C-archive-phone.png
+B-archive-desktop.png
+B-archive-phone.png
+C-gallery-desktop.png
+C-gallery-phone.png
+B-gallery-desktop.png
+C-viewer-desktop.png
+C-viewer-phone.png
+C-empty-phone.png
+Factual settings: desktop 1440x1000 and phone 390x844 CSS px, Playwright Chromium macOS; phone browser emulation, not physical device. Fixed dark site, default body text 16px, reduced motion enabled; OS contrast/bold text unknown. Captures are viewport only. They use real public photos and finite samples labelled in the preview. The top light comparison bar is review tooling, not proposed production navigation.
+Jobs: a new visitor wants to see Nino Chavez's photography. A returning player/parent/client wants a specific event, then their photographs, can save/share/download, and return to the same place. Original request about the personal sites: "i find this hard to follow and read"; now same rethink requested on photography.
+Without deference, judge whether the visible frames answer those jobs; eye order first/second/third; competing elements; remove/combine/demote/disclose; classify the main elements as correct, usable but weak, appealing but wrong, unnecessary or defect. Give an accept/revise verdict for the comparison and at most 5 material findings with exact frame references. Compare tradeoffs of A/B/C without inventing usability data. Do not infer interaction success from screenshots. No subagents. Bound the review to 6 minutes.
