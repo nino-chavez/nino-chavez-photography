@@ -20,7 +20,7 @@ Portfolio images are the existing public set in `src/lib/portfolio.ts`, referenc
 
 ## Checks and limits
 
-The dedicated Playwright suite exercises all three directions at 1440×1000 and 390×844, plus a 320×568 failure/recovery pass. It checks event and photo search, no matches, save/remove/persistence, blocked storage, image-request failure, keyboard viewer navigation, return focus, query preservation, no page errors and new-tab profile/writing links. Seven tests passed. A visible 2000px-wide element proves the overflow detector can fail before it is removed.
+The dedicated Playwright suite exercises all three directions at 1440×1000 and 390×844, plus a 320×568 failure/recovery pass. It checks event and photo search, no matches, save/remove/persistence, blocked storage, image-request failure, keyboard viewer navigation, return focus, query preservation, no page errors and new-tab profile/writing links. Eight tests passed. A visible 2000px-wide element proves the overflow detector can fail before it is removed.
 
 The first capture pass exposed a blank decoded-image frame despite loaded requests. Photo tiles now request synchronous decoding, and happy-state captures wait for visible images to have natural dimensions and finish decoding. That is a rendering check, separate from the search and navigation assertions. A fresh pass captured the gallery with photographs visible.
 
@@ -29,6 +29,8 @@ Run the focused suite with `PHOTOGRAPHY_RETHINK=1` and `PLAYWRIGHT_BASE_URL` poi
 Captures and their source hashes are retained in [the comparison packet](../../../evidence/screen-reviews/photography-20261030-concepts/manifest.json). These are real browser renders on macOS, including phone-width emulation. Physical phone, VoiceOver, full native-gallery regression, production deployment and acceptance in real use remain untested. OS contrast and bold-text settings were not read. The parent personally opened the home, archive, gallery, viewer and no-results captures before cold review.
 
 The [cold comparison review](../../../evidence/screen-reviews/photography-20261030-concepts-cold.md) is preserved verbatim with the parent’s verification. Its archive-context defect is contradicted by the exact named captures. Its hierarchy and sidebar critiques are recorded as selection tradeoffs; this is not an unqualified design acceptance.
+
+Commit review found one unescaped month query value in the preview result count. The regression check failed on the original code, the output is now escaped, and the full eight-check suite passes. This repair changes no visible normal-state design. The cold-review packet stays frozen at its recorded hashes; later regression-run screenshots are kept separately while the comparison is open.
 
 ## Selection
 

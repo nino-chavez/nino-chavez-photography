@@ -8,6 +8,13 @@ mkdirSync(captures,{recursive:true});
 test.setTimeout(90_000);
 test.skip(process.env.PHOTOGRAPHY_RETHINK !== '1', 'Static concept suite; opt in against its dedicated preview server.');
 
+test('query parameters remain text rather than HTML', async ({page})=>{
+  const payload='<img src=x data-query-injection="true">';
+  await page.goto(`/?c=A&page=events&month=${encodeURIComponent(payload)}`);
+  await expect(page.locator('.result-count img')).toHaveCount(0);
+  await expect(page.locator('.result-count')).toContainText(payload);
+});
+
 for (const c of ['A','B','C']) {
   for (const viewport of [{name:'desktop',width:1440,height:1000},{name:'phone',width:390,height:844}]) {
     test(`${c} ${viewport.name}: gallery discovery, viewer, saved and return`,async({page})=>{
