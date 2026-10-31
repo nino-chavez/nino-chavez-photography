@@ -21,7 +21,7 @@
 -->
 
 <script lang="ts">
-  import { untrack, tick } from 'svelte';
+  import { untrack, tick, onMount } from 'svelte';
   import { base } from '$app/paths';
   import Typography from '$lib/components/ui/Typography.svelte';
   import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
@@ -57,6 +57,9 @@
     allAvailablePeriods = [],
     onLoadMore
   }: Props = $props();
+
+  let ready = $state(false);
+  onMount(() => { ready = true; });
 
   // Lazy loading state
   let isLoadingMore = $state(false);
@@ -181,29 +184,15 @@
       }
     }
     if (element) {
-      const yearHeight = document.getElementById(`year-${year}`)?.getBoundingClientRect().height || 0;
-      const offset = getScrollOffset() + yearHeight + 8;
+      const offset = getScrollOffset();
       const elementPosition = element.getBoundingClientRect().top + window.scrollY;
       const offsetPosition = elementPosition - offset;
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth'
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
       });
     }
-  }
-
-  // Calculate content diversity for a period
-  function getContentDiversity(photos: Photo[]) {
-    const sports = new Set(photos.map(p => p.metadata?.sport_type).filter(Boolean));
-    const categories = new Set(photos.map(p => p.metadata?.photo_category).filter(Boolean));
-
-    return {
-      sportCount: sports.size,
-      categoryCount: categories.size,
-      sports: Array.from(sports),
-      categories: Array.from(categories)
-    };
   }
 
   // Get featured photos (simple passthrough for now)
@@ -211,71 +200,25 @@
     return photos || [];
   }
 
-  // The date rail remains below both shared navigation bars while browsing.
+  // Align the requested date below the sticky date rail.
   function getScrollOffset(): number {
     const timelineNav = document.querySelector('[data-timeline-nav]');
-    if (!timelineNav) return 242;
-    const top = parseFloat(getComputedStyle(timelineNav).top) || 114;
+    if (!timelineNav) return 20;
+    const top = parseFloat(getComputedStyle(timelineNav).top) || 0;
     return top + timelineNav.getBoundingClientRect().height + 20;
   }
 
-  // Calculate timeline positions (0-100%) for each period
-  let timelinePositions = $derived.by(() => {
-    if (availablePeriods.length === 0) return [];
-
-    // Get min and max dates
-    const firstPeriod = availablePeriods[availablePeriods.length - 1]; // Oldest
-    const lastPeriod = availablePeriods[0]; // Newest
-
-    const minDate = new Date(firstPeriod.year, firstPeriod.month - 1, 1);
-    const maxDate = new Date(lastPeriod.year, lastPeriod.month - 1, 1);
-    const totalRange = maxDate.getTime() - minDate.getTime();
-
-    return availablePeriods.map(period => {
-      const periodDate = new Date(period.year, period.month - 1, 1);
-      const position = totalRange ? ((periodDate.getTime() - minDate.getTime()) / totalRange) * 100 : 50;
-      return {
-        ...period,
-        position: 100 - position // Reverse so newest is on the right
-      };
-    });
-  });
-
-  // Get unique years for milestones with proper date-based positioning
-  let yearMilestones = $derived.by(() => {
-    if (availablePeriods.length === 0) return [];
-    
-    const years = new Set(availablePeriods.map(p => p.year));
-    const yearsArray = Array.from(years).sort((a, b) => b - a); // Newest first
-    
-    // Get min and max dates for proper positioning
-    const firstPeriod = availablePeriods[availablePeriods.length - 1]; // Oldest
-    const lastPeriod = availablePeriods[0]; // Newest
-    const minDate = new Date(firstPeriod.year, firstPeriod.month - 1, 1);
-    const maxDate = new Date(lastPeriod.year, lastPeriod.month - 1, 1);
-    const totalRange = maxDate.getTime() - minDate.getTime();
-    
-    // Calculate position for each year (use January 1st of that year)
-    return yearsArray.map(year => {
-      const yearDate = new Date(year, 0, 1); // January 1st
-      // Clamp to min/max range
-      const clampedDate = yearDate < minDate ? minDate : yearDate > maxDate ? maxDate : yearDate;
-      const position = totalRange ? ((clampedDate.getTime() - minDate.getTime()) / totalRange) * 100 : 50;
-      return {
-        year,
-        position: 100 - position // Reverse so newest is on the right
-      };
-    });
-  });
+  const years = $derived([...new Set(availablePeriods.map(period => period.year))].sort((a,b) => b-a));
 
   // Track currently visible year and month based on scroll position
   let currentVisibleYear = $state<number | null>(null);
   let currentVisibleMonth = $state<{ year: number; month: number } | null>(null);
-  let hoveredPeriod = $state<{ year: number; month: number; monthName: string } | null>(null);
+
+  const activeYear = $derived(currentVisibleYear ?? years[0]);
+  const visibleMonths = $derived(availablePeriods.filter(period => period.year === activeYear));
 
   // Update visible year and month based on scroll position
-  // NOTE: Year headers are position:sticky so getBoundingClientRect returns stuck position.
-  // We derive the visible year from month elements which have normal document flow.
+  // Derive the active date from month sections in normal document flow.
   function updateVisibleYear() {
     const monthElements = document.querySelectorAll('[id^="month-"]');
 
@@ -283,8 +226,8 @@
     let closestMonth: { year: number; month: number; distance: number } | null = null;
     monthElements.forEach((el) => {
       const rect = el.getBoundingClientRect();
-      // Consider elements that are near or above viewport top (accounting for sticky nav ~200px)
-      const distance = Math.abs(rect.top - 200);
+      // Match the same reading position used by the date jump.
+      const distance = Math.abs(rect.top - getScrollOffset());
 
       if (rect.top < window.innerHeight && rect.bottom > 0) {
         const monthId = el.id.replace('month-', '');
@@ -303,21 +246,13 @@
     }
   }
 
-  // Find the scroll target for a year — use first month element (year headers are sticky)
   function findYearScrollTarget(year: number): HTMLElement | null {
-    // First month of the year is the reliable scroll anchor
-    const firstMonth = document.querySelector(`[id^="month-${year}-"]`) as HTMLElement | null;
-    if (firstMonth) return firstMonth;
-    // Fallback to year heading (works when not sticky)
     return document.getElementById(`year-${year}`);
   }
 
   function scrollToElement(el: HTMLElement, behavior: ScrollBehavior = 'smooth') {
-    const navOffset = getScrollOffset();
-    // Extra offset for the sticky year header (~80px) so it appears above the month
-    const yearHeaderHeight = 80;
     const elementPosition = el.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: elementPosition - navOffset - yearHeaderHeight, behavior });
+    window.scrollTo({ top: elementPosition - getScrollOffset(), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : behavior });
   }
 
   // Scroll to year function — loads more data if year isn't in DOM yet
@@ -353,31 +288,9 @@
     isLoadingMore = false;
   }
 
-  // Progress indicator position — maps current visible month to timeline date position
-  let progressPosition = $derived.by(() => {
-    if (!currentVisibleMonth || availablePeriods.length === 0) return 0;
-
-    const firstPeriod = availablePeriods[availablePeriods.length - 1]; // Oldest
-    const lastPeriod = availablePeriods[0]; // Newest
-    const minDate = new Date(firstPeriod.year, firstPeriod.month - 1, 1);
-    const maxDate = new Date(lastPeriod.year, lastPeriod.month - 1, 1);
-    const totalRange = maxDate.getTime() - minDate.getTime();
-
-    if (totalRange === 0) return 50;
-
-    const currentDate = new Date(currentVisibleMonth.year, currentVisibleMonth.month - 1, 1);
-    const position = ((currentDate.getTime() - minDate.getTime()) / totalRange) * 100;
-    return 100 - position; // Reverse so newest is on the left
-  });
-
-  function handleScroll() {
-    // Scroll handler is now just a trigger for updateVisibleYear
-  }
-
   // Scroll tracking effect
   $effect(() => {
     function scrollHandler() {
-      handleScroll();
       updateVisibleYear();
     }
     window.addEventListener('scroll', scrollHandler, { passive: true });
@@ -451,124 +364,14 @@
 </script>
 
 <div class="timeline-shell">
-  <!-- Visual Timeline Navigator -->
-  <div class="sticky top-16 z-40 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800/50 shadow-lg" data-timeline-nav role="navigation" aria-label="Photo timeline">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <!-- Timeline Label -->
-      <div class="flex items-center gap-3 mb-3">
-        <span class="text-charcoal-400 text-xs font-medium flex-shrink-0">Timeline</span>
-        <div class="flex-1 h-px bg-charcoal-800"></div>
-      </div>
-
-      <!-- Visual Timeline Bar -->
-      <div class="relative h-16">
-        <!-- Horizontal timeline line -->
-        <div class="absolute top-8 left-0 right-0 h-0.5 bg-charcoal-800"></div>
-
-        <!-- Year milestones (clickable, positioned above timeline) -->
-        {#each yearMilestones as milestone, index}
-          {@const isActive = currentVisibleYear === milestone.year}
-          <button
-            onclick={() => scrollToYear(milestone.year)}
-            class="absolute top-0 transform -translate-x-1/2 group cursor-pointer transition-all"
-            style="left: {milestone.position}%; --phone-position: {yearMilestones.length > 1 ? index / (yearMilestones.length - 1) * 100 : 50}%"
-            aria-label="Jump to {milestone.year}"
-          >
-            <!-- Year marker -->
-            <div class="flex flex-col items-center">
-              <!-- Year label -->
-              <div
-                class="px-2 py-1 rounded-md transition-all"
-                class:bg-gold-500={isActive}
-                class:text-charcoal-950={isActive}
-                class:text-charcoal-300={!isActive}
-                class:hover:bg-gold-400={!isActive}
-                class:hover:text-charcoal-950={!isActive}
-              >
-                <Typography 
-                  variant="caption" 
-                  class={`text-sm font-semibold whitespace-nowrap ${isActive ? 'text-charcoal-950' : 'text-charcoal-300'}`}
-                >
-                  {milestone.year}
-                </Typography>
-              </div>
-              <!-- Year marker line and dot -->
-              <div class="w-px h-3 bg-charcoal-600 group-hover:bg-gold-500 transition-colors mt-1"
-                   class:bg-gold-500={isActive}></div>
-              <div class="w-2 h-2 rounded-full bg-charcoal-600 group-hover:bg-gold-500 -mt-px transition-colors"
-                   class:bg-gold-500={isActive}></div>
-            </div>
-          </button>
-        {/each}
-
-        <!-- Month dots (desktop only — too many dots for mobile tap targets) -->
-        <div class="hidden md:block">
-          {#each timelinePositions as period}
-            {@const isActiveMonth = currentVisibleMonth?.year === period.year && currentVisibleMonth?.month === period.month}
-            {@const monthNumStr = String(period.month).padStart(2, '0')}
-            {@const yearShortStr = String(period.year).slice(-2)}
-
-            <button
-              onclick={() => scrollToPeriod(period.year, period.month)}
-              onmouseenter={() => hoveredPeriod = { year: period.year, month: period.month, monthName: period.monthName }}
-              onmouseleave={() => hoveredPeriod = null}
-              class="timeline-month-marker absolute top-7 transform -translate-x-1/2 group cursor-pointer z-20"
-              style="left: {period.position}%"
-              aria-label="Jump to {period.monthName} {period.year}"
-            >
-              <!-- Month dot with dimmed/active states -->
-              <div class="relative">
-                <!-- Dimmed by default, highlighted when active or hovered -->
-                <div
-                  class="w-2.5 h-2.5 rounded-full transition-all duration-200"
-                  class:bg-charcoal-600={!isActiveMonth}
-                  class:opacity-40={!isActiveMonth}
-                  class:bg-gold-500={isActiveMonth}
-                  class:opacity-100={isActiveMonth}
-                  class:shadow-lg={isActiveMonth}
-                  class:ring-1={isActiveMonth}
-                  class:ring-gold-600={isActiveMonth}
-                  class:group-hover:bg-gold-400={true}
-                  class:group-hover:opacity-100={true}
-                  class:group-hover:scale-150={true}
-                  class:scale-125={isActiveMonth}
-                ></div>
-
-                <!-- Hover tooltip with MM/YY format -->
-                {#if hoveredPeriod && hoveredPeriod.year === period.year && hoveredPeriod.month === period.month}
-                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-3 py-1.5 bg-charcoal-900 border border-gold-500/30 rounded shadow-xl whitespace-nowrap z-50 backdrop-blur-sm">
-                    <Typography variant="caption" class="text-white text-xs font-medium">
-                      {monthNumStr}/{yearShortStr}
-                    </Typography>
-                    <Typography variant="caption" class="text-charcoal-400 text-[10px]">
-                      {period.monthName} {period.year}
-                    </Typography>
-                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
-                      <div class="border-4 border-transparent border-t-charcoal-900"></div>
-                    </div>
-                  </div>
-                {/if}
-              </div>
-            </button>
-          {/each}
-
-          <!-- Progress indicator (current visible month position, desktop only) -->
-          {#if currentVisibleMonth}
-            <div
-              class="absolute top-7 transform -translate-x-1/2 z-10 pointer-events-none transition-all duration-300"
-              style="left: {progressPosition}%"
-            >
-              <div class="w-3 h-3 rounded-full bg-white border-2 border-gold-500 shadow-lg"></div>
-            </div>
-          {/if}
-        </div>
-      </div>
-    </div>
-  </div>
+  <nav class="timeline-bar" data-timeline-nav aria-label="Photo timeline" aria-busy={isLoadingMore}>
+    <div class="timeline-years">{#each years as year (year)}<button disabled={!ready || isLoadingMore} onclick={() => scrollToYear(year)} aria-label={`Jump to ${year}`} aria-current={activeYear === year ? 'date' : undefined}>{year}</button>{/each}</div>
+    <div class="timeline-months">{#each visibleMonths as period (`${period.year}-${period.month}`)}<button disabled={!ready || isLoadingMore} onclick={() => scrollToPeriod(period.year, period.month)} aria-label={`Jump to ${period.monthName} ${period.year}`} aria-current={currentVisibleMonth?.year === period.year && currentVisibleMonth?.month === period.month ? 'date' : undefined}><span class="date-dot"></span>{period.monthName?.slice(0,3)}</button>{/each}</div>
+  </nav>
 
   <!-- Timeline Content -->
   <div class="timeline-content">
-    {#each periodsByYear as yearGroup}
+    {#each periodsByYear as yearGroup (yearGroup.year)}
       <!-- Sticky Year Header -->
       <div
         id="year-{yearGroup.year}"
@@ -589,7 +392,7 @@
       </div>
 
       <!-- Months within this year -->
-      {#each yearGroup.periods as entry}
+      {#each yearGroup.periods as entry (`${entry.year}-${entry.month}`)}
         <div
           id="month-{entry.year}-{entry.month}"
           class="month-section"
@@ -608,27 +411,6 @@
 
           <!-- Month Content -->
           <div>
-            <!-- Diversity Indicators -->
-            {#if entry.featuredPhotos && entry.featuredPhotos.length > 0}
-              {@const diversity = getContentDiversity(entry.featuredPhotos)}
-              {#if diversity.sportCount > 1 || diversity.categoryCount > 1}
-                <div class="flex items-center gap-3 mb-4 text-xs text-charcoal-400">
-                  {#if diversity.sportCount > 1}
-                    <span class="flex items-center gap-1">
-                      <span class="w-2 h-2 bg-gold-500 rounded-full"></span>
-                      {diversity.sportCount} sports
-                    </span>
-                  {/if}
-				  {#if diversity.categoryCount > 1}
-					<span class="flex items-center gap-1">
-					  <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
-					  {diversity.categoryCount} categories
-					</span>
-				  {/if}
-				</div>
-			  {/if}
-            {/if}
-
             <!-- Photo Grid or Empty State -->
             {#if getFeaturedPhotos(entry.featuredPhotos).length > 0}
               {@const featuredPhotos = getFeaturedPhotos(entry.featuredPhotos)}
@@ -654,7 +436,7 @@
                   Featured photos coming soon
                 </Typography>
                 <Typography variant="caption" class="text-charcoal-400">
-                  {entry.photoCount} photos available • Processing in progress
+                  {entry.photoCount} photos available • Open the month to browse
                 </Typography>
               </div>
             {/if}
@@ -665,7 +447,7 @@
               class="inline-flex items-center gap-2 text-gold-400 hover:text-gold-300 transition-colors text-sm"
             >
               <Typography variant="body" class="font-medium">
-                View gallery
+                View month
               </Typography>
               <ChevronDown class="w-4 h-4 rotate-[-90deg]" />
             </a>
@@ -713,14 +495,11 @@
 </div>
 
 <style>
+  .timeline-bar{position:sticky;top:0;z-index:40;background:#181818f8;border-block:1px solid #5c5c58;padding:10px 0;isolation:isolate}.timeline-years{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #484844}.timeline-years button{min-width:44px;min-height:44px;padding:8px;color:#c1c1bb;font-size:17px;font-weight:600;background:transparent;border:0;cursor:pointer}.timeline-years button[aria-current]{color:white;box-shadow:inset 0 -2px white}.timeline-months{display:flex;justify-content:space-between;gap:4px;overflow-x:auto;padding-top:6px}.timeline-months button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:48px;min-height:52px;background:transparent;border:0;color:#c1c1bb;font-size:12px;cursor:pointer}.date-dot{width:9px;height:9px;border:1px solid #b9b9b3;border-radius:50%;background:#181818}.timeline-months button[aria-current]{color:white;font-weight:700}.timeline-months button[aria-current] .date-dot{background:white;outline:3px solid #ffffff30}.timeline-bar button:focus-visible{outline:2px solid white;outline-offset:-2px}@media(max-width:700px){.timeline-years{gap:4px}.timeline-years button{font-size:15px}.timeline-months{justify-content:flex-start}.timeline-months button{min-width:44px}}
+
   .timeline-shell { width: min(1320px, calc(100% - 64px)); margin-inline: auto; color: var(--color-charcoal-50); }
-  .timeline-shell [data-timeline-nav] { top: var(--gallery-header-height); height: 125px; background: var(--color-charcoal-950); backdrop-filter: none; box-shadow: none; border-color: var(--color-charcoal-800); }
-  .timeline-shell [data-timeline-nav] > div { padding-inline: 30px; }
-  .timeline-shell [data-timeline-nav] button { min-width: 44px; min-height: 44px; }
-  .timeline-shell [data-timeline-nav] .timeline-month-marker { top: 20px; display: flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; }
-  .timeline-shell [data-timeline-nav] button:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
   .timeline-content { padding-block: 28px 80px; }
-  .year-heading { position: sticky; top: calc(var(--gallery-header-height) + 125px); z-index: 30; margin-block: 18px 28px; background: var(--color-charcoal-950); }
+  .year-heading { position: static; margin-block: 18px 28px; background: var(--color-charcoal-950); }
   .year-heading__inner { padding-bottom: 16px; border-bottom: 1px solid var(--color-charcoal-800); }
   .year-heading :global(h2) { font-family: Montserrat, sans-serif; font-size: 24px; }
   .month-section { margin-bottom: 48px; }
@@ -731,7 +510,5 @@
   .timeline-empty { margin-bottom: 18px; padding: 28px; border-block: 1px solid var(--color-charcoal-800); text-align: center; }
   @media (max-width: 640px) {
     .timeline-shell { width: calc(100% - 40px); }
-    .timeline-shell [data-timeline-nav] > div { padding-inline: 26px; }
-    .timeline-shell [data-timeline-nav] button[aria-label^="Jump to "] { left: var(--phone-position) !important; }
   }
 </style>

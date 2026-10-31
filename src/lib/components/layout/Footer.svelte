@@ -1,137 +1,89 @@
-<!--
-  Footer Component - Site-wide footer
-
-  Features:
-  - Minimal brand presence
-  - Essential navigation links
-  - Social proof and contact
-  - Compact, content-focused design
-
-  Usage:
-  <Footer />
--->
-
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { Camera, Mail, Instagram } from 'lucide-svelte';
-	import Typography from '$lib/components/ui/Typography.svelte';
-
-	interface SocialLink {
-		label: string;
-		href: string;
-		icon: typeof Instagram;
-		external?: boolean;
-	}
-
-	const socialLinks: SocialLink[] = [
-		{
-			label: 'Instagram',
-			href: 'https://www.instagram.com/nino.chavez.photo',
-			icon: Instagram,
-			external: true,
-		},
-		{
-			label: 'Email',
-			href: 'mailto:nino@ninochavez.co',
-			icon: Mail,
-		},
-	];
-
-	const currentYear = new Date().getFullYear();
 </script>
 
-<footer class="border-t border-charcoal-800 bg-charcoal-950 mt-auto">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-			<!-- Brand Section -->
-			<div class="flex items-center gap-3">
-				<div class="p-1.5 rounded-md bg-gold-500/10" aria-hidden="true">
-					<Camera class="w-4 h-4 text-gold-500" />
-				</div>
-				<div>
-					<Typography variant="body" class="text-sm font-medium text-white">
-						Nino Chavez
-					</Typography>
-					<Typography variant="caption" class="text-charcoal-400 text-xs">
-						Sports Photography
-					</Typography>
-				</div>
-			</div>
-
-			<!-- Social Links & Links -->
-			<div class="flex items-center justify-between md:justify-end gap-6">
-				<!-- Essential Links -->
-				<nav aria-label="Footer navigation" class="flex flex-wrap gap-x-4 gap-y-2">
-					<a href="{base}/#photographs" data-sveltekit-reload class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm">Photographs</a>
-					<a
-						href="{base}/albums"
-						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
-					>
-						Events
-					</a>
-					<a
-						href="{base}/timeline"
-						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
-					>
-						By date
-					</a>
-					<a
-						href="{base}/collections"
-						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
-					>
-						Collections
-					</a>
-					<a
-						href="{base}/favorites"
-						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
-					>
-						Saved photos
-					</a>
-					<a
-						href="https://ninochavez.co/privacy"
-						data-sveltekit-reload
-						class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm"
-					>
-						Privacy
-					</a>
-					<a href="{base}/analytics-preferences" class="text-charcoal-400 hover:text-gold-500 transition-colors text-sm">Analytics preferences</a>
-					<a
-						href="https://ninochavez.co"
-						data-sveltekit-reload
-						class="text-charcoal-500 hover:text-charcoal-300 transition-colors text-sm"
-					>
-						Nino Chavez profile
-					</a>
-				</nav>
-
-				<!-- Social Links -->
-				<div class="flex gap-3">
-					{#each socialLinks as link (link.href)}
-						{@const Icon = link.icon}
-						<a
-							href={link.href}
-							target={link.external ? '_blank' : undefined}
-							rel={link.external ? 'noopener noreferrer' : undefined}
-							class="p-1.5 rounded-md bg-charcoal-900 hover:bg-gold-500/10 border border-charcoal-800 hover:border-gold-500/30 transition-all hover:scale-110 hover:-translate-y-px"
-							aria-label={link.label}
-						>
-							<Icon class="w-4 h-4 text-charcoal-400 hover:text-gold-500 transition-colors" />
-						</a>
-					{/each}
-				</div>
-			</div>
-		</div>
-
-		<!-- Bottom Bar -->
-		<div
-			class="mt-6 pt-4 border-t border-charcoal-800/50 flex flex-col sm:flex-row justify-between items-center gap-2"
-		>
-			<Typography variant="caption" class="text-charcoal-400 text-xs">
-				© {currentYear} Nino Chavez. All rights reserved.
-			</Typography>
-			<Typography variant="caption" class="text-charcoal-400 text-xs">
-				MOTION. EMOTION. Frame by Frame.
-			</Typography>
-		</div>
+<footer>
+	<div class="main-footer">
+		<p>Photographs by Nino Chavez</p>
+		<nav aria-label="More">
+			<a href={`${base}/work`}>Selected Works</a><a href="https://ninochavez.co/photography/coverage" target="_blank" rel="noopener"
+				>Request coverage ↗</a
+			><a href="https://ninochavez.co" target="_blank" rel="noopener" aria-label="Nino Chavez profile">Profile ↗</a><a
+				href="https://ninochavez.co/blog"
+				target="_blank"
+				rel="noopener">Writing ↗</a
+			>
+		</nav>
 	</div>
+	<nav class="utility" aria-label="Site preferences">
+		<a href={`${base}/collections`}>Collections</a><a href="https://ninochavez.co/privacy" target="_blank" rel="noopener">Privacy</a><a
+			href={`${base}/analytics-preferences`}>Analytics preferences</a
+		>
+	</nav>
 </footer>
+
+<style>
+	footer {
+		padding: 32px 48px 24px;
+		border-top: 1px solid #484844;
+		color: #b9b9b3;
+		font:
+			13px/1.5 Arial,
+			Helvetica,
+			sans-serif;
+	}
+	.main-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 24px;
+		max-width: 1504px;
+		margin: auto;
+	}
+	p {
+		margin: 0;
+	}
+	nav {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px 28px;
+	}
+	a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		color: inherit;
+		text-decoration: none;
+	}
+	a:hover {
+		text-decoration: underline;
+		text-underline-offset: 5px;
+	}
+	a:focus-visible {
+		outline: 2px solid #fff;
+		outline-offset: 4px;
+	}
+	.utility {
+		justify-content: flex-end;
+		font-size: 12px;
+		max-width: 1504px;
+		margin: 12px auto 0;
+		gap: 20px;
+	}
+	@media (max-width: 700px) {
+		footer {
+			padding: 28px 20px;
+		}
+		.main-footer {
+			display: block;
+		}
+		.main-footer nav {
+			margin-top: 12px;
+			gap: 6px 24px;
+		}
+		.utility {
+			justify-content: flex-start;
+			gap: 8px 20px;
+		}
+	}
+</style>

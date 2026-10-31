@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 		seo,
 		photoStart,
 		lead: lead ? toLatestApiAlbum(lead, { siteUrl: SITE_URL }) : null,
-		recent: recent.slice(0, 4).map(album => toLatestApiAlbum(album, { siteUrl: SITE_URL })),
+		recent: recent.slice(0, 7).map(album => toLatestApiAlbum(album, { siteUrl: SITE_URL })),
 		unavailable: false
 	};
 };

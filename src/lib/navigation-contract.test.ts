@@ -15,8 +15,8 @@ test('gallery shell uses independent photography navigation', async () => {
 
 	assert.match(header, /Nino Chavez Photography/);
 	assert.match(header, /href=\{`\$\{base\}\/`\}/);
-	assert.match(header, /label: 'Find an event'/);
-	assert.match(header, /label: 'Photographs'/);
+	assert.match(header, /label: 'Browse Galleries'/);
+	assert.match(header, /label: 'Browse Timeline'/);
 	assert.doesNotMatch(header, /label: 'Collections'/);
 	assert.match(header, /label: 'Saved'/);
 	assert.match(header, /aria-label="Photography navigation"/);
@@ -50,7 +50,7 @@ test('the gallery owns its home and submits event search to the native archive',
 	assert.doesNotMatch(rootLoad, /redirect\(/);
 	assert.match(rootPage, /method="GET" action=\{`\$\{base\}\/albums`\}/);
 	assert.match(rootPage, /name="q"/);
-	assert.match(rootPage, /Selected photographs/);
+	assert.match(rootPage, /<Spotlight start=/);
 });
 
 test('the reachable style guide remains out of the search index', async () => {

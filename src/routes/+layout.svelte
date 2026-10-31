@@ -183,7 +183,7 @@
 		`index, follow` to every crawler, so the tag asserted nothing its absence
 		does not. A page that wants out says so on its own, once.
 	-->
-	<meta name="theme-color" content={isAnalyticsWorkspace ? '#edf2f7' : '#D4AF37'} />
+	<meta name="theme-color" content={isAnalyticsWorkspace ? '#edf2f7' : '#181818'} />
 
 	<!-- Google Search Console Verification -->
 	<meta name="google-site-verification" content="m_DGu93JLdDvx0_KNbZhjwVB75OdnQEURDhinyriJKQ" />
@@ -200,7 +200,7 @@
 	<div class={isAnalyticsWorkspace ? 'min-h-screen flex flex-col bg-[#f4f7fb]' : 'min-h-screen flex flex-col bg-charcoal-950 text-white'}>
 		{#if !isAnalyticsWorkspace}<Header />{/if}
 
-		<main class="flex-1">
+		<main id="main" tabindex="-1" class="flex-1">
 			{@render children?.()}
 		</main>
 

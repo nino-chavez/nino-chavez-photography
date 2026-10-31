@@ -1,5 +1,13 @@
 # Rebaseline: design around arrival and the photo task
 
+## Production port, authorized October 30
+
+Nino's “ship it” authorizes the approved photography preview to become the native site. The homepage now uses the original spotlight pool, randomized start, eight-second automatic progression and 1.2-second crossfade, with fixed event actions and visible pause/step controls. Browse Galleries, Browse Timeline, About & contact and Saved remain explicit. The complete fourteen-photo Selected Works strip lives at `/photography/work`.
+
+The native app reads live published gallery and timeline data through its existing server loaders and access controls. It does not ship the study's JSON snapshots. Direct gallery arrivals show the ordered photo grid before popularity suggestions. Date jumps clear the sticky year/month bar; reduced motion makes them instant. Existing photo addresses, native viewer, saved photos, original downloads and private-share routes retain their owners. Profile, writing and coverage links open separate tabs.
+
+The production review and evidence are recorded in [the design review](../docs/design/concepts/photography-20261030/REVIEW.md). The sections below preserve the design history; statements limiting earlier work to a static preview do not describe this production port.
+
 ## Current direction: artful photography with immediate actions
 
 Nino declined the arrival study in PR 237 and clarified why on October 30: the design had become sterile and resembled basic photography templates. Finding event photos is still the homepage's functional priority, but it must coexist with the site's photographic character. The original full-bleed hero and overlays deliberately joined those needs: the photograph establishes the experience; immediate actions lead to Nino's info, recent events and finding a gallery.

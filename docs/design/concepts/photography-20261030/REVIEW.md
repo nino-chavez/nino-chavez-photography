@@ -1,3 +1,19 @@
+# Native photography release, October 30, 2026
+
+Nino authorized shipping the approved preview. The native Svelte homepage now restores the full-bleed spotlight sequence, clear event search, prominent recent-gallery actions and the separate Selected Works page. Shared navigation includes Browse Galleries, Browse Timeline, Saved and About & contact. Event search and the timeline use live native loaders; no captured gallery data was moved into production.
+
+Gallery arrivals now put the full ordered grid before popular-photo suggestions. Date jumps align beneath the sticky date bar. Existing photo-address resolution, private-share ownership, saves, download handlers and gallery pagination remain in place. The production build needs no database migration or environment change; the required production secret names were verified in Cloudflare Pages.
+
+The [frozen native capture packet](../../../evidence/screen-reviews/photography-production-20261030/manifest.json) includes whole Chromium desktop, phone and short-phone frames plus two normal-speed motion recordings. The parent inspected the rendered native site before the [blind review](../../../evidence/screen-reviews/photography-production-20261030-cold.md). That reviewer preferred quieter playback controls; the parent retained the user's approved prominence and recorded every disposition. This is not represented as an independent visual PASS or real-visitor testing.
+
+Verification: 15 native browser journeys pass, including event search, timeline jumps, complete gallery entry, viewer focus return, saved-photo persistence and an actually downloaded decodable JPEG. The two optional normal-speed recording checks also pass. Forty-nine route/address, lightbox-navigation and latest-album contract tests pass. Type checks report zero errors and three pre-existing warnings in unchanged explore/video components. The full Cloudflare build and gallery reader gate pass. Physical-phone testing and private-gallery sign-in were not performed.
+
+During verification, a focus event during route teardown exposed a slideshow cleanup error; focus-driven restarts now wait until the render completes and confirm the hero is connected. Controls remain disabled until mounted. A short landscape viewport exposed overlap; the hero now reserves enough vertical room for controls and the finder. Rendered inspection exposed the gallery-order and date-offset issues; both were corrected, and date-alignment assertions now pass. Capture waits now use settled page/image opacity, so transition frames are not mistaken for finished screens.
+
+Post-commit review passed the initial native port and identified an unreferenced GlobalSearch component; it was removed after confirming no source or test importer remained. The shared toolbar offset is intentionally zero because the new header scrolls with the document. Release receipts are attached to [PR 241](https://github.com/nino-chavez/nino-chavez-photography/pull/241) and its Cloudflare Pages check. Earlier sections below are retained design history.
+
+---
+
 # Automatic Selected Works, corrected October 30, 2026
 
 Selected Works now advances without a click. Nino clarified that the original hero's automatic progression was part of the requested recovery; manual-only browsing did not satisfy it. The preview uses the original eight-second cadence and 1.2-second crossfade from `PremiumHero.svelte`. The photographs remain full bleed and the event actions stay fixed.

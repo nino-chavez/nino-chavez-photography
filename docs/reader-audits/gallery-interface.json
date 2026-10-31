@@ -1,16 +1,17 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-10-29T22:59:30.209Z",
-  "reviewedBy": "Codex parent, live preview and rendered screenshots",
-  "method": "Inspected the live local Links page and full-page Chromium captures at 390 and 1280 pixels. Confirmed complete portrait, separate readable title/date, recent covers and full-page layout. Focused browser tests also exercised portrait and landscape dimensions, hover, keyboard activation and horizontal overflow. Other routes and physical devices were not reviewed.",
-  "sourceDigest": "sha256:e2dbaa7937d1914763910d45658fcb4f3cb8a4a3dc8c714d102b5aa40c5e5f6e",
-  "sourceFiles": 204,
+  "reviewedAt": "2026-10-31T01:50:08.619Z",
+  "reviewedBy": "Codex parent, 2026-10-30; independent cold review f202cc27-9417-4696-bd9f-d4338c78df41",
+  "method": "Parent inspected native Chromium desktop, phone and short-phone screens and observed automatic progression; independent cold findings and parent dispositions are in docs/evidence/screen-reviews/photography-production-20261030-cold.md. Browser journeys cover event search, timeline, full gallery, viewer focus, saved photos and decodable download. Unreferenced GlobalSearch removal does not change the rendered interface. No physical-phone, private-gallery sign-in, analytics-workspace or visitor study was performed.",
+  "sourceDigest": "sha256:8537a5af407f97ae2b40a17cb04cb614540dd482ee1cd8d5a76bb7c1578d3f4d",
+  "sourceFiles": 206,
   "scope": [
-    "/photography/links at 390px",
-    "/photography/links at 1280px",
-    "portrait and landscape cover framing",
-    "recent gallery thumbnails",
-    "keyboard gallery navigation"
+    "photographic homepage",
+    "gallery search and recovery",
+    "timeline date navigation",
+    "album arrival",
+    "selected works",
+    "shared navigation and contact"
   ]
 }
