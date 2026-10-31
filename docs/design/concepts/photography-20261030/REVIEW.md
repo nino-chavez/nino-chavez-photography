@@ -10,7 +10,7 @@ Verification: 15 native browser journeys pass, including event search, timeline 
 
 During verification, a focus event during route teardown exposed a slideshow cleanup error; focus-driven restarts now wait until the render completes and confirm the hero is connected. Controls remain disabled until mounted. A short landscape viewport exposed overlap; the hero now reserves enough vertical room for controls and the finder. Rendered inspection exposed the gallery-order and date-offset issues; both were corrected, and date-alignment assertions now pass. Capture waits now use settled page/image opacity, so transition frames are not mistaken for finished screens.
 
-Release receipts are attached to the production pull request and its Cloudflare Pages check. Earlier sections below are retained design history.
+Post-commit review passed the initial native port and identified an unreferenced GlobalSearch component; it was removed after confirming no source or test importer remained. The shared toolbar offset is intentionally zero because the new header scrolls with the document. Release receipts are attached to [PR 241](https://github.com/nino-chavez/nino-chavez-photography/pull/241) and its Cloudflare Pages check. Earlier sections below are retained design history.
 
 ---
 

@@ -130,5 +130,8 @@
     "src/routes/work/+page.svelte": "c2433ed85e457268ea619c7126f7b751a119217c09076035741837ddd2e7deb1",
     "src/routes/work/+page.server.ts": "c6888efd9b3e0577bdf88e945cdd7a6d4c4ea66fb543f9c6de4ae5613c4c2bf4"
   },
-  "note": "Formatting-only cleanup after capture; unchanged rendered behavior. Capture hashes remain frozen."
+  "note": "Formatting-only cleanup after capture; unchanged rendered behavior. Post-commit review also removed the unreferenced GlobalSearch component. Capture hashes remain frozen.",
+  "removedSources": [
+    "src/lib/components/ui/GlobalSearch.svelte"
+  ]
 }
