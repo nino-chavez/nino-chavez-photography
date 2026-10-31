@@ -1,4 +1,30 @@
-# Photography refit, October 30, 2026
+# Photography browsing recovery, October 30, 2026
+
+The current preview keeps the full-bleed photographic homepage and restores the missing browsing paths. Browse Galleries opens the event index. Browse Timeline opens the chronological archive with a sticky year/month bar, direct date jumps and a current date that follows scrolling. Recent events are whole clickable rows with contrasting View gallery actions.
+
+Selected Works uses the original homepage spotlight source in `src/lib/portfolio.ts`: twelve portraits and two landscape photographs. The starting offset varies once per page load and remains stable through local navigation. Desktop combines full-bleed landscapes with portrait triptychs; phones use individual portraits. Visitors scroll or use visible previous/next controls while the event actions stay fixed. Selected Works also opens the complete fourteen-photo strip and its full-frame viewer. There is no timed progression.
+
+The timeline snapshot contains all 49 published months, 2022–2026, and their 294 featured photographs. `arrival/timeline-data.js` records the public endpoint pages and capture time. View month opens the complete live month in a new tab. Featured-photo viewing returns to the same tile. This is a static preview recovery; native Svelte routes, private-gallery access and publication are outside this change.
+
+The [capture packet](../../../evidence/screen-reviews/photography-browse-20261030/manifest.json) hashes the source and eleven whole browser viewports. The parent opened the ten original frames before cold review, then opened the additional initial Selected Works phone frame to verify a review finding. Viewports are 1440×1000, 390×844 and 320×568. These are Chromium captures on macOS, not physical-device or visitor-acceptance evidence.
+
+All fifteen focused Chromium journeys passed serially. They cover real horizontal wheel scrolling, alternate randomized starts, the source photo pool, fixed hero actions, galleries and return context, timeline date jumps and active-date scrolling, browser Back, viewer focus return, saves, canonical share links, and actual JPEG/ZIP downloads. The first full run exposed an active-date error after phone browser Back; the month selection now follows the visible month's bounds. Both affected journeys and the full suite passed after the correction. Adding the initial-header visibility assertions and capture was followed by another passing two-journey run; implementation source did not change.
+
+Cold review: Operator dispatch `cd9fad18-320e-4453-82b6-76c01842c132` completed with runtime evidence for `gpt-5.6-terra`, high reasoning. The reviewer saw only the captured frames and the visitor's jobs. Its finding is retained verbatim:
+
+> FIX
+>
+> - `selected-works-phone.png`, top edge: the header is visibly clipped, cutting off the brand and top of the “About & contact” control. This weakens photographer/contact discovery on the mobile Selected Works screen.
+>
+> Appearance-only review. The stills do not establish whether search, gallery links, timeline jumping, carousel controls, or full-frame opening work.
+
+Parent disposition: the named frame is after clicking the lower Next photograph control. Normal page scrolling brings that control into view, leaving the static header partly above the viewport. The new `selected-works-entry-phone.png` shows the complete brand and contact control at initial arrival, and both are asserted fully in the viewport. The parent verified that frame. This is a scroll-state distinction, not header clipping or an initial-arrival defect; no sticky header or smaller photograph was introduced to satisfy a still-frame judgment. The review reported no other material visible issue. This disposition is independent verification, not a new reviewer PASS or user acceptance.
+
+The [experience brief](../../../../prototype/EXPERIENCE-BRIEF.md) owns the current scope. Open `arrival/?page=home`, `arrival/?page=timeline` or `arrival/?page=work`. Earlier study records and capture packets below remain frozen as history.
+
+---
+
+# Earlier photography refit, October 30, 2026
 
 The current preview restores an owned full-bleed photograph and puts useful actions over its edges: event search, the two latest galleries and About & contact. The image remains the first impression. Recent-event covers follow below. Gallery links still open the complete event; photo links open their chosen photograph with Save, Share and Download.
 

@@ -1,0 +1,37 @@
+{
+  "capture": "Chromium on macOS; 1440x1000, 390x844 and 320x568 browser viewports. Not physical-device or visitor testing. Random source seed 0.13 for repeatable frames.",
+  "verification": "15 focused Chromium tests passed serially against the static preview. Covers native horizontal wheel scrolling, alternate random start, complete spotlight pool, navigation and history, timeline scroll and date selection, viewer return focus, gallery, save, share and real JPEG/ZIP downloads. After adding initial-header visibility assertions and the entry capture, both affected desktop and phone journeys passed again (2 tests, 4.1s). No implementation source changed after the full run.",
+  "states": {
+    "hero-next-desktop": "Second hero composition after the Next selected work control; overlay positions unchanged.",
+    "timeline-jump-phone": "June 2024 after year and month jumps; the date bar remains at the viewport top.",
+    "selected-works-phone": "After Next photograph; the browser has scrolled enough to reveal the clicked control.",
+    "browse-galleries-desktop": "After returning from a gallery; focus and scroll restored to the chosen event.",
+    "selected-works-entry-phone": "Initial Selected Works arrival, before scrolling. The full brand and About & contact control are visible."
+  },
+  "sources": {
+    "spotlight": "src/lib/portfolio.ts: photoStrip, portfolio and rotatePortfolio; all 14 source photos retained.",
+    "timeline": "arrival/timeline-data.js records three public API page URLs and capture time; 49 months, 294 featured photos. Complete month links open the live site in a new tab."
+  },
+  "files": {
+    "docs/design/concepts/photography-20261030/arrival/app.source.js": "32f5f4994b120e76c695359b5c73e3b55555dca310d19dec718f8ff5306e58fb",
+    "docs/design/concepts/photography-20261030/arrival/app.js": "fafc1e09d1f6d7cd55dad78c4cc6e38c5682d3448d251b88e200434f7a289032",
+    "docs/design/concepts/photography-20261030/arrival/data.js": "1cf72bfe45d0252b5a62b1af55e79b59d8a019a34e2fd202e657fc01019c2614",
+    "docs/design/concepts/photography-20261030/arrival/timeline-data.js": "540d98cabc937fa50c917a6f1045386c99ded7f79efa19edfa2e72bc24a3b482",
+    "docs/design/concepts/photography-20261030/arrival/index.html": "284f7efacd74a0a698c4e60174e7eb37a60fe04b80333988864f23be47f1d0e4",
+    "docs/design/concepts/photography-20261030/arrival/style.css": "934e1e9a1a763a2483325ab03cd9299d8ae379a65e0151b4a67b69d3cbde9c67",
+    "src/lib/portfolio.ts": "a2fd7a6d08d7f05fb345d505f520be579fbfcbb6ad796d4792f08851b9f9fa42",
+    "tests/photography-arrival.spec.ts": "9795448a5ca8dcf6cd28943ae360bcd839e298fc786177c6e826032f5607d174",
+    "prototype/EXPERIENCE-BRIEF.md": "81ac2da859840bc01ca5090d6cc967c7639e2518f3c14440f037dd07fcacad80",
+    "docs/evidence/screen-reviews/photography-browse-20261030/home-desktop.png": "0bf0b5af96ebffbb7dae82899195f0163b9bfe1f22f906706a03e55f23098d58",
+    "docs/evidence/screen-reviews/photography-browse-20261030/hero-next-desktop.png": "a7b8655fb9cdb853942b39315443944b5c6e89b4170d88129dde43ab3b7154b4",
+    "docs/evidence/screen-reviews/photography-browse-20261030/home-phone.png": "a141bf3f0c21768cd493dbcc6f68622ca6b8665d7fcda38519737becde92c855",
+    "docs/evidence/screen-reviews/photography-browse-20261030/home-short-phone.png": "df6171d396bc21406901c1d7b019dea269b4740aa09dbccaa1e4016070dee4c7",
+    "docs/evidence/screen-reviews/photography-browse-20261030/timeline-desktop.png": "8b97c3ea9372c3e88d7c6f5dc1223f49c487776922a18b516e1f6f133adda754",
+    "docs/evidence/screen-reviews/photography-browse-20261030/timeline-jump-phone.png": "474e90066b1fa5a4da971e1ea17df545a9183a94eddbc482f20220b56f110763",
+    "docs/evidence/screen-reviews/photography-browse-20261030/selected-works-phone.png": "326a4bffc3ffedfd5aa78ddfbd388f181dcd39b0b040452674f63f451f788380",
+    "docs/evidence/screen-reviews/photography-browse-20261030/selected-work-viewer-phone.png": "198b1d7e858077e7a8d6bd2120456abbec74a49fe520266de2a2dec7799a8227",
+    "docs/evidence/screen-reviews/photography-browse-20261030/sheet-gallery-phone.png": "06c8a5a7429160de69ff998a4762fd23b50c6a44b088f404ffc0e3b5e98798ac",
+    "docs/evidence/screen-reviews/photography-browse-20261030/browse-galleries-desktop.png": "ec4e18f3d98f611982625b83ea84db4716c899af2f886e215d882da881680870",
+    "docs/evidence/screen-reviews/photography-browse-20261030/selected-works-entry-phone.png": "d312518f40713cd7e762b2b068f9bed3c9da59b55b75df12ba46ed2b187668cc"
+  }
+}
