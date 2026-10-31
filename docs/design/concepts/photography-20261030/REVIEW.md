@@ -1,3 +1,31 @@
+# Automatic Selected Works, corrected October 30, 2026
+
+Selected Works now advances without a click. Nino clarified that the original hero's automatic progression was part of the requested recovery; manual-only browsing did not satisfy it. The preview uses the original eight-second cadence and 1.2-second crossfade from `PremiumHero.svelte`. The photographs remain full bleed and the event actions stay fixed.
+
+Pause/Play sits beside the existing arrows. Manual input interrupts a fade and starts a fresh interval. Automatic progression waits while the hero is offscreen, a tab is hidden, a dialog is open, a drag is active, or an input/photograph region has focus. Reduced motion starts paused; explicitly choosing Play uses instant changes. An unavailable next image leaves the current image visible. The randomized start, gallery browser and date timeline remain.
+
+The [motion packet](../../../evidence/screen-reviews/photography-autoplay-20261030/manifest.json) contains desktop and phone browser recordings at normal speed, three settled/control frames and a midpoint frame from the desktop recording. The parent opened the captures and observed automatic progression and pause in the in-app preview. Clips cover progression, pause, resume and manual interruption. The packet does not claim physical-phone performance or visitor acceptance.
+
+All twenty Chromium checks passed, including both recordings. Two timing checks passed again after adding wraparound and pause-preservation assertions. The new automatic-advance assertion first failed on the manual-only baseline. A temporary response mutation forced unwanted playback under reduced motion; its still-image assertion failed, then passed after the mutation was removed. The hidden-tab check supplies the browser visibility property/event; offscreen checks use real scrolling and observer delivery. Source and media hashes are retained in the packet.
+
+Cold review was completed by Operator dispatch `d735887f-fa92-4db5-a32e-bb5898776379`; the runtime receipt reports `gpt-5.6-terra`, high reasoning. The reviewer inspected only the captures and visitor jobs. Its result is retained verbatim:
+
+> FIX
+>
+> - `autoplay-phone.mp4` repeatedly shows a brief broken mobile composition while Selected Works is paused/resumed: sampled at about 10.90s, 11.10s, and 11.30s, navigation, labels, and buttons split/clip horizontally. This makes controls intermittently illegible.
+> - The desktop recording stays visually stable through its pause/resume and progression. The desktop midpoint at 8.5s is a short image dissolve, with controls remaining fixed and readable.
+> - The supplied phone stills, including `home-short-phone.png` at 320px, keep the controls and event/gallery actions visible and readable.
+>
+> I could not play the MP4s as continuous video in the available viewer; this verdict uses decoded timestamped frames from the recordings. No files were created.
+
+Parent disposition: the alleged phone clipping was not reproduced. The parent decoded and opened the committed MP4 at exactly 10.9, 11.1 and 11.3 seconds, and also decoded the original WebM at 10.9 seconds. All showed complete, legible controls. The three [verification frames](../../../evidence/screen-reviews/photography-autoplay-20261030/review-verification/) preserve the direct contradiction. No layout change was made to chase a decoding result that the primary recording did not support. This is the parent's verified disposition, not a new cold-review PASS or continuous-video assessment.
+
+The separate code review found that a timer could retain the pre-swipe image index when the browser settles a touch pan after `pointercancel`. The regression replayed that ordering and failed on the first implementation. The timer now reads the actual current image when it fires, and every horizontal scroll resets the interval from the settled view. All twenty-one Chromium checks then passed (1.1m), including that regression and fresh normal-speed recordings. The [final validation packet](../../../evidence/screen-reviews/photography-autoplay-20261030/final/manifest.json) records the corrected source; the earlier packet remains frozen at commit `2c56fec`.
+
+The [experience brief](../../../../prototype/EXPERIENCE-BRIEF.md) records this explicit correction. The earlier manual-only motion description and review below are superseded history. This change remains confined to the static preview, its tests and evidence; native Svelte routes are unchanged.
+
+---
+
 # Photography browsing recovery, October 30, 2026
 
 The current preview keeps the full-bleed photographic homepage and restores the missing browsing paths. Browse Galleries opens the event index. Browse Timeline opens the chronological archive with a sticky year/month bar, direct date jumps and a current date that follows scrolling. Recent events are whole clickable rows with contrasting View gallery actions.

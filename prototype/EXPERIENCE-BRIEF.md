@@ -6,6 +6,14 @@ Nino declined the arrival study in PR 237 and clarified why on October 30: the d
 
 This clarification supersedes the utilitarian search-first presentation and any rule below that forbids all text overlays. Use full-bleed photography on the homepage with deliberately placed, legible controls. Preserve complete frames when inspecting or downloading photographs; the full-bleed hero may use an intentional responsive composition. Do not mistake a user job for a visual style, remove the artist from the experience, or treat passing tests/cold review as user acceptance. Recover the original owned design and assets before choosing new visual treatments. No new approval prompt is needed merely to execute this explicit direction.
 
+### Automatic Selected Works progression, corrected October 30
+
+Nino clarified that the original hero's automatic progression must return; manual-only browsing did not fulfill the request. Scope is preserve: change the homepage Selected Works motion and its playback control while keeping the full-bleed compositions, randomized starting offset, fixed event actions, gallery browsing and date timeline.
+
+The canonical `PremiumHero.svelte` advances every eight seconds and crossfades for 1.2 seconds. The preview follows that cadence, preloads the next composition, and keeps the current photograph if the next cannot load. Previous/next and native swiping remain available; an explicit Pause/Play control stops or resumes automatic advancement. Manual input resets the interval, repeated input cancels an in-progress fade, and wrapping from last to first uses the same fade. Nothing moves the event finder, recent-gallery actions, keyboard focus or page scroll.
+
+Autoplay pauses when the hero is offscreen, the tab is hidden, a dialog is open, a pointer gesture is active, or an input/photograph region has focus. Returning starts a fresh interval. Reduced motion starts paused; a visitor may explicitly press Play to opt into instant photo changes without a fade. Changing the system preference to reduced motion stops playback. Local navigation preserves the visitor's explicit pause choice and image index. Desktop and phone browser recordings cover automatic progression, a settled photograph, pause/resume and manual interruption; focused tests also cover reduced motion, offscreen suspension and loading failure. This corrects the manual-only motion brief below; it is not a new design direction or a native-site port.
+
 ### Browsing and Selected Works recovery, requested October 30
 
 Nino asked to name the navigation Browse Galleries, restore Browse Timeline with the date bar, and make the recent-event actions harder to overlook. He also identified the lost randomized, scrolling homepage spotlight photographs for Selected Works. This extends the same full-bleed direction; the earlier single fixed hero is superseded. The visitor needs three clear paths: find an event, browse photographs by date, and explore the selected work.
