@@ -12,6 +12,74 @@ mkdirSync(captures,{recursive:true}); mkdirSync(downloads,{recursive:true});
 // Keep visual captures repeatable; the dedicated rotation check uses another seed.
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{Math.random=()=>0.13;});});
 
+test('Selected Works automatically advances, pauses, and resumes without moving event actions',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.clock.install();
+  await page.goto(`${base}?page=home`);
+  await expect(page.locator('.hero-position')).toHaveText('1 / 6');
+  const finder=await page.locator('.hero-finder').boundingBox();
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('2 / 6');
+  expect(await page.locator('.hero-finder').boundingBox()).toEqual(finder);
+  await page.getByRole('button',{name:'Pause Selected Works',exact:true}).click();
+  await page.clock.runFor(17000);
+  await expect(page.locator('.hero-position')).toHaveText('2 / 6');
+  await page.getByRole('button',{name:'Play Selected Works',exact:true}).click();
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('3 / 6');
+  await page.getByLabel('Event, team or date',{exact:true}).fill('Chicago');
+  await page.clock.runFor(17000);
+  await expect(page.locator('.hero-position')).toHaveText('3 / 6');
+  await page.getByRole('button',{name:'Next selected work',exact:true}).click();
+  await expect(page.locator('.hero-position')).toHaveText('4 / 6');
+  await page.clock.runFor(4000);
+  await expect(page.locator('.hero-position')).toHaveText('4 / 6');
+  await page.clock.runFor(4100);
+  await expect(page.locator('.hero-position')).toHaveText('5 / 6');
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('6 / 6');
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('1 / 6');
+  await page.getByRole('button',{name:'Pause Selected Works',exact:true}).click();
+  await page.getByRole('navigation',{name:'Photography',exact:true}).getByRole('link',{name:'Browse Galleries',exact:true}).click();
+  await page.getByRole('link',{name:'Nino Chavez Photography',exact:true}).click();
+  await page.clock.runFor(17000);
+  await expect(page.locator('.hero-position')).toHaveText('1 / 6');
+  await expect(page.getByRole('button',{name:'Play Selected Works',exact:true})).toBeVisible();
+});
+
+test('Selected Works stays still for reduced motion and while offscreen',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.clock.install();
+  await page.goto(`${base}?page=home`);
+  await page.clock.runFor(17000);
+  await expect(page.locator('.hero-position')).toHaveText('1 / 12');
+  await expect(page.locator('.hero-outgoing')).toHaveCount(0);
+  await page.getByRole('button',{name:'Next selected work',exact:true}).click();
+  await expect(page.locator('.hero-position')).toHaveText('2 / 12');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.getByRole('button',{name:'Play Selected Works',exact:true}).click();
+  await page.locator('footer').scrollIntoViewIfNeeded();
+  await waitForHeroIntersection(page,false);
+  await page.clock.runFor(17000);
+  await expect(page.locator('.hero-position')).toHaveText('2 / 12');
+  await page.getByRole('button',{name:'Pause Selected Works',exact:true}).scrollIntoViewIfNeeded();
+  await waitForHeroIntersection(page,true);
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('3 / 12');
+});
+
+async function waitForHeroIntersection(page:import('@playwright/test').Page,visible:boolean){
+  await page.evaluate(visible=>new Promise<void>(resolve=>{
+    const observer=new IntersectionObserver(([entry])=>{
+      if(entry.isIntersecting===visible){observer.disconnect();resolve();}
+    });
+    observer.observe(document.querySelector('.home-hero')!);
+  }),visible);
+}
+
 async function capture(page:import('@playwright/test').Page,name:string){
   await page.waitForFunction(()=>[...document.images].filter(i=>{const r=i.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&r.width>0;}).every(i=>i.complete&&i.naturalWidth>0));
   await page.evaluate(async()=>{await Promise.all([...document.images].filter(i=>{const r=i.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&r.width>0;}).map(i=>i.decode()));await new Promise<void>(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>r())));});
@@ -247,3 +315,62 @@ test('spotlight start changes between visits, with complete source pool retained
   expect(await page.locator('.hero-track.desktop img').first().getAttribute('src')).not.toBe(first);
   await expect(page.locator('.hero-track.mobile img')).toHaveCount(12);
 });
+
+test('Selected Works keeps the current image on load failure and suspends in a hidden tab',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.clock.install();
+  await page.route('**/triptych/t-16.webp',route=>route.abort());
+  await page.goto(`${base}?page=home`);
+  await page.clock.runFor(17000);
+  await expect(page.locator('.hero-position')).toHaveText('1 / 6');
+  await expect(page.locator('.hero-outgoing')).toHaveCount(0);
+  await page.unroute('**/triptych/t-16.webp');
+  await page.reload();
+  // Exercise the visibility event without relying on headless window activation.
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+  await page.clock.runFor(17000);
+  await expect(page.locator('.hero-position')).toHaveText('1 / 6');
+  await page.evaluate(()=>{delete (document as unknown as {hidden?:boolean}).hidden;document.dispatchEvent(new Event('visibilitychange'));});
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('2 / 6');
+});
+
+for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'phone',width:390,height:844}]){
+  test.describe(`Selected Works motion recording ${viewport.name}`,()=>{
+    test('automatic progression and interruption at normal speed',async({browser})=>{
+      test.skip(process.env.PHOTOGRAPHY_MOTION!=='1','Opt in to normal-speed motion evidence.');
+      const context=await browser.newContext({baseURL:process.env.PLAYWRIGHT_BASE_URL,viewport,recordVideo:{dir:captures,size:{width:viewport.width,height:viewport.height}}});
+      const page=await context.newPage();
+      await page.addInitScript(()=>{Math.random=()=>0.13;});
+      const video=page.video()!;
+      try {
+      await page.emulateMedia({reducedMotion:'no-preference'});
+      await page.goto(`${base}?page=home`);
+      const total=viewport.name==='desktop'?6:12;
+      const finder=await page.locator('.hero-finder').boundingBox();
+      await capture(page,`autoplay-start-${viewport.name}`);
+      await expect(page.locator('.hero-position')).toHaveText(`2 / ${total}`,{timeout:12000});
+      await expect(page.locator('.hero-outgoing')).toHaveCount(0,{timeout:3000});
+      await page.getByRole('button',{name:'Pause Selected Works',exact:true}).click();
+      await capture(page,`autoplay-paused-${viewport.name}`);
+      await page.waitForTimeout(1200);
+      await page.getByRole('button',{name:'Play Selected Works',exact:true}).click();
+      await expect(page.locator('.hero-position')).toHaveText(`3 / ${total}`,{timeout:12000});
+      await page.waitForTimeout(350);
+      await capture(page,`autoplay-fade-${viewport.name}`);
+      await page.getByRole('button',{name:'Next selected work',exact:true}).click();
+      await expect(page.locator('.hero-position')).toHaveText(`4 / ${total}`);
+      await expect(page.locator('.hero-outgoing')).toHaveCount(0);
+      await page.getByRole('button',{name:'Next selected work',exact:true}).click();
+      await expect(page.locator('.hero-position')).toHaveText(`5 / ${total}`);
+      await page.getByRole('button',{name:'Pause Selected Works',exact:true}).click();
+      expect(await page.locator('.hero-finder').boundingBox()).toEqual(finder);
+      await capture(page,`autoplay-interrupted-${viewport.name}`);
+      } finally {
+        await context.close();
+        await video.saveAs(path.join(captures,`autoplay-${viewport.name}.webm`));
+      }
+    });
+  });
+}

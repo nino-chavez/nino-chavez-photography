@@ -1389,6 +1389,16 @@ var portraits = rotatePortfolio(portfolio, photoStart).map(ownedPhoto);
 var landscapes2 = selectedWork.filter((p2) => p2.ratio > 1);
 var heroDeck = rotatePortfolio([[landscapes2[0]], portraits.slice(0, 3), [landscapes2[1]], portraits.slice(3, 6), portraits.slice(6, 9), portraits.slice(9, 12)], photoStart);
 var heroPosition = { desktop: 0, mobile: 0 };
+var heroMotion = matchMedia("(prefers-reduced-motion: reduce)");
+var heroDelay = 8e3;
+var heroPaused = heroMotion.matches;
+var heroVisible = false;
+var heroDragging = false;
+var heroTimer;
+var heroGeneration = 0;
+var heroAnimation = null;
+var heroOutgoing = null;
+var heroObserver = null;
 var featureList = [];
 var featureIndex = 0;
 var featureReturn = null;
@@ -1428,21 +1438,108 @@ function galleryTarget(g2, entry = "") {
   return full ? `href="${url({ gallery: full.albumKey, from: params().get("page") === "galleries" ? "galleries" : "home", entry, q: params().get("q") || "" })}" data-nav` : `href="${esc(g2.url)}" ${external}`;
 }
 function heroPhotographs() {
-  return `<div class="hero-photographs">${[["desktop", heroDeck], ["mobile", portraits.map((p2) => [p2])]].map(([size, frames]) => `<div class="hero-track ${size}" data-hero-track="${size}" role="region" aria-label="Selected Works. Scroll horizontally or use the previous and next controls." tabindex="0">${frames.map((frame, i2) => `<div class="hero-frame ${frame.length > 1 ? "triptych" : ""}">${frame.map((p2) => `<img src="${esc(p2.src)}" alt="${esc(p2.alt)}" width="${p2.width}" height="${p2.height}" loading="${i2 === 0 ? "eager" : "lazy"}" decoding="sync" draggable="false">`).join("")}</div>`).join("")}</div>`).join("")}</div><div class="hero-work-controls"><a href="?page=work" data-nav>Selected Works</a><span class="hero-position" aria-live="polite"></span><button data-hero-step="-1" aria-label="Previous selected work">\u2190</button><button data-hero-step="1" aria-label="Next selected work">\u2192</button></div>`;
+  return `<div class="hero-photographs">${[["desktop", heroDeck], ["mobile", portraits.map((p2) => [p2])]].map(([size, frames]) => `<div class="hero-track ${size}" data-hero-track="${size}" role="region" aria-label="Selected Works. Photographs advance automatically; pause or use the previous and next controls." tabindex="0">${frames.map((frame, i2) => `<div class="hero-frame ${frame.length > 1 ? "triptych" : ""}">${frame.map((p2) => `<img src="${esc(p2.src)}" alt="${esc(p2.alt)}" width="${p2.width}" height="${p2.height}" loading="${i2 === 0 ? "eager" : "lazy"}" decoding="sync" draggable="false">`).join("")}</div>`).join("")}</div>`).join("")}</div><div class="hero-work-controls"><a href="?page=work" data-nav>Selected Works</a><span class="hero-position" aria-live="off"></span><button data-hero-step="-1" aria-label="Previous selected work">\u2190</button><button data-hero-step="1" aria-label="Next selected work">\u2192</button><button data-hero-play aria-label="Pause Selected Works" title="Pause Selected Works"></button></div>`;
+}
+var visibleHeroTrack = () => [...document.querySelectorAll("[data-hero-track]")].find((el) => el.clientWidth > 0);
+function stopHeroPlayback() {
+  clearTimeout(heroTimer);
+  heroGeneration++;
+  heroAnimation?.cancel();
+  heroAnimation = null;
+  heroOutgoing?.remove();
+  heroOutgoing = null;
+}
+function canPlayHero() {
+  const bounds = visibleHeroTrack()?.getBoundingClientRect();
+  return !heroPaused && bounds && bounds.bottom > 0 && bounds.top < innerHeight && !heroDragging && !document.hidden && !document.querySelector("dialog[open]") && !document.activeElement?.matches("input,textarea,[data-hero-track]");
+}
+function queueHeroAdvance() {
+  clearTimeout(heroTimer);
+  const generation = ++heroGeneration;
+  const control = document.querySelector("[data-hero-play]");
+  if (!control) return;
+  const label = `${heroPaused ? "Play" : "Pause"} Selected Works`;
+  if (control.getAttribute("aria-label") !== label || !control.firstElementChild) {
+    control.setAttribute("aria-label", label);
+    control.title = label;
+    control.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${heroPaused ? '<path d="m8 5 11 7-11 7Z"/>' : '<path d="M8 5v14M16 5v14"/>'}</svg>`;
+  }
+  document.querySelector(".hero-position").setAttribute("aria-live", heroPaused ? "polite" : "off");
+  if (!canPlayHero()) return;
+  const track = visibleHeroTrack(), current = Math.round(track.scrollLeft / track.clientWidth);
+  const next = (current + 1) % track.children.length;
+  const images = [...track.children[next].querySelectorAll("img")];
+  images.forEach((img) => {
+    img.loading = "eager";
+  });
+  heroTimer = setTimeout(async () => {
+    try {
+      await Promise.all(images.map((img) => img.decode()));
+    } catch {
+      if (generation === heroGeneration) queueHeroAdvance();
+      return;
+    }
+    if (generation !== heroGeneration || !track.isConnected || !canPlayHero()) return;
+    if (!heroMotion.matches) {
+      const outgoing = track.children[current].cloneNode(true);
+      outgoing.classList.add("hero-outgoing");
+      outgoing.setAttribute("aria-hidden", "true");
+      track.parentElement.append(outgoing);
+      heroOutgoing = outgoing;
+      heroAnimation = outgoing.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1200, easing: "ease-in-out" });
+      heroAnimation.finished.then(() => outgoing.remove(), () => outgoing.remove());
+    }
+    track.scrollTo({ left: next * track.clientWidth, behavior: "instant" });
+    updateHeroControls();
+    queueHeroAdvance();
+  }, heroDelay);
+}
+function restartHeroPlayback() {
+  stopHeroPlayback();
+  queueHeroAdvance();
+}
+function bindHeroPlayback() {
+  const hero = document.querySelector(".home-hero");
+  if (!hero) return;
+  const bounds = hero.getBoundingClientRect();
+  heroVisible = bounds.bottom > 0 && bounds.top < innerHeight;
+  heroObserver = new IntersectionObserver(([entry]) => {
+    if (heroVisible !== entry.isIntersecting) {
+      heroVisible = entry.isIntersecting;
+      restartHeroPlayback();
+    }
+  });
+  heroObserver.observe(hero);
+  hero.querySelectorAll("[data-hero-track]").forEach((track) => {
+    track.addEventListener("wheel", restartHeroPlayback, { passive: true });
+    track.addEventListener("pointerdown", () => {
+      heroDragging = true;
+      restartHeroPlayback();
+    }, { passive: true });
+    track.addEventListener("keydown", (e2) => {
+      if (["ArrowLeft", "ArrowRight"].includes(e2.key)) {
+        e2.preventDefault();
+        moveHero(e2.key === "ArrowLeft" ? -1 : 1);
+      }
+    });
+  });
+  queueHeroAdvance();
 }
 function updateHeroControls() {
-  const track = [...document.querySelectorAll("[data-hero-track]")].find((el) => el.clientWidth > 0);
+  const track = visibleHeroTrack();
   if (!track) return;
   const index = Math.round(track.scrollLeft / track.clientWidth);
   heroPosition[track.dataset.heroTrack] = index;
   document.querySelector(".hero-position").textContent = `${index + 1} / ${track.children.length}`;
 }
 function moveHero(delta) {
-  const track = [...document.querySelectorAll("[data-hero-track]")].find((el) => el.clientWidth > 0);
+  stopHeroPlayback();
+  const track = visibleHeroTrack();
   if (!track) return;
   const index = (Math.round(track.scrollLeft / track.clientWidth) + delta + track.children.length) % track.children.length;
   track.scrollTo({ left: index * track.clientWidth, behavior: "instant" });
   updateHeroControls();
+  queueHeroAdvance();
 }
 function home() {
   const query = params().get("q") || "";
@@ -1572,6 +1669,10 @@ function closeViewer() {
   activePhoto = null;
 }
 function render(options = {}) {
+  stopHeroPlayback();
+  heroObserver?.disconnect();
+  heroVisible = false;
+  heroDragging = false;
   const p2 = params().get("page");
   document.body.classList.toggle("gallery-shell", !p2);
   document.body.classList.toggle("home-shell", p2 === "home" && !params().get("q"));
@@ -1583,6 +1684,7 @@ function render(options = {}) {
   });
   updateHeroControls();
   updateTimeline();
+  bindHeroPlayback();
   const deep = params().get("photo");
   if (deep) {
     const photo = allPhotos.find((x) => x.gallery.albumKey === currentGallery().albumKey && x.id === deep);
@@ -1685,7 +1787,10 @@ document.addEventListener("click", async (e2) => {
   const b2 = e2.target.closest("button,a");
   if (!b2) return;
   if (b2.matches("[data-hero-step]")) moveHero(Number(b2.dataset.heroStep));
-  else if (b2.matches("[data-work-photo]")) openFeature(selectedWork, Number(b2.dataset.workPhoto), b2);
+  else if (b2.matches("[data-hero-play]")) {
+    heroPaused = !heroPaused;
+    restartHeroPlayback();
+  } else if (b2.matches("[data-work-photo]")) openFeature(selectedWork, Number(b2.dataset.workPhoto), b2);
   else if (b2.matches("[data-work-step]")) {
     const strip = document.querySelector(".work-strip");
     const frames = [...strip.children];
@@ -1792,9 +1897,23 @@ featureViewer.addEventListener("keydown", (e2) => {
   }
 });
 window.addEventListener("scroll", updateTimeline, { passive: true });
+document.addEventListener("visibilitychange", restartHeroPlayback);
+document.addEventListener("focusin", restartHeroPlayback);
+document.addEventListener("focusout", () => queueMicrotask(restartHeroPlayback));
+for (const event of ["pointerup", "pointercancel"]) window.addEventListener(event, () => {
+  if (heroDragging) {
+    heroDragging = false;
+    restartHeroPlayback();
+  }
+});
+heroMotion.addEventListener("change", () => {
+  if (heroMotion.matches) heroPaused = true;
+  restartHeroPlayback();
+});
 window.addEventListener("resize", () => {
   updateHeroControls();
   updateTimeline();
+  restartHeroPlayback();
 });
 window.addEventListener("popstate", () => {
   if (viewer.open) viewer.close();

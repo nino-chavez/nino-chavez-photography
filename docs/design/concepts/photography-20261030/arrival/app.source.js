@@ -26,6 +26,10 @@ const portraits = rotatePortfolio(portfolio,photoStart).map(ownedPhoto);
 const landscapes = selectedWork.filter(p=>p.ratio>1);
 const heroDeck = rotatePortfolio([[landscapes[0]],portraits.slice(0,3),[landscapes[1]],portraits.slice(3,6),portraits.slice(6,9),portraits.slice(9,12)],photoStart);
 const heroPosition = {desktop:0,mobile:0};
+const heroMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const heroDelay = 8000;
+let heroPaused = heroMotion.matches, heroVisible = false, heroDragging = false;
+let heroTimer, heroGeneration = 0, heroAnimation = null, heroOutgoing = null, heroObserver = null;
 let featureList = [], featureIndex = 0, featureReturn = null, timelineFrame = 0;
 try { saved = JSON.parse(localStorage.getItem(storageKey) || '[]').filter(k => photoByKey(k)); }
 catch { persistent = false; }
@@ -57,21 +61,79 @@ function galleryTarget(g, entry = '') {
   return full ? `href="${url({gallery:full.albumKey,from:params().get('page')==='galleries'?'galleries':'home',entry,q:params().get('q') || ''})}" data-nav` : `href="${esc(g.url)}" ${external}`;
 }
 function heroPhotographs() {
-  return `<div class="hero-photographs">${[['desktop',heroDeck],['mobile',portraits.map(p=>[p])]].map(([size,frames])=>`<div class="hero-track ${size}" data-hero-track="${size}" role="region" aria-label="Selected Works. Scroll horizontally or use the previous and next controls." tabindex="0">${frames.map((frame,i)=>`<div class="hero-frame ${frame.length>1?'triptych':''}">${frame.map(p=>`<img src="${esc(p.src)}" alt="${esc(p.alt)}" width="${p.width}" height="${p.height}" loading="${i===0?'eager':'lazy'}" decoding="sync" draggable="false">`).join('')}</div>`).join('')}</div>`).join('')}</div><div class="hero-work-controls"><a href="?page=work" data-nav>Selected Works</a><span class="hero-position" aria-live="polite"></span><button data-hero-step="-1" aria-label="Previous selected work">←</button><button data-hero-step="1" aria-label="Next selected work">→</button></div>`;
+  return `<div class="hero-photographs">${[['desktop',heroDeck],['mobile',portraits.map(p=>[p])]].map(([size,frames])=>`<div class="hero-track ${size}" data-hero-track="${size}" role="region" aria-label="Selected Works. Photographs advance automatically; pause or use the previous and next controls." tabindex="0">${frames.map((frame,i)=>`<div class="hero-frame ${frame.length>1?'triptych':''}">${frame.map(p=>`<img src="${esc(p.src)}" alt="${esc(p.alt)}" width="${p.width}" height="${p.height}" loading="${i===0?'eager':'lazy'}" decoding="sync" draggable="false">`).join('')}</div>`).join('')}</div>`).join('')}</div><div class="hero-work-controls"><a href="?page=work" data-nav>Selected Works</a><span class="hero-position" aria-live="off"></span><button data-hero-step="-1" aria-label="Previous selected work">←</button><button data-hero-step="1" aria-label="Next selected work">→</button><button data-hero-play aria-label="Pause Selected Works" title="Pause Selected Works"></button></div>`;
+}
+const visibleHeroTrack = () => [...document.querySelectorAll('[data-hero-track]')].find(el=>el.clientWidth>0);
+function stopHeroPlayback() {
+  clearTimeout(heroTimer);heroGeneration++;
+  heroAnimation?.cancel();heroAnimation=null;
+  heroOutgoing?.remove();heroOutgoing=null;
+}
+function canPlayHero() {
+  const bounds=visibleHeroTrack()?.getBoundingClientRect();
+  return !heroPaused && bounds && bounds.bottom>0 && bounds.top<innerHeight && !heroDragging && !document.hidden
+    && !document.querySelector('dialog[open]') && !document.activeElement?.matches('input,textarea,[data-hero-track]');
+}
+function queueHeroAdvance() {
+  clearTimeout(heroTimer);
+  const generation=++heroGeneration;
+  const control=document.querySelector('[data-hero-play]');if(!control)return;
+  const label=`${heroPaused?'Play':'Pause'} Selected Works`;
+  if(control.getAttribute('aria-label')!==label || !control.firstElementChild){
+    control.setAttribute('aria-label',label);control.title=label;
+    control.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${heroPaused?'<path d="m8 5 11 7-11 7Z"/>':'<path d="M8 5v14M16 5v14"/>'}</svg>`;
+  }
+  document.querySelector('.hero-position').setAttribute('aria-live',heroPaused?'polite':'off');
+  if(!canPlayHero())return;
+  const track=visibleHeroTrack(),current=Math.round(track.scrollLeft/track.clientWidth);
+  const next=(current+1)%track.children.length;
+  const images=[...track.children[next].querySelectorAll('img')];
+  images.forEach(img=>{img.loading='eager';});
+  heroTimer=setTimeout(async()=>{
+    try {await Promise.all(images.map(img=>img.decode()));}
+    catch {if(generation===heroGeneration)queueHeroAdvance();return;}
+    if(generation!==heroGeneration || !track.isConnected || !canPlayHero())return;
+    if(!heroMotion.matches){
+      const outgoing=track.children[current].cloneNode(true);
+      outgoing.classList.add('hero-outgoing');outgoing.setAttribute('aria-hidden','true');
+      track.parentElement.append(outgoing);heroOutgoing=outgoing;
+      heroAnimation=outgoing.animate([{opacity:1},{opacity:0}],{duration:1200,easing:'ease-in-out'});
+      heroAnimation.finished.then(()=>outgoing.remove(),()=>outgoing.remove());
+    }
+    track.scrollTo({left:next*track.clientWidth,behavior:'instant'});
+    updateHeroControls();queueHeroAdvance();
+  },heroDelay);
+}
+function restartHeroPlayback() {stopHeroPlayback();queueHeroAdvance();}
+function bindHeroPlayback() {
+  const hero=document.querySelector('.home-hero');if(!hero)return;
+  const bounds=hero.getBoundingClientRect();heroVisible=bounds.bottom>0&&bounds.top<innerHeight;
+  heroObserver=new IntersectionObserver(([entry])=>{
+    if(heroVisible!==entry.isIntersecting){heroVisible=entry.isIntersecting;restartHeroPlayback();}
+  });
+  heroObserver.observe(hero);
+  hero.querySelectorAll('[data-hero-track]').forEach(track=>{
+    track.addEventListener('wheel',restartHeroPlayback,{passive:true});
+    track.addEventListener('pointerdown',()=>{heroDragging=true;restartHeroPlayback();},{passive:true});
+    track.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();moveHero(e.key==='ArrowLeft'?-1:1);}});
+  });
+  queueHeroAdvance();
 }
 function updateHeroControls() {
-  const track=[...document.querySelectorAll('[data-hero-track]')].find(el=>el.clientWidth>0);
+  const track=visibleHeroTrack();
   if(!track)return;
   const index=Math.round(track.scrollLeft/track.clientWidth);
   heroPosition[track.dataset.heroTrack]=index;
   document.querySelector('.hero-position').textContent=`${index+1} / ${track.children.length}`;
 }
 function moveHero(delta) {
-  const track=[...document.querySelectorAll('[data-hero-track]')].find(el=>el.clientWidth>0);
+  stopHeroPlayback();
+  const track=visibleHeroTrack();
   if(!track)return;
   const index=(Math.round(track.scrollLeft/track.clientWidth)+delta+track.children.length)%track.children.length;
   track.scrollTo({left:index*track.clientWidth,behavior:'instant'});
   updateHeroControls();
+  queueHeroAdvance();
 }
 function home() {
   const query = params().get('q') || '';
@@ -178,13 +240,14 @@ function closeViewer() {
   target?.focus({preventScroll:true}); target?.scrollIntoView({block:'nearest'}); activePhoto=null;
 }
 function render(options = {}) {
+  stopHeroPlayback();heroObserver?.disconnect();heroVisible=false;heroDragging=false;
   const p=params().get('page');
   document.body.classList.toggle('gallery-shell',!p);
   document.body.classList.toggle('home-shell',p==='home'&&!params().get('q'));
   app.innerHTML=header()+(['home','galleries'].includes(p)?home():p==='saved'?savedPage():p==='work'?workPage():p==='timeline'?timelinePage():gallery())+footer();
   document.title=p==='timeline'?'Browse Timeline — Nino Chavez':p==='galleries'?'Browse Galleries — Nino Chavez':p==='home'?'Find event photos — Nino Chavez':p==='saved'?'Saved photos — Nino Chavez':p==='work'?'Selected Works — Nino Chavez':`${currentGallery().title} — Nino Chavez`;
   document.querySelectorAll('[data-hero-track]').forEach(track=>{track.scrollLeft=heroPosition[track.dataset.heroTrack]*track.clientWidth;track.addEventListener('scroll',updateHeroControls,{passive:true});});
-  updateHeroControls();updateTimeline();
+  updateHeroControls();updateTimeline();bindHeroPlayback();
   const deep=params().get('photo');
   if(deep){const photo=allPhotos.find(x=>x.gallery.albumKey===currentGallery().albumKey&&x.id===deep);if(photo)openViewer(photo,null,false);}
   if(options.focus&&!viewer.open) document.querySelector('#main').focus({preventScroll:true});
@@ -247,6 +310,7 @@ async function downloadPhotos(keys,size) {
 document.addEventListener('click',async e=>{
   const b=e.target.closest('button,a');if(!b)return;
   if(b.matches('[data-hero-step]'))moveHero(Number(b.dataset.heroStep));
+  else if(b.matches('[data-hero-play]')){heroPaused=!heroPaused;restartHeroPlayback();}
   else if(b.matches('[data-work-photo]'))openFeature(selectedWork,Number(b.dataset.workPhoto),b);
   else if(b.matches('[data-work-step]')){const strip=document.querySelector('.work-strip');const frames=[...strip.children];const index=frames.reduce((best,el,i)=>Math.abs(el.offsetLeft-strip.offsetLeft-strip.scrollLeft)<Math.abs(frames[best].offsetLeft-strip.offsetLeft-strip.scrollLeft)?i:best,0);const next=frames[Math.max(0,Math.min(frames.length-1,index+Number(b.dataset.workStep)))];strip.scrollTo({left:next.offsetLeft-strip.offsetLeft,behavior:'instant'});}
   else if(b.matches('[data-timeline-photo]')){const [key,index]=b.dataset.timelinePhoto.split(':');openFeature(timelinePeriods.find(p=>periodKey(p)===key).photos,Number(index),b);}
@@ -278,7 +342,12 @@ document.addEventListener('keydown',e=>{if(viewer.open&&!action.open&&['ArrowLef
 featureViewer.addEventListener('cancel',e=>{e.preventDefault();closeFeature();});
 featureViewer.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();featureViewer.querySelector(`[data-feature-step="${e.key==='ArrowLeft'?-1:1}"]`)?.click();}});
 window.addEventListener('scroll',updateTimeline,{passive:true});
-window.addEventListener('resize',()=>{updateHeroControls();updateTimeline();});
+document.addEventListener('visibilitychange',restartHeroPlayback);
+document.addEventListener('focusin',restartHeroPlayback);
+document.addEventListener('focusout',()=>queueMicrotask(restartHeroPlayback));
+for(const event of ['pointerup','pointercancel'])window.addEventListener(event,()=>{if(heroDragging){heroDragging=false;restartHeroPlayback();}});
+heroMotion.addEventListener('change',()=>{if(heroMotion.matches)heroPaused=true;restartHeroPlayback();});
+window.addEventListener('resize',()=>{updateHeroControls();updateTimeline();restartHeroPlayback();});
 window.addEventListener('popstate',()=>{if(viewer.open)viewer.close();if(featureViewer.open)featureViewer.close();render();if(location.hash.startsWith('#month-'))jumpToPeriod(location.hash.slice(7),false);else window.scrollTo(0,history.state?.scroll||0);if(history.state?.focus)document.getElementById(history.state.focus)?.focus({preventScroll:true});});
 render();
 if(location.hash.startsWith('#month-'))requestAnimationFrame(()=>jumpToPeriod(location.hash.slice(7),false));

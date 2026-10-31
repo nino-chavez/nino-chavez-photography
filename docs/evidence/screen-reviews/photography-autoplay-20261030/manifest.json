@@ -1,0 +1,24 @@
+{
+  "capture": "Chromium on macOS. Desktop 1440x1000, phone 390x844, short phone 320x568. MP4s are normal-speed encodes of browser-recorded WebM; no timing edits. Not physical-device or user-acceptance evidence.",
+  "verification": "20 Chromium tests passed (1.1m), including two normal-speed recordings. The two timer/reduced-motion checks passed again after expanding wraparound and pause-preservation assertions. The initial autoplay test failed on the manual-only baseline. A temporary browser-response mutation forced playback under reduced motion and correctly failed the still-image assertion; the mutation was removed and the same check passed.",
+  "visibilityBoundary": "The hidden-tab test supplies the visibility property and event in the browser. Offscreen suspension uses actual page scrolling and IntersectionObserver delivery. This does not claim an OS tab-backgrounding test.",
+  "sources": {
+    "cadence": "src/lib/components/ui/PremiumHero.svelte: eight-second timer and 1.2-second crossfade.",
+    "authorization": "Nino explicitly corrected the preview to advance automatically through Selected Works on October 30, 2026."
+  },
+  "files": {
+    "docs/design/concepts/photography-20261030/arrival/app.source.js": "4c97a226aa8dc8e4d7a5d80afdabccdc293bbed7441f5bc8fdb8d0bd64cb5c8d",
+    "docs/design/concepts/photography-20261030/arrival/app.js": "4fd35a966c23eca27bd374f6d14b0b16cead53be4508ac85dc93da2f42119690",
+    "docs/design/concepts/photography-20261030/arrival/index.html": "eea090d77ab60281da5c950ccf7974d65a922e06d95440986e9cc01fc5f90508",
+    "docs/design/concepts/photography-20261030/arrival/style.css": "255537e3807d25cf1e62a5c0f0e6c86074a7dfb71873649bfeafaa9390cf1412",
+    "prototype/EXPERIENCE-BRIEF.md": "9466d65d1971b488b7e4a57bc557ff1f18091db6c0461cf3685f5f2e72b4f988",
+    "tests/photography-arrival.spec.ts": "55f657a2b02d03d811f5888fdbd7f9d42ccca4f81e8abf9899c04a65813ecd50",
+    "src/lib/components/ui/PremiumHero.svelte": "0bc3cd080fa0fa15ae7c41ee84d014006c333ee9372de76bf96748f701e762cc",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/autoplay-desktop.mp4": "03e9c5951327dc91bc3b946044426f2a682880b603afd71195aeb41f77780771",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/autoplay-paused-desktop.png": "740bc0e322e72a07ec15bd702dfa9d35f10253b917fb8dfa43d17b840786d10b",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/autoplay-paused-phone.png": "9ee24c5953f6324ac7f37c42f1e62f01802cab7c01b0fcb0aee5b3c2f37f1b02",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/autoplay-phone.mp4": "6424f26542d70fb213e3237028e798bfabbdd6ab69618b3a3a7b504c9f299012",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/home-short-phone.png": "b2ce875b22df62b9c9254d2c991de3a21e57794e37506a3e9349c78a949b0f68",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/transition-midpoint.png": "6ff52e732acd2c26950ba8478a60ef767eea8bfe33b078c426d124aaa46b4eca"
+  }
+}

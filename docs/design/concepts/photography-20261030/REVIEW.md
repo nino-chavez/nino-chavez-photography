@@ -1,3 +1,17 @@
+# Automatic Selected Works, corrected October 30, 2026
+
+Selected Works now advances without a click. Nino clarified that the original hero's automatic progression was part of the requested recovery; manual-only browsing did not satisfy it. The preview uses the original eight-second cadence and 1.2-second crossfade from `PremiumHero.svelte`. The photographs remain full bleed and the event actions stay fixed.
+
+Pause/Play sits beside the existing arrows. Manual input interrupts a fade and starts a fresh interval. Automatic progression waits while the hero is offscreen, a tab is hidden, a dialog is open, a drag is active, or an input/photograph region has focus. Reduced motion starts paused; explicitly choosing Play uses instant changes. An unavailable next image leaves the current image visible. The randomized start, gallery browser and date timeline remain.
+
+The [motion packet](../../../evidence/screen-reviews/photography-autoplay-20261030/manifest.json) contains desktop and phone browser recordings at normal speed, three settled/control frames and a midpoint frame from the desktop recording. The parent opened the captures and observed automatic progression and pause in the in-app preview. Clips cover progression, pause, resume and manual interruption. The packet does not claim physical-phone performance or visitor acceptance.
+
+All twenty Chromium checks passed, including both recordings. Two timing checks passed again after adding wraparound and pause-preservation assertions. The new automatic-advance assertion first failed on the manual-only baseline. A temporary response mutation forced unwanted playback under reduced motion; its still-image assertion failed, then passed after the mutation was removed. The hidden-tab check supplies the browser visibility property/event; offscreen checks use real scrolling and observer delivery. Source and media hashes are retained in the packet.
+
+The [experience brief](../../../../prototype/EXPERIENCE-BRIEF.md) records this explicit correction. The earlier manual-only motion description and review below are superseded history. This change remains confined to the static preview, its tests and evidence; native Svelte routes are unchanged.
+
+---
+
 # Photography browsing recovery, October 30, 2026
 
 The current preview keeps the full-bleed photographic homepage and restores the missing browsing paths. Browse Galleries opens the event index. Browse Timeline opens the chronological archive with a sticky year/month bar, direct date jumps and a current date that follows scrolling. Recent events are whole clickable rows with contrasting View gallery actions.
