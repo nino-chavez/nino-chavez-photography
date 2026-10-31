@@ -1,0 +1,19 @@
+{
+  "capture": "Fresh 1440x1000 and 390x844 Chromium recordings after the settled-scroll repair, encoded at normal speed. Review-verification PNGs are exact timestamps from the earlier phone recording at commit 2c56fec; they contradict the reported clipped controls.",
+  "verification": "21 Chromium tests passed (1.1m). The added pointercancel-before-scroll regression failed on the first implementation, then passed with the timer reading the current frame and scroll events resetting the interval. It models browser touch-pan event order; physical-touch behavior is not claimed. Native horizontal wheel scrolling is also exercised.",
+  "previous_packet_commit": "2c56fec00dc1bb4dc2273f9e34d1899cc10f04b3",
+  "files": {
+    "docs/design/concepts/photography-20261030/arrival/app.source.js": "8766ab64a648741377db0f39685d7b2b5c4a8d53a45d1a4996dc92728ff2f223",
+    "docs/design/concepts/photography-20261030/arrival/app.js": "56e33ec8db2e31b25830a13420b1f6a7825e5ca758a57d69f7d5682a62d6c72d",
+    "docs/design/concepts/photography-20261030/arrival/index.html": "eea090d77ab60281da5c950ccf7974d65a922e06d95440986e9cc01fc5f90508",
+    "docs/design/concepts/photography-20261030/arrival/style.css": "255537e3807d25cf1e62a5c0f0e6c86074a7dfb71873649bfeafaa9390cf1412",
+    "prototype/EXPERIENCE-BRIEF.md": "9466d65d1971b488b7e4a57bc557ff1f18091db6c0461cf3685f5f2e72b4f988",
+    "tests/photography-arrival.spec.ts": "e9462e1d8e5a8e5daa4fbaf7f7924e4637eb56151f0d9293729c92b0ebb40607",
+    "docs/design/concepts/photography-20261030/REVIEW.md": "c8dcce72d95414d1d651deae0ee0f24dc5dfd3dc123a4815f66423a2e5e58e11",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/final/autoplay-desktop.mp4": "6d8b829b0ef9adda5c3ca6443102b28eaf8b01443909f0990a3db8cfa5022645",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/final/autoplay-phone.mp4": "a90e7bc44936a6237a69a3a0bde35a1d803da1c3919a12faa1b5e471aa35d42e",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/review-verification/phone-at-10.9s.png": "ab9fe6ac287202178ac73451ece1e542edc880e21576425534024bd9dcffffe3",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/review-verification/phone-at-11.1s.png": "3f5799ce9fed23f576773b0e3fbec8f09a5a0ffca8d17ec2bbbe07d1cdd42303",
+    "docs/evidence/screen-reviews/photography-autoplay-20261030/review-verification/phone-at-11.3s.png": "ebd15991e33e605d29470b599b5798122016c46401561bc2cb3ef59177bae06b"
+  }
+}

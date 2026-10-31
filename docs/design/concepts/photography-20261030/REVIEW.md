@@ -8,6 +8,20 @@ The [motion packet](../../../evidence/screen-reviews/photography-autoplay-202610
 
 All twenty Chromium checks passed, including both recordings. Two timing checks passed again after adding wraparound and pause-preservation assertions. The new automatic-advance assertion first failed on the manual-only baseline. A temporary response mutation forced unwanted playback under reduced motion; its still-image assertion failed, then passed after the mutation was removed. The hidden-tab check supplies the browser visibility property/event; offscreen checks use real scrolling and observer delivery. Source and media hashes are retained in the packet.
 
+Cold review was completed by Operator dispatch `d735887f-fa92-4db5-a32e-bb5898776379`; the runtime receipt reports `gpt-5.6-terra`, high reasoning. The reviewer inspected only the captures and visitor jobs. Its result is retained verbatim:
+
+> FIX
+>
+> - `autoplay-phone.mp4` repeatedly shows a brief broken mobile composition while Selected Works is paused/resumed: sampled at about 10.90s, 11.10s, and 11.30s, navigation, labels, and buttons split/clip horizontally. This makes controls intermittently illegible.
+> - The desktop recording stays visually stable through its pause/resume and progression. The desktop midpoint at 8.5s is a short image dissolve, with controls remaining fixed and readable.
+> - The supplied phone stills, including `home-short-phone.png` at 320px, keep the controls and event/gallery actions visible and readable.
+>
+> I could not play the MP4s as continuous video in the available viewer; this verdict uses decoded timestamped frames from the recordings. No files were created.
+
+Parent disposition: the alleged phone clipping was not reproduced. The parent decoded and opened the committed MP4 at exactly 10.9, 11.1 and 11.3 seconds, and also decoded the original WebM at 10.9 seconds. All showed complete, legible controls. The three [verification frames](../../../evidence/screen-reviews/photography-autoplay-20261030/review-verification/) preserve the direct contradiction. No layout change was made to chase a decoding result that the primary recording did not support. This is the parent's verified disposition, not a new cold-review PASS or continuous-video assessment.
+
+The separate code review found that a timer could retain the pre-swipe image index when the browser settles a touch pan after `pointercancel`. The regression replayed that ordering and failed on the first implementation. The timer now reads the actual current image when it fires, and every horizontal scroll resets the interval from the settled view. All twenty-one Chromium checks then passed (1.1m), including that regression and fresh normal-speed recordings. The [final validation packet](../../../evidence/screen-reviews/photography-autoplay-20261030/final/manifest.json) records the corrected source; the earlier packet remains frozen at commit `2c56fec`.
+
 The [experience brief](../../../../prototype/EXPERIENCE-BRIEF.md) records this explicit correction. The earlier manual-only motion description and review below are superseded history. This change remains confined to the static preview, its tests and evidence; native Svelte routes are unchanged.
 
 ---

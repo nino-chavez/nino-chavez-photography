@@ -85,11 +85,15 @@ function queueHeroAdvance() {
   }
   document.querySelector('.hero-position').setAttribute('aria-live',heroPaused?'polite':'off');
   if(!canPlayHero())return;
-  const track=visibleHeroTrack(),current=Math.round(track.scrollLeft/track.clientWidth);
-  const next=(current+1)%track.children.length;
-  const images=[...track.children[next].querySelectorAll('img')];
-  images.forEach(img=>{img.loading='eager';});
+  const preloadTrack=visibleHeroTrack();
+  const preloadIndex=(Math.round(preloadTrack.scrollLeft/preloadTrack.clientWidth)+1)%preloadTrack.children.length;
+  preloadTrack.children[preloadIndex].querySelectorAll('img').forEach(img=>{img.loading='eager';});
   heroTimer=setTimeout(async()=>{
+    if(generation!==heroGeneration || !canPlayHero())return;
+    const track=visibleHeroTrack(),current=Math.round(track.scrollLeft/track.clientWidth);
+    const next=(current+1)%track.children.length;
+    const images=[...track.children[next].querySelectorAll('img')];
+    images.forEach(img=>{img.loading='eager';});
     try {await Promise.all(images.map(img=>img.decode()));}
     catch {if(generation===heroGeneration)queueHeroAdvance();return;}
     if(generation!==heroGeneration || !track.isConnected || !canPlayHero())return;
@@ -246,7 +250,7 @@ function render(options = {}) {
   document.body.classList.toggle('home-shell',p==='home'&&!params().get('q'));
   app.innerHTML=header()+(['home','galleries'].includes(p)?home():p==='saved'?savedPage():p==='work'?workPage():p==='timeline'?timelinePage():gallery())+footer();
   document.title=p==='timeline'?'Browse Timeline — Nino Chavez':p==='galleries'?'Browse Galleries — Nino Chavez':p==='home'?'Find event photos — Nino Chavez':p==='saved'?'Saved photos — Nino Chavez':p==='work'?'Selected Works — Nino Chavez':`${currentGallery().title} — Nino Chavez`;
-  document.querySelectorAll('[data-hero-track]').forEach(track=>{track.scrollLeft=heroPosition[track.dataset.heroTrack]*track.clientWidth;track.addEventListener('scroll',updateHeroControls,{passive:true});});
+  document.querySelectorAll('[data-hero-track]').forEach(track=>{track.scrollLeft=heroPosition[track.dataset.heroTrack]*track.clientWidth;track.addEventListener('scroll',()=>{updateHeroControls();queueHeroAdvance();},{passive:true});});
   updateHeroControls();updateTimeline();bindHeroPlayback();
   const deep=params().get('photo');
   if(deep){const photo=allPhotos.find(x=>x.gallery.albumKey===currentGallery().albumKey&&x.id===deep);if(photo)openViewer(photo,null,false);}

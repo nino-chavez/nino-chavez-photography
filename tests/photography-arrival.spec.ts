@@ -374,3 +374,23 @@ for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'phone',wid
     });
   });
 }
+
+test('Selected Works continues from the settled position after the browser takes over touch scrolling',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.clock.install();
+  await page.goto(`${base}?page=home`);
+  const track=page.locator('.hero-track:visible');
+  // A touch pan cancels pointer input before the browser settles its scroll position.
+  await track.dispatchEvent('pointerdown',{pointerId:1,pointerType:'touch',isPrimary:true});
+  await track.dispatchEvent('pointercancel',{pointerId:1,pointerType:'touch',isPrimary:true});
+  await track.evaluate(el=>el.scrollTo({left:el.clientWidth,behavior:'instant'}));
+  await expect(page.locator('.hero-position')).toHaveText('2 / 12');
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('3 / 12');
+  await track.hover({position:{x:280,y:300}});
+  await page.mouse.wheel(-390,0);
+  await expect(page.locator('.hero-position')).toHaveText('2 / 12');
+  await page.clock.runFor(8100);
+  await expect(page.locator('.hero-position')).toHaveText('3 / 12');
+});

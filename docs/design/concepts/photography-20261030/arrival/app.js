@@ -1466,13 +1466,19 @@ function queueHeroAdvance() {
   }
   document.querySelector(".hero-position").setAttribute("aria-live", heroPaused ? "polite" : "off");
   if (!canPlayHero()) return;
-  const track = visibleHeroTrack(), current = Math.round(track.scrollLeft / track.clientWidth);
-  const next = (current + 1) % track.children.length;
-  const images = [...track.children[next].querySelectorAll("img")];
-  images.forEach((img) => {
+  const preloadTrack = visibleHeroTrack();
+  const preloadIndex = (Math.round(preloadTrack.scrollLeft / preloadTrack.clientWidth) + 1) % preloadTrack.children.length;
+  preloadTrack.children[preloadIndex].querySelectorAll("img").forEach((img) => {
     img.loading = "eager";
   });
   heroTimer = setTimeout(async () => {
+    if (generation !== heroGeneration || !canPlayHero()) return;
+    const track = visibleHeroTrack(), current = Math.round(track.scrollLeft / track.clientWidth);
+    const next = (current + 1) % track.children.length;
+    const images = [...track.children[next].querySelectorAll("img")];
+    images.forEach((img) => {
+      img.loading = "eager";
+    });
     try {
       await Promise.all(images.map((img) => img.decode()));
     } catch {
@@ -1680,7 +1686,10 @@ function render(options = {}) {
   document.title = p2 === "timeline" ? "Browse Timeline \u2014 Nino Chavez" : p2 === "galleries" ? "Browse Galleries \u2014 Nino Chavez" : p2 === "home" ? "Find event photos \u2014 Nino Chavez" : p2 === "saved" ? "Saved photos \u2014 Nino Chavez" : p2 === "work" ? "Selected Works \u2014 Nino Chavez" : `${currentGallery().title} \u2014 Nino Chavez`;
   document.querySelectorAll("[data-hero-track]").forEach((track) => {
     track.scrollLeft = heroPosition[track.dataset.heroTrack] * track.clientWidth;
-    track.addEventListener("scroll", updateHeroControls, { passive: true });
+    track.addEventListener("scroll", () => {
+      updateHeroControls();
+      queueHeroAdvance();
+    }, { passive: true });
   });
   updateHeroControls();
   updateTimeline();
