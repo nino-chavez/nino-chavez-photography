@@ -1,20 +1,32 @@
 import { downloadZip } from 'client-zip';
-import { galleries, recentGalleries, selectedWork } from './data.js';
+import { galleries, recentGalleries } from './data.js';
+import { timelinePeriods } from './timeline-data.js';
 import { createFittedPhotoLayout } from '../../../../../src/lib/gallery/photo-row-layout.ts';
+import { portfolio, photoStrip, rotatePortfolio } from '../../../../../src/lib/portfolio.ts';
 
 const app = document.querySelector('#app');
 const viewer = document.querySelector('#viewer');
 const action = document.querySelector('#action');
 const notice = document.querySelector('#notice');
+const featureViewer = document.querySelector('#feature-viewer');
 const storageKey = 'photography-arrival-study-saved';
 const esc = (s = '') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const params = () => new URLSearchParams(location.search);
+history.scrollRestoration = 'manual';
 const currentGallery = () => galleries.find(g => g.albumKey === params().get('gallery')) || galleries[0];
 const model = () => ['beside', 'sequence'].includes(params().get('model')) ? params().get('model') : 'sheet';
 const allPhotos = galleries.flatMap(g => g.photos.map(p => ({ ...p, gallery: g })));
 const photoByKey = key => allPhotos.find(p => p.key === key);
 let saved = [], persistent = true, activePhoto = null, viewerReturn = null, inlinePhoto = null;
 let noticeTimer, downloading = false, abortDownload = null;
+const photoStart = Math.random();
+const ownedPhoto = p => ({...p,src:`../assets${p.src}`,large:`../assets${p.src}`,ratio:p.width/p.height});
+const selectedWork = rotatePortfolio(photoStrip,photoStart).map(ownedPhoto);
+const portraits = rotatePortfolio(portfolio,photoStart).map(ownedPhoto);
+const landscapes = selectedWork.filter(p=>p.ratio>1);
+const heroDeck = rotatePortfolio([[landscapes[0]],portraits.slice(0,3),[landscapes[1]],portraits.slice(3,6),portraits.slice(6,9),portraits.slice(9,12)],photoStart);
+const heroPosition = {desktop:0,mobile:0};
+let featureList = [], featureIndex = 0, featureReturn = null, timelineFrame = 0;
 try { saved = JSON.parse(localStorage.getItem(storageKey) || '[]').filter(k => photoByKey(k)); }
 catch { persistent = false; }
 
@@ -34,24 +46,43 @@ function image(p, eager = false) {
 }
 const external = 'target="_blank" rel="noopener"';
 function header() {
-  const home = params().get('page') === 'home' && !params().get('q');
-  return `<header class="site-header"><a class="brand" href="?page=home" data-nav><strong>Nino Chavez</strong><span>Photography</span></a><nav aria-label="Photography"><button class="info-link" data-info>About &amp; contact</button>${home ? '<a class="find-link" href="#find-event">Find your event</a>' : '<a class="find-link" href="?page=home" data-nav>Find your event</a>'}<a href="?page=saved" data-nav>Saved <span data-saved-total>${saved.length || ''}</span></a></nav></header>`;
+  const page = params().get('page');
+  return `<header class="site-header"><a class="brand" href="?page=home" data-nav><strong>Nino Chavez</strong><span>Photography</span></a><button class="info-link" data-info>About &amp; contact</button><nav aria-label="Photography"><a href="?page=galleries" data-nav ${page==='galleries'?'aria-current="page"':''}>Browse Galleries</a><a href="?page=timeline" data-nav ${page==='timeline'?'aria-current="page"':''}>Browse Timeline</a><a href="?page=saved" data-nav ${page==='saved'?'aria-current="page"':''}>Saved <span data-saved-total>${saved.length || ''}</span></a></nav></header>`;
 }
 function footer() {
-  return `<footer><p>Photographs by Nino Chavez</p><nav aria-label="More"><a href="?page=work" data-nav>Selected photographs</a><a href="https://ninochavez.co/photography/coverage" ${external}>Request coverage ↗</a><a href="https://ninochavez.co" ${external}>Profile ↗</a><a href="https://ninochavez.co/blog" ${external}>Writing ↗</a></nav></footer>`;
+  return `<footer><p>Photographs by Nino Chavez</p><nav aria-label="More"><a href="?page=work" data-nav>Selected Works</a><a href="https://ninochavez.co/photography/coverage" ${external}>Request coverage ↗</a><a href="https://ninochavez.co" ${external}>Profile ↗</a><a href="https://ninochavez.co/blog" ${external}>Writing ↗</a></nav></footer>`;
 }
 function galleryTarget(g, entry = '') {
   const full = galleries.find(a => a.url === g.url);
-  return full ? `href="${url({gallery:full.albumKey,from:'home',entry,q:params().get('q') || ''})}" data-nav` : `href="${esc(g.url)}" ${external}`;
+  return full ? `href="${url({gallery:full.albumKey,from:params().get('page')==='galleries'?'galleries':'home',entry,q:params().get('q') || ''})}" data-nav` : `href="${esc(g.url)}" ${external}`;
+}
+function heroPhotographs() {
+  return `<div class="hero-photographs">${[['desktop',heroDeck],['mobile',portraits.map(p=>[p])]].map(([size,frames])=>`<div class="hero-track ${size}" data-hero-track="${size}" role="region" aria-label="Selected Works. Scroll horizontally or use the previous and next controls." tabindex="0">${frames.map((frame,i)=>`<div class="hero-frame ${frame.length>1?'triptych':''}">${frame.map(p=>`<img src="${esc(p.src)}" alt="${esc(p.alt)}" width="${p.width}" height="${p.height}" loading="${i===0?'eager':'lazy'}" decoding="sync" draggable="false">`).join('')}</div>`).join('')}</div>`).join('')}</div><div class="hero-work-controls"><a href="?page=work" data-nav>Selected Works</a><span class="hero-position" aria-live="polite"></span><button data-hero-step="-1" aria-label="Previous selected work">←</button><button data-hero-step="1" aria-label="Next selected work">→</button></div>`;
+}
+function updateHeroControls() {
+  const track=[...document.querySelectorAll('[data-hero-track]')].find(el=>el.clientWidth>0);
+  if(!track)return;
+  const index=Math.round(track.scrollLeft/track.clientWidth);
+  heroPosition[track.dataset.heroTrack]=index;
+  document.querySelector('.hero-position').textContent=`${index+1} / ${track.children.length}`;
+}
+function moveHero(delta) {
+  const track=[...document.querySelectorAll('[data-hero-track]')].find(el=>el.clientWidth>0);
+  if(!track)return;
+  const index=(Math.round(track.scrollLeft/track.clientWidth)+delta+track.children.length)%track.children.length;
+  track.scrollTo({left:index*track.clientWidth,behavior:'instant'});
+  updateHeroControls();
 }
 function home() {
   const query = params().get('q') || '';
+  const browse = params().get('page') === 'galleries';
+  const flat = Boolean(query || browse);
   const normalize = value => value.toLowerCase().replace(/october/g, 'oct').replace(/september/g, 'sep').replace(/august/g, 'aug').replace(/[^a-z0-9]+/g, ' ');
   const terms = normalize(query).trim().split(/\s+/).filter(Boolean);
   const list = recentGalleries.filter(g => terms.every(t => normalize(`${g.title} ${g.rawTitle} ${g.date}`).includes(t)));
   const search = `<form data-event-search class="event-search"><label for="event-query">Event, team or date</label><div><input id="event-query" name="q" type="search" value="${esc(query)}" placeholder="e.g. Chicago Point" autocomplete="off"><button type="submit" class="search-submit">Search</button></div></form>`;
-  const hero = `<section class="home-hero" aria-label="Nino Chavez Photography"><picture class="hero-picture"><source media="(max-width:700px)" srcset="../assets/images/hero/flickday/fd-12-mobile.webp"><img src="../assets/images/hero/flickday/fd-12.webp" alt="Volleyball players celebrating together near the net" width="1920" height="1280" fetchpriority="high"></picture><div class="hero-shade"></div><div class="hero-bottom"><div class="hero-finder" id="find-event"><h1>Find your event.</h1>${search}<a class="browse-link" href="#recent-events">Browse recent events <span aria-hidden="true">↓</span></a></div><section class="hero-recent" aria-label="Latest galleries"><h2>Recent galleries</h2>${recentGalleries.slice(0,2).map(g=>`<a id="event-latest-${g.id}" ${galleryTarget(g,'latest')}><strong class="gallery-title">${esc(g.title)}</strong><span class="gallery-meta"><span>${esc(g.date)}</span><span class="gallery-cta">View gallery <span aria-hidden="true">→</span></span></span></a>`).join('')}</section></div></section>`;
-  return `<main id="main" class="${query ? 'page home search-page' : 'home'}" tabindex="-1">${query ? `<section class="home-intro"><h1>Find your event</h1>${search}</section>` : hero}<section class="recent-events" id="recent-events" aria-labelledby="recent-title" tabindex="-1"><div class="section-title"><h2 id="recent-title">${query ? `Results for “${esc(query)}”` : 'Recent events'}</h2>${query ? '<a href="?page=home" data-nav>Clear search</a>' : `<a href="https://ninochavez.co/photography/albums" ${external}>All events ↗</a>`}</div>${list.length ? `<div class="event-list">${list.map((g, i) => `<a class="event-card" id="event-${g.id}" ${galleryTarget(g)}>${image({src:g.cover,alt:g.alt,ratio:1.5},i<2)}<div><p class="metadata">${esc(g.date)} <span>${esc(g.context)}</span></p><h3>${esc(g.title)}</h3><p class="event-count">${g.count} photos</p></div></a>`).join('')}</div>` : `<div class="empty"><h3>No matching galleries in this preview</h3><p>Try the event name, team or date. This study includes eight recent public galleries.</p><a class="button primary" href="https://ninochavez.co/photography/albums?q=${encodeURIComponent(query)}" ${external}>Search the full archive ↗</a><p>For a private gallery, use the link you received.</p></div>`}</section><div class="archive-end"><a class="button" href="https://ninochavez.co/photography/albums" ${external}>Browse the full archive ↗</a><p class="muted">Have a private gallery link? Open that link to view its photos.</p></div></main>`;
+  const hero = `<section class="home-hero" aria-label="Nino Chavez Photography">${heroPhotographs()}<div class="hero-shade"></div><div class="hero-bottom"><div class="hero-finder" id="find-event"><h1>Find your event.</h1>${search}<a class="browse-link" href="#recent-events">Browse recent galleries <span aria-hidden="true">↓</span></a></div><section class="hero-recent" aria-label="Latest galleries"><h2>Recent galleries</h2>${recentGalleries.slice(0,2).map(g=>`<a id="event-latest-${g.id}" ${galleryTarget(g,'latest')}><span class="gallery-label"><strong class="gallery-title">${esc(g.title)}</strong><span class="gallery-date">${esc(g.date)}</span></span><span class="gallery-cta">View gallery <span aria-hidden="true">→</span></span></a>`).join('')}</section></div></section>`;
+  return `<main id="main" class="${flat ? 'page home search-page' : 'home'}" tabindex="-1">${flat ? `<section class="home-intro"><h1>${browse?'Browse Galleries':'Find your event'}</h1>${search}</section>` : hero}<section class="recent-events" id="recent-events" aria-labelledby="recent-title" tabindex="-1"><div class="section-title"><h2 id="recent-title">${query ? `Results for “${esc(query)}”` : 'Recent events'}</h2>${query ? `<a href="?page=${browse?'galleries':'home'}" data-nav>Clear search</a>` : `<a href="https://ninochavez.co/photography/albums" ${external}>All events ↗</a>`}</div>${list.length ? `<div class="event-list">${list.map((g, i) => `<a class="event-card" id="event-${g.id}" ${galleryTarget(g)}>${image({src:g.cover,alt:g.alt,ratio:1.5},i<2)}<div><p class="metadata">${esc(g.date)} <span>${esc(g.context)}</span></p><h3>${esc(g.title)}</h3><p class="event-count">${g.count} photos</p></div></a>`).join('')}</div>` : `<div class="empty"><h3>No matching galleries in this preview</h3><p>Try the event name, team or date. This study includes eight recent public galleries.</p><a class="button primary" href="https://ninochavez.co/photography/albums?q=${encodeURIComponent(query)}" ${external}>Search the full archive ↗</a><p>For a private gallery, use the link you received.</p></div>`}</section><div class="archive-end"><a class="button" href="https://ninochavez.co/photography/albums" ${external}>Browse the full archive ↗</a><p class="muted">Have a private gallery link? Open that link to view its photos.</p></div></main>`;
 }
 function saveButton(p) {
   const yes = saved.includes(p.key);
@@ -74,7 +105,7 @@ function gallery() {
   const g = currentGallery(), list = scopedPhotos(), query = params().get('find') || '';
   const selected = g.photos.filter(p => saved.includes(p.key)).length;
   const isSaved = params().get('saved') === '1';
-  const sourceLink = params().get('from') === 'home' ? `<a href="${url({page:'home',q:params().get('q')||''})}" data-nav data-return-event="${params().get('entry')==='latest'?'latest-':''}${g.id}">← Back to galleries</a>` : '';
+  const sourceLink = ['home','galleries'].includes(params().get('from')) ? `<a href="${url({page:params().get('from'),q:params().get('q')||''})}" data-nav data-return-event="${params().get('entry')==='latest'?'latest-':''}${g.id}">← Back to galleries</a>` : '';
   const active = list.find(p => p.key === inlinePhoto) || list[0];
   if(active) inlinePhoto = active.key;
   return `<main id="main" class="page gallery model-${model()}" tabindex="-1">${sourceLink ? `<div class="back-link">${sourceLink}</div>` : ''}<section class="gallery-intro"><div><p class="metadata">${esc(g.date)} · ${esc(g.context)}</p><h1>${esc(g.title)}</h1><p class="byline">${g.count} photos · By Nino Chavez</p></div><div class="gallery-actions"><button data-share-gallery>Share gallery</button><button data-download-gallery>Download all</button></div></section><div class="gallery-tools"><nav aria-label="Photos in this gallery"><a class="${!isSaved?'active':''}" href="${url({saved:null,find:null},true)}" data-nav ${!isSaved?'aria-current="page"':''}>All photos <span>${g.count}</span></a><a class="${isSaved?'active':''}" href="${url({saved:1,find:null},true)}" data-nav ${isSaved?'aria-current="page"':''}>Saved <span>${selected}</span></a></nav><details class="photo-finder" ${query?'open':''}><summary><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>Search photos</summary><form data-photo-search><label for="photo-query">Photo number or description</label><div><input id="photo-query" name="find" type="search" placeholder="e.g. red jersey 11" value="${esc(query)}"><button>Find</button></div><small>Try a jersey number, color or photo number.</small></form></details></div>${query?`<div class="search-result" role="status">${list.length} photos matching “${esc(query)}” <a href="${url({find:null},true)}" data-nav>Clear search</a></div>`:''}${list.length ? model()==='sheet' ? fittedGrid(list) : `<div class="inspection-layout"><section class="inline-viewer" aria-label="Current photograph">${inspect(active,list,false)}</section><section class="contact-pane" aria-label="Gallery photographs">${model()==='sequence'?`<details><summary>See all ${list.length} photos</summary><div class="photo-grid mini">${list.map((p,i)=>tile(p,i,true)).join('')}</div></details>`:`<div class="photo-grid mini">${list.map((p,i)=>tile(p,i,true)).join('')}</div>`}</section></div>` : `<section class="empty"><h2>${isSaved?'No saved photos in this gallery':'No matching photos'}</h2><p>${isSaved?'Use Save on any photo to keep it here, then download your selection.':'Try a photo number, jersey color or a different description.'}</p><a class="button" href="${url({saved:null,find:null},true)}" data-nav>View all ${g.count} photos</a></section>`}<div class="gallery-end"><p>You’ve reached the end of ${query||isSaved?'this selection':'the gallery'}.</p><a href="#main">Back to top ↑</a></div><div id="selection-bar">${selectionBar()}</div></main>`;
@@ -89,8 +120,43 @@ function savedPage() {
   return `<main id="main" class="page saved-page" tabindex="-1"><div class="saved-intro"><div><p class="eyebrow">Your selection</p><h1>Saved photos</h1><p>${persistent?'Saved on this browser.':'Browser storage is unavailable. These saves last until this page closes.'} No account or sign-in.</p></div>${list.length?`<button class="primary" data-download-saved="all">Download saved (${list.length})</button>`:''}</div>${list.length?galleries.filter(g=>list.some(p=>p.gallery===g)).map(g=>`<section class="saved-gallery"><div class="section-title"><h2>${esc(g.title)}</h2><a href="${url({gallery:g.albumKey})}" data-nav>View gallery →</a></div>${fittedGrid(list.filter(p=>p.gallery===g))}</section>`).join(''):`<section class="empty"><h2>No saved photos yet</h2><p>Save photos while you browse. Return here to download them together.</p><a class="button primary" href="?page=home" data-nav>Find your gallery</a></section>`}</main>`;
 }
 function workPage() {
-  return `<main id="main" class="page work-page" tabindex="-1"><div class="section-title"><div><p class="eyebrow">Nino Chavez</p><h1>Selected photographs</h1></div><a href="https://ninochavez.co/photography/coverage" ${external}>Request coverage ↗</a></div><div class="work-grid">${selectedWork.map((p,i)=>`<a href="${esc(p.url)}" ${external}>${image(p,i<3)}</a>`).join('')}</div><a href="?page=home" class="button" data-nav>Find your event photos</a></main>`;
+  return `<main id="main" class="page work-page" tabindex="-1"><div class="section-title"><div><p class="eyebrow">Nino Chavez</p><h1>Selected Works</h1></div><a href="?page=galleries" data-nav>Browse Galleries →</a></div><div class="work-strip" role="region" aria-label="Selected Works. Scroll horizontally to explore." tabindex="0">${selectedWork.map((p,i)=>`<button class="work-photo" data-work-photo="${i}" aria-label="Open selected work: ${esc(p.alt)}" style="aspect-ratio:${p.ratio}">${image(p,i<3)}</button>`).join('')}</div><div class="work-toolbar"><p>Scroll to explore · Open a photograph to see the full frame.</p><div><button data-work-step="-1" aria-label="Previous photograph in Selected Works">←</button><button data-work-step="1">Next photograph →</button></div></div></main>`;
 }
+const periodKey = p => `${p.year}-${String(p.month).padStart(2,'0')}`;
+const timelineYears = [...new Set(timelinePeriods.map(p=>p.year))];
+function timelinePage() {
+  return `<main id="main" class="page timeline-page" tabindex="-1"><div class="timeline-intro"><h1>Browse Timeline</h1><p>Choose a year or month, or scroll through the photographs.</p></div><nav class="timeline-bar" aria-label="Browse by date"><div class="timeline-years">${timelineYears.map(year=>`<a href="?page=timeline#month-${periodKey(timelinePeriods.find(p=>p.year===year))}" data-period="${periodKey(timelinePeriods.find(p=>p.year===year))}" data-year="${year}">${year}</a>`).join('')}</div>${timelineYears.map((year,i)=>`<div class="timeline-months" data-months-year="${year}" ${i?'hidden':''}>${timelinePeriods.filter(p=>p.year===year).map(p=>`<a href="?page=timeline#month-${periodKey(p)}" data-period="${periodKey(p)}" aria-label="${esc(p.monthName)} ${p.year}"><span class="date-dot" aria-hidden="true"></span>${esc(p.monthName.slice(0,3))}</a>`).join('')}</div>`).join('')}</nav><div class="timeline-periods">${timelineYears.map(year=>`<section class="timeline-year"><h2>${year}</h2>${timelinePeriods.filter(p=>p.year===year).map(p=>`<section class="timeline-month" id="month-${periodKey(p)}" data-month="${periodKey(p)}" aria-labelledby="heading-${periodKey(p)}"><div class="section-title"><div><h3 id="heading-${periodKey(p)}" tabindex="-1">${esc(p.monthName)} ${p.year}</h3><p>${p.photoCount.toLocaleString()} photos</p></div><a class="button" href="https://ninochavez.co/photography/photos/${p.year}/${p.month}" ${external}>View month <span aria-hidden="true">↗</span></a></div><div class="timeline-photos">${createFittedPhotoLayout(p.photos.map(photo=>({...photo,aspect_ratio:photo.ratio}))).map(({photo,index:i,shares})=>`<button style="--share-2:${shares[2]};--share-3:${shares[3]}" id="timeline-photo-${esc(photo.key)}" data-timeline-photo="${periodKey(p)}:${i}" aria-label="Open photograph: ${esc(photo.alt)}">${image(photo,false)}</button>`).join('')}</div></section>`).join('')}</section>`).join('')}</div><p class="timeline-end">You’ve reached the beginning of the archive. <a href="#main">Back to top ↑</a></p></main>`;
+}
+function updateTimeline() {
+  cancelAnimationFrame(timelineFrame);
+  timelineFrame=requestAnimationFrame(()=>{
+    const bar=document.querySelector('.timeline-bar');if(!bar)return;
+    const line=bar.getBoundingClientRect().bottom+28;
+    const months=[...document.querySelectorAll('[data-month]')];
+    const active=months.find(el=>el.getBoundingClientRect().bottom>line)||months.at(-1);
+    if(!active)return;
+    const key=active.dataset.month,year=key.slice(0,4);
+    bar.querySelectorAll('[data-months-year]').forEach(el=>{el.hidden=el.dataset.monthsYear!==year;});
+    bar.querySelectorAll('[data-year]').forEach(el=>{if(el.dataset.year===year)el.setAttribute('aria-current','true');else el.removeAttribute('aria-current');});
+    bar.querySelectorAll('.timeline-months [data-period]').forEach(el=>{if(el.dataset.period===key){el.setAttribute('aria-current','date');const row=el.parentElement;if(el.offsetLeft<row.scrollLeft||el.offsetLeft+el.offsetWidth>row.scrollLeft+row.clientWidth)row.scrollTo({left:Math.max(0,el.offsetLeft-row.clientWidth/2+el.offsetWidth/2),behavior:'instant'});}else el.removeAttribute('aria-current');});
+  });
+}
+function jumpToPeriod(key, focus=true) {
+  const section=document.getElementById(`month-${key}`);if(!section)return;
+  const bar=document.querySelector('.timeline-bar');
+  window.scrollTo({top:scrollY+section.getBoundingClientRect().top-bar.offsetHeight-24,behavior:'instant'});
+  if(focus)section.querySelector('h3').focus({preventScroll:true});
+  updateTimeline();
+}
+function openFeature(list,index,origin) {
+  featureList=list;featureIndex=index;featureReturn=origin;
+  paintFeature();featureViewer.showModal();featureViewer.querySelector('[data-close-feature]').focus();
+}
+function paintFeature() {
+  const p=featureList[featureIndex];
+  featureViewer.innerHTML=`<div class="viewer-top"><div><span class="viewer-event">${esc(p.album||'Selected Works')}</span><span class="viewer-context">${featureIndex+1} / ${featureList.length}</span></div><button data-close-feature>Close</button></div><div class="photo-stage"><img src="${esc(p.large||p.src)}" alt="${esc(p.alt)}"><button class="previous" data-feature-step="-1" aria-label="Previous photograph">←</button><button class="next" data-feature-step="1" aria-label="Next photograph">→</button></div><div class="feature-caption"><p>${esc(p.alt)}</p>${p.url?`<a class="button" href="${esc(p.url)}" ${external}>Open photo page ↗</a>`:''}</div>`;
+}
+function closeFeature() {featureViewer.close();featureReturn?.focus({preventScroll:true});}
 function inspect(p, list, modal) {
   const index = list.findIndex(x=>x.key===p.key), fullIndex = p.gallery.photos.findIndex(x=>x.key===p.key);
   return `<div class="viewer-top"><div><span class="viewer-event">${esc(p.gallery.title)}</span><span class="viewer-context">${esc(p.gallery.date)} · Photo ${fullIndex+1} of ${p.gallery.count}</span></div>${modal?'<button data-close-viewer>Back to gallery</button>':''}</div><div class="photo-stage"><img src="${esc(p.large)}" alt="${esc(p.alt)}" decoding="sync"><button class="previous" data-step="-1" aria-label="Previous photo" ${index===0?'disabled':''}>←</button><button class="next" data-step="1" aria-label="Next photo" ${index===list.length-1?'disabled':''}>→</button></div><div class="viewer-bottom"><span class="photo-id">${esc(p.id)}</span><div class="viewer-actions">${saveButton(p)}<button data-share-photo="${esc(p.key)}">Share</button><button class="primary" data-download-photo="${esc(p.key)}">Download</button></div></div>`;
@@ -115,8 +181,10 @@ function render(options = {}) {
   const p=params().get('page');
   document.body.classList.toggle('gallery-shell',!p);
   document.body.classList.toggle('home-shell',p==='home'&&!params().get('q'));
-  app.innerHTML=header()+(p==='home'?home():p==='saved'?savedPage():p==='work'?workPage():gallery())+footer();
-  document.title=p==='home'?'Find event photos — Nino Chavez':p==='saved'?'Saved photos — Nino Chavez':p==='work'?'Selected photographs — Nino Chavez':`${currentGallery().title} — Nino Chavez`;
+  app.innerHTML=header()+(['home','galleries'].includes(p)?home():p==='saved'?savedPage():p==='work'?workPage():p==='timeline'?timelinePage():gallery())+footer();
+  document.title=p==='timeline'?'Browse Timeline — Nino Chavez':p==='galleries'?'Browse Galleries — Nino Chavez':p==='home'?'Find event photos — Nino Chavez':p==='saved'?'Saved photos — Nino Chavez':p==='work'?'Selected Works — Nino Chavez':`${currentGallery().title} — Nino Chavez`;
+  document.querySelectorAll('[data-hero-track]').forEach(track=>{track.scrollLeft=heroPosition[track.dataset.heroTrack]*track.clientWidth;track.addEventListener('scroll',updateHeroControls,{passive:true});});
+  updateHeroControls();updateTimeline();
   const deep=params().get('photo');
   if(deep){const photo=allPhotos.find(x=>x.gallery.albumKey===currentGallery().albumKey&&x.id===deep);if(photo)openViewer(photo,null,false);}
   if(options.focus&&!viewer.open) document.querySelector('#main').focus({preventScroll:true});
@@ -125,6 +193,7 @@ function render(options = {}) {
 function navigate(href, focusId = null) {
   history.replaceState({...history.state,scroll:scrollY,focus:document.activeElement?.id},'');
   if(viewer.open) viewer.close();
+  if(featureViewer.open)featureViewer.close();
   document.querySelector('.study-bar details').open=false;
   history.pushState({},'',href); inlinePhoto=null; render({focus:true});
   if(focusId){const el=document.getElementById(focusId);el?.focus();el?.scrollIntoView({block:'center'});}else window.scrollTo(0,0);
@@ -177,7 +246,14 @@ async function downloadPhotos(keys,size) {
 }
 document.addEventListener('click',async e=>{
   const b=e.target.closest('button,a');if(!b)return;
-  if(b.matches('[data-nav]')){if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();navigate(b.getAttribute('href'),b.dataset.returnEvent?`event-${b.dataset.returnEvent}`:null);}
+  if(b.matches('[data-hero-step]'))moveHero(Number(b.dataset.heroStep));
+  else if(b.matches('[data-work-photo]'))openFeature(selectedWork,Number(b.dataset.workPhoto),b);
+  else if(b.matches('[data-work-step]')){const strip=document.querySelector('.work-strip');const frames=[...strip.children];const index=frames.reduce((best,el,i)=>Math.abs(el.offsetLeft-strip.offsetLeft-strip.scrollLeft)<Math.abs(frames[best].offsetLeft-strip.offsetLeft-strip.scrollLeft)?i:best,0);const next=frames[Math.max(0,Math.min(frames.length-1,index+Number(b.dataset.workStep)))];strip.scrollTo({left:next.offsetLeft-strip.offsetLeft,behavior:'instant'});}
+  else if(b.matches('[data-timeline-photo]')){const [key,index]=b.dataset.timelinePhoto.split(':');openFeature(timelinePeriods.find(p=>periodKey(p)===key).photos,Number(index),b);}
+  else if(b.matches('[data-close-feature]'))closeFeature();
+  else if(b.matches('[data-feature-step]')){featureIndex=(featureIndex+Number(b.dataset.featureStep)+featureList.length)%featureList.length;paintFeature();featureViewer.querySelector(`[data-feature-step="${b.dataset.featureStep}"]`).focus();}
+  else if(b.matches('[data-period]')){if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();history.replaceState({...history.state,scroll:scrollY},'');history.pushState({},'',b.href);jumpToPeriod(b.dataset.period);}
+  else if(b.matches('[data-nav]')){if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();navigate(b.getAttribute('href'),b.dataset.returnEvent?`event-${b.dataset.returnEvent}`:null);}
   else if(b.matches('[data-info]'))showAction({title:'Nino Chavez',body:`<p class="info-description">Volleyball and action-sports photography, from club tournaments to high school and college matches.</p><div class="info-actions"><a href="mailto:nino@ninochavez.co">nino@ninochavez.co ↗</a><a href="https://ninochavez.co/photography/coverage" ${external}>Request event coverage ↗</a><a href="https://www.instagram.com/nino.chavez.photo" ${external}>Instagram ↗</a><a href="https://ninochavez.co" ${external}>About Nino ↗</a></div>`});
   else if(b.matches('[data-photo]')){const p=photoByKey(b.dataset.photo);if(!p)return;if(!params().get('page')&&model()!=='sheet'){inlinePhoto=p.key;const panel=document.querySelector('.inline-viewer');panel.innerHTML=inspect(p,scopedPhotos(),false);panel.scrollIntoView({block:'nearest'});}else openViewer(p,b);}
   else if(b.matches('[data-save]')){const key=b.dataset.save;toggleSave(key);const next=[...document.querySelectorAll('[data-save]')].find(el=>el.dataset.save===key&&(viewer.open?viewer.contains(el):!viewer.contains(el)));next?.focus({preventScroll:true});}
@@ -193,11 +269,16 @@ document.addEventListener('click',async e=>{
   else if(b.matches('[data-close-action]')){abortDownload?.abort();action.close();}
 });
 document.addEventListener('submit',e=>{
-  if(e.target.matches('[data-event-search]')){e.preventDefault();navigate(url({page:'home',q:new FormData(e.target).get('q').trim()}));}
+  if(e.target.matches('[data-event-search]')){e.preventDefault();navigate(url({page:params().get('page')==='galleries'?'galleries':'home',q:new FormData(e.target).get('q').trim()}));}
   if(e.target.matches('[data-photo-search]')){e.preventDefault();navigate(url({find:new FormData(e.target).get('find').trim()},true));}
 });
 viewer.addEventListener('cancel',e=>{e.preventDefault();closeViewer();});
 action.addEventListener('cancel',()=>abortDownload?.abort());
 document.addEventListener('keydown',e=>{if(viewer.open&&!action.open&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();viewer.querySelector(`[data-step="${e.key==='ArrowLeft'?-1:1}"]`)?.click();}});
-window.addEventListener('popstate',()=>{if(viewer.open)viewer.close();render();window.scrollTo(0,history.state?.scroll||0);if(history.state?.focus)document.getElementById(history.state.focus)?.focus({preventScroll:true});});
+featureViewer.addEventListener('cancel',e=>{e.preventDefault();closeFeature();});
+featureViewer.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();featureViewer.querySelector(`[data-feature-step="${e.key==='ArrowLeft'?-1:1}"]`)?.click();}});
+window.addEventListener('scroll',updateTimeline,{passive:true});
+window.addEventListener('resize',()=>{updateHeroControls();updateTimeline();});
+window.addEventListener('popstate',()=>{if(viewer.open)viewer.close();if(featureViewer.open)featureViewer.close();render();if(location.hash.startsWith('#month-'))jumpToPeriod(location.hash.slice(7),false);else window.scrollTo(0,history.state?.scroll||0);if(history.state?.focus)document.getElementById(history.state.focus)?.focus({preventScroll:true});});
 render();
+if(location.hash.startsWith('#month-'))requestAnimationFrame(()=>jumpToPeriod(location.hash.slice(7),false));

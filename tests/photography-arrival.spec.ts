@@ -9,9 +9,12 @@ const captures = path.resolve(process.env.ARRIVAL_CAPTURES || '.temp/photography
 const downloads = path.resolve('.temp/photography-arrival/downloads');
 mkdirSync(captures,{recursive:true}); mkdirSync(downloads,{recursive:true});
 
+// Keep visual captures repeatable; the dedicated rotation check uses another seed.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>{Math.random=()=>0.13;});});
+
 async function capture(page:import('@playwright/test').Page,name:string){
-  await page.waitForFunction(()=>[...document.images].filter(i=>{const r=i.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.width>0;}).every(i=>i.complete&&i.naturalWidth>0));
-  await page.evaluate(async()=>{await Promise.all([...document.images].filter(i=>{const r=i.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.width>0;}).map(i=>i.decode()));await new Promise<void>(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>r())));});
+  await page.waitForFunction(()=>[...document.images].filter(i=>{const r=i.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&r.width>0;}).every(i=>i.complete&&i.naturalWidth>0));
+  await page.evaluate(async()=>{await Promise.all([...document.images].filter(i=>{const r=i.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&r.width>0;}).map(i=>i.decode()));await new Promise<void>(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>r())));});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:path.join(captures,`${name}.png`)});
 }
@@ -22,7 +25,7 @@ for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'phone',wid
     await page.setViewportSize(viewport);await page.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
     await page.goto(`${base}?page=home`);
     await capture(page,`home-${viewport.name}`);
-    await expect(page.locator('.hero-picture img')).toBeVisible();
+    await expect(page.locator('.hero-track:visible img').first()).toBeVisible();
     expect((await page.locator('.home-hero').boundingBox())!.width).toEqual(viewport.width);
     await page.getByRole('button',{name:'About & contact',exact:true}).click();
     await expect(page.locator('#action')).toContainText('nino@ninochavez.co');
@@ -59,6 +62,66 @@ for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'phone',wid
     await capture(page,`saved-${viewport.name}`);
     await page.getByRole('button',{name:'Remove saved DSC00125',exact:true}).click();
     await expect(page.locator('.photo-open')).toHaveCount(1);
+    expect(errors).toEqual([]);
+  });
+
+  test(`${viewport.name}: restored gallery browsing, timeline and Selected Works`,async({page})=>{
+    const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.setViewportSize(viewport);await page.emulateMedia({reducedMotion:'reduce'});
+    await page.goto(`${base}?page=home`);
+    const navigation=page.getByRole('navigation',{name:'Photography',exact:true});
+    for(const name of ['Browse Galleries','Browse Timeline'])await expect(navigation.getByRole('link',{name,exact:true})).toBeInViewport();
+    const finderBefore=await page.locator('.hero-finder').boundingBox();
+    const firstSource=await page.locator('.hero-track:visible img').first().getAttribute('src');
+    await page.getByRole('button',{name:'Next selected work',exact:true}).click();
+    await expect(page.locator('.hero-position')).toContainText('2 /');
+    expect(await page.locator('.hero-finder').boundingBox()).toEqual(finderBefore);
+    await capture(page,`hero-next-${viewport.name}`);
+    await navigation.getByRole('link',{name:'Browse Galleries',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Browse Galleries',exact:true})).toBeVisible();
+    await expect(page.locator('.event-card')).toHaveCount(8);
+    await page.locator('#event-0').click();
+    await page.getByRole('link',{name:'← Back to galleries',exact:true}).click();
+    await expect(page.locator('#event-0')).toBeFocused();
+    await capture(page,`browse-galleries-${viewport.name}`);
+    await navigation.getByRole('link',{name:'Browse Timeline',exact:true}).click();
+    await expect(page.locator('.timeline-month')).toHaveCount(49);
+    await capture(page,`timeline-${viewport.name}`);
+    const bar=page.getByRole('navigation',{name:'Browse by date',exact:true});
+    await bar.getByRole('link',{name:'2024',exact:true}).click();
+    await expect(page.locator('#heading-2024-12')).toBeFocused();
+    await bar.getByRole('link',{name:'June 2024',exact:true}).click();
+    await expect(page.locator('#heading-2024-06')).toBeFocused();
+    await expect(bar.getByRole('link',{name:'June 2024',exact:true})).toHaveAttribute('aria-current','date');
+    expect((await page.locator('#heading-2024-06').boundingBox())!.y).toBeGreaterThanOrEqual((await bar.boundingBox())!.height);
+    await capture(page,`timeline-jump-${viewport.name}`);
+    const photo=page.locator('#month-2024-06 [data-timeline-photo]').first();
+    await photo.click();
+    await expect(page.locator('#feature-viewer')).toBeVisible();
+    await expect(page.locator('#feature-viewer').getByRole('link',{name:'Open photo page ↗'})).toHaveAttribute('target','_blank');
+    await page.keyboard.press('Escape');
+    await expect(photo).toBeFocused();
+    await page.goBack();
+    await expect(page).toHaveURL(/#month-2024-12$/);
+    await expect(bar.getByRole('link',{name:'December 2024',exact:true})).toHaveAttribute('aria-current','date');
+    await page.locator('#month-2023-10').evaluate(el=>el.scrollIntoView({block:'start'}));
+    await expect(bar.getByRole('link',{name:'2023',exact:true})).toHaveAttribute('aria-current','true');
+    await page.getByRole('link',{name:'Nino Chavez Photography',exact:true}).click();
+    await expect(page.locator('.hero-position')).toContainText('2 /');
+    expect(await page.locator('.hero-track:visible img').first().getAttribute('src')).toBe(firstSource);
+    await page.locator('.hero-work-controls').getByRole('link',{name:'Selected Works',exact:true}).click();
+    await expect(page.locator('.work-photo')).toHaveCount(14);
+    await expect(page.getByRole('link',{name:'Nino Chavez Photography',exact:true})).toBeInViewport({ratio:1});
+    await expect(page.getByRole('button',{name:'About & contact',exact:true})).toBeInViewport({ratio:1});
+    await capture(page,`selected-works-entry-${viewport.name}`);
+    await page.getByRole('button',{name:'Next photograph →',exact:true}).click();
+    expect(await page.locator('.work-strip').evaluate(el=>el.scrollLeft)).toBeGreaterThan(0);
+    await capture(page,`selected-works-${viewport.name}`);
+    const work=page.locator('.work-photo').nth(1);
+    await work.click();await expect(page.locator('#feature-viewer')).toBeVisible();
+    await page.keyboard.press('ArrowRight');await expect(page.locator('#feature-viewer .viewer-context')).toHaveText('3 / 14');
+    await capture(page,`selected-work-viewer-${viewport.name}`);
+    await page.keyboard.press('Escape');await expect(work).toBeFocused();
     expect(errors).toEqual([]);
   });
 
@@ -146,7 +209,7 @@ test('short phone: hero actions fit, recent events are reachable, and empty sear
   const search=await page.getByRole('button',{name:'Search',exact:true}).boundingBox();
   expect(search!.y+search!.height).toBeLessThanOrEqual(568);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.getByRole('link',{name:'Browse recent events',exact:true}).click();
+  await page.getByRole('link',{name:'Browse recent galleries',exact:true}).click();
   await expect(page.locator('#recent-title')).toBeInViewport();
   await capture(page,'recent-phone');
   await page.getByLabel('Event, team or date',{exact:true}).fill('event that does not exist');
@@ -154,7 +217,7 @@ test('short phone: hero actions fit, recent events are reachable, and empty sear
   await expect(page.getByRole('heading',{name:'No matching galleries in this preview'})).toBeVisible();
   await capture(page,'home-no-results-phone');
   await page.getByRole('link',{name:'Clear search',exact:true}).click();
-  await expect(page.locator('.hero-picture img')).toBeVisible();
+  await expect(page.locator('.hero-track:visible img').first()).toBeVisible();
 });
 
 
@@ -166,4 +229,21 @@ test('latest-event shortcut returns to the same overlay link',async({page})=>{
   await page.getByRole('link',{name:'← Back to galleries',exact:true}).click();
   await expect(page.locator('#event-latest-1')).toBeFocused();
   await expect(page.locator('#event-latest-1')).toBeInViewport();
+});
+
+
+test('spotlight start changes between visits, with complete source pool retained',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto(`${base}?page=home`);
+  const first=await page.locator('.hero-track.desktop img').first().getAttribute('src');
+  await expect(page.locator('.hero-track.desktop img')).toHaveCount(14);
+  const track=page.locator('.hero-track.desktop');
+  await track.hover({position:{x:350,y:300}});
+  await page.mouse.wheel(1100,0);
+  await expect.poll(()=>track.evaluate(el=>el.scrollLeft)).toBeGreaterThan(1000);
+  await expect(page.locator('.hero-position')).toContainText('2 /');
+  await page.addInitScript(()=>{Math.random=()=>0.82;});
+  await page.reload();
+  expect(await page.locator('.hero-track.desktop img').first().getAttribute('src')).not.toBe(first);
+  await expect(page.locator('.hero-track.mobile img')).toHaveCount(12);
 });
