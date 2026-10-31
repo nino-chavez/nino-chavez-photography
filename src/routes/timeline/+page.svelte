@@ -107,8 +107,8 @@
 <svelte:head>
 
   <!-- Preload featured photos from first periods for LCP optimization -->
-  {#each data.periods.slice(0, 2) as period}
-    {#each (period.featuredPhotos || []).slice(0, 2) as photo, i}
+  {#each data.periods.slice(0, 2) as period (`${period.year}-${period.month}`)}
+    {#each (period.featuredPhotos || []).slice(0, 2) as photo, i (photo.id)}
       {#if hasCFImage(photo.cf_image_id)}
         <link
           rel="preload"
@@ -124,8 +124,8 @@
 
 <div class="min-h-screen bg-charcoal-950">
   <header class="timeline-opening">
-    <p class="timeline-eyebrow">Browse by date</p>
-    <h1>Photo timeline</h1>
+
+    <h1>Browse Timeline</h1>
     <p>Choose a year or month, then open any photograph without losing your place.</p>
   </header>
 
@@ -151,7 +151,6 @@
 
 <style>
   .timeline-opening { width: min(1320px, calc(100% - 64px)); margin-inline: auto; padding-block: 40px 30px; border-bottom: 1px solid var(--color-charcoal-800); }
-  .timeline-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .timeline-opening h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
   .timeline-opening > p:last-child { max-width: 650px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; }
   @media (max-width: 640px) { .timeline-opening { width: calc(100% - 40px); padding-block: 24px 22px; } }

@@ -6,6 +6,7 @@
 -->
 
 <script lang="ts">
+	import { splitAlbumNameForDisplay } from '$lib/utils/canonical-album-naming';
 	import { base } from '$app/paths';
 	import { Folder, Camera, ArrowRight } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -31,6 +32,7 @@
 
 	interface Props {
 		album: Album;
+		plain?: boolean;
 		index?: number;
 		resultSetId?: string;
 		onclick?: (album: Album) => void; // Deprecated: Use href navigation instead
@@ -38,7 +40,7 @@
 		experiment?: PhotographyExperimentAssignment | null;
 	}
 
-	let { album, index = 0, resultSetId = crypto.randomUUID(), onclick, priority = false, experiment = null }: Props = $props();
+	let { album, plain = false, index = 0, resultSetId = crypto.randomUUID(), onclick, priority = false, experiment = null }: Props = $props();
 
 	// Image loading state
 	let imageLoaded = $state(false);
@@ -103,7 +105,7 @@
 	href={albumUrl}
 	data-sveltekit-preload="hover"
 	style="animation: fade-scale-in 0.3s ease-out {index * 0.05}s both"
-	class="album-card"
+	class={['album-card', { plain }]}
 	aria-label={`Album: ${album.albumName}, ${contentLabel}`}
 	onclick={handleClick}
 	use:exposure={{ loaded: exposureLoaded, onExpose: recordExposure, identity: exposureIdentity }}
@@ -152,7 +154,7 @@
 			<!-- element="h2": album cards are the items under the page h1; h3 skipped a level.
 			     The h3 styling is the design, only the semantics were wrong. -->
 			<Typography variant="h3" element="h2" class="album-card__title line-clamp-2">
-				{album.albumName}
+				{plain ? splitAlbumNameForDisplay(album.albumName).title : album.albumName}
 			</Typography>
 			<div class="album-card__meta">
 				<Typography variant="caption" class="text-charcoal-200">
@@ -170,6 +172,8 @@
 </a>
 
 <style>
+	.album-card.plain{aspect-ratio:auto;overflow:visible;background:transparent;border:0;animation:none!important}.plain .album-card__image{position:relative;aspect-ratio:1.65;height:auto;object-fit:cover;object-position:50% 32%;transition:none}.plain:hover .album-card__image{transform:none}.plain .album-card__fallback{position:relative;aspect-ratio:1.65}.plain .album-card__fallback:has(+img){position:absolute;inset:0 0 auto}.plain .album-card__overlay{position:relative;padding:18px 0 0;background:none}.plain .album-card__sport{color:#c1c1bb;font-weight:400;letter-spacing:0;text-transform:none;font-size:13px}.plain .album-card__copy :global(.album-card__title){font:500 24px/1.25 Arial,Helvetica,sans-serif;display:block;line-clamp:unset;-webkit-line-clamp:unset;overflow:visible;letter-spacing:-.5px}.plain:hover .album-card__copy :global(.album-card__title){text-decoration:underline;text-underline-offset:5px}@media(max-width:700px){.plain .album-card__image{aspect-ratio:4/3}.plain .album-card__copy :global(.album-card__title){font-size:22px}}
+
 	.album-card { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--color-charcoal-800); border-radius: 0; background: var(--color-charcoal-900); color: inherit; outline: none; }
 	.album-card:hover { border-color: var(--color-charcoal-700); }
 	.album-card:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 4px; }
@@ -182,5 +186,5 @@
 	.album-card__copy :global(.album-card__title) { margin-bottom: 8px; color: white; font-family: Montserrat, sans-serif; font-size: 18px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
 	.album-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 	.album-card__cta { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; color: var(--color-gold-400); font-size: 13px; font-weight: 650; }
-	@media (max-width: 480px) { .album-card__overlay { padding: 16px; } .album-card__copy :global(.album-card__title) { display: block; font-size: 18px; -webkit-line-clamp: unset; overflow: visible; } }
+	@media (max-width: 480px) { .album-card__overlay { padding: 16px; } .album-card__copy :global(.album-card__title) { display: block; font-size: 18px; line-clamp: unset; -webkit-line-clamp: unset; overflow: visible; } }
 </style>

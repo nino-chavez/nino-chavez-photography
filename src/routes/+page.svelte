@@ -1,199 +1,475 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { onDestroy } from 'svelte';
-	import { portfolio, photoStrip, rotatePortfolio, type PortfolioPhoto } from '$lib/portfolio';
+	import { splitAlbumNameForDisplay } from '$lib/utils/canonical-album-naming';
+	import Spotlight from '$lib/components/home/Spotlight.svelte';
 	import type { LatestApiAlbum } from '$lib/albums/latest';
 	import type { PageData } from './$types';
-
 	let { data }: { data: PageData } = $props();
-	let desktopPhotos = $derived(rotatePortfolio(photoStrip, data.photoStart));
-	let mobilePhotos = $derived(rotatePortfolio(portfolio, data.photoStart));
-	let viewer = $state<HTMLDialogElement>();
-	let selected = $state(0);
-	let viewerPhotos = $state<readonly PortfolioPhoto[]>(portfolio);
-	let currentPhoto = $derived(viewerPhotos[selected]);
-	let trigger: HTMLElement | null = null;
-	let previousOverflow = '';
-
-	function openPhoto(event: MouseEvent, index: number, photos: readonly PortfolioPhoto[]) {
-		event.preventDefault();
-		trigger = event.currentTarget as HTMLElement;
-		viewerPhotos = photos;
-		selected = index;
-		previousOverflow = document.body.style.overflow;
-		document.body.style.overflow = 'hidden';
-		viewer?.showModal();
+	let galleries = $derived(data.lead ? [data.lead, ...data.recent] : data.recent);
+	function albumHref(album: LatestApiAlbum) {
+		return new URL(album.url).pathname;
 	}
-	function restorePage() {
-		document.body.style.overflow = previousOverflow;
-		trigger?.focus({ preventScroll: true });
-		trigger = null;
+	function date(value: string | null) {
+		return value
+			? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(value))
+			: '';
 	}
-	function advance(delta: number) { selected = (selected + delta + viewerPhotos.length) % viewerPhotos.length; }
-	function viewerKey(event: KeyboardEvent) {
-		if (event.key === 'ArrowRight') { event.preventDefault(); advance(1); }
-		if (event.key === 'ArrowLeft') { event.preventDefault(); advance(-1); }
-		if (event.key === 'Tab' && viewer) {
-			const controls = viewer.querySelectorAll<HTMLButtonElement>('button');
-			const first = controls[0];
-			const last = controls[controls.length - 1];
-			if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-			if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-		}
-	}
-	onDestroy(() => { if (typeof document !== 'undefined' && viewer?.open) document.body.style.overflow = previousOverflow; });
-	function scrollFrame(event: MouseEvent, delta: number) {
-		const opening = (event.currentTarget as HTMLElement).closest('.opening');
-		const strip = opening?.querySelector<HTMLElement>('.filmstrip');
-		if (!strip) return;
-		moveFrame(strip, delta);
-	}
-	function moveFrame(strip: HTMLElement, delta: number) {
-		const frames = Array.from(strip.querySelectorAll<HTMLElement>('.photograph'));
-		const index = frames.reduce((nearest, frame, i) =>
-			Math.abs(frame.offsetLeft - strip.scrollLeft) < Math.abs(frames[nearest].offsetLeft - strip.scrollLeft) ? i : nearest, 0);
-		const target = frames[Math.max(0, Math.min(frames.length - 1, index + delta))];
-		strip.scrollTo({ left: target.offsetLeft, behavior: 'instant' });
-	}
-	let galleries = $derived(data.lead ? [data.lead, ...data.recent].slice(0, 4) : data.recent);
-	function albumHref(album: LatestApiAlbum) { return new URL(album.url).pathname; }
 </script>
 
-{#snippet galleryLink(album: LatestApiAlbum)}
-	<a class="event" href={albumHref(album)} data-sveltekit-preload-data="tap">
-		{#if album.cover_url}<img src={album.cover_url} alt="" width="82" height="123" loading="lazy" />{:else}<span class="no-cover" aria-hidden="true">Gallery</span>{/if}
-		<span class="event-text"><span class="event-meta">{#if album.photo_count > 0}{album.photo_count.toLocaleString()} photos{/if}</span><span class="event-title">{album.album_name}</span><span class="event-action">Open gallery <span aria-hidden="true">→</span></span></span>
-	</a>
-{/snippet}
-
-{#snippet opening(photos: readonly PortfolioPhoto[], device: 'desktop' | 'mobile')}
-	<section class="opening {device}" aria-label="Featured photographs">
-		<div class="filmstrip" role="region" aria-label="Photographs. Scroll horizontally or use the previous and next buttons.">
-			{#each photos as photo, i (photo.src)}
-				<a class="photograph" href={`${base}${photo.src}`} onclick={(event) => openPhoto(event, i, photos)} aria-label={`Open photograph: ${photo.alt}`} aria-haspopup="dialog" style:aspect-ratio={`${photo.width} / ${photo.height}`}>
-					<img src={`${base}${photo.src}`} alt={photo.alt} width={photo.width} height={photo.height} loading="eager" fetchpriority={i === 0 ? 'high' : 'low'} decoding="sync" />
-				</a>
-			{/each}
-		</div>
-		<div class="photo-toolbar"><span>Selected photographs <span class="scroll-hint">· Scroll to explore</span></span><div><button onclick={(event) => scrollFrame(event, -1)} aria-label="Previous photograph in the strip"><span aria-hidden="true">←</span></button><button onclick={(event) => scrollFrame(event, 1)}>Next photograph <span aria-hidden="true">→</span></button></div></div>
-	</section>
-{/snippet}
-
 <div class="photo-home">
-	<h1 class="sr-only">Nino Chavez Photography</h1>
-	<div id="photographs" class="photo-opening" tabindex="-1">
-		{@render opening(desktopPhotos, 'desktop')}
-		{@render opening(mobilePhotos, 'mobile')}
-	</div>
-	<section class="finder content-width" id="find-event" aria-labelledby="finder-heading">
-		<div><h2 id="finder-heading">Find your event</h2><p>Event, team, or date.</p></div>
-		<form method="GET" action={`${base}/albums`}>
-			<label class="sr-only" for="event-query">Event, team, or date</label>
-			<div class="search-line"><input id="event-query" name="q" type="search" placeholder="e.g. Chicago Point Series" /><button type="submit">Search <span aria-hidden="true">→</span></button></div>
-		</form>
-		<div class="archive-links"><a href={`${base}/albums`}>All events <span aria-hidden="true">→</span></a><a href={`${base}/timeline`}>Browse by date <span aria-hidden="true">→</span></a></div>
+	<section class="home-hero" aria-label="Nino Chavez Photography">
+		<Spotlight start={data.photoStart} />
+		<div class="hero-shade"></div>
+		<div class="hero-bottom">
+			<div class="hero-finder" id="find-event">
+				<h1>Find your event.</h1>
+				<form class="event-search" method="GET" action={`${base}/albums`}>
+					<label for="event-query">Event, team or date</label>
+					<div>
+						<input id="event-query" name="q" type="search" placeholder="e.g. Chicago Point" autocomplete="off" /><button type="submit"
+							>Search</button
+						>
+					</div>
+				</form>
+				<a class="browse-link" href="#recent-events">Browse recent galleries <span aria-hidden="true">↓</span></a>
+			</div>
+			{#if galleries.length}<section class="hero-recent" aria-label="Latest galleries">
+					<h2>Recent galleries</h2>
+					{#each galleries.slice(0, 2) as album (album.album_key)}<a href={albumHref(album)}
+							><span class="gallery-label"
+								><strong class="gallery-title">{splitAlbumNameForDisplay(album.album_name).title}</strong><span class="gallery-date"
+									>{date(album.event_date)}</span
+								></span
+							><span class="gallery-cta">View gallery <span aria-hidden="true">→</span></span></a
+						>{/each}
+				</section>{/if}
+		</div>
 	</section>
-	<section class="recent-events content-width" aria-labelledby="recent-heading">
-		<div class="section-heading"><h2 id="recent-heading">Recent galleries</h2><a href={`${base}/albums`}>All events <span aria-hidden="true">→</span></a></div>
+	<section class="recent-events" id="recent-events" aria-labelledby="recent-title" tabindex="-1">
+		<div class="section-title">
+			<h2 id="recent-title">Recent events</h2>
+			<a href={`${base}/albums`}>All events →</a>
+		</div>
 		{#if data.unavailable}<p>Recent galleries are temporarily unavailable. <a href={`${base}/albums`}>Try the event archive.</a></p>
-		{:else if galleries.length}<div class="event-grid">{#each galleries as album (album.album_key)}{@render galleryLink(album)}{/each}</div>
-		{:else}<p>New event galleries will appear here when they’re published.</p>{/if}
+		{:else if galleries.length}<div class="event-list">
+				{#each galleries as album (album.album_key)}<a class="event-card" href={albumHref(album)}>
+						{#if album.cover_url}<img src={album.cover_url} alt="" loading="lazy" />{:else}<span class="no-cover">Open gallery →</span>{/if}
+						<p class="metadata">{date(album.event_date)} <span>{splitAlbumNameForDisplay(album.album_name).levelLabel}</span></p>
+						<h3>{splitAlbumNameForDisplay(album.album_name).title}</h3>
+						{#if album.photo_count > 0}<p class="event-count">{album.photo_count.toLocaleString()} photos</p>{/if}
+					</a>{/each}
+			</div>{:else}<p>New event galleries will appear here when they’re published.</p>{/if}
 	</section>
-	<div class="contact-line content-width"><a href="https://ninochavez.co/photography/coverage" data-sveltekit-reload>Event coverage</a><a href="mailto:nino@ninochavez.co">Get in touch</a></div>
+	<div class="archive-end">
+		<a href={`${base}/albums`}>Browse the full archive →</a>
+		<p>Have a private gallery link? Open that link to view its photos.</p>
+	</div>
 </div>
 
-<!-- Static portfolio images have no gallery IDs, so this viewer offers viewing only. -->
-<dialog bind:this={viewer} class="portfolio-viewer" aria-labelledby="viewer-caption" onkeydown={viewerKey} onclose={restorePage}>
-	<div class="viewer-controls"><span aria-live="polite">{selected + 1} / {viewerPhotos.length}</span><button onclick={() => viewer?.close()}>Close <span aria-hidden="true">×</span></button></div>
-	<figure><img src={`${base}${currentPhoto.src}`} alt={currentPhoto.alt} width={currentPhoto.width} height={currentPhoto.height} /><figcaption id="viewer-caption">{currentPhoto.alt}</figcaption></figure>
-	<div class="viewer-paging"><button onclick={() => advance(-1)}>← Previous</button><button onclick={() => advance(1)}>Next →</button></div>
-</dialog>
-
 <style>
-	.photo-home { --home-ink: #f3f1eb; --home-muted: #b9b7b0; --home-line: #484848; font-family: Arial, Helvetica, sans-serif; color: var(--home-ink); font-size: 15px; line-height: 1.5; }
-	.photo-home :is(h1,h2,p,figure) { margin: 0; }
-	.photo-home h2 { font-family: inherit; font-weight: 400; text-transform: none; font-size: 26px; line-height: 1.25; letter-spacing: -.02em; }
-	.photo-home a { color: inherit; text-underline-offset: 5px; text-decoration-thickness: 1px; }
-	.photo-home a:hover { text-decoration: underline; }
-	.photo-home :is(button,input) { font: inherit; color: inherit; }
-	.photo-home button { cursor: pointer; }
-	.photo-home :focus-visible, .portfolio-viewer :focus-visible { outline: 2px solid var(--color-gold-400); outline-offset: 5px; }
-	.content-width { width: min(1440px,100%); padding-inline: 48px; margin-inline: auto; }
-	.opening.mobile { display: none; }
-	.photograph { display: block; padding: 0; width: 100%; background: transparent; line-height: 0; }
-	.photograph img { display: block; width: 100%; height: auto; }
-	.filmstrip { display: flex; gap: 6px; height: min(620px,calc(100svh - 220px)); min-height: 350px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: #777 #242424; position: relative; }
-	.filmstrip > .photograph { flex: 0 0 auto; width: auto; height: 100%; scroll-snap-align: start; }
-	.filmstrip .photograph:focus-visible { outline-offset: -4px; }
-	.filmstrip img { width: 100%; height: 100%; max-width: none; object-fit: contain; }
-	.photo-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 58px; padding: 6px 32px; border-bottom: 1px solid var(--home-line); font-size: 12px; }
-	.photo-toolbar > span { color: var(--home-muted); }
-	.photo-toolbar > div { display: flex; gap: 16px; align-items: center; }
-	.photo-toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: transparent; border: 0; min-height: 44px; min-width: 44px; padding: 8px 0; font-size: 13px; }
-	.photo-opening { scroll-margin-top: var(--gallery-header-height); }
-	.finder { scroll-margin-top: calc(var(--gallery-header-height) + 24px); }
-	.finder { display: grid; grid-template-columns: 220px 1fr auto; align-items: center; gap: 40px; padding-block: 36px; border-bottom: 1px solid var(--home-line); }
-	.finder p { font-size: 13px; color: var(--home-muted); margin-top: 8px; }
-	.search-line { display: flex; border-bottom: 1px solid var(--home-ink); background: #222; }
-	.search-line input { min-width: 0; width: 100%; padding: 15px 16px; border: 0; background: transparent; border-radius: 0; font-size: 16px; }
-	.search-line input::placeholder { color: var(--home-muted); opacity: 1; }
-	.search-line button { display: flex; align-items: center; gap: 16px; font-size: 13px; padding: 0 20px; border: 0; background: transparent; }
-	.archive-links { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; font-size: 13px; }
-	.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
-	.section-heading a { font-size: 13px; }
-	.recent-events { margin-top: 60px; }
-	.event-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 28px; }
-	.event { display: flex; flex-direction: column; gap: 18px; text-decoration: none; min-width: 0; }
-	.event img { display: block; width: 100%; height: 240px; object-fit: cover; object-position: 50% 35%; }
-	.event:hover { text-decoration: none; }
-	.event:hover .event-title { text-decoration: underline; text-underline-offset: 4px; }
-	.event-text { display: block; }
-	.event-meta { display: block; color: var(--home-muted); font-size: 12px; line-height: 1.5; margin-bottom: 8px; }
-	.event-title { display: block; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
-	.event-action { display: block; font-size: 12px; margin-top: 10px; color: var(--home-muted); }
-	.no-cover { min-height: 240px; display: grid; place-items: center; font-size: 12px; background: #222; }
-	.contact-line { display: flex; gap: 28px; padding-block: 30px; margin-top: 60px; font-size: 13px; border-top: 1px solid var(--home-line); }
-	.portfolio-viewer { width: min(1060px,100%); max-width: 100%; height: 100dvh; max-height: 100dvh; padding: 20px 28px; border: 0; margin: auto; background: var(--color-charcoal-950); color: #f3f1eb; font-family: Arial, Helvetica, sans-serif; }
-	.portfolio-viewer::backdrop { background: #000d; }
-	.portfolio-viewer[open] { display: flex; flex-direction: column; gap: 16px; }
-	.viewer-controls, .viewer-paging { display: flex; align-items: center; justify-content: space-between; font-size: 13px; flex: none; }
-	.portfolio-viewer button { background: transparent; color: inherit; border: 1px solid #484848; padding: 10px 15px; min-height: 44px; cursor: pointer; }
-	.portfolio-viewer figure { margin: 0; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-	.portfolio-viewer figure img { min-height: 0; flex: 1; object-fit: contain; width: 100%; height: 100%; }
-	.portfolio-viewer figcaption { flex: none; text-align: center; font-size: 12px; color: #b9b7b0; }
+	.photo-home {
+		color: #f5f5f2;
+		background: #181818;
+		font:
+			15px/1.5 Arial,
+			Helvetica,
+			sans-serif;
+	}
+	.photo-home :is(h1, h2, h3, p) {
+		margin: 0;
+	}
+	.photo-home a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.photo-home a:hover {
+		text-decoration: underline;
+		text-underline-offset: 5px;
+	}
+	.photo-home :focus-visible {
+		outline: 2px solid #fff;
+		outline-offset: 4px;
+	}
+	.home-hero {
+		position: relative;
+		isolation: isolate;
+		min-height: 700px;
+		height: 100svh;
+		background: #181818;
+		color: #fff;
+	}
+	.hero-shade {
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		background:
+			linear-gradient(180deg, #0009 0%, transparent 25%, transparent 48%, #0003 62%, #000d 100%),
+			linear-gradient(90deg, #0003, transparent 45%);
+	}
+	.hero-bottom {
+		position: absolute;
+		bottom: 48px;
+		left: 48px;
+		right: 48px;
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-end;
+		gap: 80px;
+	}
+	.hero-finder {
+		width: 440px;
+		max-width: 100%;
+		scroll-margin-top: 24px;
+	}
+	.hero-finder h1 {
+		font:
+			500 38px/1.15 Montserrat,
+			Arial,
+			sans-serif;
+		letter-spacing: -1.6px;
+		margin: 0 0 24px;
+	}
+	.event-search label {
+		font-size: 14px;
+		color: #fff;
+		display: block;
+		margin-bottom: 8px;
+	}
+	.event-search > div {
+		display: flex;
+		gap: 0;
+		border-bottom: 1px solid #fffc;
+		background: #181818b8;
+	}
+	.event-search input {
+		flex: 1;
+		width: 100%;
+		min-width: 0;
+		border: 0;
+		background: transparent;
+		border-radius: 0;
+		min-height: 52px;
+		color: #fff;
+		font:
+			16px Arial,
+			Helvetica,
+			sans-serif;
+		padding: 12px 15px;
+	}
+	.event-search input::placeholder {
+		color: #d5d5d0;
+	}
+	.event-search button {
+		border: 0;
+		border-radius: 0;
+		min-width: 88px;
+		padding: 12px 18px;
+		color: #181818;
+		background: #f5f5f2;
+		font:
+			600 14px Arial,
+			Helvetica,
+			sans-serif;
+		cursor: pointer;
+	}
+	.event-search button:hover {
+		background: #deded8;
+	}
+	.browse-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 24px;
+		padding: 12px 16px;
+		margin-top: 14px;
+		min-height: 46px;
+		font-size: 14px;
+		border: 1px solid #ffffffa0;
+		background: #18181894;
+		border-radius: 3px;
+	}
+	.browse-link:hover {
+		background: #181818e0;
+		text-decoration: none !important;
+	}
+	.hero-recent {
+		width: 420px;
+		flex-shrink: 0;
+	}
+	.hero-recent h2 {
+		font-size: 17px;
+		line-height: 1.4;
+		font-weight: 600;
+		margin: 0 0 12px;
+	}
+	.hero-recent > a {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 20px;
+		align-items: center;
+		padding: 15px 16px;
+		margin-top: 8px;
+		border: 1px solid #ffffff65;
+		border-radius: 3px;
+		background: #181818c4;
+		min-height: 88px;
+	}
+	.gallery-label {
+		min-width: 0;
+	}
+	.gallery-date {
+		display: block;
+		margin-top: 7px;
+		font-size: 13px;
+		color: #ddd;
+	}
+	.gallery-title {
+		display: block;
+		font-size: 16px;
+		font-weight: 500;
+		line-height: 1.35;
+	}
+	.gallery-cta {
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 44px;
+		padding: 10px 12px;
+		color: #181818;
+		background: #f5f5f2;
+		border-radius: 2px;
+		font-size: 13px;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.hero-recent a:hover {
+		text-decoration: none;
+		background: #181818ee;
+		border-color: #fff;
+	}
+	.hero-recent a:hover .gallery-cta {
+		background: #fff;
+	}
+	.recent-events {
+		max-width: 1440px;
+		margin: 0 auto;
+		padding: 76px 48px 0;
+		scroll-margin-top: 28px;
+		outline: none;
+	}
+	.section-title {
+		display: flex;
+		justify-content: space-between;
+		gap: 20px;
+		margin-bottom: 32px;
+		align-items: baseline;
+	}
+	.recent-events h2 {
+		font:
+			500 30px/1.2 Montserrat,
+			Arial,
+			sans-serif;
+		letter-spacing: -0.7px;
+	}
+	.section-title a {
+		font-size: 14px;
+	}
+	.event-list {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 52px 32px;
+	}
+	.event-card {
+		position: relative;
+	}
+	.event-card img,
+	.no-cover {
+		display: block;
+		width: 100%;
+		height: 340px;
+		object-fit: cover;
+		object-position: 50% 32%;
+		background: #222;
+		margin-bottom: 20px;
+	}
+	.no-cover {
+		display: grid;
+		place-items: center;
+	}
+	.event-card .metadata {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		font-size: 13px;
+		color: #c1c1bb;
+		margin-bottom: 10px;
+	}
+	.event-card h3 {
+		font-size: 24px;
+		font-weight: 500;
+		line-height: 1.25;
+		max-width: 28em;
+		margin-bottom: 8px;
+		letter-spacing: -0.5px;
+	}
+	.event-count {
+		font-size: 13px;
+		color: #c1c1bb;
+	}
+	.archive-end {
+		text-align: center;
+		padding: 52px 24px 48px;
+	}
+	.archive-end > a {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		padding: 11px 16px;
+		border: 1px solid #74746c;
+		border-radius: 4px;
+	}
+	.archive-end p {
+		color: #c1c1bb;
+		font-size: 13px;
+		margin-top: 20px;
+	}
 	@media (max-width: 1000px) {
-		.content-width { padding-inline: 28px; }
-		.finder { grid-template-columns: 180px 1fr; gap: 24px; }
-		.archive-links { grid-column: 2; flex-direction: row; gap: 24px; margin-top: -12px; }
-		.event-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-		.event img { height: 300px; }
+		.hero-bottom {
+			gap: 30px;
+			left: 32px;
+			right: 32px;
+			bottom: 36px;
+		}
+		.hero-finder {
+			width: 340px;
+		}
+		.hero-recent {
+			width: 360px;
+		}
+		.recent-events {
+			padding: 54px 32px 0;
+		}
+		.event-card img {
+			height: 280px;
+		}
 	}
 	@media (max-width: 700px) {
-		.content-width { padding-inline: 20px; }
-		.opening.desktop { display: none; }
-		.opening.mobile { display: block; }
-		.photo-home h2 { font-size: 23px; }
-		.filmstrip { height: min(120vw,calc(100svh - 190px)); min-height: 300px; }
-		.photo-toolbar { padding: 4px 20px; min-height: 56px; gap: 8px; font-size: 11px; }
-		.photo-toolbar > div { gap: 4px; }
-		.photo-toolbar button { font-size: 12px; gap: 6px; }
-		.scroll-hint { display: none; }
-		.finder { grid-template-columns: 1fr; padding-block: 28px; gap: 20px; }
-		.finder p { margin-top: 5px; }
-		.archive-links { grid-column: auto; gap: 26px; margin-top: 0; }
-		.search-line input { padding: 14px 12px; }
-		.search-line button { padding: 0 12px; gap: 8px; }
-		.recent-events { margin-top: 40px; }
-		.section-heading { margin-bottom: 22px; }
-		.section-heading a { font-size: 11px; }
-		.event-grid { grid-template-columns: 1fr; gap: 28px; }
-		.event { display: grid; grid-template-columns: 98px minmax(0,1fr); gap: 18px; }
-		.event img { width: 98px; height: 147px; }
-		.event-title { font-size: 14px; }
-		.no-cover { min-height: 147px; }
-		.contact-line { margin-top: 40px; }
-		.portfolio-viewer { padding: 16px; gap: 12px; }
+		.home-hero {
+			min-height: 700px;
+		}
+		.hero-shade {
+			background: linear-gradient(180deg, #0009, transparent 25%, #0004 42%, #0008 65%, #000e 100%);
+		}
+		.hero-bottom {
+			left: 20px;
+			right: 20px;
+			bottom: 28px;
+			display: block;
+		}
+		.hero-finder {
+			width: 100%;
+		}
+		.hero-finder h1 {
+			font-size: 30px;
+			letter-spacing: -1px;
+			margin-bottom: 18px;
+		}
+		.event-search label {
+			font-size: 13px;
+		}
+		.event-search input {
+			min-height: 50px;
+		}
+		.browse-link {
+			font-size: 13px;
+			margin-top: 12px;
+			padding: 10px 14px;
+		}
+		.hero-recent {
+			width: 100%;
+			margin-top: 20px;
+		}
+		.hero-recent h2 {
+			font-size: 15px;
+			margin-bottom: 8px;
+		}
+		.hero-recent > a {
+			padding: 12px;
+			gap: 12px;
+			min-height: 78px;
+		}
+		.gallery-date {
+			margin-top: 5px;
+			font-size: 12px;
+		}
+		.gallery-title {
+			font-size: 14px;
+			line-height: 1.3;
+		}
+		.gallery-cta {
+			padding: 10px;
+			font-size: 12px;
+			gap: 6px;
+		}
+		.recent-events {
+			padding: 40px 20px 0;
+		}
+		.recent-events h2 {
+			font-size: 25px;
+		}
+		.section-title {
+			margin-bottom: 24px;
+		}
+		.event-list {
+			grid-template-columns: 1fr;
+			gap: 32px;
+		}
+		.event-card img {
+			height: auto;
+			aspect-ratio: 4/3;
+			object-fit: cover;
+			margin-bottom: 16px;
+		}
+		.event-card h3 {
+			font-size: 22px;
+		}
+		.event-card .metadata {
+			display: flex;
+			justify-content: space-between;
+			gap: 12px;
+			font-size: 12px;
+			margin-bottom: 8px;
+		}
 	}
-	@media (max-width: 359px) { .content-width, .photo-toolbar { padding-inline: 16px; } }
-	@media (forced-colors: active) { .search-line, .portfolio-viewer button { border: 1px solid CanvasText; } }
+	@media (max-width: 350px) {
+		.hero-bottom {
+			left: 16px;
+			right: 16px;
+		}
+	}
+	@media (max-width: 700px) and (max-height: 700px) {
+		.home-hero {
+			min-height: max(560px, 100svh);
+		}
+		.hero-recent {
+			display: none;
+		}
+		.hero-bottom {
+			bottom: 24px;
+		}
+		.hero-shade {
+			background: linear-gradient(180deg, #0009, transparent 25%, transparent 45%, #000d 100%);
+		}
+	}
+	@media (forced-colors: active) {
+		.hero-finder,
+		.hero-recent {
+			background: Canvas;
+			color: CanvasText;
+		}
+		.event-search > div {
+			border: 1px solid CanvasText;
+		}
+	}
 </style>

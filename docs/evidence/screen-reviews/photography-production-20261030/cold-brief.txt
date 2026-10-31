@@ -1,0 +1,11 @@
+Read-only blind cold visual review of a photography website. You are not the implementer. Do not read source code, DESIGN.md, PRDs, experience briefs, prior reviews, or rationale. Open every PNG in the folder below using view_image. Judge the whole viewport, not individual components. Motion recordings are provided; distinguish viewing the video from viewing sampled stills or inferring motion from code. If you cannot observe playback say so; do not invent a motion verdict.
+
+Visitor jobs: homepage visitors find photos from their event; visitors arriving through a gallery link see that event and choose a photograph; a photo viewer supports inspecting the complete frame and returning; visitors can browse by date and discover the photographer/contact route.
+
+Answer five questions: 1. What is happening now and what can the visitor do next? 2. Where does the eye land first, second, third? 3. Which elements compete? 4. What should be removed, combined, demoted or disclosed? 5. Classify material elements as correct, usable but weak, appealing but wrong, unnecessary, or defect.
+
+Owner's acceptance test: "keep the full bleed photo dominant, just make the actions clearer". Judge without deference. Report material blockers and precise capture IDs; separate optional polish from necessary fixes. Do not redesign the established photographic identity. Provide ACCEPT or REVISE with brief reasons. Screens establish appearance; do not claim functionality or real-user testing. The captures are actual Chromium viewports on macOS with normal text size, dark site, no increased contrast, no reduced motion; they are not physical-phone captures. Some are scrolled positions and dialogs.
+
+Packet: docs/evidence/screen-reviews/photography-production-20261030/capture-*.png
+Recordings: docs/evidence/screen-reviews/photography-production-20261030/motion-*.webm
+Return findings only. Do not edit files. You are not alone in the repository and must not revert any work.

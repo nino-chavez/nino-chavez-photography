@@ -248,14 +248,14 @@
 <!-- Event identity stays compact so a referred visitor can start browsing immediately. -->
 <div class="album-page">
 	<section class="album-opening" aria-labelledby="album-title">
-		<a class="album-back" href="{base}/albums">← All events</a>
+		<a class="album-back" href="{base}/albums">← Browse Galleries</a>
 		<h1 id="album-title">{albumDisplay.title}</h1>
 		<div class="album-details">
 			{#if albumDisplay.levelLabel}<span>{albumDisplay.levelLabel}</span>{/if}
 			{#if albumDateLabel}<span>{albumDateLabel}</span>{/if}
 		</div>
 		<div class="album-credits">
-			<span>{countLabel}</span><a href="/about" data-sveltekit-reload>By Nino Chavez</a>
+			<span>{countLabel}</span><a href="https://ninochavez.co" target="_blank" rel="noopener">By Nino Chavez</a>
 			{#if albumShareTarget.imageUrl}<span class="album-share"><ShareMenu target={albumShareTarget} variant="inline" albumKey={data.albumKey} /></span>{/if}
 		</div>
 	</section>
@@ -326,17 +326,6 @@
 			</div>
 		{/if}
 
-		<!-- Popular in this album (engagement-ranked highlights; hides if no data) -->
-		{#if data.popularInAlbum && data.popularInAlbum.length > 2}
-			<div class="mb-12">
-				<PopularityRail
-					title="Popular in this album"
-					trending={data.popularInAlbum}
-					onPhotoClick={handleRailPhotoClick}
-				/>
-			</div>
-		{/if}
-
 		<!-- Photo Grid -->
 		{#if displayPhotos.length > 0}
 			<div id="photos-section" class="scroll-mt-16"></div>
@@ -379,6 +368,17 @@
 				</div>
 		{/if}
 
+		<!-- Popular in this album (engagement-ranked highlights; hides if no data) -->
+		{#if data.popularInAlbum && data.popularInAlbum.length > 2}
+			<div class="mt-12">
+				<PopularityRail
+					title="Popular in this album"
+					trending={data.popularInAlbum}
+					onPhotoClick={handleRailPhotoClick}
+				/>
+			</div>
+		{/if}
+
 
 	</section>
 </div>
@@ -414,11 +414,11 @@
 
 <style>
 	.album-page { color: var(--color-charcoal-50); }
-	.album-opening, .album-collection { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
+	.album-opening, .album-collection { width: calc(100% - 64px); margin-inline: auto; }
 	.album-opening { padding-block: 8px 16px; }
 	.album-back { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-charcoal-300); font-size: 14px; margin-bottom: 8px; }
 	.album-back:hover, .album-credits a:hover { color: var(--color-gold-500); }
-	h1 { margin: 0; color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: clamp(28px, 2.5vw, 36px); font-weight: 750; line-height: 1.12; letter-spacing: -.025em; overflow-wrap: anywhere; }
+	h1 { margin: 0; color: var(--color-charcoal-50); font-family: Montserrat, sans-serif; font-size: clamp(26px, 3vw, 42px); font-weight: 500; line-height: 1.12; letter-spacing: -.025em; overflow-wrap: anywhere; }
 	.album-details { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 10px; color: var(--color-charcoal-300); font-size: 14px; }
 	.album-credits { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; margin-top: 8px; min-height: 44px; font-size: 14px; }
 	.album-credits a { color: inherit; text-underline-offset: 4px; }

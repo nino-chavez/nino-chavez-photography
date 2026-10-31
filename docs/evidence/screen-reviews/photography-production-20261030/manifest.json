@@ -1,0 +1,134 @@
+{
+  "base": "9ab79c53335869a977fce3b5a02ae1b1e8402f1a",
+  "capture": "Chromium on macOS, native Svelte dev server, real published read data",
+  "conditions": {
+    "appearance": "dark site",
+    "textSize": "100%, browser default",
+    "contrast": "no-preference",
+    "boldText": "browser default",
+    "motion": "no-preference except separate reduced-motion behavior test",
+    "physicalDevice": false
+  },
+  "viewports": [
+    "1440x900",
+    "390x844",
+    "320x568",
+    "612x344",
+    "1280x720 empty search"
+  ],
+  "files": [
+    {
+      "id": "capture-01.png",
+      "state": "empty-search",
+      "sha256": "900c0521dd9b32b14536e537f8225df25de15c128dec29579d30278e8c8b26a4"
+    },
+    {
+      "id": "capture-02.png",
+      "state": "galleries-1440",
+      "sha256": "2fab2b35738ae3f981a54bbf5bfc40a35e1c2c63e4c03fa1b9c63e96109e7539"
+    },
+    {
+      "id": "capture-03.png",
+      "state": "galleries-320",
+      "sha256": "c839b5de7f86844c707c110efd1fd4850af5729857289167789ffb6764c76342"
+    },
+    {
+      "id": "capture-04.png",
+      "state": "galleries-390",
+      "sha256": "180483d96ec5f5640fe38d09d2c5b6cc873451333d06bb8e6d075fda077a082d"
+    },
+    {
+      "id": "capture-05.png",
+      "state": "gallery-1440",
+      "sha256": "e71ec0deaf2ef38f6a489a6c0a29d317ad2c6bde2a96800b6901d6accb269b38"
+    },
+    {
+      "id": "capture-06.png",
+      "state": "gallery-390",
+      "sha256": "5859a07d6571cd54712f52297e126ac0c895276e5d9a9e719f301bfcf21ab8a9"
+    },
+    {
+      "id": "capture-07.png",
+      "state": "home-1440",
+      "sha256": "c34015f31d96abae37477662075e1dc07f4baf1371f9aef3037c1c978459c6e4"
+    },
+    {
+      "id": "capture-08.png",
+      "state": "home-320",
+      "sha256": "b8947cc1d4bff3197d0b3e84dbf221d795d84c48ad331d79a13e8a8608d93d3a"
+    },
+    {
+      "id": "capture-09.png",
+      "state": "home-390",
+      "sha256": "f2da175c256fc897372da6c2282c3f31fd2230692bd944f6e6083e4b30070663"
+    },
+    {
+      "id": "capture-10.png",
+      "state": "home-landscape",
+      "sha256": "5fc565c0120c819c49fd3823d51a9794daf95eb9dda37ab7b90fb9c2980cb80a"
+    },
+    {
+      "id": "capture-11.png",
+      "state": "photo-1440",
+      "sha256": "e8d9133b6fbd554286d43b2f3ece5aa525ba16abdeee59a8acdd8356fc1afc43"
+    },
+    {
+      "id": "capture-12.png",
+      "state": "photo-390",
+      "sha256": "e8828418655d41cf74b842938db631d0534e6741028bcae31589ba796099efd6"
+    },
+    {
+      "id": "capture-13.png",
+      "state": "selected-work-1440",
+      "sha256": "f2cc811ccc355ab1486328ddbdf0ac4484f40523f860eba9857e62d972e0148c"
+    },
+    {
+      "id": "capture-14.png",
+      "state": "selected-work-320",
+      "sha256": "db5e290544999e0dac93afe5e7670a9e4585275b9ce2ddac32fb09f15f9482a8"
+    },
+    {
+      "id": "capture-15.png",
+      "state": "selected-work-390",
+      "sha256": "0305bd60f38c222e32e6af8d5982eb49200613833de853197dabad97f8833865"
+    },
+    {
+      "id": "capture-16.png",
+      "state": "timeline-1440",
+      "sha256": "c9c6b56edc8bd413b72afe670cafa07e316acbf0ee32292263557b60253b3029"
+    },
+    {
+      "id": "capture-17.png",
+      "state": "timeline-390",
+      "sha256": "c4bf1642969ea5079c5d33fb43e12cd115a2273218c58d557c707de6199922c4"
+    },
+    {
+      "id": "motion-1440.webm",
+      "state": "automatic progression, pause, resume",
+      "sha256": "155c5793988784f21532990a53628f31d7405d309372ced48f70ea6a3a01edc6"
+    },
+    {
+      "id": "motion-390.webm",
+      "state": "automatic progression, pause, resume",
+      "sha256": "d8c4b7ef95d49481d48df17f837bec3756cd480e0cb1d862731bc5389a18f994"
+    }
+  ],
+  "sources": {
+    "src/lib/components/gallery/AlbumCard.svelte": "9a36efb9af6d1936ed8895cda0644714dd34cf229868b1c56fa998e1327a422d",
+    "src/lib/components/layout/Footer.svelte": "874ce5dbce8fb479acf539eaa60738b0ae723d72536857788787f101ed58b283",
+    "src/lib/components/layout/Header.svelte": "7b8c2a036a580d1d01f16da6638d9df092a2fbd12c45bc7ccd51a048e5082529",
+    "src/lib/components/ui/TimelineV2.svelte": "85121765770f6f1ec21a090a94116455d24298dfb1e87e60dfed9d105cb6da18",
+    "src/lib/navigation-contract.test.ts": "277a5712e3f6347fb985a6c9a40103822f6e60afaeae792e88db39756070057a",
+    "src/lib/portfolio.ts": "eb7ed520f12efd99839878bff1c42722856cd38343a6ff9bbd134ffc2fa6b521",
+    "src/routes/+layout.svelte": "88e13ea3f76d86ba63906ec4971c86347931a680335ebf446d3247c535260ae8",
+    "src/routes/+page.server.ts": "077113b892ecb704784483be0fe89e35ad334f33aa5f272810f90c8d8ce2acdc",
+    "src/routes/+page.svelte": "489530cdf661cd36591cded1b067467dbff8481ec951c2a7816da21ca5600228",
+    "src/routes/albums/+page.svelte": "970e35c2a681e0b60bd20c7ffc7aad7b0467d82b5b40da9bd76d4f9ea88dc949",
+    "src/routes/albums/[slug]/+page.svelte": "a826fe15b25c432595456423fdb5f46819c38672cd35eb4cb7a35fc2c3256ec0",
+    "src/routes/timeline/+page.svelte": "cff06f925c5242c3344b57161ca35d021c6eb99087978707e4f9457a8c5c201e",
+    "src/lib/components/home/Spotlight.svelte": "68864dcbc37bae422066cdc9d8abc95088abe90ba564efc90c92a3bf16a76b5a",
+    "src/routes/work/+page.svelte": "c2433ed85e457268ea619c7126f7b751a119217c09076035741837ddd2e7deb1",
+    "src/routes/work/+page.server.ts": "c6888efd9b3e0577bdf88e945cdd7a6d4c4ea66fb543f9c6de4ae5613c4c2bf4"
+  },
+  "note": "Formatting-only cleanup after capture; unchanged rendered behavior. Capture hashes remain frozen."
+}

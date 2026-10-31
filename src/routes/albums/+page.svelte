@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { base } from '$app/paths';
 	import { FolderOpen, ChevronLeft, ChevronRight } from 'lucide-svelte';
 	import { SIZES_PRESETS } from '$lib/photo-utils';
@@ -30,12 +30,12 @@
 
 	// Server-driven event discovery: search runs across ALL albums (not just the loaded page),
 	// plus sport + year facets. data.albums is already filtered server-side.
-	let searchInput = $state(data.query ?? '');
+	let searchInput = $derived(data.query ?? '');
 	const displayAlbums = $derived(data.albums);
 	const hasActiveFilters = $derived(!!(data.query || data.selectedSport || data.selectedYear));
 
 	function applyParam(key: string, value: string) {
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		if (value) url.searchParams.set(key, value);
 		else url.searchParams.delete(key);
 		url.searchParams.delete('page'); // any filter change resets to page 1
@@ -47,7 +47,7 @@
 	}
 	function clearFilters() {
 		searchInput = '';
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		['q', 'sport', 'year', 'page'].forEach((k) => url.searchParams.delete(k));
 		goto(url.toString());
 	}
@@ -59,13 +59,13 @@
 
 	// Pagination helpers
 	function goToPage(pageNum: number) {
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		url.searchParams.set('page', pageNum.toString());
 		goto(url.toString());
 	}
 
 	function changeSortOrder(sort: 'name' | 'date' | 'count') {
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		url.searchParams.set('sort', sort);
 		url.searchParams.set('page', '1'); // Reset to page 1 when changing sort
 		goto(url.toString());
@@ -125,10 +125,10 @@
 
 <div class="events-page animate-fade-in">
 	<header class="events-opening">
-		<p class="events-eyebrow">Browse the archive</p>
+
 		<div class="events-title-row">
 			<div>
-				<h1>Events</h1>
+				<h1>Browse Galleries</h1>
 				<p class="events-deck">Find a match, team, or date, then open the full gallery.</p>
 			</div>
 			<p class="events-count">{data.totalAlbums.toLocaleString()} {data.totalAlbums === 1 ? 'event' : 'events'}</p>
@@ -137,14 +137,14 @@
 
 	<section class="events-tools" aria-label="Find an event">
 		<form class="events-search" onsubmit={handleSearch}>
-			<label for="event-search">Find an event</label>
-			<input
+			<label for="event-search">Event, team or date</label>
+			<div class="search-line"><input
 				id="event-search"
 				type="search"
-				placeholder="Team or event name"
+				placeholder="e.g. Chicago Point"
 				bind:value={searchInput}
 				aria-label="Search albums by team or event name"
-			/>
+			/><button type="submit">Search</button></div>
 		</form>
 		<div class="events-filters">
 					<select
@@ -154,7 +154,7 @@
 						aria-label="Filter by sport"
 					>
 						<option value="">All sports</option>
-						{#each data.availableSports as s}
+						{#each data.availableSports as s (s)}
 							<option value={s}>{s}</option>
 						{/each}
 					</select>
@@ -164,7 +164,7 @@
 						aria-label="Filter by year"
 					>
 						<option value="">All years</option>
-						{#each data.availableYears as y}
+						{#each data.availableYears as y (y)}
 							<option value={y}>{y}</option>
 						{/each}
 					</select>
@@ -194,9 +194,9 @@
 		<!-- Album Grid -->
 		{#if displayAlbums.length > 0}
 			<div class="events-grid">
-				{#each displayAlbums as album, index}
+				{#each displayAlbums as album, index (album.albumKey)}
 					<div>
-						<AlbumCard {album} {index} {resultSetId} onclick={handleAlbumClick} priority={index < 4} experiment={index === 0 ? data.experiment : null} />
+						<AlbumCard plain {album} {index} {resultSetId} onclick={handleAlbumClick} priority={index < 4} experiment={index === 0 ? data.experiment : null} />
 						<!-- Date Range Display -->
 						{#if album.dateRange}
 							{@const dateRange = formatDateRange(album.dateRange)}
@@ -229,7 +229,7 @@
 						{#each Array.from({ length: Math.min(5, data.totalPages) }, (_, i) => {
 							const pageNum = Math.max(1, Math.min(data.totalPages - 4, data.currentPage - 2)) + i;
 							return pageNum;
-						}) as pageNum}
+						}) as pageNum (pageNum)}
 							{#if pageNum <= data.totalPages}
 								<button
 									onclick={() => goToPage(pageNum)}
@@ -283,6 +283,7 @@
 </div>
 
 <style>
+.search-line{display:flex;min-width:0}.search-line input{flex:1;min-width:0}.search-line button{padding:10px 20px;background:#f5f5f2;color:#181818;border:1px solid #f5f5f2;min-height:48px;font-weight:600;cursor:pointer}
 	/* PERFORMANCE: CSS animation instead of JS Motion for better render performance */
 	@keyframes fade-in {
 		from {
@@ -301,9 +302,8 @@
 	.events-page { color: var(--color-charcoal-50); }
 	.events-opening, .events-tools, .events-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
 	.events-opening { padding-block: 40px 28px; }
-	.events-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 	.events-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
-	.events-title-row h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; letter-spacing: -.035em; line-height: 1.08; }
+	.events-title-row h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 500; letter-spacing: -.035em; line-height: 1.08; }
 	.events-deck { max-width: 560px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; }
 	.events-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
 	.events-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: end; gap: 16px; padding-block: 18px; border-block: 1px solid var(--color-charcoal-800); }
@@ -315,8 +315,8 @@
 	.events-filters button { color: var(--color-charcoal-300); cursor: pointer; }
 	.events-search input:focus-visible, .events-filters select:focus-visible, .events-filters button:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 3px; }
 	.events-results { padding-block: 24px 72px; }
-	.events-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-	@media (max-width: 980px) { .events-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+	.events-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px 32px; }
+
 	@media (max-width: 720px) {
 		.events-opening, .events-tools, .events-results { width: calc(100% - 40px); }
 		.events-opening { padding-block: 24px 22px; }
@@ -324,7 +324,7 @@
 		.events-tools { grid-template-columns: 1fr; gap: 8px; padding-block: 8px; }
 		.events-filters { display: flex; flex-wrap: wrap; padding: 3px; }
 		.events-filters select, .events-filters button { flex: 0 0 auto; width: auto; min-width: 0; }
-		.events-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+		.events-grid { grid-template-columns: 1fr; gap: 32px; }
 	}
 	@media (max-width: 480px) { .events-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
 
