@@ -1,16 +1,19 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-11-02T20:18:31.999Z",
-  "reviewedBy": "Codex parent and independent cold reviewer c4ddd02a-1c8d-4b3d-b764-d899e96e0a20, 2026-11-02",
-  "method": "Parent opened native Chromium whole-screen captures at 1440, 390 and 320 pixels and the restored native mobile filter dialog. Independent image review and code-review fixes are recorded in docs/evidence/approved-colors-20261102. Browser journeys cover slideshow, event search, timeline, gallery return, active filters, checked radio state after filtering, inactive dialog background and restored keyboard focus. Scoped palette checks retain account and Analytics preferences colors. No physical-phone, authenticated Analytics, private-gallery or visitor study was performed.",
-  "sourceDigest": "sha256:3a212079c588dbb94b1cd91f355670b8daa6a5e921cf07d04f24679051453155",
-  "sourceFiles": 206,
+  "reviewedAt": "2026-11-02T22:43:41.204Z",
+  "reviewedBy": "Codex parent rendered review, 2026-11-02; independent cold-review receipts in docs/evidence/photography-accent-20261102",
+  "method": "Opened actual native desktop 1440 and mobile 390/320 captures. Exercised both accent directions with real search submission, selected filters, viewer Save/Undo, focus return and reload persistence. Confirmed no horizontal overflow and reduced-motion behavior. Compared the parent toolbar state with native accent values. These are Chromium viewport checks, not physical-phone or visitor research.",
+  "sourceDigest": "sha256:9af619ee5cb7855ea6e75cf6f3c4783d4b7ca7c5e16ce22343b4996f1d557e8c",
+  "sourceFiles": 207,
   "scope": [
-    "photographic homepage",
-    "photo explorer",
-    "native mobile filter dialog",
-    "shared navigation",
-    "public palette boundaries"
+    "public photo search",
+    "mobile filter dialog",
+    "selected filter chips",
+    "saved photos",
+    "photo viewer",
+    "local accent comparison",
+    "keyboard and reduced motion",
+    "production palette boundary"
   ]
 }

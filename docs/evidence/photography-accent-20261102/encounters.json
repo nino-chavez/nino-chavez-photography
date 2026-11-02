@@ -1,0 +1,200 @@
+[
+  {
+    "name": "warm-1440-search",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=warm&q=volleyball&search_id=868a43d5-9104-488f-99ef-361cc58d86e7&division=girls",
+    "width": 1440,
+    "overflow": false,
+    "accent": "#f29a79",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "warm-1440-viewer",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=warm&q=volleyball&search_id=868a43d5-9104-488f-99ef-361cc58d86e7&division=girls",
+    "width": 1440,
+    "overflow": false,
+    "accent": "#f29a79",
+    "dialogs": [
+      "Photo lightbox"
+    ],
+    "notices": [
+      "Photo saved in this browser (1 total)"
+    ]
+  },
+  {
+    "name": "warm-1440-saved",
+    "url": "http://photo-accent.localhost:8841/photography/favorites",
+    "width": 1440,
+    "overflow": false,
+    "accent": "#f29a79",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "warm-1440-journey",
+    "submittedSearch": true,
+    "selectedFilter": true,
+    "viewerSaveAndKeyboardUndo": true,
+    "returnedFocus": true,
+    "reloadPersisted": true
+  },
+  {
+    "name": "cool-1440-search",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=cool&q=volleyball&search_id=33936256-e4fe-4791-b5d6-20206ac996cf&division=girls",
+    "width": 1440,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "cool-1440-viewer",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=cool&q=volleyball&search_id=33936256-e4fe-4791-b5d6-20206ac996cf&division=girls",
+    "width": 1440,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [
+      "Photo lightbox"
+    ],
+    "notices": [
+      "Photo saved in this browser (1 total)"
+    ]
+  },
+  {
+    "name": "cool-1440-saved",
+    "url": "http://photo-accent.localhost:8841/photography/favorites",
+    "width": 1440,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "cool-1440-journey",
+    "submittedSearch": true,
+    "selectedFilter": true,
+    "viewerSaveAndKeyboardUndo": true,
+    "returnedFocus": true,
+    "reloadPersisted": true
+  },
+  {
+    "name": "warm-390-filters",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=warm&q=volleyball&search_id=93ac5a5a-7910-4a5c-ab43-2a5186380bff&division=girls",
+    "width": 390,
+    "overflow": false,
+    "accent": "#f29a79",
+    "dialogs": [
+      "Filter options"
+    ],
+    "notices": []
+  },
+  {
+    "name": "warm-390-search",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=warm&q=volleyball&search_id=93ac5a5a-7910-4a5c-ab43-2a5186380bff&division=girls",
+    "width": 390,
+    "overflow": false,
+    "accent": "#f29a79",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "warm-390-viewer",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=warm&q=volleyball&search_id=93ac5a5a-7910-4a5c-ab43-2a5186380bff&division=girls",
+    "width": 390,
+    "overflow": false,
+    "accent": "#f29a79",
+    "dialogs": [
+      "Photo lightbox"
+    ],
+    "notices": [
+      "Photo saved in this browser (1 total)"
+    ]
+  },
+  {
+    "name": "warm-390-saved",
+    "url": "http://photo-accent.localhost:8841/photography/favorites",
+    "width": 390,
+    "overflow": false,
+    "accent": "#f29a79",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "warm-390-journey",
+    "submittedSearch": true,
+    "selectedFilter": true,
+    "viewerSaveAndKeyboardUndo": true,
+    "returnedFocus": true,
+    "reloadPersisted": true
+  },
+  {
+    "name": "cool-390-filters",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=cool&q=volleyball&search_id=aca5dbdb-6dd4-4def-80cb-c688dd5e5e9e&division=girls",
+    "width": 390,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [
+      "Filter options"
+    ],
+    "notices": []
+  },
+  {
+    "name": "cool-390-search",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=cool&q=volleyball&search_id=aca5dbdb-6dd4-4def-80cb-c688dd5e5e9e&division=girls",
+    "width": 390,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "cool-390-viewer",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=cool&q=volleyball&search_id=aca5dbdb-6dd4-4def-80cb-c688dd5e5e9e&division=girls",
+    "width": 390,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [
+      "Photo lightbox"
+    ],
+    "notices": [
+      "Photo saved in this browser (1 total)"
+    ]
+  },
+  {
+    "name": "cool-390-saved",
+    "url": "http://photo-accent.localhost:8841/photography/favorites",
+    "width": 390,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "cool-390-journey",
+    "submittedSearch": true,
+    "selectedFilter": true,
+    "viewerSaveAndKeyboardUndo": true,
+    "returnedFocus": true,
+    "reloadPersisted": true
+  },
+  {
+    "name": "cool-320-reduced-motion",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=cool",
+    "width": 320,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [],
+    "notices": []
+  },
+  {
+    "name": "cool-320-viewer",
+    "url": "http://photo-accent.localhost:8841/photography/explore?study-accent=cool",
+    "width": 320,
+    "overflow": false,
+    "accent": "#7ecfc4",
+    "dialogs": [
+      "Photo lightbox"
+    ],
+    "notices": []
+  }
+]

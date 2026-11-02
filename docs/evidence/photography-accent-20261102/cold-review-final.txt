@@ -1,0 +1,1 @@
+PASS — both warm and cool directions are visibly distinct and legible. Search, filters, saving, opening, navigation, and close controls remain clear across the supplied desktop and phone frames.

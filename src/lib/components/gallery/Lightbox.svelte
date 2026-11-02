@@ -461,6 +461,12 @@
 	function manageDialogFocus(node: HTMLElement) {
 		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		const previousOverflow = document.body.style.overflow;
+		// Keep recoverable feedback inside the active modal's accessibility and
+		// keyboard boundary. Return the existing stack when the viewer closes.
+		const notifications = document.querySelector<HTMLElement>('[data-toast-container]');
+		const notificationParent = notifications?.parentNode;
+		const notificationSibling = notifications?.nextSibling ?? null;
+		if (notifications) node.appendChild(notifications);
 		document.body.style.overflow = 'hidden';
 		node.querySelector<HTMLButtonElement>('[aria-label="Close lightbox"]')?.focus({ preventScroll: true });
 
@@ -487,6 +493,7 @@
 		return {
 			destroy() {
 				node.removeEventListener('keydown', trapTab);
+				if (notifications && notificationParent) notificationParent.insertBefore(notifications, notificationSibling);
 				document.body.style.overflow = previousOverflow;
 				if (opener?.isConnected) opener.focus({ preventScroll: true });
 			}
@@ -705,7 +712,7 @@
 					{#if canGoPrev}
 						<button
 							onclick={handlePrev}
-							class="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500"
+							class="viewer-navigation absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500"
 							aria-label="Previous photo"
 							title="Previous (←)"
 						>
@@ -718,7 +725,7 @@
 						<button
 							onclick={handleNext}
 							disabled={waitingOnLoadMore}
-							class="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-wait {waitingOnLoadMore ? 'animate-pulse' : ''}"
+							class="viewer-navigation absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-wait {waitingOnLoadMore ? 'animate-pulse' : ''}"
 							aria-label={waitingOnLoadMore ? 'Loading more photos' : 'Next photo'}
 							title="Next (→)"
 						>
@@ -799,6 +806,9 @@
 	:global(.animate-lightbox-open) {
 		animation: lightbox-open 200ms ease-out both;
 	}
+
+	.viewer-navigation { background: #292c2f; border: 1px solid #62686c; }
+	.viewer-navigation:hover { color: var(--gallery-accent, #CBD8DF); background: #363c40; }
 
 	.viewer-save {
 		background: var(--gallery-accent, #CBD8DF);

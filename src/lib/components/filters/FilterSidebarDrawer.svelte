@@ -135,6 +135,7 @@
 			<!-- Filter content (reuse FilterSidebar structure) -->
 			<div class="p-4">
 				<FilterSidebar
+					inDrawer
 					{sports}
 					{categories}
 					{selectedSport}
@@ -151,6 +152,9 @@
 					{onClearAll}
 					{filterCounts}
 				/>
+			</div>
+			<div class="sticky bottom-0 border-t border-charcoal-800 bg-charcoal-950 p-4">
+				<button type="button" onclick={close} class="min-h-[44px] w-full rounded-lg bg-gold-500 px-4 py-3 font-semibold text-charcoal-950 hover:bg-gold-400">View photos</button>
 			</div>
 	</dialog>
 {/if}

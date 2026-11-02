@@ -73,6 +73,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
 		response.headers.set(name, value);
 	}
+	// This local review embeds only public browsing routes. Public hosts, private
+	// links, authentication, Analytics and admin keep DENY without exception.
+	const studyRoutes = ['/', '/explore', '/favorites', '/albums', '/albums/[slug]', '/photo/[id]', '/timeline', '/about'];
+	if (event.url.hostname === 'photo-accent.localhost' && studyRoutes.includes(event.route.id ?? '')) {
+		response.headers.delete('X-Frame-Options');
+		response.headers.set('Content-Security-Policy', 'frame-ancestors http://photo-accent.localhost:8840');
+		response.headers.set('Cache-Control', 'no-store');
+	}
 
 	return response;
 };

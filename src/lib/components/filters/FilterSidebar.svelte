@@ -31,6 +31,7 @@
 -->
 
 <script lang="ts">
+	import { untrack } from 'svelte';
 	const radioGroupId = $props.id();
 	import { ChevronDown, X, Trophy, Award, Zap, Activity, Sparkles, Check } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -50,6 +51,7 @@
 	}
 
 	interface Props {
+		inDrawer?: boolean;
 		sports: Sport[];
 		categories: Category[];
 		selectedSport?: string | null;
@@ -68,6 +70,7 @@
 	}
 
 	let {
+		inDrawer = false,
 		sports,
 		categories,
 		selectedSport = null,
@@ -85,10 +88,12 @@
 		filterCounts
 	}: Props = $props();
 
-	// Accordion state - Start with primary filters expanded
+	// The phone drawer starts with a short list of choices; desktop keeps its
+	// primary filters open. This is an intentional initial-state choice.
+	const initiallyExpanded = untrack(() => !inDrawer);
 	let expandedSections = $state({
-		sport: true,
-		category: true,
+		sport: initiallyExpanded,
+		category: initiallyExpanded,
 		playType: false,
 		division: false,
 		level: false
@@ -165,7 +170,9 @@
 
 	// Toggle accordion section
 	function toggleSection(section: keyof typeof expandedSections) {
-		expandedSections[section] = !expandedSections[section];
+		const next = !expandedSections[section];
+		if (inDrawer) for (const key of Object.keys(expandedSections) as (keyof typeof expandedSections)[]) expandedSections[key] = false;
+		expandedSections[section] = next;
 	}
 
 	// Filter handlers
@@ -205,15 +212,16 @@
 	}
 </script>
 
-<aside class="w-64 flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
+<aside class:drawer-filters={inDrawer} class="w-64 flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
 	<div class="bg-charcoal-900/50 border border-charcoal-800/50 rounded-xl p-4 space-y-1">
 		<!-- Header with Clear All -->
+		{#if !inDrawer || activeFilterCount > 0}
 		<div class="flex items-center justify-between mb-4 pb-3 border-b border-charcoal-800/50">
-			<Typography variant="h3" class="text-base font-semibold">Filters</Typography>
+			{#if !inDrawer}<Typography variant="h3" class="text-base font-semibold">Filters</Typography>{/if}
 			{#if activeFilterCount > 0}
 				<button
 					onclick={handleClearAllClick}
-					class="flex items-center gap-1 px-2 py-1 text-xs text-charcoal-400 hover:text-gold-400 transition-colors"
+					class="ml-auto flex min-h-[44px] items-center gap-1 px-2 py-1 text-xs text-charcoal-400 hover:text-gold-400 transition-colors"
 					aria-label="Clear all filters"
 				>
 					<X class="w-3 h-3" />
@@ -221,6 +229,7 @@
 				</button>
 			{/if}
 		</div>
+		{/if}
 
 		<!-- Sport Section -->
 		<div class="border-b border-charcoal-800/30 pb-3">
@@ -403,7 +412,7 @@
 				<div id="division-section" class="grid grid-cols-1 gap-1 mt-2">
 					{#each divisions as division (division.value)}
 						<button type="button" onclick={(event) => handleDivisionClick(division.value, event)} aria-pressed={selectedDivision === division.value} class="filter-facet-option {selectedDivision === division.value ? 'filter-facet-option--selected' : ''}">
-							<span>{division.label}</span>{#if selectedDivision === division.value}<Check class="w-4 h-4" aria-label="Selected" />{/if}
+							<span>{division.label}</span>{#if selectedDivision === division.value}<Check class="w-4 h-4" aria-hidden="true" />{/if}
 						</button>
 					{/each}
 				</div>
@@ -424,7 +433,7 @@
 				<div id="level-section" class="grid grid-cols-1 gap-1 mt-2">
 					{#each levels as level (level.value)}
 						<button type="button" onclick={(event) => handleLevelClick(level.value, event)} aria-pressed={selectedLevel === level.value} class="filter-facet-option {selectedLevel === level.value ? 'filter-facet-option--selected' : ''}">
-							<span>{level.label}</span>{#if selectedLevel === level.value}<Check class="w-4 h-4" aria-label="Selected" />{/if}
+							<span>{level.label}</span>{#if selectedLevel === level.value}<Check class="w-4 h-4" aria-hidden="true" />{/if}
 						</button>
 					{/each}
 				</div>
@@ -434,6 +443,9 @@
 </aside>
 
 <style>
+	.drawer-filters { position: static; width: 100%; height: auto; overflow: visible; }
+	.drawer-filters > div { border: 0; padding: 0; background: transparent; }
+	.drawer-filters button[aria-expanded], .drawer-filters label { min-height: 44px; }
 	/* Custom radio styling */
 	input[type="radio"] {
 		accent-color: var(--gallery-accent, var(--color-gold-500));

@@ -37,4 +37,6 @@ test('phone filter drawer keeps division and level choices reachable', async ({ 
 	await expect(drawer.getByRole('button', { name: 'Girls', exact: true })).toHaveAttribute('aria-pressed', 'true');
 	await drawer.getByRole('button', { name: /^Level/ }).click();
 	await expect(drawer.getByRole('button', { name: 'Club', exact: true })).toBeVisible();
+	await drawer.getByRole('button', { name: 'View photos', exact: true }).click();
+	await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

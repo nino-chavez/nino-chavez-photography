@@ -443,7 +443,7 @@
 	<div class="explore-title-row">
 		<div>
 			<h1>Find your photograph</h1>
-			<p>Search what is visible, narrow by event details, then open the image to save, share, or download.</p>
+			<p>Search by color, number, or action. Open a photo to save, share, or download.</p>
 		</div>
 		<p class="explore-count">{data.totalCount.toLocaleString()} {data.totalCount === 1 ? 'photograph' : 'photographs'}</p>
 	</div>
@@ -539,8 +539,7 @@
 
 		<!-- Active Filter Chips (NEW: P0 Enhancement) -->
 		{#if activeFilterCount > 0}
-			<div class="explore-tools__active-filters flex flex-wrap items-center gap-3 mb-3 p-2 rounded-lg bg-charcoal-900/50 border border-charcoal-800/30">
-				<Typography variant="caption" class="text-charcoal-400 text-xs font-medium">Active:</Typography>
+			<div class="explore-tools__active-filters flex flex-wrap items-center gap-2" role="group" aria-label="Active search and filters">
 
 				{#if data.selectedSport}
 					<FilterChip
@@ -663,7 +662,7 @@
 	</div>
 
 	<!-- Search Feedback -->
-	{#if data.searchQuery && data.parsedDescription}
+	{#if data.searchQuery && data.parsedDescription && data.searchMode === 'semantic'}
 		<div class="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-lg {data.searchMode === 'semantic' ? 'bg-gold-500/10 border border-gold-500/20' : 'bg-charcoal-900/50 border border-charcoal-800/30'}">
 			<div class="flex items-center gap-2 text-sm">
 				{#if data.searchMode === 'semantic'}
@@ -777,7 +776,7 @@
 	.explore-title-row > div > p { max-width: 680px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; line-height: 1.55; }
 	.explore-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
 	.explore-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); border-block: 1px solid var(--color-charcoal-800); }
-	.explore-tools__inner { display: grid; gap: 10px; padding-block: 10px; }
+	.explore-tools__inner { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-block: 10px; }
 	.explore-tools__search-row { display: flex; align-items: end; gap: 10px; }
 	.explore-search { flex: 1; min-width: 0; }
 	.explore-search label { display: block; margin-bottom: 4px; color: var(--gallery-ink, var(--color-charcoal-200)); font-size: 12px; font-weight: 700; }
@@ -803,14 +802,14 @@
 	.explore-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
 	@media (max-width: 640px) {
 		.explore-opening, .explore-tools__inner, .explore-results { width: calc(100% - 40px); }
-		.explore-opening { padding-block: 20px 16px; }
-		.explore-opening h1 { font-size: 32px; line-height: 1.1; letter-spacing: -.7px; }
+		.explore-opening { padding-block: 12px; }
+		.explore-opening h1 { font-size: 28px; line-height: 1.1; letter-spacing: -.7px; }
 		.explore-eyebrow { margin-bottom: 10px; }
 		.explore-title-row { align-items: start; flex-direction: column; gap: 10px; }
 		.explore-title-row > div > p { margin-top: 10px; font-size: 14px; line-height: 1.5; }
 		.explore-count { font-size: 12px; white-space: normal; }
-		.explore-tools__search-row { align-items: end; }
-		.explore-tools__actions { flex-shrink: 0; }
+		.explore-tools__search-row { align-items: stretch; flex-direction: column; }
+		.explore-tools__actions { flex-shrink: 0; justify-content: space-between; flex-wrap: wrap; }
 		.explore-tools :global(button[aria-controls="presets-panel"]) { padding: 10px; }
 		.explore-tools :global(button[aria-controls="presets-panel"] label) { font-size: 12px; }
 		.explore-results { padding-block: 16px 56px; }

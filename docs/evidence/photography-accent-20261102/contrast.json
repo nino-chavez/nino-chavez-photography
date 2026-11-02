@@ -1,0 +1,23 @@
+{
+  "colors": {
+    "background": "#181A1C",
+    "ink": "#F0EFEB",
+    "muted": "#B4BBC0",
+    "warm": "#F29A79",
+    "warmHover": "#FFB594",
+    "warmPressed": "#DD815F",
+    "cool": "#7ECFC4",
+    "coolHover": "#A5E8DA",
+    "coolPressed": "#64B5AA"
+  },
+  "contrastAgainstGraphite": {
+    "ink": 15.17,
+    "muted": 8.98,
+    "warm": 8.04,
+    "warmHover": 10.21,
+    "warmPressed": 6.13,
+    "cool": 9.65,
+    "coolHover": 12.59,
+    "coolPressed": 7.26
+  }
+}

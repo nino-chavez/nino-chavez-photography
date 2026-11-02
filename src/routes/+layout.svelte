@@ -6,6 +6,7 @@
 	import Header from '$lib/components/layout/Header.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
+	import AccentStudy from '$lib/components/gallery/AccentStudy.svelte';
 	import ChatWidget from '$lib/components/ai/ChatWidget.svelte';
 	import { SITE_ORIGIN, SITE_URL } from '$lib/site-url';
 	import { canonicalUrl as buildCanonical } from '$lib/seo/canonical';
@@ -194,6 +195,7 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
+	<AccentStudy />
 	<div class:gallery-theme={isPublicGallery}>
 	<!-- Global Navigation Loading Bar -->
 	{#if isNavigating}

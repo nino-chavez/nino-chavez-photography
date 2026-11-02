@@ -148,6 +148,9 @@
   --gallery-bg: #181A1C;
   --gallery-ink: #F0EFEB;
   --gallery-accent: #CBD8DF;
+  --gallery-accent-hover: #E2EBEF;
+  --gallery-accent-pressed: #AFBFC9;
+  --gallery-accent-soft: #30393E;
   --gallery-surface: #292C2F;
   --gallery-muted: #B4BBC0;
   --gallery-rule: #4A5055;
@@ -220,6 +223,47 @@
 .gallery-theme input[type='radio'],
 .gallery-theme input[type='checkbox'] {
   accent-color: var(--gallery-accent) !important;
+}
+
+/* Local, unselected alternatives. Only AccentStudy on photo-accent.localhost
+ * sets this attribute; the public palette and private workspaces stay intact. */
+html[data-photography-accent='warm'] .gallery-theme {
+  --gallery-accent: #F29A79;
+  --gallery-accent-hover: #FFB594;
+  --gallery-accent-pressed: #DD815F;
+  --gallery-accent-soft: #3A2925;
+}
+
+html[data-photography-accent='cool'] .gallery-theme {
+  --gallery-accent: #7ECFC4;
+  --gallery-accent-hover: #A5E8DA;
+  --gallery-accent-pressed: #64B5AA;
+  --gallery-accent-soft: #233734;
+}
+
+html[data-photography-accent] .gallery-theme {
+  --color-gold-50: var(--gallery-accent-hover);
+  --color-gold-100: var(--gallery-accent-hover);
+  --color-gold-200: var(--gallery-accent-hover);
+  --color-gold-300: var(--gallery-accent-hover);
+  --color-gold-400: var(--gallery-accent-hover);
+  --color-gold-600: var(--gallery-accent-pressed);
+  --color-gold-700: var(--gallery-accent-pressed);
+  --color-gold-800: var(--gallery-accent-soft);
+  --color-gold-900: var(--gallery-accent-soft);
+  --color-gold-950: var(--gallery-bg);
+  --text-accent-hover: var(--gallery-accent-hover);
+  --btn-primary-hover: var(--gallery-accent-hover);
+  --active-bg: var(--gallery-accent-soft);
+}
+
+html[data-photography-accent] .gallery-theme :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 4px;
+}
+
+html[data-photography-accent] .gallery-theme button:enabled:active {
+  filter: brightness(0.92);
 }
 
 @layer base {
