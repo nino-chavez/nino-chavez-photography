@@ -7,12 +7,12 @@
 		const reviewOrigin = 'http://photo-accent.localhost:8840';
 		const key = 'photography-accent-study';
 		const root = document.documentElement;
-		const isAccent = (value: unknown): value is 'warm' | 'cool' => value === 'warm' || value === 'cool';
+		const isAccent = (value: unknown): value is 'warm' | 'cool' | 'gold' => value === 'warm' || value === 'cool' || value === 'gold';
 		let stored: string | null = null;
 		try { stored = sessionStorage.getItem(key); } catch { /* Preview still works without storage. */ }
 		const requested = new URLSearchParams(window.location.search).get('study-accent');
-		let accent = isAccent(requested) ? requested : isAccent(stored) ? stored : 'warm';
-		function apply(value: 'warm' | 'cool') {
+		let accent = isAccent(requested) ? requested : isAccent(stored) ? stored : 'cool';
+		function apply(value: 'warm' | 'cool' | 'gold') {
 			accent = value;
 			root.dataset.photographyAccent = value;
 			try { sessionStorage.setItem(key, value); } catch { /* In-memory selection is sufficient. */ }

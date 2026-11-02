@@ -225,8 +225,16 @@
   accent-color: var(--gallery-accent) !important;
 }
 
-/* Local, unselected alternatives. Only AccentStudy on photo-accent.localhost
+/* Local comparison alternatives. Only AccentStudy on photo-accent.localhost
  * sets this attribute; the public palette and private workspaces stay intact. */
+html[data-photography-accent='gold'] .gallery-theme {
+  /* Original Photography accent and its established hover/pressed shades. */
+  --gallery-accent: #D4AF37;
+  --gallery-accent-hover: #E3C358;
+  --gallery-accent-pressed: #B8962E;
+  --gallery-accent-soft: #373121;
+}
+
 html[data-photography-accent='warm'] .gallery-theme {
   --gallery-accent: #F29A79;
   --gallery-accent-hover: #FFB594;

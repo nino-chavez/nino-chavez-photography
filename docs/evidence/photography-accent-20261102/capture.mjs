@@ -17,7 +17,7 @@ async function capture(page, name) {
   console.log(name);
 }
 try {
-  for (const width of [1440, 390]) for (const accent of ['warm', 'cool']) {
+  for (const width of [1440, 390]) for (const accent of ['warm', 'cool', 'gold']) {
     const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1000 } });
     const page = await context.newPage();
     await page.route(/(?:posthog|analytics\/collect|cdn-cgi\/rum|googletagmanager)/, route => route.abort());

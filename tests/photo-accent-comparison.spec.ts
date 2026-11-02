@@ -11,6 +11,8 @@ test('accent and viewport switching keep the same open photo', async ({ page }) 
 	const gallery = page.frameLocator('#gallery');
 	await expect(gallery.locator('.photo-card').first()).toBeVisible({ timeout: 30_000 });
 	await expect(page.locator('#status')).toContainText('Interactive');
+	await expect(gallery.locator('html')).toHaveAttribute('data-photography-accent', 'cool');
+	await page.getByRole('button', { name: 'Warm coral', exact: true }).click();
 	await expect(gallery.locator('html')).toHaveAttribute('data-photography-accent', 'warm');
 	await gallery.locator('.photo-card').first().click();
 	const viewer = gallery.getByRole('dialog');
@@ -19,6 +21,10 @@ test('accent and viewport switching keep the same open photo', async ({ page }) 
 	await page.getByRole('button', { name: 'Cool mint', exact: true }).click();
 	await expect(gallery.locator('html')).toHaveAttribute('data-photography-accent', 'cool');
 	await expect(viewer).toBeVisible();
+	await expect(viewer.locator('img').first()).toHaveAttribute('src', initialImage!);
+	await page.getByRole('button', { name: 'Original gold', exact: true }).click();
+	await expect(gallery.locator('html')).toHaveAttribute('data-photography-accent', 'gold');
+	await expect(viewer.locator('.viewer-save')).toHaveCSS('background-color', 'rgb(212, 175, 55)');
 	await expect(viewer.locator('img').first()).toHaveAttribute('src', initialImage!);
 	await page.getByRole('button', { name: 'Mobile', exact: true }).click();
 	await expect(page.locator('#gallery')).toHaveCSS('width', '390px');

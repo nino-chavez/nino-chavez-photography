@@ -1,19 +1,16 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-11-02T22:43:41.204Z",
-  "reviewedBy": "Codex parent rendered review, 2026-11-02; independent cold-review receipts in docs/evidence/photography-accent-20261102",
-  "method": "Opened actual native desktop 1440 and mobile 390/320 captures. Exercised both accent directions with real search submission, selected filters, viewer Save/Undo, focus return and reload persistence. Confirmed no horizontal overflow and reduced-motion behavior. Compared the parent toolbar state with native accent values. These are Chromium viewport checks, not physical-phone or visitor research.",
-  "sourceDigest": "sha256:9af619ee5cb7855ea6e75cf6f3c4783d4b7ca7c5e16ce22343b4996f1d557e8c",
+  "reviewedAt": "2026-11-02T23:12:39.187Z",
+  "reviewedBy": "Codex parent",
+  "method": "Opened whole-screen Chromium desktop and phone captures; observed gold, coral and mint switching and real-data interaction assertions",
+  "sourceDigest": "sha256:bbd401b4238494e99828a74c50ff225f84f43ab4fb45f34ced1ddec0e48cf451",
   "sourceFiles": 207,
   "scope": [
-    "public photo search",
-    "mobile filter dialog",
-    "selected filter chips",
-    "saved photos",
-    "photo viewer",
-    "local accent comparison",
-    "keyboard and reduced motion",
-    "production palette boundary"
+    "Original gold restored alongside mint and coral",
+    "Mint remains default",
+    "Gold desktop and phone wrapper, filter sheet and viewer reviewed",
+    "Search, save, keyboard Undo, focus return and persistence pass at 1440 and 390 pixels",
+    "No physical-phone or visitor usability test"
   ]
 }
