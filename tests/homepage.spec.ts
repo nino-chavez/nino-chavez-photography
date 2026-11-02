@@ -168,10 +168,14 @@ test('photo explorer phone filters open, apply and close', async ({ page }) => {
  const drawer = page.getByRole('dialog', { name: 'Filter options' });
  await expect(drawer).toBeVisible();
  await expect(drawer.getByRole('button', { name: 'Close filters' })).toBeFocused();
- await page.keyboard.press('Shift+Tab');
- expect(await drawer.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+ expect(await drawer.evaluate((node) => node.matches(':modal'))).toBe(true);
+ await trigger.evaluate((node) => node.focus());
+ await expect(drawer.getByRole('button', { name: 'Close filters' })).toBeFocused();
  await drawer.getByRole('radio', { name: /Volleyball/ }).check();
  await expect(page).toHaveURL(/sport=volleyball/);
+ await expect(drawer.getByRole('radio', { name: /Volleyball/ })).toBeChecked();
+ await page.keyboard.press('Tab');
+ expect(await drawer.evaluate((node) => node.contains(document.activeElement))).toBe(true);
  await drawer.getByRole('button', { name: 'Close filters' }).click();
  await expect(drawer).toBeHidden();
  await trigger.click();

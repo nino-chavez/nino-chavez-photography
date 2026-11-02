@@ -24,7 +24,7 @@
 -->
 
 <script lang="ts">
-	import { slide, fade } from 'svelte/transition';
+	import { slide } from 'svelte/transition';
 	import { X } from 'lucide-svelte';
 	import FilterSidebar from './FilterSidebar.svelte';
 	import type { FilterCounts } from '$lib/supabase/server';
@@ -71,82 +71,47 @@
 		filterCounts
 	}: Props = $props();
 
-	// Close drawer with escape key
+	// Native modal behavior keeps the background inert and restores keyboard focus.
 	$effect(() => {
-		if (open) {
-			const handleEscape = (e: KeyboardEvent) => {
-				if (e.key === 'Escape') {
-					close();
-				}
-			};
-			document.addEventListener('keydown', handleEscape);
-
-			// Prevent body scroll when drawer is open
-			document.body.style.overflow = 'hidden';
-
-			return () => {
-				document.removeEventListener('keydown', handleEscape);
-				document.body.style.overflow = '';
-			};
-		}
+		if (!open) return;
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		return () => { document.body.style.overflow = previousOverflow; };
 	});
 
 	function close() {
+		if (!open) return;
 		open = false;
 		onClose?.();
 	}
 
-	function handleBackdropClick(event: MouseEvent) {
-		if (event.target === event.currentTarget) {
-			close();
-		}
+	function showDrawer(node: HTMLDialogElement) {
+		const previous = document.activeElement as HTMLElement | null;
+		node.showModal();
+		return { destroy() {
+			node.close();
+			// Svelte removes the dialog after its outro, so restore focus after removal.
+			queueMicrotask(() => { if (previous?.isConnected) previous.focus(); });
+		} };
 	}
 
-	function focusDrawer(node: HTMLDivElement) {
-		const previous = document.activeElement as HTMLElement | null;
-		const controls = () => Array.from(node.querySelectorAll<HTMLElement>(
-			'button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
-		)).filter((element) => element.getClientRects().length > 0);
-		queueMicrotask(() => controls()[0]?.focus());
-		const trapTab = (event: KeyboardEvent) => {
-			if (event.key !== 'Tab') return;
-			const items = controls();
-			const first = items[0];
-			const last = items.at(-1);
-			if (event.shiftKey && document.activeElement === first) {
-				event.preventDefault(); last?.focus();
-			} else if (!event.shiftKey && document.activeElement === last) {
-				event.preventDefault(); first?.focus();
-			}
-		};
-		node.addEventListener('keydown', trapTab);
-		return { destroy() {
-			node.removeEventListener('keydown', trapTab);
-			if (previous?.isConnected) previous.focus();
-		} };
+	function handleBackdropClick(event: MouseEvent) {
+		if (event.target !== event.currentTarget) return;
+		const bounds = (event.currentTarget as HTMLDialogElement).getBoundingClientRect();
+		if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
 	}
 </script>
 
 {#if open}
-	<!-- Backdrop overlay -->
-	<div
-		class="fixed inset-0 bg-charcoal-950/80 backdrop-blur-sm z-50"
+	<dialog
+		use:showDrawer
+		class="filter-sidebar-drawer-panel fixed inset-y-0 left-auto right-0 m-0 ml-auto p-0 h-full max-h-none w-full max-w-sm bg-charcoal-950 text-inherit border-l border-charcoal-800 shadow-2xl overflow-y-auto"
+		transition:slide={{ duration: 300, axis: 'x' }}
+		aria-label="Filter options"
 		onclick={handleBackdropClick}
-		transition:fade={{ duration: 200 }}
-		role="presentation"
+		oncancel={(event) => { event.preventDefault(); close(); }}
+		onclose={close}
 	>
-		<!-- Drawer panel -->
-		<div
-			use:focusDrawer
-			class="fixed top-0 right-0 h-full w-full max-w-sm bg-charcoal-950 border-l border-charcoal-800 shadow-2xl overflow-y-auto"
-			transition:slide={{ duration: 300, axis: 'x' }}
-			role="dialog"
-			tabindex="-1"
-			aria-modal="true"
-			aria-label="Filter options"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => { if (e.key === 'Escape') close(); }}
-		>
 			<!-- Header with close button -->
 			<div class="sticky top-0 z-10 bg-charcoal-950/95 backdrop-blur-sm border-b border-charcoal-800 px-4 py-3 flex items-center justify-between">
 				<h2 class="text-lg font-semibold">Filters</h2>
@@ -174,11 +139,14 @@
 					{filterCounts}
 				/>
 			</div>
-		</div>
-	</div>
+	</dialog>
 {/if}
 
 <style>
+	.filter-sidebar-drawer-panel::backdrop {
+		background: color-mix(in srgb, var(--color-charcoal-950) 80%, transparent);
+		backdrop-filter: blur(4px);
+	}
 	/* Override sidebar's sticky positioning for drawer context */
 	:global(.filter-sidebar-drawer) {
 		position: static !important;
