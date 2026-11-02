@@ -32,8 +32,7 @@
 
 <script lang="ts">
 	const radioGroupId = $props.id();
-	import { slide } from 'svelte/transition';
-	import { ChevronDown, X, Trophy, Award, Zap, Activity, Sparkles } from 'lucide-svelte';
+	import { ChevronDown, X, Trophy, Award, Zap, Activity, Sparkles, Check } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import { formatCategory, formatSport } from '$lib/utils/format-metadata';
 	import type { FilterCounts } from '$lib/supabase/server';
@@ -56,9 +55,14 @@
 		selectedSport?: string | null;
 		selectedCategory?: string | null;
 		selectedPlayType?: string | null;
+		selectedDivision?: string | null;
+		selectedLevel?: string | null;
+		selectedQuery?: string | null;
 		onSportSelect?: (sport: string | null) => void;
 		onCategorySelect?: (category: string | null) => void;
 		onPlayTypeSelect?: (playType: string | null) => void;
+		onDivisionSelect?: (division: string | null) => void;
+		onLevelSelect?: (level: string | null) => void;
 		onClearAll?: () => void;
 		filterCounts?: FilterCounts;
 	}
@@ -69,9 +73,14 @@
 		selectedSport = null,
 		selectedCategory = null,
 		selectedPlayType = null,
+		selectedDivision = null,
+		selectedLevel = null,
+		selectedQuery = null,
 		onSportSelect,
 		onCategorySelect,
 		onPlayTypeSelect,
+		onDivisionSelect,
+		onLevelSelect,
 		onClearAll,
 		filterCounts
 	}: Props = $props();
@@ -80,7 +89,9 @@
 	let expandedSections = $state({
 		sport: true,
 		category: true,
-		playType: false
+		playType: false,
+		division: false,
+		level: false
 	});
 
 	// Label mappings for user-friendly display
@@ -91,6 +102,14 @@
 		set: 'Set',
 		serve: 'Serve',
 	};
+	const divisions = [
+		{ value: 'girls', label: 'Girls' }, { value: 'boys', label: 'Boys' },
+		{ value: 'womens', label: "Women's" }, { value: 'mens', label: "Men's" }, { value: 'coed', label: 'Co-ed' }
+	];
+	const levels = [
+		{ value: 'high_school', label: 'High School' }, { value: 'college', label: 'College' },
+		{ value: 'club', label: 'Club' }, { value: 'middle_school', label: 'Middle School' }
+	];
 
 	// Icon mappings
 	const sportIcons: Record<string, any> = {
@@ -138,7 +157,10 @@
 	let activeFilterCount = $derived(
 		(selectedSport ? 1 : 0) +
 		(selectedCategory ? 1 : 0) +
-		(selectedPlayType ? 1 : 0)
+		(selectedPlayType ? 1 : 0) +
+		(selectedDivision ? 1 : 0) +
+		(selectedLevel ? 1 : 0) +
+		(selectedQuery ? 1 : 0)
 	);
 
 	// Toggle accordion section
@@ -160,6 +182,16 @@
 	function handlePlayTypeClick(playType: string | null, event: Event) {
 		event.stopPropagation();
 		onPlayTypeSelect?.(playType);
+	}
+
+	function handleDivisionClick(division: string, event: MouseEvent) {
+		event.stopPropagation();
+		onDivisionSelect?.(division);
+	}
+
+	function handleLevelClick(level: string, event: MouseEvent) {
+		event.stopPropagation();
+		onLevelSelect?.(level);
 	}
 
 	function handleClearAllClick(event: Event) {
@@ -209,7 +241,7 @@
 			</button>
 
 			{#if expandedSections.sport}
-				<div id="sport-section" class="space-y-1 mt-2" transition:slide={{ duration: 200 }}>
+				<div id="sport-section" class="space-y-1 mt-2">
 					<!-- All Sports -->
 					<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors">
 						<input
@@ -266,7 +298,7 @@
 			</button>
 
 			{#if expandedSections.category}
-				<div id="category-section" class="space-y-1 mt-2" transition:slide={{ duration: 200 }}>
+				<div id="category-section" class="space-y-1 mt-2">
 					<!-- All Categories -->
 					<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors">
 						<input
@@ -323,7 +355,7 @@
 			</button>
 
 			{#if expandedSections.playType}
-				<div id="playtype-section" class="space-y-1 mt-2" transition:slide={{ duration: 200 }}>
+				<div id="playtype-section" class="space-y-1 mt-2">
 					<!-- All Play Types -->
 					<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors">
 						<input
@@ -355,6 +387,48 @@
 					{/each}
 				</div>
 			{/if}
+			</div>
+
+		<div class="border-t border-charcoal-800/30 pt-3">
+			<button
+				onclick={() => toggleSection('division')}
+				class="w-full flex items-center justify-between py-2 text-sm font-medium hover:text-gold-400 transition-colors"
+				aria-expanded={expandedSections.division}
+				aria-controls="division-section"
+			>
+				<span class="flex items-center gap-2">Division {#if selectedDivision}<span class="px-1.5 py-0.5 rounded-full bg-gold-500/20 text-gold-400 text-xs">1</span>{/if}</span>
+				<ChevronDown class="w-4 h-4 transition-transform {expandedSections.division ? 'rotate-180' : ''}" />
+			</button>
+			{#if expandedSections.division}
+				<div id="division-section" class="grid grid-cols-1 gap-1 mt-2">
+					{#each divisions as division (division.value)}
+						<button type="button" onclick={(event) => handleDivisionClick(division.value, event)} aria-pressed={selectedDivision === division.value} class="filter-facet-option {selectedDivision === division.value ? 'filter-facet-option--selected' : ''}">
+							<span>{division.label}</span>{#if selectedDivision === division.value}<Check class="w-4 h-4" aria-label="Selected" />{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<div class="pt-3">
+			<button
+				onclick={() => toggleSection('level')}
+				class="w-full flex items-center justify-between py-2 text-sm font-medium hover:text-gold-400 transition-colors"
+				aria-expanded={expandedSections.level}
+				aria-controls="level-section"
+			>
+				<span class="flex items-center gap-2">Level {#if selectedLevel}<span class="px-1.5 py-0.5 rounded-full bg-gold-500/20 text-gold-400 text-xs">1</span>{/if}</span>
+				<ChevronDown class="w-4 h-4 transition-transform {expandedSections.level ? 'rotate-180' : ''}" />
+			</button>
+			{#if expandedSections.level}
+				<div id="level-section" class="grid grid-cols-1 gap-1 mt-2">
+					{#each levels as level (level.value)}
+						<button type="button" onclick={(event) => handleLevelClick(level.value, event)} aria-pressed={selectedLevel === level.value} class="filter-facet-option {selectedLevel === level.value ? 'filter-facet-option--selected' : ''}">
+							<span>{level.label}</span>{#if selectedLevel === level.value}<Check class="w-4 h-4" aria-label="Selected" />{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
 		</div>
 	</div>
 </aside>
@@ -362,19 +436,16 @@
 <style>
 	/* Custom radio styling */
 	input[type="radio"] {
-		accent-color: #d4a025; /* gold-500 */
+		accent-color: var(--gallery-accent, var(--color-gold-500));
 	}
-
-	/* Smooth transitions */
-	button,
-	label {
-		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-	}
+	.filter-facet-option { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 8px 10px; border: 1px solid var(--gallery-rule, var(--color-charcoal-700)); border-radius: 6px; color: var(--gallery-ink, var(--color-charcoal-200)); font-size: 14px; text-align: left; }
+	.filter-facet-option:hover { border-color: var(--gallery-accent, var(--color-gold-500)); }
+	.filter-facet-option--selected { border-color: var(--gallery-accent, var(--color-gold-500)); background: var(--gallery-accent-soft, color-mix(in srgb, var(--gallery-accent, var(--color-gold-500)) 18%, transparent)); font-weight: 700; }
 
 	/* Custom scrollbar for sidebar */
 	aside {
 		scrollbar-width: thin;
-		scrollbar-color: #374151 transparent; /* charcoal-700 */
+		scrollbar-color: var(--gallery-rule, var(--color-charcoal-700)) transparent;
 	}
 
 	aside::-webkit-scrollbar {
@@ -386,11 +457,11 @@
 	}
 
 	aside::-webkit-scrollbar-thumb {
-		background: #374151; /* charcoal-700 */
+		background: var(--gallery-rule, var(--color-charcoal-700));
 		border-radius: 3px;
 	}
 
 	aside::-webkit-scrollbar-thumb:hover {
-		background: #4b5563; /* charcoal-600 */
+		background: var(--gallery-muted, var(--color-charcoal-600));
 	}
 </style>

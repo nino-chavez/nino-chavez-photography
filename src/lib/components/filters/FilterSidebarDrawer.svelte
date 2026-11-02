@@ -24,7 +24,6 @@
 -->
 
 <script lang="ts">
-	import { slide } from 'svelte/transition';
 	import { X } from 'lucide-svelte';
 	import FilterSidebar from './FilterSidebar.svelte';
 	import type { FilterCounts } from '$lib/supabase/server';
@@ -48,9 +47,14 @@
 		selectedSport?: string | null;
 		selectedCategory?: string | null;
 		selectedPlayType?: string | null;
+		selectedDivision?: string | null;
+		selectedLevel?: string | null;
+		selectedQuery?: string | null;
 		onSportSelect?: (sport: string | null) => void;
 		onCategorySelect?: (category: string | null) => void;
 		onPlayTypeSelect?: (playType: string | null) => void;
+		onDivisionSelect?: (division: string | null) => void;
+		onLevelSelect?: (level: string | null) => void;
 		onClearAll?: () => void;
 		onClose?: () => void;
 		filterCounts?: FilterCounts;
@@ -63,9 +67,14 @@
 		selectedSport = null,
 		selectedCategory = null,
 		selectedPlayType = null,
+		selectedDivision = null,
+		selectedLevel = null,
+		selectedQuery = null,
 		onSportSelect,
 		onCategorySelect,
 		onPlayTypeSelect,
+		onDivisionSelect,
+		onLevelSelect,
 		onClearAll,
 		onClose,
 		filterCounts
@@ -88,11 +97,11 @@
 	function showDrawer(node: HTMLDialogElement) {
 		const previous = document.activeElement as HTMLElement | null;
 		node.showModal();
-		return { destroy() {
+		return () => {
 			node.close();
 			// Svelte removes the dialog after its outro, so restore focus after removal.
 			queueMicrotask(() => { if (previous?.isConnected) previous.focus(); });
-		} };
+		};
 	}
 
 	function handleBackdropClick(event: MouseEvent) {
@@ -104,9 +113,8 @@
 
 {#if open}
 	<dialog
-		use:showDrawer
+		{@attach showDrawer}
 		class="filter-sidebar-drawer-panel fixed inset-y-0 left-auto right-0 m-0 ml-auto p-0 h-full max-h-none w-full max-w-sm bg-charcoal-950 text-inherit border-l border-charcoal-800 shadow-2xl overflow-y-auto"
-		transition:slide={{ duration: 300, axis: 'x' }}
 		aria-label="Filter options"
 		onclick={handleBackdropClick}
 		oncancel={(event) => { event.preventDefault(); close(); }}
@@ -132,9 +140,14 @@
 					{selectedSport}
 					{selectedCategory}
 					{selectedPlayType}
+					{selectedDivision}
+					{selectedLevel}
+					{selectedQuery}
 					{onSportSelect}
 					{onCategorySelect}
 					{onPlayTypeSelect}
+					{onDivisionSelect}
+					{onLevelSelect}
 					{onClearAll}
 					{filterCounts}
 				/>

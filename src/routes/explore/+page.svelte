@@ -13,7 +13,6 @@
 	import Lightbox from '$lib/components/gallery/Lightbox.svelte';
 	import VisualDataLegend from '$lib/components/ui/VisualDataLegend.svelte';
 	import FilterChip from '$lib/components/filters/FilterChip.svelte';
-	import ConsolidatedFilter from '$lib/components/filters/ConsolidatedFilter.svelte';
 	// Lazy-loaded components (heavy filters only loaded when needed)
 	import FilterSidebarDrawer from '$lib/components/filters/FilterSidebarDrawer.svelte';
 	import FilterShareButton from '$lib/components/filters/FilterShareButton.svelte';
@@ -26,6 +25,7 @@
 	import { SIZES_PRESETS } from '$lib/photo-utils';
 	import { cfSrcSet, hasCFImage } from '$lib/utils/cloudflare-images';
 	import { trackAnalyticsEventV2, recordSearchSubmission, searchDuration } from '$lib/analytics/client';
+	import type { FilterCounts } from '$lib/supabase/server';
 
 	// Dynamic imports for heavy components (lazy-loaded on first use)
 	const FilterSidebarPromise = import('$lib/components/filters/FilterSidebar.svelte');
@@ -39,11 +39,24 @@
 		set: 'Set',
 		serve: 'Serve',
 	};
+	const divisionLabels: Record<string, string> = {
+		girls: 'Girls',
+		boys: 'Boys',
+		womens: "Women's",
+		mens: "Men's",
+		coed: 'Co-ed'
+	};
+	const levelLabels: Record<string, string> = {
+		high_school: 'High School',
+		college: 'College',
+		club: 'Club',
+		middle_school: 'Middle School'
+	};
 
 	let { data }: { data: PageData } = $props();
 
 	// Handle streamed filter counts — show base counts immediately, update when filtered counts arrive
-	let resolvedFilterCounts = $state(data.baseFilterCounts);
+	let resolvedFilterCounts = $state<FilterCounts | undefined>();
 
 	$effect(() => {
 		// Reset to base counts on navigation, then resolve streamed counts
@@ -113,13 +126,17 @@
 		if (data.selectedJerseyNumber) count++;
 		if (data.selectedDivision) count++;
 		if (data.selectedLevel) count++;
+		if (data.searchQuery) count++;
 		return count;
 	});
+	let hasFacetedFilters = $derived(Boolean(
+		data.selectedSport || data.selectedCategory || data.selectedPlayType || data.selectedJerseyNumber || data.selectedDivision || data.selectedLevel
+	));
 
 	// Zero results detection (Phase 4: Auto-Clear notification)
 	$effect(() => {
 		// Only show zero results warning if filters are active AND no photos
-		if (activeFilterCount > 0 && displayPhotos.length === 0) {
+		if (hasFacetedFilters && displayPhotos.length === 0) {
 			filterNotifications.notifyZeroResults();
 		}
 	});
@@ -189,6 +206,11 @@
 		void goto(url.toString()).catch(() => trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: searchId, error_code: 'navigation_failed' } }));
 	}
 
+	function handleSearchSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		handleSearch(searchQuery);
+	}
+
 	function handleClearSearch() {
 		searchQuery = '';
 		const url = new URL($page.url);
@@ -221,33 +243,18 @@
 		goto(url.toString());
 	}
 
-	// Division facet (album-level): toggle ?division, preserving other params. Click active = clear.
-	const DIVISIONS = [
-		{ value: 'girls', label: 'Girls' },
-		{ value: 'boys', label: 'Boys' },
-		{ value: 'womens', label: "Women's" },
-		{ value: 'mens', label: "Men's" },
-		{ value: 'coed', label: 'Co-ed' }
-	];
-	function toggleDivision(value: string) {
+	function handleDivisionSelect(value: string | null) {
 		const url = new URL($page.url);
-		if (data.selectedDivision === value) url.searchParams.delete('division');
+		if (!value || data.selectedDivision === value) url.searchParams.delete('division');
 		else url.searchParams.set('division', value);
 		url.searchParams.delete('page');
 		url.searchParams.delete('similar_to');
 		goto(url.toString());
 	}
 
-	// Level facet (album-level): same toggle pattern as division.
-	const LEVELS = [
-		{ value: 'high_school', label: 'High School' },
-		{ value: 'college', label: 'College' },
-		{ value: 'club', label: 'Club' },
-		{ value: 'middle_school', label: 'Middle School' }
-	];
-	function toggleLevel(value: string) {
+	function handleLevelSelect(value: string | null) {
 		const url = new URL($page.url);
-		if (data.selectedLevel === value) url.searchParams.delete('level');
+		if (!value || data.selectedLevel === value) url.searchParams.delete('level');
 		else url.searchParams.set('level', value);
 		url.searchParams.delete('page');
 		url.searchParams.delete('similar_to');
@@ -446,28 +453,42 @@
 <div class="explore-tools">
 	<!-- Loading progress bar -->
 	{#if isLoading}
-		<div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-gold-500 via-gold-400 to-gold-500 animate-shimmer-fast"></div>
+		<div class="explore-tools__progress" aria-hidden="true"></div>
 	{/if}
 
 	<div class="explore-tools__inner">
-		<!-- Filters Header with Actions -->
-		<div class="explore-tools__actions flex items-center justify-between gap-2 mb-2">
-			<div class="flex items-center gap-2">
-				<!-- Loading indicator -->
-				{#if isLoading}
-					<div class="flex items-center gap-2 text-gold-400 text-xs">
-						<Loader2 class="w-3 h-3 animate-spin" aria-hidden="true" />
-						<span>Loading...</span>
-					</div>
-				{/if}
-			</div>
+		<div class="explore-tools__search-row">
+			<form class="explore-search" onsubmit={handleSearchSubmit}>
+				<label for="explore-photo-search">Search photos</label>
+				<div class="explore-search__control">
+					<Search class="w-4 h-4" aria-hidden="true" />
+					<input
+						id="explore-photo-search"
+						bind:value={searchQuery}
+						type="search"
+						placeholder="Number, color, action, or scene"
+						autocomplete="off"
+					/>
+					{#if searchQuery}
+						<button type="button" class="explore-search__clear" onclick={handleClearSearch} aria-label="Clear photo search">
+							<X class="w-4 h-4" />
+						</button>
+					{/if}
+					<button type="submit" class="explore-search__submit">Search</button>
+				</div>
+			</form>
 
-			<div class="flex items-center gap-2">
+			<div class="explore-tools__actions">
 				<!-- Share Button (inline with other controls) -->
 				<FilterShareButton
 					sport={data.selectedSport}
 					category={data.selectedCategory}
 					playType={data.selectedPlayType}
+					jersey={data.selectedJerseyNumber}
+					division={data.selectedDivision}
+					level={data.selectedLevel}
+					query={data.searchQuery}
+					shareUrl={$page.url.toString()}
 				/>
 
 				<!-- Mobile Filter Drawer Toggle (visible on small screens only) -->
@@ -488,13 +509,21 @@
 					<button
 						onclick={clearAllFilters}
 						class="inline-flex items-center gap-1 px-2 py-1 text-xs text-charcoal-400 hover:text-gold-400 transition-colors"
+						aria-label="Clear all filters and search"
 					>
 						<X class="w-3 h-3" />
-						<span class="hidden sm:inline">Clear All</span>
+						<span>Clear all</span>
 					</button>
 				{/if}
 			</div>
 		</div>
+
+		{#if isLoading}
+			<div class="explore-tools__loading" role="status" aria-live="polite">
+				<Loader2 class="w-3.5 h-3.5" aria-hidden="true" />
+				<span>Loading matching photos</span>
+			</div>
+		{/if}
 
 		<!-- Filter Presets Panel (Collapsible) - Lazy Loaded -->
 		<div class="explore-tools__quick-filters mb-2">
@@ -540,25 +569,26 @@
 						onRemove={() => handleJerseySelect(null)}
 					/>
 				{/if}
+
+				{#if data.selectedDivision}
+					<FilterChip
+						label={`Division: ${divisionLabels[data.selectedDivision] || data.selectedDivision}`}
+						onRemove={() => handleDivisionSelect(null)}
+					/>
+				{/if}
+
+				{#if data.selectedLevel}
+					<FilterChip
+						label={`Level: ${levelLabels[data.selectedLevel] || data.selectedLevel}`}
+						onRemove={() => handleLevelSelect(null)}
+					/>
+				{/if}
+
+				{#if data.searchQuery}
+					<FilterChip label={`Search: ${data.searchQuery}`} onRemove={handleClearSearch} />
+				{/if}
 			</div>
 		{/if}
-
-		<!-- Consolidated Filters (Mobile only - dropdowns) -->
-		<div class="explore-tools__remaining lg:hidden">
-			{#if data.sports && data.sports.length > 0 && data.categories && data.categories.length > 0}
-				<ConsolidatedFilter
-					sports={data.sports}
-					categories={data.categories}
-					selectedSport={data.selectedSport}
-					selectedCategory={data.selectedCategory}
-					selectedPlayType={data.selectedPlayType}
-					onSportSelect={handleSportSelect}
-					onCategorySelect={handleCategorySelect}
-					onPlayTypeSelect={handlePlayTypeSelect}
-					filterCounts={resolvedFilterCounts}
-				/>
-			{/if}
-		</div>
 	</div>
 </div>
 
@@ -571,11 +601,16 @@
 	selectedSport={data.selectedSport}
 	selectedCategory={data.selectedCategory}
 	selectedPlayType={data.selectedPlayType}
+	selectedDivision={data.selectedDivision}
+	selectedLevel={data.selectedLevel}
+	selectedQuery={data.searchQuery}
 	onSportSelect={handleSportSelect}
 	onCategorySelect={handleCategorySelect}
 	onPlayTypeSelect={handlePlayTypeSelect}
+	onDivisionSelect={handleDivisionSelect}
+	onLevelSelect={handleLevelSelect}
 	onClearAll={clearAllFilters}
-	filterCounts={resolvedFilterCounts}
+	filterCounts={resolvedFilterCounts ?? data.baseFilterCounts}
 />
 
 <div class="explore-results" aria-busy={isLoading}>
@@ -592,11 +627,16 @@
 						selectedSport={data.selectedSport}
 						selectedCategory={data.selectedCategory}
 						selectedPlayType={data.selectedPlayType}
+						selectedDivision={data.selectedDivision}
+						selectedLevel={data.selectedLevel}
+						selectedQuery={data.searchQuery}
 						onSportSelect={handleSportSelect}
 						onCategorySelect={handleCategorySelect}
 						onPlayTypeSelect={handlePlayTypeSelect}
+						onDivisionSelect={handleDivisionSelect}
+						onLevelSelect={handleLevelSelect}
 						onClearAll={clearAllFilters}
-						filterCounts={resolvedFilterCounts}
+						filterCounts={resolvedFilterCounts ?? data.baseFilterCounts}
 					/>
 				{/await}
 			{/if}
@@ -620,40 +660,6 @@
 			<option value="newest">Newest</option>
 			<option value="oldest">Oldest</option>
 		</select>
-	</div>
-
-	<!-- Division facet chips (album-level browse axis free-text can't express) -->
-	<div class="flex flex-wrap items-center gap-2 mb-4">
-		<span class="text-xs uppercase tracking-wide text-charcoal-500">Division</span>
-		{#each DIVISIONS as d}
-			<button
-				type="button"
-				onclick={() => toggleDivision(d.value)}
-				aria-pressed={data.selectedDivision === d.value}
-				class="px-3 py-1 rounded-full border text-xs transition-colors {data.selectedDivision === d.value
-					? 'border-gold-500 bg-gold-500/15 text-white'
-					: 'border-charcoal-700 bg-charcoal-900 text-charcoal-300 hover:border-gold-500/60 hover:text-white'}"
-			>
-				{d.label}
-			</button>
-		{/each}
-	</div>
-
-	<!-- Level facet chips -->
-	<div class="flex flex-wrap items-center gap-2 mb-4">
-		<span class="text-xs uppercase tracking-wide text-charcoal-500">Level</span>
-		{#each LEVELS as l}
-			<button
-				type="button"
-				onclick={() => toggleLevel(l.value)}
-				aria-pressed={data.selectedLevel === l.value}
-				class="px-3 py-1 rounded-full border text-xs transition-colors {data.selectedLevel === l.value
-					? 'border-gold-500 bg-gold-500/15 text-white'
-					: 'border-charcoal-700 bg-charcoal-900 text-charcoal-300 hover:border-gold-500/60 hover:text-white'}"
-			>
-				{l.label}
-			</button>
-		{/each}
 	</div>
 
 	<!-- Search Feedback -->
@@ -696,7 +702,7 @@
 	{:else}
 		<!-- Enhanced Empty State with Filter Context -->
 		<div class="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto">
-			{#if activeFilterCount > 0}
+		{#if hasFacetedFilters}
 				<Filter class="w-16 h-16 text-charcoal-600 mb-4" aria-hidden="true" />
 				<Typography variant="h3" class="mb-2">No photos match your filters</Typography>
 				<Typography variant="body" class="text-charcoal-400 mb-4">
@@ -771,7 +777,23 @@
 	.explore-title-row > div > p { max-width: 680px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; line-height: 1.55; }
 	.explore-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
 	.explore-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); border-block: 1px solid var(--color-charcoal-800); }
-	.explore-tools__inner { padding-block: 10px; }
+	.explore-tools__inner { display: grid; gap: 10px; padding-block: 10px; }
+	.explore-tools__search-row { display: flex; align-items: end; gap: 10px; }
+	.explore-search { flex: 1; min-width: 0; }
+	.explore-search label { display: block; margin-bottom: 4px; color: var(--gallery-ink, var(--color-charcoal-200)); font-size: 12px; font-weight: 700; }
+	.explore-search__control { display: flex; align-items: center; min-height: 44px; gap: 8px; padding-left: 12px; border: 1px solid var(--gallery-rule, var(--color-charcoal-700)); border-radius: 8px; background: var(--gallery-control-bg, var(--color-charcoal-900)); }
+	.explore-search__control:focus-within { border-color: var(--gallery-accent, var(--color-gold-500)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gallery-accent, var(--color-gold-500)) 30%, transparent); }
+	.explore-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--gallery-ink, var(--color-charcoal-100)); font-size: 14px; }
+	.explore-search input::placeholder { color: var(--gallery-muted, var(--color-charcoal-400)); }
+	.explore-search__clear { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: var(--gallery-muted, var(--color-charcoal-400)); }
+	.explore-search__clear:hover { background: var(--gallery-rule, var(--color-charcoal-800)); color: var(--gallery-ink, var(--color-charcoal-100)); }
+	.explore-search__submit { align-self: stretch; min-height: 42px; padding-inline: 16px; border-radius: 0 7px 7px 0; background: var(--gallery-accent, var(--color-gold-500)); color: var(--gallery-bg, var(--color-charcoal-950)); font-size: 13px; font-weight: 700; }
+	.explore-search__submit:hover { background: var(--gallery-accent-hover, var(--gallery-accent, var(--color-gold-400))); }
+	.explore-search__submit:active { background: var(--gallery-accent-pressed, var(--gallery-accent, var(--color-gold-600))); }
+	.explore-tools__actions { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+	.explore-tools__loading { display: flex; align-items: center; gap: 6px; color: var(--gallery-muted, var(--color-charcoal-400)); font-size: 12px; }
+	.explore-tools__progress { position: absolute; top: 0; right: 0; left: 0; height: 2px; background: var(--gallery-accent, var(--color-gold-500)); }
+	.explore-tools__quick-filters { width: 100%; }
 	.explore-results { padding-block: 20px 72px; }
 	.explore-tools :global(button[aria-controls="presets-panel"]),
 	.explore-tools :global(button[aria-label="Open filters"]),
@@ -787,32 +809,15 @@
 		.explore-title-row { align-items: start; flex-direction: column; gap: 10px; }
 		.explore-title-row > div > p { margin-top: 10px; font-size: 14px; line-height: 1.5; }
 		.explore-count { font-size: 12px; white-space: normal; }
-		.explore-tools__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 8px; padding-block: 10px; }
-		.explore-tools__actions { grid-column: 2; grid-row: 1; margin-bottom: 0; }
-		.explore-tools__quick-filters { grid-column: 1; grid-row: 1; margin-bottom: 0; }
-		.explore-tools__active-filters,
-		.explore-tools__remaining { grid-column: 1 / -1; }
+		.explore-tools__search-row { align-items: end; }
+		.explore-tools__actions { flex-shrink: 0; }
 		.explore-tools :global(button[aria-controls="presets-panel"]) { padding: 10px; }
 		.explore-tools :global(button[aria-controls="presets-panel"] label) { font-size: 12px; }
 		.explore-results { padding-block: 16px 56px; }
 	}
 	@media (max-width: 359px) {
-		.explore-tools__inner { display: block; }
-		.explore-tools__inner > div { margin-bottom: 8px; }
+		.explore-tools__search-row { align-items: stretch; flex-direction: column; }
+		.explore-tools__actions { justify-content: space-between; }
 	}
 
-	/* Loading progress bar animation */
-	@keyframes shimmer-fast {
-		0% {
-			background-position: -200% 0;
-		}
-		100% {
-			background-position: 200% 0;
-		}
-	}
-
-	.animate-shimmer-fast {
-		background-size: 200% 100%;
-		animation: shimmer-fast 1.5s ease-in-out infinite;
-	}
 </style>
