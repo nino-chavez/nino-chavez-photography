@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+// The comparison has two explicit local servers and is not part of the ordinary
+// application test environment. Opt in only after starting the review preview.
+test.skip(process.env.PHOTOGRAPHY_ACCENT_REVIEW !== '1', 'Requires the local Photography comparison servers');
+
 test('accent and viewport switching keep the same open photo', async ({ page }) => {
 	test.setTimeout(90_000);
 	await page.route(/(?:posthog|analytics\/collect|cdn-cgi\/rum|googletagmanager)/, route => route.abort());

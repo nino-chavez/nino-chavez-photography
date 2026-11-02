@@ -1,0 +1,14 @@
+(node:16175) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:16195) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16195) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:16195) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/photo-accent-comparison.spec.ts:6:1 › accent and viewport switching keep the same open photo (1.2s)
+  ✓  2 [chromium] › tests/photo-accent-comparison.spec.ts:47:1 › preview accent cannot be activated on the ordinary local hostname (462ms)
+
+  2 passed (2.6s)

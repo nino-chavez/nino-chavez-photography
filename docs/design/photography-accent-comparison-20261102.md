@@ -2,6 +2,8 @@
 
 Nino is choosing the Photography site's accent direction. The preview uses the same photographs, layout and interactions for both choices. The approved graphite base stays. Blog and Profile stay as they are. This is an unselected review branch, not a production release.
 
+Do not merge this review branch, including after an accent is selected. Keep it as the comparison artifact. After selection, create a clean implementation branch from current main and transfer only the product interaction changes and selected palette. Exclude `AccentStudy.svelte`, the comparison toolbar, the local framing/cache exception, the unselected study palettes, and the opt-in comparison spec. That production change gets its own PR and validation. The review preview stays available until the decision is recorded.
+
 ## Surfaces
 
 - Guided: public photo explorer, filters, saved photos, photo viewer and feedback.
@@ -42,3 +44,5 @@ Motion explains an action or a change of state. Press feedback is brief. A save 
 At 1440 and 390 pixels, search real photos, apply a filter, inspect its chip, save a result, open it, remove it and Undo. Switch the accent while the viewer is open. Close and confirm focus returns to the card. Check the mobile filter dialog, empty search recovery, reload persistence and 320-pixel overflow. Repeat essential actions with keyboard and reduced motion.
 
 The preview runs locally on `photo-accent.localhost:8840`; the native app uses port 8841. The accent bridge only activates on that hostname. Public hosts retain the approved palette. Both servers and the review worktree must remain available while this preview is being reviewed.
+
+The comparison-specific Playwright tests require `PHOTOGRAPHY_ACCENT_REVIEW=1` and the two running review servers. Without that explicit opt-in, those two tests are skipped; the normal application tests do not depend on the comparison server.
