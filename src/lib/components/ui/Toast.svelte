@@ -29,10 +29,12 @@
 		icon?: ComponentType;
 		duration?: number; // milliseconds, 0 = no auto-dismiss
 		onClose?: () => void;
+		onAction?: () => void;
+		actionLabel?: string;
 		children?: Snippet;
 	}
 
-	let { variant = 'info', icon, duration = 3000, onClose, children }: Props = $props();
+	let { variant = 'info', icon, duration = 3000, onClose, onAction, actionLabel, children }: Props = $props();
 
 	let visible = $state(true);
 	let timeoutId: number | null = null;
@@ -50,6 +52,11 @@
 		onClose?.();
 	}
 
+	function handleAction() {
+		onAction?.();
+		close();
+	}
+
 	onMount(() => {
 		if (duration > 0) {
 			timeoutId = window.setTimeout(close, duration);
@@ -63,9 +70,10 @@
 
 {#if visible}
 	<div
-		role="status"
-		aria-live="polite"
-		class="fixed bottom-6 right-6 z-50 max-w-md animate-toast-in"
+		role={variant === 'error' ? 'alert' : 'status'}
+		aria-live={variant === 'error' ? 'assertive' : 'polite'}
+		data-toast-item
+		class="toast-notice max-w-md"
 	>
 		<div
 			class="flex items-start gap-3 px-4 py-3 rounded-lg border backdrop-blur-md shadow-lg
@@ -83,6 +91,15 @@
 			<div class="flex-1 text-sm leading-relaxed">
 				{@render children?.()}
 			</div>
+
+			{#if actionLabel && onAction}
+				<button
+					onclick={handleAction}
+					class="shrink-0 rounded px-2 py-1 text-sm font-semibold underline decoration-2 underline-offset-4 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gallery-accent,#CBD8DF)]"
+				>
+					{actionLabel}
+				</button>
+			{/if}
 
 			<!-- Close button -->
 			<button
@@ -117,18 +134,20 @@
 		}
 	}
 
-	@keyframes toast-in {
-		from {
-			opacity: 0;
-			transform: translateY(20px) translateX(20px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0) translateX(0);
-		}
+	.toast-notice {
+		animation: toast-in 160ms ease-out;
 	}
 
-	.animate-toast-in {
-		animation: toast-in 0.3s ease-out;
+	@keyframes toast-in {
+		from { opacity: 0; transform: translateY(0.5rem); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.toast-notice,
+		.toast-notice * {
+			animation: none !important;
+			transition: none !important;
+		}
 	}
 </style>

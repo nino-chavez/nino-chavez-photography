@@ -12,6 +12,7 @@ import { favoriteTransition } from '$lib/analytics/favorite-transaction';
 
 const STORAGE_KEY = 'gallery-favorites';
 const MAX_FAVORITES = 100; // Prevent unlimited storage growth
+const REMOVAL_TOAST_KEY = 'favorite-removal';
 
 interface FavoritesState {
 	photoIds: Set<string>;
@@ -103,9 +104,9 @@ function createFavoritesStore() {
 		},
 
 		// Remove photo from favorites
-		removeFavorite(photoId: string, surface: string): boolean {
+		removeFavorite(photoId: string, surface: string): Photo | null {
 			const photo = state.photos.get(photoId);
-			if (!photo || favoriteTransition(state.photoIds.has(photoId), 'remove') !== 'remove') return false;
+			if (!photo || favoriteTransition(state.photoIds.has(photoId), 'remove') !== 'remove') return null;
 			state.photoIds.delete(photoId);
 			state.photos.delete(photoId);
 			if (!saveToStorage()) {
@@ -114,7 +115,14 @@ function createFavoritesStore() {
 				throw new Error('Could not update saved photos');
 			}
 			trackAnalyticsEventV2({ eventName: 'favorite_removed', properties: { photo_id: photo.id, album_key: photo.album_key, surface } });
-			return true;
+			return photo;
+		},
+
+		// Re-add the exact record removed by Undo. A second activation is harmless:
+		// the photo is already present and storage is not written again.
+		restoreFavorite(photo: Photo, surface: string): boolean {
+			if (state.photoIds.has(photo.image_key)) return true;
+			return this.addFavorite(photo, surface);
 		},
 
 		// Toggle favorite status
@@ -122,8 +130,24 @@ function createFavoritesStore() {
 			const isFav = state.photoIds.has(photo.image_key);
 
 			if (isFav) {
-				if (!this.removeFavorite(photo.image_key, surface)) return false;
-				toast.info('Removed from saved photos', { duration: 2000 });
+				const removedPhoto = this.removeFavorite(photo.image_key, surface);
+				if (!removedPhoto) return false;
+				toast.info('Removed from saved photos', {
+					duration: 6000,
+					replaceKey: REMOVAL_TOAST_KEY,
+					action: {
+						label: 'Undo',
+						onAction: () => {
+							try {
+								if (this.restoreFavorite(removedPhoto, 'saved_undo')) {
+									toast.success('Photo restored to saved photos', { duration: 3000 });
+								}
+							} catch {
+								toast.error('Could not restore this photo', { duration: 3000 });
+							}
+						}
+					}
+				});
 				return false;
 			} else {
 				try {
