@@ -68,8 +68,8 @@
 
 <style>
 	.photo-home {
-		color: #f5f5f2;
-		background: #181818;
+		color: var(--gallery-ink, #f5f5f2);
+		background: var(--gallery-bg, #181818);
 		font:
 			15px/1.5 Arial,
 			Helvetica,
@@ -87,16 +87,16 @@
 		text-underline-offset: 5px;
 	}
 	.photo-home :focus-visible {
-		outline: 2px solid #fff;
-		outline-offset: 4px;
+		outline: 2px solid var(--gallery-accent, #fff);
+		outline-offset: 3px;
 	}
 	.home-hero {
 		position: relative;
 		isolation: isolate;
 		min-height: 700px;
 		height: 100svh;
-		background: #181818;
-		color: #fff;
+		background: var(--gallery-bg, #181818);
+		color: var(--gallery-ink, #fff);
 	}
 	.hero-shade {
 		position: absolute;
@@ -130,17 +130,24 @@
 		letter-spacing: -1.6px;
 		margin: 0 0 24px;
 	}
+	.hero-finder h1,
+	.hero-recent h2 {
+		text-shadow: 0 2px 5px #000, 0 0 18px #000;
+	}
 	.event-search label {
 		font-size: 14px;
-		color: #fff;
-		display: block;
+		color: var(--gallery-ink, #fff);
+		display: table;
+		padding: 3px 6px;
+		margin-left: -6px;
+		background: color-mix(in srgb, var(--gallery-bg, #181818) 88%, transparent);
 		margin-bottom: 8px;
 	}
 	.event-search > div {
 		display: flex;
 		gap: 0;
-		border-bottom: 1px solid #fffc;
-		background: #181818b8;
+		border-bottom: 1px solid var(--gallery-rule, #fffc);
+		background: color-mix(in srgb, var(--gallery-bg, #181818) 94%, transparent);
 	}
 	.event-search input {
 		flex: 1;
@@ -150,7 +157,7 @@
 		background: transparent;
 		border-radius: 0;
 		min-height: 52px;
-		color: #fff;
+		color: var(--gallery-ink, #fff);
 		font:
 			16px Arial,
 			Helvetica,
@@ -158,15 +165,15 @@
 		padding: 12px 15px;
 	}
 	.event-search input::placeholder {
-		color: #d5d5d0;
+		color: var(--gallery-muted, #d5d5d0);
 	}
 	.event-search button {
 		border: 0;
 		border-radius: 0;
 		min-width: 88px;
 		padding: 12px 18px;
-		color: #181818;
-		background: #f5f5f2;
+		color: var(--gallery-bg, #181818);
+		background: var(--gallery-ink, #f5f5f2);
 		font:
 			600 14px Arial,
 			Helvetica,
@@ -174,7 +181,7 @@
 		cursor: pointer;
 	}
 	.event-search button:hover {
-		background: #deded8;
+		background: var(--gallery-accent, #deded8);
 	}
 	.browse-link {
 		display: inline-flex;
@@ -185,12 +192,12 @@
 		margin-top: 14px;
 		min-height: 46px;
 		font-size: 14px;
-		border: 1px solid #ffffffa0;
-		background: #18181894;
+		border: 1px solid var(--gallery-rule, #ffffffa0);
+		background: color-mix(in srgb, var(--gallery-bg, #181818) 94%, transparent);
 		border-radius: 3px;
 	}
 	.browse-link:hover {
-		background: #181818e0;
+		border-color: var(--gallery-accent, currentColor);
 		text-decoration: none !important;
 	}
 	.hero-recent {
@@ -210,9 +217,9 @@
 		align-items: center;
 		padding: 15px 16px;
 		margin-top: 8px;
-		border: 1px solid #ffffff65;
+		border: 1px solid var(--gallery-rule, #ffffff65);
 		border-radius: 3px;
-		background: #181818c4;
+		background: color-mix(in srgb, var(--gallery-bg, #181818) 94%, transparent);
 		min-height: 88px;
 	}
 	.gallery-label {
@@ -222,7 +229,7 @@
 		display: block;
 		margin-top: 7px;
 		font-size: 13px;
-		color: #ddd;
+		color: var(--gallery-muted, #ddd);
 	}
 	.gallery-title {
 		display: block;
@@ -236,8 +243,8 @@
 		gap: 12px;
 		min-height: 44px;
 		padding: 10px 12px;
-		color: #181818;
-		background: #f5f5f2;
+		color: var(--gallery-bg, #181818);
+		background: var(--gallery-ink, #f5f5f2);
 		border-radius: 2px;
 		font-size: 13px;
 		font-weight: 600;
@@ -245,11 +252,10 @@
 	}
 	.hero-recent a:hover {
 		text-decoration: none;
-		background: #181818ee;
-		border-color: #fff;
+		border-color: var(--gallery-accent, #fff);
 	}
 	.hero-recent a:hover .gallery-cta {
-		background: #fff;
+		background: var(--gallery-accent, #fff);
 	}
 	.recent-events {
 		max-width: 1440px;
@@ -290,7 +296,7 @@
 		height: 340px;
 		object-fit: cover;
 		object-position: 50% 32%;
-		background: #222;
+		background: var(--gallery-surface, #222);
 		margin-bottom: 20px;
 	}
 	.no-cover {
@@ -302,7 +308,7 @@
 		justify-content: space-between;
 		gap: 12px;
 		font-size: 13px;
-		color: #c1c1bb;
+		color: var(--gallery-muted, #c1c1bb);
 		margin-bottom: 10px;
 	}
 	.event-card h3 {
@@ -315,7 +321,7 @@
 	}
 	.event-count {
 		font-size: 13px;
-		color: #c1c1bb;
+		color: var(--gallery-muted, #c1c1bb);
 	}
 	.archive-end {
 		text-align: center;
@@ -326,11 +332,11 @@
 		min-height: 44px;
 		align-items: center;
 		padding: 11px 16px;
-		border: 1px solid #74746c;
+		border: 1px solid var(--gallery-rule, #74746c);
 		border-radius: 4px;
 	}
 	.archive-end p {
-		color: #c1c1bb;
+		color: var(--gallery-muted, #c1c1bb);
 		font-size: 13px;
 		margin-top: 20px;
 	}

@@ -35,6 +35,10 @@
 	// Navigation loading state
 	let isNavigating = $derived($navigating !== null);
 	let isAnalyticsWorkspace = $derived(usesAnalyticsWorkspace($page.route.id, $page.url.hostname, $page.url.pathname));
+	// Keep the public gallery's approved palette out of Analytics and account/admin surfaces.
+	let isPublicGallery = $derived(
+		!isAnalyticsWorkspace && !/^\/(?:analytics(?:-preferences)?|admin|login|auth|reset-password)(?:\/|$)/.test($page.route.id ?? '')
+	);
 
 	// Kill switch: chat is OFF unless VITE_CHAT_ENABLED === 'true' (disabled in prod for now,
 	// pending the v5 stream-contract fix + a verifiable output guardrail). Re-enable by setting
@@ -183,13 +187,14 @@
 		`index, follow` to every crawler, so the tag asserted nothing its absence
 		does not. A page that wants out says so on its own, once.
 	-->
-	<meta name="theme-color" content={isAnalyticsWorkspace ? '#edf2f7' : '#181818'} />
+	<meta name="theme-color" content={isAnalyticsWorkspace ? '#edf2f7' : isPublicGallery ? '#181A1C' : '#181818'} />
 
 	<!-- Google Search Console Verification -->
 	<meta name="google-site-verification" content="m_DGu93JLdDvx0_KNbZhjwVB75OdnQEURDhinyriJKQ" />
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
+	<div class:gallery-theme={isPublicGallery}>
 	<!-- Global Navigation Loading Bar -->
 	{#if isNavigating}
 		<div class="fixed top-0 left-0 right-0 z-[9999] h-1 bg-gold-500/20">
@@ -214,6 +219,7 @@
 	{#if showChat}
 		<ChatWidget />
 	{/if}
+	</div>
 </QueryClientProvider>
 
 <style>

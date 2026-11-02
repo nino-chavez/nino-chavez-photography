@@ -101,6 +101,30 @@
 			close();
 		}
 	}
+
+	function focusDrawer(node: HTMLDivElement) {
+		const previous = document.activeElement as HTMLElement | null;
+		const controls = () => Array.from(node.querySelectorAll<HTMLElement>(
+			'button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+		)).filter((element) => element.getClientRects().length > 0);
+		queueMicrotask(() => controls()[0]?.focus());
+		const trapTab = (event: KeyboardEvent) => {
+			if (event.key !== 'Tab') return;
+			const items = controls();
+			const first = items[0];
+			const last = items.at(-1);
+			if (event.shiftKey && document.activeElement === first) {
+				event.preventDefault(); last?.focus();
+			} else if (!event.shiftKey && document.activeElement === last) {
+				event.preventDefault(); first?.focus();
+			}
+		};
+		node.addEventListener('keydown', trapTab);
+		return { destroy() {
+			node.removeEventListener('keydown', trapTab);
+			if (previous?.isConnected) previous.focus();
+		} };
+	}
 </script>
 
 {#if open}
@@ -113,6 +137,7 @@
 	>
 		<!-- Drawer panel -->
 		<div
+			use:focusDrawer
 			class="fixed top-0 right-0 h-full w-full max-w-sm bg-charcoal-950 border-l border-charcoal-800 shadow-2xl overflow-y-auto"
 			transition:slide={{ duration: 300, axis: 'x' }}
 			role="dialog"

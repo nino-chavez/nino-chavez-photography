@@ -323,8 +323,8 @@
 		align-items: center;
 		gap: 12px;
 		padding: 6px 8px 6px 14px;
-		background: #181818c4;
-		border: 1px solid #ffffff65;
+		background: color-mix(in srgb, var(--gallery-bg, #181818) 94%, transparent);
+		border: 1px solid var(--gallery-rule, #ffffff65);
 		border-radius: 3px;
 		font:
 			13px Arial,
@@ -342,7 +342,7 @@
 	}
 	.hero-position {
 		min-width: 36px;
-		color: #ddd;
+		color: var(--gallery-muted, #ddd);
 		font-size: 12px;
 	}
 	.hero-work-controls button {
@@ -352,14 +352,14 @@
 		min-height: 44px;
 		padding: 8px;
 		font-size: 20px;
-		border: 1px solid #ffffff80;
+		border: 1px solid var(--gallery-rule, #ffffff80);
 		border-radius: 4px;
-		background: transparent;
+		background: var(--gallery-surface, transparent);
 		color: inherit;
 		cursor: pointer;
 	}
 	.hero-work-controls button:hover {
-		background: #ffffff20;
+		border-color: var(--gallery-accent, currentColor);
 	}
 	.hero-work-controls svg {
 		width: 18px;
@@ -369,7 +369,7 @@
 		stroke-width: 2.5;
 	}
 	:focus-visible {
-		outline: 2px solid #fff;
+		outline: 2px solid var(--gallery-accent, #fff);
 		outline-offset: 4px;
 	}
 	.hero-track:focus-visible {
