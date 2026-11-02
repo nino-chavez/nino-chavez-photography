@@ -1,0 +1,21 @@
+{
+  "verdict": "PASS after source-frame verification",
+  "reviewId": "c4ddd02a-1c8d-4b3d-b764-d899e96e0a20",
+  "finding": {
+    "claim": "Blog desktop loses roughly 32px below header",
+    "disposition": "Not reproduced; rejected against primary images",
+    "evidence": "Parent reopened native and approved 1440px frames. Blog home intro ink begins at y126 in both; lead image top is y195 in both. Article title begins at y212 in both and audio panel at y483. Centering differs by about 8px because the reference includes a classic scrollbar; there is no vertical compression."
+  },
+  "otherFindings": "No other material new visual defects reported. Approved header coverage and existing Visual Guide overlap retained. Backend unavailable and lazy-image full-page capture states do not change source geometry.",
+  "limits": "Headless Chromium, no physical-phone or authenticated Analytics review.",
+  "codeReviewFixes": [
+    {
+      "issue": "Drawer and hidden desktop sidebar shared radio names",
+      "evidence": "The regression reproduced a visible Volleyball radio becoming unchecked after navigation. Each sidebar now uses an instance-specific group name; the strengthened test passes while the drawer remains open."
+    },
+    {
+      "issue": "Manual focus loop allowed focus to leave the dialog",
+      "evidence": "Replaced the manual loop with a native modal dialog. Tests verify the background cannot take focus, Tab remains in the dialog after filtering, and close restores trigger focus."
+    }
+  ]
+}

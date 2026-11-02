@@ -159,3 +159,29 @@ test('short landscape keeps the photo controls and event search apart',async({pa
  await page.locator('.hero-track:visible img').first().evaluate((img:HTMLImageElement)=>img.decode());
  await page.screenshot({path:`${evidence}/home-landscape.png`});
 });
+
+test('photo explorer phone filters open, apply and close', async ({ page }) => {
+ await page.setViewportSize({ width: 390, height: 844 });
+ await page.goto('/photography/explore');
+ const trigger = page.getByRole('button', { name: 'Open filters', exact: true });
+ await trigger.click();
+ const drawer = page.getByRole('dialog', { name: 'Filter options' });
+ await expect(drawer).toBeVisible();
+ await expect(drawer.getByRole('button', { name: 'Close filters' })).toBeFocused();
+ expect(await drawer.evaluate((node) => node.matches(':modal'))).toBe(true);
+ await trigger.evaluate((node) => node.focus());
+ await expect(drawer.getByRole('button', { name: 'Close filters' })).toBeFocused();
+ await drawer.getByRole('radio', { name: /Volleyball/ }).check();
+ await expect(page).toHaveURL(/sport=volleyball/);
+ await expect(drawer.getByRole('radio', { name: /Volleyball/ })).toBeChecked();
+ await page.keyboard.press('Tab');
+ expect(await drawer.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+ await drawer.getByRole('button', { name: 'Close filters' }).click();
+ await expect(drawer).toBeHidden();
+ await trigger.click();
+ await expect(drawer.getByRole('radio', { name: /Volleyball/ })).toBeChecked();
+ await page.keyboard.press('Escape');
+ await expect(drawer).toBeHidden();
+ await expect(trigger).toBeFocused();
+ expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

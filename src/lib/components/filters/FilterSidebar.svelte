@@ -31,6 +31,7 @@
 -->
 
 <script lang="ts">
+	const radioGroupId = $props.id();
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, X, Trophy, Award, Zap, Activity, Sparkles } from 'lucide-svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -213,7 +214,7 @@
 					<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors">
 						<input
 							type="radio"
-							name="sport"
+							name={`${radioGroupId}-sport`}
 							checked={!selectedSport}
 							onchange={(e) => handleSportClick(null, e)}
 							class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
@@ -229,7 +230,7 @@
 						<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors {isDisabled ? 'opacity-40 cursor-not-allowed' : ''}">
 							<input
 								type="radio"
-								name="sport"
+								name={`${radioGroupId}-sport`}
 								checked={selectedSport === sport.name}
 								onchange={(e) => handleSportClick(sport.name, e)}
 								disabled={isDisabled}
@@ -270,7 +271,7 @@
 					<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors">
 						<input
 							type="radio"
-							name="category"
+							name={`${radioGroupId}-category`}
 							checked={!selectedCategory}
 							onchange={(e) => handleCategoryClick(null, e)}
 							class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
@@ -286,7 +287,7 @@
 						<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors {isDisabled ? 'opacity-40 cursor-not-allowed' : ''}">
 							<input
 								type="radio"
-								name="category"
+								name={`${radioGroupId}-category`}
 								checked={selectedCategory === category.name}
 								onchange={(e) => handleCategoryClick(category.name, e)}
 								disabled={isDisabled}
@@ -327,7 +328,7 @@
 					<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors">
 						<input
 							type="radio"
-							name="playtype"
+							name={`${radioGroupId}-playtype`}
 							checked={!selectedPlayType}
 							onchange={(e) => handlePlayTypeClick(null, e)}
 							class="w-4 h-4 text-gold-500 border-charcoal-700 focus:ring-gold-500 focus:ring-offset-charcoal-900"
@@ -342,7 +343,7 @@
 						<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-charcoal-800/50 cursor-pointer transition-colors {isDisabled ? 'opacity-40 cursor-not-allowed' : ''}">
 							<input
 								type="radio"
-								name="playtype"
+								name={`${radioGroupId}-playtype`}
 								checked={selectedPlayType === key}
 								onchange={(e) => handlePlayTypeClick(key, e)}
 								disabled={isDisabled}

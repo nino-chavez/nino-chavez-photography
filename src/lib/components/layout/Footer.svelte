@@ -25,8 +25,8 @@
 <style>
 	footer {
 		padding: 32px 48px 24px;
-		border-top: 1px solid #484844;
-		color: #b9b9b3;
+		border-top: 1px solid var(--gallery-rule, #484844);
+		color: var(--gallery-muted, #b9b9b3);
 		font:
 			13px/1.5 Arial,
 			Helvetica,
@@ -60,7 +60,7 @@
 		text-underline-offset: 5px;
 	}
 	a:focus-visible {
-		outline: 2px solid #fff;
+		outline: 2px solid var(--gallery-accent, #fff);
 		outline-offset: 4px;
 	}
 	.utility {

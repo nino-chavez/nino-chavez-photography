@@ -451,7 +451,7 @@
 
 	<div class="explore-tools__inner">
 		<!-- Filters Header with Actions -->
-		<div class="flex items-center justify-between gap-2 mb-2">
+		<div class="explore-tools__actions flex items-center justify-between gap-2 mb-2">
 			<div class="flex items-center gap-2">
 				<!-- Loading indicator -->
 				{#if isLoading}
@@ -475,6 +475,7 @@
 					onclick={() => mobileFilterDrawerOpen = true}
 					class="lg:hidden inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-full border transition-all bg-charcoal-800/50 border-charcoal-700 hover:border-gold-500/50"
 					aria-label="Open filters"
+					aria-expanded={mobileFilterDrawerOpen}
 				>
 					<Filter class="w-3 h-3" />
 					<span>Filters</span>
@@ -496,7 +497,7 @@
 		</div>
 
 		<!-- Filter Presets Panel (Collapsible) - Lazy Loaded -->
-		<div class="mb-2">
+		<div class="explore-tools__quick-filters mb-2">
 			{#await FilterPresetsPanelPromise}
 				<div class="h-10 bg-charcoal-900/50 rounded-lg animate-pulse"></div>
 			{:then FilterPresetsPanelModule}
@@ -509,7 +510,7 @@
 
 		<!-- Active Filter Chips (NEW: P0 Enhancement) -->
 		{#if activeFilterCount > 0}
-			<div class="flex flex-wrap items-center gap-3 mb-3 p-2 rounded-lg bg-charcoal-900/50 border border-charcoal-800/30">
+			<div class="explore-tools__active-filters flex flex-wrap items-center gap-3 mb-3 p-2 rounded-lg bg-charcoal-900/50 border border-charcoal-800/30">
 				<Typography variant="caption" class="text-charcoal-400 text-xs font-medium">Active:</Typography>
 
 				{#if data.selectedSport}
@@ -543,7 +544,7 @@
 		{/if}
 
 		<!-- Consolidated Filters (Mobile only - dropdowns) -->
-		<div class="lg:hidden">
+		<div class="explore-tools__remaining lg:hidden">
 			{#if data.sports && data.sports.length > 0 && data.categories && data.categories.length > 0}
 				<ConsolidatedFilter
 					sports={data.sports}
@@ -562,6 +563,21 @@
 </div>
 
 <!-- Main Content with Sidebar (Desktop) / Full Width (Mobile) -->
+<!-- The mobile trigger opens the same filter controls as the desktop sidebar. -->
+<FilterSidebarDrawer
+	bind:open={mobileFilterDrawerOpen}
+	sports={data.sports ?? []}
+	categories={data.categories ?? []}
+	selectedSport={data.selectedSport}
+	selectedCategory={data.selectedCategory}
+	selectedPlayType={data.selectedPlayType}
+	onSportSelect={handleSportSelect}
+	onCategorySelect={handleCategorySelect}
+	onPlayTypeSelect={handlePlayTypeSelect}
+	onClearAll={clearAllFilters}
+	filterCounts={resolvedFilterCounts}
+/>
+
 <div class="explore-results" aria-busy={isLoading}>
 	<div class="flex gap-6">
 		<!-- Filter Sidebar (Desktop only) - Lazy Loaded -->
@@ -748,21 +764,41 @@
 
 <style>
 	.explore-opening, .explore-tools__inner, .explore-results { width: min(1320px, calc(100% - 64px)); margin-inline: auto; }
-	.explore-opening { padding-block: 40px 28px; }
+	.explore-opening { padding-block: 28px 20px; }
 	.explore-eyebrow { margin-bottom: 14px; color: var(--color-gold-500); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 	.explore-title-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
 	.explore-title-row h1 { margin: 0; font-family: Montserrat, sans-serif; font-size: clamp(32px, 3.2vw, 46px); font-weight: 750; line-height: 1.08; letter-spacing: -.035em; }
 	.explore-title-row > div > p { max-width: 680px; margin-top: 12px; color: var(--color-charcoal-300); font-size: 16px; line-height: 1.55; }
 	.explore-count { color: var(--color-charcoal-300); font-size: 14px; white-space: nowrap; }
 	.explore-tools { position: sticky; top: var(--gallery-header-height); z-index: 30; background: var(--color-charcoal-950); border-block: 1px solid var(--color-charcoal-800); }
-	.explore-tools__inner { padding-block: 16px; }
-	.explore-results { padding-block: 24px 72px; }
+	.explore-tools__inner { padding-block: 10px; }
+	.explore-results { padding-block: 20px 72px; }
+	.explore-tools :global(button[aria-controls="presets-panel"]),
+	.explore-tools :global(button[aria-label="Open filters"]),
+	.explore-tools :global(button[aria-label^="Expand "]) { min-height: 44px; }
+	.explore-tools :global(button:disabled) { opacity: .45; }
+	.explore-tools :global(:focus-visible) { outline: 2px solid var(--gallery-accent); outline-offset: 3px; }
 	.explore-photo-grid :global(.photo-card) { border: 0; border-radius: 0; transform: none; box-shadow: none; }
 	@media (max-width: 640px) {
 		.explore-opening, .explore-tools__inner, .explore-results { width: calc(100% - 40px); }
-		.explore-opening { padding-block: 24px 22px; }
-		.explore-title-row { align-items: start; flex-direction: column; gap: 12px; }
-		.explore-count { white-space: normal; }
+		.explore-opening { padding-block: 20px 16px; }
+		.explore-opening h1 { font-size: 32px; line-height: 1.1; letter-spacing: -.7px; }
+		.explore-eyebrow { margin-bottom: 10px; }
+		.explore-title-row { align-items: start; flex-direction: column; gap: 10px; }
+		.explore-title-row > div > p { margin-top: 10px; font-size: 14px; line-height: 1.5; }
+		.explore-count { font-size: 12px; white-space: normal; }
+		.explore-tools__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 8px; padding-block: 10px; }
+		.explore-tools__actions { grid-column: 2; grid-row: 1; margin-bottom: 0; }
+		.explore-tools__quick-filters { grid-column: 1; grid-row: 1; margin-bottom: 0; }
+		.explore-tools__active-filters,
+		.explore-tools__remaining { grid-column: 1 / -1; }
+		.explore-tools :global(button[aria-controls="presets-panel"]) { padding: 10px; }
+		.explore-tools :global(button[aria-controls="presets-panel"] label) { font-size: 12px; }
+		.explore-results { padding-block: 16px 56px; }
+	}
+	@media (max-width: 359px) {
+		.explore-tools__inner { display: block; }
+		.explore-tools__inner > div { margin-bottom: 8px; }
 	}
 
 	/* Loading progress bar animation */

@@ -1,0 +1,386 @@
+[
+  {
+    "id": "photo-explore",
+    "at": "2026-11-02T19:51:41.507Z",
+    "url": "http://approved-photo.localhost:8836/photography/explore",
+    "status": 200,
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "errors": [],
+    "title": "Explore Gallery | Nino Chavez Photography",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "bodyBackground": "rgb(24, 24, 24)",
+    "bodyColor": "rgb(248, 248, 249)",
+    "galleryScope": true,
+    "header": {
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 102.75
+      }
+    },
+    "lead": {
+      "image": null,
+      "fit": null,
+      "padding": null,
+      "color": null
+    },
+    "audio": {
+      "box": null,
+      "background": null,
+      "border": null,
+      "readyState": null
+    },
+    "explorer": {
+      "opening": {
+        "x": 60,
+        "y": 102.75,
+        "width": 1320,
+        "height": 191.265625
+      },
+      "tools": {
+        "x": 0,
+        "y": 294.015625,
+        "width": 1440,
+        "height": 114
+      },
+      "results": {
+        "x": 60,
+        "y": 408.015625,
+        "width": 1320,
+        "height": 2057.9375
+      },
+      "columns": "none"
+    },
+    "tokens": {
+      "bg": "#181a1c",
+      "accent": "#cbd8df",
+      "muted": "#b4bbc0"
+    },
+    "missingVisibleImages": [],
+    "heroImage": null,
+    "headings": [
+      "Nino Chavez",
+      "Find your photograph"
+    ]
+  },
+  {
+    "id": "photo-explore",
+    "at": "2026-11-02T19:51:43.381Z",
+    "url": "http://approved-photo.localhost:8836/photography/explore",
+    "status": 200,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "title": "Explore Gallery | Nino Chavez Photography",
+    "width": 390,
+    "scrollWidth": 390,
+    "bodyBackground": "rgb(24, 24, 24)",
+    "bodyColor": "rgb(248, 248, 249)",
+    "galleryScope": true,
+    "header": {
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 144
+      }
+    },
+    "lead": {
+      "image": null,
+      "fit": null,
+      "padding": null,
+      "color": null
+    },
+    "audio": {
+      "box": null,
+      "background": null,
+      "border": null,
+      "readyState": null
+    },
+    "explorer": {
+      "opening": {
+        "x": 20,
+        "y": 144,
+        "width": 350,
+        "height": 214.375
+      },
+      "tools": {
+        "x": 0,
+        "y": 358.375,
+        "width": 390,
+        "height": 120
+      },
+      "results": {
+        "x": 20,
+        "y": 478.375,
+        "width": 350,
+        "height": 2841.8125
+      },
+      "columns": "170.688px 169.312px"
+    },
+    "tokens": {
+      "bg": "#181a1c",
+      "accent": "#cbd8df",
+      "muted": "#b4bbc0"
+    },
+    "missingVisibleImages": [],
+    "heroImage": null,
+    "headings": [
+      "Nino Chavez",
+      "Find your photograph"
+    ]
+  },
+  {
+    "id": "photo-explore",
+    "at": "2026-11-02T19:51:45.040Z",
+    "url": "http://approved-photo.localhost:8836/photography/explore",
+    "status": 200,
+    "viewport": {
+      "width": 320,
+      "height": 568
+    },
+    "errors": [],
+    "title": "Explore Gallery | Nino Chavez Photography",
+    "width": 320,
+    "scrollWidth": 320,
+    "bodyBackground": "rgb(24, 24, 24)",
+    "bodyColor": "rgb(248, 248, 249)",
+    "galleryScope": true,
+    "header": {
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 136
+      }
+    },
+    "lead": {
+      "image": null,
+      "fit": null,
+      "padding": null,
+      "color": null
+    },
+    "audio": {
+      "box": null,
+      "background": null,
+      "border": null,
+      "readyState": null
+    },
+    "explorer": {
+      "opening": {
+        "x": 20,
+        "y": 136,
+        "width": 280,
+        "height": 235.375
+      },
+      "tools": {
+        "x": 0,
+        "y": 371.375,
+        "width": 320,
+        "height": 180
+      },
+      "results": {
+        "x": 20,
+        "y": 551.375,
+        "width": 280,
+        "height": 2350.765625
+      },
+      "columns": "minmax(0px, 1fr) auto"
+    },
+    "tokens": {
+      "bg": "#181a1c",
+      "accent": "#cbd8df",
+      "muted": "#b4bbc0"
+    },
+    "missingVisibleImages": [],
+    "heroImage": null,
+    "headings": [
+      "Nino Chavez",
+      "Find your photograph"
+    ]
+  },
+  {
+    "id": "photo-home",
+    "at": "2026-11-02T20:03:25.443Z",
+    "url": "http://approved-photo.localhost:8836/photography/",
+    "status": 200,
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "errors": [],
+    "title": "Nino Chavez Photography",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "bodyBackground": "rgb(24, 24, 24)",
+    "bodyColor": "rgb(248, 248, 249)",
+    "galleryScope": true,
+    "header": {
+      "background": "color(srgb 0.0941176 0.101961 0.109804 / 0.8)",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 109.75
+      }
+    },
+    "lead": {
+      "image": null,
+      "fit": null,
+      "padding": null,
+      "color": null
+    },
+    "audio": {
+      "box": null,
+      "background": null,
+      "border": null,
+      "readyState": null
+    },
+    "explorer": {
+      "opening": null,
+      "tools": null,
+      "results": null,
+      "columns": null
+    },
+    "tokens": {
+      "bg": "#181a1c",
+      "accent": "#cbd8df",
+      "muted": "#b4bbc0"
+    },
+    "missingVisibleImages": [],
+    "heroImage": "http://approved-photo.localhost:8836/photography/images/hero/flickday/triptych/t-25.webp",
+    "recentGalleryLinks": 2,
+    "headings": [
+      "Nino Chavez",
+      "Find your event.",
+      "Recent galleries",
+      "Recent events"
+    ]
+  },
+  {
+    "id": "photo-home",
+    "at": "2026-11-02T20:03:27.239Z",
+    "url": "http://approved-photo.localhost:8836/photography/",
+    "status": 200,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "title": "Nino Chavez Photography",
+    "width": 390,
+    "scrollWidth": 390,
+    "bodyBackground": "rgb(24, 24, 24)",
+    "bodyColor": "rgb(248, 248, 249)",
+    "galleryScope": true,
+    "header": {
+      "background": "color(srgb 0.0941176 0.101961 0.109804 / 0.8)",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 145
+      }
+    },
+    "lead": {
+      "image": null,
+      "fit": null,
+      "padding": null,
+      "color": null
+    },
+    "audio": {
+      "box": null,
+      "background": null,
+      "border": null,
+      "readyState": null
+    },
+    "explorer": {
+      "opening": null,
+      "tools": null,
+      "results": null,
+      "columns": null
+    },
+    "tokens": {
+      "bg": "#181a1c",
+      "accent": "#cbd8df",
+      "muted": "#b4bbc0"
+    },
+    "missingVisibleImages": [],
+    "heroImage": "http://approved-photo.localhost:8836/photography/images/hero/flickday/triptych/t-17.webp",
+    "recentGalleryLinks": 2,
+    "headings": [
+      "Nino Chavez",
+      "Find your event.",
+      "Recent galleries",
+      "Recent events"
+    ]
+  },
+  {
+    "id": "photo-home",
+    "at": "2026-11-02T20:03:28.792Z",
+    "url": "http://approved-photo.localhost:8836/photography/",
+    "status": 200,
+    "viewport": {
+      "width": 320,
+      "height": 568
+    },
+    "errors": [],
+    "title": "Nino Chavez Photography",
+    "width": 320,
+    "scrollWidth": 320,
+    "bodyBackground": "rgb(24, 24, 24)",
+    "bodyColor": "rgb(248, 248, 249)",
+    "galleryScope": true,
+    "header": {
+      "background": "color(srgb 0.0941176 0.101961 0.109804 / 0.8)",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 137
+      }
+    },
+    "lead": {
+      "image": null,
+      "fit": null,
+      "padding": null,
+      "color": null
+    },
+    "audio": {
+      "box": null,
+      "background": null,
+      "border": null,
+      "readyState": null
+    },
+    "explorer": {
+      "opening": null,
+      "tools": null,
+      "results": null,
+      "columns": null
+    },
+    "tokens": {
+      "bg": "#181a1c",
+      "accent": "#cbd8df",
+      "muted": "#b4bbc0"
+    },
+    "missingVisibleImages": [],
+    "heroImage": "http://approved-photo.localhost:8836/photography/images/hero/flickday/triptych/t-25.webp",
+    "recentGalleryLinks": 2,
+    "headings": [
+      "Nino Chavez",
+      "Find your event.",
+      "Recent galleries",
+      "Recent events"
+    ]
+  }
+]

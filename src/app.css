@@ -139,6 +139,89 @@
   --overlay-light: rgba(0, 0, 0, 0.5);            /* Light overlay */
 }
 
+/*
+ * Public Photography has its own approved graphite-and-silver treatment.
+ * These variables deliberately live on the public gallery wrapper rather than
+ * @theme/:root because Analytics, auth, and admin share this application.
+ */
+.gallery-theme {
+  --gallery-bg: #181A1C;
+  --gallery-ink: #F0EFEB;
+  --gallery-accent: #CBD8DF;
+  --gallery-surface: #292C2F;
+  --gallery-muted: #B4BBC0;
+  --gallery-rule: #4A5055;
+  --gallery-control-bg: color-mix(in srgb, var(--gallery-bg) 94%, transparent);
+
+  --color-charcoal-950: var(--gallery-bg);
+  --color-charcoal-900: var(--gallery-surface);
+  --color-charcoal-800: var(--gallery-rule);
+  --color-charcoal-700: var(--gallery-rule);
+  --color-charcoal-600: var(--gallery-muted);
+  --color-charcoal-500: var(--gallery-muted);
+  --color-charcoal-400: var(--gallery-muted);
+  --color-charcoal-300: var(--gallery-muted);
+  --color-charcoal-200: var(--gallery-ink);
+  --color-charcoal-100: var(--gallery-ink);
+  --color-charcoal-50: var(--gallery-ink);
+  --color-gold-50: var(--gallery-accent);
+  --color-gold-100: var(--gallery-accent);
+  --color-gold-200: var(--gallery-accent);
+  --color-gold-300: var(--gallery-accent);
+  --color-gold-400: var(--gallery-accent);
+  --color-gold-500: var(--gallery-accent);
+  --color-gold-600: var(--gallery-accent);
+  --color-gold-700: var(--gallery-accent);
+  --color-gold-800: var(--gallery-accent);
+  --color-gold-900: var(--gallery-accent);
+  --color-gold-950: var(--gallery-accent);
+
+  /* Re-resolve aliases here: inherited computed root aliases retain old values. */
+  --color-background: var(--gallery-bg);
+  --color-foreground: var(--gallery-ink);
+  --color-border: var(--gallery-rule);
+  --card-bg: var(--gallery-surface);
+  --card-bg-hover: var(--gallery-rule);
+  --card-border: var(--gallery-rule);
+  --bg-elevated: var(--gallery-surface);
+  --bg-secondary: var(--gallery-rule);
+  --text-primary: var(--gallery-ink);
+  --text-secondary: var(--gallery-muted);
+  --text-muted: var(--gallery-muted);
+  --text-accent: var(--gallery-accent);
+  --text-accent-hover: var(--gallery-accent);
+  --hover-bg: var(--gallery-rule);
+  --active-bg: var(--gallery-rule);
+  --focus-ring: var(--gallery-accent);
+  --focus-ring-offset: var(--gallery-bg);
+  --btn-primary-bg: var(--gallery-accent);
+  --btn-primary-text: var(--gallery-bg);
+  --btn-primary-hover: var(--gallery-accent);
+  --btn-secondary-bg: var(--gallery-surface);
+  --btn-secondary-text: var(--gallery-ink);
+  --btn-secondary-hover: var(--gallery-rule);
+  --filter-bg: var(--gallery-surface);
+  --filter-text: var(--gallery-muted);
+  --filter-border: var(--gallery-rule);
+  --filter-active-bg: var(--gallery-accent);
+  --filter-active-text: var(--gallery-bg);
+  --filter-active-border: var(--gallery-accent);
+  --skeleton-base: var(--gallery-surface);
+  --skeleton-highlight: var(--gallery-rule);
+
+  background-color: var(--gallery-bg);
+  color: var(--gallery-ink);
+}
+
+.gallery-theme [class~='bg-gold-500'] {
+  color: var(--gallery-bg) !important;
+}
+
+.gallery-theme input[type='radio'],
+.gallery-theme input[type='checkbox'] {
+  accent-color: var(--gallery-accent) !important;
+}
+
 @layer base {
   *,
   *::before,

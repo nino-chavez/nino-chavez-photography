@@ -67,7 +67,7 @@
 		max-width: 1600px;
 		width: 100%;
 		margin: auto;
-		color: #f5f5f2;
+		color: var(--gallery-ink, #f5f5f2);
 		font-family: Arial, Helvetica, sans-serif;
 	}
 	.photography-header.home {
@@ -77,6 +77,8 @@
 		right: 0;
 		max-width: none;
 		padding: 30px 48px;
+		background: color-mix(in srgb, var(--gallery-bg, #181818) 80%, transparent);
+		border-bottom: 1px solid color-mix(in srgb, var(--gallery-rule, #777) 55%, transparent);
 	}
 	.brand {
 		display: flex;
@@ -97,7 +99,7 @@
 		font-size: 12px;
 		letter-spacing: 0.04em;
 		margin-top: 5px;
-		color: #ddd;
+		color: var(--gallery-muted, #ddd);
 	}
 	nav {
 		display: flex;
@@ -123,18 +125,18 @@
 		order: 2;
 		padding: 10px 12px;
 		min-height: 44px;
-		border: 1px solid #ffffff80;
+		border: 1px solid var(--gallery-rule, #ffffff80);
 		font-size: 14px;
 		border-radius: 3px;
 		line-height: 1.2;
 		white-space: nowrap;
-		background: #18181870;
+		background: var(--gallery-control-bg, #18181870);
 		color: inherit;
 		cursor: pointer;
 	}
 	.info-link:hover {
-		background: #ffffff18;
-		border-color: #fff;
+		background: var(--gallery-control-hover, #ffffff18);
+		border-color: var(--gallery-accent, #fff);
 	}
 	.saved-count {
 		margin-left: 6px;
@@ -144,24 +146,24 @@
 		top: -100px;
 		left: 20px;
 		z-index: 100;
-		background: #fff;
-		color: #111;
+		background: var(--gallery-ink, #fff);
+		color: var(--gallery-bg, #111);
 		padding: 12px;
 	}
 	.skip:focus {
 		top: 4px;
 	}
 	:focus-visible {
-		outline: 2px solid #fff;
-		outline-offset: 4px;
+		outline: 2px solid var(--gallery-accent, #fff);
+		outline-offset: 3px;
 	}
 	.info-dialog {
 		width: min(500px, calc(100vw - 32px));
 		max-height: calc(100dvh - 32px);
 		padding: 28px;
-		background: #222;
-		color: #f5f5f2;
-		border: 1px solid #777;
+		background: var(--gallery-surface, #222);
+		color: var(--gallery-ink, #f5f5f2);
+		border: 1px solid var(--gallery-rule, #777);
 		border-radius: 5px;
 		margin: auto;
 		font-family: Arial, Helvetica, sans-serif;
@@ -190,7 +192,7 @@
 		cursor: pointer;
 	}
 	.info-dialog p {
-		color: #c1c1bb;
+		color: var(--gallery-muted, #c1c1bb);
 		font-size: 18px;
 		margin-top: 16px;
 	}
