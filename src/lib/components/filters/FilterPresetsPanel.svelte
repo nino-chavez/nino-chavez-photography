@@ -29,7 +29,6 @@
 		Award,
 		Grid3x3
 	} from 'lucide-svelte';
-	import { slide } from 'svelte/transition';
 	import { filterPresets, type FilterPreset } from '$lib/stores/filter-presets.svelte';
 	import { filterHistory, type FilterHistoryEntry } from '$lib/stores/filter-history.svelte';
 	import Typography from '$lib/components/ui/Typography.svelte';
@@ -92,8 +91,8 @@
 		</button>
 
 		{#if presetsExpanded}
-			<div id="presets-panel" class="p-3 pt-0" transition:slide={{ duration: 200 }}>
-				<div class="grid grid-cols-2 gap-2">
+			<div id="presets-panel" class="p-3 pt-0">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 					{#each filterPresets.predefined as preset (preset.id)}
 						{@const IconComponent = getIconComponent(preset.iconName)}
 						<button
@@ -139,7 +138,7 @@
 			</button>
 
 			{#if historyExpanded}
-				<div id="history-panel" class="p-3 pt-0 space-y-2" transition:slide={{ duration: 200 }}>
+				<div id="history-panel" class="p-3 pt-0 space-y-2">
 					{#each filterHistory.recent as entry (entry.id)}
 						<button
 							onclick={(e) => handleHistoryClick(entry, e)}

@@ -12,11 +12,21 @@
 	const toasts = $derived(toast.items);
 </script>
 
-<!-- Fixed container for toasts (stacked from bottom-right) -->
-<div class="fixed bottom-6 right-6 z-50 flex flex-col-reverse gap-3 pointer-events-none">
+<!-- One viewport owner; individual notices remain in normal stack flow. -->
+<div
+	class="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[10000] mx-auto flex max-h-[42vh] w-auto max-w-md flex-col-reverse gap-3 overflow-y-auto pointer-events-none sm:inset-x-auto sm:right-6 sm:bottom-6"
+	data-toast-container
+>
 	{#each toasts as item (item.id)}
-		<div class="pointer-events-auto">
-			<Toast variant={item.variant} icon={item.icon} duration={0} onClose={() => toast.remove(item.id)}>
+		<div class="pointer-events-auto" data-toast-stack-item>
+			<Toast
+				variant={item.variant}
+				icon={item.icon}
+				duration={0}
+				actionLabel={item.action?.label}
+				onAction={() => toast.invokeAction(item.id)}
+				onClose={() => toast.remove(item.id)}
+			>
 				{item.message}
 			</Toast>
 		</div>

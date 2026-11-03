@@ -29,12 +29,25 @@ export interface ToastOptions {
 	variant?: 'success' | 'error' | 'info' | 'warning';
 	icon?: ComponentType;
 	duration?: number;
+	action?: ToastAction;
+	/**
+	 * Replaces the current notice for a single recoverable action. This keeps the
+	 * latest Undo visible instead of allowing a rapid series of removals to bury it.
+	 */
+	replaceKey?: string;
+}
+
+export interface ToastAction {
+	label: string;
+	onAction: () => void;
 }
 
 export interface ToastItem extends ToastOptions {
 	id: string;
 	message: string;
 }
+
+const MAX_TOASTS = 3;
 
 class ToastStore {
 	private toasts = $state<ToastItem[]>([]);
@@ -51,20 +64,35 @@ class ToastStore {
 	 * Show a toast notification
 	 */
 	show(message: string, options: ToastOptions = {}): string {
+		if (options.replaceKey) {
+			this.toasts = this.toasts.filter((item) => item.replaceKey !== options.replaceKey);
+		}
+
 		const id = `toast-${this.nextId++}`;
-		const toast: ToastItem = {
+		const nextToast: ToastItem = {
 			id,
 			message,
 			variant: options.variant ?? 'info',
 			icon: options.icon,
-			duration: options.duration ?? 3000
+			duration: options.duration ?? 3000,
+			action: options.action,
+			replaceKey: options.replaceKey
 		};
 
-		this.toasts = [...this.toasts, toast];
+		// Actions are recoverable work. Preserve them and discard the oldest ordinary
+		// notice first so a pending Undo never disappears just because a later save
+		// succeeded.
+		let items = [...this.toasts, nextToast];
+		while (items.length > MAX_TOASTS) {
+			const removableIndex = items.findIndex((item) => !item.action);
+			if (removableIndex === -1) break;
+			items.splice(removableIndex, 1);
+		}
+		this.toasts = items;
 
 		// Auto-remove after duration (if specified)
-		if (toast.duration && toast.duration > 0) {
-			setTimeout(() => this.remove(id), toast.duration + 500); // +500ms for exit animation
+		if (nextToast.duration && nextToast.duration > 0) {
+			setTimeout(() => this.remove(id), nextToast.duration);
 		}
 
 		return id;
@@ -103,6 +131,13 @@ class ToastStore {
 	 */
 	remove(id: string): void {
 		this.toasts = this.toasts.filter((t) => t.id !== id);
+	}
+
+	invokeAction(id: string): void {
+		const item = this.toasts.find((toast) => toast.id === id);
+		if (!item?.action) return;
+		this.remove(id);
+		item.action.onAction();
 	}
 
 	/**
