@@ -50,3 +50,9 @@ test('phone filter drawer keeps division and level choices reachable', async ({ 
  await expect.poll(()=>new URL(page.url()).searchParams.has('q')).toBe(false);
  expect(new URL(page.url()).searchParams.has('search_id')).toBe(false);
  });
+
+ test('clear all drops active search tracking without first removing a chip', async ({ page }) => {
+ await page.goto('/photography/explore?q=volleyball&division=girls&search_id=11111111-1111-4111-8111-111111111111');
+ await page.getByRole('button',{name:'Clear all filters and search',exact:true}).click();
+ await expect.poll(()=>new URL(page.url()).search).toBe('');
+ });

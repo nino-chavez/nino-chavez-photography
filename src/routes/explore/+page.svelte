@@ -276,7 +276,8 @@
 		url.searchParams.delete('jersey'); // Clear jersey filter
 		url.searchParams.delete('division'); // Clear division facet
 		url.searchParams.delete('level'); // Clear level facet
-		url.searchParams.delete('q'); // Clear search query too
+		url.searchParams.delete('q');
+		url.searchParams.delete('search_id'); // Clear search query too
 		url.searchParams.delete('similar_to'); // Clear similarity search
 		url.searchParams.delete('page');
 		goto(url.toString());
