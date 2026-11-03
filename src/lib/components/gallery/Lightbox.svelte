@@ -22,6 +22,7 @@
 	import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
 	import { flushMediaOutcome, observeMediaOutcome, reconcileMediaView, type MediaView, type MediaViewEvent } from '$lib/analytics/media-view';
 	import { photoShareUrl } from '$lib/utils/share-url';
+	import { toast } from '$lib/stores/toast.svelte';
 	import { favorites } from '$lib/stores/favorites.svelte';
 	import type { Photo } from '$types/photo';
 
@@ -225,7 +226,11 @@
 
 	function toggleSavedPhoto() {
 		if (!photo) return;
-		favorites.toggleFavorite(photo, `viewer_${viewSource}`);
+		try {
+			favorites.toggleFavorite(photo, `viewer_${viewSource}`);
+		} catch {
+			toast.error('Could not update saved photos. Please try again.');
+		}
 	}
 
 	// The only path that may call onNavigate — never with an index the parent hasn't loaded.

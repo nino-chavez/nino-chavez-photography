@@ -61,3 +61,13 @@ test('save feedback stays consistent, recoverable, and stacked', async ({ page }
 
 	expect(toastLayout).toEqual({ position: 'fixed', noticesAreNormalFlow: true, noneOverlap: true });
 });
+
+ test('viewer reports a storage failure and keeps the saved photo', async ({ page }) => {
+ await page.goto(albumPath);await page.locator('.photo-card').first().click();
+ const viewer=page.getByRole('dialog',{name:'Photo lightbox'});
+ await viewer.getByRole('button',{name:'Save photograph',exact:true}).click();
+ await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new DOMException('Storage unavailable','QuotaExceededError');};});
+ await viewer.getByRole('button',{name:'Saved · Remove',exact:true}).click();
+ await expect(viewer.getByText('Could not update saved photos. Please try again.',{exact:true})).toBeVisible();
+ await expect(viewer.getByRole('button',{name:'Saved · Remove',exact:true})).toHaveAttribute('aria-pressed','true');
+ });

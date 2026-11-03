@@ -193,6 +193,10 @@
 	}
 
 	function handleSearch(query: string) {
+		if (!query.trim()) {
+			handleClearSearch();
+			return;
+		}
 		const url = new URL($page.url);
 		if (query.trim()) {
 			url.searchParams.set('q', query.trim());
@@ -215,6 +219,7 @@
 		searchQuery = '';
 		const url = new URL($page.url);
 		url.searchParams.delete('q');
+		url.searchParams.delete('search_id');
 		url.searchParams.delete('page');
 		goto(url.toString());
 	}

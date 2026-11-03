@@ -53,7 +53,10 @@
 
 	// Generate shareable URL
 	function generateShareableURL(): string {
-		return new URL(shareUrl || window.location.href, window.location.origin).toString();
+		const url = new URL(shareUrl || window.location.href, window.location.origin);
+		url.searchParams.delete('search_id');
+		url.searchParams.delete('page');
+		return url.toString();
 	}
 
 	// Copy URL to clipboard
