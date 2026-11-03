@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Photography — gold, coral or mint</title>
+  <style>
+    :root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif;color:#f0efeb;background:#101213;--accent:#7ecfc4}
+    *{box-sizing:border-box}body{margin:0}button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+    .toolbar{padding:20px 28px 16px;border-bottom:1px solid #363b3f;background:#191c1e;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+    h1{font-size:19px;letter-spacing:-.4px;margin:0 0 7px}p{margin:0;font-size:13px;color:#b4bbc0;line-height:1.5}.controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    .group{display:flex;gap:4px;padding:4px;border:1px solid #495055;border-radius:8px;background:#101213}.group button{min-width:0;display:flex;align-items:center;gap:8px;border:0;background:transparent;color:#b4bbc0;min-height:44px;padding:0 14px;border-radius:4px;font-size:13px;font-weight:600}.group button[aria-pressed=true]{background:#343a3e;color:#f0efeb;box-shadow:inset 0 -2px var(--accent)}.group button:hover{color:#fff;background:#292f32}.dot{width:10px;height:10px;border-radius:50%;background:var(--swatch)}
+    .open{color:#e0e5e8;text-underline-offset:4px;font-size:13px;min-height:44px;display:inline-flex;align-items:center}.guide{padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.guide strong{font-weight:500;color:#f0efeb}.guide .status{font-size:12px;color:#b4bbc0}
+    .stage{padding:0 24px 24px;min-height:700px}.frame-space{position:relative;margin:0 auto;overflow:hidden;background:#181a1c;box-shadow:0 0 0 1px #495055,0 20px 60px #0005}.frame-space.mobile{border-radius:18px}iframe{position:absolute;inset:0;border:0;transform-origin:top left;background:#181a1c}
+    .footer{padding:0 28px 24px;font-size:12px;color:#b4bbc0;text-align:center}
+    @media(max-width:700px){.toolbar{padding:16px;gap:12px}.controls{gap:8px;width:100%}.controls .group:first-child{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.group button{padding:0 8px}.guide{padding:12px 16px;gap:4px}.stage{padding:0 12px 20px}.open{padding-left:6px}.footer{padding:0 16px 20px}}
+    @media(prefers-reduced-motion:no-preference){button{transition:background-color 140ms,color 140ms}button:active{transform:translateY(1px)}}
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <div><h1>Photography accent comparison</h1><p>Same photos and interactions. Mint is your current selection.</p></div>
+    <div class="controls">
+      <div class="group" role="group" aria-label="Accent direction">
+        <button type="button" data-accent="gold" aria-pressed="false" title="Previous Photography accent: #D4AF37"><span class="dot" style="--swatch:#d4af37"></span>Original gold</button>
+        <button type="button" data-accent="warm" aria-pressed="false"><span class="dot" style="--swatch:#f29a79"></span>Warm coral</button>
+        <button type="button" data-accent="cool" aria-pressed="true"><span class="dot" style="--swatch:#7ecfc4"></span>Cool mint</button>
+      </div>
+      <div class="group" role="group" aria-label="Page size">
+        <button type="button" data-size="desktop" aria-pressed="true">Desktop</button>
+        <button type="button" data-size="mobile" aria-pressed="false">Mobile</button>
+      </div>
+      <a class="open" id="open" href="http://photo-accent.localhost:8841/photography/explore?study-accent=cool&amp;study-composition=before" target="_blank" rel="noopener">Open full size ↗</a>
+    </div>
+  </header>
+  <div class="guide">
+    <p><strong>Try a search, select a filter, save a photo, then open it.</strong> Switch accents at any point.</p>
+    <span class="status" id="status" role="status">Loading the gallery…</span>
+  </div>
+  <main class="stage" aria-label="Interactive Photography preview">
+    <div class="frame-space" id="frame-space"><iframe id="gallery" title="Photography gallery — interactive comparison" src="http://photo-accent.localhost:8841/photography/explore?study-accent=cool&amp;study-composition=before" allow="clipboard-write"></iframe></div>
+  </main>
+  <p class="footer"><a class="open" href="composition.html">Review the gold composition pass →</a><br>Review preview · Saves stay in this browser · Blog and Profile are unchanged</p>
+  <script>
+    const appOrigin = 'http://photo-accent.localhost:8841';
+    const frame = document.querySelector('#gallery');
+    const space = document.querySelector('#frame-space');
+    const status = document.querySelector('#status');
+    let accent = 'cool';
+    const accents = { gold: '#d4af37', warm: '#f29a79', cool: '#7ecfc4' };
+    let size = window.innerWidth < 700 ? 'mobile' : 'desktop';
+    let ready = false;
+    function label() { status.textContent = (ready ? 'Interactive · ' : 'Loading · ') + (size === 'mobile' ? '390 px phone viewport' : '1440 px desktop viewport'); }
+    function fit() {
+      const width = size === 'mobile' ? 390 : 1440;
+      const available = document.querySelector('.stage').clientWidth - (window.innerWidth < 700 ? 24 : 48);
+      const scale = Math.min(1, available / width);
+      const height = size === 'mobile' ? 844 : Math.max(900, Math.round((window.innerHeight - 200) / scale));
+      space.style.width = width * scale + 'px'; space.style.height = height * scale + 'px';
+      space.classList.toggle('mobile', size === 'mobile');
+      frame.style.width = width + 'px'; frame.style.height = height + 'px'; frame.style.transform = 'scale(' + scale + ')';
+      document.querySelectorAll('[data-size]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.size === size)));
+      label();
+    }
+    function sendAccent() { frame.contentWindow.postMessage({ type: 'photography-study-accent', accent }, appOrigin); }
+    document.querySelectorAll('[data-accent]').forEach(button => button.addEventListener('click', () => {
+      accent = button.dataset.accent;
+      document.documentElement.style.setProperty('--accent', accents[accent]);
+      document.querySelectorAll('[data-accent]').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.accent === accent)));
+      document.querySelector('#open').href = appOrigin + '/photography/explore?study-accent=' + accent + '&study-composition=before';
+      sendAccent();
+    }));
+    document.querySelectorAll('[data-size]').forEach(button => button.addEventListener('click', () => { size = button.dataset.size; fit(); }));
+    window.addEventListener('message', event => {
+      if (event.origin !== appOrigin || event.source !== frame.contentWindow || event.data?.type !== 'photography-study-ready') return;
+      ready = true; label();
+      if (event.data.accent !== accent) sendAccent();
+    });
+    frame.addEventListener('load', sendAccent);
+    window.addEventListener('resize', fit);
+    fit();
+  </script>
+</body>
+</html>

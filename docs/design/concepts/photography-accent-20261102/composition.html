@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Photography — gold composition</title><style>
+    :root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif;color:#f0efeb;background:#101213;--accent:#d4af37}
+    *{box-sizing:border-box}body{margin:0}button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+    .toolbar{padding:20px 28px 16px;border-bottom:1px solid #363b3f;background:#191c1e;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+    h1{font-size:19px;letter-spacing:-.4px;margin:0 0 7px}p{margin:0;font-size:13px;color:#b4bbc0;line-height:1.5}.controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    .group{display:flex;gap:4px;padding:4px;border:1px solid #495055;border-radius:8px;background:#101213}.group button{min-width:0;display:flex;align-items:center;gap:8px;border:0;background:transparent;color:#b4bbc0;min-height:44px;padding:0 14px;border-radius:4px;font-size:13px;font-weight:600}.group button[aria-pressed=true]{background:#343a3e;color:#f0efeb;box-shadow:inset 0 -2px var(--accent)}.group button:hover{color:#fff;background:#292f32}.dot{width:10px;height:10px;border-radius:50%;background:var(--swatch)}
+    .open{color:#e0e5e8;text-underline-offset:4px;font-size:13px;min-height:44px;display:inline-flex;align-items:center}.guide{padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.guide strong{font-weight:500;color:#f0efeb}.guide .status{font-size:12px;color:#b4bbc0}
+    .stage{padding:0 24px 24px;min-height:700px}.frame-space{position:relative;margin:0 auto;overflow:hidden;background:#181a1c;box-shadow:0 0 0 1px #495055,0 20px 60px #0005}.frame-space.mobile{border-radius:18px}iframe{position:absolute;inset:0;border:0;transform-origin:top left;background:#181a1c}
+    .footer{padding:0 28px 24px;font-size:12px;color:#b4bbc0;text-align:center}
+    @media(max-width:700px){.toolbar{padding:16px;gap:12px}.controls{gap:8px;width:100%}.controls .group:first-child{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.group button{padding:0 8px}.guide{padding:12px 16px;gap:4px}.stage{padding:0 12px 20px}.open{padding-left:6px}.footer{padding:0 16px 20px}}
+    @media(prefers-reduced-motion:no-preference){button{transition:background-color 140ms,color 140ms}button:active{transform:translateY(1px)}}
+  
+    select{font:inherit;font-size:13px;min-height:44px;max-width:100%;background:#101213;color:#f0efeb;border:1px solid #495055;border-radius:6px;padding:8px}.page-choice{display:flex;align-items:center;gap:8px;font-size:13px}
+</style></head>
+<body>
+<header class="toolbar">
+<div><h1>Photography: gold composition</h1><p>One clear action. Quieter details. The photographs lead.</p></div>
+<div class="controls">
+<div class="group" role="group" aria-label="Composition"><button data-composition="before" aria-pressed="false">Before</button><button data-composition="refined" aria-pressed="true">Refined</button></div>
+<div class="page-choice"><label for="surface">Page</label><select id="surface"><option value="home">Homepage</option><option value="bright">Event · studio portraits</option><option value="dark">Event · indoor action</option><option value="archive">Photo search</option></select></div>
+<div class="group" role="group" aria-label="Page size"><button data-size="desktop" aria-pressed="true">Desktop</button><button data-size="mobile" aria-pressed="false">Mobile</button></div>
+<a class="open" id="open" href="http://photo-accent.localhost:8841/photography/?study-accent=gold&amp;study-composition=refined" target="_blank" rel="noopener">Open selected page ↗</a>
+</div></header>
+<div class="guide"><p><strong>Both versions use gold and the same photos.</strong> Switch while a photo is open, or use the homepage arrows to review another image.</p><span class="status" id="status" role="status">Loading…</span></div>
+<main class="stage" aria-label="Interactive Photography composition preview"><div class="frame-space" id="frame-space"><iframe id="gallery" title="Photography composition comparison" src="http://photo-accent.localhost:8841/photography/?study-accent=gold&amp;study-composition=refined" allow="clipboard-write"></iframe></div></main>
+<p class="footer">Review preview · Saves stay in this browser · Blog and Profile unchanged<br><a class="open" href="index.html">Earlier gold, mint and coral comparison →</a></p>
+<script>
+const appOrigin='http://photo-accent.localhost:8841';
+const routes={home:'/photography/',bright:'/photography/albums/club-vb-630-picture-day-10-27-2026-WvzFwu',dark:'/photography/albums/college-womens-vb-millikin-at-north-central-09-23-2026-DWdCET',archive:'/photography/explore'};
+const frame=document.querySelector('#gallery'),space=document.querySelector('#frame-space'),status=document.querySelector('#status'),surface=document.querySelector('#surface');
+let composition='refined',size=innerWidth<700?'mobile':'desktop',ready=false;
+function url(){return appOrigin+routes[surface.value]+'?study-accent=gold&study-composition='+composition;}
+function label(){status.textContent=(ready?'Interactive · ':'Loading · ')+(size==='mobile'?'390 px phone viewport':'1440 px desktop viewport');}
+function fit(){const w=size==='mobile'?390:1440,available=document.querySelector('.stage').clientWidth-(innerWidth<700?24:48),scale=Math.min(1,available/w),h=size==='mobile'?844:Math.max(900,Math.round((innerHeight-220)/scale));space.style.width=w*scale+'px';space.style.height=h*scale+'px';space.classList.toggle('mobile',size==='mobile');frame.style.width=w+'px';frame.style.height=h+'px';frame.style.transform='scale('+scale+')';document.querySelectorAll('[data-size]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.size===size)));label();}
+function send(){frame.contentWindow.postMessage({type:'photography-study-composition',composition},appOrigin);}
+document.querySelectorAll('[data-composition]').forEach(b=>b.addEventListener('click',()=>{composition=b.dataset.composition;document.querySelectorAll('[data-composition]').forEach(i=>i.setAttribute('aria-pressed',String(i===b)));document.querySelector('#open').href=url();send();}));
+document.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click',()=>{size=b.dataset.size;fit();}));
+surface.addEventListener('change',()=>{ready=false;label();document.querySelector('#open').href=url();frame.src=url();});
+window.addEventListener('message',event=>{if(event.origin!==appOrigin||event.source!==frame.contentWindow||event.data?.type!=='photography-study-ready')return;ready=true;label();if(event.data.composition!==composition)send();});
+frame.addEventListener('load',send);window.addEventListener('resize',fit);fit();
+</script></body></html>

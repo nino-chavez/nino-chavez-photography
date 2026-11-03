@@ -8,7 +8,8 @@
 		ZoomOut,
 		Download,
 		Share2,
-		Sparkles
+		Sparkles,
+		Heart
 	} from 'lucide-svelte';
 	import { swipe, type SwipeEvent, isTouchDevice } from '$lib/utils/gestures';
 	import { canGoNext as computeCanGoNext, canGoPrev as computeCanGoPrev, isValidIndex, shouldPrefetchNextPage, resolveLoadMoreOutcome } from '$lib/gallery/lightbox-nav';
@@ -21,6 +22,7 @@
 	import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
 	import { flushMediaOutcome, observeMediaOutcome, reconcileMediaView, type MediaView, type MediaViewEvent } from '$lib/analytics/media-view';
 	import { photoShareUrl } from '$lib/utils/share-url';
+	import { favorites } from '$lib/stores/favorites.svelte';
 	import type { Photo } from '$types/photo';
 
 	interface Props {
@@ -206,6 +208,7 @@
 	// Generate user-friendly display text
 	const displayTitle = $derived(photo ? generatePhotoTitle(photo) : 'Sports Photo');
 	const metadataSummary = $derived(photo ? generateMetadataSummary(photo) : []);
+	const isSaved = $derived(photo ? favorites.isFavorite(photo.image_key) : false);
 
 	// Counter: prefer cross-page totals when provided, else fall back to the
 	// loaded-list position so single-page usages are unchanged.
@@ -218,6 +221,11 @@
 		imagePosition = { x: 0, y: 0 };
 		loadMoreFailed = false;
 		onClose?.();
+	}
+
+	function toggleSavedPhoto() {
+		if (!photo) return;
+		favorites.toggleFavorite(photo, `viewer_${viewSource}`);
 	}
 
 	// The only path that may call onNavigate — never with an index the parent hasn't loaded.
@@ -453,6 +461,12 @@
 	function manageDialogFocus(node: HTMLElement) {
 		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		const previousOverflow = document.body.style.overflow;
+		// Keep recoverable feedback inside the active modal's accessibility and
+		// keyboard boundary. Return the existing stack when the viewer closes.
+		const notifications = document.querySelector<HTMLElement>('[data-toast-container]');
+		const notificationParent = notifications?.parentNode;
+		const notificationSibling = notifications?.nextSibling ?? null;
+		if (notifications) node.appendChild(notifications);
 		document.body.style.overflow = 'hidden';
 		node.querySelector<HTMLButtonElement>('[aria-label="Close lightbox"]')?.focus({ preventScroll: true });
 
@@ -479,6 +493,7 @@
 		return {
 			destroy() {
 				node.removeEventListener('keydown', trapTab);
+				if (notifications && notificationParent) notificationParent.insertBefore(notifications, notificationSibling);
 				document.body.style.overflow = previousOverflow;
 				if (opener?.isConnected) opener.focus({ preventScroll: true });
 			}
@@ -628,6 +643,17 @@
 							<DownloadButton {photo} variant="compact" />
 						</div>
 
+						<!-- Save stays available while a visitor inspects the full photo. -->
+						<button
+							onclick={toggleSavedPhoto}
+							class="viewer-save mr-2 inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gallery-accent,#CBD8DF)] focus-visible:ring-offset-2 focus-visible:ring-offset-black md:mr-4"
+							aria-label={isSaved ? 'Saved · Remove' : 'Save photograph'}
+							aria-pressed={isSaved}
+						>
+							<Heart class="h-5 w-5 {isSaved ? 'fill-current' : ''}" aria-hidden="true" />
+							<span>{isSaved ? 'Saved' : 'Save'}</span>
+						</button>
+
 						<!-- Share Button -->
 						{#if shareTarget}
 							<div class="mr-2 md:mr-4">
@@ -686,7 +712,7 @@
 					{#if canGoPrev}
 						<button
 							onclick={handlePrev}
-							class="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500"
+							class="viewer-navigation absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500"
 							aria-label="Previous photo"
 							title="Previous (←)"
 						>
@@ -699,7 +725,7 @@
 						<button
 							onclick={handleNext}
 							disabled={waitingOnLoadMore}
-							class="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-wait {waitingOnLoadMore ? 'animate-pulse' : ''}"
+							class="viewer-navigation absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10 min-h-[56px] min-w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-wait {waitingOnLoadMore ? 'animate-pulse' : ''}"
 							aria-label={waitingOnLoadMore ? 'Loading more photos' : 'Next photo'}
 							title="Next (→)"
 						>
@@ -734,7 +760,7 @@
 				>
 					<div class="max-w-7xl mx-auto flex items-center justify-between">
 						<div class="flex items-center gap-6 text-white/80 text-sm">
-							{#each metadataSummary as tag}
+							{#each metadataSummary as tag (tag)}
 								<span class="capitalize">{tag}</span>
 							{/each}
 
@@ -779,5 +805,38 @@
 
 	:global(.animate-lightbox-open) {
 		animation: lightbox-open 200ms ease-out both;
+	}
+
+	.viewer-navigation { background: #292c2f; border: 1px solid #62686c; }
+	.viewer-navigation:hover { color: var(--gallery-accent, #CBD8DF); background: #363c40; }
+
+	.viewer-save {
+		background: var(--gallery-accent, #CBD8DF);
+		color: var(--gallery-bg, #181A1C);
+		box-shadow: 0 2px 12px rgb(0 0 0 / 30%);
+		transition: transform 120ms ease-out, background-color 120ms ease-out;
+	}
+
+	.viewer-save[aria-pressed='true'] {
+		background: var(--gallery-accent-pressed, var(--gallery-accent, #CBD8DF));
+		box-shadow: 0 0 0 2px var(--gallery-accent-soft, color-mix(in srgb, var(--gallery-accent, currentColor) 35%, transparent));
+	}
+
+	.viewer-save:hover {
+		background: var(--gallery-accent-hover, var(--gallery-accent, #CBD8DF));
+	}
+
+	.viewer-save:active {
+		transform: scale(0.96);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(.animate-lightbox-open),
+		.viewer-save,
+		.viewer-save * {
+			animation: none !important;
+			transition: none !important;
+			transform: none !important;
+		}
 	}
 </style>

@@ -1,0 +1,1238 @@
+[
+  {
+    "name": "home-1440-image-1",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": "rgb(240, 239, 235)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/fd-38.webp",
+        "alt": "A volleyball player balancing on one hand beneath the ball"
+      }
+    ]
+  },
+  {
+    "name": "home-1440-image-1",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": "rgb(212, 175, 55)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/fd-38.webp",
+        "alt": "A volleyball player balancing on one hand beneath the ball"
+      }
+    ]
+  },
+  {
+    "name": "home-1440-image-2",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": "rgb(240, 239, 235)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-14.webp",
+        "alt": "A volleyball player standing beneath a blue tournament banner"
+      },
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-15.webp",
+        "alt": "A player in black jumping toward a volleyball on an indoor court"
+      },
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-16.webp",
+        "alt": "A player in a red top passing a yellow volleyball on sand"
+      }
+    ]
+  },
+  {
+    "name": "home-1440-image-2",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": "rgb(212, 175, 55)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-14.webp",
+        "alt": "A volleyball player standing beneath a blue tournament banner"
+      },
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-15.webp",
+        "alt": "A player in black jumping toward a volleyball on an indoor court"
+      },
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-16.webp",
+        "alt": "A player in a red top passing a yellow volleyball on sand"
+      }
+    ]
+  },
+  {
+    "name": "home-1440-image-3",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": "rgb(240, 239, 235)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/fd-12.webp",
+        "alt": "Volleyball players celebrating together near the net"
+      }
+    ]
+  },
+  {
+    "name": "home-1440-image-3",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": "rgb(212, 175, 55)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/fd-12.webp",
+        "alt": "Volleyball players celebrating together near the net"
+      }
+    ]
+  },
+  {
+    "name": "bright-1440",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 458.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00254/grid",
+        "alt": "A player in black and a person in pink hold a crowned volleyball beside a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00255/grid",
+        "alt": "A player in black stands beside a person in pink at a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00256/grid",
+        "alt": "A player in a black and red uniform stands facing forward with hands clasped behind their back, looking slightly to the right."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00260/grid",
+        "alt": "Players in black and red hold push-up positions on a photo backdrop while others stand behind."
+      }
+    ]
+  },
+  {
+    "name": "bright-1440",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 425.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00254/grid",
+        "alt": "A player in black and a person in pink hold a crowned volleyball beside a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00255/grid",
+        "alt": "A player in black stands beside a person in pink at a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00256/grid",
+        "alt": "A player in a black and red uniform stands facing forward with hands clasped behind their back, looking slightly to the right."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00260/grid",
+        "alt": "Players in black and red hold push-up positions on a photo backdrop while others stand behind."
+      }
+    ]
+  },
+  {
+    "name": "bright-1440-viewer",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 458.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00254/grid",
+        "alt": "A player in black and a person in pink hold a crowned volleyball beside a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00255/grid",
+        "alt": "A player in black stands beside a person in pink at a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00256/grid",
+        "alt": "A player in a black and red uniform stands facing forward with hands clasped behind their back, looking slightly to the right."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00260/grid",
+        "alt": "Players in black and red hold push-up positions on a photo backdrop while others stand behind."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/large",
+        "alt": "Volleyball Portrait"
+      }
+    ]
+  },
+  {
+    "name": "bright-1440-viewer",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 425.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00254/grid",
+        "alt": "A player in black and a person in pink hold a crowned volleyball beside a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00255/grid",
+        "alt": "A player in black stands beside a person in pink at a photo backdrop."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00256/grid",
+        "alt": "A player in a black and red uniform stands facing forward with hands clasped behind their back, looking slightly to the right."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00260/grid",
+        "alt": "Players in black and red hold push-up positions on a photo backdrop while others stand behind."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/large",
+        "alt": "Volleyball Portrait"
+      }
+    ]
+  },
+  {
+    "name": "bright-1440-interaction",
+    "saveUndoReturn": true
+  },
+  {
+    "name": "dark-1440",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 458.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09434/grid",
+        "alt": "Players in light blue and red uniforms huddle together on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09435/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09437/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09438/grid",
+        "alt": "A player in a light blue uniform reaches for the ball while a player in a red uniform crouches."
+      }
+    ]
+  },
+  {
+    "name": "dark-1440",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 425.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09434/grid",
+        "alt": "Players in light blue and red uniforms huddle together on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09435/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09437/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09438/grid",
+        "alt": "A player in a light blue uniform reaches for the ball while a player in a red uniform crouches."
+      }
+    ]
+  },
+  {
+    "name": "dark-1440-viewer",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 458.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09434/grid",
+        "alt": "Players in light blue and red uniforms huddle together on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09435/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09437/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09438/grid",
+        "alt": "A player in a light blue uniform reaches for the ball while a player in a red uniform crouches."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/large",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "dark-1440-viewer",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 425.78125,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09434/grid",
+        "alt": "Players in light blue and red uniforms huddle together on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09435/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09437/grid",
+        "alt": "A player in a light blue uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09438/grid",
+        "alt": "A player in a light blue uniform reaches for the ball while a player in a red uniform crouches."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/large",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "dark-1440-interaction",
+    "saveUndoReturn": true
+  },
+  {
+    "name": "monochrome-1440",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 542.21875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/sHn5Q7S/grid",
+        "alt": "Players in black and red uniforms hug each other on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6c24h4z/grid",
+        "alt": "Two players in black and red uniforms hug tightly on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/836DsWr/grid",
+        "alt": "Two players in black uniforms hug tightly on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/bBnvDKF/grid",
+        "alt": "Players in black and red uniforms hug on a red court."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-1440",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 542.21875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/sHn5Q7S/grid",
+        "alt": "Players in black and red uniforms hug each other on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6c24h4z/grid",
+        "alt": "Two players in black and red uniforms hug tightly on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/836DsWr/grid",
+        "alt": "Two players in black uniforms hug tightly on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/bBnvDKF/grid",
+        "alt": "Players in black and red uniforms hug on a red court."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-1440-badges",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 542.21875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/sHn5Q7S/grid",
+        "alt": "Players in black and red uniforms hug each other on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6c24h4z/grid",
+        "alt": "Two players in black and red uniforms hug tightly on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/836DsWr/grid",
+        "alt": "Two players in black uniforms hug tightly on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/bBnvDKF/grid",
+        "alt": "Players in black and red uniforms hug on a red court."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-1440-badges",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 542.21875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/sHn5Q7S/grid",
+        "alt": "Players in black and red uniforms hug each other on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6c24h4z/grid",
+        "alt": "Two players in black and red uniforms hug tightly on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/836DsWr/grid",
+        "alt": "Two players in black uniforms hug tightly on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/bBnvDKF/grid",
+        "alt": "Players in black and red uniforms hug on a red court."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-1440-viewer",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 542.21875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/sHn5Q7S/grid",
+        "alt": "Players in black and red uniforms hug each other on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6c24h4z/grid",
+        "alt": "Two players in black and red uniforms hug tightly on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/836DsWr/grid",
+        "alt": "Two players in black uniforms hug tightly on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/bBnvDKF/grid",
+        "alt": "Players in black and red uniforms hug on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/large",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "monochrome-1440-viewer",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 1440,
+    "searchColor": null,
+    "photoTop": 542.21875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/sHn5Q7S/grid",
+        "alt": "Players in black and red uniforms hug each other on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6c24h4z/grid",
+        "alt": "Two players in black and red uniforms hug tightly on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/836DsWr/grid",
+        "alt": "Two players in black uniforms hug tightly on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/bBnvDKF/grid",
+        "alt": "Players in black and red uniforms hug on a red court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/large",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "monochrome-1440-interaction",
+    "saveUndoReturn": true
+  },
+  {
+    "name": "home-390-image-1",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(240, 239, 235)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-28.webp",
+        "alt": "A player in black airborne beside an indoor volleyball net"
+      }
+    ]
+  },
+  {
+    "name": "home-390-image-1",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(212, 175, 55)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-28.webp",
+        "alt": "A player in black airborne beside an indoor volleyball net"
+      }
+    ]
+  },
+  {
+    "name": "home-390-image-2",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(240, 239, 235)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-14.webp",
+        "alt": "A volleyball player standing beneath a blue tournament banner"
+      }
+    ]
+  },
+  {
+    "name": "home-390-image-2",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(212, 175, 55)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-14.webp",
+        "alt": "A volleyball player standing beneath a blue tournament banner"
+      }
+    ]
+  },
+  {
+    "name": "home-390-image-3",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(240, 239, 235)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-15.webp",
+        "alt": "A player in black jumping toward a volleyball on an indoor court"
+      }
+    ]
+  },
+  {
+    "name": "home-390-image-3",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(212, 175, 55)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-15.webp",
+        "alt": "A player in black jumping toward a volleyball on an indoor court"
+      }
+    ]
+  },
+  {
+    "name": "home-390-monochrome",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(240, 239, 235)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-19.webp",
+        "alt": "Two people in shallow water beneath a pier, in black and white"
+      }
+    ]
+  },
+  {
+    "name": "home-390-monochrome",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": "rgb(212, 175, 55)",
+    "photoTop": null,
+    "visiblePhotos": [
+      {
+        "src": "/photography/images/hero/flickday/triptych/t-19.webp",
+        "alt": "Two people in shallow water beneath a pier, in black and white"
+      }
+    ]
+  },
+  {
+    "name": "bright-390",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 482.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      }
+    ]
+  },
+  {
+    "name": "bright-390",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 449.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      }
+    ]
+  },
+  {
+    "name": "bright-390-viewer",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 354.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/medium",
+        "alt": "Volleyball Portrait"
+      }
+    ]
+  },
+  {
+    "name": "bright-390-viewer",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 321.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00240/grid",
+        "alt": "Four people in black tops pose with raised hands around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00242/grid",
+        "alt": "Four people in black tops pose around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00250/grid",
+        "alt": "Four people in black tops pose with hand gestures around a chair."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/grid",
+        "alt": "A player in a black top and shorts holds a volleyball and flexes his arm."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/WvzFwu-DSC00252/medium",
+        "alt": "Volleyball Portrait"
+      }
+    ]
+  },
+  {
+    "name": "bright-390-interaction",
+    "saveUndoReturn": true
+  },
+  {
+    "name": "dark-390",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 482.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      }
+    ]
+  },
+  {
+    "name": "dark-390",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 449.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      }
+    ]
+  },
+  {
+    "name": "dark-390-viewer",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 482.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/medium",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "dark-390-viewer",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 449.109375,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/grid",
+        "alt": "A Millikin player in blue yells with hands open on a court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09427/grid",
+        "alt": "A Millikin player in blue high-fives a player in white."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09430-sdr-e79d5ae61c/grid",
+        "alt": "Two players in blue uniforms high five on a wooden court."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09432/grid",
+        "alt": "A player in a gray uniform reaches overhead for the ball."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/DWdCET-DSC09426/medium",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "dark-390-interaction",
+    "saveUndoReturn": true
+  },
+  {
+    "name": "monochrome-390",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 629.796875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-390",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 619.796875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-390-badges",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 629.796875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-390-badges",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 619.796875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      }
+    ]
+  },
+  {
+    "name": "monochrome-390-viewer",
+    "composition": "before",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 629.796875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/medium",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "monochrome-390-viewer",
+    "composition": "refined",
+    "overflow": false,
+    "viewport": 390,
+    "searchColor": null,
+    "photoTop": 619.796875,
+    "visiblePhotos": [
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/grid",
+        "alt": "A player in a red jersey smiles and touches her face with her hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/6KBfBcj/grid",
+        "alt": "Players in red jerseys huddle together with arms around each other."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/wF9Jgxf/grid",
+        "alt": "Players in red tops and black shorts huddle together, holding hands."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/pN9Qw3v/grid",
+        "alt": "A player in black and white hugs a player in pink, with players in red and black behind them."
+      },
+      {
+        "src": "https://imagedelivery.net/wg34HB28-JkySWVm5fW4kA/mFSt7XR/medium",
+        "alt": "Volleyball Action"
+      }
+    ]
+  },
+  {
+    "name": "monochrome-390-interaction",
+    "saveUndoReturn": true
+  }
+]

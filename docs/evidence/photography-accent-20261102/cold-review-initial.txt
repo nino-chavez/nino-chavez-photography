@@ -1,0 +1,11 @@
+Verdict: choose cool mint. It gives the charcoal gallery a calmer, more editorial feel while keeping filter selection, save state, and the close/return affordance legible. Static captures make the search → filter → open → save → close path immediately understandable; this is a visual verdict, not an interaction result.
+
+Material visible fixes, ordered:
+
+1. Make the cool direction consistently cool. `comparison-cool-desktop.png` retains a coral Search button, and `cool-320-viewer.png` uses a coral next-photo glow, while selection and navigation use mint. That makes the comparison read as two accents rather than one decision.
+
+2. Reclaim phone space above the results. In `warm-390-search.png`, the wrapped navigation plus large intro consumes most of the first screen; the result grid begins only at the bottom. Compress the mobile header/intro so a visitor sees both the search controls and usable photo results immediately.
+
+3. Remove the duplicate “Filters” heading in `cool-390-filters.png`. The sheet title and first internal heading repeat without adding orientation; use that space for the filter choices.
+
+Reviewed captures: `comparison-warm-desktop.png`, `comparison-cool-desktop.png`, `warm-390-search.png`, `cool-390-filters.png`, `cool-390-viewer.png`, `cool-320-viewer.png`.

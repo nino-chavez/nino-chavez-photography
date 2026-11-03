@@ -1,0 +1,5 @@
+PASS — no material visible issue in the five captures.
+
+Gold remains consistent across search, selected filters, primary action, and saved state. Its graphite contrast is sufficient, including pressed gold at 6.18:1. The three-choice mobile control wraps “Original gold” cleanly without clipping or horizontal overflow. Gold and cool viewer captures preserve the same photograph treatment; the accent remains in interface chrome.
+
+Rendered-capture review only; no physical-device or usability testing claimed.

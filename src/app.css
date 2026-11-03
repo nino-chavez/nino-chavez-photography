@@ -148,6 +148,9 @@
   --gallery-bg: #181A1C;
   --gallery-ink: #F0EFEB;
   --gallery-accent: #CBD8DF;
+  --gallery-accent-hover: #E2EBEF;
+  --gallery-accent-pressed: #AFBFC9;
+  --gallery-accent-soft: #30393E;
   --gallery-surface: #292C2F;
   --gallery-muted: #B4BBC0;
   --gallery-rule: #4A5055;
@@ -220,6 +223,111 @@
 .gallery-theme input[type='radio'],
 .gallery-theme input[type='checkbox'] {
   accent-color: var(--gallery-accent) !important;
+}
+
+/* Local comparison alternatives. Only AccentStudy on photo-accent.localhost
+ * sets this attribute; the public palette and private workspaces stay intact. */
+html[data-photography-accent='gold'] .gallery-theme {
+  /* Original Photography accent and its established hover/pressed shades. */
+  --gallery-accent: #D4AF37;
+  --gallery-accent-hover: #E3C358;
+  --gallery-accent-pressed: #B8962E;
+  --gallery-accent-soft: #373121;
+}
+
+html[data-photography-accent='warm'] .gallery-theme {
+  --gallery-accent: #F29A79;
+  --gallery-accent-hover: #FFB594;
+  --gallery-accent-pressed: #DD815F;
+  --gallery-accent-soft: #3A2925;
+}
+
+html[data-photography-accent='cool'] .gallery-theme {
+  --gallery-accent: #7ECFC4;
+  --gallery-accent-hover: #A5E8DA;
+  --gallery-accent-pressed: #64B5AA;
+  --gallery-accent-soft: #233734;
+}
+
+html[data-photography-accent] .gallery-theme {
+  --color-gold-50: var(--gallery-accent-hover);
+  --color-gold-100: var(--gallery-accent-hover);
+  --color-gold-200: var(--gallery-accent-hover);
+  --color-gold-300: var(--gallery-accent-hover);
+  --color-gold-400: var(--gallery-accent-hover);
+  --color-gold-600: var(--gallery-accent-pressed);
+  --color-gold-700: var(--gallery-accent-pressed);
+  --color-gold-800: var(--gallery-accent-soft);
+  --color-gold-900: var(--gallery-accent-soft);
+  --color-gold-950: var(--gallery-bg);
+  --text-accent-hover: var(--gallery-accent-hover);
+  --btn-primary-hover: var(--gallery-accent-hover);
+  --active-bg: var(--gallery-accent-soft);
+}
+
+html[data-photography-accent] .gallery-theme :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 4px;
+}
+
+html[data-photography-accent] .gallery-theme button:enabled:active {
+  filter: brightness(0.92);
+}
+
+
+/* Local composition comparison. Keep the photographs and their crops unchanged;
+ * reserve solid accent fills for the primary action and actual selected state. */
+html[data-photography-composition='refined'] .gallery-theme .event-search button {
+  background: var(--gallery-accent);
+}
+html[data-photography-composition='refined'] .gallery-theme .event-search button:hover {
+  background: var(--gallery-accent-hover);
+}
+html[data-photography-composition='refined'] .gallery-theme .event-search button:active {
+  background: var(--gallery-accent-pressed);
+}
+html[data-photography-composition='refined'] .gallery-theme .gallery-cta {
+  background: transparent;
+  color: var(--gallery-ink);
+  padding-inline: 0;
+}
+html[data-photography-composition='refined'] .gallery-theme .hero-recent a:hover .gallery-cta {
+  background: transparent;
+  color: var(--gallery-accent-hover);
+}
+html[data-photography-composition='refined'] .gallery-theme .hero-recent > a {
+  min-height: 76px;
+  padding-block: 10px;
+}
+html[data-photography-composition='refined'] .gallery-theme .explore-eyebrow {
+  color: var(--gallery-muted);
+}
+html[data-photography-composition='refined'] .gallery-theme .photo-card span.bg-gold-500 {
+  background: var(--gallery-surface);
+  color: var(--gallery-ink) !important;
+  box-shadow: none;
+}
+html[data-photography-composition='refined'] .gallery-theme button[aria-controls='presets-panel'] svg {
+  color: var(--gallery-muted);
+}
+html[data-photography-composition='refined'] .gallery-theme .album-collection {
+  padding-top: 0;
+}
+html[data-photography-composition='refined'] .gallery-theme .collection-tools {
+  border-top: 0;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) {
+  html[data-photography-composition='refined'] .gallery-theme .explore-opening {
+    padding-block: 8px 12px;
+  }
+  html[data-photography-composition='refined'] .gallery-theme .explore-eyebrow {
+    margin-bottom: 6px;
+  }
+  html[data-photography-composition='refined'] .gallery-theme .explore-title-row > div > p {
+    margin-top: 8px;
+  }
 }
 
 @layer base {

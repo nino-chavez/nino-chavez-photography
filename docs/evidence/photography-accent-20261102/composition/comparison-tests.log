@@ -1,0 +1,15 @@
+(node:33487) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node:33527) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33527) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:33527) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/photo-accent-comparison.spec.ts:6:1 › accent and viewport switching keep the same open photo (1.3s)
+  ✓  2 [chromium] › tests/photo-accent-comparison.spec.ts:59:1 › preview accent cannot be activated on the ordinary local hostname (315ms)
+  ✓  3 [chromium] › tests/photo-accent-comparison.spec.ts:70:1 › gold composition comparison preserves the selected photo and keeps secondary controls quiet (1.9s)
+
+  3 passed (4.0s)

@@ -171,6 +171,7 @@ test('photo explorer phone filters open, apply and close', async ({ page }) => {
  expect(await drawer.evaluate((node) => node.matches(':modal'))).toBe(true);
  await trigger.evaluate((node) => node.focus());
  await expect(drawer.getByRole('button', { name: 'Close filters' })).toBeFocused();
+ await drawer.getByRole('button', { name: 'Sport', exact: true }).click();
  await drawer.getByRole('radio', { name: /Volleyball/ }).check();
  await expect(page).toHaveURL(/sport=volleyball/);
  await expect(drawer.getByRole('radio', { name: /Volleyball/ })).toBeChecked();
@@ -179,6 +180,7 @@ test('photo explorer phone filters open, apply and close', async ({ page }) => {
  await drawer.getByRole('button', { name: 'Close filters' }).click();
  await expect(drawer).toBeHidden();
  await trigger.click();
+ await drawer.getByRole('button', { name: /^Sport/ }).click();
  await expect(drawer.getByRole('radio', { name: /Volleyball/ })).toBeChecked();
  await page.keyboard.press('Escape');
  await expect(drawer).toBeHidden();

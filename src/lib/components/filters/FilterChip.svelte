@@ -13,7 +13,6 @@
 
 <script lang="ts">
 	import { X } from 'lucide-svelte';
-	import Typography from '$lib/components/ui/Typography.svelte';
 
 	interface Props {
 		label: string;
@@ -28,20 +27,18 @@
 	}
 </script>
 
-<div
-	class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold-500/20 border border-gold-500/30 text-gold-300 text-xs transition-colors hover:bg-gold-500/30"
->
-	<Typography variant="caption" class="font-medium">{label}</Typography>
-	{#if onRemove}
-		<button
-			onclick={handleClick}
-			class="flex items-center justify-center min-w-[44px] min-h-[44px] -mr-1.5 rounded-full hover:bg-gold-500/40 transition-colors"
-			aria-label="Remove filter: {label}"
-		>
-			<X class="w-3.5 h-3.5" />
-		</button>
-	{/if}
-</div>
+{#if onRemove}
+	<button
+		onclick={handleClick}
+		class="inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-full border border-gold-500/30 bg-gold-500/20 px-3 py-2 text-xs text-gold-300 transition-colors hover:bg-gold-500/30"
+		aria-label="Remove filter: {label}"
+	>
+		<span class="min-w-0 break-words font-medium">{label}</span>
+		<X class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+	</button>
+{:else}
+	<span class="inline-flex min-h-[44px] items-center rounded-full border border-gold-500/30 bg-gold-500/20 px-3 py-2 text-xs text-gold-300">{label}</span>
+{/if}
 
 <style>
 	button {

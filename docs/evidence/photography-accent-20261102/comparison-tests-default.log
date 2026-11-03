@@ -1,0 +1,9 @@
+(node:16131) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+  -  1 [chromium] › tests/photo-accent-comparison.spec.ts:6:1 › accent and viewport switching keep the same open photo
+  -  2 [chromium] › tests/photo-accent-comparison.spec.ts:47:1 › preview accent cannot be activated on the ordinary local hostname
+
+  2 skipped

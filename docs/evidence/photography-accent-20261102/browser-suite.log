@@ -1,0 +1,37 @@
+(node:5359) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 19 tests using 2 workers
+
+(node:5395) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5396) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5395) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:5395) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5396) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:5396) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/homepage.spec.ts:20:5 › Photography home at 390px › arrival, event discovery, selected work and return (2.5s)
+  ✓   2 [chromium] › tests/homepage.spec.ts:20:5 › Photography home at 1440px › arrival, event discovery, selected work and return (2.9s)
+  ✓   3 [chromium] › tests/homepage.spec.ts:20:5 › Photography home at 320px › arrival, event discovery, selected work and return (1.7s)
+  ✓   4 [chromium] › tests/homepage.spec.ts:122:5 › Automatic Selected Works 1280 › advances, pauses, resumes, and restarts from a settled swipe (2.8s)
+  ✓   6 [chromium] › tests/homepage.spec.ts:174:1 › reduced motion starts paused; manual browsing and explicit playback remain available (492ms)
+  ✓   7 [chromium] › tests/homepage.spec.ts:201:1 › event search and spotlight links work without JavaScript (533ms)
+  ✓   5 [chromium] › tests/homepage.spec.ts:122:5 › Automatic Selected Works 390 › advances, pauses, resumes, and restarts from a settled swipe (2.6s)
+  ✓   9 [chromium] › tests/homepage.spec.ts:236:5 › Archive journeys 390 › timeline year and month jumps, gallery entry and photo return (5.8s)
+  ✓   8 [chromium] › tests/homepage.spec.ts:236:5 › Archive journeys 1440 › timeline year and month jumps, gallery entry and photo return (6.2s)
+  -  11 [chromium] › tests/homepage.spec.ts:338:3 › record normal-speed native slideshow at 1440
+  -  12 [chromium] › tests/homepage.spec.ts:338:3 › record normal-speed native slideshow at 390
+  ✓  13 [chromium] › tests/homepage.spec.ts:378:1 › short landscape keeps the photo controls and event search apart (295ms)
+  ✓  10 [chromium] › tests/homepage.spec.ts:314:1 › archive empty state explains recovery (1.2s)
+  ✓  14 [chromium] › tests/homepage.spec.ts:398:1 › photo explorer phone filters open, apply and close (1.0s)
+  ✓  16 [chromium] › tests/photo-accent-browse.spec.ts:41:1 › phone filter drawer keeps division and level choices reachable (911ms)
+  ✓  17 [chromium] › tests/photo-accent-comparison.spec.ts:2:1 › accent and viewport switching keep the same open photo (888ms)
+  ✓  18 [chromium] › tests/photo-accent-comparison.spec.ts:43:1 › preview accent cannot be activated on the ordinary local hostname (489ms)
+  ✓  15 [chromium] › tests/photo-accent-browse.spec.ts:3:1 › photo search, active chips, clearing and sharing use the same URL state (3.6s)
+  ✓  19 [chromium] › tests/photo-accent-feedback.spec.ts:3:1 › save feedback stays consistent, recoverable, and stacked (3.2s)
+
+  2 skipped
+  17 passed (20.9s)

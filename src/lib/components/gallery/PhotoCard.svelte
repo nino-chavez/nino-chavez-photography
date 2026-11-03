@@ -168,6 +168,23 @@
 		box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.3);
 	}
 
+	/* The reusable save control sits inside this card, so keep its active state
+	 * tied to the gallery's comparison token without changing its shared API. */
+	.photo-card :global(.favorite-btn-icon) {
+		border: 1px solid color-mix(in srgb, var(--gallery-ink, white) 30%, transparent);
+		box-shadow: 0 2px 10px rgb(0 0 0 / 28%);
+	}
+
+	.photo-card :global(.favorite-btn-icon[aria-label='Remove saved photo']) {
+		background: var(--gallery-accent, #CBD8DF);
+		border-color: var(--gallery-accent-pressed, var(--gallery-accent, #CBD8DF));
+		box-shadow: 0 0 0 2px var(--gallery-accent-soft, color-mix(in srgb, var(--gallery-accent, currentColor) 35%, transparent));
+	}
+
+	.photo-card :global(.favorite-btn-icon:active) {
+		transform: scale(0.92);
+	}
+
 	.photo-card:focus-visible {
 		border-color: rgb(212, 175, 55);
 		box-shadow:
@@ -183,6 +200,11 @@
 
 		.photo-card:hover,
 		.photo-card:focus-visible {
+			transform: none !important;
+		}
+
+		.photo-card :global(.favorite-btn-icon) {
+			transition: none !important;
 			transform: none !important;
 		}
 	}
