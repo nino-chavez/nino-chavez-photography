@@ -25,14 +25,22 @@
 		sport?: string | null;
 		category?: string | null;
 		playType?: string | null;
-		baseUrl?: string;
+		jersey?: number | null;
+		division?: string | null;
+		level?: string | null;
+		query?: string | null;
+		shareUrl?: string;
 	}
 
 	let {
 		sport = null,
 		category = null,
 		playType = null,
-		baseUrl = '/explore'
+		jersey = null,
+		division = null,
+		level = null,
+		query = null,
+		shareUrl
 	}: Props = $props();
 
 	let copyStatus = $state<'idle' | 'success' | 'error'>('idle');
@@ -40,18 +48,14 @@
 
 	// Check if any filters are active
 	let hasActiveFilters = $derived(
-		!!(sport || category || playType)
+		!!(sport || category || playType || jersey || division || level || query)
 	);
 
 	// Generate shareable URL
 	function generateShareableURL(): string {
-		const url = new URL(window.location.origin + baseUrl);
-		const params = url.searchParams;
-
-		if (sport) params.set('sport', sport);
-		if (category) params.set('category', category);
-		if (playType) params.set('play_type', playType);
-
+		const url = new URL(shareUrl || window.location.href, window.location.origin);
+		url.searchParams.delete('search_id');
+		url.searchParams.delete('page');
 		return url.toString();
 	}
 
@@ -91,7 +95,11 @@
 	let activeCount = $derived(
 		(sport ? 1 : 0) +
 		(category ? 1 : 0) +
-		(playType ? 1 : 0)
+		(playType ? 1 : 0) +
+		(jersey ? 1 : 0) +
+		(division ? 1 : 0) +
+		(level ? 1 : 0) +
+		(query ? 1 : 0)
 	);
 </script>
 

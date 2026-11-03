@@ -140,14 +140,17 @@
 }
 
 /*
- * Public Photography has its own approved graphite-and-silver treatment.
+ * Public Photography has its own approved graphite-and-gold treatment.
  * These variables deliberately live on the public gallery wrapper rather than
  * @theme/:root because Analytics, auth, and admin share this application.
  */
 .gallery-theme {
   --gallery-bg: #181A1C;
   --gallery-ink: #F0EFEB;
-  --gallery-accent: #CBD8DF;
+  --gallery-accent: #D4AF37;
+  --gallery-accent-hover: #E3C358;
+  --gallery-accent-pressed: #B8962E;
+  --gallery-accent-soft: #373121;
   --gallery-surface: #292C2F;
   --gallery-muted: #B4BBC0;
   --gallery-rule: #4A5055;
@@ -220,6 +223,87 @@
 .gallery-theme input[type='radio'],
 .gallery-theme input[type='checkbox'] {
   accent-color: var(--gallery-accent) !important;
+}
+
+.gallery-theme {
+  --color-gold-50: var(--gallery-accent-hover);
+  --color-gold-100: var(--gallery-accent-hover);
+  --color-gold-200: var(--gallery-accent-hover);
+  --color-gold-300: var(--gallery-accent-hover);
+  --color-gold-400: var(--gallery-accent-hover);
+  --color-gold-600: var(--gallery-accent-pressed);
+  --color-gold-700: var(--gallery-accent-pressed);
+  --color-gold-800: var(--gallery-accent-soft);
+  --color-gold-900: var(--gallery-accent-soft);
+  --color-gold-950: var(--gallery-bg);
+  --text-accent-hover: var(--gallery-accent-hover);
+  --btn-primary-hover: var(--gallery-accent-hover);
+  --active-bg: var(--gallery-accent-soft);
+}
+
+.gallery-theme :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 4px;
+}
+
+.gallery-theme button:enabled:active {
+  filter: brightness(0.92);
+}
+
+
+/* Keep the photographs and their crops unchanged;
+ * reserve solid accent fills for the primary action and actual selected state. */
+:root .gallery-theme .event-search button {
+  background: var(--gallery-accent);
+}
+:root .gallery-theme .event-search button:hover {
+  background: var(--gallery-accent-hover);
+}
+:root .gallery-theme .event-search button:active {
+  background: var(--gallery-accent-pressed);
+}
+:root .gallery-theme .gallery-cta {
+  background: transparent;
+  color: var(--gallery-ink);
+  padding-inline: 0;
+}
+:root .gallery-theme .hero-recent a:hover .gallery-cta {
+  background: transparent;
+  color: var(--gallery-accent-hover);
+}
+:root .gallery-theme .hero-recent > a {
+  min-height: 76px;
+  padding-block: 10px;
+}
+:root .gallery-theme .explore-eyebrow {
+  color: var(--gallery-muted);
+}
+:root .gallery-theme .photo-card span.bg-gold-500 {
+  background: var(--gallery-surface);
+  color: var(--gallery-ink) !important;
+  box-shadow: none;
+}
+:root .gallery-theme button[aria-controls='presets-panel'] svg {
+  color: var(--gallery-muted);
+}
+:root .gallery-theme .album-collection {
+  padding-top: 0;
+}
+:root .gallery-theme .collection-tools {
+  border-top: 0;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) {
+  :root .gallery-theme .explore-opening {
+    padding-block: 8px 12px;
+  }
+  :root .gallery-theme .explore-eyebrow {
+    margin-bottom: 6px;
+  }
+  :root .gallery-theme .explore-title-row > div > p {
+    margin-top: 8px;
+  }
 }
 
 @layer base {
