@@ -1,0 +1,5 @@
+PASS — no material composition, hierarchy, legibility, or apparent-control issues in the listed captures.
+
+The refined variant is stronger. It uses gold more deliberately: Search and Save read as the next action, while filters, badges, and gallery details stay quieter so the photographs lead. This holds across bright, dark, and monochrome images, and at both mobile and desktop widths.
+
+The viewer’s Save action remains unmistakable, and the return context stays visually secondary. This is rendered-screen evidence only; it does not establish physical-device behavior or visitor usability.

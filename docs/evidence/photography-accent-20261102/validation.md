@@ -21,3 +21,15 @@ The preview requires this retained worktree and two local servers: the compariso
 Original gold restores `#D4AF37` with its historical hover and pressed shades. Gold has 8.30:1 contrast against graphite; its pressed shade has 6.18:1. These ratios support legibility, not a preference ranking. The new comparison tests pass for the mint default, coral/mint/gold switching, unchanged open-photo source and the ordinary-host restriction. Parent review opened the gold desktop wrapper, phone wrapper, phone filter sheet and phone viewer. The three choices fit the phone toolbar; selected filters and saved photos retain non-color cues. Screenshots and `encounters.json` were refreshed with all six journeys.
 
 The independent follow-up reviewer opened the five requested gold/mint captures and returned PASS with no material visible issue. The full build and reader audit passed after the gold addition; Svelte checks still report zero errors and two existing VideoPlayer warnings. `gold-cold-review.txt` and the focused check logs retain the follow-up receipts.
+
+## Gold composition pass
+
+The Before / Refined comparison at `/composition.html` holds gold and photo content fixed while changing emphasis. It adds home, studio event, indoor event and photo-search entry points. Both versions remain in the existing never-merge review branch. The old three-color study is unchanged apart from its link to this pass and explicit baseline-composition parameter.
+
+Primary home Search is gold; recent-gallery callouts retain their full-row targets with quieter text. Archive labels, the quick-filter icon and factual sport badges become neutral. Removing the repeated album divider and extra gap brings the pictures closer to the search controls. Viewer Save already has the intended emphasis and was preserved. No photograph, crop, grading, live data or motion behavior was changed.
+
+The parent opened native pairs at 1440 and 390 pixels, with bright studio, indoor action and monochrome photographs. Three homepage positions at each width and an additional phone monochrome position were reviewed. Twenty-one pairs and six save/Undo/focus-return journeys are recorded in `composition/encounters.json`. No horizontal overflow was observed. The wrapper fits 1440, 390 and 320 pixels. Its three behavioral tests passed, including preserving photo identity across comparison and viewport changes. Four existing gallery-journey checks passed separately on the ordinary local hostname, including a decodable photo download.
+
+The capture harness follows image identities through thumbnail/full-size/HDR loading and waits for the viewer to become visible. Initial capture failures were image-loading synchronization errors. The wrapper Page selector's accessible label was corrected after its first test failed. Physical-device review, live private-gallery access and visitor performance remain untested.
+
+The independent cold reviewer opened the requested whole-screen pairs and returned PASS, preferring Refined for more deliberate emphasis. The final full build and reader audit also passed; the rebuilt interactive preview was checked again before delivery.

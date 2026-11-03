@@ -1,0 +1,230 @@
+
+> nino-chavez-gallery-v3@0.0.1 check
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsx scripts/taxonomy-check.ts
+
+`config.kit.csrf.checkOrigin` has been deprecated in favour of `csrf.trustedOrigins`. It will be removed in a future version
+Loading svelte-check in workspace: /Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photo-accent-comparison-20261102
+Getting Svelte diagnostics...
+
+`config.kit.csrf.checkOrigin` has been deprecated in favour of `csrf.trustedOrigins`. It will be removed in a future version
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photo-accent-comparison-20261102/src/lib/components/gallery/VideoPlayer.svelte:135:2
+Warn: Elements with the 'dialog' interactive role must have a tabindex value
+https://svelte.dev/e/a11y_interactive_supports_focus (svelte)
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm"
+		onclick={handleBackdropClick}
+		role="dialog"
+		aria-label={albumLabel ? `${albumLabel}, ${label} of ${count}` : `${label} of ${count}`}
+		aria-modal="true"
+	>
+		<!-- Top controls -->
+		<div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+			<!-- Autoplay toggle -->
+			<button
+				type="button"
+				onclick={(e) => { e.stopPropagation(); toggleAutoplay(); }}
+				class="h-10 rounded-full px-4 flex items-center gap-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 {autoplayNext ? 'bg-gold-500 text-charcoal-900' : 'bg-charcoal-800/80 text-white hover:bg-charcoal-700'}"
+				aria-pressed={autoplayNext}
+				title="Autoplay next"
+			>
+				Autoplay {autoplayNext ? 'On' : 'Off'}
+			</button>
+
+			{#if canShareFiles}
+				<button
+					type="button"
+					onclick={(e) => { e.stopPropagation(); shareVideo(); }}
+					disabled={sharing}
+					class="w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 disabled:opacity-50"
+					aria-label="Share video"
+					title="Share to Instagram / social"
+				>
+					{#if sharing}
+						<svg class="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.6" stroke-linecap="round" /></svg>
+					{:else}
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+					{/if}
+				</button>
+			{/if}
+
+			<!-- Download -->
+			<a
+				href={downloadUrl}
+				download={`${downloadName}.mp4`}
+				onclick={(e) => e.stopPropagation()}
+				class="w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Download video"
+				title="Download video"
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+			</a>
+
+			<!-- Close -->
+			<button
+				type="button"
+				onclick={handleClose}
+				class="w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Close video"
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+			</button>
+		</div>
+
+		<!-- Prev / Next (when more than one video) -->
+		{#if count > 1}
+			<button
+				type="button"
+				onclick={(e) => { e.stopPropagation(); prev(); }}
+				class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Previous video"
+			>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+			</button>
+			<button
+				type="button"
+				onclick={(e) => { e.stopPropagation(); next(); }}
+				class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Next video"
+			>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+			</button>
+		{/if}
+
+		<!-- Video container: fill the viewport so portrait reels play near-full-height -->
+		{#key video.cf_stream_id}
+			<div class="relative mx-12 sm:mx-16 h-[86vh] w-full max-w-6xl overflow-hidden rounded-lg">
+				<iframe
+					bind:this={iframeEl}
+					src={streamUrl}
+					class="absolute inset-0 w-full h-full"
+					allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+					allowfullscreen
+					title={albumLabel ? `${albumLabel} — ${label}` : label}
+				></iframe>
+			</div>
+		{/key}
+
+		<!-- Title + position -->
+		<p class="absolute bottom-5 left-0 right-0 text-center text-sm text-white/80">
+			{albumLabel}{#if albumLabel && count > 1}<span class="text-white/50"> · </span>{/if}{#if count > 1}<span class="text-white/50">{label} of {count}</span>{/if}
+		</p>
+	</div>
+{/if}
+
+/Users/nino/Workspace/dev/sites/nino/nino-chavez-photography/.worktrees/codex/photo-accent-comparison-20261102/src/lib/components/gallery/VideoPlayer.svelte:135:2
+Warn: Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events (svelte)
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm"
+		onclick={handleBackdropClick}
+		role="dialog"
+		aria-label={albumLabel ? `${albumLabel}, ${label} of ${count}` : `${label} of ${count}`}
+		aria-modal="true"
+	>
+		<!-- Top controls -->
+		<div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+			<!-- Autoplay toggle -->
+			<button
+				type="button"
+				onclick={(e) => { e.stopPropagation(); toggleAutoplay(); }}
+				class="h-10 rounded-full px-4 flex items-center gap-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 {autoplayNext ? 'bg-gold-500 text-charcoal-900' : 'bg-charcoal-800/80 text-white hover:bg-charcoal-700'}"
+				aria-pressed={autoplayNext}
+				title="Autoplay next"
+			>
+				Autoplay {autoplayNext ? 'On' : 'Off'}
+			</button>
+
+			{#if canShareFiles}
+				<button
+					type="button"
+					onclick={(e) => { e.stopPropagation(); shareVideo(); }}
+					disabled={sharing}
+					class="w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 disabled:opacity-50"
+					aria-label="Share video"
+					title="Share to Instagram / social"
+				>
+					{#if sharing}
+						<svg class="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.6" stroke-linecap="round" /></svg>
+					{:else}
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+					{/if}
+				</button>
+			{/if}
+
+			<!-- Download -->
+			<a
+				href={downloadUrl}
+				download={`${downloadName}.mp4`}
+				onclick={(e) => e.stopPropagation()}
+				class="w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Download video"
+				title="Download video"
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+			</a>
+
+			<!-- Close -->
+			<button
+				type="button"
+				onclick={handleClose}
+				class="w-10 h-10 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Close video"
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+			</button>
+		</div>
+
+		<!-- Prev / Next (when more than one video) -->
+		{#if count > 1}
+			<button
+				type="button"
+				onclick={(e) => { e.stopPropagation(); prev(); }}
+				class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Previous video"
+			>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+			</button>
+			<button
+				type="button"
+				onclick={(e) => { e.stopPropagation(); next(); }}
+				class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center bg-charcoal-800/80 text-white hover:bg-charcoal-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+				aria-label="Next video"
+			>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+			</button>
+		{/if}
+
+		<!-- Video container: fill the viewport so portrait reels play near-full-height -->
+		{#key video.cf_stream_id}
+			<div class="relative mx-12 sm:mx-16 h-[86vh] w-full max-w-6xl overflow-hidden rounded-lg">
+				<iframe
+					bind:this={iframeEl}
+					src={streamUrl}
+					class="absolute inset-0 w-full h-full"
+					allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+					allowfullscreen
+					title={albumLabel ? `${albumLabel} — ${label}` : label}
+				></iframe>
+			</div>
+		{/key}
+
+		<!-- Title + position -->
+		<p class="absolute bottom-5 left-0 right-0 text-center text-sm text-white/80">
+			{albumLabel}{#if albumLabel && count > 1}<span class="text-white/50"> · </span>{/if}{#if count > 1}<span class="text-white/50">{label} of {count}</span>{/if}
+		</p>
+	</div>
+{/if}
+
+====================================
+svelte-check found 0 errors and 2 warnings in 1 file
+✅ in sync: database/generated/taxonomy-enums.sql
+✅ in sync: src/lib/ai/generated/taxonomy.schema.json
+
+✅ All taxonomy artifacts match src/lib/ai/taxonomy.ts
+(node:28847) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

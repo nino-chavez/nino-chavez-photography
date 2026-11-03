@@ -48,3 +48,22 @@ At 1440 and 390 pixels, search real photos, apply a filter, inspect its chip, sa
 The preview runs locally on `photo-accent.localhost:8840`; the native app uses port 8841. The accent bridge only activates on that hostname. Public hosts retain the approved palette. Both servers and the review worktree must remain available while this preview is being reviewed.
 
 The comparison-specific Playwright tests require `PHOTOGRAPHY_ACCENT_REVIEW=1` and the two running review servers. Without that explicit opt-in, those two tests are skipped; the normal application tests do not depend on the comparison server.
+
+## Gold composition follow-up
+
+Nino requested the next composition pass after the three-color recommendation and Reel adherence review. This is a **refit** of the approved full-bleed Spotlight and existing gallery journeys. Gold is the working direction for this pass; it does not turn the review branch into a production release. The earlier color comparison remains available separately.
+
+### Surfaces
+
+Homepage and recent-event entry; studio and indoor-sport event galleries; archive search; viewer and saved state. Compare Before / Refined in `concepts/photography-accent-20261102/composition.html`, with the same photographs remaining on screen when switching.
+
+The reader is a player, parent or visitor finding an event and keeping a photograph. Character: photograph-led, direct, warm, precise, unobtrusive. Avoid: decorative gold everywhere, new photo crops, artificial color grading, a campaign slogan above the archive, or unrelated motion. Keep the full-bleed structure, Spotlight controls, navigation, live data, permissions, search semantics, download behavior, keyboard return and reduced motion.
+
+- Home: gold identifies Search. Recent-gallery links keep clear titles, arrows and whole-row targets, with quieter call-to-action text and less vertical padding.
+- Archive: the introductory label and factual sport badge become neutral. Actual selected filters, focus and saved state keep the accent.
+- Album: remove the repeated divider and redundant gap above search; retain metadata, share, download and image sizing. Download remains a secondary utility, not a promoted goal.
+- Viewer: retain the already clear gold Save / Saved treatment and neutral navigation; verify it with bright, dark and monochrome images rather than adding decoration.
+
+Density changes are small: compact the action rows and repeated separators, preserving all labels and 44-pixel controls. Entry remains home → event → photo; closing returns to the same card. Search empty/loading/error behavior is unchanged. Motion follows the existing section above; this pass adds no motion or dependency.
+
+The source lessons are accent hierarchy and coordinated composition, drawn from the saved Racing and Globynk frames in the November 2 visual reference board. They do not establish a universal three-color count or visitor performance improvement. All production-private routes and Blog/Profile remain outside scope.

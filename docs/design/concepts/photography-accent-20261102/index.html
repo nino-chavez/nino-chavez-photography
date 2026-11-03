@@ -31,7 +31,7 @@
         <button type="button" data-size="desktop" aria-pressed="true">Desktop</button>
         <button type="button" data-size="mobile" aria-pressed="false">Mobile</button>
       </div>
-      <a class="open" id="open" href="http://photo-accent.localhost:8841/photography/explore?study-accent=cool" target="_blank" rel="noopener">Open full size ↗</a>
+      <a class="open" id="open" href="http://photo-accent.localhost:8841/photography/explore?study-accent=cool&amp;study-composition=before" target="_blank" rel="noopener">Open full size ↗</a>
     </div>
   </header>
   <div class="guide">
@@ -39,9 +39,9 @@
     <span class="status" id="status" role="status">Loading the gallery…</span>
   </div>
   <main class="stage" aria-label="Interactive Photography preview">
-    <div class="frame-space" id="frame-space"><iframe id="gallery" title="Photography gallery — interactive comparison" src="http://photo-accent.localhost:8841/photography/explore?study-accent=cool" allow="clipboard-write"></iframe></div>
+    <div class="frame-space" id="frame-space"><iframe id="gallery" title="Photography gallery — interactive comparison" src="http://photo-accent.localhost:8841/photography/explore?study-accent=cool&amp;study-composition=before" allow="clipboard-write"></iframe></div>
   </main>
-  <p class="footer">Review preview · Saves stay in this browser · Blog and Profile are unchanged</p>
+  <p class="footer"><a class="open" href="composition.html">Review the gold composition pass →</a><br>Review preview · Saves stay in this browser · Blog and Profile are unchanged</p>
   <script>
     const appOrigin = 'http://photo-accent.localhost:8841';
     const frame = document.querySelector('#gallery');
@@ -68,7 +68,7 @@
       accent = button.dataset.accent;
       document.documentElement.style.setProperty('--accent', accents[accent]);
       document.querySelectorAll('[data-accent]').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.accent === accent)));
-      document.querySelector('#open').href = appOrigin + '/photography/explore?study-accent=' + accent;
+      document.querySelector('#open').href = appOrigin + '/photography/explore?study-accent=' + accent + '&study-composition=before';
       sendAccent();
     }));
     document.querySelectorAll('[data-size]').forEach(button => button.addEventListener('click', () => { size = button.dataset.size; fit(); }));
