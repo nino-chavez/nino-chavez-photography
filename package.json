@@ -53,7 +53,7 @@
     "hdr-gainmap:test": "tsx --test src/lib/ai/hdr-gainmap.test.ts",
     "hdr-web-backfill:test": "node --import tsx --test src/lib/ingest/hdr-web-backfill.test.ts",
     "backfill-colors:test": "tsx --test scripts/backfill-sighting-colors.test.ts",
-    "latest-album:test": "tsx --test src/lib/albums/latest.test.ts src/lib/albums/publish-target.test.ts",
+    "latest-album:test": "tsx --test src/lib/albums/latest.test.ts src/lib/albums/publish-target.test.ts src/lib/albums/listing.test.ts",
     "check:head": "node scripts/check-head-tags.mjs",
     "navigation:contract:test": "tsx --test src/lib/navigation-contract.test.ts",
     "photo-cache:test": "tsx --test src/lib/server/photo-page-cache.test.ts",

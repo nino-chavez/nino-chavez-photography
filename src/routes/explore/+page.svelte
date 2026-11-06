@@ -107,7 +107,7 @@
 		trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: data.searchError.searchId, error_code: data.searchError.errorCode } });
 	}
 	$effect(() => {
-		if (!data.searchError && data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, duration_ms: searchDuration(data.searchId) } });
+		if (!data.searchError && data.searchId && data.searchQuery) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalCount, surface: 'explore', duration_ms: searchDuration(data.searchId) } });
 		reportVisibleSearchFailure();
 		if (activeFilterCount > 0) trackAnalyticsEventV2({ eventName: 'filters_applied', properties: { result_set_id: resultSetId, result_count: data.totalCount, sport: data.selectedSport ?? undefined, category: data.selectedCategory ?? undefined, play_type: data.selectedPlayType ?? undefined, division: data.selectedDivision ?? undefined, level: data.selectedLevel ?? undefined, sort: data.sortBy } });
 	});

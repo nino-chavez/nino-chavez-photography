@@ -56,7 +56,7 @@
 		void goto(url.toString()).catch(() => trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: searchId, error_code: 'navigation_failed' } }));
 	}
 	$effect(() => {
-		if (data.searchId && data.query) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalAlbums, duration_ms: searchDuration(data.searchId) } });
+		if (data.searchId && data.query) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalAlbums, surface: 'albums', duration_ms: searchDuration(data.searchId) } });
 	});
 	function clearFilters() {
 		searchInput = '';

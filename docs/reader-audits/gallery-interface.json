@@ -1,12 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-11-06T05:09:33.306Z",
-  "reviewedBy": "Claude (photo-page-edge-cache worker)",
-  "method": "Header-only caching change to the photo detail route loader (Cache-Control set via setHeaders; no markup, copy or component change). Verified with curl against a local wrangler pages dev build: untagged page, ?src= tagged arrival, invalid src, ?a=, __data.json and the 404 path. No screen, mobile layout, interaction or rendered-copy walk was done, and edge behaviour on ninochavez.co is not yet observed.",
-  "sourceDigest": "sha256:6f3594dd05b9e133dc4ed0278889210d349f14165b4e0ff29d059b2bd0ce7cad",
+  "reviewedAt": "2026-11-06T05:13:48.962Z",
+  "reviewedBy": "Claude Opus 5.5 subagent",
+  "method": "Source review of the home hero search form and the /albums search form after adding search_submitted, search_results_shown (with a surface field) and search_result_selected emission, and changing the /albums text match to require every typed word. Visible markup, copy and layout are unchanged; the home form still submits as a plain GET to /albums when JavaScript is off. Unit-tested the address builder and the match. Did not walk the screens in a browser, did not test on a phone, and did not confirm events reach the collector end to end.",
+  "sourceDigest": "sha256:dc5e99f18abdd0132de39015e4908b516c64c0cfc0606265468973b8fb06dc1a",
   "sourceFiles": 205,
   "scope": [
-    "Photo detail page cache headers"
+    "Photography homepage",
+    "Event galleries"
   ]
 }
