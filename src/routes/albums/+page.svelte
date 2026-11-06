@@ -66,6 +66,9 @@
 	}
 
 	function handleAlbumClick(album: Album) {
+		if (data.searchId && data.query) {
+			trackAnalyticsEventV2({ eventName: 'search_result_selected', properties: { search_id: data.searchId, result_set_id: resultSetId, position: displayAlbums.findIndex((a) => a.albumKey === album.albumKey), album_key: album.albumKey } });
+		}
 		const slug = createAlbumSlug(album.albumName, album.albumKey);
 		goto(`${base}/albums/${slug}`);
 	}
