@@ -290,10 +290,20 @@
 				<div style="animation: fade-in 0.3s ease-out forwards">
 					<Card padding="lg" class="text-center">
 						<FolderOpen class="w-16 h-16 text-charcoal-600 mx-auto mb-4" aria-hidden="true" />
-						<Typography variant="h3" class="mb-2">No albums found</Typography>
+						<Typography variant="h3" class="mb-2">No event galleries found</Typography>
 						<Typography variant="body" class="text-charcoal-400 text-sm">
-							{hasActiveFilters ? 'Try adjusting your search or filters' : 'No albums available'}
+							{hasActiveFilters ? 'Try adjusting your search or filters' : 'No event galleries available'}
 						</Typography>
+						{#if data.query}
+							<!-- Gallery names rarely carry school or team long names ("Lewis vs Pepperdine", not
+							     "Lewis University"), but the photos themselves are described by them. -->
+							<a
+								href={`${base}/explore?q=${encodeURIComponent(data.query)}`}
+								class="mt-4 inline-block underline underline-offset-4 hover:text-gold-500"
+							>
+								See photos matching “{data.query}”
+							</a>
+						{/if}
 					</Card>
 				</div>
 		{/if}
