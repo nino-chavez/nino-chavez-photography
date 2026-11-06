@@ -9,7 +9,8 @@ export const EVENT_V2_NAMES = [
 ] as const;
 
 export type EventV2Name = (typeof EVENT_V2_NAMES)[number];
-export type TrafficContextV2 = 'audience' | 'operator' | 'test' | 'self_excluded';
+/** `suspected_automation`: would-be audience traffic from a hosting/cloud/crawler network. Stored and counted, never audience. */
+export type TrafficContextV2 = 'audience' | 'operator' | 'test' | 'self_excluded' | 'suspected_automation';
 
 export type EventV2Properties = Record<string, string | number | boolean | undefined>;
 

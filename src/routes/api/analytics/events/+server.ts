@@ -4,6 +4,7 @@ import { json, error as httpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseAdminClient } from '$lib/supabase/server-ssr';
 import { isBotUserAgent } from '$lib/analytics/bot-detection';
+import { labelTrafficByNetwork, labelDevelopmentTraffic, visitorNetwork } from '$lib/analytics/automation-networks';
 import { parseEventV2Request, resolveEventV2Target } from '$lib/analytics/collection-contract';
 import type { CollectionRejectionReason } from '$lib/analytics/rejection-reasons';
 import { resolveAnalyticsContext, resolveAnalyticsReleaseContext } from '$lib/analytics/context.server';
@@ -11,7 +12,7 @@ import { ANALYTICS_IDENTITY_COOKIE, hasLinkedAnalyticsConsent, verifiedAnalytics
 import { env } from '$env/dynamic/private';
 
 /** V2 has no legacy fingerprint. One accepted event and eligible outbox row are inserted atomically by the RPC. */
-export const POST: RequestHandler = async ({ request, cookies, url }) => {
+export const POST: RequestHandler = async ({ request, cookies, url, platform }) => {
 	// Reject cross-site browser writes. Signed server rehearsals may omit Origin.
 	const origin = request.headers.get('origin');
 	if (origin && origin !== (dev ? url.origin : SITE_ORIGIN)) throw httpError(403, 'cross-origin collection rejected');
@@ -51,7 +52,12 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 		if (album.event_date) target.value.properties.event_date = album.event_date;
 	}
 	if (photoCategory) target.value.properties.photo_category = photoCategory;
-	const trafficContext = await resolveAnalyticsContext(request, cookies);
+	const provenContext = await resolveAnalyticsContext(request, cookies);
+	// Operator, test and self-excluded proof always wins. Only would-be audience traffic from hosting/cloud
+	// networks is relabelled; it is still stored and counted, just not as audience (Cloudflare `cf.asn`, all plans).
+	const labelled = labelTrafficByNetwork(labelDevelopmentTraffic(provenContext, dev, import.meta.env.VITE_SUPABASE_URL), visitorNetwork(request.headers, platform?.cf ?? (request as { cf?: unknown }).cf as { asn?: unknown } | undefined));
+	const trafficContext = labelled.context;
+	if (labelled.signal) target.value.properties.automation_signal = `asn:${labelled.signal.asn}`;
 	const linkedConsent = hasLinkedAnalyticsConsent(cookies);
 	const secret = env.ANALYTICS_IDENTITY_BINDING_SECRET?.trim() || env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 	const boundBrowser = verifiedAnalyticsIdentityBinding(cookies.get(ANALYTICS_IDENTITY_COOKIE), secret);
