@@ -19,6 +19,7 @@ import { isValidSrcParam } from '$lib/analytics/share';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { computeSessionHash } from '$lib/analytics/session';
 import { resolveAnalyticsContext } from '$lib/analytics/context.server';
+import { photoPageCacheControl } from '$lib/server/photo-page-cache';
 
 export const load: PageServerLoad = async ({
 	params,
@@ -26,7 +27,8 @@ export const load: PageServerLoad = async ({
 	request,
 	getClientAddress,
 	platform,
-	cookies
+	cookies,
+	setHeaders
 }) => {
 	// Stringified nulls are not image keys — they are a caller that interpolated a missing value
 	// into a URL template. The share-URL builders that produced them are fixed (see
@@ -52,6 +54,9 @@ export const load: PageServerLoad = async ({
 	}
 
 	const { row: photoData, canonicalSegment } = resolved;
+
+	// Edge-cacheable unless this is a tagged arrival; see $lib/server/photo-page-cache.
+	setHeaders({ 'cache-control': photoPageCacheControl(url.searchParams.get('src')) });
 
 	// Transform flat Supabase data to nested Photo type (two-bucket model)
 	// NOTE: the 6 vanity CATEGORICAL aesthetic fields (composition, time_of_day, lighting,
@@ -145,8 +150,8 @@ export const load: PageServerLoad = async ({
 	//
 	// Safe to do in the loader here, unlike the per-photo view below: this load runs on
 	// hover-prefetch, but internal links never carry `?src=` — only a link that came
-	// from outside does. No cache headers on this route either, so unlike the homepage
-	// (s-maxage=300) a repeat arrival is not swallowed by an edge hit.
+	// from outside does. Tagged arrivals are sent `private, no-store` (photoPageCacheControl),
+	// so a repeat arrival is never swallowed by an edge hit.
 	const src = url.searchParams.get('src');
 	if (isValidSrcParam(src)) {
 		const userAgent = request.headers.get('user-agent') ?? '';
