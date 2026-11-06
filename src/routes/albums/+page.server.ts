@@ -12,6 +12,7 @@ import {
 	type AlbumSummaryRow,
 	type VideoSummaryRow
 } from '$lib/albums/listing';
+import { validSearchCorrelationId } from '$lib/analytics/search-contract';
 import type { PageServerLoad } from './$types';
 
 // NOTE: read-path MV refresh removed (ADR 0001). `albums_summary` is maintained by the
@@ -35,6 +36,7 @@ export const load: PageServerLoad = async ({ url, setHeaders, request, cookies }
 	const q = url.searchParams.get('q')?.trim() || '';
 	const sport = url.searchParams.get('sport')?.trim() || '';
 	const year = url.searchParams.get('year')?.trim() || '';
+	const searchId = validSearchCorrelationId(url.searchParams.get('search_id'));
 	const limit = 24;
 	const offset = (page - 1) * limit;
 	// With no complete explicit experiment configuration this does not resolve a
@@ -135,6 +137,7 @@ export const load: PageServerLoad = async ({ url, setHeaders, request, cookies }
 		sortBy,
 		// Event-discovery state
 		query: q,
+		searchId,
 		selectedSport: sport,
 		selectedYear: year,
 		availableSports,

@@ -9,6 +9,7 @@
 	import Typography from '$lib/components/ui/Typography.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import AlbumCard from '$lib/components/gallery/AlbumCard.svelte';
+	import { trackAnalyticsEventV2, recordSearchSubmission, searchDuration } from '$lib/analytics/client';
 	import type { PageData } from './$types';
 
 	interface Album {
@@ -39,16 +40,28 @@
 		if (value) url.searchParams.set(key, value);
 		else url.searchParams.delete(key);
 		url.searchParams.delete('page'); // any filter change resets to page 1
+		url.searchParams.delete('search_id'); // a new filter is not the submitted search
 		goto(url.toString());
 	}
 	function handleSearch(e: SubmitEvent) {
 		e.preventDefault();
-		applyParam('q', searchInput.trim());
+		const query = searchInput.trim();
+		if (!query) return applyParam('q', '');
+		// A submitted event search is the same demand signal as an /explore search.
+		const searchId = recordSearchSubmission();
+		const url = new URL(page.url);
+		url.searchParams.set('q', query);
+		url.searchParams.set('search_id', searchId);
+		url.searchParams.delete('page');
+		void goto(url.toString()).catch(() => trackAnalyticsEventV2({ eventName: 'search_failed', properties: { search_id: searchId, error_code: 'navigation_failed' } }));
 	}
+	$effect(() => {
+		if (data.searchId && data.query) trackAnalyticsEventV2({ eventName: 'search_results_shown', properties: { search_id: data.searchId, result_set_id: resultSetId, result_count: data.totalAlbums, duration_ms: searchDuration(data.searchId) } });
+	});
 	function clearFilters() {
 		searchInput = '';
 		const url = new URL(page.url);
-		['q', 'sport', 'year', 'page'].forEach((k) => url.searchParams.delete(k));
+		['q', 'sport', 'year', 'page', 'search_id'].forEach((k) => url.searchParams.delete(k));
 		goto(url.toString());
 	}
 
@@ -61,12 +74,14 @@
 	function goToPage(pageNum: number) {
 		const url = new URL(page.url);
 		url.searchParams.set('page', pageNum.toString());
+		url.searchParams.delete('search_id'); // results were already reported for the submitted page
 		goto(url.toString());
 	}
 
 	function changeSortOrder(sort: 'name' | 'date' | 'count') {
 		const url = new URL(page.url);
 		url.searchParams.set('sort', sort);
+		url.searchParams.delete('search_id');
 		url.searchParams.set('page', '1'); // Reset to page 1 when changing sort
 		goto(url.toString());
 	}
