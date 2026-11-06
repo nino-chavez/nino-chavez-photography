@@ -133,6 +133,14 @@ test('free-text search is case-insensitive and matches video-only albums too', (
 	assert.deepEqual(list.map((a) => a.albumKey).sort(), ['QwhCK5', 'TRoiyO', 'p4J2jk']);
 });
 
+test('free-text search needs every word, in any order, not the whole phrase', () => {
+	const keys = (q: string) => buildAlbumListing({ photoRows: PHOTO_ROWS, videoRows: VIDEO_ROWS, unlistedKeys: NONE, q }).map((a) => a.albumKey).sort();
+	assert.deepEqual(keys('open pepper'), ['TRoiyO', 'p4J2jk']);
+	assert.deepEqual(keys('  june   BELL '), ['TRoiyO']);
+	assert.deepEqual(keys('bell tournament'), []);
+	assert.equal(keys('   ').length, 8);
+});
+
 test('sport filter keeps video albums under volleyball and drops them otherwise', () => {
 	const vb = buildAlbumListing({ photoRows: PHOTO_ROWS, videoRows: VIDEO_ROWS, unlistedKeys: NONE, sport: 'volleyball' });
 	assert.ok(vb.some((a) => a.albumKey === 'p4J2jk'));

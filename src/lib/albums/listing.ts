@@ -168,9 +168,14 @@ export function buildAlbumListing(input: ListingInput): AlbumCard[] {
 		...videoOnlyRows(videoRows, photoAlbumKeys, unlistedKeys).map(toVideoOnlyCard)
 	];
 
-	const qLower = q.toLowerCase();
+	// Every word must appear in the album name, in any order: "lewis university" is a query about
+	// a team, not a literal fragment of one title.
+	const words = q.toLowerCase().split(/\s+/).filter(Boolean);
 	const filtered = merged.filter((a) => {
-		if (q && !a.albumName.toLowerCase().includes(qLower)) return false;
+		if (words.length) {
+			const name = a.albumName.toLowerCase();
+			if (!words.every((w) => name.includes(w))) return false;
+		}
 		if (sport && a.primarySport !== sport) return false;
 		if (year && latestOf(a).slice(0, 4) !== year) return false;
 		return true;

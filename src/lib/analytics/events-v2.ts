@@ -55,7 +55,7 @@ export const EVENT_V2_CONTRACT: Record<EventV2Name, PropertyRule> = {
 	download_failed: { required: ['download_request_id', 'mode', 'stage', 'error_code', 'retry_attempt'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	download_cancelled: { required: ['download_request_id', 'mode', 'stage', 'requested_item_count', 'prepared_item_count'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	search_submitted: { required: ['search_id'], optional: ['sport', 'category', 'play_type', 'division', 'level', 'sort'], targets: 'none' },
-	search_results_shown: { required: ['search_id', 'result_set_id', 'result_count'], optional: ['duration_ms'], targets: 'none' },
+	search_results_shown: { required: ['search_id', 'result_set_id', 'result_count'], optional: ['duration_ms', 'surface'], targets: 'none' },
 	search_failed: { required: ['search_id', 'error_code'], targets: 'none' },
 	search_result_selected: { required: ['search_id', 'result_set_id', 'position'], oneOf: ['photo_id', 'album_key'], targets: 'subject' },
 	filters_applied: { required: ['result_set_id', 'result_count'], optional: ['sport', 'category', 'play_type', 'division', 'level', 'sort'], targets: 'none' },

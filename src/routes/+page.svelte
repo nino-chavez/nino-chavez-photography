@@ -1,11 +1,21 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { goto } from '$app/navigation';
+	import { recordSearchSubmission } from '$lib/analytics/client';
+	import { eventSearchHref } from '$lib/analytics/event-search';
 	import { splitAlbumNameForDisplay } from '$lib/utils/canonical-album-naming';
 	import Spotlight from '$lib/components/home/Spotlight.svelte';
 	import type { LatestApiAlbum } from '$lib/albums/latest';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 	let galleries = $derived(data.lead ? [data.lead, ...data.recent] : data.recent);
+	// Without JavaScript the form still submits as a plain GET to /albums?q=.
+	function submitEventSearch(event: SubmitEvent) {
+		const query = new FormData(event.currentTarget as HTMLFormElement).get('q');
+		if (typeof query !== 'string' || !query.trim()) return;
+		event.preventDefault();
+		void goto(`${base}${eventSearchHref('/albums', query, recordSearchSubmission())}`);
+	}
 	function albumHref(album: LatestApiAlbum) {
 		return new URL(album.url).pathname;
 	}
@@ -23,7 +33,7 @@
 		<div class="hero-bottom">
 			<div class="hero-finder" id="find-event">
 				<h1>Find your event.</h1>
-				<form class="event-search" method="GET" action={`${base}/albums`}>
+				<form class="event-search" method="GET" action={`${base}/albums`} onsubmit={submitEventSearch}>
 					<label for="event-query">Event, team or date</label>
 					<div>
 						<input id="event-query" name="q" type="search" placeholder="e.g. Chicago Point" autocomplete="off" /><button type="submit"
