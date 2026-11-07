@@ -32,6 +32,12 @@ POSTHOG_ENABLED = "true"
 POSTHOG_TARGET_ENVIRONMENT = "production"
 POSTHOG_HOST = "https://us.i.posthog.com"
 POSTHOG_PROJECT_ID = "635866"
+# Shot Bot chat (src/lib/components/ai/ChatWidget.svelte + /api/chat). Read through
+# import.meta.env, so it is fixed at BUILD time: Pages shares these vars with the build. Turned on
+# 2026-11-07 after #250. "false" (or removing the line) turns it off on the next deploy. The route
+# also needs the OPENROUTER_API_KEY secret, which production has and preview does not, so preview
+# shows the widget but answers "Chat is temporarily unavailable."
+VITE_CHAT_ENABLED = "true"
 
 # Web-sized Ultra HDR (gain-map) JPEGs, read by src/routes/api/hdr/[id]/+server.ts and written by
 # scripts/ingest-album.ts (via `wrangler r2 object put ... --remote`, not this binding — the CLI

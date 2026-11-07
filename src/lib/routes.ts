@@ -16,7 +16,7 @@ const CHAT_ROUTES = ['/', '/explore', '/collections', '/albums', '/timeline'];
  * under `/`, which as a prefix would match the entire site.
  *
  * The previous version was `pathname === route || pathname.startsWith(route + '/')` against the
- * based pathname, so it returned false on every page and the widget could never mount. Prod has
+ * based pathname, so it returned false on every page and the widget could never mount. Prod had
  * chat kill-switched off (`VITE_CHAT_ENABLED`), so nothing looked broken — but flipping that
  * switch back on would have changed nothing, and the reason would have been in another file.
  * Note the old form got the `/` case right only because `'/' + '/'` is `//`, which matches
