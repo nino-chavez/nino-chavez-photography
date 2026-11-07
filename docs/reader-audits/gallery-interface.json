@@ -1,13 +1,13 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-11-06T05:26:50.994Z",
-  "reviewedBy": "Claude Code agent (analytics-bot-labels)",
-  "method": "Reviewed the diff only: one server-side collector route (src/routes/api/analytics/events/+server.ts) changed to relabel traffic context. Re-recorded after rebasing onto #248. No rendered screen was walked or changed. Not covered: any visual or interaction check of the gallery.",
-  "sourceDigest": "sha256:750fb2a2cd313267da88c5a9ac068f7a1b9f5ae730279458f73ce3aa1c8024bb",
+  "reviewedAt": "2026-11-07T16:15:03.282Z",
+  "reviewedBy": "Claude Opus 5.5 (agent), for Nino Chavez",
+  "method": "Source diff review of src/routes/api/chat/+server.ts only: tool schema moved to $lib/ai/chat-search-tool (inputSchema), stopWhen step budget, and Shot Bot system-prompt edits (dropped filters that no longer exist; retry instruction). No screen changed: the route returns 503 behind VITE_CHAT_ENABLED and ChatWidget.svelte is untouched. Model behavior was exercised with a stubbed search through OpenRouter google/gemini-2.5-flash, not through the deployed route. Not covered: any rendered chat UI walk (chat stays disabled; the v5 stream contract in ChatWidget is still unmet).",
+  "sourceDigest": "sha256:9d943106ebe3bffacf628e9756794c02f57ae343836e47325841c4ed8ba1ce45",
   "sourceFiles": 205,
   "scope": [
-    "analytics event collector API",
-    "no UI change"
+    "api/chat system prompt",
+    "searchPhotos tool contract"
   ]
 }

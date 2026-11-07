@@ -1,7 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { PHOTOS_READ } from '$lib/supabase/columns';
-import { streamText, tool } from 'ai';
-import { z } from 'zod';
+import { streamText } from 'ai';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { embedImageQuery } from '$lib/ai/embeddings';
@@ -12,6 +11,7 @@ import {
 	type ChatPhotoRow,
 	type ChatPhotoResult
 } from '$lib/ai/chat-photo-result';
+import { chatStopWhen, searchPhotosTool } from '$lib/ai/chat-search-tool';
 import type { RequestHandler } from './$types';
 import { checkRateLimit, getClientIdentifier } from './rate-limit';
 
@@ -67,17 +67,13 @@ const SYSTEM_PROMPT = `You are Shot Bot, the AI assistant for Nino Chavez's phot
 - Reflect "Systems Thinking + Art" - analytical but creative
 
 **Photo Search Capabilities:**
-You can search photos by:
+You can filter photos by:
 - **Sport**: volleyball, basketball
 - **Action**: spike, block, serve, dig, set, celebration, huddle
 - **Category**: action, portrait, celebration, warmup, candid
-- **Intensity**: low, medium, high, peak
-- **Emotion**: triumph, determination, focus, joy, intensity
 - **Jersey Number**: Search for specific players by their number
-- **Lighting**: natural, backlit, dramatic, soft, artificial
-- **Color Temperature**: warm, cool, neutral
-- **Time of Day**: golden_hour, midday, evening, night, blue_hour, dawn
-- **Composition**: rule_of_thirds, leading_lines, centered, symmetry, frame_within_frame
+Anything else — a mood, the lighting, a jersey color, a described moment — goes in the search
+tool's free-text \`query\`, which matches photos by what they show.
 
 **Search Examples:**
 - "Show me powerful volleyball spikes"
@@ -93,8 +89,9 @@ You can search photos by:
 **When Users Ask to See Photos:**
 1. Understand their intent (action, emotion, sport, moment, aesthetic)
 2. Use the searchPhotos tool with relevant parameters
-3. Show enthusiasm while searching
-4. Explain what you're looking for
+3. If it finds nothing, search once more with a broader or rephrased query before answering
+4. Show enthusiasm while searching
+5. Explain what you're looking for
 
 **About Nino:**
 Professional volleyball photographer with deep expertise in:
@@ -215,31 +212,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			system: SYSTEM_PROMPT,
 			messages: safeMessages,
 			temperature: 0.7, // Balanced creativity vs consistency
+			stopWhen: chatStopWhen,
 			tools: {
-				searchPhotos: tool({
-					description:
-						'Search photos. For descriptive / natural-language requests (a scene, a moment, a jersey color, "diving save near the sideline") pass `query` — it matches AI-generated captions via semantic embeddings. For exact attribute filters use the structured fields (sport, play type, category, jersey number). `query` takes precedence when provided.',
-					parameters: z.object({
-						query: z.string().optional().describe('Free-text natural-language description of the photo(s) to find — scene, action, jersey color, named moment — matched against AI-generated photo captions via semantic embeddings. Use this for anything the structured filters do not cover, e.g. "diving save near the sideline" or "player in a red jersey".'),
-						sport_type: z.string().optional().describe('The type of sport, e.g., volleyball, basketball.'),
-						play_type: z.string().optional().describe('The specific action, e.g., spike, block, serve, dig.'),
-						photo_category: z.string().optional().describe('The category of photo, e.g., action, portrait, celebration.'),
-						jersey_number: z.number().optional().describe('Player jersey number visible in the photo.')
-					}),
-					// @ts-ignore - Tool typing is complex, but runtime execution works correctly
-					execute: async ({
-						query,
-						sport_type,
-						play_type,
-						photo_category,
-						jersey_number
-					}: {
-						query?: string;
-						sport_type?: string;
-						play_type?: string;
-						photo_category?: string;
-						jersey_number?: number;
-					}) => {
+				searchPhotos: searchPhotosTool(
+					async ({ query, sport_type, play_type, photo_category, jersey_number }) => {
 						try {
 							const supabase = getSupabaseClient();
 
@@ -338,7 +314,7 @@ export const POST: RequestHandler = async ({ request }) => {
 							return { photos: [], error: 'Internal error in search tool' };
 						}
 					}
-				})
+				)
 			}
 		});
 
