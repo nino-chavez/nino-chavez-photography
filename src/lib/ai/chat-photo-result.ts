@@ -37,6 +37,8 @@ export interface ChatPhotoResult {
 	thumbnail_url: string | null;
 	/** App-relative, e.g. `/photo/DSC05553`. The component prefixes `base`. */
 	url: string;
+	/** The event the photo belongs to: what a visitor recognizes a result by. */
+	album_name?: string;
 	sport_type?: string;
 	play_type?: string;
 	photo_category?: string;
@@ -60,6 +62,7 @@ export function shapeChatPhotos(
 		// the 20,542 keys that name exactly one photo, and the only address we have if the
 		// peer lookup failed.
 		url: `/photo/${addresses.get(row.photo_id) ?? row.image_key}`,
+		album_name: row.album_name ?? undefined,
 		sport_type: row.sport_type ?? undefined,
 		play_type: row.play_type ?? undefined,
 		photo_category: row.photo_category ?? undefined,

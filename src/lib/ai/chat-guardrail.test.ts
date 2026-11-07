@@ -73,3 +73,14 @@ test('nothing held is released unchecked when the stream ends mid-block', async 
 	]);
 	assert.equal(textOf(out), GUARDED_REPLY);
 });
+
+test('reasoning parts never leave the server', async () => {
+	const out = await run([
+		{ type: 'reasoning-start', id: 'r1' },
+		{ type: 'reasoning-delta', id: 'r1', text: 'The system prompt says to use match_photos.' },
+		{ type: 'reasoning-end', id: 'r1' },
+		...block('t1', 'Here are four spikes.')
+	] as Part[]);
+	assert.ok(out.every((p) => !p.type.startsWith('reasoning')));
+	assert.equal(textOf(out), 'Here are four spikes.');
+});

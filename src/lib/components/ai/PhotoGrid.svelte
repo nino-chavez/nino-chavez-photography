@@ -1,54 +1,43 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-
-	interface Photo {
-		image_key: string;
-		/** Built by the chat endpoint from cf_image_id. Null only when the row has no image. */
-		thumbnail_url: string | null;
-		/**
-		 * App-relative, e.g. `/photo/DSC05553`. Built server-side because `image_key` is not
-		 * unique — 113 of them name two photos — so the addressing rule lives with the query
-		 * that knows the peers, not here.
-		 */
-		url: string;
-		sport_type?: string;
-		play_type?: string;
-		photo_category?: string;
-		caption?: string;
-	}
+	import type { ChatPhotoResult } from '$lib/ai/chat-photo-result';
 
 	interface Props {
-		photos: Photo[];
+		/** Shaped by the chat endpoint: thumbnail and link are built server-side (see chat-photo-result). */
+		photos: ChatPhotoResult[];
 	}
 
 	let { photos }: Props = $props();
 
-	// Format display label for photo
-	function getPhotoLabel(photo: Photo): string {
-		const parts = [];
-		if (photo.sport_type) parts.push(photo.sport_type);
-		if (photo.play_type) parts.push(photo.play_type);
-		if (photo.photo_category) parts.push(photo.photo_category);
-		return parts.join(' • ') || 'Photo';
+	/** What a visitor recognizes a result by: the event, not the search facets. */
+	function label(photo: ChatPhotoResult): string {
+		return photo.album_name || 'Photo';
+	}
+
+	/** The caption is one factual sentence about the frame, which is what alt text should be. */
+	function altText(photo: ChatPhotoResult): string {
+		return photo.caption || label(photo);
 	}
 </script>
 
 <div class="mt-3 pt-3 border-t border-white/10 dark:border-black/10">
-	<p class="text-xs opacity-70 mb-2">Found {photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
+	<p class="text-xs opacity-70 mb-2">
+		{photos.length} photo{photos.length !== 1 ? 's' : ''}. Tap one to open it.
+	</p>
 	<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-		{#each photos as photo, i}
+		{#each photos as photo, i (photo.url)}
 			<a
 				href={`${base}${photo.url}`}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="group relative aspect-square bg-black/20 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-colors duration-200 animate-grid-item-in"
+				class="group relative aspect-square bg-black/20 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 transition-colors duration-200 animate-grid-item-in"
 				style="animation-delay: {i * 50}ms"
-				title={getPhotoLabel(photo)}
+				title={label(photo)}
 			>
 				{#if photo.thumbnail_url}
 					<img
 						src={photo.thumbnail_url}
-						alt={getPhotoLabel(photo)}
+						alt={altText(photo)}
 						width="200"
 						height="200"
 						class="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
@@ -57,10 +46,10 @@
 					/>
 					<!-- Overlay with metadata -->
 					<div
-						class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2"
+						class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-end p-2"
 					>
 						<span class="text-white text-xs font-medium truncate">
-							{getPhotoLabel(photo)}
+							{label(photo)}
 						</span>
 					</div>
 				{:else}

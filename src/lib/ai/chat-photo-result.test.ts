@@ -76,6 +76,7 @@ test('optional facets normalise null to undefined so JSON omits them', () => {
 	assert.equal(out.photo_category, undefined);
 	assert.equal(out.caption, undefined);
 	assert.equal(out.sport_type, 'volleyball');
+	assert.equal(out.album_name, 'Chicago Big Dig 2026');
 });
 
 test('preserves input order — semantic search ranks before this runs', () => {

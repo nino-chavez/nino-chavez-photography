@@ -12,6 +12,9 @@
  *   - profanity and slurs, matched as whole words;
  *   - persona breaks: the model announcing a jailbreak mode.
  *
+ * Reasoning parts (a thinking model's working notes) are dropped outright: they are never shown,
+ * and after a jailbreak they are exactly where the prompt and internal names would surface.
+ *
  * What it does not catch: a polite off-topic answer, a paraphrased leak that avoids every listed
  * phrase, or harm phrased without a listed word. Those rest on the prompt. Captions and photos
  * come from the tool, not the model, and are not checked here.
@@ -41,8 +44,9 @@ const INSTRUCTION_PHRASES = [
 	'system prompt',
 	'stay in scope',
 	'politely decline and redirect',
-	'embody "intensity',
-	'systems thinking + art',
+	'gallery desk',
+	'no hype words',
+	'let the photos do the selling',
 	'query takes precedence',
 	'structured filters'
 ];
@@ -101,7 +105,8 @@ export function checkReply(text: string): GuardrailVerdict {
 /**
  * `streamText({ experimental_transform })` stage. Holds each text block from `text-start` to
  * `text-end`, checks the whole block, then releases it, or releases GUARDED_REPLY in its place.
- * Every other part (tool calls, tool results, step and finish events) passes through untouched.
+ * Reasoning parts are dropped. Every other part (tool calls, tool results, step and finish events)
+ * passes through untouched.
  */
 export function chatOutputGuardrail<TOOLS extends ToolSet>(
 	onFlag: (reason: GuardrailReason) => void = () => {}
@@ -135,6 +140,12 @@ export function chatOutputGuardrail<TOOLS extends ToolSet>(
 				} else if (part.type === 'text-end') {
 					release(part.id, controller);
 					controller.enqueue(part);
+				} else if (
+					part.type === 'reasoning-start' ||
+					part.type === 'reasoning-delta' ||
+					part.type === 'reasoning-end'
+				) {
+					// Never leaves the server; see the header.
 				} else {
 					controller.enqueue(part);
 				}

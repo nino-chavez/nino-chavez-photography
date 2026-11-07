@@ -4,7 +4,7 @@
 	import { fly } from 'svelte/transition';
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
-	import { MessageSquare, X, Loader } from 'lucide-svelte';
+	import { ArrowUp, MessageSquare, X, Loader } from 'lucide-svelte';
 	import PhotoGrid from './PhotoGrid.svelte';
 	import type { ChatPhotoResult } from '$lib/ai/chat-photo-result';
 
@@ -85,12 +85,19 @@
 		if (isOpen) tick().then(() => inputElement?.focus());
 	}
 
-	// Keep the newest reply in view as it streams in.
+	// Keep the conversation's newest turn in view. A question scrolls to the bottom; a reply
+	// scrolls to its own start, so a long set of results is read from the first photo, not the last.
 	$effect(() => {
-		void chat.messages.length;
-		void chat.messages.at(-1)?.parts.length;
+		const last = chat.messages.at(-1);
+		void last?.parts.length;
 		void waiting;
-		if (isOpen) tick().then(() => chatContainer && (chatContainer.scrollTop = chatContainer.scrollHeight));
+		if (!isOpen) return;
+		tick().then(() => {
+			if (!chatContainer) return;
+			const el = last && chatContainer.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(last.id)}"]`);
+			chatContainer.scrollTop =
+				el && last.role === 'assistant' ? el.offsetTop - 16 : chatContainer.scrollHeight;
+		});
 	});
 </script>
 
@@ -103,7 +110,6 @@
 			in:fly={{ y: 20, duration: 300 }}
 		>
 			<div class="absolute inset-0 rounded-full border border-white/20"></div>
-			<div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]"></div>
 			<MessageSquare size={24} />
 		</button>
 	{/if}
@@ -123,13 +129,7 @@
 
 			<!-- Header -->
 			<header class="flex items-center justify-between p-4 border-b border-white/10 bg-black/40">
-				<div class="flex items-center gap-3">
-					<h3 class="font-bold text-lg tracking-wider uppercase">Shot Bot</h3>
-					<div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20" aria-hidden="true">
-						<div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-						<span class="text-[10px] font-bold text-red-500 tracking-widest">REC</span>
-					</div>
-				</div>
+				<h3 class="font-bold text-lg tracking-wider uppercase">Shot Bot</h3>
 				<button
 					onclick={toggleChat}
 					class="p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -140,7 +140,7 @@
 			</header>
 
 			<!-- Message List -->
-			<div class="flex-1 overflow-y-auto p-6 space-y-6" bind:this={chatContainer} aria-live="polite">
+			<div class="relative flex-1 overflow-y-auto p-6 space-y-6" bind:this={chatContainer} aria-live="polite">
 				<!-- Welcome: shown, never sent to the model. -->
 				<div class="text-sm md:text-base text-zinc-300 leading-relaxed">
 					<p>Hi, I'm Shot Bot. Describe a shot and I'll find it in Nino's volleyball photos.</p>
@@ -150,7 +150,7 @@
 								<button
 									type="button"
 									onclick={() => send(suggestion)}
-									class="px-3 py-1.5 text-xs border border-white/20 bg-white/5 hover:bg-white/10 hover:border-white/40 rounded-sm transition-colors text-left"
+									class="px-3 py-2.5 text-sm border border-white/20 bg-white/5 hover:bg-white/10 hover:border-white/40 rounded-sm transition-colors text-left"
 								>
 									{suggestion}
 								</button>
@@ -160,7 +160,10 @@
 				</div>
 
 				{#each chat.messages as message (message.id)}
-					<div class={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+					<div
+						data-message-id={message.id}
+						class={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+					>
 						<div
 							class={`p-3 text-sm md:text-base relative ${
 								message.role === 'user'
@@ -175,7 +178,7 @@
 
 							{#each message.parts as part, i (i)}
 								{#if part.type === 'text' && part.text.trim()}
-									<p class="leading-relaxed whitespace-pre-line">{part.text}</p>
+									<p class="leading-relaxed whitespace-pre-line mt-4 first:mt-0">{part.text}</p>
 								{:else if part.type === 'tool-searchPhotos' && part.state === 'output-available'}
 									{@const output = part.output as SearchOutput}
 									{#if output.photos?.length}
@@ -197,7 +200,7 @@
 					<div class="flex gap-2 justify-start">
 						<div class="flex items-center gap-2 text-zinc-500 text-xs font-mono uppercase tracking-widest">
 							<Loader size={12} class="animate-spin" />
-							<span>{searching ? 'Searching photos' : 'Thinking'}</span>
+							<span>{searching ? 'Searching photos' : 'Working on it'}</span>
 						</div>
 					</div>
 				{/if}
@@ -217,7 +220,7 @@
 							onkeydown={handleKeyDown}
 							placeholder="Describe the shot..."
 							aria-label="Describe the shot you want"
-							class="w-full bg-white/5 border border-white/10 resize-none p-3 sm:pr-14 rounded-sm focus:outline-none focus:border-white/30 focus:bg-white/10 text-base md:text-sm transition-all placeholder:text-zinc-600"
+							class="w-full bg-white/5 border border-white/10 resize-none p-3 rounded-sm focus:outline-none focus:border-white/30 focus:bg-white/10 text-base md:text-sm transition-all placeholder:text-zinc-400"
 							rows="1"
 							oninput={() => {
 								if (inputElement) {
@@ -226,10 +229,6 @@
 								}
 							}}
 						></textarea>
-						<!-- ISO/Aperture decoration -->
-						<div class="hidden sm:block absolute right-2 bottom-2 text-[10px] text-zinc-600 font-mono pointer-events-none" aria-hidden="true">
-							ISO 800
-						</div>
 					</div>
 
 					<button
@@ -238,7 +237,9 @@
 						aria-label="Search"
 						disabled={busy || !input.trim()}
 					>
-						<div class="w-10 h-10 rounded-full bg-white group-hover:bg-red-500 transition-colors"></div>
+						<div class="w-10 h-10 rounded-full bg-white text-black group-hover:bg-red-500 group-hover:text-white transition-colors flex items-center justify-center">
+							<ArrowUp size={20} strokeWidth={2.5} />
+						</div>
 					</button>
 				</form>
 			</div>
