@@ -31,7 +31,7 @@ import { checkRateLimit, getClientIdentifier } from './rate-limit';
  * a superset of what `photoIdentityPeers` takes so rows pass straight through.
  */
 const CHAT_PHOTO_COLUMNS =
-	'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, play_type, photo_category, caption';
+	'photo_id, image_key, cf_image_id, album_key, album_name, sport_type, play_type, photo_category, caption, alt_text';
 
 /**
  * Resolve the addresses these rows should be linked by, then shape them for the grid.

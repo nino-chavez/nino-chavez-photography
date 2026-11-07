@@ -14,9 +14,9 @@
 		return photo.album_name || 'Photo';
 	}
 
-	/** The caption is one factual sentence about the frame, which is what alt text should be. */
+	/** Same order as the gallery's PhotoCard: the screen-reader sentence, then the caption. */
 	function altText(photo: ChatPhotoResult): string {
-		return photo.caption || label(photo);
+		return photo.alt_text?.trim() || photo.caption?.trim() || label(photo);
 	}
 </script>
 

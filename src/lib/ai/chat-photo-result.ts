@@ -29,6 +29,7 @@ export interface ChatPhotoRow {
 	play_type?: string | null;
 	photo_category?: string | null;
 	caption?: string | null;
+	alt_text?: string | null;
 }
 
 export interface ChatPhotoResult {
@@ -43,6 +44,8 @@ export interface ChatPhotoResult {
 	play_type?: string;
 	photo_category?: string;
 	caption?: string;
+	/** The purpose-built screen-reader sentence, preferred over the caption as alt text (as PhotoCard does). */
+	alt_text?: string;
 }
 
 /**
@@ -66,6 +69,7 @@ export function shapeChatPhotos(
 		sport_type: row.sport_type ?? undefined,
 		play_type: row.play_type ?? undefined,
 		photo_category: row.photo_category ?? undefined,
-		caption: row.caption ?? undefined
+		caption: row.caption ?? undefined,
+		alt_text: row.alt_text ?? undefined
 	}));
 }

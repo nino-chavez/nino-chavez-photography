@@ -41,12 +41,6 @@
 			(p) => (p.type === 'text' && p.text.trim()) || (p.type === 'tool-searchPhotos' && p.state === 'output-available')
 		);
 	});
-	let searching = $derived(
-		chat.messages.at(-1)?.parts.some(
-			(p) => p.type === 'tool-searchPhotos' && (p.state === 'input-streaming' || p.state === 'input-available')
-		) ?? false
-	);
-
 	/** The route answers 400/429/503 with `{ error }`; the transport hands that body over as the message. */
 	let errorText = $derived.by(() => {
 		if (!chat.error) return '';
@@ -66,6 +60,13 @@
 		chat.sendMessage({ text: trimmed });
 		input = '';
 		if (inputElement) inputElement.style.height = 'auto';
+	}
+
+	/** Re-send the last question after a failure; the failed reply, if any, is replaced. */
+	function retry() {
+		if (busy) return;
+		chat.clearError();
+		chat.regenerate();
 	}
 
 	function handleSubmit(event: Event) {
@@ -110,7 +111,11 @@
 			in:fly={{ y: 20, duration: 300 }}
 		>
 			<div class="absolute inset-0 rounded-full border border-white/20"></div>
-			<MessageSquare size={24} />
+			<span class="flex items-center gap-2">
+				<MessageSquare size={24} />
+				<!-- Icon-only on phones, where the button already sits over page content. -->
+				<span class="hidden sm:inline pr-1 text-sm font-bold uppercase tracking-wider">Find photos</span>
+			</span>
 		</button>
 	{/if}
 
@@ -176,10 +181,14 @@
 								<div class="absolute -left-1 -bottom-1 w-2 h-2 border-b border-l border-white/40"></div>
 							{/if}
 
+							<!-- What the bot says comes first, so the reader knows what it understood before the photos. -->
 							{#each message.parts as part, i (i)}
 								{#if part.type === 'text' && part.text.trim()}
 									<p class="leading-relaxed whitespace-pre-line mt-4 first:mt-0">{part.text}</p>
-								{:else if part.type === 'tool-searchPhotos' && part.state === 'output-available'}
+								{/if}
+							{/each}
+							{#each message.parts as part, i (i)}
+								{#if part.type === 'tool-searchPhotos' && part.state === 'output-available'}
 									{@const output = part.output as SearchOutput}
 									{#if output.photos?.length}
 										<div class="mt-4 -mx-2">
@@ -198,15 +207,24 @@
 
 				{#if waiting}
 					<div class="flex gap-2 justify-start">
-						<div class="flex items-center gap-2 text-zinc-500 text-xs font-mono uppercase tracking-widest">
-							<Loader size={12} class="animate-spin" />
-							<span>{searching ? 'Searching photos' : 'Working on it'}</span>
+						<div class="flex items-center gap-2 text-zinc-300 text-xs font-mono uppercase tracking-widest">
+							<Loader size={16} class="animate-spin" />
+							<span>Searching photos</span>
 						</div>
 					</div>
 				{/if}
 
 				{#if errorText}
-					<p class="text-sm text-red-300" role="alert">{errorText}</p>
+					<div class="flex flex-wrap items-center gap-3" role="alert">
+						<p class="text-sm text-red-300">{errorText}</p>
+						<button
+							type="button"
+							onclick={retry}
+							class="px-3 py-2 text-sm border border-white/30 hover:bg-white/10 rounded-sm transition-colors"
+						>
+							Try again
+						</button>
+					</div>
 				{/if}
 			</div>
 
