@@ -39,7 +39,7 @@
     "worker:tail": "cd cloudflare-worker/album-zip && wrangler tail",
     "photo:address:test": "tsx --test src/lib/supabase/photo-address.test.ts",
     "faq:copy:test": "tsx --test src/lib/aeo/faq-copy.test.ts",
-    "chat:photos:test": "tsx --test src/lib/ai/chat-photo-result.test.ts",
+    "chat:photos:test": "tsx --test src/lib/ai/chat-photo-result.test.ts src/lib/ai/chat-search-tool.test.ts",
     "share:test": "tsx --test src/lib/analytics/share.test.ts",
     "collections:test": "tsx --test src/lib/collections.test.ts",
     "lightbox:nav:test": "tsx --test src/lib/gallery/lightbox-nav.test.ts",
