@@ -1,183 +1,104 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import { base } from '$app/paths';
 	import { fly } from 'svelte/transition';
-	import { MessageSquare, X, CornerDownLeft, Loader } from 'lucide-svelte';
+	import { Chat } from '@ai-sdk/svelte';
+	import { DefaultChatTransport } from 'ai';
+	import { ArrowUp, MessageSquare, X, Loader } from 'lucide-svelte';
 	import PhotoGrid from './PhotoGrid.svelte';
+	import type { ChatPhotoResult } from '$lib/ai/chat-photo-result';
 
-	interface Message {
-		id: string;
-		role: 'user' | 'assistant';
-		content: string;
-		toolInvocations?: Array<{
-			toolName: string;
-			result?: {
-				// Shaped by shapePhotos() in /api/chat — thumbnail_url and url are built
-				// server-side. This used to declare thumbnail_url as a required string while
-				// no query selected it, so the type asserted exactly the field that was missing.
-				photos?: Array<{
-					image_key: string;
-					thumbnail_url: string | null;
-					url: string;
-					sport_type?: string;
-					play_type?: string;
-					photo_category?: string;
-					caption?: string;
-				}>;
-			};
-		}>;
+	/** The `searchPhotos` tool's output, as /api/chat shapes it. */
+	interface SearchOutput {
+		photos?: ChatPhotoResult[];
+		error?: string;
 	}
+
+	/** Each one sends as typed; every one of them maps to a search the tool can answer. */
+	const SUGGESTIONS = [
+		'Show me powerful spikes',
+		'Find celebration moments',
+		'Backlit serves',
+		'Photos of player #12'
+	];
+
+	const chat = new Chat({
+		transport: new DefaultChatTransport({ api: `${base}/api/chat` })
+	});
 
 	let isOpen = $state(false);
 	let chatContainer = $state<HTMLDivElement>();
 	let inputElement = $state<HTMLTextAreaElement>();
 	let input = $state('');
-	let messages = $state<Message[]>([
-		{
-			id: 'welcome',
-			role: 'assistant',
-			content: `Hi! I'm Shot Bot 📸
 
-I can help you explore Nino's volleyball photography collection. Try asking me to:
-
-• "Show me powerful spikes"
-• "Find celebration moments"
-• "Photos with peak intensity"
-• "Serves with determination"
-
-What are you looking for?`
-		}
-	]);
-	let isLoading = $state(false);
-
-	// Handle form submission
-	async function handleSubmit(event: Event) {
-		event.preventDefault();
-		if (!input.trim() || isLoading) return;
-
-		const userMessage: Message = {
-			id: crypto.randomUUID(),
-			role: 'user',
-			content: input
-		};
-
-		messages = [...messages, userMessage];
-		const currentInput = input;
-		input = '';
-		isLoading = true;
-
+	let busy = $derived(chat.status === 'submitted' || chat.status === 'streaming');
+	// Show the waiting line until the reply has something on screen.
+	let waiting = $derived.by(() => {
+		if (!busy) return false;
+		const last = chat.messages.at(-1);
+		if (!last || last.role !== 'assistant') return true;
+		return !last.parts.some(
+			(p) => (p.type === 'text' && p.text.trim()) || (p.type === 'tool-searchPhotos' && p.state === 'output-available')
+		);
+	});
+	/** The route answers 400/429/503 with `{ error }`; the transport hands that body over as the message. */
+	let errorText = $derived.by(() => {
+		if (!chat.error) return '';
 		try {
-			const response = await fetch(`${base}/api/chat`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					messages: messages.map((m) => ({
-						role: m.role,
-						content: m.content
-					}))
-				})
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				console.error('Server error details:', errorData);
-				throw new Error(errorData.error || 'Failed to get response');
-			}
-
-			const reader = response.body?.getReader();
-			const decoder = new TextDecoder();
-			let assistantMessage: Message = {
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: ''
-			};
-			messages = [...messages, assistantMessage];
-
-			if (reader) {
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-
-					const chunk = decoder.decode(value);
-					const lines = chunk.split('\n');
-
-					for (const line of lines) {
-						if (line.startsWith('0:')) {
-							// Text chunk
-							const text = line.slice(2).trim();
-							if (text) {
-								assistantMessage.content += text;
-								messages = [...messages];
-							}
-						} else if (line.startsWith('9:')) {
-							// Tool invocation or result
-							try {
-								const data = JSON.parse(line.slice(2));
-								if (data.toolInvocations) {
-									assistantMessage.toolInvocations = data.toolInvocations;
-									messages = [...messages];
-								}
-							} catch (e) {
-								// Ignore parse errors
-							}
-						}
-					}
-				}
-			}
-		} catch (error) {
-			console.error('Chat error:', error);
-			messages = [
-				...messages,
-				{
-					id: crypto.randomUUID(),
-					role: 'assistant',
-					content: 'Sorry, I encountered an error. Please try again.'
-				}
-			];
-		} finally {
-			isLoading = false;
+			const parsed = JSON.parse(chat.error.message);
+			if (typeof parsed?.error === 'string') return parsed.error;
+		} catch {
+			// Not JSON: a network failure or a stream error, both covered by the line below.
 		}
-	}
-
-	// Automatically scroll to the bottom when new messages are added
-	$effect(() => {
-		if (messages.length > 0 && isOpen) {
-			scrollToBottom();
-		}
+		return 'Shot Bot could not answer just now. Please try again.';
 	});
 
-	function toggleChat() {
-		isOpen = !isOpen;
-		if (isOpen) {
-			tick().then(() => {
-				inputElement?.focus();
-			});
-		}
+	function send(text: string) {
+		const trimmed = text.trim();
+		if (!trimmed || busy) return;
+		chat.clearError();
+		chat.sendMessage({ text: trimmed });
+		input = '';
+		if (inputElement) inputElement.style.height = 'auto';
 	}
 
-	async function scrollToBottom() {
-		await tick();
-		if (chatContainer) {
-			chatContainer.scrollTop = chatContainer.scrollHeight;
-		}
+	/** Re-send the last question after a failure; the failed reply, if any, is replaced. */
+	function retry() {
+		if (busy) return;
+		chat.clearError();
+		chat.regenerate();
+	}
+
+	function handleSubmit(event: Event) {
+		event.preventDefault();
+		send(input);
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
-			handleSubmit(event as unknown as Event);
+			send(input);
 		}
 	}
 
-	onMount(() => {
-		// Open the chat after 3 seconds for discoverability on first visit
-		setTimeout(() => {
-			if (!isOpen) {
-				// We can add a more subtle animation later
-			}
-		}, 3000);
+	function toggleChat() {
+		isOpen = !isOpen;
+		if (isOpen) tick().then(() => inputElement?.focus());
+	}
+
+	// Keep the conversation's newest turn in view. A question scrolls to the bottom; a reply
+	// scrolls to its own start, so a long set of results is read from the first photo, not the last.
+	$effect(() => {
+		const last = chat.messages.at(-1);
+		void last?.parts.length;
+		void waiting;
+		if (!isOpen) return;
+		tick().then(() => {
+			if (!chatContainer) return;
+			const el = last && chatContainer.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(last.id)}"]`);
+			chatContainer.scrollTop =
+				el && last.role === 'assistant' ? el.offsetTop - 16 : chatContainer.scrollHeight;
+		});
 	});
 </script>
 
@@ -186,85 +107,123 @@ What are you looking for?`
 		<button
 			onclick={toggleChat}
 			class="group relative p-4 rounded-full bg-black text-white shadow-2xl hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 border-2 border-white/10"
-			aria-label="Open chat"
+			aria-label="Open Shot Bot photo search"
 			in:fly={{ y: 20, duration: 300 }}
 		>
 			<div class="absolute inset-0 rounded-full border border-white/20"></div>
-			<div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]"></div>
-			<MessageSquare size={24} />
+			<span class="flex items-center gap-2">
+				<MessageSquare size={24} />
+				<!-- Icon-only on phones, where the button already sits over page content. -->
+				<span class="hidden sm:inline pr-1 text-sm font-bold uppercase tracking-wider">Find photos</span>
+			</span>
 		</button>
 	{/if}
 
 	{#if isOpen}
 		<div
 			class="w-[calc(100vw-3rem)] max-w-md h-[70vh] max-h-[700px] flex flex-col rounded-sm shadow-2xl bg-zinc-900/95 text-white backdrop-blur-2xl border border-white/10 relative overflow-hidden"
+			role="dialog"
+			aria-label="Shot Bot photo search"
 			transition:fly={{ y: 20, duration: 300 }}
 		>
-			<!-- Viewfinder Corners -->
-			<div class="pointer-events-none absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-white/30"></div>
-			<div class="pointer-events-none absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-white/30"></div>
-			<div class="pointer-events-none absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-white/30"></div>
-			<div class="pointer-events-none absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-white/30"></div>
+			<!-- Viewfinder corners: inside the panel's 16px padding, so they frame the content without crossing the header or the input. -->
+			<div class="pointer-events-none absolute top-1.5 left-1.5 w-5 h-5 border-t-2 border-l-2 border-white/30"></div>
+			<div class="pointer-events-none absolute top-1.5 right-1.5 w-5 h-5 border-t-2 border-r-2 border-white/30"></div>
+			<div class="pointer-events-none absolute bottom-1.5 left-1.5 w-5 h-5 border-b-2 border-l-2 border-white/30"></div>
+			<div class="pointer-events-none absolute bottom-1.5 right-1.5 w-5 h-5 border-b-2 border-r-2 border-white/30"></div>
 
 			<!-- Header -->
 			<header class="flex items-center justify-between p-4 border-b border-white/10 bg-black/40">
-				<div class="flex items-center gap-3">
-					<h3 class="font-bold text-lg tracking-wider uppercase">Shot Bot</h3>
-					<div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
-						<div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-						<span class="text-[10px] font-bold text-red-500 tracking-widest">REC</span>
-					</div>
-				</div>
+				<h3 class="font-bold text-lg tracking-wider uppercase">Shot Bot</h3>
 				<button
 					onclick={toggleChat}
 					class="p-2 rounded-full hover:bg-white/10 transition-colors"
+					aria-label="Close Shot Bot"
 				>
 					<X size={18} />
 				</button>
 			</header>
 
 			<!-- Message List -->
-			<div class="flex-1 overflow-y-auto p-6 space-y-6" bind:this={chatContainer}>
-				{#each messages as message}
-					<div class={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+			<div class="relative flex-1 overflow-y-auto p-6 space-y-6" bind:this={chatContainer} aria-live="polite">
+				<!-- Welcome: shown, never sent to the model. -->
+				<div class="text-sm md:text-base text-zinc-300 leading-relaxed">
+					<p>Hi, I'm Shot Bot. Describe a shot and I'll find it in Nino's volleyball photos.</p>
+					{#if chat.messages.length === 0}
+						<div class="mt-4 flex flex-wrap gap-2">
+							{#each SUGGESTIONS as suggestion (suggestion)}
+								<button
+									type="button"
+									onclick={() => send(suggestion)}
+									class="px-3 py-2.5 text-sm border border-white/20 bg-white/5 hover:bg-white/10 hover:border-white/40 rounded-sm transition-colors text-left"
+								>
+									{suggestion}
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+
+				{#each chat.messages as message (message.id)}
+					<div
+						data-message-id={message.id}
+						class={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+					>
 						<div
-							class={`max-w-[85%] p-3 text-sm md:text-base relative ${
+							class={`p-3 text-sm md:text-base relative ${
 								message.role === 'user'
-									? 'bg-white/10 text-white border border-white/20'
-									: 'text-zinc-300'
+									? 'max-w-[85%] bg-white/10 text-white border border-white/20'
+									: 'w-full text-zinc-300'
 							}`}
 						>
-							<!-- Technical markers for messages -->
 							{#if message.role === 'user'}
 								<div class="absolute -right-1 -top-1 w-2 h-2 border-t border-r border-white/40"></div>
 								<div class="absolute -left-1 -bottom-1 w-2 h-2 border-b border-l border-white/40"></div>
 							{/if}
 
-							{#if message.content}
-								<p class="leading-relaxed">{message.content}</p>
-							{/if}
-
-							{#if message.toolInvocations}
-								{#each message.toolInvocations as toolCall}
-									{#if toolCall.toolName === 'searchPhotos' && toolCall.result?.photos?.length}
+							<!-- What the bot says comes first, so the reader knows what it understood before the photos. -->
+							{#each message.parts as part, i (i)}
+								{#if part.type === 'text' && part.text.trim()}
+									<p class="leading-relaxed whitespace-pre-line mt-4 first:mt-0">{part.text}</p>
+								{/if}
+							{/each}
+							{#each message.parts as part, i (i)}
+								{#if part.type === 'tool-searchPhotos' && part.state === 'output-available'}
+									{@const output = part.output as SearchOutput}
+									{#if output.photos?.length}
 										<div class="mt-4 -mx-2">
-											<PhotoGrid photos={toolCall.result.photos} />
+											<PhotoGrid photos={output.photos} />
 										</div>
-									{:else if toolCall.toolName === 'searchPhotos'}
-                                        <p class="mt-2 text-xs font-mono text-zinc-500 uppercase tracking-wider">[NO_MATCHES_FOUND]</p>
-                                    {/if}
-								{/each}
-							{/if}
+									{:else if output.error}
+										<p class="mt-2 text-xs text-zinc-500">Search is unavailable right now. Please try again.</p>
+									{/if}
+								{:else if part.type === 'tool-searchPhotos' && part.state === 'output-error'}
+									<p class="mt-2 text-xs text-zinc-500">Search is unavailable right now. Please try again.</p>
+								{/if}
+							{/each}
 						</div>
 					</div>
 				{/each}
 
-				{#if isLoading}
+				{#if waiting}
 					<div class="flex gap-2 justify-start">
-						<div class="flex items-center gap-2 text-zinc-500 text-xs font-mono uppercase tracking-widest">
-							<Loader size={12} class="animate-spin" />
-							<span>Processing...</span>
+						<div class="flex items-center gap-2 text-zinc-300 text-xs font-mono uppercase tracking-widest">
+							<Loader size={16} class="animate-spin" />
+							<span>Searching photos</span>
 						</div>
+					</div>
+				{/if}
+
+				{#if errorText}
+					<div class="flex flex-wrap items-center gap-3" role="alert">
+						<p class="text-sm text-red-300">{errorText}</p>
+						<button
+							type="button"
+							onclick={retry}
+							class="px-3 py-2 text-sm border border-white/30 hover:bg-white/10 rounded-sm transition-colors"
+						>
+							Try again
+						</button>
 					</div>
 				{/if}
 			</div>
@@ -278,7 +237,8 @@ What are you looking for?`
 							bind:value={input}
 							onkeydown={handleKeyDown}
 							placeholder="Describe the shot..."
-							class="w-full bg-white/5 border border-white/10 resize-none p-3 pr-10 rounded-sm focus:outline-none focus:border-white/30 focus:bg-white/10 text-sm transition-all placeholder:text-zinc-600"
+							aria-label="Describe the shot you want"
+							class="w-full bg-white/5 border border-white/10 resize-none p-3 rounded-sm focus:outline-none focus:border-white/30 focus:bg-white/10 text-base md:text-sm transition-all placeholder:text-zinc-400"
 							rows="1"
 							oninput={() => {
 								if (inputElement) {
@@ -287,19 +247,17 @@ What are you looking for?`
 								}
 							}}
 						></textarea>
-						<!-- ISO/Aperture decoration -->
-						<div class="absolute right-2 bottom-2 text-[10px] text-zinc-600 font-mono pointer-events-none">
-							ISO 800
-						</div>
 					</div>
-					
+
 					<button
 						type="submit"
 						class="w-12 h-12 rounded-full border-2 border-white/20 flex items-center justify-center bg-transparent hover:bg-white/5 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-						aria-label="Capture"
-						disabled={isLoading || !input.trim()}
+						aria-label="Search"
+						disabled={busy || !input.trim()}
 					>
-						<div class="w-10 h-10 rounded-full bg-white group-hover:bg-red-500 transition-colors"></div>
+						<div class="w-10 h-10 rounded-full bg-white text-black group-hover:bg-red-500 group-hover:text-white transition-colors flex items-center justify-center">
+							<ArrowUp size={20} strokeWidth={2.5} />
+						</div>
 					</button>
 				</form>
 			</div>

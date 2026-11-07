@@ -1,13 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-11-07T16:15:03.282Z",
-  "reviewedBy": "Claude Opus 5.5 (agent), for Nino Chavez",
-  "method": "Source diff review of src/routes/api/chat/+server.ts only: tool schema moved to $lib/ai/chat-search-tool (inputSchema), stopWhen step budget, and Shot Bot system-prompt edits (dropped filters that no longer exist; retry instruction). No screen changed: the route returns 503 behind VITE_CHAT_ENABLED and ChatWidget.svelte is untouched. Model behavior was exercised with a stubbed search through OpenRouter google/gemini-2.5-flash, not through the deployed route. Not covered: any rendered chat UI walk (chat stays disabled; the v5 stream contract in ChatWidget is still unmet).",
-  "sourceDigest": "sha256:9d943106ebe3bffacf628e9756794c02f57ae343836e47325841c4ed8ba1ce45",
+  "reviewedAt": "2026-11-07T18:50:09.180Z",
+  "reviewedBy": "Claude Opus 5.5 (agent), for Nino Chavez; two cold-review subagents on device captures",
+  "method": "Walked the Shot Bot chat on the home page in a local wrangler pages dev build (VITE_CHAT_ENABLED=true, OpenRouter google/gemini-2.5-flash, live Supabase). Headless Playwright captures at 375, 768 and 1440 wide: launcher (Find photos label from 640px up), open panel with suggestions, waiting, results after a real search (12 photos each, panel inside the viewport, reply text above the grid, view opens at the reply's start); 429 and stream-error states on phone with Try again, which re-sends one question. Copy checked as rendered: welcome, suggestions, plain model reply, 'N photos. Tap one to open it.', event-name tile labels, alt text from alt_text then caption (same order as PhotoCard; live tiles showed alt_text sentences), error lines; REC badge, notification dot and ISO 800 decoration removed. First tile link resolved 200. Live probes: jailbreak and prompt-leak prompts declined; the output guardrail replaced a reply naming an internal service. Two cold reviews read the frames; both rounds of fixes applied and recaptured. Not covered: a real iPhone or Android device (Playwright emulation only), on-screen keyboard behavior, screen-reader output, Escape/back-button closing, pages other than the home route, and production (flag stays off).",
+  "sourceDigest": "sha256:bb9264ebddc839353fa30277a88380cf2cbeb47a4b40fa19c4303484eb5e535c",
   "sourceFiles": 205,
   "scope": [
-    "api/chat system prompt",
-    "searchPhotos tool contract"
+    "Shot Bot chat widget",
+    "chat photo results grid",
+    "api/chat system prompt"
   ]
 }
