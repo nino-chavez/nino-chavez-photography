@@ -118,10 +118,8 @@ under your reply automatically, so describe what you found instead of listing ph
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		// 0. Kill switch: chat is off unless VITE_CHAT_ENABLED=true at build time. Every known
-		// blocker is fixed (v5 UI message stream, OpenRouter, the output guardrail in
-		// $lib/ai/chat-guardrail); turning it on in production is the owner's call. Gated
-		// client-side too (+layout).
+		// 0. Kill switch: chat answers only when VITE_CHAT_ENABLED=true at build time (set in
+		// wrangler.toml [vars]). Gated client-side too (+layout).
 		if (import.meta.env.VITE_CHAT_ENABLED !== 'true') {
 			return new Response(JSON.stringify({ error: 'Chat is temporarily unavailable.' }), {
 				status: 503,
