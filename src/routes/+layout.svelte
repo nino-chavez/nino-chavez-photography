@@ -40,8 +40,9 @@
 		!isAnalyticsWorkspace && !/^\/(?:analytics(?:-preferences)?|admin|login|auth|reset-password)(?:\/|$)/.test($page.route.id ?? '')
 	);
 
-	// Kill switch: chat shows only when VITE_CHAT_ENABLED === 'true' at build time. It is set in
-	// wrangler.toml [vars]; change it there and redeploy. Gated server-side too (see /api/chat).
+	// Kill switch: chat shows only when VITE_CHAT_ENABLED === 'true' at build time. It is a Pages
+	// production secret (see the wrangler.toml header for why not [vars]); change it and
+	// redeploy. Gated server-side too (see /api/chat).
 	const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
 
 	// PERFORMANCE: Only load ChatWidget on pages where AI search is useful
