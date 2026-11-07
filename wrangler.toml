@@ -13,13 +13,11 @@ compatibility_flags = ["nodejs_compat"]
 # Stream tokens, OPENROUTER_API_KEY, the PostHog keys, the VITE_* values and the rest) survive
 # out there and are deliberately not duplicated here.
 #
-# A value read through import.meta.env (any VITE_*) is fixed when `vite build` runs, and the
-# variables below are NOT visible to that build: in this project's git builds they are runtime
-# bindings only. Measured 2026-11-07: VITE_CHAT_ENABLED = "true" here (#251) deployed, and the
-# built /api/chat still answered its flag-off 503. Build-time values therefore live as Pages
-# secrets, like VITE_SUPABASE_URL. VITE_CHAT_ENABLED (the Shot Bot switch) is a production secret
-# set to "true"; set it to "false" and redeploy to turn the chat off. Preview has neither it nor
-# OPENROUTER_API_KEY, so preview builds have no chat.
+# A value read through import.meta.env (any VITE_*) is fixed when `vite build` runs. The [vars]
+# below reach that build: the Pages build log prints them under "Build environment variables".
+# Pages secrets do not appear there. Never give a secret the same name as a var here: the
+# deploy then fails at "Failed to publish your Function ... Binding name '<NAME>' already in
+# use", after a build that looked fine (2026-11-07, #251's deploy).
 #
 # The build's Node version comes from `.nvmrc` alone. Keep NODE_VERSION unset in the dashboard:
 # setting it there puts the version in two places that nothing keeps in sync. It was a dashboard
@@ -40,6 +38,10 @@ POSTHOG_ENABLED = "true"
 POSTHOG_TARGET_ENVIRONMENT = "production"
 POSTHOG_HOST = "https://us.i.posthog.com"
 POSTHOG_PROJECT_ID = "635866"
+# Shot Bot chat switch (ChatWidget + /api/chat), read at build time. "false" turns it off on the
+# next deploy. /api/chat also needs the OPENROUTER_API_KEY secret: production has it, preview
+# does not, so preview shows the widget but answers "Chat is temporarily unavailable."
+VITE_CHAT_ENABLED = "true"
 
 # Web-sized Ultra HDR (gain-map) JPEGs, read by src/routes/api/hdr/[id]/+server.ts and written by
 # scripts/ingest-album.ts (via `wrangler r2 object put ... --remote`, not this binding — the CLI

@@ -1,10 +1,10 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-11-07T19:12:08.373Z",
+  "reviewedAt": "2026-11-07T19:24:27.991Z",
   "reviewedBy": "Claude Opus 5.5 (agent), for Nino Chavez",
-  "method": "Comment-only change to src/routes/+layout.svelte and src/routes/api/chat/+server.ts: the kill-switch comments now name the Pages production secret instead of wrangler.toml [vars]. No rendered copy or behavior changed. The chat UI was walked and cold-reviewed for #250 (captures at 375/768/1440 and error states). Not covered here: the production walk, which runs after this deploy.",
-  "sourceDigest": "sha256:1c295da5507dc80df3eee5b9b98451dd6faa9464eae6197c58ae496fe4fc0f3c",
+  "method": "Comment-only change to src/routes/+layout.svelte and src/routes/api/chat/+server.ts: the kill-switch comments point back at wrangler.toml [vars]. No rendered copy or behavior changed. The chat UI was walked and cold-reviewed for #250 (captures at 375/768/1440 and error states). Not covered here: the production walk, which runs after this deploy.",
+  "sourceDigest": "sha256:31c0bf9fc3ed18aa0bee977412e2ae15627072890ef3a734837b0b7df42a5ffb",
   "sourceFiles": 205,
   "scope": [
     "Shot Bot kill-switch comments"

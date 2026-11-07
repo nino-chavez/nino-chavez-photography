@@ -118,8 +118,8 @@ under your reply automatically, so describe what you found instead of listing ph
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		// 0. Kill switch: chat answers only when VITE_CHAT_ENABLED=true at build time (a Pages
-		// production secret; see the wrangler.toml header). Gated client-side too (+layout).
+		// 0. Kill switch: chat answers only when VITE_CHAT_ENABLED=true at build time (set in
+		// wrangler.toml [vars]). Gated client-side too (+layout).
 		if (import.meta.env.VITE_CHAT_ENABLED !== 'true') {
 			return new Response(JSON.stringify({ error: 'Chat is temporarily unavailable.' }), {
 				status: 503,
