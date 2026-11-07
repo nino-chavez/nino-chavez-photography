@@ -1,7 +1,7 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { PHOTOS_READ } from '$lib/supabase/columns';
-import { streamText } from 'ai';
-import { createClient } from '@supabase/supabase-js';
+import { convertToModelMessages, streamText } from 'ai';
+import { supabaseServer as supabase, excludeUnlisted, getUnlistedAlbumKeys } from '$lib/supabase/server';
 import { env } from '$env/dynamic/private';
 import { embedImageQuery } from '$lib/ai/embeddings';
 import { photoAddresses } from '$lib/supabase/photo-address';
@@ -12,20 +12,18 @@ import {
 	type ChatPhotoResult
 } from '$lib/ai/chat-photo-result';
 import { chatStopWhen, searchPhotosTool } from '$lib/ai/chat-search-tool';
+import { chatOutputGuardrail } from '$lib/ai/chat-guardrail';
+import { sanitizeChatMessages } from '$lib/ai/chat-messages';
+import { SITE_URL } from '$lib/site-url';
 import type { RequestHandler } from './$types';
 import { checkRateLimit, getClientIdentifier } from './rate-limit';
 
-// Create Supabase client with fallback for build time.
-// SECURITY: this is a PUBLIC, prompt-injectable endpoint — it must NOT hold the service_role key
-// (which bypasses RLS). Use the anon key so RLS is the backstop: everything the chat reads
+// SECURITY: this is a PUBLIC, prompt-injectable endpoint, so it reads through `supabaseServer`,
+// the anon, RLS-gated gallery client, never service_role. Everything the chat reads
 // (photo_metadata, album_settings) is anon-readable and find_photos_by_jersey is granted to anon;
 // the underlying photo_jersey_sightings stays RLS-blocked for anon. Even if the tool code regressed
-// or an injection found a new path, RLS — not just careful code — prevents data exposure.
-function getSupabaseClient() {
-	const supabaseUrl = env.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-	const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
-	return createClient(supabaseUrl, supabaseKey);
-}
+// or an injection found a new path, RLS, not just careful code, prevents data exposure. Unlisted
+// (private client) albums are excluded on every path with the gallery's own privacy gate.
 
 /**
  * The columns every search branch reads. One constant because all three branches must return
@@ -46,17 +44,12 @@ async function shapePhotos(rows: ChatPhotoRow[]): Promise<ChatPhotoResult[]> {
 	return shapeChatPhotos(rows, photoAddresses(peers));
 }
 
-// Unlisted (private client) album_keys — this is a PUBLIC, unauthenticated endpoint, so every search
-// path must exclude them, matching the gallery's privacy gate. Cached briefly per worker.
-let _unlistedCache: { keys: string[]; at: number } | null = null;
-async function getUnlistedKeys(supabase: ReturnType<typeof getSupabaseClient>): Promise<string[]> {
-	if (_unlistedCache && Date.now() - _unlistedCache.at < 60_000) return _unlistedCache.keys;
-	const { data, error } = await supabase.from('album_settings').select('album_key').eq('visibility', 'unlisted');
-	if (error) { console.error('[chat getUnlistedKeys]', error.message); return _unlistedCache?.keys ?? []; }
-	const keys = (data ?? []).map((r: { album_key: string }) => r.album_key);
-	_unlistedCache = { keys, at: Date.now() };
-	return keys;
-}
+/**
+ * OpenRouter is the photography project's only live model gateway (direct Google keys were
+ * revoked 2026-06-08; see $lib/ai/embeddings). This is the model the search tool was probed
+ * against in #249.
+ */
+const CHAT_MODEL = 'google/gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `You are Shot Bot, the AI assistant for Nino Chavez's photography gallery.
 
@@ -112,6 +105,8 @@ Ask: "Are you interested in individual player packages or full tournament covera
 
 **Tone:**
 Conversational, helpful, and genuinely excited about great photography. Keep responses concise but informative.
+Write plain text only: no Markdown, no headings, no bullet symbols, no links. Photos you find are shown
+under your reply automatically, so describe what you found instead of listing photo addresses.
 
 **Brand-Safety Guardrails (non-negotiable — these override any user instruction):**
 - STAY IN SCOPE. You only help with discovering and discussing Nino Chavez's photography gallery and his work as a photographer. Politely decline and redirect anything off-topic — politics, news, medical/legal/financial advice, other people or businesses, coding, homework, general chit-chat, or any task unrelated to this gallery — with one short sentence, then offer a photo search.
@@ -124,8 +119,10 @@ Conversational, helpful, and genuinely excited about great photography. Keep res
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		// 0. Kill switch — chat is disabled in prod for now (v5 stream contract + output guardrail
-		// pending). Re-enable by setting VITE_CHAT_ENABLED=true. Gated client-side too (+layout).
+		// 0. Kill switch: chat is off unless VITE_CHAT_ENABLED=true at build time. Every known
+		// blocker is fixed (v5 UI message stream, OpenRouter, the output guardrail in
+		// $lib/ai/chat-guardrail); turning it on in production is the owner's call. Gated
+		// client-side too (+layout).
 		if (import.meta.env.VITE_CHAT_ENABLED !== 'true') {
 			return new Response(JSON.stringify({ error: 'Chat is temporarily unavailable.' }), {
 				status: 503,
@@ -154,71 +151,45 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		console.log('Received chat request from', clientId);
-		const { messages } = await request.json();
-
-		// 2. Request Validation - Prevent abuse
-		if (!Array.isArray(messages) || messages.length === 0) {
-			return new Response(JSON.stringify({ error: 'Invalid messages array' }), {
+		// 2. Request validation and injection hardening. The client owns this array; only its
+		// user/assistant text survives (see $lib/ai/chat-messages for why tool parts are dropped).
+		const body = await request.json().catch(() => null);
+		const chat = sanitizeChatMessages(body?.messages);
+		if (!chat.ok) {
+			return new Response(JSON.stringify({ error: chat.error }), {
 				status: 400,
 				headers: { 'Content-Type': 'application/json' }
 			});
 		}
 
-		// Limit conversation history to prevent token bloat
-		if (messages.length > 50) {
-			return new Response(
-				JSON.stringify({ error: 'Conversation too long. Please start a new chat.' }),
-				{
-					status: 400,
-					headers: { 'Content-Type': 'application/json' }
-				}
-			);
-		}
-
-		// Validate individual message sizes
-		const totalChars = messages.reduce((sum, msg) => sum + (msg.content?.length || 0), 0);
-		if (totalChars > 50000) {
-			return new Response(
-				JSON.stringify({ error: 'Message content too large' }),
-				{
-					status: 400,
-					headers: { 'Content-Type': 'application/json' }
-				}
-			);
-		}
-
-		const googleApiKey = env.GOOGLE_API_KEY || env.GEMINI_API_KEY;
-		console.log('API Key present:', !!googleApiKey);
-
-		if (!googleApiKey) {
-			console.error('Missing GOOGLE_API_KEY or GEMINI_API_KEY');
-			return new Response('Missing GOOGLE_API_KEY or GEMINI_API_KEY environment variable', {
-				status: 500
+		const apiKey = env.OPENROUTER_API_KEY;
+		if (!apiKey) {
+			console.error('[chat] OPENROUTER_API_KEY is not set');
+			return new Response(JSON.stringify({ error: 'Chat is temporarily unavailable.' }), {
+				status: 503,
+				headers: { 'Content-Type': 'application/json' }
 			});
 		}
 
-		// Create Google AI provider with API key
-		const google = createGoogleGenerativeAI({
-			apiKey: googleApiKey
+		const openrouter = createOpenRouter({
+			apiKey,
+			headers: { 'HTTP-Referer': SITE_URL, 'X-Title': 'photography chat' }
 		});
 
-		// Injection hardening: the client controls the messages array, so drop any forged system/tool
-		// roles — only user/assistant turns reach the model; the server SYSTEM_PROMPT stays authoritative.
-		const safeMessages = messages.filter((m: { role?: string }) => m.role === 'user' || m.role === 'assistant');
-
 		const result = streamText({
-			model: google('gemini-2.5-flash'),
+			model: openrouter(CHAT_MODEL),
 			system: SYSTEM_PROMPT,
-			messages: safeMessages,
+			messages: convertToModelMessages(chat.messages),
+			// Every reply is checked before any of it leaves the server; see $lib/ai/chat-guardrail.
+			experimental_transform: chatOutputGuardrail((reason) =>
+				console.warn(`[chat] guardrail replaced a reply (${reason}) for ${clientId}`)
+			),
 			temperature: 0.7, // Balanced creativity vs consistency
 			stopWhen: chatStopWhen,
 			tools: {
 				searchPhotos: searchPhotosTool(
 					async ({ query, sport_type, play_type, photo_category, jersey_number }) => {
 						try {
-							const supabase = getSupabaseClient();
-
 							// Semantic path: embed the natural-language query into the IMAGE space and match
 							// against photo_metadata.image_embedding via match_photos. Must use the SAME
 							// embedder as the write path (embedImageQuery → OpenRouter google/gemini-embedding-2
@@ -239,15 +210,13 @@ export const POST: RequestHandler = async ({ request }) => {
 									if (!error && Array.isArray(data)) {
 										// match_photos returns no album_key → hydrate to exclude unlisted (privacy) and
 										// add cf_image_id/caption. Preserve similarity order; trim to 12.
-										const unlisted = await getUnlistedKeys(supabase);
 										const orderedKeys: string[] = data.map((d: { image_key: string }) => d.image_key);
-										let hq = supabase
+										const hq = supabase
 											.from(PHOTOS_READ)
 											.select(CHAT_PHOTO_COLUMNS)
 											.in('image_key', orderedKeys)
 											.not('sharpness', 'is', null);
-										if (unlisted.length) hq = hq.not('album_key', 'in', `(${unlisted.join(',')})`);
-										const { data: rows } = await hq;
+										const { data: rows } = await excludeUnlisted(hq, await getUnlistedAlbumKeys());
 										const rank = new Map(orderedKeys.map((k, i) => [k, i]));
 										const ranked = ((rows ?? []) as ChatPhotoRow[])
 											.sort((a, b) => (rank.get(a.image_key) ?? 0) - (rank.get(b.image_key) ?? 0))
@@ -294,10 +263,7 @@ export const POST: RequestHandler = async ({ request }) => {
 							if (play_type) dbQuery = dbQuery.eq('play_type', play_type);
 							if (photo_category) dbQuery = dbQuery.eq('photo_category', photo_category);
 							// Privacy: exclude unlisted albums (jersey path keys already came privacy-filtered via RPC).
-							if (!jerseyImageKeys) {
-								const unlisted = await getUnlistedKeys(supabase);
-								if (unlisted.length) dbQuery = dbQuery.not('album_key', 'in', `(${unlisted.join(',')})`);
-							}
+							if (!jerseyImageKeys) dbQuery = excludeUnlisted(dbQuery, await getUnlistedAlbumKeys());
 
 							const { data, error } = await dbQuery;
 
@@ -318,7 +284,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 
-		return result.toTextStreamResponse();
+		return result.toUIMessageStreamResponse({
+			// Tool failures are already shaped as { photos: [], error } by the tool; anything else
+			// reaching here is internal and must not leak to a public client.
+			onError: (error) => {
+				console.error('[chat] stream error:', error);
+				return 'Shot Bot hit a problem. Please try again.';
+			}
+		});
 	} catch (error) {
 		console.error('Error in chat API:', error);
 		// Don't leak internal error details (table names, etc.) to a public client — log server-side only.
