@@ -4,7 +4,8 @@ import {
 	assertCaptionContract,
 	buildCaptionCorrectionMessage,
 	captionWordCount,
-	inspectCaption
+	inspectCaption,
+	trimCaptionToLimit
 } from './caption-contract';
 
 test('accepts a short visible-facts caption', () => {
@@ -68,4 +69,31 @@ test('correction message gives a compression instruction for too-long captions',
 	assert.match(message, /25 words or fewer/);
 	assert.match(message, /same caption will be rejected again/);
 	assert.doesNotMatch(message, /flagged words/);
+});
+
+test('trimCaptionToLimit keeps leading whole sentences that fit', () => {
+	const first = 'A player in black with red shorts jumps to hit the ball, while a player in black with yellow trim (#12) blocks.';
+	assert.equal(trimCaptionToLimit(`${first} Another player in black with yellow trim (#10) is visible.`), first);
+});
+
+test('trimCaptionToLimit returns null when nothing fits or nothing would be dropped', () => {
+	assert.equal(trimCaptionToLimit('A player serves.'), null);
+	assert.equal(trimCaptionToLimit(`${'word '.repeat(31).trim()}. A player serves.`), null);
+});
+
+test('trimCaptionToLimit does not split at abbreviations or inside quoted text', () => {
+	const noSeven =
+		'A player in jersey No. 7 in a black top and red shorts jumps to spike the ball over the net while two blockers in white tops with blue trim reach up to block it.';
+	assert.equal(trimCaptionToLimit(noSeven), null);
+
+	const vs = 'A Lewis vs. Loyola banner hangs above a player in black serving from the end line. Fans in red fill the bleachers behind the far baseline.';
+	assert.equal(trimCaptionToLimit(`${vs} Two referees stand near the post on the near side of the court.`), vs);
+
+	const quoted =
+		'A player in red holds a sign reading "Go Lewis! Beat Loyola." near the net while a teammate in black watches the serve.';
+	assert.equal(trimCaptionToLimit(`${quoted} A referee in a white shirt stands on the stand beside the post.`), quoted);
+});
+
+test('trimCaptionToLimit refuses a kept fragment under the minimum length', () => {
+	assert.equal(trimCaptionToLimit(`A player serves. ${'Word '.repeat(30).trim()}.`), null);
 });
