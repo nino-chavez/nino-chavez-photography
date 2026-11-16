@@ -67,20 +67,54 @@ export function captionWordCount(caption: string): number {
 
 export const MAX_CAPTION_WORDS = 30;
 
+/** A kept sentence shorter than this is more likely a split fragment than a caption. */
+const MIN_TRIMMED_WORDS = 8;
+/** A period after one of these does not end a sentence ("No. 7", "Lewis vs. Loyola", "St. Xavier"). */
+const ABBREVIATIONS = new Set(['no', 'vs', 'v', 'st', 'mt', 'ft', 'dr', 'mr', 'mrs', 'ms', 'jr', 'sr', 'u.s', 'etc']);
+
+/**
+ * Split at sentence ends only: [.!?] outside a quote, followed by whitespace and a capital letter,
+ * and not after an abbreviation or a single-letter initial.
+ */
+export function splitCaptionSentences(caption: string): string[] {
+	const text = String(caption ?? '').trim();
+	const sentences: string[] = [];
+	let start = 0;
+	let inQuote = false;
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		if (ch === '"') inQuote = !inQuote;
+		else if (ch === '“') inQuote = true;
+		else if (ch === '”') inQuote = false;
+		if (inQuote || !'.!?'.includes(ch)) continue;
+		const rest = text.slice(i + 1);
+		if (!/^\s+[A-Z]/.test(rest)) continue;
+		const word = text.slice(start, i).split(/\s+/).pop()?.toLowerCase().replace(/^[^a-z]+/, '') ?? '';
+		if (ch === '.' && (ABBREVIATIONS.has(word) || /^[a-z]$/.test(word))) continue;
+		sentences.push(text.slice(start, i + 1).trim());
+		start = i + 1;
+	}
+	const tail = text.slice(start).trim();
+	if (tail) sentences.push(tail);
+	return sentences;
+}
+
 /**
  * Keep the caption's leading whole sentences that fit within MAX_CAPTION_WORDS. Returns null when
- * the first sentence alone is too long, or when nothing would be dropped. Removes words only, so
- * it can never add a claim; anything named only in a dropped sentence is lost.
+ * the first sentence alone is too long, when what fits is under MIN_TRIMMED_WORDS, or when nothing
+ * would be dropped. Removes words only, so it can never add a claim; anything named only in a
+ * dropped sentence is lost.
  */
 export function trimCaptionToLimit(caption: string): string | null {
-	const sentences = String(caption ?? '').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
+	const sentences = splitCaptionSentences(caption);
 	const kept: string[] = [];
 	for (const sentence of sentences) {
 		if (captionWordCount([...kept, sentence].join(' ')) > MAX_CAPTION_WORDS) break;
 		kept.push(sentence);
 	}
 	if (!kept.length || kept.length === sentences.length) return null;
-	return kept.join(' ');
+	const trimmed = kept.join(' ');
+	return captionWordCount(trimmed) >= MIN_TRIMMED_WORDS ? trimmed : null;
 }
 
 export function inspectCaption(caption: string): CaptionIssue[] {
