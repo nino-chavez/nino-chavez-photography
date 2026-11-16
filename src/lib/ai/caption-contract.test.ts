@@ -95,5 +95,5 @@ test('trimCaptionToLimit does not split at abbreviations or inside quoted text',
 });
 
 test('trimCaptionToLimit refuses a kept fragment under the minimum length', () => {
-	assert.equal(trimCaptionToLimit(`A player serves. ${'word '.repeat(30).trim()}.`), null);
+	assert.equal(trimCaptionToLimit(`A player serves. ${'Word '.repeat(30).trim()}.`), null);
 });
