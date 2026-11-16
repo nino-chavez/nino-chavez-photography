@@ -65,6 +65,24 @@ export function captionWordCount(caption: string): number {
 	return caption.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu)?.length ?? 0;
 }
 
+export const MAX_CAPTION_WORDS = 30;
+
+/**
+ * Keep the caption's leading whole sentences that fit within MAX_CAPTION_WORDS. Returns null when
+ * the first sentence alone is too long, or when nothing would be dropped. Removes words only, so
+ * it can never add a claim; anything named only in a dropped sentence is lost.
+ */
+export function trimCaptionToLimit(caption: string): string | null {
+	const sentences = String(caption ?? '').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
+	const kept: string[] = [];
+	for (const sentence of sentences) {
+		if (captionWordCount([...kept, sentence].join(' ')) > MAX_CAPTION_WORDS) break;
+		kept.push(sentence);
+	}
+	if (!kept.length || kept.length === sentences.length) return null;
+	return kept.join(' ');
+}
+
 export function inspectCaption(caption: string): CaptionIssue[] {
 	const text = String(caption ?? '').trim();
 	if (!text) return [{ code: 'empty', message: 'caption must be a non-empty sentence' }];
@@ -74,7 +92,7 @@ export function inspectCaption(caption: string): CaptionIssue[] {
 
 	const issues: CaptionIssue[] = [];
 	const count = captionWordCount(text);
-	if (count > 30) issues.push({ code: 'too-long', message: `caption has ${count} words; maximum is 30` });
+	if (count > MAX_CAPTION_WORDS) issues.push({ code: 'too-long', message: `caption has ${count} words; maximum is ${MAX_CAPTION_WORDS}` });
 
 	for (const rule of CLAIM_RULES) {
 		const match = claimsText.match(rule.pattern)?.[0];

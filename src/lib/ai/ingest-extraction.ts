@@ -44,7 +44,8 @@ import {
 	assertCaptionContract,
 	buildCaptionCorrectionMessage,
 	inspectCaption,
-	MAX_CAPTION_CORRECTIONS
+	MAX_CAPTION_CORRECTIONS,
+	trimCaptionToLimit
 } from './caption-contract';
 import { assertAltTextContract, buildAltTextCorrectionMessage, inspectAltText } from './alt-text-contract';
 
@@ -271,7 +272,8 @@ export interface ExtractOptions extends ExtractContext {
  * Extract structured metadata from one image buffer. Throws `RETRY:<status>` on 429/5xx so a
  * caller's backoff loop can retry; throws a plain Error on a hard failure (bad key, unparseable
  * response, empty caption, or a caption still violating the visible-facts contract after
- * MAX_CAPTION_CORRECTIONS conversational correction rounds).
+ * MAX_CAPTION_CORRECTIONS conversational correction rounds; a caption that is only too long keeps
+ * its leading sentences instead, when they fit).
  */
 export async function extractOne(
 	imageBuffer: Buffer,
@@ -328,6 +330,18 @@ export async function extractOne(
 		// One of the two issue lists is non-empty here, so one of these always throws — the
 		// canonical contract error (caption checked first, matching its historical priority).
 		if (corrections >= MAX_CAPTION_CORRECTIONS) {
+			// A caption that is only too long keeps its leading sentences. In the same conversation
+			// the model echoes its own words back (Lewis vs Loyola, 2026-11-15: 36 words returned
+			// verbatim three times). A model rewrite was tried and rejected: it invented a jersey
+			// number and swapped who hit and who blocked. Dropping whole trailing sentences adds
+			// nothing, at the cost of any number named only in a dropped sentence.
+			if (captionIssues.every((issue) => issue.code === 'too-long') && !altTextIssues.length) {
+				const trimmed = trimCaptionToLimit(extraction.caption);
+				if (trimmed && !inspectCaption(trimmed).length) {
+					extraction.caption = trimmed;
+					return { extraction, cost, rawText: text };
+				}
+			}
 			if (captionIssues.length) assertCaptionContract(extraction.caption);
 			assertAltTextContract(extraction.alt_text, { visibleText: extraction.visible_text });
 		}

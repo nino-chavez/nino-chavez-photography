@@ -105,3 +105,39 @@ test('extractOne throws the alt-text contract error after exhausting corrections
 	);
 	assert.equal(calls, MAX_CAPTION_CORRECTIONS + 1);
 });
+
+// 36 words; the first sentence alone is 25. The real DSC00650 caption, Lewis vs Loyola 2026-11-15.
+const LONG_CAPTION =
+	'A player in a black top and red shorts reaches for the ball, with another player in a black top and red shorts also reaching. A player in a black top and red shorts is visible.';
+
+test('extractOne keeps the leading sentences of a too-long caption after corrections run out', async () => {
+	let calls = 0;
+	const fetchImpl = (async () => {
+		calls++;
+		return fakeResponse(completion({ ...BASE, caption: LONG_CAPTION }, 1));
+	}) as unknown as typeof fetch;
+
+	const result = await extractOne(Buffer.from('img'), { albumSport: null, apiKey: 'k', fetchImpl });
+	assert.equal(
+		result.extraction.caption,
+		'A player in a black top and red shorts reaches for the ball, with another player in a black top and red shorts also reaching.'
+	);
+	assert.equal(result.extraction.alt_text, VALID_ALT_TEXT);
+	// No extra request: the trim happens locally on the final correction's answer.
+	assert.equal(calls, MAX_CAPTION_CORRECTIONS + 1);
+});
+
+test('extractOne still throws too-long when the first sentence alone is over the limit', async () => {
+	const oneSentence = LONG_CAPTION.replace('reaching. A player', 'reaching while a player');
+	let calls = 0;
+	const fetchImpl = (async () => {
+		calls++;
+		return fakeResponse(completion({ ...BASE, caption: oneSentence }, 1));
+	}) as unknown as typeof fetch;
+
+	await assert.rejects(
+		() => extractOne(Buffer.from('img'), { albumSport: null, apiKey: 'k', fetchImpl }),
+		/caption contract: too-long/
+	);
+	assert.equal(calls, MAX_CAPTION_CORRECTIONS + 1);
+});

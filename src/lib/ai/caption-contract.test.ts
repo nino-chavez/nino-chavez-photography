@@ -4,7 +4,8 @@ import {
 	assertCaptionContract,
 	buildCaptionCorrectionMessage,
 	captionWordCount,
-	inspectCaption
+	inspectCaption,
+	trimCaptionToLimit
 } from './caption-contract';
 
 test('accepts a short visible-facts caption', () => {
@@ -68,4 +69,14 @@ test('correction message gives a compression instruction for too-long captions',
 	assert.match(message, /25 words or fewer/);
 	assert.match(message, /same caption will be rejected again/);
 	assert.doesNotMatch(message, /flagged words/);
+});
+
+test('trimCaptionToLimit keeps leading whole sentences that fit', () => {
+	const first = 'A player in black with red shorts jumps to hit the ball, while a player in black with yellow trim (#12) blocks.';
+	assert.equal(trimCaptionToLimit(`${first} Another player in black with yellow trim (#10) is visible.`), first);
+});
+
+test('trimCaptionToLimit returns null when nothing fits or nothing would be dropped', () => {
+	assert.equal(trimCaptionToLimit('A player serves.'), null);
+	assert.equal(trimCaptionToLimit(`${'word '.repeat(31).trim()}. A player serves.`), null);
 });
