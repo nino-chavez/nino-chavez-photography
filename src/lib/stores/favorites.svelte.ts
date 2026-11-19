@@ -1,97 +1,65 @@
 /**
- * Favorites Store - Manage user's favorite photos with localStorage persistence
- * Week 3: Engagement Features
- * Enhanced: Toast notifications for user feedback
+ * Saved photos, kept in this browser's localStorage.
+ *
+ * The storage rules live in `saved-photos.ts`, which is tested on its own: photos are keyed by
+ * their unique `id`, every change starts from what is stored now (so two open tabs cannot
+ * overwrite each other), and the list in memory changes only after the browser accepted the write.
+ * This store adds reactive state, toasts and analytics.
  */
 
 import type { Photo } from '$types/photo';
-import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { toast } from './toast.svelte';
 import { trackEngagement, trackAnalyticsEventV2 } from '$lib/analytics/client';
 import { favoriteTransition } from '$lib/analytics/favorite-transaction';
+import { MAX_SAVED, STORAGE_KEY, createSavedPhotos, parseImport, type SavedPhotos } from './saved-photos';
 
-const STORAGE_KEY = 'gallery-favorites';
-const MAX_FAVORITES = 100; // Prevent unlimited storage growth
 const REMOVAL_TOAST_KEY = 'favorite-removal';
 
-interface FavoritesState {
-	photoIds: Set<string>;
-	photos: Map<string, Photo>;
-}
-
 function createFavoritesStore() {
-	// Initialize from localStorage (browser-only)
-	const initialState: FavoritesState = {
-		photoIds: new SvelteSet(),
-		photos: new SvelteMap()
-	};
-
-	if (typeof window !== 'undefined') {
+	const browser = typeof window !== 'undefined';
+	let storage: Storage | null = null;
+	if (browser) {
 		try {
-			const stored = localStorage.getItem(STORAGE_KEY);
-			if (stored) {
-				const parsed = JSON.parse(stored);
-				initialState.photoIds = new SvelteSet(parsed.photoIds || []);
-				initialState.photos = new SvelteMap(
-					(parsed.photos || []).map((photo: Photo) => [photo.image_key, photo])
-				);
-			}
+			storage = window.localStorage;
 		} catch (error) {
-			console.error('[Favorites] Failed to load from localStorage:', error);
+			console.error('[Favorites] localStorage is unavailable:', error);
 		}
 	}
+	const store = createSavedPhotos(storage);
 
-	let state = $state<FavoritesState>(initialState);
+	let saved = $state.raw<SavedPhotos>(store.read());
 
-	// Save to localStorage whenever state changes
-	function saveToStorage(): boolean {
-		if (typeof window === 'undefined') return true;
+	/** Show what is stored now, which another tab may have changed. */
+	function refresh(): SavedPhotos {
+		saved = store.read();
+		return saved;
+	}
 
-		try {
-			const toStore = {
-				photoIds: Array.from(state.photoIds),
-				photos: Array.from(state.photos.values())
-			};
-			localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
-			return true;
-		} catch (error) {
-			console.error('[Favorites] Failed to save to localStorage:', error);
-			return false;
-		}
+	if (browser) {
+		// Another tab saved or removed a photo: show it here too. `key` is null when storage was cleared.
+		window.addEventListener('storage', (event) => {
+			if (event.key === STORAGE_KEY || event.key === null) refresh();
+		});
 	}
 
 	return {
-		// Reactive getters
-		get photoIds() {
-			return state.photoIds;
-		},
 		get photos() {
-			return Array.from(state.photos.values());
+			return Array.from(saved.values());
 		},
 		get count() {
-			return state.photoIds.size;
+			return saved.size;
 		},
 
-		// Check if photo is favorited
 		isFavorite(photoId: string): boolean {
-			return state.photoIds.has(photoId);
+			return saved.has(photoId);
 		},
 
-		// Add photo to favorites
 		addFavorite(photo: Photo, surface: string): boolean {
-			if (favoriteTransition(state.photoIds.has(photo.image_key), 'add') !== 'add') return false;
-			// Check limit
-			if (state.photoIds.size >= MAX_FAVORITES) {
-				throw new Error(`You can save up to ${MAX_FAVORITES} photos in this browser`);
-			}
-
-			state.photoIds.add(photo.image_key);
-			state.photos.set(photo.image_key, photo);
-			if (!saveToStorage()) {
-				state.photoIds.delete(photo.image_key);
-				state.photos.delete(photo.image_key);
-				throw new Error('Could not save this photo');
-			}
+			const result = store.add(photo);
+			saved = result.saved;
+			if (favoriteTransition(result.outcome === 'already_saved', 'add') !== 'add') return false;
+			if (result.outcome === 'limit') throw new Error(`You can save up to ${MAX_SAVED} photos in this browser`);
+			if (result.outcome !== 'added') throw new Error('Could not save this photo');
 
 			// Persistence and analytics form one local transaction: only a committed add emits.
 			trackEngagement('favorite', {
@@ -103,17 +71,12 @@ function createFavoritesStore() {
 			return true;
 		},
 
-		// Remove photo from favorites
 		removeFavorite(photoId: string, surface: string): Photo | null {
-			const photo = state.photos.get(photoId);
-			if (!photo || favoriteTransition(state.photoIds.has(photoId), 'remove') !== 'remove') return null;
-			state.photoIds.delete(photoId);
-			state.photos.delete(photoId);
-			if (!saveToStorage()) {
-				state.photoIds.add(photoId);
-				state.photos.set(photoId, photo);
-				throw new Error('Could not update saved photos');
-			}
+			const result = store.remove(photoId);
+			saved = result.saved;
+			if (favoriteTransition(result.outcome !== 'not_saved', 'remove') !== 'remove') return null;
+			if (result.outcome === 'write_failed') throw new Error('Could not update saved photos');
+			const photo = result.photo!;
 			trackAnalyticsEventV2({ eventName: 'favorite_removed', properties: { photo_id: photo.id, album_key: photo.album_key, surface } });
 			return photo;
 		},
@@ -121,16 +84,13 @@ function createFavoritesStore() {
 		// Re-add the exact record removed by Undo. A second activation is harmless:
 		// the photo is already present and storage is not written again.
 		restoreFavorite(photo: Photo, surface: string): boolean {
-			if (state.photoIds.has(photo.image_key)) return true;
+			if (refresh().has(photo.id)) return true;
 			return this.addFavorite(photo, surface);
 		},
 
-		// Toggle favorite status
 		toggleFavorite(photo: Photo, surface: string): boolean {
-			const isFav = state.photoIds.has(photo.image_key);
-
-			if (isFav) {
-				const removedPhoto = this.removeFavorite(photo.image_key, surface);
+			if (refresh().has(photo.id)) {
+				const removedPhoto = this.removeFavorite(photo.id, surface);
 				if (!removedPhoto) return false;
 				toast.info('Removed from saved photos', {
 					duration: 6000,
@@ -149,69 +109,47 @@ function createFavoritesStore() {
 					}
 				});
 				return false;
-			} else {
-				try {
-					if (!this.addFavorite(photo, surface)) return false;
-					const count = state.photoIds.size;
-					toast.success(`Photo saved in this browser (${count} total)`, {
-						duration: 3000
-					});
-					return true;
-				} catch (error) {
-					// Handle max favorites error
-					if (error instanceof Error && error.message.includes('save up to')) {
-						toast.error(`You can save up to ${MAX_FAVORITES} photos in this browser`, {
-							duration: 4000
-						});
-					} else {
-						toast.error('Could not save this photo', { duration: 3000 });
-					}
-					return false;
+			}
+			try {
+				if (!this.addFavorite(photo, surface)) return false;
+				toast.success(`Photo saved in this browser (${saved.size} total)`, { duration: 3000 });
+				return true;
+			} catch (error) {
+				if (error instanceof Error && error.message.includes('save up to')) {
+					toast.error(`You can save up to ${MAX_SAVED} photos in this browser`, { duration: 4000 });
+				} else {
+					toast.error('Could not save this photo', { duration: 3000 });
 				}
+				return false;
 			}
 		},
 
-		// Clear all favorites
-		clearAll() {
-			state.photoIds.clear();
-			state.photos.clear();
-			saveToStorage();
+		clearAll(): boolean {
+			const result = store.replace(new Map());
+			saved = result.saved;
+			return result.ok;
 		},
 
 		// Export favorites as JSON (for backup)
 		exportFavorites(): string {
 			return JSON.stringify({
 				exported: new Date().toISOString(),
-				count: state.photoIds.size,
+				count: saved.size,
 				photos: this.photos
 			});
 		},
 
-		// Import favorites from JSON (for restore)
-		importFavorites(json: string) {
-			try {
-				const imported = JSON.parse(json);
-				if (!imported.photos || !Array.isArray(imported.photos)) {
-					throw new Error('Invalid import format');
-				}
-
-				// Clear existing
-				state.photoIds.clear();
-				state.photos.clear();
-
-				// Import photos (respect limit)
-				const photosToImport = imported.photos.slice(0, MAX_FAVORITES);
-				photosToImport.forEach((photo: Photo) => {
-					state.photoIds.add(photo.image_key);
-					state.photos.set(photo.image_key, photo);
-				});
-
-				saveToStorage();
-				return photosToImport.length;
-			} catch (error) {
-				console.error('[Favorites] Import failed:', error);
-				throw error;
-			}
+		/**
+		 * Replace the list with an exported file's photos. Throws, with the list unchanged, when the
+		 * file is not an export, holds no usable photo, or the browser refuses the write. Returns the
+		 * number of photos actually kept.
+		 */
+		importFavorites(json: string): number {
+			const imported = parseImport(json);
+			const result = store.replace(imported);
+			saved = result.saved;
+			if (!result.ok) throw new Error('Could not store the imported photos in this browser');
+			return imported.size;
 		}
 	};
 }

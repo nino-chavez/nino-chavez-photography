@@ -14,7 +14,7 @@
 	let { photo, variant = 'default', surface = 'direct', class: className = '' }: Props = $props();
 
 	// Reactive favorite status
-	const isFavorited = $derived(favorites.isFavorite(photo.image_key));
+	const isFavorited = $derived(favorites.isFavorite(photo.id));
 
 	function handleClick(event: MouseEvent) {
 		event.preventDefault();
