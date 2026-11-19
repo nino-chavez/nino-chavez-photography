@@ -17,7 +17,7 @@ import { SITE_URL } from '$lib/site-url';
 import { photoPageTitle, photoAltText } from '$lib/seo/photo-title';
 import { isValidSrcParam } from '$lib/analytics/share';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
-import { computeSessionHash } from '$lib/analytics/session';
+import { visitorSessionHash } from '$lib/analytics/session.server';
 import { resolveAnalyticsContext } from '$lib/analytics/context.server';
 import { photoPageCacheControl } from '$lib/server/photo-page-cache';
 
@@ -158,8 +158,8 @@ export const load: PageServerLoad = async ({
 		const trafficContext = await resolveAnalyticsContext(request, cookies);
 		keepTrackingAlive(
 			platform,
-			computeSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
-				trackArrival({ albumKey: photo.album_key, src, sessionHash, userAgent, trafficContext })
+			visitorSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
+				sessionHash ? trackArrival({ albumKey: photo.album_key, src, sessionHash, userAgent, trafficContext }) : undefined
 			)
 		);
 	}

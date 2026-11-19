@@ -51,3 +51,23 @@ test('signing in from settings or the data page returns to the same clean addres
   assert.equal(new URL(analyticsAuthCallbackUrl('analytics.ninochavez.co', gallery, next)).searchParams.get('next'), next);
  }
 });
+
+test('a return path is accepted only if it resolves to this site', () => {
+ // Spellings that normalise to a scheme-relative path must fall back, wherever they are used.
+ const offSite = ['/a/..//other.example', '/.//other.example', '/%2e%2e//other.example', '/admin/../..//other.example/x', '//other.example', '/\\other.example'];
+ for (const value of offSite) {
+  const path = authReturnPath(value, '/admin/tags');
+  assert.equal(new URL(path, 'https://ninochavez.co').origin, 'https://ninochavez.co', value);
+  for (const host of ['ninochavez.co', 'analytics.ninochavez.co']) {
+   const location = signedInReturnPath(host, '/photography', value);
+   assert.equal(new URL(location, `https://${host}/photography/login`).origin, `https://${host}`, `${host} ${value}`);
+  }
+ }
+});
+
+test('an owner already signed in on the gallery returns to a page of this app', () => {
+ assert.equal(signedInReturnPath('ninochavez.co', '/photography', '/admin/albums'), '/photography/admin/albums');
+ assert.equal(signedInReturnPath('ninochavez.co', '/photography', '/analytics/sites?period=7'), '/photography/analytics/sites?period=7');
+ assert.equal(signedInReturnPath('analytics.ninochavez.co', '/photography', '/admin/tags'), '/photography/admin/tags');
+ assert.equal(authReturnPath('/admin/../favorites'), '/favorites');
+});

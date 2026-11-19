@@ -21,7 +21,7 @@ export interface SearchQueryEvent {
 export interface ArrivalEvent {
 	albumKey?: string; // omitted for homepage arrivals (site-wide, not album-scoped)
 	src: string; // channel value carried on the incoming ?src= param (see $lib/utils/share-url)
-	sessionHash?: string;
+	sessionHash: string; // keyed visitor identifier (session.server.ts); with no key, nothing is tracked
 	userAgent: string;
 	trafficContext?: 'audience' | 'operator' | 'test' | 'self_excluded';
 }
@@ -88,7 +88,7 @@ export async function trackArrival(event: ArrivalEvent): Promise<void> {
 				photo_id: null,
 			album_key: event.albumKey ?? null,
 				source: event.src,
-				session_hash: event.sessionHash ?? null,
+				session_hash: event.sessionHash,
 				traffic_context: event.trafficContext ?? 'audience',
 				source_kind: 'tagged_arrival',
 			});

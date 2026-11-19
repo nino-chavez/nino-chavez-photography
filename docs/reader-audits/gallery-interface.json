@@ -1,14 +1,14 @@
 {
   "version": 1,
   "surface": "gallery interface",
-  "reviewedAt": "2026-11-19T15:05:39.694Z",
+  "reviewedAt": "2026-11-19T15:26:52.694Z",
   "reviewedBy": "Claude Opus 5.5 (agent), for Nino Chavez",
-  "method": "Behavior-only change: the heart in FavoriteButton.svelte and the viewer's save control in Lightbox.svelte now ask the saved-photos store by photo.id instead of image_key; no copy, layout or style changed. Walked locally on this branch (vite dev, placeholder Supabase values, invented records using a static hero image) in the browser pane at desktop width and at 375px: the saved page with an old stored list (count 1, the orphan id dropped); importing a file holding two photos that share a frame name plus a null entry (both shown saved, 'Imported 2 saved photos.'); tapping one twin's heart removes only that photo; Undo restores it; the viewer reads 'Saved · Remove' and removes the open photo; a removal in a second tab updates the first without reload; a file with no usable photo shows 'Import Failed' and leaves the list. No horizontal scroll at 375px. Not covered: real gallery data and images, album, explore, collections and photo pages (they render the same heart), dark/light theme switch, and the production walk, which runs after this deploy.",
-  "sourceDigest": "sha256:caef19935fe7ed26d561d07ddf3d0d0e978bc5842e418fad4b1965dd934de307",
+  "method": "Server-only change in src/routes: the engagement endpoint and the album and photo page loaders now take the visitor identifier from a keyed server helper, and record nothing when the key is not configured. No markup, copy, style or client behavior changed, so no screen was walked; checked by svelte-check (0 errors), the unit tests and the production build. Not covered: the production check of these paths, which runs after this deploy.",
+  "sourceDigest": "sha256:6949e3dd3dd83d530e9a5513fbadc7ea4524998c5f91ce3ec004fb71dc15c3d7",
   "sourceFiles": 205,
   "scope": [
-    "saved photos page",
-    "photo heart",
-    "photo viewer save control"
+    "engagement endpoint",
+    "album page loader",
+    "photo page loader"
   ]
 }
