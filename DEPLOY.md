@@ -75,11 +75,15 @@ tests prove the native app's behavior; they do not prove this public routing han
 - **Fallback**: Supabase Dashboard → SQL Editor (paste the migration SQL).
 - **Tip**: run from an isolated `git worktree` (copy `supabase/.temp` into it) when another
   session holds the main checkout, so the push doesn't depend on the working branch.
-- **After a push, refresh `supabase/schema.sql`**: run `npm run db:schema` from the same linked
-  checkout and commit the file in the migration's PR. It reads the structure through
-  `supabase db dump` and `supabase db query` (schema, extensions and scheduled jobs; never rows)
-  and refuses to write when production and the checkout are at different migrations, or when the
-  result holds data rows, a credential-shaped string or an email address (the file is public).
+- **After a push, refresh `supabase/schema.sql`**: run `npm run db:schema` (Supabase CLI 3 or later)
+  from the same linked checkout and commit the file in the migration's PR. It reads production
+  through `supabase db dump --remote` and `supabase db query --remote --read-only`: the schemas,
+  extensions and scheduled jobs, plus the configuration rows listed in `CONFIG_ROWS` in
+  `scripts/dump-schema.mjs` (the engagement weights and the site-action refresh receipt's key).
+  Never visitor, photo or album rows. It refuses to write when production and the checkout are at
+  different migrations, when the dumped structure holds data rows, a credential-shaped string or
+  an email address, or when a configuration value is anything but a number or a plain token (the
+  file is public). A new table whose rows the app needs belongs in `CONFIG_ROWS`.
   The README says how to build a new project from it.
 
 ### Launch recaps: apply order

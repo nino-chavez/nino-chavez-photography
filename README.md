@@ -39,7 +39,7 @@ src/
 └── types/
 cloudflare-worker/             # album-zip (ZIP downloads), analytics-intelligence, analytics-relay
 database/                      # SQL scripts and indexes
-supabase/schema.sql            # the whole database structure, no rows (see Database)
+supabase/schema.sql            # the whole database structure and its configuration rows (see Database)
 supabase/migrations/           # timestamped migrations
 scripts/                       # ingest, taxonomy, utilities
 docs/                          # technical documentation
@@ -94,7 +94,7 @@ A single primary table, `photo_metadata`, with comprehensive indexing for filter
 - **AI-derived facets** — `sport_type` (mirrors `albums.sport`), `photo_category`, `play_type`, `quality_score` (generated from `sharpness`/`composition_score`/`exposure_accuracy`/`emotional_impact`)
 - **Dates** — `upload_date`, `photo_date`, `enriched_at`
 
-`supabase/schema.sql` holds the whole structure with no rows: extensions, the `public` and `analytics_private` schemas, and the scheduled jobs. It is current to the newest file in `supabase/migrations/`. The migrations alone cannot build the database, because the first of them changes tables that existed before the folder did.
+`supabase/schema.sql` holds the whole structure: extensions, the `public` and `analytics_private` schemas, the configuration rows the app needs (popularity weights and one report receipt), a first fill of each materialized view, and the scheduled jobs. It has no visitor, photo or album rows. It is current to the newest file in `supabase/migrations/`. The migrations alone cannot build the database, because the first of them changes tables that existed before the folder did.
 
 To build a new Supabase project:
 
