@@ -13,18 +13,33 @@ export function analyticsAuthCallbackUrl(hostname: string, galleryUrl: string, n
 	return callback.toString();
 }
 
-/** A callback destination is a path in this app, never an external URL. */
+/**
+ * A callback destination is a path in this app, never an external URL. The check runs on the
+ * path as the URL parser normalises it too: `..` segments can collapse to a leading `//`, which a
+ * browser reads as another host.
+ */
 export function authReturnPath(value: string | null, fallback = '/admin/tags'): string {
  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || /[\u0000-\u001f]/.test(value)) return fallback;
- try { const target = new URL(value, 'https://auth.invalid'); return target.origin === 'https://auth.invalid' ? `${target.pathname}${target.search}${target.hash}` : fallback; } catch { return fallback; }
+ try {
+  const target = new URL(value, 'https://auth.invalid');
+  if (target.origin !== 'https://auth.invalid' || target.pathname.startsWith('//')) return fallback;
+  return `${target.pathname}${target.search}${target.hash}`;
+ } catch { return fallback; }
 }
 
 
-/** An existing owner session returns to the same public report address. A return address from the old gallery report goes straight to where that report went. */
+/**
+ * Where an owner who is already signed in goes from the login page. Return paths are app paths
+ * without the base (the callback adds it the same way); the base is always added here, and on the
+ * analytics host a report path is then shortened to its clean public address. A return address from
+ * the old gallery report goes straight to where that report went.
+ */
 export function signedInReturnPath(hostname: string, appBase: string, value: string | null): string {
- const next = authReturnPath(value, hostname === ANALYTICS_HOST ? '/analytics/home' : `${appBase}/admin/tags`);
- if (hostname !== ANALYTICS_HOST) return next;
+ const next = authReturnPath(value, hostname === ANALYTICS_HOST ? '/analytics/home' : '/admin/tags');
  const full = new URL(`${appBase}${next}`, 'https://auth.invalid');
+ const inApp = `${full.pathname}${full.search}${full.hash}`;
+ if (hostname !== ANALYTICS_HOST) return inApp;
  const moved = oldAddressTarget(full.pathname, full.search);
- return moved ? `${moved.pathname}${moved.search}${moved.hash}` : cleanReportPath(full.pathname) ? `${cleanReportPath(full.pathname)}${full.search}${full.hash}` : next;
+ const clean = cleanReportPath(full.pathname);
+ return moved ? `${moved.pathname}${moved.search}${moved.hash}` : clean ? `${clean}${full.search}${full.hash}` : inApp;
 }
