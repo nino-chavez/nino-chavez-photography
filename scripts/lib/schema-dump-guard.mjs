@@ -22,3 +22,19 @@ const CHECKS = [
 export function schemaDumpProblems(sql) {
 	return CHECKS.filter(([, pattern]) => pattern.test(sql)).map(([what]) => `contains ${what}`);
 }
+
+/**
+ * Configuration rows copied from production (CONFIG_ROWS in `dump-schema.mjs`) may hold only
+ * numbers (or numeric strings) and short lowercase tokens such as `download` or `site_actions`, so no free text, address
+ * or credential can ride along. An empty table is a problem too: a new database would lack it.
+ */
+const TOKEN = /^[a-z][a-z0-9_]{0,63}$/;
+// `supabase db query -o json` returns PostgreSQL numeric values as strings, such as "4" or "1.5".
+const NUMERIC = /^-?\d{1,15}(\.\d{1,15})?$/;
+export function configRowProblems(rows) {
+	if (rows.length === 0) return ['has no rows'];
+	const bad = rows.flatMap((row) =>
+		Object.entries(row).filter(([, value]) => !(Number.isFinite(value) || (typeof value === 'string' && (TOKEN.test(value) || NUMERIC.test(value)))))
+	);
+	return bad.length === 0 ? [] : [`has values that are not numbers or plain tokens (columns ${[...new Set(bad.map(([column]) => column))].join(', ')})`];
+}

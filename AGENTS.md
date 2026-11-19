@@ -152,7 +152,7 @@ npm test                         # Playwright E2E tests
 ## Database
 - Primary table: `photo_metadata` (~20K rows)
 - Key columns: photo_id, sport_type, quality_score, cf_image_id
-- `supabase/schema.sql` is the whole structure (no rows) at the newest migration; the migrations alone cannot build it. A PR that adds a migration also runs `npm run db:schema` after the push and commits the new file (README "Database", DEPLOY.md "Database").
+- `supabase/schema.sql` is the whole structure, plus the configuration rows the app needs (no visitor, photo or album rows), at the newest migration; the migrations alone cannot build it. A PR that adds a migration also runs `npm run db:schema` after the push and commits the new file (README "Database", DEPLOY.md "Database").
 - See `database/performance-indexes.sql` for index documentation
 
 ## Browser automation: use browse-tool, not MCP

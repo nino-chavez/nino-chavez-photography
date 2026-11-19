@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { schemaDumpProblems } from './schema-dump-guard.mjs';
+import { configRowProblems, schemaDumpProblems } from './schema-dump-guard.mjs';
 
 // Invented values only. The credential-shaped ones are assembled at run time, so no secret scanner
 // reads this file as holding a token; each still has the shape its check looks for.
@@ -40,4 +40,14 @@ test('each kind of content that must not reach a public repository is refused', 
 		const problems = schemaDumpProblems(`${structure}\n${sql}`);
 		assert.ok(problems.some((p) => p.includes(what)), `${what}: ${JSON.stringify(problems)}`);
 	}
+});
+
+test('configuration rows may hold only numbers and plain tokens', () => {
+	assert.deepEqual(configRowProblems([{ event_type: 'download', weight: 6 }, { event_type: 'view', weight: 1.5 }]), []);
+	assert.deepEqual(configRowProblems([{ report_name: 'site_actions' }]), []);
+	assert.deepEqual(configRowProblems([{ event_type: 'favorite', weight: '4' }, { event_type: 'share', weight: '8.0' }]), [], 'numeric strings');
+	for (const row of [{ note: 'owner@example.com' }, { note: 'Free text with spaces' }, { note: null }, { note: 'x'.repeat(65) }, { note: '4 OR 1=1' }]) {
+		assert.equal(configRowProblems([row]).length, 1, JSON.stringify(row).slice(0, 40));
+	}
+	assert.deepEqual(configRowProblems([]), ['has no rows']);
 });
