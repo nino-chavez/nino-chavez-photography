@@ -98,6 +98,12 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
   `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only, bypasses RLS), and
   `OPENROUTER_API_KEY` (runtime embeddings for semantic search). Ingest/upload tooling also
   needs `CF_ACCOUNT_ID` + `CF_IMAGES_API_TOKEN`.
+- **Engagement visitor identifier**: `ANALYTICS_SESSION_HASH_KEY` (Pages secret, at least 32
+  characters) keys the HMAC that turns IP address and browser into the per-visitor identifier
+  used to de-duplicate engagement events (`src/lib/analytics/session.ts`). Without it no
+  engagement event or tagged arrival is recorded, and the log says so once per isolate. Its vault
+  reference is `op://Developer Secrets/app-secrets photography/analytics_session_hash_key`. Changing
+  it starts every visitor on a new identifier, so distinct-visitor counts across the change double.
 - **Analytics test markers**: `ANALYTICS_TEST_TOKEN` signs short-lived test requests.
   Missing or invalid signatures are rejected. Operator exclusion separately uses the verified
   Supabase identity and `ADMIN_EMAILS`; no client-supplied traffic classification is trusted.

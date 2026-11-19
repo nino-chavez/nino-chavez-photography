@@ -5,7 +5,7 @@ import { ALBUM_PHOTO_PAGE_SIZE } from '$lib/albums/pagination';
 import { getTopPhotos } from '$lib/analytics/popularity';
 import { trackArrival, keepTrackingAlive } from '$lib/analytics/tracker';
 import { isValidSrcParam } from '$lib/analytics/share';
-import { computeSessionHash } from '$lib/analytics/session';
+import { visitorSessionHash } from '$lib/analytics/session.server';
 import { resolveAnalyticsContext } from '$lib/analytics/context.server';
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
@@ -143,8 +143,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, request, g
 		const trafficContext = await resolveAnalyticsContext(request, cookies);
 		keepTrackingAlive(
 			platform,
-			computeSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
-				trackArrival({ albumKey, src, sessionHash, userAgent, trafficContext })
+			visitorSessionHash(getClientAddress(), userAgent).then((sessionHash) =>
+				sessionHash ? trackArrival({ albumKey, src, sessionHash, userAgent, trafficContext }) : undefined
 			)
 		);
 	}
