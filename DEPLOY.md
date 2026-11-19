@@ -182,8 +182,12 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
 - Spot-check an album page loads
 - After setting or changing a Pages secret, start a new production deployment: a secret reaches
   only deployments created after it is set. For `ANALYTICS_SESSION_HASH_KEY`, confirm without
-  writing anything: `wrangler pages deployment tail --project-name nino-chavez-photography
-  --environment production --format json`, and wait for visitor `POST /api/engagement` requests.
+  writing anything: `wrangler pages deployment tail <deployment-id> --project-name
+  nino-chavez-photography --format json`, with the id from `wrangler pages deployment list
+  --project-name nino-chavez-photography --environment production --json`, and wait for visitor
+  `POST /api/engagement` requests. Without the id, a script or agent shell exits with "Must specify
+  a deployment in non-interactive mode" and captures nothing. Visitor engagement posts are sparse:
+  a 4-minute tail on 2026-11-19 saw 33 page loads and none.
   Only a 200 proves the key is set. A 202 (known crawler, or a self-excluded browser) returns
   before the key is read and proves nothing either way. A 503 `recording_unavailable` is pinned on
   the key only by the `ANALYTICS_SESSION_HASH_KEY is not set` log line; a failed lookup or insert
