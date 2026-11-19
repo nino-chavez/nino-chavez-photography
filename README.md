@@ -37,8 +37,9 @@ src/
 │   └── motion-tokens.ts
 ├── routes/             # albums/ collections/ explore/ favorites/ photo/[id]/ timeline/
 └── types/
-cloudflare-worker/album-zip/   # companion Worker for ZIP downloads
+cloudflare-worker/             # album-zip (ZIP downloads), analytics-intelligence, analytics-relay
 database/                      # SQL scripts and indexes
+supabase/schema.sql            # the whole database structure, no rows (see Database)
 supabase/migrations/           # timestamped migrations
 scripts/                       # ingest, taxonomy, utilities
 docs/                          # technical documentation
@@ -50,7 +51,7 @@ docs/                          # technical documentation
 
 - Node.js 22.22.0 or newer (`.nvmrc` pins 22.22.0, the version Cloudflare Pages builds with)
 - npm
-- A Supabase project ([free tier](https://supabase.com))
+- A Supabase project ([free tier](https://supabase.com)), and the [Supabase CLI](https://supabase.com/docs/guides/cli) to record its migration history
 
 ### Setup
 
@@ -61,6 +62,8 @@ npm install
 cp .env.example .env.local     # then fill in your Supabase keys
 npm run dev                     # http://localhost:5173
 ```
+
+A new Supabase project starts empty. Build its database from `supabase/schema.sql` first (see [Database](#database)).
 
 Environment variables live in `.env.local` locally and in the Cloudflare Pages dashboard in production. See `.env.example` for the full list; the essentials:
 
@@ -91,13 +94,27 @@ A single primary table, `photo_metadata`, with comprehensive indexing for filter
 - **AI-derived facets** — `sport_type` (mirrors `albums.sport`), `photo_category`, `play_type`, `quality_score` (generated from `sharpness`/`composition_score`/`exposure_accuracy`/`emotional_impact`)
 - **Dates** — `upload_date`, `photo_date`, `enriched_at`
 
-Migrations live in `supabase/migrations/`; see `database/performance-indexes.sql` for the covering indexes.
+`supabase/schema.sql` holds the whole structure with no rows: extensions, the `public` and `analytics_private` schemas, and the scheduled jobs. It is current to the newest file in `supabase/migrations/`. The migrations alone cannot build the database, because the first of them changes tables that existed before the folder did.
+
+To build a new Supabase project:
+
+1. Apply the file with `psql "<the new project's connection string>" -f supabase/schema.sql`, or paste it into the project's SQL editor.
+2. Record the existing migrations as applied in that project, so `supabase db push` sends only later ones. Do this in a separate clone, because `supabase link` replaces the checkout's existing link: `supabase link --project-ref <new project ref>`, then `supabase migration repair --status applied $(ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1)`.
+3. Add albums with `npm run ingest:album` ([ENRICHMENT_WORKFLOW.md](./ENRICHMENT_WORKFLOW.md)). Photos, albums and analytics rows are not in the file; neither are Auth settings or the Pages environment.
+
+After a migration reaches production, run `npm run db:schema` and commit the new `supabase/schema.sql` in the same PR (DEPLOY.md, "Database"). See `database/performance-indexes.sql` for the covering indexes.
 
 > Unprocessed photos have `sharpness = null` — always exclude them in queries.
 
 ## Deployment
 
-Deployed to **Cloudflare Pages** via `@sveltejs/adapter-cloudflare` (build output `.svelte-kit/cloudflare`); no GitHub Actions. The `album-zip` companion Worker deploys separately with `npm run worker:deploy`, and production environment variables are set in the Cloudflare Pages dashboard.
+The app deploys to **Cloudflare Pages** via `@sveltejs/adapter-cloudflare` (build output `.svelte-kit/cloudflare`) through Pages git integration: a push to `main` deploys it. Production environment variables are set in the Cloudflare Pages dashboard. Three Workers deploy separately:
+
+| Worker | What it does | How it deploys |
+|---|---|---|
+| `cloudflare-worker/album-zip` | Builds album ZIP downloads at `zip.ninochavez.co` | By hand, `npm run worker:deploy` |
+| `cloudflare-worker/analytics-intelligence` | Every minute, asks the app to run queued report jobs | GitHub Actions, on a push to `main` that changes its folder (`.github/workflows/deploy-analytics-intelligence.yml`) |
+| `cloudflare-worker/analytics-relay` | Every five minutes, asks the app to send queued PostHog exports | GitHub Actions, on a push to `main` that changes its folder (`.github/workflows/deploy-analytics-relay.yml`) |
 
 See **[DEPLOY.md](./DEPLOY.md)** for the canonical deploy procedure, Supabase migration steps, and preflight checks.
 
