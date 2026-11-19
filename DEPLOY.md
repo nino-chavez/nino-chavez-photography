@@ -180,6 +180,12 @@ then with Nino's approval `--write` (see the header of the script). It is idempo
 - Check `/sites` on the analytics subdomain for nonzero page loads,
   a section-specific trend, and a paginated page list. Private share paths must not appear.
 - Spot-check an album page loads
+- After setting or changing a Pages secret, start a new production deployment: a secret reaches
+  only deployments created after it is set. For `ANALYTICS_SESSION_HASH_KEY`, confirm without
+  writing anything: `wrangler pages deployment tail --project-name nino-chavez-photography
+  --environment production --format json` should show visitor `POST /api/engagement` requests
+  answering 200 (or 202), not 503 `recording_unavailable`, and no `ANALYTICS_SESSION_HASH_KEY is
+  not set` log line. The tail includes visitor request details; count statuses, do not keep it.
 
 ## Authority limits
 - Supabase migrations via CLI require the project linked + DB password cached (keychain) or
