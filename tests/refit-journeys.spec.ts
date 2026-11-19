@@ -66,7 +66,7 @@ test('a saved photo survives reload and can be removed', async ({ page }) => {
 	await expect(saved).toBeVisible();
 	await saved.hover();
 	await saved.getByRole('button', { name: 'Remove saved photo', exact: true }).click();
-	await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('gallery-favorites')!).photoIds.length)).toBe(0);
+	await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('gallery-favorites')!).photos.length)).toBe(0);
 	await expect(page.getByText('No saved photos yet', { exact: true })).toBeVisible();
 	await page.reload();
 	await expect(page.getByText('No saved photos yet', { exact: true })).toBeVisible();

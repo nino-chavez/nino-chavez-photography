@@ -36,7 +36,7 @@ test('save feedback stays consistent, recoverable, and stacked', async ({ page }
 	await undo.focus();
 	await page.keyboard.press('Enter');
 	await expect(page.locator('.photo-card')).toHaveCount(1);
-	await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('gallery-favorites') ?? '{}').photoIds?.length)).toBe(1);
+	await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('gallery-favorites') ?? '{}').photos?.length)).toBe(1);
 	const dismiss = page.getByRole('button', { name: 'Dismiss notification', exact: true });
 	while (await dismiss.count()) await dismiss.first().click();
 

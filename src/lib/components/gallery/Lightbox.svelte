@@ -209,7 +209,7 @@
 	// Generate user-friendly display text
 	const displayTitle = $derived(photo ? generatePhotoTitle(photo) : 'Sports Photo');
 	const metadataSummary = $derived(photo ? generateMetadataSummary(photo) : []);
-	const isSaved = $derived(photo ? favorites.isFavorite(photo.image_key) : false);
+	const isSaved = $derived(photo ? favorites.isFavorite(photo.id) : false);
 
 	// Counter: prefer cross-page totals when provided, else fall back to the
 	// loaded-list position so single-page usages are unchanged.
