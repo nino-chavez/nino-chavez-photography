@@ -75,6 +75,12 @@ tests prove the native app's behavior; they do not prove this public routing han
 - **Fallback**: Supabase Dashboard → SQL Editor (paste the migration SQL).
 - **Tip**: run from an isolated `git worktree` (copy `supabase/.temp` into it) when another
   session holds the main checkout, so the push doesn't depend on the working branch.
+- **After a push, refresh `supabase/schema.sql`**: run `npm run db:schema` from the same linked
+  checkout and commit the file in the migration's PR. It reads the structure through
+  `supabase db dump` and `supabase db query` (schema, extensions and scheduled jobs; never rows)
+  and refuses to write when production and the checkout are at different migrations, or when the
+  result holds data rows, a credential-shaped string or an email address (the file is public).
+  The README says how to build a new project from it.
 
 ### Launch recaps: apply order
 
@@ -89,8 +95,18 @@ and the existing `ANALYTICS_INTELLIGENCE_DELIVERY_*` settings; none of them chan
 The 7 launches that predate recaps have no recap to show. After the migration is applied, run `scripts/backfill-launch-recaps.ts --dry-run` and read it,
 then with Nino's approval `--write` (see the header of the script). It is idempotent and never sends anything.
 
-## Companion Worker
-- `cloudflare-worker/album-zip/` — separate Worker for ZIP downloads. Deploy with `npm run worker:deploy`.
+## Workers
+Three Workers deploy separately from the Pages app:
+- `cloudflare-worker/album-zip/` — builds album ZIP downloads at `zip.ninochavez.co`. Deploys by
+  hand: `npm run worker:deploy`.
+- `cloudflare-worker/analytics-intelligence/` — every minute, calls the app's
+  `/api/analytics/intelligence/jobs` to run queued report jobs. Deploys from
+  `.github/workflows/deploy-analytics-intelligence.yml` on a push to `main` that changes its folder
+  or that workflow.
+- `cloudflare-worker/analytics-relay/` — every five minutes, calls `/api/internal/analytics-posthog`
+  to send queued PostHog exports. Deploys from `.github/workflows/deploy-analytics-relay.yml` the
+  same way.
+The two workflows use the GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
 ## Environment variables
 - **Where they live**: Cloudflare Pages dashboard (set as Pages secrets)

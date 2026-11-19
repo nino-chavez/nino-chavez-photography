@@ -2,7 +2,7 @@
 > Photography portfolio with ~20K volleyball action sports photos
 
 **Stack:** SvelteKit 2.x + Svelte 5 + Tailwind CSS 4 + Supabase (Postgres + Auth)
-**Deploy:** Cloudflare Pages (git integration, no GitHub Actions) + Cloudflare Worker (album-zip) + R2 + Cloudflare Images
+**Deploy:** Cloudflare Pages (git integration: a push to `main` deploys the app) + three Workers: `album-zip` (by hand, `npm run worker:deploy`), `analytics-intelligence` and `analytics-relay` (GitHub Actions on a push that changes their folder) + R2 + Cloudflare Images. DEPLOY.md has the details
 **Adapter:** `@sveltejs/adapter-cloudflare` — `adapter-vercel` not installed
 **Type:** Photography Portfolio (Volleyball Action Sports)
 **Scale:** ~20K photos | Production at photography.ninochavez.co
@@ -152,6 +152,7 @@ npm test                         # Playwright E2E tests
 ## Database
 - Primary table: `photo_metadata` (~20K rows)
 - Key columns: photo_id, sport_type, quality_score, cf_image_id
+- `supabase/schema.sql` is the whole structure (no rows) at the newest migration; the migrations alone cannot build it. A PR that adds a migration also runs `npm run db:schema` after the push and commits the new file (README "Database", DEPLOY.md "Database").
 - See `database/performance-indexes.sql` for index documentation
 
 ## Browser automation: use browse-tool, not MCP
